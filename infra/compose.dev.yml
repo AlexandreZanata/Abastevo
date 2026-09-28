@@ -1,0 +1,34 @@
+# Local disposable PostgreSQL/PostGIS for development and integration tests.
+#
+# - Image pinned by digest (no latest tags); PostgreSQL 18 + PostGIS 3.6 per
+#   docs/backend/TOOLCHAIN.md.
+# - Dev-only credentials (anpfuel/anpfuel); loopback binding only.
+# - Named local volume anpfuel-pgdata-dev. Production uses separate artifacts
+#   (P08) — never point this file at production data and never remove
+#   production volumes from here.
+name: anpfuel-dev
+
+services:
+  db:
+    image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
+    environment:
+      POSTGRES_USER: anpfuel
+      POSTGRES_PASSWORD: anpfuel
+      POSTGRES_DB: anpfuel
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Host loopback 5434: workstation 5432/5433 are taken by unrelated projects.
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anpfuel -d anpfuel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    stop_grace_period: 30s
+
+volumes:
+  pgdata:
+    name: anpfuel-pgdata-dev

@@ -45,7 +45,7 @@ const (
 	defaultMaxBodyBytes    = 1 << 20
 	defaultShutdownTimeout = 10 * time.Second
 
-	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5432/anpfuel?sslmode=disable"
+	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
 
 // Config is the validated process configuration.
