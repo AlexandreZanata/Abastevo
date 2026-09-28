@@ -1,0 +1,77 @@
+# Backend fast and integration gates. No secrets are used, so fork PRs run
+# the same checks. Integration fails (never skips) when PostGIS is down.
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+      - contracts/**
+      - infra/**
+      - scripts/check-backend-fast.sh
+      - scripts/scan-secrets.sh
+      - .github/workflows/backend.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - backend/**
+      - contracts/**
+      - infra/**
+      - scripts/check-backend-fast.sh
+      - scripts/scan-secrets.sh
+      - .github/workflows/backend.yml
+
+env:
+  GO_VERSION_FILE: backend/go.mod
+  SQLC_VERSION: v1.31.1
+  STATICCHECK_VERSION: v0.8.1
+  VACUUM_VERSION: v0.30.6
+  GOVULNCHECK_VERSION: v1.8.0
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+      - name: Install pinned tools
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}
+          GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
+          go install github.com/daveshanley/vacuum@${{ env.VACUUM_VERSION }}
+          GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+      - name: Fast gate (no database)
+        run: bash scripts/check-backend-fast.sh
+      - name: Vulnerability scan
+        run: cd backend && govulncheck ./...
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
+        env:
+          POSTGRES_USER: anpfuel
+          POSTGRES_PASSWORD: anpfuel
+          POSTGRES_DB: anpfuel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anpfuel -d anpfuel"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      ANPFUEL_TEST_DATABASE_URL: postgres://anpfuel:anpfuel@postgres:5432/anpfuel?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+      - name: Enable PostGIS via the migrator
+        run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
+      - name: Integration tests (real PostGIS, race detector)
+        run: cd backend && go test -race -count=1 -tags=integration ./...

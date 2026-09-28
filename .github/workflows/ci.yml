@@ -3,8 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - docs/**
+      - contracts/**
+      - infra/**
+      - backend/**
+      - '*.md'
+      - .github/workflows/backend.yml
   pull_request:
     branches: [main]
+    paths-ignore:
+      - docs/**
+      - contracts/**
+      - infra/**
+      - backend/**
+      - '*.md'
+      - .github/workflows/backend.yml
 
 jobs:
   test:
