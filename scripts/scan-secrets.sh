@@ -33,6 +33,8 @@ PATH_SPECS=(
     ':!scripts/scan-secrets.sh'
     # Detection pattern literals live here; same rationale as above.
     ':!scripts/check-backend-fast.sh'
+    ':!scripts/quick-verify.sh'
+    ':!scripts/tests/test-gate-selection.sh'
     ':!docs/**'
     ':!.cursor/**'
     ':!data/src/main/kotlin/com/anpfuel/data/local/fts/**'
