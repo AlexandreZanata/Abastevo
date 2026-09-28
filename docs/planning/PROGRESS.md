@@ -1,8 +1,8 @@
 # Current execution state
 
 - Updated: 2026-09-28.
-- Phase: P01 foundations in progress; P01-T01…T04 COMPLETE (slog factory with redaction, no business code).
-- Current task: P01-T05 — HTTP lifecycle (NOT STARTED).
+- Phase: P01 foundations in progress; P01-T01…T05 COMPLETE (bounded HTTP server, no business code).
+- Current task: P01-T06 — Liveness and readiness (NOT STARTED).
 - Branch observed: `main`, unborn (no commits). Existing origin: `git@github.com:AlexandreZanata/brazil-fuel-prices.git`.
 - Imported upstream: `b8a52049e0294cd2d07612cedcc52b3017c5271e` from brazil-fuel-prices-app.
 - P01-T01 evidence: new `docs/backend/TOOLCHAIN.md` (D01: Go ≥1.26/preferred 1.27.x; PG18 + PostGIS 3.6.x; Docker 29.1.3/Compose v2.27.0; installed go1.22.2 out of support, plan-only); scoped A01/A02/A11 prose fixes in `docs/architecture.md` and `README.md`; `docs/planning/BASELINE_VALIDATION.md` re-validation appendix.
@@ -12,7 +12,8 @@
 - P01-T02 validation (exact, from `backend/`): `go test ./...` exit 0 (no test files yet); `go build ./cmd/...` exit 0 (api/worker/migrate compile); `go vet ./...` exit 0; `gofmt -l .` clean; toolchain auto-switched to go1.27.1 (bare `go 1.27` directive did not resolve via proxy — pinned `toolchain go1.27.1` fixes it); all three binaries boot, print their not-wired notice and exit 0; no Android/Kotlin reference in `*.go`.
 - P01-T03 validation (exact, from `backend/`): `go test ./internal/platform/config/...` 9 tests PASS; `go test ./...`, `go build ./cmd/...`, `go vet ./...` exit 0; `gofmt -l .` clean. Negative runs: staging/prod without DSN, unknown env, malformed DSN and invalid limits all exit 1 naming only the variable; secret DSN never echoed; `LogValue` omits DSN. `backend/.env` stays ignored, `backend/.env.example` trackable via narrow exception.
 - P01-T04 validation (exact, from `backend/`): `go test ./internal/platform/telemetry/...` 6 tests PASS (role/code/request allowlist, UTC timestamps, B-BR-011 fixtures absent); `go test ./...`, `go vet ./...` exit 0; `gofmt -l .` clean.
-- Next microtask: **P01-T05 — HTTP lifecycle**.
+- P01-T05 validation (exact, from `backend/`): `go test ./internal/platform/httpserver/...` 7 tests PASS (request-ID passthrough/generation, 413 body cap with wide-cap control, 100ms slow-header timeout, graceful drain of in-flight request, access log without sensitive data using route templates, 404/405 logged as unmatched with request ID, bad-options matrix); `go test ./...`, `go build ./cmd/...`, `go vet ./...` exit 0; `gofmt -l .` clean. Dependency review: chi v5.3.2 (mandated by ADR-005, stdlib mux rejected to honor it), MIT license verified in module cache, zero transitive deps via `go mod graph`. Live smoke: wired api binary serves 404 with X-Request-Id + access record and drains on SIGTERM. Transport cap is config MaxBodyBytes; per-endpoint 64 KiB JSON enforcement lands with handlers (API_PLAN).
+- Next microtask: **P01-T06 — Liveness and readiness**.
 - Backend release G09: NOT STARTED. Android integration P10: BLOCKED BY G09. Paid services P11: LATER.
 - Completed artifacts: upstream snapshot; current-state audit; product/architecture/domain/API/data/ANP/security/testing/infra/migration/business plans; 73 roadmap microtasks; 9 new ADRs; agent contract; risk/decision/requirements registers.
 - No commit, push, release, production migration or infrastructure provisioning performed.

@@ -1,21 +1,54 @@
 // Command api is the public HTTP process role.
 //
-// Configuration is validated once at startup via the platform config package;
-// HTTP wiring lands in P01-T05. No business code lives here.
+// Routes land in later tasks (health in P01-T06, domain reads in P02+);
+// this task wires the bounded server lifecycle with signal-aware drain.
+// No business code lives here.
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
+	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "anpfuel api:", err)
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stdout, "anpfuel api: running in "+string(cfg.Env)+" (HTTP wiring lands in P01-T05)")
+}
+
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	logger, err := telemetry.New(os.Stdout, cfg.LogLevel, telemetry.RoleAPI)
+	if err != nil {
+		return err
+	}
+	router := httpserver.NewRouter(logger)
+	server, err := httpserver.New(httpserver.Options{
+		Addr:              cfg.HTTPAddr,
+		ReadTimeout:       httpserver.DefaultReadTimeout,
+		ReadHeaderTimeout: httpserver.DefaultReadHeaderTimeout,
+		WriteTimeout:      httpserver.DefaultWriteTimeout,
+		IdleTimeout:       httpserver.DefaultIdleTimeout,
+		ShutdownTimeout:   cfg.ShutdownTimeout,
+		MaxBodyBytes:      cfg.MaxBodyBytes,
+		Logger:            logger,
+	}, router)
+	if err != nil {
+		return err
+	}
+	logger.Info(context.Background(), "api.startup", "api serving")
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return server.Run(ctx)
 }
