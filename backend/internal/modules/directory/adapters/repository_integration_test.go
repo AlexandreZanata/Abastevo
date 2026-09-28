@@ -75,8 +75,15 @@ func freshRepo(t *testing.T) *Repository {
 	if err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if len(applied) != 2 {
-		t.Fatalf("want 2 applied migrations, got %d (%v)", len(applied), applied)
+	// Later migrations may exist; the directory chain must be applied.
+	found := false
+	for _, v := range applied {
+		if v == "000002" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("directory migration missing from %v", applied)
 	}
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {

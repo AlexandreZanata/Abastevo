@@ -19,6 +19,7 @@ backend/internal/modules/official/adapters/anp
 backend/internal/modules/official/adapters/source
 backend/internal/modules/official/domain
 backend/internal/modules/official/adapters
+backend/internal/modules/directory/adapters/geocoder
 
 [required-checks]
 gofmt

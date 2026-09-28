@@ -73,8 +73,15 @@ func freshImporter(t *testing.T) (*Importer, *pgxpool.Pool) {
 	if err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if len(applied) != 3 {
-		t.Fatalf("want 3 applied migrations, got %d (%v)", len(applied), applied)
+	// Later migrations may exist; the official chain must be applied.
+	found := false
+	for _, v := range applied {
+		if v == "000003" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("official migration missing from %v", applied)
 	}
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
