@@ -130,7 +130,8 @@ pr_json "$HEAD_SHA" > "$GH_PR_JSON"
 if bash "$FLOW" finish --skip-quick --pr 7 >/dev/null 2>&1; then
     grep -q "fake-merge" "$GH_LOG" && ok "finish merges with head guard" || bad "finish missed merge guard"
     [[ "$(git -C "$WORK" rev-parse --abbrev-ref HEAD)" == "main" ]] && ok "finish lands on main" || bad "finish branch"
-    git -C "$WORK" rev-parse --verify codex/phase-02-lifecycle >/dev/null 2>&1 && bad "phase branch not cleaned" || ok "phase branch cleaned"
+    git -C "$WORK" rev-parse --verify codex/phase-02-lifecycle >/dev/null 2>&1 && bad "phase branch not cleaned" || ok "phase branch cleaned locally"
+    git -C "$WORK" rev-parse --verify origin/codex/phase-02-lifecycle >/dev/null 2>&1 && bad "remote branch not cleaned" || ok "remote branch cleaned"
 else bad "guarded finish should succeed"; fi
 
 echo "== safe deletion only =="

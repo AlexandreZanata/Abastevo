@@ -218,9 +218,15 @@ cmd_finish() {
     fi
     git -C "$ROOT" checkout main
     git -C "$ROOT" merge --ff-only origin/main
+    # Always delete the merged phase branch locally and remotely, verified.
     # Safe deletion only: -d refuses unmerged work; never -D.
     git -C "$ROOT" branch -d "$branch"
-    info "integrated $branch as $head (PR $pr_number)"
+    git -C "$ROOT" push origin --delete "$branch"
+    git -C "$ROOT" fetch origin --prune
+    if git -C "$ROOT" rev-parse --verify "origin/$branch" >/dev/null 2>&1; then
+        die "remote branch origin/$branch still exists after deletion"
+    fi
+    info "integrated $branch as $head (PR $pr_number); branch deleted locally and remotely"
 }
 
 case "${1:-}" in

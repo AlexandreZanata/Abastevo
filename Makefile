@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -18,9 +18,13 @@ test-gate:
 test-flow:
 	bash scripts/tests/test-git-flow.sh
 
+test-issues:
+	bash scripts/tests/test-issues.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
 	@echo "  verify-release  quick + full-matrix report (foundation subset, NOT CERTIFIED)"
 	@echo "  test-gate       focused harness for gate selection/failure behavior"
 	@echo "  test-flow       synthetic git/fake-gh lifecycle for phase controller"
+	@echo "  test-issues     fake-API reconciliation for issues/milestones"
