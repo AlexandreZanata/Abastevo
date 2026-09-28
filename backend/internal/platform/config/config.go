@@ -8,6 +8,7 @@
 package config
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"net"
@@ -35,6 +36,7 @@ const (
 	keyDatabaseURL     = "ANPFUEL_DATABASE_URL"
 	keyMaxBodyBytes    = "ANPFUEL_MAX_BODY_BYTES"
 	keyShutdownTimeout = "ANPFUEL_SHUTDOWN_TIMEOUT"
+	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -48,7 +50,10 @@ const (
 	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
 
-// Config is the validated process configuration.
+// Config is the validated process configuration. CursorSecret signs
+// pagination cursors and is never logged; an unset value generates one
+// per-boot key (single-instance default: cursors invalidate on restart,
+// multi-instance production must set a shared secret).
 type Config struct {
 	Env             Environment
 	LogLevel        string
@@ -56,6 +61,7 @@ type Config struct {
 	DatabaseURL     string
 	MaxBodyBytes    int64
 	ShutdownTimeout time.Duration
+	CursorSecret    []byte
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -146,6 +152,20 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("%s must be a positive duration", keyShutdownTimeout)
 		}
 		cfg.ShutdownTimeout = d
+	}
+
+	secret, secretSet := getenv(keyCursorSecret)
+	if !secretSet || secret == "" {
+		ephemeral := make([]byte, 32)
+		if _, err := rand.Read(ephemeral); err != nil {
+			return Config{}, fmt.Errorf("%s fallback key generation failed", keyCursorSecret)
+		}
+		cfg.CursorSecret = ephemeral
+	} else {
+		if len(secret) < 32 {
+			return Config{}, fmt.Errorf("%s must be at least 32 bytes", keyCursorSecret)
+		}
+		cfg.CursorSecret = []byte(secret)
 	}
 
 	return cfg, nil

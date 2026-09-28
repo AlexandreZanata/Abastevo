@@ -1,0 +1,19 @@
+{
+  "id": "anp-019",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "cnpj_text": "04.218.406/0001-04"
+  },
+  "expected_backend": {
+    "cnpj_normalized": "04218406000104",
+    "leading_zero_preserved": true,
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "cnpj_normalized": "04218406000104",
+    "leading_zero_preserved": true,
+    "outcome": "ok"
+  }
+}

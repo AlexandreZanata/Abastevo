@@ -1,0 +1,25 @@
+{
+  "id": "anp-002",
+  "provenance": "synthetic",
+  "compatibility": "legacy-divergent",
+  "reason": "A05: wire uses GASOLINE_ADDITIVED; legacy Android exposes GASOLINA ADITIVADA as GASOLINE_PREMIUM through the P10 adapter",
+  "input": {
+    "label": "GASOLINA ADITIVADA",
+    "price_text": "6,199",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "product": "GASOLINE_ADDITIVED",
+    "unit": "L",
+    "amount_milli_brl": 6199,
+    "raw_price_text": "6,199",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "GASOLINE_PREMIUM",
+    "unit": "L",
+    "amount_milli_brl": 6199,
+    "raw_price_text": "6,199",
+    "outcome": "ok"
+  }
+}

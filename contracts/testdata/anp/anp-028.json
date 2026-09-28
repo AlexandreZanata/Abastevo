@@ -1,0 +1,16 @@
+{
+  "id": "anp-028",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Malformed archives fail the import with zero published rows; never partial",
+  "input": {
+    "file": "truncated.zip",
+    "error": "zip-bomb-guard"
+  },
+  "expected_backend": {
+    "outcome": "import-failed",
+    "reason_code": "malformed-zip",
+    "published_rows": 0
+  },
+  "expected_legacy": null
+}

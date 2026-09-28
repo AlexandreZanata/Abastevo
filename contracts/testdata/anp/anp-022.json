@@ -1,0 +1,38 @@
+{
+  "id": "anp-022",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "address": {
+      "logradouro": "AV PAULISTA",
+      "numero": "1000",
+      "bairro": "BELA VISTA",
+      "municipio": "SAO PAULO",
+      "uf": "SP",
+      "cep": "01310-100"
+    }
+  },
+  "expected_backend": {
+    "address": {
+      "logradouro": "AV PAULISTA",
+      "numero": "1000",
+      "bairro": "BELA VISTA",
+      "municipio": "SAO PAULO",
+      "uf": "SP",
+      "cep": "01310-100"
+    },
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "address": {
+      "logradouro": "AV PAULISTA",
+      "numero": "1000",
+      "bairro": "BELA VISTA",
+      "municipio": "SAO PAULO",
+      "uf": "SP",
+      "cep": "01310-100"
+    },
+    "outcome": "ok"
+  }
+}

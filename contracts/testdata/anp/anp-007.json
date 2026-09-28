@@ -1,0 +1,25 @@
+{
+  "id": "anp-007",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "GLP P13",
+    "price_text": "109,90",
+    "unit": "KG_13"
+  },
+  "expected_backend": {
+    "product": "LPG_P13",
+    "unit": "KG_13",
+    "amount_milli_brl": 109900,
+    "raw_price_text": "109,90",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "LPG_P13",
+    "unit": "KG_13",
+    "amount_milli_brl": 109900,
+    "raw_price_text": "109,90",
+    "outcome": "ok"
+  }
+}

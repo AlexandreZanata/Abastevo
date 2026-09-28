@@ -1,0 +1,25 @@
+{
+  "id": "anp-009",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "  GASOLINA  COMUM ",
+    "price_text": "5,999",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "product": "GASOLINE_REGULAR",
+    "unit": "L",
+    "amount_milli_brl": 5999,
+    "raw_price_text": "5,999",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "GASOLINE_REGULAR",
+    "unit": "L",
+    "amount_milli_brl": 5999,
+    "raw_price_text": "5,999",
+    "outcome": "ok"
+  }
+}

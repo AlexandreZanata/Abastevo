@@ -98,8 +98,13 @@ func TestApplyFromEmptyThenIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Apply: %v", err)
 	}
-	if len(applied) != 1 || applied[0] != "000001" {
-		t.Fatalf("applied = %v, want [000001]", applied)
+	if len(applied) == 0 || applied[0] != "000001" {
+		t.Fatalf("applied = %v, want the chain starting at 000001", applied)
+	}
+	for i := 1; i < len(applied); i++ {
+		if applied[i] <= applied[i-1] {
+			t.Fatalf("applied out of order: %v", applied)
+		}
 	}
 	if v := postGISVersion(t, dsn); v == "" {
 		t.Fatal("PostGIS_version() empty after apply")
@@ -168,8 +173,19 @@ func TestConcurrentRunnersApplyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ledger read: %v", err)
 	}
-	if len(applied) != 1 {
-		t.Fatalf("ledger has %d rows, want exactly one apply per version", len(applied))
+	// Concurrent runners apply once: every version exactly once, however
+	// many migrations the chain holds.
+	seen := map[string]int{}
+	for _, v := range applied {
+		seen[v]++
+	}
+	if len(applied) == 0 {
+		t.Fatal("ledger empty after concurrent apply")
+	}
+	for v, n := range seen {
+		if n != 1 {
+			t.Fatalf("version %s applied %d times: %v", v, n, applied)
+		}
 	}
 }
 

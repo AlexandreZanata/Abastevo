@@ -1,0 +1,11 @@
+{
+  "id": "station-invalid-missing-id",
+  "version": 1,
+  "schema": "Station",
+  "valid": false,
+  "provenance": "P02-T08 negative: required station_id absent",
+  "value": {
+    "display_name": "Posto Central",
+    "location_quality": "reviewed"
+  }
+}

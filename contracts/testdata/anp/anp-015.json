@@ -1,0 +1,17 @@
+{
+  "id": "anp-015",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Negative price is invalid input",
+  "input": {
+    "label": "GASOLINA COMUM",
+    "price_text": "-1,00",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "negative-price",
+    "raw_price_text": "-1,00"
+  },
+  "expected_legacy": null
+}

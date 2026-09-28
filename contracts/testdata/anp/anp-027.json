@@ -1,0 +1,22 @@
+{
+  "id": "anp-027",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "source_checksum": "sha256:bbb",
+    "parser_version": "p02-t04",
+    "already_imported_checksum": "sha256:aaa",
+    "survey": "2025-W01"
+  },
+  "expected_backend": {
+    "outcome": "ok",
+    "new_revision": true,
+    "supersedes": "rev-2025-W01-a"
+  },
+  "expected_legacy": {
+    "outcome": "ok",
+    "new_revision": true,
+    "supersedes": "rev-2025-W01-a"
+  }
+}

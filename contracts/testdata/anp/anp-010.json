@@ -1,0 +1,16 @@
+{
+  "id": "anp-010",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Unknown source label enters typed quarantine; legacy mapping unverified until the P10 adapter",
+  "input": {
+    "label": "GASOLINA PODIUM",
+    "price_text": "7,999",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "unknown-fuel-label"
+  },
+  "expected_legacy": null
+}

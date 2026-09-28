@@ -1,15 +1,42 @@
 # sqlc v1.31.1 (MIT). Reproduce with: sqlc vet && sqlc generate (from backend/).
 # Generated packages are committed; CI verifies a clean re-generate.
 # Ownership: each db/queries/<owner> package is owned by one module; no
-# module imports another module's generated package.
+# module imports another module's generated package. Each stanza lists only
+# its owner's migration files so generated models never bleed across
+# packages; a query needing another owner's table must grow the list
+# explicitly in review instead of silently sharing models.
 version: "2"
 sql:
   - engine: postgresql
     queries: db/queries/platform
-    schema: db/migrations
+    schema:
+      - db/migrations/000001_enable_postgis.sql
     gen:
       go:
         package: platform
         out: db/queries/platform
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/directory
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+    gen:
+      go:
+        package: directory
+        out: db/queries/directory
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/official
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000003_official.sql
+    gen:
+      go:
+        package: official
+        out: db/queries/official
         sql_package: pgx/v5
         emit_json_tags: true

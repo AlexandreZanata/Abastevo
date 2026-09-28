@@ -1,0 +1,28 @@
+{
+  "id": "anp-023",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "sheet": "DPC",
+    "header_row": 11,
+    "data_first_row": 12,
+    "headers": [
+      "CNPJ",
+      " PRODUTO ",
+      "PREÇO",
+      "DATA"
+    ],
+    "layout": "detected-by-signature"
+  },
+  "expected_backend": {
+    "layout": "detected-by-signature",
+    "header_row": 11,
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "layout": "detected-by-signature",
+    "header_row": 11,
+    "outcome": "ok"
+  }
+}

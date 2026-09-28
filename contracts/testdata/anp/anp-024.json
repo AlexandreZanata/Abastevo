@@ -1,0 +1,30 @@
+{
+  "id": "anp-024",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "rows": [
+      {
+        "row": 8,
+        "cnpj": "04218406000104",
+        "product": "GASOLINE_REGULAR",
+        "price_text": "5,999"
+      },
+      {
+        "row": 9,
+        "cnpj": "04218406000104",
+        "product": "GASOLINE_REGULAR",
+        "price_text": "5,999"
+      }
+    ]
+  },
+  "expected_backend": {
+    "outcome": "ok-duplicate-suppressed",
+    "published_rows": 1
+  },
+  "expected_legacy": {
+    "outcome": "ok-duplicate-suppressed",
+    "published_rows": 1
+  }
+}

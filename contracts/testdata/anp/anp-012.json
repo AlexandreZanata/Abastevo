@@ -1,0 +1,17 @@
+{
+  "id": "anp-012",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "A04: nonzero precision beyond 3 decimals quarantines pending a documented contract change; never silently rounded",
+  "input": {
+    "label": "GASOLINA COMUM",
+    "price_text": "5,9999",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "over-precision",
+    "raw_price_text": "5,9999"
+  },
+  "expected_legacy": null
+}

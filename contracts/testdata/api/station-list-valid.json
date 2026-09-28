@@ -1,0 +1,26 @@
+{
+  "id": "station-list-valid",
+  "version": 1,
+  "schema": "StationList",
+  "valid": true,
+  "provenance": "P02-T08 search page; synthetic",
+  "value": {
+    "items": [
+      {
+        "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+        "display_name": "Posto Central",
+        "cnpj_normalized": "04218406000104",
+        "municipality_code": "3550308",
+        "state": "SP",
+        "location_quality": "reviewed",
+        "coordinates": {
+          "lat": -23.55,
+          "lon": -46.63
+        },
+        "current_revision_id": "aac027be-d331-40e4-8d63-52ec3b8d2f41"
+      }
+    ],
+    "next_cursor": null,
+    "generated_at": "2026-09-28T00:00:00Z"
+  }
+}
