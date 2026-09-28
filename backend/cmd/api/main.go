@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 )
@@ -34,6 +35,14 @@ func run() error {
 		return err
 	}
 	router := httpserver.NewRouter(logger)
+	// No readiness checks yet: the DB/schema probe lands with the pool in
+	// P01-T09. Until then readiness reports process admission only.
+	healthHandler, err := health.New(logger, 0)
+	if err != nil {
+		return err
+	}
+	router.Get("/health/live", healthHandler.Live)
+	router.Get("/health/ready", healthHandler.Ready)
 	server, err := httpserver.New(httpserver.Options{
 		Addr:              cfg.HTTPAddr,
 		ReadTimeout:       httpserver.DefaultReadTimeout,
