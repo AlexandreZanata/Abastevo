@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_price_drop_channel_name">Fuel price alerts</string>
+    <string name="notification_price_drop_channel_description">Local alerts when a tracked vehicle fuel price drops</string>
+    <string name="notification_price_drop_title">Fuel price dropped</string>
+    <string name="notification_price_drop_body">%1$s is now %2$s</string>
+</resources>

@@ -1,0 +1,59 @@
+---
+description: Android UI/UX standards — Material Design 3, Compose, accessibility, and visual quality
+globs: "**/*.{kt,kts,xml}"
+alwaysApply: false
+---
+
+# Android System Design Standards
+
+## Design System
+
+- **Material Design 3** with dynamic color (Material You) where supported.
+- **Jetpack Compose** for all UI — no XML layouts for new screens.
+- Define a `Theme.kt` with semantic tokens: `colorScheme`, `typography`, `shapes`, `spacing`.
+- Use `MaterialTheme` tokens — never hardcode colors or dp values in composables.
+- Support **light and dark** themes from day one.
+
+## UX Principles
+
+- Primary flow: select fuel → select state/city → view prices → optional station detail.
+- Search city with debounced autocomplete (FTS-backed).
+- Show data freshness: week range + last sync timestamp on every price screen.
+- Empty, loading, and error states are mandatory — use dedicated composables.
+- Offline-first: cached data always visible; sync status shown non-intrusively.
+
+## Accessibility
+
+- Minimum touch target: 48dp.
+- All icons have `contentDescription` via i18n.
+- Support font scaling (no fixed `sp` overrides that break layout).
+- Sufficient color contrast (WCAG AA).
+
+## Compose Patterns
+
+```kotlin
+// ✅ Screen structure
+@Composable
+fun PriceSearchScreen(viewModel: PriceSearchViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    PriceSearchContent(
+        state = uiState,
+        onEvent = viewModel::onEvent,
+    )
+}
+
+// ✅ Stateless content composable — testable, previewable
+@Composable
+private fun PriceSearchContent(state: PriceSearchUiState, onEvent: (PriceSearchEvent) -> Unit) { ... }
+```
+
+## Architecture Mapping (Android)
+
+```
+ui/           → Interfaces (Compose screens, ViewModels)
+application/  → Use cases, handlers
+domain/       → Entities, Value Objects, business rules
+data/         → Room, OkHttp, XLSX parser (Infrastructure)
+```
+
+ViewModels only orchestrate UI state. Business logic stays in Application/Domain layers.

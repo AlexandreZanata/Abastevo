@@ -1,0 +1,14 @@
+# Copy to signing.properties in the project root (gitignored) and fill in real values.
+# Never commit signing.properties or keystore files.
+#
+# Quick local setup:
+#   ./scripts/create-release-keystore.sh
+#   cp signing.properties.example signing.properties
+#   # edit passwords if you changed ANPFUEL_DEV_KEYSTORE_PASSWORD
+#
+# See docs/release-build.md for full instructions.
+
+storeFile=.local/anpfuel-release.keystore
+storePassword=anpfuel-dev-keystore
+keyAlias=anpfuel
+keyPassword=anpfuel-dev-keystore

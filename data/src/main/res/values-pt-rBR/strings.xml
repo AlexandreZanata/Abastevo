@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_price_drop_channel_name">Alertas de preço de combustível</string>
+    <string name="notification_price_drop_channel_description">Alertas locais quando o preço cai para um veículo monitorado</string>
+    <string name="notification_price_drop_title">Preço do combustível caiu</string>
+    <string name="notification_price_drop_body">%1$s agora está %2$s</string>
+</resources>

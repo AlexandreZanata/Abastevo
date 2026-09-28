@@ -1,0 +1,42 @@
+---
+description: Git commit and PR conventions — Conventional Commits in English
+alwaysApply: true
+---
+
+# Commit Conventions
+
+Full reference: `docs/commit-conventions.md`
+
+## Format
+
+```
+<type>(<scope>): <subject>
+```
+
+Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `style`, `build`, `ci`
+
+Scopes: `domain`, `application`, `data`, `ui`, `i18n`, `docs`, `cursor`, `sync`, `parser`
+
+## Rules
+
+- All commit messages and PR titles **must be in English**
+- Subject: imperative mood, max 72 chars, no period
+- Reference use cases and business rules in body: `Refs: UC-004`, `Refs: BR-007`
+- One logical change per commit
+- Never commit secrets, keystores, `local.properties`, or build artifacts
+- Never commit unless the user explicitly asks
+
+## Before committing code changes
+
+- Domain layer changes require unit tests first (TDD)
+- New user flows require documented use case in `docs/use-cases/`
+- New domain terms must match `docs/glossary.md`
+- UI strings via i18n keys only
+
+## PR description template
+
+```markdown
+## Summary
+## Use cases
+## Test plan
+```

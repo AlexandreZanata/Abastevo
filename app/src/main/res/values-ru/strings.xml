@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Цены на топливо ANP</string>
+
+    <!-- Navigation -->
+    <string name="nav_onboarding">Введение</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_search">Поиск</string>
+    <string name="nav_location">Местоположение</string>
+    <string name="nav_prices">Цены</string>
+    <string name="nav_history">История</string>
+    <string name="nav_stations">АЗС</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="nav_vehicles">Транспорт</string>
+
+    <!-- Home (UC-005) -->
+    <string name="home_title">ANP</string>
+    <string name="home_location_format">%1$s, %2$s</string>
+    <string name="home_no_location_message">Город ещё не выбран.</string>
+    <string name="home_no_location_hint">Ищите или просматривайте по штату, чтобы увидеть цены на топливо.</string>
+    <string name="home_view_price_details">Показать полные сведения о ценах</string>
+    <string name="home_stale_price_table_message">Таблица цен может быть устаревшей; значения могут измениться. Последнее обновление: %1$s</string>
+
+    <string name="home_tank_fill_cost_title">Стоимость полного бака</string>
+    <string name="home_tank_fill_cost_vehicle_format">%1$s (%2$s л)</string>
+    <string name="home_tank_fill_cost_placeholder_title">Отслеживайте реальную стоимость заправки</string>
+    <string name="home_tank_fill_cost_placeholder_body">Добавьте транспорт, чтобы оценить стоимость полного бака в вашем городе.</string>
+    <string name="home_tank_fill_cost_liters_format">%1$s (%2$d л)</string>
+    <string name="home_tank_fill_cost_unavailable">Цена недоступна</string>
+    <string name="home_tank_fill_cost_station_name">На %1$s</string>
+    <string name="home_tank_fill_cost_go_to_station">Перейти к АЗС</string>
+    <string name="vehicle_screen_title">Транспорт</string>
+    <string name="vehicle_name_hint">Название транспорта</string>
+    <string name="vehicle_tank_capacity_hint">Объём бака (литры)</string>
+    <string name="vehicle_fuel_product_label">Тип топлива</string>
+    <string name="vehicle_price_source_label">Источник цены</string>
+    <string name="vehicle_price_source_cheapest">Самая дешёвая АЗС</string>
+    <string name="vehicle_price_source_specific">Конкретная АЗС</string>
+    <string name="vehicle_price_drop_alert_label">Уведомлять о снижении цены</string>
+    <string name="vehicle_price_drop_alert_description">Получайте локальное уведомление после каждого еженедельного импорта, когда отслеживаемая цена снижается.</string>
+    <string name="notification_permission_denied_hint">Уведомления отключены. Включите их в системных настройках, чтобы получать оповещения о снижении цены.</string>
+    <string name="settings_notifications_section">Уведомления</string>
+    <string name="settings_open_notification_settings">Открыть настройки уведомлений</string>
+    <string name="vehicle_add">Добавить транспорт</string>
+    <string name="vehicle_edit">Редактировать транспорт</string>
+    <string name="vehicle_save">Сохранить</string>
+    <string name="vehicle_delete">Удалить</string>
+    <string name="vehicle_delete_confirm">Удалить этот транспорт?</string>
+    <string name="vehicle_empty_message">Транспорт ещё не добавлен</string>
+    <string name="vehicle_empty_hint">Добавьте до 3 единиц транспорта для отслеживания стоимости бака.</string>
+    <string name="vehicle_max_reached">Достигнут максимум — 3 транспорта</string>
+    <string name="vehicle_select_station">Выберите АЗС</string>
+    <string name="vehicle_station_option_format">%1$s — %2$s</string>
+    <string name="vehicle_validation_name_required">Введите название транспорта</string>
+    <string name="vehicle_validation_tank_capacity">Введите допустимый объём (1–200 л)</string>
+    <string name="vehicle_validation_station_required">Выберите АЗС</string>
+
+    <string name="home_empty_message">Данные о ценах на топливо ещё не синхронизированы.</string>
+    <string name="home_empty_hint">Завершите введение или выполните синхронизацию для загрузки еженедельных таблиц ANP.</string>
+    <string name="home_fuel_products_preview">Виды топлива (предпросмотр i18n)</string>
+    <string name="home_navigation_preview">Экраны (фаза 8)</string>
+
+    <!-- Shared states -->
+    <string name="state_loading">Загрузка…</string>
+    <string name="state_error_title">Что-то пошло не так</string>
+    <string name="state_empty_title">Пока здесь ничего нет</string>
+    <string name="screen_coming_soon">Будет доступно в будущем выпуске.</string>
+
+    <!-- Actions -->
+    <string name="action_retry">Повторить</string>
+    <string name="action_next">Далее</string>
+    <string name="action_back">Назад</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_switch_dark_theme">Переключить на тёмную тему</string>
+    <string name="action_switch_light_theme">Переключить на светлую тему</string>
+
+    <!-- UC-002 Onboarding -->
+    <string name="onboarding_title_welcome">Добро пожаловать</string>
+    <string name="onboarding_body_anp_source">Официальные еженедельные цены на топливо от ANP (Национальное агентство нефти, природного газа и биотоплива Бразилии).</string>
+    <string name="onboarding_title_offline">Работает офлайн</string>
+    <string name="onboarding_body_offline">После первой синхронизации просматривайте средние цены без подключения к интернету.</string>
+    <string name="onboarding_title_ready">Выберите неделю опроса</string>
+    <string name="onboarding_body_ready">Выберите, какую неделю опроса ANP загрузить. Можно пропустить и синхронизировать позже с главной страницы.</string>
+    <string name="onboarding_action_get_started">Начать</string>
+    <string name="onboarding_action_sync_now">Синхронизировать сейчас</string>
+    <string name="onboarding_action_skip">Пропустить пока</string>
+    <string name="onboarding_location_prompt_title">Найти ваш город автоматически?</string>
+    <string name="onboarding_location_prompt_body">Мы можем один раз использовать геолокацию устройства, чтобы предложить город для цен. Вы также можете выбрать вручную.</string>
+    <string name="onboarding_location_use_device">Использовать мою геолокацию</string>
+    <string name="onboarding_location_choose_manual">Выбрать вручную</string>
+    <string name="onboarding_location_permission_rationale">Доступ к геолокации помогает определить ваш город для просмотра цен. Координаты не сохраняются.</string>
+    <string name="onboarding_location_failed">Не удалось определить город. Выберите штат и город вручную.</string>
+    <string name="onboarding_location_resolving">Определение города…</string>
+    <string name="geocoding_osm_attribution">Определение города: данные © участники OpenStreetMap</string>
+    <string name="settings_geocoding_attribution">Геокодирование OpenStreetMap (Nominatim)</string>
+
+    <!-- UC-009 Week picker (Phase 12) -->
+    <string name="week_picker_title">Неделя опроса</string>
+    <string name="week_picker_latest">Использовать последнюю неделю</string>
+    <string name="week_picker_weekly_summary_line">Еженедельные средние цены: Бразилия, регионы, штаты и муниципалитеты</string>
+    <string name="week_picker_station_detail_line">Цены по розничным АЗС (автомобильное топливо и СУГ P13)</string>
+    <string name="week_picker_updated_at">Обновлено %1$s</string>
+    <string name="week_picker_operational_note">Примечание: %1$s</string>
+    <string name="week_picker_operational_note_banner">Операционное примечание</string>
+    <string name="week_picker_operational_note_expand">Развернуть операционное примечание</string>
+    <string name="week_picker_operational_note_collapse">Свернуть операционное примечание</string>
+    <string name="week_picker_operational_note_title">Операционное уведомление</string>
+    <string name="week_picker_download_week">Загрузить эту неделю</string>
+    <string name="week_picker_confirm_title">Загрузить историческую неделю?</string>
+    <string name="week_picker_confirm_message">Загрузить и импортировать данные ANP за %1$s? Это может занять несколько минут.</string>
+    <string name="active_week_label">Последняя</string>
+    <string name="survey_week_chip_latest_suffix">· Последняя</string>
+    <string name="a11y_survey_week_chip">Активная неделя опроса: %1$s. Нажмите, чтобы изменить.</string>
+    <string name="a11y_survey_week_chip_latest">Активная неделя опроса: %1$s (последняя). Нажмите, чтобы изменить.</string>
+
+    <!-- Sync banners (BR-004, freshness) -->
+    <string name="banner_offline">Офлайн — показаны кэшированные данные.</string>
+    <string name="banner_syncing">Синхронизация таблиц цен ANP…</string>
+    <string name="banner_stale_data">Данные могут быть устаревшими. Нажмите «Обновить» для синхронизации.</string>
+    <string name="banner_partial_data">Средние по муниципалитетам доступны; данные по АЗС неполные.</string>
+    <string name="banner_sync_error">Синхронизация не удалась. Кэшированные данные остаются доступными.</string>
+
+    <!-- UC-001 sync -->
+    <string name="sync_progress_discovering">Поиск новых таблиц…</string>
+    <string name="sync_progress_downloading">Загрузка…</string>
+    <string name="sync_progress_importing">Импорт…</string>
+    <string name="sync_completed">Синхронизация завершена</string>
+    <string name="sync_failed">Синхронизация не удалась</string>
+    <string name="info_sync_up_to_date">Уже актуально.</string>
+
+    <!-- Errors (AppError i18n keys) -->
+    <string name="error_sync_network">Не удалось связаться с ANP. Проверьте подключение и повторите попытку.</string>
+    <string name="error_sync_parse">Не удалось прочитать загруженный файл. Повторите попытку позже.</string>
+    <string name="error_search_no_results">Ни один муниципалитет не соответствует вашему запросу.</string>
+    <string name="error_station_detail_missing">Цены по АЗС для этого города ещё не загружены.</string>
+    <string name="error_storage_full">Недостаточно места для импорта данных ANP.</string>
+
+    <!-- Prices (UC-005) -->
+    <string name="prices_title">Цены на топливо</string>
+    <string name="prices_survey_week_label">Неделя опроса: %1$s</string>
+    <string name="prices_last_sync_label">Последняя синхронизация: %1$s</string>
+    <string name="prices_average_label">Средняя: %1$s</string>
+    <string name="prices_min_max_range">Мин. %1$s · Макс. %2$s</string>
+    <string name="prices_not_available">—</string>
+    <string name="prices_station_count">%1$d АЗС</string>
+    <string name="prices_anp_attribution">Источник: ANP — Agência Nacional do Petróleo, Gás Natural e Biocombustíveis</string>
+    <string name="prices_empty_municipality">Цены для этого муниципалитета не найдены.</string>
+    <string name="prices_empty_no_data_this_week">У этого муниципалитета нет цен ANP за выбранную неделю опроса.</string>
+    <string name="prices_empty_never_in_anp">Этот муниципалитет никогда не появлялся в еженедельных отчётах ANP о ценах.</string>
+    <string name="prices_view_history">Показать историю цен</string>
+
+    <!-- UC-006 History -->
+    <string name="history_title">История цен</string>
+    <string name="history_insufficient_data">Чтобы сравнить цены, на устройстве должны быть данные более чем за одну неделю опроса.</string>
+    <string name="history_insufficient_data_hint">Используйте выбор недели выше или синхронизируйте более ранние таблицы ANP.</string>
+    <string name="history_week_label">%1$s</string>
+    <string name="history_disabled">История цен отключена в настройках.</string>
+    <string name="history_fuel_product_label">Вид топлива</string>
+    <string name="history_chart_bar_legend">%1$s · %2$s</string>
+
+    <!-- UC-007 Stations -->
+    <string name="stations_title">АЗС</string>
+    <string name="stations_sort_by_price">Сортировка по цене (сначала самые низкие)</string>
+    <string name="stations_tap_to_navigate_hint">Нажмите на АЗС, чтобы открыть её в Google Maps.</string>
+    <string name="stations_download_prompt">Цены по АЗС ещё не загружены на это устройство. Загрузите файл АЗС ANP за эту неделю, чтобы сравнить цены по станциям.</string>
+    <string name="stations_download_action">Загрузить цены по АЗС</string>
+    <string name="stations_empty">Ни одна АЗС не сообщила об этом топливе в выбранном городе за эту неделю.</string>
+    <string name="stations_brand_label">Бренд: %1$s</string>
+    <string name="stations_collected_at_label">Собрано: %1$s</string>
+    <string name="stations_navigate_action">Маршрут</string>
+    <string name="stations_navigate_no_app">Не найдено приложение карт для построения маршрута.</string>
+    <string name="stations_nearest_action">Самая дешёвая рядом</string>
+    <string name="stations_nearest_needs_location">Включите геолокацию, чтобы найти ближайшую АЗС.</string>
+    <string name="stations_nearest_no_fix">Сигнал GPS сейчас недоступен. Включите определение местоположения и повторите попытку.</string>
+    <string name="stations_nearest_failed">Не удалось найти АЗС поблизости. Проверьте подключение и попробуйте снова.</string>
+    <string name="a11y_station_navigate">Маршрут к %1$s</string>
+    <string name="prices_view_stations">Показать цены по АЗС</string>
+
+    <!-- FuelProduct labels -->
+    <string name="fuel_product_ethanol">Этанол</string>
+    <string name="fuel_product_gasoline_regular">Обычный бензин</string>
+    <string name="fuel_product_gasoline_premium">Премиальный бензин</string>
+    <string name="fuel_product_diesel_s500">Дизель S500</string>
+    <string name="fuel_product_diesel_s10">Дизель S10</string>
+    <string name="fuel_product_cng">КПГ</string>
+    <string name="fuel_product_lpg_p13">СУГ (13 кг)</string>
+
+    <!-- UC-003 Location picker -->
+    <string name="location_picker_title">Выбрать местоположение</string>
+    <string name="location_state_label">Штат</string>
+    <string name="location_municipality_label">Муниципалитеты в %1$s</string>
+    <string name="location_empty_state">Нет муниципалитетов с данными о ценах для этого штата. Синхронизируйте таблицы ANP или выберите другой штат.</string>
+    <string name="location_current_selection">Текущий: %1$s (%2$s)</string>
+    <string name="location_search_state_hint">Поиск штата</string>
+    <string name="location_search_municipality_hint">Поиск муниципалитета</string>
+    <string name="location_search_no_matches">Совпадений не найдено.</string>
+    <string name="location_no_data_this_week">Нет данных о ценах за эту неделю</string>
+    <string name="location_use_current">Использовать текущее местоположение</string>
+    <string name="location_resolving_current">Определяем ваш город…</string>
+    <string name="location_current_failed">Не удалось определить город. Выберите вручную.</string>
+
+    <!-- UC-004 Search -->
+    <string name="search_municipality_hint">Поиск муниципалитета</string>
+    <string name="search_min_chars_hint">Введите не менее 2 символов для поиска.</string>
+    <string name="search_result_format">%1$s — %2$s</string>
+    <string name="search_browse_by_state">Просмотр по штату</string>
+    <string name="search_no_data_this_week">Нет данных о ценах за эту неделю</string>
+
+    <!-- Brazilian states (UC-003) -->
+    <string name="state_name_acre">Acre</string>
+    <string name="state_name_alagoas">Alagoas</string>
+    <string name="state_name_amapa">Amapá</string>
+    <string name="state_name_amazonas">Amazonas</string>
+    <string name="state_name_bahia">Bahia</string>
+    <string name="state_name_ceara">Ceará</string>
+    <string name="state_name_distrito_federal">Distrito Federal</string>
+    <string name="state_name_espirito_santo">Espírito Santo</string>
+    <string name="state_name_goias">Goiás</string>
+    <string name="state_name_maranhao">Maranhão</string>
+    <string name="state_name_mato_grosso">Mato Grosso</string>
+    <string name="state_name_mato_grosso_do_sul">Mato Grosso do Sul</string>
+    <string name="state_name_minas_gerais">Minas Gerais</string>
+    <string name="state_name_para">Pará</string>
+    <string name="state_name_paraiba">Paraíba</string>
+    <string name="state_name_parana">Paraná</string>
+    <string name="state_name_pernambuco">Pernambuco</string>
+    <string name="state_name_piaui">Piauí</string>
+    <string name="state_name_rio_de_janeiro">Rio de Janeiro</string>
+    <string name="state_name_rio_grande_do_norte">Rio Grande do Norte</string>
+    <string name="state_name_rio_grande_do_sul">Rio Grande do Sul</string>
+    <string name="state_name_rondonia">Rondônia</string>
+    <string name="state_name_roraima">Roraima</string>
+    <string name="state_name_santa_catarina">Santa Catarina</string>
+    <string name="state_name_sao_paulo">São Paulo</string>
+    <string name="state_name_sergipe">Sergipe</string>
+    <string name="state_name_tocantins">Tocantins</string>
+
+    <!-- UC-008 Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_portuguese">Português (Brasil)</string>
+    <string name="a11y_language_english">Английский</string>
+    <string name="a11y_language_portuguese">Португальский</string>
+    <string name="a11y_language_chinese">Китайский</string>
+    <string name="a11y_language_spanish">Испанский</string>
+    <string name="a11y_language_french">Французский</string>
+    <string name="a11y_language_german">Немецкий</string>
+    <string name="a11y_language_japanese">Японский</string>
+    <string name="a11y_language_russian">Русский</string>
+    <string name="settings_preferences_section">Предпочтения</string>
+    <string name="settings_sync_station_detail">Синхронизировать данные АЗС в фоне</string>
+    <string name="settings_auto_download_latest_week">Автоматически загружать последнюю неделю опроса</string>
+    <string name="settings_sync_wifi_only">Автосинхронизация только по Wi‑Fi</string>
+    <string name="settings_show_price_history">Показывать историю цен</string>
+    <string name="settings_retention_weeks">Хранение данных АЗС</string>
+    <string name="settings_retention_weeks_option">%1$d нед.</string>
+    <string name="settings_nearest_station_radius">Радиус поиска для «Самое дешёвое рядом»</string>
+    <string name="settings_nearest_station_radius_option">%1$d км</string>
+    <string name="settings_storage_usage">Использование хранилища</string>
+    <string name="settings_storage_summary_rows">Строк сводки: %1$s</string>
+    <string name="settings_storage_station_rows">Строк АЗС: %1$s</string>
+    <string name="settings_storage_week_count">Импортированных недель: %1$s</string>
+    <string name="settings_sync_section">Синхронизация</string>
+    <string name="settings_change_survey_week">Изменить неделю опроса</string>
+    <string name="settings_clear_cache">Очистить кэш</string>
+    <string name="settings_clear_station_cache">Очистить кэш АЗС</string>
+    <string name="settings_clear_all_cache">Удалить все импортированные данные</string>
+    <string name="settings_clear_cache_confirm">Это удалит все импортированные данные ANP и сбросит введение. Продолжить?</string>
+    <string name="settings_clear_cache_confirm_action">Удалить всё</string>
+    <string name="settings_attribution_section">Источник данных</string>
+    <string name="settings_anp_attribution_link">Открыть официальную страницу ANP</string>
+    <string name="anp_official_url" translatable="false">https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas</string>
+
+    <!-- Share -->
+    <string name="settings_share_section">Поделиться</string>
+    <string name="settings_share_app">Поделиться приложением</string>
+    <string name="settings_share_app_message">Попробуйте ANP Fuel Prices — еженедельные цены на топливо от ANP, бесплатно: %1$s</string>
+
+    <!-- Accessibility (Phase 9.3) -->
+    <string name="a11y_loading">Загрузка содержимого</string>
+    <string name="a11y_tank_fill_cost_placeholder">Добавить транспорт для отслеживания стоимости бака</string>
+    <string name="a11y_tank_fill_cost_card">%1$s, стоимость бака %2$s</string>
+    <string name="a11y_fuel_price_card">%1$s, средняя цена %2$s</string>
+    <string name="a11y_station_price_row">%1$s, цена %2$s</string>
+    <string name="a11y_price_trend_chart">График динамики цен</string>
+    <string name="a11y_screen_title">Экран «%1$s»</string>
+    <string name="a11y_week_picker_operational_note_expand">Развернуть операционное уведомление</string>
+    <string name="a11y_week_picker_operational_note_collapse">Свернуть операционное уведомление</string>
+</resources>

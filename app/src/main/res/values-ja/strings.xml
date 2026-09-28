@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ANP 燃料価格</string>
+
+    <!-- Navigation -->
+    <string name="nav_onboarding">はじめに</string>
+    <string name="nav_home">ホーム</string>
+    <string name="nav_search">検索</string>
+    <string name="nav_location">場所</string>
+    <string name="nav_prices">価格</string>
+    <string name="nav_history">履歴</string>
+    <string name="nav_stations">スタンド</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_vehicles">車両</string>
+
+    <!-- Home (UC-005) -->
+    <string name="home_title">ANP</string>
+    <string name="home_location_format">%1$s、%2$s</string>
+    <string name="home_no_location_message">都市がまだ選択されていません。</string>
+    <string name="home_no_location_hint">検索するか州別に閲覧して燃料価格を表示します。</string>
+    <string name="home_view_price_details">価格の詳細を表示</string>
+    <string name="home_stale_price_table_message">価格表が古い可能性があります。価格は変動する場合があります。最終更新: %1$s</string>
+
+    <string name="home_tank_fill_cost_title">満タンコスト</string>
+    <string name="home_tank_fill_cost_vehicle_format">%1$s（%2$s L）</string>
+    <string name="home_tank_fill_cost_placeholder_title">実際の給油コストを追跡</string>
+    <string name="home_tank_fill_cost_placeholder_body">車両を追加して、市内での満タンコストを見積もります。</string>
+    <string name="home_tank_fill_cost_liters_format">%1$s（%2$d L）</string>
+    <string name="home_tank_fill_cost_unavailable">価格を取得できません</string>
+    <string name="home_tank_fill_cost_station_name">%1$s</string>
+    <string name="home_tank_fill_cost_go_to_station">スタンドへ行く</string>
+    <string name="vehicle_screen_title">車両</string>
+    <string name="vehicle_name_hint">車両名</string>
+    <string name="vehicle_tank_capacity_hint">タンク容量（リットル）</string>
+    <string name="vehicle_fuel_product_label">燃料の種類</string>
+    <string name="vehicle_price_source_label">価格参照</string>
+    <string name="vehicle_price_source_cheapest">最安のスタンド</string>
+    <string name="vehicle_price_source_specific">特定のスタンド</string>
+    <string name="vehicle_price_drop_alert_label">値下がり時に通知</string>
+    <string name="vehicle_price_drop_alert_description">追跡中の価格が下がったとき、週次インポート後にローカル通知を受け取ります。</string>
+    <string name="notification_permission_denied_hint">通知が無効です。値下がりアラートを受け取るには、システム設定で通知を有効にしてください。</string>
+    <string name="settings_notifications_section">通知</string>
+    <string name="settings_open_notification_settings">通知設定を開く</string>
+    <string name="vehicle_add">車両を追加</string>
+    <string name="vehicle_edit">車両を編集</string>
+    <string name="vehicle_save">保存</string>
+    <string name="vehicle_delete">削除</string>
+    <string name="vehicle_delete_confirm">この車両を削除しますか？</string>
+    <string name="vehicle_empty_message">車両がまだありません</string>
+    <string name="vehicle_empty_hint">最大3台まで追加して満タンコストを追跡できます。</string>
+    <string name="vehicle_max_reached">車両は最大3台までです</string>
+    <string name="vehicle_select_station">スタンドを選択</string>
+    <string name="vehicle_station_option_format">%1$s — %2$s</string>
+    <string name="vehicle_validation_name_required">車両名を入力してください</string>
+    <string name="vehicle_validation_tank_capacity">有効な容量を入力してください（1–200 L）</string>
+    <string name="vehicle_validation_station_required">スタンドを選択してください</string>
+
+    <string name="home_empty_message">燃料価格データはまだ同期されていません。</string>
+    <string name="home_empty_hint">オンボーディングを完了するか同期して、ANPの週次テーブルを読み込みます。</string>
+    <string name="home_fuel_products_preview">燃料製品（i18nプレビュー）</string>
+    <string name="home_navigation_preview">画面（フェーズ8）</string>
+
+    <!-- Shared states -->
+    <string name="state_loading">読み込み中…</string>
+    <string name="state_error_title">問題が発生しました</string>
+    <string name="state_empty_title">まだ何もありません</string>
+    <string name="screen_coming_soon">今後のリリースで提供予定です。</string>
+
+    <!-- Actions -->
+    <string name="action_retry">再試行</string>
+    <string name="action_next">次へ</string>
+    <string name="action_back">戻る</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="action_switch_dark_theme">ダークテーマに切り替え</string>
+    <string name="action_switch_light_theme">ライトテーマに切り替え</string>
+
+    <!-- UC-002 Onboarding -->
+    <string name="onboarding_title_welcome">ようこそ</string>
+    <string name="onboarding_body_anp_source">ANP（ブラジル石油・天然ガス・バイオ燃料庁）の公式週次燃料価格。</string>
+    <string name="onboarding_title_offline">オフラインで利用可能</string>
+    <string name="onboarding_body_offline">初回同期後は、インターネット接続なしで平均価格を閲覧できます。</string>
+    <string name="onboarding_title_ready">調査週を選択</string>
+    <string name="onboarding_body_ready">ダウンロードするANP調査週を選択してください。スキップして、後でホームから同期することもできます。</string>
+    <string name="onboarding_action_get_started">始める</string>
+    <string name="onboarding_action_sync_now">今すぐ同期</string>
+    <string name="onboarding_action_skip">今はスキップ</string>
+    <string name="onboarding_location_prompt_title">市区町村を自動で見つけますか？</string>
+    <string name="onboarding_location_prompt_body">価格表示のために、一度だけ端末の位置情報で市区町村を提案できます。手動で選ぶこともできます。</string>
+    <string name="onboarding_location_use_device">位置情報を使う</string>
+    <string name="onboarding_location_choose_manual">手動で選ぶ</string>
+    <string name="onboarding_location_permission_rationale">位置情報へのアクセスは、価格照会のための市区町村検出に役立ちます。座標は保存されません。</string>
+    <string name="onboarding_location_failed">市区町村を検出できませんでした。州と市区町村を手動で選んでください。</string>
+    <string name="onboarding_location_resolving">市区町村を検出中…</string>
+    <string name="geocoding_osm_attribution">市区町村検出データ © OpenStreetMap contributors</string>
+    <string name="settings_geocoding_attribution">OpenStreetMap（Nominatim）によるジオコーディング</string>
+
+    <!-- UC-009 Week picker (Phase 12) -->
+    <string name="week_picker_title">調査週</string>
+    <string name="week_picker_latest">最新週を使用</string>
+    <string name="week_picker_weekly_summary_line">週次平均価格：ブラジル、地域、州、自治体</string>
+    <string name="week_picker_station_detail_line">小売スタンド別価格（自動車用燃料およびLPG P13）</string>
+    <string name="week_picker_updated_at">更新 %1$s</string>
+    <string name="week_picker_operational_note">注記：%1$s</string>
+    <string name="week_picker_operational_note_banner">運用上の注記</string>
+    <string name="week_picker_operational_note_expand">運用上の注記を展開</string>
+    <string name="week_picker_operational_note_collapse">運用上の注記を折りたたむ</string>
+    <string name="week_picker_operational_note_title">運用上のお知らせ</string>
+    <string name="week_picker_download_week">この週をダウンロード</string>
+    <string name="week_picker_confirm_title">過去の週をダウンロードしますか？</string>
+    <string name="week_picker_confirm_message">%1$sのANPデータをダウンロードしてインポートしますか？数分かかる場合があります。</string>
+    <string name="active_week_label">最新</string>
+    <string name="survey_week_chip_latest_suffix">· 最新</string>
+    <string name="a11y_survey_week_chip">有効な調査週：%1$s。タップして変更。</string>
+    <string name="a11y_survey_week_chip_latest">有効な調査週：%1$s（最新）。タップして変更。</string>
+
+    <!-- Sync banners (BR-004, freshness) -->
+    <string name="banner_offline">オフライン — キャッシュデータを表示しています。</string>
+    <string name="banner_syncing">ANP価格テーブルを同期中…</string>
+    <string name="banner_stale_data">データが古い可能性があります。更新をタップして同期してください。</string>
+    <string name="banner_partial_data">自治体平均は利用可能ですが、スタンド詳細は不完全です。</string>
+    <string name="banner_sync_error">同期に失敗しました。キャッシュデータは引き続き利用できます。</string>
+
+    <!-- UC-001 sync -->
+    <string name="sync_progress_discovering">新しいテーブルを検索中…</string>
+    <string name="sync_progress_downloading">ダウンロード中…</string>
+    <string name="sync_progress_importing">インポート中…</string>
+    <string name="sync_completed">同期が完了しました</string>
+    <string name="sync_failed">同期に失敗しました</string>
+    <string name="info_sync_up_to_date">すでに最新です。</string>
+
+    <!-- Errors (AppError i18n keys) -->
+    <string name="error_sync_network">ANPに接続できませんでした。接続を確認して再試行してください。</string>
+    <string name="error_sync_parse">ダウンロードしたファイルを読み取れませんでした。後でもう一度お試しください。</string>
+    <string name="error_search_no_results">検索に一致する自治体がありません。</string>
+    <string name="error_station_detail_missing">この都市のスタンド価格はまだダウンロードされていません。</string>
+    <string name="error_storage_full">ANPデータをインポートするのに十分なストレージがありません。</string>
+
+    <!-- Prices (UC-005) -->
+    <string name="prices_title">燃料価格</string>
+    <string name="prices_survey_week_label">調査週：%1$s</string>
+    <string name="prices_last_sync_label">最終同期：%1$s</string>
+    <string name="prices_average_label">平均：%1$s</string>
+    <string name="prices_min_max_range">最低 %1$s · 最高 %2$s</string>
+    <string name="prices_not_available">—</string>
+    <string name="prices_station_count">%1$d スタンド</string>
+    <string name="prices_anp_attribution">出典：ANP — Agência Nacional do Petróleo, Gás Natural e Biocombustíveis</string>
+    <string name="prices_empty_municipality">この自治体の価格が見つかりませんでした。</string>
+    <string name="prices_empty_no_data_this_week">この自治体には、選択した調査週のANP価格がありません。</string>
+    <string name="prices_empty_never_in_anp">この自治体はANPの週次価格レポートに一度も登場していません。</string>
+    <string name="prices_view_history">価格履歴を表示</string>
+
+    <!-- UC-006 History -->
+    <string name="history_title">価格履歴</string>
+    <string name="history_insufficient_data">価格を比較するには、1週間を超える調査週のデータが端末にある必要があります。</string>
+    <string name="history_insufficient_data_hint">上部の週選択を使うか、以前の ANP 週次テーブルを同期してください。</string>
+    <string name="history_week_label">%1$s</string>
+    <string name="history_disabled">価格履歴は設定でオフになっています。</string>
+    <string name="history_fuel_product_label">燃料製品</string>
+    <string name="history_chart_bar_legend">%1$s · %2$s</string>
+
+    <!-- UC-007 Stations -->
+    <string name="stations_title">スタンド</string>
+    <string name="stations_sort_by_price">価格順（安い順）</string>
+    <string name="stations_tap_to_navigate_hint">スタンドをタップして Google マップで開きます。</string>
+    <string name="stations_download_prompt">スタンド別価格はこのデバイスにまだありません。この週のANPスタンドファイルをダウンロードして、スタンド別に価格を比較してください。</string>
+    <string name="stations_download_action">スタンド価格をダウンロード</string>
+    <string name="stations_empty">選択した都市で、この週にこの燃料を報告したスタンドはありません。</string>
+    <string name="stations_brand_label">ブランド：%1$s</string>
+    <string name="stations_collected_at_label">収集日：%1$s</string>
+    <string name="stations_navigate_action">行く</string>
+    <string name="stations_navigate_no_app">ルートを開く地図アプリが見つかりません。</string>
+    <string name="stations_nearest_action">近くの最安値</string>
+    <string name="stations_nearest_needs_location">位置情報をオンにすると最寄りのスタンドを検索できます。</string>
+    <string name="stations_nearest_no_fix">現在GPSの信号を取得できません。位置情報を有効にして、もう一度お試しください。</string>
+    <string name="stations_nearest_failed">近くのスタンドが見つかりませんでした。接続を確認して再試行してください。</string>
+    <string name="a11y_station_navigate">%1$s へ行く</string>
+    <string name="prices_view_stations">スタンド価格を表示</string>
+
+    <!-- FuelProduct labels -->
+    <string name="fuel_product_ethanol">エタノール</string>
+    <string name="fuel_product_gasoline_regular">レギュラーガソリン</string>
+    <string name="fuel_product_gasoline_premium">プレミアムガソリン</string>
+    <string name="fuel_product_diesel_s500">ディーゼル S500</string>
+    <string name="fuel_product_diesel_s10">ディーゼル S10</string>
+    <string name="fuel_product_cng">天然ガス</string>
+    <string name="fuel_product_lpg_p13">LPG（13 kg）</string>
+
+    <!-- UC-003 Location picker -->
+    <string name="location_picker_title">場所を選択</string>
+    <string name="location_state_label">州</string>
+    <string name="location_municipality_label">%1$sの自治体</string>
+    <string name="location_empty_state">この州に価格データのある自治体はありません。ANPテーブルを同期するか、別の州を選択してください。</string>
+    <string name="location_current_selection">現在：%1$s（%2$s）</string>
+    <string name="location_search_state_hint">州を検索</string>
+    <string name="location_search_municipality_hint">自治体を検索</string>
+    <string name="location_search_no_matches">一致するものが見つかりませんでした。</string>
+    <string name="location_no_data_this_week">今週の価格データなし</string>
+    <string name="location_use_current">現在地を使用</string>
+    <string name="location_resolving_current">市区町村を検出しています…</string>
+    <string name="location_current_failed">市区町村を検出できませんでした。手動で選択してください。</string>
+
+    <!-- UC-004 Search -->
+    <string name="search_municipality_hint">自治体を検索</string>
+    <string name="search_min_chars_hint">検索するには2文字以上入力してください。</string>
+    <string name="search_result_format">%1$s — %2$s</string>
+    <string name="search_browse_by_state">州別に閲覧</string>
+    <string name="search_no_data_this_week">今週の価格データなし</string>
+
+    <!-- Brazilian states (UC-003) -->
+    <string name="state_name_acre">Acre</string>
+    <string name="state_name_alagoas">Alagoas</string>
+    <string name="state_name_amapa">Amapá</string>
+    <string name="state_name_amazonas">Amazonas</string>
+    <string name="state_name_bahia">Bahia</string>
+    <string name="state_name_ceara">Ceará</string>
+    <string name="state_name_distrito_federal">Distrito Federal</string>
+    <string name="state_name_espirito_santo">Espírito Santo</string>
+    <string name="state_name_goias">Goiás</string>
+    <string name="state_name_maranhao">Maranhão</string>
+    <string name="state_name_mato_grosso">Mato Grosso</string>
+    <string name="state_name_mato_grosso_do_sul">Mato Grosso do Sul</string>
+    <string name="state_name_minas_gerais">Minas Gerais</string>
+    <string name="state_name_para">Pará</string>
+    <string name="state_name_paraiba">Paraíba</string>
+    <string name="state_name_parana">Paraná</string>
+    <string name="state_name_pernambuco">Pernambuco</string>
+    <string name="state_name_piaui">Piauí</string>
+    <string name="state_name_rio_de_janeiro">Rio de Janeiro</string>
+    <string name="state_name_rio_grande_do_norte">Rio Grande do Norte</string>
+    <string name="state_name_rio_grande_do_sul">Rio Grande do Sul</string>
+    <string name="state_name_rondonia">Rondônia</string>
+    <string name="state_name_roraima">Roraima</string>
+    <string name="state_name_santa_catarina">Santa Catarina</string>
+    <string name="state_name_sao_paulo">São Paulo</string>
+    <string name="state_name_sergipe">Sergipe</string>
+    <string name="state_name_tocantins">Tocantins</string>
+
+    <!-- UC-008 Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_portuguese">Português (Brasil)</string>
+    <string name="a11y_language_english">英語</string>
+    <string name="a11y_language_portuguese">ポルトガル語</string>
+    <string name="a11y_language_chinese">中国語</string>
+    <string name="a11y_language_spanish">スペイン語</string>
+    <string name="a11y_language_french">フランス語</string>
+    <string name="a11y_language_german">ドイツ語</string>
+    <string name="a11y_language_japanese">日本語</string>
+    <string name="a11y_language_russian">ロシア語</string>
+    <string name="settings_preferences_section">環境設定</string>
+    <string name="settings_sync_station_detail">バックグラウンドでスタンド詳細を同期</string>
+    <string name="settings_auto_download_latest_week">最新の調査週を自動的にダウンロード</string>
+    <string name="settings_sync_wifi_only">Wi‑Fi接続時のみ自動同期</string>
+    <string name="settings_show_price_history">価格履歴を表示</string>
+    <string name="settings_retention_weeks">スタンドデータの保持期間</string>
+    <string name="settings_retention_weeks_option">%1$d 週間</string>
+    <string name="settings_nearest_station_radius">「最安の給油所を探す」の検索半径</string>
+    <string name="settings_nearest_station_radius_option">%1$d km</string>
+    <string name="settings_storage_usage">ストレージ使用量</string>
+    <string name="settings_storage_summary_rows">サマリー行：%1$s</string>
+    <string name="settings_storage_station_rows">スタンド行：%1$s</string>
+    <string name="settings_storage_week_count">インポート済み週：%1$s</string>
+    <string name="settings_sync_section">同期</string>
+    <string name="settings_change_survey_week">調査週を変更</string>
+    <string name="settings_clear_cache">キャッシュを消去</string>
+    <string name="settings_clear_station_cache">スタンドキャッシュを消去</string>
+    <string name="settings_clear_all_cache">インポート済みデータをすべて消去</string>
+    <string name="settings_clear_cache_confirm">インポート済みのANPデータがすべて削除され、オンボーディングがリセットされます。続行しますか？</string>
+    <string name="settings_clear_cache_confirm_action">すべて消去</string>
+    <string name="settings_attribution_section">データソース</string>
+    <string name="settings_anp_attribution_link">ANP公式ページを開く</string>
+    <string name="anp_official_url" translatable="false">https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas</string>
+
+    <!-- Share -->
+    <string name="settings_share_section">共有</string>
+    <string name="settings_share_app">アプリを共有</string>
+    <string name="settings_share_app_message">ANP Fuel Prices をチェック — ANPの週次燃料価格、無料: %1$s</string>
+
+    <!-- Accessibility (Phase 9.3) -->
+    <string name="a11y_loading">コンテンツを読み込み中</string>
+    <string name="a11y_tank_fill_cost_placeholder">車両を追加して満タンコストを追跡</string>
+    <string name="a11y_tank_fill_cost_card">%1$s、満タンコスト %2$s</string>
+    <string name="a11y_fuel_price_card">%1$s、平均価格 %2$s</string>
+    <string name="a11y_station_price_row">%1$s、価格 %2$s</string>
+    <string name="a11y_price_trend_chart">価格推移チャート</string>
+    <string name="a11y_screen_title">%1$s画面</string>
+    <string name="a11y_week_picker_operational_note_expand">運用上のお知らせを展開</string>
+    <string name="a11y_week_picker_operational_note_collapse">運用上のお知らせを折りたたむ</string>
+</resources>

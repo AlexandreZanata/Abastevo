@@ -1,0 +1,88 @@
+---
+description: Use cases, API contracts, security, TDD, AI integration, glossary, and project checklist
+alwaysApply: true
+---
+
+> Platform scope update (2026-09-28): read `AGENTS.md` and `docs/adr/004-backend-scope-and-governance.md`. Existing stack rules describe Android. Backend uses the new canonical plans; public reads do not require tenants/auth, explicit application interfaces are allowed, DB integration tests use real PostGIS, and privacy retention qualifies history immutability. Android improvements start only after G09.
+
+
+# AGENT CORE PRACTICES
+
+## 9. Use Cases Documented Before Code
+
+Each use case has:
+- **Actor** — who executes
+- **Preconditions** — what must be true before
+- **Main flow** — happy path step by step
+- **Alternative flows** — variations and exceptions
+- **Applied rules** — which BRs are verified
+- **Events fired** — what happens after execution
+
+A use case that is not documented must not be implemented.
+
+## 10. Explicit API Contracts
+
+- Every API has explicit versioning from day one (`/v1/`, `/v2/`).
+- Authentication and tenant identification are mandatory on every request.
+- Error responses follow a single structured pattern (never random strings).
+- Pagination, sorting, and filters follow uniform conventions.
+- Endpoints reflect the domain — not the database. Resources are named by business concept.
+
+## 11. Security as Requirement, Not Feature
+
+- Strong authentication (MFA) for elevated-privilege roles.
+- Session TTL defined per role — admin sessions expire faster.
+- Rate limiting per user and per IP on every public API.
+- Sensitive data encrypted at rest and in transit.
+- All external communication uses TLS. No exceptions.
+- Data legislation compliance (LGPD, GDPR) is a functional requirement from day one.
+
+## 12. Test-Driven Development (TDD)
+
+```
+E2E (5%)          → end-to-end complete flows
+Integration (20%) → use cases + infrastructure
+Unit (75%)        → domain layer (entities, rules, state machines)
+```
+
+- Domain tests are written **before** implementation.
+- Standard test format: GIVEN / WHEN / THEN.
+- Minimum Domain Layer coverage: 90%+.
+- A test must fail for exactly one reason.
+- Tests do not depend on real database, network, or filesystem.
+
+## 13. AI / Agent Integration
+
+When the system integrates LLMs or AI agents:
+- AI operates **within** the Application Layer — never accesses Domain or Infrastructure directly.
+- AI only reads data. Never writes directly to the database.
+- Every AI suggestion requires human confirmation before persisting.
+- Agent access is restricted to minimum necessary (least privilege).
+- Every LLM call is logged: input, output, model, timestamp, user who triggered it.
+- AI responses are always marked as suggestions — never as definitive truth.
+- Personal and sensitive data is never sent to the LLM.
+
+## 14. Minimum Project Glossary
+
+Every project maintains a glossary with domain terms in `docs/glossary.md`.
+- Business terms and precise definitions
+- Enums and their possible values
+- Acronyms and abbreviations used in code
+
+Code that uses a domain term uses **exactly** the same name from the glossary — no creative translations, abbreviations, or synonyms.
+
+## New Project Checklist
+
+Before writing the first line of code, verify:
+- [ ] Layers defined and responsibilities documented
+- [ ] Main entities and aggregates identified
+- [ ] Value Objects listed with invariants
+- [ ] Business rules written in GIVEN/WHEN/THEN format
+- [ ] State machines documented with valid transitions
+- [ ] Access roles and permission matrix defined
+- [ ] Domain events cataloged
+- [ ] Use cases documented with actor, flow, and preconditions
+- [ ] API contract sketched
+- [ ] Domain glossary exists
+
+If any item is blank, the agent must ask before implementing — never assume.

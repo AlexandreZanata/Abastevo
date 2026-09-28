@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ANP 燃油价格</string>
+
+    <!-- Navigation -->
+    <string name="nav_onboarding">引导</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_location">位置</string>
+    <string name="nav_prices">价格</string>
+    <string name="nav_history">历史</string>
+    <string name="nav_stations">加油站</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_vehicles">车辆</string>
+
+    <!-- Home (UC-005) -->
+    <string name="home_title">ANP</string>
+    <string name="home_location_format">%1$s，%2$s</string>
+    <string name="home_no_location_message">尚未选择城市。</string>
+    <string name="home_no_location_hint">搜索或按州浏览以查看燃油价格。</string>
+    <string name="home_view_price_details">查看完整价格详情</string>
+    <string name="home_stale_price_table_message">价格表可能已过时；价格可能会有变动。最后更新：%1$s</string>
+
+    <string name="home_tank_fill_cost_title">满箱费用</string>
+    <string name="home_tank_fill_cost_vehicle_format">%1$s（%2$s 升）</string>
+    <string name="home_tank_fill_cost_placeholder_title">跟踪真实加油费用</string>
+    <string name="home_tank_fill_cost_placeholder_body">添加车辆以估算在您所在城市加满油箱的费用。</string>
+    <string name="home_tank_fill_cost_liters_format">%1$s（%2$d 升）</string>
+    <string name="home_tank_fill_cost_unavailable">价格不可用</string>
+    <string name="home_tank_fill_cost_station_name">在 %1$s</string>
+    <string name="home_tank_fill_cost_go_to_station">前往加油站</string>
+    <string name="vehicle_screen_title">车辆</string>
+    <string name="vehicle_name_hint">车辆名称</string>
+    <string name="vehicle_tank_capacity_hint">油箱容量（升）</string>
+    <string name="vehicle_fuel_product_label">燃料类型</string>
+    <string name="vehicle_price_source_label">价格参考</string>
+    <string name="vehicle_price_source_cheapest">最便宜加油站</string>
+    <string name="vehicle_price_source_specific">指定加油站</string>
+    <string name="vehicle_price_drop_alert_label">价格下降时通知</string>
+    <string name="vehicle_price_drop_alert_description">每次每周导入后，当跟踪的价格下降时接收本地通知。</string>
+    <string name="notification_permission_denied_hint">通知已禁用。请在系统设置中启用通知以接收降价提醒。</string>
+    <string name="settings_notifications_section">通知</string>
+    <string name="settings_open_notification_settings">打开通知设置</string>
+    <string name="vehicle_add">添加车辆</string>
+    <string name="vehicle_edit">编辑车辆</string>
+    <string name="vehicle_save">保存</string>
+    <string name="vehicle_delete">删除</string>
+    <string name="vehicle_delete_confirm">移除此车辆？</string>
+    <string name="vehicle_empty_message">尚无车辆</string>
+    <string name="vehicle_empty_hint">最多添加 3 辆车以跟踪满箱费用。</string>
+    <string name="vehicle_max_reached">已达 3 辆车上限</string>
+    <string name="vehicle_select_station">选择加油站</string>
+    <string name="vehicle_station_option_format">%1$s — %2$s</string>
+    <string name="vehicle_validation_name_required">请输入车辆名称</string>
+    <string name="vehicle_validation_tank_capacity">请输入有效容量（1–200 升）</string>
+    <string name="vehicle_validation_station_required">请选择加油站</string>
+
+    <string name="home_empty_message">尚未同步燃油价格数据。</string>
+    <string name="home_empty_hint">完成引导或同步以加载 ANP 每周数据表。</string>
+    <string name="home_fuel_products_preview">燃油产品（i18n 预览）</string>
+    <string name="home_navigation_preview">界面（第 8 阶段）</string>
+
+    <!-- Shared states -->
+    <string name="state_loading">加载中…</string>
+    <string name="state_error_title">出了点问题</string>
+    <string name="state_empty_title">暂无内容</string>
+    <string name="screen_coming_soon">将在未来版本中提供。</string>
+
+    <!-- Actions -->
+    <string name="action_retry">重试</string>
+    <string name="action_next">下一步</string>
+    <string name="action_back">返回</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_switch_dark_theme">切换到深色主题</string>
+    <string name="action_switch_light_theme">切换到浅色主题</string>
+
+    <!-- UC-002 Onboarding -->
+    <string name="onboarding_title_welcome">欢迎</string>
+    <string name="onboarding_body_anp_source">来自 ANP（巴西国家石油、天然气和生物燃料局）的官方每周燃油价格。</string>
+    <string name="onboarding_title_offline">支持离线使用</string>
+    <string name="onboarding_body_offline">首次同步后，无需互联网连接即可浏览平均价格。</string>
+    <string name="onboarding_title_ready">选择调查周</string>
+    <string name="onboarding_body_ready">选择要下载的 ANP 调查周。您可以跳过，稍后在首页同步。</string>
+    <string name="onboarding_action_get_started">开始使用</string>
+    <string name="onboarding_action_sync_now">立即同步</string>
+    <string name="onboarding_action_skip">暂时跳过</string>
+    <string name="onboarding_location_prompt_title">自动查找您的城市？</string>
+    <string name="onboarding_location_prompt_body">我们可以使用一次设备位置来推荐您的城市以查看油价。您也可以手动选择。</string>
+    <string name="onboarding_location_use_device">使用我的位置</string>
+    <string name="onboarding_location_choose_manual">手动选择</string>
+    <string name="onboarding_location_permission_rationale">位置访问有助于检测您的城市以查询油价。坐标不会被存储。</string>
+    <string name="onboarding_location_failed">无法检测您的城市。请手动选择州和城市。</string>
+    <string name="onboarding_location_resolving">正在检测您的城市…</string>
+    <string name="geocoding_osm_attribution">城市检测数据 © OpenStreetMap 贡献者</string>
+    <string name="settings_geocoding_attribution">地理编码由 OpenStreetMap（Nominatim）提供</string>
+
+    <!-- UC-009 Week picker (Phase 12) -->
+    <string name="week_picker_title">调查周</string>
+    <string name="week_picker_latest">使用最新周</string>
+    <string name="week_picker_weekly_summary_line">每周平均价格：巴西、地区、州和市镇</string>
+    <string name="week_picker_station_detail_line">各零售加油站价格（车用燃油和 LPG P13）</string>
+    <string name="week_picker_updated_at">更新于 %1$s</string>
+    <string name="week_picker_operational_note">备注：%1$s</string>
+    <string name="week_picker_operational_note_banner">运营备注</string>
+    <string name="week_picker_operational_note_expand">展开运营备注</string>
+    <string name="week_picker_operational_note_collapse">收起运营备注</string>
+    <string name="week_picker_operational_note_title">运营通知</string>
+    <string name="week_picker_download_week">下载本周数据</string>
+    <string name="week_picker_confirm_title">下载历史周数据？</string>
+    <string name="week_picker_confirm_message">下载并导入 %1$s 的 ANP 数据？这可能需要几分钟。</string>
+    <string name="active_week_label">最新</string>
+    <string name="survey_week_chip_latest_suffix">· 最新</string>
+    <string name="a11y_survey_week_chip">当前调查周：%1$s。点按以更改。</string>
+    <string name="a11y_survey_week_chip_latest">当前调查周：%1$s（最新）。点按以更改。</string>
+
+    <!-- Sync banners (BR-004, freshness) -->
+    <string name="banner_offline">离线 — 显示缓存数据。</string>
+    <string name="banner_syncing">正在同步 ANP 价格表…</string>
+    <string name="banner_stale_data">数据可能已过期。点按刷新以同步。</string>
+    <string name="banner_partial_data">市镇平均价格可用；加油站详情不完整。</string>
+    <string name="banner_sync_error">同步失败。缓存数据仍可使用。</string>
+
+    <!-- UC-001 sync -->
+    <string name="sync_progress_discovering">正在发现新数据表…</string>
+    <string name="sync_progress_downloading">正在下载…</string>
+    <string name="sync_progress_importing">正在导入…</string>
+    <string name="sync_completed">同步完成</string>
+    <string name="sync_failed">同步失败</string>
+    <string name="info_sync_up_to_date">已是最新数据。</string>
+
+    <!-- Errors (AppError i18n keys) -->
+    <string name="error_sync_network">无法连接 ANP。请检查网络连接后重试。</string>
+    <string name="error_sync_parse">无法读取已下载的文件。请稍后重试。</string>
+    <string name="error_search_no_results">没有与您搜索匹配的市镇。</string>
+    <string name="error_station_detail_missing">此城市的加油站价格尚未下载。</string>
+    <string name="error_storage_full">存储空间不足，无法导入 ANP 数据。</string>
+
+    <!-- Prices (UC-005) -->
+    <string name="prices_title">燃油价格</string>
+    <string name="prices_survey_week_label">调查周：%1$s</string>
+    <string name="prices_last_sync_label">上次同步：%1$s</string>
+    <string name="prices_average_label">平均：%1$s</string>
+    <string name="prices_min_max_range">最低 %1$s · 最高 %2$s</string>
+    <string name="prices_not_available">—</string>
+    <string name="prices_station_count">%1$d 个加油站</string>
+    <string name="prices_anp_attribution">来源：ANP — 巴西国家石油、天然气和生物燃料局</string>
+    <string name="prices_empty_municipality">未找到此市镇的价格。</string>
+    <string name="prices_empty_no_data_this_week">此市镇在所选调查周没有 ANP 价格数据。</string>
+    <string name="prices_empty_never_in_anp">此市镇从未出现在 ANP 每周价格报告中。</string>
+    <string name="prices_view_history">查看价格历史</string>
+
+    <!-- UC-006 History -->
+    <string name="history_title">价格历史</string>
+    <string name="history_insufficient_data">若要比较价格，本设备上需要有超过一个调查周的数据。</string>
+    <string name="history_insufficient_data_hint">使用上方的周选择器，或同步更早的 ANP 每周数据表。</string>
+    <string name="history_week_label">%1$s</string>
+    <string name="history_disabled">价格历史已在设置中关闭。</string>
+    <string name="history_fuel_product_label">燃油产品</string>
+    <string name="history_chart_bar_legend">%1$s · %2$s</string>
+
+    <!-- UC-007 Stations -->
+    <string name="stations_title">加油站</string>
+    <string name="stations_sort_by_price">按价格排序（从低到高）</string>
+    <string name="stations_tap_to_navigate_hint">点击加油站即可在 Google 地图中打开。</string>
+    <string name="stations_download_prompt">此设备上尚无加油站级别价格。下载本周 ANP 加油站文件以按站点比较价格。</string>
+    <string name="stations_download_action">下载加油站价格</string>
+    <string name="stations_empty">所选城市本周没有加油站报告此燃油价格。</string>
+    <string name="stations_brand_label">品牌：%1$s</string>
+    <string name="stations_collected_at_label">采集时间：%1$s</string>
+    <string name="stations_navigate_action">导航</string>
+    <string name="stations_navigate_no_app">未找到可打开路线的地图应用。</string>
+    <string name="stations_nearest_action">附近最便宜</string>
+    <string name="stations_nearest_needs_location">开启定位以查找最近的加油站。</string>
+    <string name="stations_nearest_no_fix">暂时没有GPS信号。请开启位置信息后重试。</string>
+    <string name="stations_nearest_failed">未能找到附近的加油站。请检查网络后重试。</string>
+    <string name="a11y_station_navigate">导航至 %1$s</string>
+    <string name="prices_view_stations">查看加油站价格</string>
+
+    <!-- FuelProduct labels -->
+    <string name="fuel_product_ethanol">乙醇</string>
+    <string name="fuel_product_gasoline_regular">普通汽油</string>
+    <string name="fuel_product_gasoline_premium">优质汽油</string>
+    <string name="fuel_product_diesel_s500">柴油 S500</string>
+    <string name="fuel_product_diesel_s10">柴油 S10</string>
+    <string name="fuel_product_cng">压缩天然气</string>
+    <string name="fuel_product_lpg_p13">液化石油气（13 公斤）</string>
+
+    <!-- UC-003 Location picker -->
+    <string name="location_picker_title">选择位置</string>
+    <string name="location_state_label">州</string>
+    <string name="location_municipality_label">%1$s 的市镇</string>
+    <string name="location_empty_state">此州没有含价格数据的市镇。请同步 ANP 数据表或选择其他州。</string>
+    <string name="location_current_selection">当前：%1$s（%2$s）</string>
+    <string name="location_search_state_hint">搜索州</string>
+    <string name="location_search_municipality_hint">搜索市镇</string>
+    <string name="location_search_no_matches">未找到匹配项。</string>
+    <string name="location_no_data_this_week">本周无价格数据</string>
+    <string name="location_use_current">使用当前位置</string>
+    <string name="location_resolving_current">正在检测您的城市…</string>
+    <string name="location_current_failed">无法检测您的城市。请手动选择。</string>
+
+    <!-- UC-004 Search -->
+    <string name="search_municipality_hint">搜索市镇</string>
+    <string name="search_min_chars_hint">请至少输入 2 个字符进行搜索。</string>
+    <string name="search_result_format">%1$s — %2$s</string>
+    <string name="search_browse_by_state">按州浏览</string>
+    <string name="search_no_data_this_week">本周无价格数据</string>
+
+    <!-- Brazilian states (UC-003) -->
+    <string name="state_name_acre">阿克里</string>
+    <string name="state_name_alagoas">阿拉戈斯</string>
+    <string name="state_name_amapa">阿马帕</string>
+    <string name="state_name_amazonas">亚马孙</string>
+    <string name="state_name_bahia">巴伊亚</string>
+    <string name="state_name_ceara">塞阿拉</string>
+    <string name="state_name_distrito_federal">联邦区</string>
+    <string name="state_name_espirito_santo">圣埃斯皮里图</string>
+    <string name="state_name_goias">戈亚斯</string>
+    <string name="state_name_maranhao">马拉尼昂</string>
+    <string name="state_name_mato_grosso">马托格罗索</string>
+    <string name="state_name_mato_grosso_do_sul">南马托格罗索</string>
+    <string name="state_name_minas_gerais">米纳斯吉拉斯</string>
+    <string name="state_name_para">帕拉</string>
+    <string name="state_name_paraiba">帕拉伊巴</string>
+    <string name="state_name_parana">巴拉那</string>
+    <string name="state_name_pernambuco">伯南布哥</string>
+    <string name="state_name_piaui">皮奥伊</string>
+    <string name="state_name_rio_de_janeiro">里约热内卢</string>
+    <string name="state_name_rio_grande_do_norte">北里奥格兰德</string>
+    <string name="state_name_rio_grande_do_sul">南里奥格兰德</string>
+    <string name="state_name_rondonia">朗多尼亚</string>
+    <string name="state_name_roraima">罗赖马</string>
+    <string name="state_name_santa_catarina">圣卡塔琳娜</string>
+    <string name="state_name_sao_paulo">圣保罗</string>
+    <string name="state_name_sergipe">塞尔希培</string>
+    <string name="state_name_tocantins">托坎廷斯</string>
+
+    <!-- UC-008 Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_portuguese">Português (Brasil)</string>
+    <string name="a11y_language_english">英语</string>
+    <string name="a11y_language_portuguese">葡萄牙语</string>
+    <string name="a11y_language_chinese">中文</string>
+    <string name="a11y_language_spanish">西班牙语</string>
+    <string name="a11y_language_french">法语</string>
+    <string name="a11y_language_russian">俄语</string>
+    <string name="a11y_language_german">德语</string>
+    <string name="a11y_language_japanese">日语</string>
+    <string name="settings_preferences_section">偏好设置</string>
+    <string name="settings_sync_station_detail">在后台同步加油站详情</string>
+    <string name="settings_auto_download_latest_week">自动下载最新调查周</string>
+    <string name="settings_sync_wifi_only">仅在 Wi‑Fi 下自动同步</string>
+    <string name="settings_show_price_history">显示价格历史</string>
+    <string name="settings_retention_weeks">加油站数据保留</string>
+    <string name="settings_retention_weeks_option">%1$d 周</string>
+    <string name="settings_nearest_station_radius">“查找附近最便宜”的搜索半径</string>
+    <string name="settings_nearest_station_radius_option">%1$d 公里</string>
+    <string name="settings_storage_usage">存储使用情况</string>
+    <string name="settings_storage_summary_rows">摘要行数：%1$s</string>
+    <string name="settings_storage_station_rows">加油站行数：%1$s</string>
+    <string name="settings_storage_week_count">已导入周数：%1$s</string>
+    <string name="settings_sync_section">同步</string>
+    <string name="settings_change_survey_week">更改调查周</string>
+    <string name="settings_clear_cache">清除缓存</string>
+    <string name="settings_clear_station_cache">清除加油站缓存</string>
+    <string name="settings_clear_all_cache">清除所有已导入数据</string>
+    <string name="settings_clear_cache_confirm">这将删除所有已导入的 ANP 数据并重置引导流程。是否继续？</string>
+    <string name="settings_clear_cache_confirm_action">全部清除</string>
+    <string name="settings_attribution_section">数据来源</string>
+    <string name="settings_anp_attribution_link">打开 ANP 官方网站</string>
+    <string name="anp_official_url" translatable="false">https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas</string>
+
+    <!-- Share -->
+    <string name="settings_share_section">分享</string>
+    <string name="settings_share_app">分享应用</string>
+    <string name="settings_share_app_message">看看 ANP Fuel Prices — 免费获取 ANP 每周燃油价格：%1$s</string>
+
+    <!-- Accessibility (Phase 9.3) -->
+    <string name="a11y_loading">正在加载内容</string>
+    <string name="a11y_tank_fill_cost_placeholder">添加车辆以跟踪满箱费用</string>
+    <string name="a11y_tank_fill_cost_card">%1$s，满箱费用 %2$s</string>
+    <string name="a11y_fuel_price_card">%1$s，平均价格 %2$s</string>
+    <string name="a11y_station_price_row">%1$s，价格 %2$s</string>
+    <string name="a11y_price_trend_chart">价格趋势图</string>
+    <string name="a11y_screen_title">%1$s 界面</string>
+    <string name="a11y_week_picker_operational_note_expand">展开运营通知</string>
+    <string name="a11y_week_picker_operational_note_collapse">收起运营通知</string>
+</resources>

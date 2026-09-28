@@ -1,0 +1,23 @@
+[
+  {
+    "place_id": 7479875,
+    "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+    "osm_type": "way",
+    "osm_id": 297523,
+    "lat": "-25.4293875",
+    "lon": "-49.2718364",
+    "category": "highway",
+    "type": "residential",
+    "place_rank": 26,
+    "importance": 0.223945,
+    "addresstype": "road",
+    "name": "Rua XV de Novembro",
+    "display_name": "Rua XV de Novembro, Centro, Curitiba, Paraná, 80020-310, Brasil",
+    "boundingbox": [
+      "-25.4303875",
+      "-25.4283875",
+      "-49.2728364",
+      "-49.2708364"
+    ]
+  }
+]

@@ -1,0 +1,44 @@
+---
+description: Definitive tech stack and module architecture — must match docs/tech-stack.md
+alwaysApply: true
+---
+
+> Platform scope update (2026-09-28): read `AGENTS.md` and `docs/adr/004-backend-scope-and-governance.md`. Existing stack rules describe Android. Backend uses the new canonical plans; public reads do not require tenants/auth, explicit application interfaces are allowed, DB integration tests use real PostGIS, and privacy retention qualifies history immutability. Android improvements start only after G09.
+
+
+# Project Stack & Architecture
+
+Definitive references:
+- `docs/tech-stack.md` — libraries, versions, module dependencies
+- `docs/architecture.md` — packages, data flow, database schema
+- `docs/adr/001-kotlin-compose-stack.md` — decision record
+
+## Accepted stack (do not substitute)
+
+| Concern | Technology |
+|---------|------------|
+| UI | Jetpack Compose + Material 3 |
+| Modules | `:domain` / `:application` / `:data` / `:app` |
+| DB | Room + SQLite + FTS5 |
+| Sync | WorkManager + OkHttp + Jsoup |
+| Parser | Streaming XLSX (custom); POI test-only |
+| DI | Hilt |
+| Tests | JUnit 5 + MockK + Turbine |
+
+## Layer rules (strict)
+
+- `:domain` — pure Kotlin, zero Android/framework deps
+- `:application` — use cases only, depends on `:domain`
+- `:data` — Room, OkHttp, parser, workers; depends on `:domain`
+- `:app` — Compose + ViewModels; calls use cases, never DAOs directly
+
+## Before implementing
+
+1. Use case must exist in `docs/use-cases/`
+2. Domain terms must match `docs/glossary.md`
+3. Domain tests written first (TDD, 90%+ coverage target)
+4. All UI strings via i18n keys (`en` default, `pt-BR`)
+
+## Package root
+
+`com.anpfuel` — adjust only via ADR

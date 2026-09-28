@@ -1,0 +1,82 @@
+# Gradle & Kotlin
+.gradle/
+build/
+**/build/
+**/bin/
+.kotlin/
+local.properties
+*.iml
+*.ipr
+*.iws
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+/captures
+.externalNativeBuild/
+.cxx/
+*.hprof
+output.json
+lint-results*.xml
+lint-report.html
+
+# Android Studio Navigation
+.navigation/
+
+# Keystore & secrets (never commit)
+*.keystore
+*.jks
+google-services.json
+secrets.properties
+signing.properties
+.env
+.env.*
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Test & coverage
+*.exec
+.jacoco/
+coverage/
+test-results/
+androidTest-results/
+
+# Generated / local data
+data/downloads/
+*.log
+
+# Local execution plans & scratch (never commit)
+.local/
+
+# Sample data (large XLSX — keep locally, optional in repo)
+# Uncomment to exclude samples from git:
+# data/samples/*.xlsx
+
+# Cursor agent temp artifacts
+agent-tools/
+uploads/
+
+# Misc
+*.orig
+*.rej
+.freebuff/

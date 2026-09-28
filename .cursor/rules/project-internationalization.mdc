@@ -1,0 +1,49 @@
+---
+description: International project standards — English codebase, i18n, and localization
+alwaysApply: true
+---
+
+# Project Internationalization Standards
+
+This is an **international open-source project**. All code, docs, and agent output follow these rules.
+
+## Language Policy
+
+| Layer | Language | Notes |
+|-------|----------|-------|
+| Source code | **English** | Classes, functions, variables, enums, comments |
+| Git commits & PRs | **English** | Conventional Commits format |
+| Architecture docs | **English** | `docs/` folder |
+| User-facing strings | **i18n keys** | Never hardcode UI text in code |
+| Domain glossary | **English** | Business terms in English; localized labels via i18n |
+
+## i18n Rules
+
+- Use Android string resources (`strings.xml`) with locale variants (`values-pt-rBR/`, `values-es/`, etc.).
+- Key naming: `feature_component_description` (snake_case), e.g. `price_search_city_hint`.
+- Default locale: `en` (values/strings.xml).
+- Brazilian Portuguese is the first additional locale (`pt-BR`) given the ANP data source.
+- Format dates, numbers, and currency with `Locale`-aware APIs — never manual string concatenation.
+- ANP source data arrives in Portuguese; normalize to domain enums in English at the Infrastructure boundary.
+
+## Code Examples
+
+```kotlin
+// ❌ BAD — hardcoded UI text
+Text("Preço médio da gasolina")
+
+// ✅ GOOD — i18n key
+Text(stringResource(R.string.fuel_average_price_label))
+
+// ❌ BAD — Portuguese identifier
+fun buscarPrecosPorCidade(cidade: String)
+
+// ✅ GOOD — English identifier, localized output
+fun searchPricesByCity(city: City): List<FuelPrice>
+```
+
+## Agent Behavior
+
+- Write all new code, docs, and commit messages in English.
+- When discussing with the user in Portuguese, still produce English code and docs unless explicitly asked otherwise.
+- Add i18n keys for every user-visible string in the same PR that introduces the UI.

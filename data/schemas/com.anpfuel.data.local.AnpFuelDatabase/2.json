@@ -1,0 +1,393 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "50ca8edf58c14b71c11bcf4bf91dff02",
+    "entities": [
+      {
+        "tableName": "survey_week",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `start_date` TEXT NOT NULL, `end_date` TEXT NOT NULL, `summary_imported_at` INTEGER NOT NULL, `station_imported_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "start_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "end_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summaryImportedAt",
+            "columnName": "summary_imported_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationImportedAt",
+            "columnName": "station_imported_at",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "average_price",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT NOT NULL, `state` TEXT NOT NULL, `municipality` TEXT NOT NULL, `fuel_product` TEXT NOT NULL, `station_count` INTEGER, `unit` TEXT, `avg_price` REAL, `min_price` REAL, `max_price` REAL, `std_dev` REAL, PRIMARY KEY(`id`), FOREIGN KEY(`survey_week_id`) REFERENCES `survey_week`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fuelProduct",
+            "columnName": "fuel_product",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationCount",
+            "columnName": "station_count",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "avgPrice",
+            "columnName": "avg_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "minPrice",
+            "columnName": "min_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "maxPrice",
+            "columnName": "max_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "stdDev",
+            "columnName": "std_dev",
+            "affinity": "REAL",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_avg_survey_state_muni",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "state",
+              "municipality"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_avg_survey_state_muni` ON `${TABLE_NAME}` (`survey_week_id`, `state`, `municipality`)"
+          },
+          {
+            "name": "idx_avg_muni_product",
+            "unique": false,
+            "columnNames": [
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_avg_muni_product` ON `${TABLE_NAME}` (`municipality`, `fuel_product`)"
+          },
+          {
+            "name": "index_average_price_survey_week_id_state_municipality_fuel_product",
+            "unique": true,
+            "columnNames": [
+              "survey_week_id",
+              "state",
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_average_price_survey_week_id_state_municipality_fuel_product` ON `${TABLE_NAME}` (`survey_week_id`, `state`, `municipality`, `fuel_product`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "survey_week",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "survey_week_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "station_price",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT NOT NULL, `cnpj` TEXT NOT NULL, `legal_name` TEXT, `trade_name` TEXT, `address` TEXT NOT NULL, `municipality` TEXT NOT NULL, `state` TEXT NOT NULL, `brand` TEXT, `fuel_product` TEXT NOT NULL, `price` REAL NOT NULL, `collected_at` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`survey_week_id`) REFERENCES `survey_week`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cnpj",
+            "columnName": "cnpj",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "legalName",
+            "columnName": "legal_name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tradeName",
+            "columnName": "trade_name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fuelProduct",
+            "columnName": "fuel_product",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectedAt",
+            "columnName": "collected_at",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_station_survey_muni_product",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_station_survey_muni_product` ON `${TABLE_NAME}` (`survey_week_id`, `municipality`, `fuel_product`)"
+          },
+          {
+            "name": "idx_station_price_asc",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "municipality",
+              "fuel_product",
+              "price"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_station_price_asc` ON `${TABLE_NAME}` (`survey_week_id`, `municipality`, `fuel_product`, `price`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "survey_week",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "survey_week_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "import_audit_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT, `action` TEXT NOT NULL, `detail` TEXT, `occurred_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "action",
+            "columnName": "action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [
+            "remove_diacritics=2"
+          ],
+          "contentTable": "average_price",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_UPDATE BEFORE UPDATE ON `average_price` BEGIN DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_DELETE BEFORE DELETE ON `average_price` BEGIN DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_UPDATE AFTER UPDATE ON `average_price` BEGIN INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`) VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_INSERT AFTER INSERT ON `average_price` BEGIN INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`) VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`); END"
+        ],
+        "tableName": "municipality_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`municipality` TEXT NOT NULL, `state` TEXT NOT NULL, tokenize=unicode61 `remove_diacritics=2`, content=`average_price`)",
+        "fields": [
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '50ca8edf58c14b71c11bcf4bf91dff02')"
+    ]
+  }
+}
