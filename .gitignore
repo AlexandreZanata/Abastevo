@@ -47,6 +47,7 @@ secrets.properties
 signing.properties
 .env
 .env.*
+!backend/.env.example
 
 # Fastlane
 fastlane/report.xml
