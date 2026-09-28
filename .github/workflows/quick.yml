@@ -1,0 +1,50 @@
+# Bounded integration gate for every pull request and main push.
+# This is the single required check: it always runs (no path filter that
+# could leave a required check missing), including draft and docs-only PRs.
+# Docs-only changes run a meaningful docs + contract subset; code changes run
+# the full quick set via the same `make quick-verify` composition used
+# locally. Release certification lives outside this job (P09 candidate).
+name: quick
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quick-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION_FILE: backend/go.mod
+  SQLC_VERSION: v1.31.1
+  STATICCHECK_VERSION: v0.8.1
+  VACUUM_VERSION: v0.30.6
+  GOVULNCHECK_VERSION: v1.8.0
+
+jobs:
+  quick:
+    name: Quick verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # quick-verify scans the committed PR diff (a clean CI checkout has
+          # no working-tree changes), so the base branch must be present.
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
+      - name: Install pinned tools
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}
+          GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
+          go install github.com/daveshanley/vacuum@${{ env.VACUUM_VERSION }}
+          GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+      - name: Bounded integration gate
+        run: make quick-verify

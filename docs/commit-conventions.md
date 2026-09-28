@@ -94,20 +94,17 @@ test(domain): add FuelProduct normalization tests
 Refs: BR-002
 ```
 
-## Branch naming
+## Branch and PR cadence
 
-```
-<type>/<short-description>
-```
+Use one phase branch `codex/phase-NN-slug`, one task commit and one phase PR in draft until the batch is complete; e.g. `codex/phase-02-official-catalog`. A worktree isolates concurrent authorized efforts when needed. Task IDs appear in the commit footer/issue marker. Published fixes use new commits; no amend/force push. The phase PR merges with a guarded head after specialized exit/quick checks and required review, preserving commits through a merge commit. After the verified merge, always delete the merged phase branch locally and remotely and verify both deletions; never leave a merged phase branch stale.
 
-Examples:
-- `feat/municipality-search`
-- `fix/sync-cache-preservation`
-- `docs/user-business-logic`
+See [DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md) for issue/milestone/wiki cadence, authorization and safe cleanup. Current workflow activation is G01-FLOW, not assumed from this prose.
 
 ## Pull request title
 
 Same format as commit subject. PR description must include:
+
+Use the [phase PR template](planning/templates/PHASE_PR.md) for phase delivery, including task range, issue closure, tested revision, specialized/quick evidence and separate wiki/release status. The short format below remains useful for small standalone corrections; it does not replace the phase gate.
 
 ```markdown
 ## Summary
@@ -145,6 +142,6 @@ Before committing:
 
 When creating commits for the user:
 1. Use Conventional Commits format above.
-2. Never commit unless explicitly requested.
-3. One logical change per commit when possible.
+2. Commit/publish only within session-authorized phase delivery; planning-only edits do not imply publication. Reuse existing authorization instead of requesting it per microtask.
+3. One atomic implementation commit per locally accepted task; later corrections are additional fix commits in the same phase branch.
 4. Reference UC/BR IDs in body when relevant.

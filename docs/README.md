@@ -1,6 +1,6 @@
 # Documentation index
 
-This repository contains the existing Android release and the planned backend-first evolution. Plans describe intended behavior, not shipped features. Start execution at [ROADMAP](../ROADMAP.md#p01-t01) and [PROGRESS](planning/PROGRESS.md).
+This repository contains the existing Android release, implemented P01 backend foundations and the remaining backend-first plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next task: [P01-T13](../ROADMAP.md#p01-t13), beginning G01-FLOW delivery activation before P02.
 
 ## Canonical planning documents
 
@@ -15,13 +15,15 @@ This repository contains the existing Android release and the planned backend-fi
 - [SECURITY_PRIVACY](security/SECURITY_PRIVACY.md) — STRIDE, identity/media security, inventory and rights.
 - [TEST_STRATEGY](backend/TEST_STRATEGY.md) — unit/integration/contracts/golden/migration/E2E/load and risk-based gates.
 - [INFRASTRUCTURE_PLAN](backend/INFRASTRUCTURE_PLAN.md) — environments, deployment, recovery, observability and cost assumptions.
+- [DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md), [FAST_EXECUTION](planning/FAST_EXECUTION.md) and [CI_PLAN](planning/CI_PLAN.md) — phase branches/PRs, task issues/commits, targeted tests, quick integration, full release and wiki synchronization.
+- [Phase record](planning/templates/PHASE_RECORD.md), [task issue](planning/templates/TASK_ISSUE.md) and [phase PR](planning/templates/PHASE_PR.md) — templates for G01-FLOW helpers; no remote records are implied.
 - [AI_ENGINEERING_CONTRACT](AI_ENGINEERING_CONTRACT.md) and [AGENTS](../AGENTS.md) — bounded task workflow and DOD-1.
 - [MIGRATION_PLAN](MIGRATION_PLAN.md) — each existing feature, offline/conflict behavior and P10 integration.
 - [Backend BUC-001…008](use-cases/backend-use-cases.md) — actor/preconditions/flows/rules/events/acceptance.
-- [ADR_INDEX](ADR_INDEX.md) — existing decisions and nine added planning ADRs.
+- [ADR_INDEX](ADR_INDEX.md) — existing decisions plus backend and delivery policy decisions.
 - [OPEN_SOURCE_BUSINESS](product/OPEN_SOURCE_BUSINESS.md) and [TRADEMARKS](../TRADEMARKS.md) — MIT preservation, brand and hosted value.
 - [DECISIONS](planning/DECISIONS.md), [RISKS](planning/RISKS.md), [REQUIREMENTS_TRACEABILITY](planning/REQUIREMENTS_TRACEABILITY.md) — unresolved choices, failure risks and brief coverage.
-- [BASELINE_VALIDATION](planning/BASELINE_VALIDATION.md) and [DOCUMENT_VALIDATION](planning/DOCUMENT_VALIDATION.md) — actual checks and limitations.
+- [BASELINE_VALIDATION](planning/BASELINE_VALIDATION.md), [original plan validation](planning/DOCUMENT_VALIDATION.md), [P01 evidence archive](planning/history/P01_FOUNDATION_EVIDENCE.md) and [workflow revision validation](planning/WORKFLOW_PLAN_VALIDATION.md) — dated evidence and limitations.
 
 ## Read only what the task needs
 

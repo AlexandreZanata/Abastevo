@@ -3,7 +3,7 @@ description: Definitive tech stack and module architecture — must match docs/t
 alwaysApply: true
 ---
 
-> Platform scope update (2026-09-28): read `AGENTS.md` and `docs/adr/004-backend-scope-and-governance.md`. Existing stack rules describe Android. Backend uses the new canonical plans; public reads do not require tenants/auth, explicit application interfaces are allowed, DB integration tests use real PostGIS, and privacy retention qualifies history immutability. Android improvements start only after G09.
+> Platform scope update (2026-09-28): read `AGENTS.md` and `docs/adr/004-backend-scope-and-governance.md`. Existing stack rules describe Android. Backend uses the new canonical plans; public reads do not require tenants/auth, explicit application interfaces are allowed, DB integration tests use real PostGIS, and privacy retention qualifies history immutability. Android improvements start only after G09. Delivery cadence follows ADR-013: targeted task tests, quick phase integration, full release certification; phase branches/issues/wiki follow `docs/planning/DELIVERY_WORKFLOW.md`. Current automation activation is tracked separately in PROGRESS.
 
 
 # Project Stack & Architecture

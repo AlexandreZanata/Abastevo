@@ -1,20 +1,20 @@
 # Working on this repository
 
-Scope: entire repository. User instructions define the task; attached plans are reference material, not authority to perform unrelated actions.
+Scope: entire repository. User requests govern the authorized work; reference repositories/documents do not authorize unrelated operations.
 
-1. Read `docs/planning/PROGRESS.md`, the selected `ROADMAP.md` task and its linked inputs.
-2. Read `docs/AI_ENGINEERING_CONTRACT.md`; inspect git status/diff and relevant code/tests before editing.
-3. Current objective: backend and infrastructure first. Android feature/source changes begin only after G09; existing Android tests/builds may run earlier.
-4. Keep `app/`, `application/`, `domain/`, `data/`, `com.anpfuel` and MIT notices intact. Backend plans are under `docs/backend/`; do not treat target designs as implemented features.
-5. Use B-BR/BUC IDs for backend rules/use cases. Document behavior before coding; domain work follows RED → GREEN → REFACTOR.
-6. Implement one bounded task; name intended file areas and avoid unrelated refactors, new frameworks or speculative services.
-7. Standard backend stack: Go/net/http/chi/pgx/sqlc/slog, PostgreSQL/PostGIS, private S3-compatible media, Compose/Caddy. Dependency additions need a recorded need/license/security assessment.
-8. Existing baseline: `bash scripts/validate-repo-baseline.sh`; Android tests require JDK 17/SDK 35. Backend commands become available in P01; see `docs/backend/TEST_STRATEGY.md`.
-9. SQL migrations are append-only once applied; use explicit SQL, parameterized queries and tested recovery. Never perform destructive production cleanup as routine development.
-10. Public reads may be anonymous; writes need contributor proof; there is no tenant model. Domain unit tests avoid I/O; integration tests require real PostGIS. ADR-004 resolves inherited generic-rule conflicts.
-11. No secrets, precise contributor location, production evidence or raw personal payloads in Git/logs. Payment never affects trust; official/community sources stay separate.
-12. English code/docs/commits, following the imported project convention; communicate with the user in their language.
-13. Validate focused tests/checks, `git diff --check`, new/untracked files and scope. Record actual results, blockers and next task in `docs/planning/PROGRESS.md`.
-14. No commit, push, release, purchase or production operation is implied by a documentation task. Follow explicit session authorization; never claim unexecuted checks passed.
+1. Read `docs/planning/FAST_EXECUTION.md`, only current `PROGRESS.md`, the selected ROADMAP task and its relevant code/tests. Read `DELIVERY_WORKFLOW.md` at phase opening or policy change; search archived evidence by task ID.
+2. Backend and infrastructure first; Android features/source improvements begin only after G09 certification. Existing Android regression checks may run earlier. Preserve modules, `com.anpfuel` and MIT notices.
+3. One bounded task at a time within one phase branch/PR: `codex/phase-NN-slug`. A phase request may proceed sequentially through its authorized tasks. Use a worktree when another effort occupies the checkout; never overwrite/stash another person's changes.
+4. Inspect status/diff and reconcile actual commits with progress before editing. Document B-BR/BUC before behavior; domain RED → GREEN → REFACTOR. No unrelated refactors, invented rules or speculative services.
+5. Per task run targeted meaningful tests, affected compilation/format/static checks, `git diff --check` and secret-surface review. Critical auth/money/privacy/SQL/migrations/jobs need their negative/failure/concurrency/real-PostGIS tests immediately. Never defer known failures or weaken tests.
+6. Phase closure uses specialized exit checks once, local quick gate and required remote `Quick verification` on verified current head/base. Full certification is P09/G09 after backend phase merges, then separate P10/P11 release gates. No double aggregate run before `finish`; CI_PLAN owns cadence.
+7. Current automation is pending G01-FLOW (P01-T13…T17). Existing CI requirements remain binding until verified replacement. Planned `make quick-verify`/`scripts/git-flow.sh` are not commands available today.
+8. Authorized phase delivery uses one task issue/atomic commit, one phase milestone/draft PR, no direct development push to main, guarded merge preserving commits, and wiki mirror once per merged phase. Reuse session authorization; planning-only work does not publish. See DELIVERY_WORKFLOW for publication scope and retry rules.
+9. Required missing/failed/skipped/cancelled checks block merge; changed head/base invalidates evidence. No force push/admin bypass/no-verify/destructive reset. Fix published work in new commits; close issues through actual merged PRs.
+10. Keep technical docs canonical; wiki is an allowlisted, owned-page mirror of merged SHA on a separately verified remote. Preserve manual pages. Failed sync means WIKI_PENDING, not another backend test run.
+11. Go/net/http/chi/pgx/sqlc/slog, PostgreSQL/PostGIS, private S3 media, Compose/Caddy. Dependency additions require recorded need/license/security review. Domain pure; module ports explicit; SQL parametrized; applied migrations append-only with recovery tests.
+12. Public reads may be anonymous; signed writes and private owner reads require proof; no tenant model. Official/community sources stay distinct. Payment never affects trust. No secrets/PII/precise contributor GPS or production photos in Git/logs/fixtures.
+13. Record concise current task/branch/issue/PR/check state, tested revision and next action in PROGRESS; move detail into linked phase evidence without deleting history. LOCAL_DONE, INTEGRATED, WIKI_PENDING and RELEASE_CERTIFIED are different states.
+14. English code/docs/commits; communicate in the user's language. Use the scoped checks in `docs/backend/TEST_STRATEGY.md` and the evidence-backed commands in `backend/README.md`.
 
-Entry points: `docs/README.md` → product/rules → relevant use case → ADR → API/data/architecture → tests/code. Conflicts are recorded and resolved at the owning document before implementation; do not silently choose a convenient interpretation.
+Contracts and conflicts: `docs/AI_ENGINEERING_CONTRACT.md`; process decision: ADR-013. No source or runtime gate is complete merely because its plan exists.

@@ -1,20 +1,22 @@
 # Backend-first implementation roadmap
 
-Planning baseline: 2026-09-28. **Implementation has not started.** Upstream Android has been imported unchanged. P00 audit/documentation is delivered; Android runtime baseline remains blocked by the environment described in [BASELINE_VALIDATION](docs/planning/BASELINE_VALIDATION.md).
+Planning baseline: 2026-09-28; delivery cadence revised on the same date. **P01-T01…T12 are implemented with prior local validation evidence**; remote acceptance remains to be verified. The Android baseline was subsequently successful, as recorded in [BASELINE_VALIDATION](docs/planning/BASELINE_VALIDATION.md). Do not restart completed foundation work from the initial planning status.
 
 ## How to execute
 
-Start with **P01-T01**. Read [AGENTS](AGENTS.md), [current progress](docs/planning/PROGRESS.md), the selected task and its inputs. All paths below are repository-relative; shorthand document titles resolve through [the documentation index](docs/README.md). Planned commands/paths are created by their prerequisite tasks, not available today. A package test path is adjusted to the actual narrowly owned package established by that task and recorded in its README; never skip a check because its template path does not yet exist.
+Start with **P01-T13** to activate the newly adopted delivery workflow, then resume P02. Read [AGENTS](AGENTS.md), [FAST_EXECUTION](docs/planning/FAST_EXECUTION.md), current [PROGRESS](docs/planning/PROGRESS.md), and only the chosen task plus relevant inputs. [DELIVERY_WORKFLOW](docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](docs/planning/CI_PLAN.md) own execution cadence. Existing workflows remain binding until G01-FLOW; new commands are not available merely because the plan names them.
 
-Every task below is NOT STARTED. MUST belongs to the bounded MVP; SHOULD describes post-pilot improvements in PRODUCT_CONTRACT; LATER requires a separately validated product scope. A task should fit one focused session; if it cannot, split it into letter-suffixed IDs with the same acceptance dependencies before coding. No parallel agent delegation is implied.
+There are **78 tasks across 11 phases**. P01-T01…T12 are LOCAL_DONE based on preserved evidence; all new P01-T13…T17 and P02…P11 tasks are NOT STARTED. MUST is the bounded MVP, LATER is separately validated paid scope. Split an oversized task into letter-suffixed IDs before implementation. One task at a time does not mean one PR per task: one phase branch/draft PR contains its task commits. A requested phase can proceed sequentially without redundant per-task approval. No agent delegation is implied.
 
-**Hard dependency:** P10 (any Android improvements, including CameraX/OCR) starts only after G09 COMPLETE. P01–P09 build/test the backend with protocol clients and fixtures. Existing Android builds/tests may run earlier. Payments/account/sync are outside backend-MVP completeness, so they cannot hold the release gate open indefinitely.
+Validation has three levels: targeted task/risk checks now; specialized phase exit plus quick local/remote checks for integration; full certification on an immutable release candidate after the required phase merges. Explicitly required DB/auth/restore/load acceptance tests remain immediate when their task is implemented. No known failure or critical test may be deferred. Detailed task commands state what must be proven; CI_PLAN prevents redundant whole-project reruns without weakening that proof.
 
-DOD-1 is defined in [AI_ENGINEERING_CONTRACT](docs/AI_ENGINEERING_CONTRACT.md): documented rule, meaningful tests, appropriate static/compile/contract/security/migration checks, reviewed scoped diff, recovery, actual evidence and updated progress. Every task inherits DOD-1. Migration tasks append SQL and test empty/previous schemas. Phase gates are evidence requirements, not completed checkboxes.
+**Hard dependency:** P10 Android improvements start only after G09 RELEASE_CERTIFIED. Existing Android regression tests may run earlier. P01–P08 can integrate without claiming a release; P09 certifies the complete backend/infra. Accounts/billing/sync are outside backend MVP completeness.
+
+DOD-1 in [AI_ENGINEERING_CONTRACT](docs/AI_ENGINEERING_CONTRACT.md) means local task acceptance; phase integration and release certification are separate. Publish one issue/task and milestone/branch/PR per phase within authorized delivery scope; close issues through the verified phase merge; mirror docs to wiki once per merged phase, recording any WIKI_PENDING retry separately. [Phase record template](docs/planning/templates/PHASE_RECORD.md) keeps evidence reusable and current state short.
 
 ## Phase order
 
-P00 import/audit/planning → P01 foundations → P02 official catalog → P03 identity/jobs → P04 observations → P05 evidence → P06 trust/consensus → P07 moderation/privacy → P08 infrastructure/hardening → P09 backend release gate → P10 Android → P11 optional commercial services.
+P00 import/audit/planning → P01 foundations + G01-FLOW delivery activation → P02 official catalog → P03 identity/jobs → P04 observations → P05 evidence → P06 trust/consensus → P07 moderation/privacy → P08 infrastructure/hardening → P09 backend release gate → P10 Android → P11 optional commercial services.
 
 Elapsed dates and total cost are deliberately not promised before prerequisite, parser/geocoder and load evidence. Sequence by dependencies, not invented calendar deadlines.
 
@@ -28,7 +30,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T01 — Prerequisites and inherited baseline
 
-- **ID / priority / status:** P01-T01 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T01 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Reproduce the imported Android baseline and pin a supported backend toolchain plan.
 - **Why:** Avoid building on an unverified environment.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; docs/planning/BASELINE_VALIDATION.md; docs/tech-stack.md.
@@ -46,7 +48,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T02 — Go module and process roots
 
-- **ID / priority / status:** P01-T02 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T02 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Create minimal compilable API/worker/migrator entry points.
 - **Why:** Establish one codebase and build boundary.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; backend/README.md; ADR-005.
@@ -64,7 +66,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T03 — Typed startup configuration
 
-- **ID / priority / status:** P01-T03 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T03 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Validate configuration once at process startup.
 - **Why:** Prevent half-configured production processes.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; INFRASTRUCTURE_PLAN; SECURITY_PRIVACY.
@@ -82,7 +84,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T04 — Structured logging and redaction
 
-- **ID / priority / status:** P01-T04 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T04 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Add slog factory and request/job context.
 - **Why:** Make failures diagnosable without personal payloads.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; SECURITY_PRIVACY; B-BR-011.
@@ -100,7 +102,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T05 — HTTP lifecycle
 
-- **ID / priority / status:** P01-T05 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T05 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Implement bounded HTTP server and graceful shutdown.
 - **Why:** Avoid leaked requests/connections during deploy.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; TARGET_ARCHITECTURE; API_PLAN.
@@ -118,7 +120,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T06 — Liveness and readiness
 
-- **ID / priority / status:** P01-T06 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T06 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Separate process health from dependency readiness.
 - **Why:** Support safe routing without restart loops.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; INFRASTRUCTURE_PLAN.
@@ -136,7 +138,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T07 — Local PostgreSQL/PostGIS service
 
-- **ID / priority / status:** P01-T07 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T07 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Add disposable Compose database with persistent named local volume.
 - **Why:** Enable real spatial integration tests.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; DATA_MODEL; INFRASTRUCTURE_PLAN.
@@ -154,7 +156,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T08 — Migration runner and PostGIS bootstrap
 
-- **ID / priority / status:** P01-T08 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T08 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Apply ordered SQL with lock/checksum ledger.
 - **Why:** Establish the only schema-change mechanism.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; DATA_MODEL.
@@ -172,7 +174,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T09 — Database pool and SQL tooling
 
-- **ID / priority / status:** P01-T09 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T09 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Set pgx pool limits and sqlc ownership structure.
 - **Why:** Keep SQL visible and connections bounded.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; DATA_MODEL; TARGET_ARCHITECTURE.
@@ -190,7 +192,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T10 — API and worker images
 
-- **ID / priority / status:** P01-T10 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T10 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Build reproducible non-root process images.
 - **Why:** Make later deploys reviewable and recoverable.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; INFRASTRUCTURE_PLAN.
@@ -208,7 +210,7 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 ### P01-T11 — Base OpenAPI and golden vocabulary
 
-- **ID / priority / status:** P01-T11 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T11 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Encode base schemas/errors/security and contract checks.
 - **Why:** Freeze money/units/enums before handlers expand.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; API_PLAN; DOMAIN_MODEL.
@@ -224,9 +226,9 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 
 <a id="p01-t12"></a>
 
-### P01-T12 — CI fast and full gate wiring
+### P01-T12 — CI fast and full gate wiring (initial cadence; superseded by G01-FLOW)
 
-- **ID / priority / status:** P01-T12 / MUST / NOT STARTED.
+- **ID / priority / status:** P01-T12 / MUST / LOCAL_DONE (prior evidence; remote integration not reverified).
 - **Goal:** Create path-aware backend checks and improve secret coverage.
 - **Why:** Keep feedback fast without weakening release checks.
 - **Inputs:** docs/backend/TARGET_ARCHITECTURE.md, docs/backend/TEST_STRATEGY.md; TEST_STRATEGY; AI_ENGINEERING_CONTRACT.
@@ -240,9 +242,107 @@ Exit gate: **G01: documented prerequisite report; Go build/unit/static checks; t
 - **Rollback/Recovery:** Revert workflow only; retain proven Android workflow.
 - **Definition of done:** DOD-1 plus this task's acceptance/validation evidence; update status/progress without claiming the next phase is complete.
 
+<a id="delivery-flow-transition"></a>
+
+## P01 extension — Activate fast phase delivery before P02
+
+Entry: foundation P01-T01…T12 exists; confirm its local evidence and actual repository state. **G01-FLOW** exits only when quick/full separation, safe branch/PR lifecycle, idempotent issue preparation, owned-page wiki preview and actual CI/protection migration are proven. Remote or wiki permissions unavailable mean an explicit pending operation, not an invented success. Wiki target unavailability can remain a recorded publication blocker if generated docs are valid; required CI/protection uncertainty blocks workflow activation and merge.
+
+These are implementation tasks for the already delivered plan; this documentation edit does not mark them done. Use a new bounded phase-extension branch/PR and reuse existing completed foundation history. Remote phase publication requires the applicable session scope; LOCAL_ONLY can prepare/test all artifacts and previews without mutations.
+
+<a id="p01-t13"></a>
+
+### P01-T13 — Separate local quick and release verification entry points
+
+- **ID / priority / status:** P01-T13 / MUST / NOT STARTED.
+- **Goal:** Make task, integration and release checks explicit and cheap to select.
+- **Why:** Prevent repeated full suites while preserving critical checks.
+- **Inputs:** CI_PLAN; TEST_STRATEGY; existing check-backend-fast.sh.
+- **Files/areas expected:** Makefile or equivalent small entry points; scripts/check-*; explicit check manifest; backend/README.
+- **Dependencies:** P01-T12; original foundation evidence; current session publication scope.
+- **Tests first:** Compile-only cannot claim tests; selected test filter executes cases; missing tool/unclassified change/secret in committed PR diff fails; docs-only checks meaningful.
+- **Implementation outline:** Build quick-verify and full verification composition from existing gates; retain targeted real PostGIS/race tasks; cache/pin tools; scanner/parser failures must propagate.
+- **Acceptance criteria:** Named entry points work; quick budget measured; full matrix remains complete; no product behavior change.
+- **Validation commands:** Run focused harnesses for gate selection/failure and one measured quick run; inspect full dependency graph, without running all release infrastructure here. Record the exact created executable commands and outcomes in the task evidence.
+- **Risks:** Masking errors or scanning only a clean working-tree status.
+- **Rollback/Recovery:** Keep current mandatory CI intact until T17 activates replacement.
+- **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
+<a id="p01-t14"></a>
+
+### P01-T14 — Phase branch and PR lifecycle controller
+
+- **ID / priority / status:** P01-T14 / MUST / NOT STARTED.
+- **Goal:** Automate isolation, draft PR sync and guarded phase closure.
+- **Why:** Keep one commit per task and one PR per phase with no unsafe shortcuts.
+- **Inputs:** DELIVERY_WORKFLOW; template PHASE_RECORD; P01-T13.
+- **Files/areas expected:** scripts/git-flow.sh and its isolated tests; phase state/manifest.
+- **Dependencies:** P01-T13; original foundation evidence; current session publication scope.
+- **Tests first:** Wrong repo/main/dirty tree, missing required check, failed/skipped/cancelled check, changed head/base and unmerged-branch deletion all refuse; dry-run causes zero mutations.
+- **Implementation outline:** Implement start/sync/status/finish with trusted repo validation, quick local, named check identity and PR head/base binding, compare-and-swap merge and safe ancestry cleanup.
+- **Acceptance criteria:** Synthetic Git/fake GitHub lifecycle passes; missing authorization does not mutate; no full suite per task/phase.
+- **Validation commands:** Run shell syntax/static checks and fake-remote lifecycle tests; actual PR smoke belongs to T17. Record the exact created executable commands and outcomes in the task evidence.
+- **Risks:** Racing PR heads, accepting unknown status, deleting unrelated work.
+- **Rollback/Recovery:** Abort before mutation where possible; preserve branch/PR/issues for safe retry.
+- **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
+<a id="p01-t15"></a>
+
+### P01-T15 — Issue and milestone reconciliation
+
+- **ID / priority / status:** P01-T15 / MUST / NOT STARTED.
+- **Goal:** Create/reuse the current phase task records from canonical roadmap.
+- **Why:** Avoid manual bookkeeping and duplicate issue creation.
+- **Inputs:** DELIVERY_WORKFLOW issue schema; TASK_ISSUE template; P01-T14.
+- **Files/areas expected:** scripts issue/milestone adapter; phase ledger; repository issue template if useful.
+- **Dependencies:** P01-T14; original foundation evidence; current session publication scope.
+- **Tests first:** Paginated duplicate/open/closed task markers, human notes preserved, retry after API failure, dry-run no writes.
+- **Implementation outline:** Read active phase only; match stable markers; synchronize owned fields/labels; link milestone/PR; keep locally completed tasks open until merge.
+- **Acceptance criteria:** Idempotent preview lists exact real/missing records; cannot close completed-looking but unmerged tasks.
+- **Validation commands:** Run reconciliation fixtures with fake API; review upcoming phase preview before authorized publication. Record the exact created executable commands and outcomes in the task evidence.
+- **Risks:** Duplicate spam, overwriting discussion or recreating historical P01 issues.
+- **Rollback/Recovery:** Stop remote reconciliation; keep IDs/result ledger and retry only missing mutations.
+- **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
+<a id="p01-t16"></a>
+
+### P01-T16 — Wiki mirror with owned-page manifest
+
+- **ID / priority / status:** P01-T16 / MUST / NOT STARTED.
+- **Goal:** Generate a navigable wiki snapshot from merged documentation.
+- **Why:** Keep public progress current without per-task manual rewriting.
+- **Inputs:** DELIVERY_WORKFLOW wiki rules; docs index; P01-T15.
+- **Files/areas expected:** scripts wiki exporter/publisher; generated-page manifest; fixture wiki repo.
+- **Dependencies:** P01-T15; original foundation evidence; current session publication scope.
+- **Tests first:** Nested README collision, rewritten links/anchors/assets, manual page preserved, edited managed page conflict, obsolete-owned-only deletion, identical snapshot no-op.
+- **Implementation outline:** Export allowlisted docs at explicit merged SHA; generate Home/sidebar; validate second remote/scope; publish only within authorized wiki scope.
+- **Acceptance criteria:** Offline preview complete with source SHA; no blanket Markdown deletion; no production/private content; failure leaves WIKI_PENDING.
+- **Validation commands:** Run exporter tests against temporary local Git/wiki repositories and link checks; inspect publish dry-run. Record the exact created executable commands and outcomes in the task evidence.
+- **Risks:** Losing hand-written wiki content or leaking private logs.
+- **Rollback/Recovery:** Keep prior wiki commit; stop on conflicts; retry docs sync without backend reruns.
+- **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
+<a id="p01-t17"></a>
+
+### P01-T17 — Activate CI cadence and protected phase integration
+
+- **ID / priority / status:** P01-T17 / MUST / NOT STARTED.
+- **Goal:** Safely switch actual workflows/protection and prove end-to-end delivery.
+- **Why:** Make the new plan operational without a protection gap.
+- **Inputs:** CI_PLAN transition; P01-T13…T16 evidence.
+- **Files/areas expected:** .github/workflows; configured branch protection; delivery docs/state; controlled PR evidence.
+- **Dependencies:** P01-T16; original foundation evidence; current session publication scope.
+- **Tests first:** Draft and docs-only PR run named quick; absent/old/changed-head check blocks; full jobs only selected release/tag; current protections remain until replacement verified.
+- **Implementation outline:** Introduce quick, observe required result, update protections/triggers in reviewed order, exercise authorized phase PR; verify issue closure and wiki publication/pending record.
+- **Acceptance criteria:** G01-FLOW complete only with actual observed checks/protection; origin confirmed; missing permissions or required checks remain BLOCKED.
+- **Validation commands:** Validate workflow config and controller harness; inspect one controlled authorized PR check/head/base/merge and actual branch protection; review wiki result independently. Record the exact created executable commands and outcomes in the task evidence.
+- **Risks:** Required check disappears during transition; plan falsely labelled deployed.
+- **Rollback/Recovery:** Keep/restore prior checks until replacement works; never bypass main protection or publish untested release.
+- **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
 ## P02 — Official catalog and ANP ingestion
 
-Priority: **MUST**. Entry: G01.
+Priority: **MUST**. Entry: G01 + G01-FLOW.
 
 Exit gate: **G02: canonical station identity, precise units/CNPJ, idempotent revisioned import, quarantine/reporting, permitted geolocation path and public official reads validated; no Android modifications.**
 
@@ -255,7 +355,7 @@ Exit gate: **G02: canonical station identity, precise units/CNPJ, idempotent rev
 - **Why:** Prevent parser divergence.
 - **Inputs:** docs/backend/ANP_INGESTION.md, docs/backend/DATA_MODEL.md; CURRENT_STATE_AUDIT A03-A07.
 - **Files/areas expected:** `contracts/testdata/anp; backend/testdata` (area list, not a literal combined path).
-- **Dependencies:** G01; all earlier phase gates.
+- **Dependencies:** G01 + G01-FLOW; all earlier phase gates.
 - **Tests first:** Verify sample hashes and expected legacy-versus-target outputs.
 - **Implementation outline:** Create manifest and cases including labels, precision, unit, header shifts and alphanumeric CNPJ.
 - **Acceptance criteria:** Each case has provenance and intentional compatibility classification.
@@ -1091,7 +1191,7 @@ Exit gate: **G09: backend MVP and infrastructure fully exercised, release eviden
 - **Files/areas expected:** `backend/testdata/e2e; docs/release-evidence` (area list, not a literal combined path).
 - **Dependencies:** G08; all earlier phase gates.
 - **Tests first:** Full register/upload/observe/confirm/dispute/moderate/export/erase flow plus denied paths.
-- **Implementation outline:** Run synthetic clients only; inspect source separation and durable events/jobs.
+- **Implementation outline:** Select an immutable candidate after P01–P08 merges; run the full release matrix once on it with synthetic clients and inspect source separation and durable events/jobs.
 - **Acceptance criteria:** All critical flows pass deployed topology.
 - **Validation commands:** `Run documented deployed E2E and full backend gate`. Where prose names a gate, introduce/document the exact executable command in this task before claiming completion.
 - **Risks:** Happy-path-only evidence or accidental real personal-data use.
@@ -1109,7 +1209,7 @@ Exit gate: **G09: backend MVP and infrastructure fully exercised, release eviden
 - **Files/areas expected:** `contracts; docs/planning; release evidence` (area list, not a literal combined path).
 - **Dependencies:** P09-T01; all earlier phase gates.
 - **Tests first:** Review every A01-A13 resolution/defer rationale and fixture expectation.
-- **Implementation outline:** Rerun existing Android regression baseline; freeze known legacy adapter deltas; verify links and operational commands.
+- **Implementation outline:** Use the same candidate matrix to include the existing Android regression baseline; freeze known legacy adapter deltas; verify links/runbooks without re-running unchanged aggregate evidence.
 - **Acceptance criteria:** No unspecified breaking semantic; baseline environment blockers resolved.
 - **Validation commands:** `Run existing Android unit/lint/build gates and contract validation`. Where prose names a gate, introduce/document the exact executable command in this task before claiming completion.
 - **Risks:** Treating planned Kotlin-Go harness as already passing.
@@ -1400,7 +1500,8 @@ Exit gate: **G11: optional account/billing/sync specifications and implementatio
 
 ## Release-gate checklist G09
 
-- [ ] G01…G08 evidence is linked to tested commits/images/schema/config.
+- [ ] P01–P08 required phase PRs/fixes are integrated; G01…G08 and G01-FLOW evidence is linked to actual checks/commits/images/schema/config. Historical P01 direct commits are recorded without inventing retroactive PRs.
+- [ ] One immutable candidate SHA is selected after phase integration; full expected-result matrix is complete, including reconciliation of any reused specialized evidence. No missing/failed/skipped required release check or production deploy inferred from a phase merge.
 - [ ] Catalog import, identity, observation, media, validation, consensus, moderation and privacy flows run end to end.
 - [ ] Empty/upgrade migrations and duplicate/replay/concurrency cases pass.
 - [ ] Current OpenAPI and shared fixtures are frozen; legacy Android differences documented.

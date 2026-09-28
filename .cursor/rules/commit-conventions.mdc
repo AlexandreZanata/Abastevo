@@ -24,7 +24,8 @@ Scopes: `domain`, `application`, `data`, `ui`, `i18n`, `docs`, `cursor`, `sync`,
 - Reference use cases and business rules in body: `Refs: UC-004`, `Refs: BR-007`
 - One logical change per commit
 - Never commit secrets, keystores, `local.properties`, or build artifacts
-- Never commit unless the user explicitly asks
+- Commit/publish only within session-authorized phase delivery; reuse existing authorization. Planning-only work does not imply publication.
+- One `codex/phase-NN-slug` branch and draft PR per phase; task commits after targeted checks. Full certification only at the release checkpoint. See `docs/planning/DELIVERY_WORKFLOW.md`; activation G01-FLOW is still pending.
 
 ## Before committing code changes
 

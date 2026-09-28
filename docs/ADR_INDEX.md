@@ -20,6 +20,8 @@ Existing Android decisions remain applicable to the imported release. New status
 - [ADR-011 Recoverable VPS deployment and backend completion gate](adr/011-operations-and-android-gate.md) — Adopted for planning.
 - [ADR-012 Preserve MIT and separate hosted convenience from community trust](adr/012-licensing-and-hosted-business.md) — MIT preservation adopted; future license undecided.
 
+- [ADR-013 Fast phase delivery and separate release certification](adr/013-fast-phase-delivery.md) — Policy adopted; G01-FLOW automation/activation pending.
+
 ## Future ADRs when triggered
 
 - Actual provider/tool version selections when alternatives have material tradeoffs (P01/P02).
