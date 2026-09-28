@@ -28,3 +28,15 @@ sql:
         out: db/queries/directory
         sql_package: pgx/v5
         emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/official
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000003_official.sql
+    gen:
+      go:
+        package: official
+        out: db/queries/official
+        sql_package: pgx/v5
+        emit_json_tags: true

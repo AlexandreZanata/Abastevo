@@ -9,9 +9,10 @@
 - P02-T02: LOCAL_DONE — kernel values, 94 subtests, RED→GREEN.
 - P02-T03: LOCAL_DONE — directory repository on real PostGIS, RED→GREEN.
 - P02-T04: LOCAL_DONE — stdlib parser, D06 SELECTED, 8 suites RED→GREEN.
-- P02-T05: LOCAL_DONE — `modules/official/adapters/source` (allowlist from docs/data-sources: exact host, prefixes, download filename globs, file-shaped URLs require globs, no userinfo/ports/query; dial-time IP pinning with explicit deny ranges incl. rebinding gap closed; redirect re-validation + downgrade/loop caps; ETag/Last-Modified conditional + probe discovery; 30MiB/timeout/cancel limits with temp-file cleanup on every path; sha256 over stored bytes); 11 suites on TLS httptest incl. strict-loopback refusal, redirect policy, timeout/cancel/size cleanup, probe changed/unchanged/error; RED proven by neutering glob rule, GREEN on restore; manifest extended.
-- G02: P02-T06…T08 NOT STARTED.
-- Next: **P02-T06 — Revisioned publication**.
+- P02-T05: LOCAL_DONE — allowlisted fetch, 11 suites RED→GREEN.
+- P02-T06: LOCAL_DONE — `db/migrations/000003` (runs with identity unique, revisions with lifecycle checks, per-survey pointer, station prices with row+natural-key indexes, summaries) + `db/queries/official` + `official/domain` (ReviewGate strict 1%/20% boundaries, tally with bounded samples, stdlib-only) + `adapters` Importer (same-bytes NoOp, superseding corrections, batched staging with conflict quarantine + identical restage, single-tx validate/mark/switch, pointer-gated visibility); integration on real PostGIS: no-op, corrected revision, partial invisible + retry, empty refused, 30% drop review with pointer held, 199/200 conflict quarantine publishing; RED proven by forced-publish (unit + integration), GREEN on restore; manifest extended.
+- G02: P02-T07…T08 NOT STARTED.
+- Next: **P02-T07 — Catalog geolocation adapter**.
 - Issues/milestone/PR/wiki: flow draft PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
