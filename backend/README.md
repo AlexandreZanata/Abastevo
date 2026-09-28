@@ -14,13 +14,24 @@ Tooling pins: Go toolchain `go1.27.1` (`go.mod`); `sqlc v1.31.1`
 Static binaries must be built with Go ≥1.27 or typechecking fails; install
 with `GOTOOLCHAIN=go1.27.1 go install <tool>@<version>`.
 
-## Existing gates and planned cadence
+## Verification entry points (P01-T13)
 
-The commands below exist today. G01-FLOW will introduce shared quick/full
-entry points and safely migrate CI/protection settings; `make quick-verify`
-and `scripts/git-flow.sh` are still planned. Use [CI_PLAN](../docs/planning/CI_PLAN.md)
-for focused task checks, phase integration and complete release certification.
-Existing workflow requirements apply until activation is proven.
+Shared local/remote composition lives in `Makefile` and `scripts/`:
+
+```sh
+make quick-verify    # bounded gate: manifest + selection + fast checks + govulncheck
+make verify-release  # quick + full-matrix report (foundation subset, NOT CERTIFIED)
+make test-gate       # focused harness for selection/failure behavior
+```
+
+Manifest `scripts/check-manifest.txt` lists required quick packages and
+checks; missing packages or zero matched tests fail. Docs-only changes run
+docs checks plus contract reference integrity; code changes run the full
+quick set. Unclassified paths, missing tools and secrets in working tree or
+committed PR diff fail. `go test -run '^$'` is compile-only and never counts
+as behavioral evidence. Measured quick budget is 300s warm cache.
+
+Existing gates below remain binding until G01-FLOW T17 migrates CI/protection.
 
 Fast gate, no database (from the repository root):
 

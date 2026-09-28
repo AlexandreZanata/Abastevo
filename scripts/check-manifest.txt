@@ -1,0 +1,39 @@
+# Explicit quick/full check manifest (P01-T13).
+# Quick packages are the foundation behavioral suites that must run
+# in every quick verification. Future suites are outstanding work,
+# recorded explicitly so they are never silently skipped as success.
+
+[quick-packages]
+backend/internal/platform/config
+backend/internal/platform/health
+backend/internal/platform/telemetry
+backend/internal/platform/httpserver
+backend/internal/platform/apicontract
+backend/internal/platform/database
+backend/internal/platform/migrate
+
+[required-checks]
+gofmt
+go-build
+go-vet
+unit-tests
+staticcheck
+sqlc-vet
+sqlc-diff
+openapi-lint
+secret-tracked
+secret-diff
+govulncheck
+docs-refs
+
+[future-suites]
+P02 official catalog ingestion
+P03 identity and jobs
+P04 observations
+P05 evidence
+P06 trust and consensus
+P07 moderation and privacy
+P08 infrastructure hardening
+P09 full E2E auth privacy restore load
+P10 Android full harness
+P11 commercial services

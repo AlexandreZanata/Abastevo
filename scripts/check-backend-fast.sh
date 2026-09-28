@@ -50,12 +50,30 @@ bash scripts/scan-secrets.sh
 
 echo "== secret scan (changed files) =="
 # Scanner scripts carry detection pattern literals; never scan themselves.
-CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' || true)"
+CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
 if [ -n "$CHANGED" ]; then
+    FILES=""
     # shellcheck disable=SC2086
-    if grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-' $CHANGED 2>/dev/null; then
-        echo "ERROR: potential secret pattern in changed files"
-        exit 1
+    for f in $CHANGED; do
+        if [ -f "$f" ]; then
+            FILES="$FILES $f"
+        fi
+    done
+    if [ -n "$FILES" ]; then
+        # shellcheck disable=SC2086
+        set +e
+        SCAN_OUT="$(grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-' $FILES 2>&1)"
+        SCAN_EXIT=$?
+        set -e
+        if [ "$SCAN_EXIT" -eq 0 ]; then
+            echo "$SCAN_OUT"
+            echo "ERROR: potential secret pattern in changed files"
+            exit 1
+        elif [ "$SCAN_EXIT" -ne 1 ]; then
+            echo "$SCAN_OUT" >&2
+            echo "ERROR: changed-file secret scanner failed (exit $SCAN_EXIT)"
+            exit 1
+        fi
     fi
 fi
 
