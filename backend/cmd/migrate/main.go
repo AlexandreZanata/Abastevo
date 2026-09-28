@@ -1,21 +1,42 @@
 // Command migrate is the restricted one-shot schema-migration tool.
 //
-// Configuration is validated once at startup via the platform config package;
-// the migration runner lands in P01-T08. The API role must never run DDL.
+// It applies the embedded append-only chain with lock/checksum ledger and
+// exits non-zero on any failure. The API role must never run DDL.
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
+	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "anpfuel migrate:", err)
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stdout, "anpfuel migrate: running in "+string(cfg.Env)+" (runner lands in P01-T08)")
+}
+
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	applied, err := migrate.Apply(ctx, cfg.DatabaseURL, dbmigrations.Files)
+	if err != nil {
+		return err
+	}
+	if len(applied) == 0 {
+		fmt.Fprintln(os.Stdout, "anpfuel migrate: schema already current")
+		return nil
+	}
+	fmt.Fprintf(os.Stdout, "anpfuel migrate: applied %v\n", applied)
+	return nil
 }
