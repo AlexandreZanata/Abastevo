@@ -1,0 +1,1 @@
+{"id": "money-invalid-missing-amount", "version": 1, "schema": "Money", "valid": false, "provenance": "amount required; synthetic", "value": {"currency": "BRL", "unit": "L"}}

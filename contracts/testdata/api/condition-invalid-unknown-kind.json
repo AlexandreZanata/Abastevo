@@ -1,0 +1,1 @@
+{"id": "condition-invalid-unknown-kind", "version": 1, "schema": "PriceCondition", "valid": false, "provenance": "closed kind enum; synthetic", "value": {"kind": "BARTER", "qualifier_id": null}}

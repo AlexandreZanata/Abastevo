@@ -1,0 +1,1 @@
+{"id": "money-invalid-negative", "version": 1, "schema": "Money", "valid": false, "provenance": "ANP quarantine case; synthetic", "value": {"amount_milli_brl": -100, "currency": "BRL", "unit": "L"}}

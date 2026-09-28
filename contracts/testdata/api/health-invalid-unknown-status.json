@@ -1,0 +1,1 @@
+{"id": "health-invalid-unknown-status", "version": 1, "schema": "HealthStatus", "valid": false, "provenance": "closed status enum; synthetic", "value": {"status": "maybe"}}

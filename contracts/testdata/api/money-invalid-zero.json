@@ -1,0 +1,1 @@
+{"id": "money-invalid-zero", "version": 1, "schema": "Money", "valid": false, "provenance": "structural bound 1..1000000; synthetic", "value": {"amount_milli_brl": 0, "currency": "BRL", "unit": "L"}}

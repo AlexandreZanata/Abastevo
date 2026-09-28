@@ -1,0 +1,1 @@
+{"id": "money-invalid-float", "version": 1, "schema": "Money", "valid": false, "provenance": "B-BR-002 no float money; synthetic", "value": {"amount_milli_brl": 5990.5, "currency": "BRL", "unit": "L"}}

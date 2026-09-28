@@ -1,0 +1,1 @@
+{"id": "money-valid-liter", "version": 1, "schema": "Money", "valid": true, "provenance": "API_PLAN wire syntax; synthetic", "value": {"amount_milli_brl": 6030, "currency": "BRL", "unit": "L"}}

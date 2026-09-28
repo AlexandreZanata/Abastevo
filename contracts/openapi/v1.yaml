@@ -1,0 +1,179 @@
+# anpfuel community platform API, version 1.
+#
+# Status: DRAFT and unpublished. Future endpoints are added here before any
+# handler implements them; a published contract is never overwritten, only
+# superseded. Vocabulary follows docs/backend/DOMAIN_MODEL.md (B-BR-002,
+# FuelPrice/FuelProduct/PriceCondition) and docs/backend/API_PLAN.md wire
+# syntax. No silent enum rename or unit/amount reinterpretation in v1.
+openapi: 3.1.0
+info:
+  title: anpfuel community platform
+  version: 1.0.0-draft
+  description: >
+    Base schemas, error envelope, health skeleton and auth profile reference.
+    Domain endpoints (directory, official, identity, community) land in later
+    tasks, each with contract-first paths added here before code. Writes
+    authenticate by anonymous proof of possession (P-256, RFC 9421 profile);
+    the exact covered components, encoding and challenge binding freeze in
+    P03-T01 (identity profile) and no securityScheme is published before then.
+  contact:
+    name: anpfuel maintainers
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+tags:
+  - name: health
+    description: Process liveness and dependency readiness probes.
+paths:
+  /health/live:
+    get:
+      summary: Process liveness (no dependency checks).
+      operationId: healthLive
+      tags: [health]
+      security: []
+      responses:
+        '200':
+          description: Process event loop is running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: ok
+  /health/ready:
+    get:
+      summary: Dependency readiness (fails closed while DB is down).
+      operationId: healthReady
+      tags: [health]
+      security: []
+      responses:
+        '200':
+          description: Dependencies ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: ready
+        '503':
+          description: A dependency is not ready; process stays alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: not_ready
+components:
+  schemas:
+    Money:
+      description: >
+        Exact price in thousandths of a real. Positive integer 1..1000000
+        per B-BR-002; no float. Unit semantics per A04: L covers
+        per-litre fuels, M3 is CNG per cubic metre, KG_13 is LPG per 13 kg
+        cylinder.
+      type: object
+      required: [amount_milli_brl, currency, unit]
+      example:
+        amount_milli_brl: 6030
+        currency: BRL
+        unit: L
+      properties:
+        amount_milli_brl:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+          example: 6030
+        currency:
+          type: string
+          enum: [BRL]
+          example: BRL
+        unit:
+          $ref: '#/components/schemas/PriceUnit'
+    PriceUnit:
+      description: Physical unit of the amount. Fixed per product in v1.
+      type: string
+      enum: [L, M3, KG_13]
+      example: L
+    FuelProduct:
+      description: >
+        Backend wire vocabulary per D04. Legacy Android GASOLINE_PREMIUM
+        (GASOLINA ADITIVADA) maps only through a named Android adapter in
+        P10 and never appears on the wire (A05).
+      type: string
+      enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+      example: GASOLINE_ADDITIVED
+    PriceCondition:
+      description: >
+        Sale condition. STANDARD forbids qualifier_id (mirrored
+        structurally below); APP/LOYALTY/OTHER qualifier recognition is
+        domain-enforced. Unknown condition is never STANDARD.
+      type: object
+      required: [kind]
+      example:
+        kind: STANDARD
+        qualifier_id: null
+      properties:
+        kind:
+          type: string
+          enum: [STANDARD, CASH, DEBIT, CREDIT, APP, LOYALTY, OTHER]
+        qualifier_id:
+          type: [string, "null"]
+          format: uuid
+          description: Recognized app/program restriction, or null.
+      not:
+        required: [kind, qualifier_id]
+        properties:
+          kind:
+            const: STANDARD
+          qualifier_id:
+            type: string
+            minLength: 1
+    ApiError:
+      description: >
+        Stable machine code plus safe display text. No SQL, keys, raw input
+        or precise coordinates in any field.
+      type: object
+      required: [error]
+      example:
+        error:
+          code: observation.conflict
+          message: safe display text
+          trace_id: req-abc-123
+          details:
+            - field: client_submission_id
+              code: conflict
+      properties:
+        error:
+          type: object
+          required: [code, message, trace_id]
+          properties:
+            code:
+              type: string
+              minLength: 1
+              example: observation.conflict
+            message:
+              type: string
+              description: Safe display text; clients localize via code.
+            trace_id:
+              type: string
+              description: Request ID for operator correlation.
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, code]
+                properties:
+                  field:
+                    type: string
+                  code:
+                    type: string
+    HealthStatus:
+      description: Minimal liveness/readiness envelope.
+      type: object
+      required: [status]
+      example:
+        status: ok
+      properties:
+        status:
+          type: string
+          enum: [ok, ready, not_ready]

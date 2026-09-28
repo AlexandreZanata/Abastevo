@@ -1,0 +1,1 @@
+{"id": "money-invalid-currency", "version": 1, "schema": "Money", "valid": false, "provenance": "BRL only; synthetic", "value": {"amount_milli_brl": 6030, "currency": "USD", "unit": "L"}}

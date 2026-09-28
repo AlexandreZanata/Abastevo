@@ -1,0 +1,1 @@
+{"id": "money-invalid-unit", "version": 1, "schema": "Money", "valid": false, "provenance": "L|M3|KG_13 only; synthetic", "value": {"amount_milli_brl": 6030, "currency": "BRL", "unit": "GALLON"}}

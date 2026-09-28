@@ -1,0 +1,1 @@
+{"id": "error-invalid-missing-code", "version": 1, "schema": "ApiError", "valid": false, "provenance": "stable machine code required; synthetic", "value": {"error": {"message": "safe display text", "trace_id": "req-abc-123"}}}

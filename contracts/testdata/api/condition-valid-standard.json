@@ -1,0 +1,1 @@
+{"id": "condition-valid-standard", "version": 1, "schema": "PriceCondition", "valid": true, "provenance": "API_PLAN example; synthetic", "value": {"kind": "STANDARD", "qualifier_id": null}}

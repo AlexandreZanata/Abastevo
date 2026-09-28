@@ -1,0 +1,1 @@
+{"id": "condition-invalid-standard-with-qualifier", "version": 1, "schema": "PriceCondition", "valid": false, "provenance": "STANDARD forbids qualifier (domain rule mirrored structurally); synthetic", "value": {"kind": "STANDARD", "qualifier_id": "123e4567-e89b-12d3-a456-426614174000"}}

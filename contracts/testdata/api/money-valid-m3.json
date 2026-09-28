@@ -1,0 +1,1 @@
+{"id": "money-valid-m3", "version": 1, "schema": "Money", "valid": true, "provenance": "CNG per cubic metre (A04); synthetic", "value": {"amount_milli_brl": 4999, "currency": "BRL", "unit": "M3"}}

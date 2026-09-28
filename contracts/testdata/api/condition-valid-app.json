@@ -1,0 +1,1 @@
+{"id": "condition-valid-app", "version": 1, "schema": "PriceCondition", "valid": true, "provenance": "APP with recognized qualifier; synthetic", "value": {"kind": "APP", "qualifier_id": "123e4567-e89b-12d3-a456-426614174000"}}

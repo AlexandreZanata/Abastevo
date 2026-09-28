@@ -1,0 +1,1 @@
+{"id": "error-valid-envelope", "version": 1, "schema": "ApiError", "valid": true, "provenance": "API_PLAN error envelope; synthetic", "value": {"error": {"code": "observation.conflict", "message": "safe display text", "trace_id": "req-abc-123", "details": [{"field": "client_submission_id", "code": "conflict"}]}}}

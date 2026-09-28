@@ -1,0 +1,15 @@
+# Pinned contract validator config (vacuum v0.30.6, MIT).
+# Run from the repository root:
+#   vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check
+# Waivers below are deliberate and time-boxed; anything else must be fixed.
+# NOTE: vacuum v0.30.6 resolves extends only as spectral:oas here; the
+# boolean false form disables a rule. Verified rule count: 52 active.
+extends: spectral:oas
+rules:
+  # Base schemas (Money, FuelProduct, ...) are contract-first: referenced by
+  # P02+ paths before handlers exist. Re-enable per schema as paths land.
+  oas3-unused-component: false
+  # Wire convention is snake_case per API_PLAN (amount_milli_brl, trace_id).
+  camel-case-properties: false
+  # No deployment exists yet; servers block lands with staging (P08).
+  oas3-api-servers: false
