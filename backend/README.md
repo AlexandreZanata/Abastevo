@@ -31,6 +31,13 @@ quick set. Unclassified paths, missing tools and secrets in working tree or
 committed PR diff fail. `go test -run '^$'` is compile-only and never counts
 as behavioral evidence. Measured quick budget is 300s warm cache.
 
+Required CI is the always-on **Quick verification** job (`.github/workflows/quick.yml`):
+it runs `make quick-verify` on every PR including drafts plus main pushes, with
+no path filter, so docs-only changes still report a meaningful required result.
+`backend.yml` fast/integration and `ci.yml` test keep running path-triggered as
+non-required signal; their task-level and phase-exit evidence stays mandatory
+per [CI_PLAN](../docs/planning/CI_PLAN.md).
+
 Existing gates below remain binding until G01-FLOW T17 migrates CI/protection.
 
 Fast gate, no database (from the repository root):
