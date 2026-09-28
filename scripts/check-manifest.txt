@@ -15,6 +15,7 @@ backend/internal/platform/anpfixture
 backend/internal/modules/kernel
 backend/internal/modules/directory/domain
 backend/internal/modules/directory/adapters
+backend/internal/modules/official/adapters/anp
 
 [required-checks]
 gofmt

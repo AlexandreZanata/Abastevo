@@ -7,9 +7,10 @@
 - P02 entry G01 + G01-FLOW satisfied. Exit G02 pending; no Android modifications.
 - P02-T01: LOCAL_DONE — fixtures + loader tests; quick-packages extended.
 - P02-T02: LOCAL_DONE — kernel values, 94 subtests, RED→GREEN.
-- P02-T03: LOCAL_DONE — `db/migrations/000002` (stations/historied identifiers/location revisions, partial unique active index, GiST + municipality indexes, append-only RESTRICT) with per-owner sqlc schemas so models never bleed; `db/queries/directory` + `modules/directory/domain` (B-BR-014 projection rule, stdlib-only) + `adapters` repository (atomic ON CONFLICT resolve, crypto UUIDs, WKT mapping); integration on real PostGIS: stable UUID, 16-worker same-CNPJ convergence, alias retire with history, missing/centroid never projected, reviewed projection + geography roundtrip; RED proven by dropping ON CONFLICT, GREEN on restore; manifest extended.
-- G02: P02-T04…T08 NOT STARTED.
-- Next: **P02-T04 — Bounded ANP parser**.
+- P02-T03: LOCAL_DONE — directory repository on real PostGIS, RED→GREEN.
+- P02-T04: LOCAL_DONE — `modules/official/adapters/anp` stdlib-only bounded parser (D06 SELECTED, zero deps): ZIP traversal/bomb guards, DOCTYPE refusal, shared strings, signature-based sheet/header detection (A07, no fixed offsets), streaming rows with byte-exact texts, cached-formula-only/never-evaluate, error-cell flags, Excel serial dates with Lotus-60 refusal; 8 suites incl. header-shift, unknown-label passthrough, malformed/traversal/size refusals; RED proven on both the row cap and the DOCTYPE guard (second needed a valid-workbook evil case), GREEN on restore; manifest extended; D13 marked ACTIVE.
+- G02: P02-T05…T08 NOT STARTED.
+- Next: **P02-T05 — ANP source discovery and download**.
 - Issues/milestone/PR/wiki: flow draft PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
