@@ -1,0 +1,20 @@
+{
+  "id": "auth-wrong-key",
+  "provenance": "P03-T01 frozen profile; synthetic",
+  "jwk_x": "2NG4ukeICbpEqCqTZoM9n6nSjqKwlGITTIVQ7Emc6dQ",
+  "jwk_y": "anyDJLzpyT53Vwgf0w0uXmltQ6D6EXisXDmQNNcpafs",
+  "private_d": "cI6mxcfbMMyuYzlei_T9-vnKFMRKkIhNfDXUHpESsA4",
+  "base_lines": [
+    "\"@method\": POST",
+    "\"@authority\": api.example.invalid",
+    "\"@path\": /v1/contributors",
+    "\"@query\": ",
+    "\"created\": 1735689600",
+    "\"expires\": 1735689900",
+    "\"keyid\": \"fp:e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624\"",
+    "\"nonce\": \"ch-1.client-1\""
+  ],
+  "signature": "-EaZsY92IvoIw2deLUgEsDCTeyLBP65ZGvPiZredpgCKpUTrXWSlWNQHqVGs609HAQ-PA9HgPo42IXN9udXz2w",
+  "valid": false,
+  "note": "key does not match signature"
+}

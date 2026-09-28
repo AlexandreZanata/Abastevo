@@ -1,0 +1,20 @@
+{
+  "id": "auth-tampered-path",
+  "provenance": "P03-T01 frozen profile; synthetic",
+  "jwk_x": "5H8pdbqwCE7YcVh0t7VNWgcQVrZ4S66TjfwBDE8tneE",
+  "jwk_y": "WpcgI0Z8gndT_z9lTn8qgoevjDFsjVAlRvfpo6-KJIs",
+  "private_d": "cI6mxcfbMMyuYzlei_T9-vnKFMRKkIhNfDXUHpESsA4",
+  "base_lines": [
+    "\"@method\": POST",
+    "\"@authority\": api.example.invalid",
+    "\"@path\": /v1/observations",
+    "\"@query\": ",
+    "\"created\": 1735689600",
+    "\"expires\": 1735689900",
+    "\"keyid\": \"fp:e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624\"",
+    "\"nonce\": \"ch-1.client-1\""
+  ],
+  "signature": "3FwqTViv9YoW5V8ti7IfF4o2BdrEEt1uSXzTnIorw3QY4utWKlNKuFbiop4aTks3Nlm2AZL9YTNguMRWdryf2Q",
+  "valid": false,
+  "note": "path changed"
+}
