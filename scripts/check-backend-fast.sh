@@ -49,8 +49,8 @@ echo "== secret scan (tracked) =="
 bash scripts/scan-secrets.sh
 
 echo "== secret scan (changed files) =="
-# The gate script carries its own patterns, so it is never scanned.
-CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v '^scripts/check-backend-fast.sh$' || true)"
+# Scanner scripts carry detection pattern literals; never scan themselves.
+CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' || true)"
 if [ -n "$CHANGED" ]; then
     # shellcheck disable=SC2086
     if grep -nE 'ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-' $CHANGED 2>/dev/null; then

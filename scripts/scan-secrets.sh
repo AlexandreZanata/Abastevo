@@ -31,6 +31,8 @@ PATTERNS=(
 PATH_SPECS=(
     ':!*.md'
     ':!scripts/scan-secrets.sh'
+    # Detection pattern literals live here; same rationale as above.
+    ':!scripts/check-backend-fast.sh'
     ':!docs/**'
     ':!.cursor/**'
     ':!data/src/main/kotlin/com/anpfuel/data/local/fts/**'
