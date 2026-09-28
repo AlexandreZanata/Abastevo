@@ -1,6 +1,6 @@
 # Current state audit
 
-Audit date: 2026-09-28. This is a source audit, not a certification of runtime correctness.
+Audit date: 2026-09-28, **P00 import snapshot**. This is a historical source audit, not a certification of runtime correctness or current implementation status. Later P01 foundation work and delivery-flow activation status are tracked in [PROGRESS](planning/PROGRESS.md).
 
 ## Provenance and scope
 

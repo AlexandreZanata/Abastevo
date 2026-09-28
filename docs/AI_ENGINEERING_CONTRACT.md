@@ -1,36 +1,41 @@
 # AI engineering contract
 
-Applies to future implementation, with scope/authorization from the active user request. Start at AGENTS.md; do not reload the entire repository for each task.
+Scope/authorization comes from the active user request. Start at AGENTS and the [fast execution card](planning/FAST_EXECUTION.md); do not reread the whole repository for each microtask.
 
 ## Sources of truth
 
-The user request governs work scope. Product contract owns product behavior; DOMAIN_MODEL and COMMUNITY_PRICING_SPEC own backend rules; BUC specs own orchestration; ADRs own durable technical decisions; OpenAPI owns wire syntax once introduced; SQL migrations own DB schema; tests demonstrate contracts; implementation must conform. Existing Android docs own legacy behavior until explicitly reconciled. These are complementary responsibilities, not permission to overwrite code because one document is stale.
+Product owns behavior; DOMAIN_MODEL/COMMUNITY_PRICING_SPEC own backend rules; BUC specs own orchestration; ADRs own durable decisions; OpenAPI owns wire syntax; migrations own schema; tests demonstrate contracts. Current Git/PR/check evidence owns delivery state. ROADMAP defines tasks, PROGRESS indexes current state, phase records preserve evidence, and wiki mirrors committed docs rather than creating a second technical authority.
 
-If two sources conflict, record the issue and fix the owning specification/test before implementing. Known conflicts and their planned resolution are in CURRENT_STATE_AUDIT. Do not infer acceptance of an unimplemented design from an “Accepted” historical Android ADR.
+Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-013 and DELIVERY_WORKFLOW supersede the old one-PR-per-task / repeated-full-check interpretation. A process plan is not proof that workflows/protection or remote publication are active.
 
 ## Per-task workflow
 
-1. Read task, inputs, relevant implementation/tests and git status/diff. Check dependencies and phase gate; record current branch without switching away from user work.
-2. State intended file areas and B-BR/BUC. Resolve bounded assumptions locally, recording their rationale; ask only when a required product/authorization decision cannot be inferred.
-3. For behavior, write failing meaningful test, confirm correct failure, implement smallest change, refactor inside scope.
-4. Run focused tests, relevant compile/static/migration/contract checks; inspect own diff including newly created files; scan sensitive changes and run `git diff --check`.
-5. Update progress with exact outcome, evidence and next task. Failures/blockers are not completion. Keep one short current-state file; link longer release evidence rather than accumulating transcripts.
+1. Inspect status/diff, current state, selected task/dependencies and relevant implementation/tests. Identify owned scope; resume or isolate with branch/worktree without changing others' work.
+2. State B-BR/BUC, file areas, risk class and minimal meaningful checks. Record bounded assumptions; seek user input only for required unresolved decisions, not routine microtask transitions within an authorized phase.
+3. Document behavior, write a failing meaningful test, implement minimally and refactor inside scope.
+4. Run task/risk checks once against final relevant inputs. Re-run affected checks only after changes/failures. Never substitute a compile-only or zero-test result for behavior evidence. Review diff, sensitive changes and `git diff --check`.
+5. Update compact task evidence/state. When phase publication is authorized, commit owned files atomically and push the phase branch; keep its PR draft and issue open until verified merge. Fixes after publication are new commits.
 
-## Guardrails
+## Safety boundaries
 
-- Do not rewrite Android, move its modules or rename packages/application ID for branding. Do not improve Android before G09.
-- Do not change rules, invent endpoints/fields, silently round money, suppress unknown ANP fields or convert provider failure into a fabricated price.
-- Domain uses deterministic clock/ID inputs, no I/O/frameworks. Domain unit tests are pure; DB integration tests use real PostGIS.
-- No disabled/deleted failing tests, meaningless mocks or reduced validation to pass CI. Regression fix includes a test.
-- One task/PR = one coherent purpose; split a task if it spans unrelated concepts. Warn on unusually broad source diffs; documentation/import size is not a license for unrelated edits.
-- No framework/broker/cache/database addition without a concrete need, alternatives, maintenance/license/security/build/lock-in review and ADR when architectural.
-- No edits to applied migrations; no manual production schema patches. Expand/contract and recovery tests for schema changes.
-- No broad exception swallowing, silent fallback, input-concatenated SQL or internal error exposure.
-- No production personal data in fixtures, secrets in logs, or release signing material in Git. Read only the config values needed for the task and redact outputs.
-- No custom cryptographic primitive, paid trust boost, public evidence bucket or infinite retry loop.
+- Backend/infra before Android improvements; G09 is release certification, not just a phase PR. Preserve Android modules/packages, offline data and license.
+- No invented API/field, silent money rounding, swallowed error, false source/price fallback or dropped unknown ANP data.
+- Pure deterministic domain tests; real PostGIS for changed transactional/geo/schema behavior. Auth/ownership, replay, idempotency, concurrency, media/privacy and money invariants are immediate risk checks.
+- No test deletion/skip/useless mock, reduced threshold or ignored failure to make CI green. Regression fixes include tests; expensive checks can be scheduled but relevant known failures cannot be deferred.
+- One coherent task/commit; one phase PR with its reviewed task range. Do not accumulate unrelated refactors or implement speculative packages.
+- Dependencies outside established needs require recorded alternatives, maintenance/license/security/build/lock-in analysis and ADR when architectural.
+- Applied migrations are immutable; explicit forward changes and recovery. No manual production patch, destructive cleanup, force push or admin/verification bypass.
+- No secrets/real private data in Git, public wiki, logs or fixtures; no private GPS/media in domain events. Read needed configuration only and redact diagnostics.
+- No custom crypto primitive, purchased trust weight, infinite retry or public evidence bucket.
 
-## Definition of done (DOD-1)
+## Completion levels
 
-Selected task only; B-BR/BUC/spec updated when needed; meaningful tests pass and changed behavior compiled; focused static/security/contract/migration checks pass; recovery explained; no unrelated diff, critical TODO, secret or unsupported claim; progress updated with commands and remaining limits. Documentation-only tasks need document checks, not invented production tests. A runtime release gate cannot be satisfied by writing its checklist.
+**DOD-1 / task LOCAL_DONE:** selected behavior documented; meaningful targeted/risk tests and affected compile/static/contract/migration checks pass; scoped diff/secret review and recovery are recorded; no critical TODO or unsupported claim; issue/phase record reflects actual state. Documentation tasks use document checks. Local completion is enough to proceed to the next dependent task on the same phase branch when its prerequisite is satisfied; it is not merge/release certification.
 
-Future PR description: concrete problem/result, B-BR/BUC, implementation scope, validation/evidence, migration and privacy impact, rollback. English Conventional Commits when commits are requested; never commit merely because a task mentions a branch.
+**Phase INTEGRATED:** all included task acceptance and specialized phase checks pass, local quick and required remote checks/reviews verify the current expected PR head/base, guarded merge succeeds and linked issues close. Wiki synchronization has its own explicit pending/synced status. No duplicate full suite for each microtask or phase.
+
+**Release RELEASE_CERTIFIED:** full required matrix and external operational evidence validate the immutable merged release candidate at the designated release checkpoint (backend P09/G09, then P10/P11 as applicable). A new relevant code/config change invalidates affected evidence. No stable tag/deploy based only on quick CI.
+
+## Publication scope
+
+[DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md) owns branch/issue/PR/wiki policy. Honor existing session authorization for phase delivery without per-action prompts. A planning edit alone does not execute publication or transfer authorization from Goyim-Arena. Record actual remote identifiers and source SHA; never fabricate issues, checks, reviewer approval or wiki completion. Preserve manual wiki content and human issue discussion.

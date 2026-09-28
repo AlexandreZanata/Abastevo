@@ -2,11 +2,12 @@
 
 This repository starts from [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. The existing Android app is preserved. “Postô” is a provisional product name.
 
-**Current status:** source imported and planning documented. No backend, infrastructure deployment, community feature or payment implementation is complete yet. Local Android tests/build were attempted and blocked by missing JDK 17; see [baseline evidence](docs/planning/BASELINE_VALIDATION.md).
+**Current status:** P01 backend foundations and existing CI are implemented, with prior local acceptance recorded. Android baseline re-validation succeeded after prerequisite setup; see [current state](docs/planning/PROGRESS.md) and [baseline evidence](docs/planning/BASELINE_VALIDATION.md). Backend business features and production infrastructure are not release-certified. The fast phase workflow is now planned; its automation and CI/protection migration remain pending G01-FLOW.
 
-**Execution order:** backend and infrastructure → operational acceptance G09 → Android integration/improvements → optional hosted commercial services. First task: [P01-T01](ROADMAP.md#p01-t01).
+**Execution order:** backend and infrastructure → operational acceptance G09 → Android integration/improvements → optional hosted commercial services. Next task: [P01-T13](ROADMAP.md#p01-t13) to activate delivery helpers before P02. Focused tests run per task, short CI gates each phase integration, and P09/G09 certifies the full backend/infra candidate.
 
 - [Roadmap with executable microtasks](ROADMAP.md)
+- [Fast phase delivery: branches, PRs, issues and wiki](docs/planning/DELIVERY_WORKFLOW.md), [execution card](docs/planning/FAST_EXECUTION.md) and [CI cadence](docs/planning/CI_PLAN.md)
 - [Documentation index](docs/README.md) and [current audit](docs/CURRENT_STATE_AUDIT.md)
 - [Target architecture](docs/backend/TARGET_ARCHITECTURE.md), [API plan](docs/backend/API_PLAN.md) and [infrastructure plan](docs/backend/INFRASTRUCTURE_PLAN.md)
 - [Product scope](docs/product/PRODUCT_CONTRACT.md), [privacy/security](docs/security/SECURITY_PRIVACY.md) and [decisions](docs/planning/DECISIONS.md)

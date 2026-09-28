@@ -2,6 +2,8 @@
 
 Reference: user-supplied `plano-para-comercialização-domeuprojetoopensource.txt` (82 sections), reviewed as planning material. Direct user request controls ordering and scope. No embedded request for a role, command, production change or payment is treated as independent authorization.
 
+Revision scope: the initial P00 plan had 73 tasks and no backend implementation. Subsequent P01 foundation commits now exist. The Goyim-Arena workflow adaptation adds P01-T13…T17, bringing the current roadmap to **78 tasks**. Historical statements below about the original delivery describe P00, not current implementation. [PROGRESS](PROGRESS.md) is the current state.
+
 ## Adopted, adjusted and deferred
 
 Adopted: preserve the existing app, simple Go modular monolith, PostgreSQL/PostGIS, private object media, distinct ANP/community sources, anonymous contribution, immutable facts, testable rules, privacy, fraud controls, explicit contracts and executable microtasks.
@@ -25,7 +27,7 @@ Deferred: optional account, entitlement/billing, cloud sync and commercial produ
 - **31–37 TDD/test pyramid/determinism/contracts/migrations/performance/projection:** TEST_STRATEGY, ANP_INGESTION, COMMUNITY_PRICING_SPEC, INFRASTRUCTURE_PLAN; all relevant task tests/gates.
 - **38–41 Security/privacy/retention/moderation:** SECURITY_PRIVACY, DOMAIN_MODEL, BUC-006/007; P07/P08.
 - **42–43 Observability/failures:** INFRASTRUCTURE_PLAN failure-mode runbook, RISKS; P08/P09.
-- **44–53 Dependency/agent rules/tasks/workflow/docs/AGENTS/progress/ADR/CI/Git:** AGENTS, AI_ENGINEERING_CONTRACT, ROADMAP, docs index, PROGRESS, ADR_INDEX; P01-T12 and task DOD-1.
+- **44–53 Dependency/agent rules/tasks/workflow/docs/AGENTS/progress/ADR/CI/Git:** AGENTS, AI_ENGINEERING_CONTRACT, ROADMAP, docs index, PROGRESS, ADR_INDEX; P01-T12 initial CI; P01-T13…T17/G01-FLOW superseding cadence, DELIVERY_WORKFLOW/FAST_EXECUTION/CI_PLAN, ADR-013 and task DOD-1.
 - **54–55 Deployment/scale:** INFRASTRUCTURE_PLAN and TARGET_ARCHITECTURE, ADR-011; P08/G09. No speculative distributed infrastructure.
 - **56–59 Build in public/license/brand/README:** OPEN_SOURCE_BUSINESS, TRADEMARKS, README, ADR-012; source license unchanged.
 - **60 Existing audit:** CURRENT_STATE_AUDIT and BASELINE_VALIDATION; audit written before target plan.
@@ -37,11 +39,19 @@ Deferred: optional account, entitlement/billing, cloud sync and commercial produ
 - **70–72 Analytics/product metrics/freshness:** PRODUCT_CONTRACT, SECURITY_PRIVACY inventory, COMMUNITY_PRICING_SPEC and INFRASTRUCTURE_PLAN; no invasive analytics SDK.
 - **73 Planning only:** README/PROGRESS status and imported source comparison; no backend Go code, new dependencies or production migrations created.
 - **74 Mandatory deliverables A–M:** all named files exist in docs index plus root ROADMAP.md (locations below).
-- **75–76 Microtask format/priorities:** 73 tasks, each with ID/goal/why/inputs/areas/dependencies/tests/outline/acceptance/commands/risks/recovery/DOD; MUST backend/app versus LATER paid scope. SHOULD refinement list in PRODUCT_CONTRACT.
+- **75–76 Microtask format/priorities:** 78 current tasks (73 original plus five workflow tasks), each with ID/goal/why/inputs/areas/dependencies/tests/outline/acceptance/commands/risks/recovery/DOD; MUST backend/app versus LATER paid scope. SHOULD refinement list in PRODUCT_CONTRACT.
 - **77 Risk matrix:** RISKS contains probability, impact, detection, mitigation, recovery and ownership for 15 risks.
-- **78 Decisions:** DECISIONS contains options, recommendation, rationale, tradeoff and decision deadline for D01…D12.
+- **78 Decisions:** DECISIONS contains options, recommendation, rationale, tradeoff and decision deadline for D01…D13.
 - **79 Cost:** INFRASTRUCTURE_PLAN contains 1k/10k/100k/1M MAU scenarios, explicit workload assumptions, byte/operation drivers and measured scale triggers; no invented vendor quote.
-- **80–82 Agent-ready handoff/principles/audit first:** AGENTS, ROADMAP P01-T01, PROGRESS, audit and validation artifacts; user receives direct entry links and honest baseline limitations.
+- **80–82 Agent-ready handoff/principles/audit first:** AGENTS, ROADMAP (P01-T01 original entry; P01-T13 current continuation), PROGRESS, audit and validation artifacts; user receives direct entry links and honest baseline limitations.
+
+## Direct workflow request coverage
+
+- Branch isolation and fast execution: DELIVERY_WORKFLOW, FAST_EXECUTION, AGENTS, engineering contract and P01-T14.
+- CI at integration/release boundaries with immediate targeted safety checks: CI_PLAN, TEST_STRATEGY, P01-T13/T17 and P09/G09; existing checks stay active during transition.
+- Issues/milestones and phase PRs: stable task markers/templates, P01-T14/T15, no duplicate creation or premature issue closure.
+- Wiki maintenance: canonical Markdown, source SHA/owned-page manifest, recursive links, manual-page preservation and P01-T16.
+- Same approach as Goyim-Arena: ADR-013 records inspected provenance and deliberate adaptations; reference-project permissions, release phase numbers and stack are not imported.
 
 ## Mandatory named artifacts
 
@@ -61,4 +71,4 @@ Deferred: optional account, entitlement/billing, cloud sync and commercial produ
 
 ## Deliberate implementation boundaries
 
-OpenAPI syntax, concrete fixtures, Go module, SQL migrations, Compose services, CI and operational scripts are subsequent roadmap outputs, not fabricated placeholders claimed as complete. Runtime privacy/legal review, hosting credentials/provider selection, restore/load results and device interoperability remain real execution gates. A “complete plan” describes those tasks and acceptance evidence; it does not imply the backend is already running.
+At P00, OpenAPI syntax, fixtures, Go module, migrations, Compose, CI and operational scripts were subsequent roadmap outputs. P01 has since introduced their foundation subset, evidenced separately; backend business behavior and full infrastructure remain unfinished. The new phase/issue/wiki/quick-full helpers are still planned, not fabricated placeholders claimed as complete. Runtime privacy/legal review, hosting credentials/provider selection, restore/load results and device interoperability remain real execution gates. A “complete plan” describes those tasks and acceptance evidence; it does not imply the backend is already running.

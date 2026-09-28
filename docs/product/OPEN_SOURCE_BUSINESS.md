@@ -20,6 +20,10 @@ Use a simple contribution guide and consider DCO sign-off for provenance (recomm
 
 Publish architecture, source, tests, SQL migrations, consensus algorithm, OpenAPI, release notes and reproducible synthetic benchmarks. Publish progress with actual completion evidence, not aspirational feature claims. README points to roadmap, local setup and known limitations. Add screenshots only when the UI exists and reflects the current release; no invented communities, support links or sponsors.
 
+Delivery cadence: one milestone/branch/PR per phase, one linked issue and atomic commit per task. Reconcile current-phase issues from stable roadmap IDs rather than creating all future work at once. Close task issues through the verified phase merge; local completion alone is not integration. Update canonical docs alongside changes and mirror the merged snapshot to the wiki once per phase. The mirror must preserve manual pages and use a manifest of generated pages; a failed sync is WIKI_PENDING, not a reason to repeat application CI.
+
+Follow [DELIVERY_WORKFLOW](../planning/DELIVERY_WORKFLOW.md) for recorded publication scope and [FAST_EXECUTION](../planning/FAST_EXECUTION.md) for concise evidence. Helpers/remote activation are pending P01-T13…T17; this planning edit does not create issues, PRs or wiki pages.
+
 Keep private: production database, personal data, evidence photos, signing keys, provider tokens, private operational access, and sensitive deployment/anti-abuse runtime settings. Public algorithm changes should remain explainable and versioned even when specific production abuse thresholds are private. Aggregated statistics need privacy review and sufficiently large groups.
 
 ## Commercial extension guardrails

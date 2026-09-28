@@ -1,6 +1,8 @@
 # Test strategy and gates
 
-Tests below are planned unless explicitly reported in BASELINE_VALIDATION. No backend test suite exists yet. Avoid claiming a planned command ran.
+P01 platform and API-contract tests now exist; prior local runs are recorded in the [P01 evidence archive](../planning/history/P01_FOUNDATION_EVIDENCE.md) and [baseline validation](../planning/BASELINE_VALIDATION.md). Business, end-to-end and deployed-infrastructure coverage below remains planned where its feature does not exist. Never infer a new successful run from historical evidence.
+
+[CI_PLAN](../planning/CI_PLAN.md) owns cadence: focused local checks per task, specialized exit checks plus short CI per phase integration, and the complete matrix on the P09/G09 candidate. G01-FLOW activation is pending; existing workflows still apply. Targeted critical checks are never deferred to the end of the project.
 
 ## Risk-based checks
 
@@ -27,9 +29,9 @@ bash scripts/validate-repo-baseline.sh
 ./gradlew :data:connectedDebugAndroidTest :app:connectedDebugAndroidTest
 ```
 
-Requires JDK 17, Android SDK 35 and emulator/device for instrumentation. The local audit did not satisfy these prerequisites. Do not change toolchain versions merely to make this workstation pass.
+Requires JDK 17, Android SDK 35 and emulator/device for instrumentation. P01 re-validation records a successful unit/build baseline after prerequisite setup; it does not imply instrumentation passed or every future environment has these prerequisites. Do not change toolchain versions merely to make a workstation pass.
 
-Planned backend gate commands, **to be introduced in P01**; examples below run from `backend/` unless noted:
+Backend tools and initial gate scripts were introduced in P01; exact pins and disposable DB environment are in [backend/README](../../backend/README.md). The commands below are verification building blocks, **not a checklist to repeat after every task**. Examples run from `backend/` unless noted:
 
 ```sh
 go test ./...
@@ -43,9 +45,11 @@ git diff --exit-code -- internal/
 go test -tags=integration ./...
 ```
 
-Use `gofmt -l` with an explicit fail-if-output check (gofmt listing alone can exit zero). `sqlc generate` runs only after config/SQL exist; generated diff check belongs in a clean CI checkout. Pin staticcheck/sqlc/govulncheck and OpenAPI validators. The integration job must set a documented disposable DATABASE_URL and apply migrations; it must fail, not skip, if PostGIS is unavailable. P01 defines exact invocation/env in backend/README before later tasks rely on it.
+Use `gofmt -l` with an explicit fail-if-output check (gofmt listing alone can exit zero). `sqlc generate` runs only after config/SQL exist; generated diff check belongs in a clean CI checkout. Pin staticcheck/sqlc/govulncheck and OpenAPI validators. The integration job must set a documented disposable DATABASE_URL and apply migrations; it must fail, not skip, if PostGIS is unavailable. Follow the implemented invocation/env in backend/README; never point destructive integration fixtures at a persistent environment.
 
-Fast gate: compile, focused/all inexpensive unit tests, gofmt, vet, staticcheck; OpenAPI checks on contract changes; sqlc/migration integration on data changes; changed-file secret scan and dependency vulnerability scan. Full gate before backend release: all/race tests, real PostGIS, empty/upgrade migrations, end-to-end/auth/evidence, deploy/restore/load evidence, existing Android regression baseline and frozen cross-language fixture expectations. Full Kotlin↔Go harness is P10 because app work is gated.
+Target quick gate: format/build/vet, actual short critical/platform suites, reference/secret checks and applicable contract-generation checks, within a measured budget. A compile-only test command is not behavioral evidence. Migration/SQL/security changes require their relevant real DB/adversarial tests locally and at specialized phase exit; dependency changes require relevant vulnerability checks immediately. Do not turn the quick job into the whole release matrix.
+
+Full gate before backend release: all unit/static/coverage/race tests, real PostGIS, empty/upgrade migrations, end-to-end/auth/evidence, dependency/image/security scans, deploy/restore/load evidence, existing Android regression baseline and frozen cross-language fixture expectations. Select the immutable candidate after phase integration and record the complete expected-result manifest. Reuse expensive evidence only for demonstrably matching artifacts/config/inputs under CI_PLAN. Full Kotlin↔Go harness is P10 because app work is gated.
 
 ## Fixture boundaries and anti-flakiness
 
@@ -55,4 +59,4 @@ Use fixed clock and UUID sequences, stable sort/tie-breaks, barriers rather than
 
 ## Gate evidence
 
-For every task record commands, environment, pass/fail and limitation in docs/planning/PROGRESS.md or a linked release evidence file. No disabled/deleted tests to create green CI. A failed prerequisite is BLOCKED, not PASS. G09 cannot be checked off while restore/security/runtime/backend requirements remain theoretical.
+For every task record commands, tested commit/tree, environment, pass/fail and limitation in the compact phase record linked from docs/planning/PROGRESS.md. Archive long histories; keep current state short. LOCAL_DONE, phase INTEGRATED and RELEASE_CERTIFIED are separate states. No disabled/deleted tests to create green CI. A failed prerequisite is BLOCKED, not PASS. G09 cannot be checked off while restore/security/runtime/backend requirements remain theoretical.

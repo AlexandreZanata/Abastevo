@@ -1,15 +1,17 @@
 # Infrastructure, release and recovery plan
 
-Status: not provisioned. Initial target is one Linux VPS with 16 GB RAM, Docker Compose, Caddy, API, worker and PostgreSQL/PostGIS; private R2-compatible storage and Cloudflare are external. No infrastructure purchases, credentials, domain registration or production changes occur during planning.
+Status: production/staging not provisioned; P01 local Compose/database and container foundations exist. Initial deployment target is one Linux VPS with 16 GB RAM, Docker Compose, Caddy, API, worker and PostgreSQL/PostGIS; private R2-compatible storage and Cloudflare are external. No infrastructure purchases, credentials, domain registration or production changes occur during planning.
 
 ## Environments and delivery
 
 - Local: disposable Compose database/storage emulator with synthetic fixtures; bind local ports to loopback and isolated volumes. Explicit local reset command only for disposable data.
-- CI: ephemeral real PostGIS database, synthetic objects, deterministic tests; no production secret access on fork PRs.
+- CI: short required checks for phase integration; ephemeral real PostGIS and synthetic objects for selected critical checks and full release certification. No production secret access on fork PRs. Current path-aware workflows remain active until G01-FLOW; [CI_PLAN](../planning/CI_PLAN.md) defines the safe transition.
 - Staging: separate DB, storage bucket/prefix, keys and hostname. Test actual R2 URL/ACL behavior, TLS/edge/proxy signature behavior and deploy/rollback here. Do not restore raw production data into ordinary staging.
 - Production: private DB network, persistent volume, controlled SSH, non-root containers/read-only filesystem where possible, resource/health limits, versioned images by digest, off-host backup. API/worker from one reviewed release commit; migrator invoked once with lock.
 
-Deploy sequence: build/test/scan → immutable image → staging → verify recent backup and schema compatibility → run additive migration under timeout → start release API/worker → readiness and synthetic smoke → switch traffic → monitor. Record commit, image digests, schema version, config/policy versions and operator. No secrets in release evidence.
+Release cadence: P01–P08 phase merges integrate code and docs; they do not automatically deploy production or certify the entire backend. P09 selects an immutable candidate after those merges, runs the complete matrix and records G09 acceptance before Android work. P08 provisioning/restore/load checks still run when needed to validate that phase; reuse only demonstrably matching evidence. See [delivery workflow](../planning/DELIVERY_WORKFLOW.md).
+
+Deploy sequence for a release candidate: build/test/scan → immutable image → staging → verify recent backup and schema compatibility → run additive migration under timeout → start release API/worker → readiness and synthetic smoke → switch traffic → monitor. Record commit, image digests, schema version, config/policy versions and operator. No secrets in release evidence.
 
 Rollback: first stop rollout, route to previous compatible binary, pause affected worker type, retain accepted jobs. Prefer forward migration fix over destructive down migration. If corruption requires restoration, disable writes, preserve forensic snapshot, restore last verified backup to a new volume/instance, replay allowed changes if supported, apply deletion/retention ledger, check consistency and only then switch traffic. Never `docker compose down -v` against persistent environments.
 

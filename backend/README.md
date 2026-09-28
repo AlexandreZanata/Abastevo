@@ -1,9 +1,11 @@
 # Backend workspace
 
-Status: P01-T02 roots only. Go module (`go 1.27`, toolchain `go1.27.1`) with
-minimal `cmd/api`, `cmd/worker` and `cmd/migrate` composition roots exists and
-compiles (`go test ./... && go build ./cmd/...` from `backend/`). No
-dependencies, production migrations or API implementation have been created.
+Status: P01-T01…T12 foundations exist: API/worker/migrator roots, typed config,
+redacted telemetry, HTTP/health lifecycle, pgx pool, migration runner, sqlc,
+container definitions and base OpenAPI vectors. Business modules and
+production infrastructure remain ahead. See [current state](../docs/planning/PROGRESS.md)
+and [prior task evidence](../docs/planning/history/P01_FOUNDATION_EVIDENCE.md);
+this documentation revision does not rerun those suites or verify remote CI.
 
 Tooling pins: Go toolchain `go1.27.1` (`go.mod`); `sqlc v1.31.1`
 (`sqlc vet && sqlc generate` from `backend/`; generated packages committed).
@@ -12,7 +14,13 @@ Tooling pins: Go toolchain `go1.27.1` (`go.mod`); `sqlc v1.31.1`
 Static binaries must be built with Go ≥1.27 or typechecking fails; install
 with `GOTOOLCHAIN=go1.27.1 go install <tool>@<version>`.
 
-## Gates
+## Existing gates and planned cadence
+
+The commands below exist today. G01-FLOW will introduce shared quick/full
+entry points and safely migrate CI/protection settings; `make quick-verify`
+and `scripts/git-flow.sh` are still planned. Use [CI_PLAN](../docs/planning/CI_PLAN.md)
+for focused task checks, phase integration and complete release certification.
+Existing workflow requirements apply until activation is proven.
 
 Fast gate, no database (from the repository root):
 
@@ -27,8 +35,12 @@ Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
 docker compose -f infra/compose.dev.yml up -d db
-cd backend && ANPFUEL_DATABASE_URL=postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable go run ./cmd/migrate
-cd backend && go test -race -count=1 -tags=integration ./...
+(
+  cd backend
+  export ANPFUEL_DATABASE_URL=postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable
+  export ANPFUEL_TEST_DATABASE_URL="$ANPFUEL_DATABASE_URL"
+  go run ./cmd/migrate && go test -race -count=1 -tags=integration ./...
+)
 ```
 
 Integration fails when PostGIS is unreachable; it never skips. CI
@@ -36,6 +48,6 @@ Integration fails when PostGIS is unreachable; it never skips. CI
 contract, infra and gate-script changes; the Android workflow keeps running
 `./gradlew test` on Android paths and skips pure docs/contract/backend edits.
 
-Start with [P01-T01](../ROADMAP.md#p01-t01), read [architecture](../docs/backend/TARGET_ARCHITECTURE.md) and [test strategy](../docs/backend/TEST_STRATEGY.md). Implementation will add `cmd/api`, `cmd/worker`, `cmd/migrate`, owned business modules, explicit SQL and reproducible development commands incrementally.
+Continue with [P01-T13](../ROADMAP.md#p01-t13); read [architecture](../docs/backend/TARGET_ARCHITECTURE.md) and [test strategy](../docs/backend/TEST_STRATEGY.md) as the selected task requires. P02 starts after G01 and G01-FLOW; subsequent phases add owned business modules and explicit SQL incrementally.
 
 The Android source remains in its original root modules. Do not move it under a new mobile directory.
