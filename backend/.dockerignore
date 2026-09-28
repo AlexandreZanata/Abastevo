@@ -1,0 +1,7 @@
+# Backend-scoped build excludes: local env, coverage, editor noise.
+.env
+.env.*
+*.test
+coverage.out
+.idea/
+.vscode/

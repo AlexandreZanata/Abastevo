@@ -1,0 +1,11 @@
+# Image builds run from the repository root (see infra/docker/Dockerfile).
+# Default-ignore everything; re-include only the Go build inputs so Android
+# sources, docs, samples and local env files never enter the build context.
+*
+!backend/
+backend/*
+!backend/go.mod
+!backend/go.sum
+!backend/cmd/
+!backend/internal/
+!backend/db/
