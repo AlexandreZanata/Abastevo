@@ -5,9 +5,10 @@
 - Phase P01+G01-FLOW INTEGRATED: PR #2 merged `2706ba4` → `8c21945` (match-head-commit, required Quick verification SUCCESS); PR #1 auto-closed (commits contained); branches `codex/phase-01-delivery-flow` and `codex/phase-01-delivery-plan` deleted locally + remotely, verified; merge recorded in PR #2 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Main protection ACTIVE: strict, required `[Quick verification]`, PR required, enforce-admins, no force/deletion.
 - P02 entry G01 + G01-FLOW satisfied. Exit G02 pending; no Android modifications.
-- P02-T01: LOCAL_DONE — `contracts/testdata/anp/` manifest v1 + 30 synthetic normalization cases (7 products, A05 bridge, accents/spaces, precision/zero/negative, Excel/leap dates, week range, numeric/alnum/invalid CNPJ, address, header shift, duplicates, retry, corrected revision, malformed/missing-sheet, summaries) with sha256 provenance + compatibility classes; `backend/internal/platform/anpfixture` loader tests (manifest/hash, legacy-vs-target, 7-product units, A04/A05/A06 bridges, no-personal-data allowlist); RED proven by corruption, GREEN on restore; quick-packages manifest extended.
-- G02: P02-T02…T08 NOT STARTED.
-- Next: **P02-T02 — Price, product, condition and CNPJ values**.
+- P02-T01: LOCAL_DONE — fixtures + loader tests; quick-packages extended.
+- P02-T02: LOCAL_DONE — `backend/internal/modules/kernel` (Product/Unit/Price/Condition/CNPJ stdlib-only values, integer milli-BRL 1..1000000, typed errors + QuarantineCode, A05 wire bridge, accent folding, leading-zero/alphanumeric CNPJ with check digits); 94 subtests incl. T01-fixture-driven price/CNPJ assertions and stdlib-import boundary; RED proven by math break, GREEN on restore; manifest extended.
+- G02: P02-T03…T08 NOT STARTED.
+- Next: **P02-T03 — Canonical station repository**.
 - Issues/milestone/PR/wiki: flow draft PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

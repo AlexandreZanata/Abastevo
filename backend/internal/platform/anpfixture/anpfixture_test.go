@@ -323,7 +323,10 @@ func TestA04PrecisionAndUnits(t *testing.T) {
 func TestNoProductionPersonalData(t *testing.T) {
 	m := loadManifest(t)
 	dir := anpDir(t)
-	secret := []string{"ghp_", "BEGIN PRIVATE KEY", "sk_live_", "AKIA"}
+	// Patterns are assembled at runtime so this very file never carries a
+	// matchable literal: scanner exclusions stay limited to the scanner and
+	// gate scripts themselves.
+	secret := []string{"gh" + "p_", "BEGIN PRIVATE " + "KEY", "sk" + "_live_", "AK" + "IA"}
 	for _, c := range m.Cases {
 		fx := loadCase(t, dir, c.File)
 		if fx.Provenance != "synthetic" {

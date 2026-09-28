@@ -12,6 +12,7 @@ backend/internal/platform/apicontract
 backend/internal/platform/database
 backend/internal/platform/migrate
 backend/internal/platform/anpfixture
+backend/internal/modules/kernel
 
 [required-checks]
 gofmt
