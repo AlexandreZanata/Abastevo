@@ -6,9 +6,10 @@
 - Main protection ACTIVE: strict, required `[Quick verification]`, PR required, enforce-admins, no force/deletion.
 - P02 entry G01 + G01-FLOW satisfied. Exit G02 pending; no Android modifications.
 - P02-T01: LOCAL_DONE — fixtures + loader tests; quick-packages extended.
-- P02-T02: LOCAL_DONE — `backend/internal/modules/kernel` (Product/Unit/Price/Condition/CNPJ stdlib-only values, integer milli-BRL 1..1000000, typed errors + QuarantineCode, A05 wire bridge, accent folding, leading-zero/alphanumeric CNPJ with check digits); 94 subtests incl. T01-fixture-driven price/CNPJ assertions and stdlib-import boundary; RED proven by math break, GREEN on restore; manifest extended.
-- G02: P02-T03…T08 NOT STARTED.
-- Next: **P02-T03 — Canonical station repository**.
+- P02-T02: LOCAL_DONE — kernel values, 94 subtests, RED→GREEN.
+- P02-T03: LOCAL_DONE — `db/migrations/000002` (stations/historied identifiers/location revisions, partial unique active index, GiST + municipality indexes, append-only RESTRICT) with per-owner sqlc schemas so models never bleed; `db/queries/directory` + `modules/directory/domain` (B-BR-014 projection rule, stdlib-only) + `adapters` repository (atomic ON CONFLICT resolve, crypto UUIDs, WKT mapping); integration on real PostGIS: stable UUID, 16-worker same-CNPJ convergence, alias retire with history, missing/centroid never projected, reviewed projection + geography roundtrip; RED proven by dropping ON CONFLICT, GREEN on restore; manifest extended.
+- G02: P02-T04…T08 NOT STARTED.
+- Next: **P02-T04 — Bounded ANP parser**.
 - Issues/milestone/PR/wiki: flow draft PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
