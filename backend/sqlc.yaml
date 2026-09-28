@@ -1,0 +1,15 @@
+# sqlc v1.31.1 (MIT). Reproduce with: sqlc vet && sqlc generate (from backend/).
+# Generated packages are committed; CI verifies a clean re-generate.
+# Ownership: each db/queries/<owner> package is owned by one module; no
+# module imports another module's generated package.
+version: "2"
+sql:
+  - engine: postgresql
+    queries: db/queries/platform
+    schema: db/migrations
+    gen:
+      go:
+        package: platform
+        out: db/queries/platform
+        sql_package: pgx/v5
+        emit_json_tags: true

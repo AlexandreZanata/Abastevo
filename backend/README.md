@@ -5,6 +5,10 @@ minimal `cmd/api`, `cmd/worker` and `cmd/migrate` composition roots exists and
 compiles (`go test ./... && go build ./cmd/...` from `backend/`). No
 dependencies, production migrations or API implementation have been created.
 
+Tooling pins: Go toolchain `go1.27.1` (`go.mod`); `sqlc v1.31.1`
+(`sqlc vet && sqlc generate` from `backend/`; generated packages committed).
+`chi v5.3.2`, `pgx v5.11.0` (both MIT, permissive transitives only).
+
 Start with [P01-T01](../ROADMAP.md#p01-t01), read [architecture](../docs/backend/TARGET_ARCHITECTURE.md) and [test strategy](../docs/backend/TEST_STRATEGY.md). Implementation will add `cmd/api`, `cmd/worker`, `cmd/migrate`, owned business modules, explicit SQL and reproducible development commands incrementally.
 
 The Android source remains in its original root modules. Do not move it under a new mobile directory.

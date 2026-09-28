@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
@@ -35,9 +36,14 @@ func run() error {
 		return err
 	}
 	router := httpserver.NewRouter(logger)
-	// No readiness checks yet: the DB/schema probe lands with the pool in
-	// P01-T09. Until then readiness reports process admission only.
-	healthHandler, err := health.New(logger, 0)
+	// Lazy pool: the process boots (live, not ready) while PostgreSQL is
+	// down. Closed after the server drains, at shutdown.
+	pool, err := database.Open(context.Background(), cfg.DatabaseURL, database.DefaultOptions())
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	healthHandler, err := health.New(logger, 0, health.Check{Name: "db", Fn: pool.Ping})
 	if err != nil {
 		return err
 	}
