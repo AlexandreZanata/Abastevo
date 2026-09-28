@@ -1,0 +1,30 @@
+{
+  "id": "history-valid",
+  "version": 1,
+  "schema": "OfficialPriceHistory",
+  "valid": true,
+  "provenance": "P02-T08 history page; synthetic",
+  "value": {
+    "items": [
+      {
+        "revision_id": "aac027be-d331-40e4-8d63-52ec3b8d2f41",
+        "survey_week": {
+          "start": "2026-09-20",
+          "end": "2026-09-26"
+        },
+        "collected_on": "2026-09-24",
+        "fuel_product": "GASOLINE_REGULAR",
+        "unit": "L",
+        "amount_milli_brl": 6030,
+        "currency": "BRL",
+        "source": {
+          "kind": "ANP",
+          "url": "https://www.gov.br/anp/w1.xlsx",
+          "checksum": "sha256:aaa"
+        }
+      }
+    ],
+    "next_cursor": null,
+    "generated_at": "2026-09-28T00:00:00Z"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "price-groups-valid",
+  "version": 1,
+  "schema": "PriceGroups",
+  "valid": true,
+  "provenance": "P02-T08 groups with null community; synthetic",
+  "value": {
+    "items": [
+      {
+        "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+        "fuel_product": "GASOLINE_REGULAR",
+        "unit": "L",
+        "condition": {
+          "kind": "STANDARD",
+          "qualifier_id": null
+        },
+        "official": {
+          "source": "ANP",
+          "amount_milli_brl": 6030,
+          "currency": "BRL",
+          "collected_on": "2026-09-24",
+          "survey_week": {
+            "start": "2026-09-20",
+            "end": "2026-09-26"
+          },
+          "revision_id": "aac027be-d331-40e4-8d63-52ec3b8d2f41"
+        },
+        "community": null
+      }
+    ],
+    "generated_at": "2026-09-28T00:00:00Z"
+  }
+}

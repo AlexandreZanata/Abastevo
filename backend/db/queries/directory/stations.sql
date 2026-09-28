@@ -62,3 +62,33 @@ SET current_point = ST_GeogFromText(NULLIF(@point_wkt, '')),
     current_quality = @quality,
     current_revision_id = @revision_id
 WHERE id = @id;
+
+-- name: SearchStations :many
+SELECT id, display_name, address, municipality_code, state, status,
+    ST_AsText(current_point) AS current_point_wkt, current_quality,
+    current_revision_id, created_at
+FROM directory_stations
+WHERE (@state::text = '' OR state = @state)
+    AND (@municipality::text = '' OR municipality_code = @municipality)
+    AND (@q::text = '' OR display_name ILIKE '%' || @q || '%')
+    AND (@after_id::text = '' OR id::text > @after_id::text)
+ORDER BY id::text ASC
+LIMIT @limit_plus_one::int;
+
+-- name: NearbyStations :many
+SELECT id, display_name, address, municipality_code, state, status,
+    ST_AsText(current_point) AS current_point_wkt, current_quality,
+    current_revision_id, created_at,
+    ST_Distance(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) AS distance_m
+FROM directory_stations
+WHERE current_point IS NOT NULL
+    AND ST_DWithin(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography, @radius_m::int)
+    AND (@has_cursor::boolean = FALSE OR
+        (ST_Distance(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) > @after_dist::float8) OR
+        (ST_Distance(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) = @after_dist::float8 AND id::text > @after_id::text))
+ORDER BY distance_m ASC, id::text ASC
+LIMIT @limit_plus_one::int;
+
+-- name: StationCNPJ :one
+SELECT normalized_value FROM directory_identifiers
+WHERE station_id = @station_id AND kind = 'CNPJ' AND valid_to IS NULL;

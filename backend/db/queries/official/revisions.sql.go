@@ -333,6 +333,167 @@ func (q *Queries) StageStationPrice(ctx context.Context, arg StageStationPricePa
 	return id, err
 }
 
+const stationCurrentPrices = `-- name: StationCurrentPrices :many
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.raw_price_text, p.collected_on, p.source_row,
+    r.survey_start, r.survey_end, run.source_url, run.source_checksum
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE p.station_id = $1
+    AND r.status = 'published'
+    AND r.published_at = (
+        SELECT MAX(r2.published_at)
+        FROM official_station_prices AS p2
+        JOIN official_revisions AS r2 ON r2.id = p2.revision_id
+        WHERE p2.station_id = $1 AND r2.status = 'published'
+    )
+    AND ($2::text = '' OR p.fuel_product = $2)
+ORDER BY p.fuel_product ASC, p.unit ASC, p.collected_on DESC, p.id ASC
+`
+
+type StationCurrentPricesParams struct {
+	StationID pgtype.UUID `json:"station_id"`
+	Fuel      string      `json:"fuel"`
+}
+
+type StationCurrentPricesRow struct {
+	ID             pgtype.UUID `json:"id"`
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	RawPriceText   string      `json:"raw_price_text"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+	SourceRow      int32       `json:"source_row"`
+	SurveyStart    pgtype.Date `json:"survey_start"`
+	SurveyEnd      pgtype.Date `json:"survey_end"`
+	SourceUrl      string      `json:"source_url"`
+	SourceChecksum string      `json:"source_checksum"`
+}
+
+func (q *Queries) StationCurrentPrices(ctx context.Context, arg StationCurrentPricesParams) ([]StationCurrentPricesRow, error) {
+	rows, err := q.db.Query(ctx, stationCurrentPrices, arg.StationID, arg.Fuel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationCurrentPricesRow
+	for rows.Next() {
+		var i StationCurrentPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.RawPriceText,
+			&i.CollectedOn,
+			&i.SourceRow,
+			&i.SurveyStart,
+			&i.SurveyEnd,
+			&i.SourceUrl,
+			&i.SourceChecksum,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const stationPriceHistory = `-- name: StationPriceHistory :many
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.raw_price_text, p.collected_on, p.source_row,
+    r.survey_start, r.survey_end, run.source_url, run.source_checksum
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE p.station_id = $1
+    AND r.status = 'published'
+    AND ($2::text = '' OR p.fuel_product = $2)
+    AND ($3::boolean = TRUE OR p.revision_id = $4)
+    AND ($5::boolean = FALSE OR
+        (p.collected_on, p.id::text) < ($6::date, $7::text))
+ORDER BY p.collected_on DESC, p.id::text DESC
+LIMIT $8::int
+`
+
+type StationPriceHistoryParams struct {
+	StationID    pgtype.UUID `json:"station_id"`
+	Fuel         string      `json:"fuel"`
+	RevisionNull bool        `json:"revision_null"`
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	HasCursor    bool        `json:"has_cursor"`
+	AfterDate    pgtype.Date `json:"after_date"`
+	AfterID      string      `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type StationPriceHistoryRow struct {
+	ID             pgtype.UUID `json:"id"`
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	RawPriceText   string      `json:"raw_price_text"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+	SourceRow      int32       `json:"source_row"`
+	SurveyStart    pgtype.Date `json:"survey_start"`
+	SurveyEnd      pgtype.Date `json:"survey_end"`
+	SourceUrl      string      `json:"source_url"`
+	SourceChecksum string      `json:"source_checksum"`
+}
+
+func (q *Queries) StationPriceHistory(ctx context.Context, arg StationPriceHistoryParams) ([]StationPriceHistoryRow, error) {
+	rows, err := q.db.Query(ctx, stationPriceHistory,
+		arg.StationID,
+		arg.Fuel,
+		arg.RevisionNull,
+		arg.RevisionID,
+		arg.HasCursor,
+		arg.AfterDate,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationPriceHistoryRow
+	for rows.Next() {
+		var i StationPriceHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.RawPriceText,
+			&i.CollectedOn,
+			&i.SourceRow,
+			&i.SurveyStart,
+			&i.SurveyEnd,
+			&i.SourceUrl,
+			&i.SourceChecksum,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertCurrentPointer = `-- name: UpsertCurrentPointer :exec
 INSERT INTO official_current_revisions (survey_start, survey_end, revision_id)
 VALUES ($1, $2, $3)

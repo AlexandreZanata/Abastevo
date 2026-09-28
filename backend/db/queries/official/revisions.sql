@@ -84,3 +84,37 @@ DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now();
 -- name: GetCurrentPointer :one
 SELECT revision_id FROM official_current_revisions
 WHERE survey_start = @survey_start AND survey_end = @survey_end;
+
+-- name: StationCurrentPrices :many
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.raw_price_text, p.collected_on, p.source_row,
+    r.survey_start, r.survey_end, run.source_url, run.source_checksum
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE p.station_id = @station_id
+    AND r.status = 'published'
+    AND r.published_at = (
+        SELECT MAX(r2.published_at)
+        FROM official_station_prices AS p2
+        JOIN official_revisions AS r2 ON r2.id = p2.revision_id
+        WHERE p2.station_id = @station_id AND r2.status = 'published'
+    )
+    AND (@fuel::text = '' OR p.fuel_product = @fuel)
+ORDER BY p.fuel_product ASC, p.unit ASC, p.collected_on DESC, p.id ASC;
+
+-- name: StationPriceHistory :many
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.raw_price_text, p.collected_on, p.source_row,
+    r.survey_start, r.survey_end, run.source_url, run.source_checksum
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE p.station_id = @station_id
+    AND r.status = 'published'
+    AND (@fuel::text = '' OR p.fuel_product = @fuel)
+    AND (@revision_null::boolean = TRUE OR p.revision_id = @revision_id)
+    AND (@has_cursor::boolean = FALSE OR
+        (p.collected_on, p.id::text) < (@after_date::date, @after_id::text))
+ORDER BY p.collected_on DESC, p.id::text DESC
+LIMIT @limit_plus_one::int;

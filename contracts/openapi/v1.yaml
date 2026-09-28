@@ -24,6 +24,10 @@ info:
 tags:
   - name: health
     description: Process liveness and dependency readiness probes.
+  - name: directory
+    description: Anonymous public station catalog reads.
+  - name: official
+    description: Anonymous revision-aware official price reads.
 paths:
   /health/live:
     get:
@@ -63,6 +67,227 @@ paths:
                 $ref: '#/components/schemas/HealthStatus'
               example:
                 status: not_ready
+  /v1/stations:
+    get:
+      summary: Directory search (anonymous).
+      operationId: searchStations
+      tags: [directory]
+      security: []
+      parameters:
+        - name: state
+          in: query
+          description: Federative unit filter.
+          schema: {type: string, minLength: 2, maxLength: 2}
+          example: SP
+        - name: municipality_code
+          in: query
+          description: IBGE municipality code filter.
+          schema: {type: string, minLength: 1, maxLength: 16}
+          example: '3550308'
+        - name: q
+          in: query
+          description: Display-name substring filter.
+          schema: {type: string, minLength: 2, maxLength: 100}
+          example: Posto Central
+        - name: limit
+          in: query
+          description: Results per page.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque cursor continuing the search.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Station page, ID order.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationList'
+              example:
+                items: []
+                next_cursor: null
+                generated_at: '2026-09-28T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/stations/nearby:
+    get:
+      summary: Nearby stations (anonymous, never stored).
+      operationId: nearbyStations
+      tags: [directory]
+      security: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          description: Request latitude; never returned, logged or cached.
+          schema: {type: number, minimum: -90, maximum: 90}
+          example: -23.55
+        - name: lon
+          in: query
+          required: true
+          description: Request longitude; never returned, logged or cached.
+          schema: {type: number, minimum: -180, maximum: 180}
+          example: -46.63
+        - name: radius_m
+          in: query
+          description: Search radius in metres.
+          schema: {type: integer, minimum: 100, maximum: 15000, default: 3000}
+          example: 3000
+        - name: limit
+          in: query
+          description: Nearby page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque cursor continuing nearby results.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Stations by distance, never echoing the request point.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NearbyResult'
+              example:
+                items: []
+                next_cursor: null
+                generated_at: '2026-09-28T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/stations/{station_id}:
+    get:
+      summary: Station metadata with coordinate provenance (anonymous).
+      operationId: getStation
+      tags: [directory]
+      security: []
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Station path identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+      responses:
+        '200':
+          description: Public station fields; coordinates only when reviewed.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+              example:
+                station_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                display_name: Posto Central
+                cnpj_normalized: '04218406000104'
+                location_quality: reviewed
+                coordinates: {lat: -23.55, lon: -46.63}
+                current_revision_id: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/prices:
+    get:
+      summary: Product groups with official and community sections (anonymous).
+      operationId: stationPrices
+      tags: [directory]
+      security: []
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Priced station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel_product
+          in: query
+          description: Optional fuel filter for groups.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: GASOLINE_REGULAR
+      responses:
+        '200':
+          description: Groups per product/unit/condition; community null until P04.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceGroups'
+              example:
+                items: []
+                generated_at: '2026-09-28T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/official-prices:
+    get:
+      summary: Revision-aware official price history (anonymous).
+      operationId: officialPriceHistory
+      tags: [official]
+      security: []
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: History station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel_product
+          in: query
+          description: Optional product filter.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: GASOLINE_REGULAR
+        - name: revision_id
+          in: query
+          description: Canonical station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: limit
+          in: query
+          description: Page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: History across published revisions, newest first.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficialPriceHistory'
+              example:
+                items: []
+                next_cursor: null
+                generated_at: '2026-09-28T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   schemas:
     Money:
@@ -177,3 +402,186 @@ components:
         status:
           type: string
           enum: [ok, ready, not_ready]
+    Station:
+      description: >
+        Public station fields. Coordinates appear only for reviewed
+        projections; missing locations stay honest nulls, never fabrications.
+      type: object
+      required: [station_id, display_name, location_quality]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        display_name:
+          type: string
+          example: Posto Central
+        address:
+          type: [object, "null"]
+          description: Source address components verbatim.
+          example: {logradouro: AV PAULISTA, numero: '1000', municipio: SAO PAULO, uf: SP}
+        cnpj_normalized:
+          type: [string, "null"]
+          example: "04218406000104"
+        municipality_code:
+          type: [string, "null"]
+          example: '3550308'
+        state:
+          type: [string, "null"]
+          minLength: 2
+          maxLength: 2
+          example: SP
+        location_quality:
+          type: string
+          enum: [unknown, city-centroid, reviewed]
+          example: reviewed
+        coordinates:
+          type: [object, "null"]
+          required: [lat, lon]
+          example: {lat: -23.55, lon: -46.63}
+          properties:
+            lat: {type: number, minimum: -90, maximum: 90}
+            lon: {type: number, minimum: -180, maximum: 180}
+        current_revision_id:
+          type: [string, "null"]
+          format: uuid
+          example: null
+    StationList:
+      description: Paginated station search page.
+      type: object
+      required: [items, generated_at]
+      properties:
+        items:
+          type: array
+          example: []
+          items: {$ref: '#/components/schemas/Station'}
+        next_cursor:
+          type: [string, "null"]
+          example: null
+        generated_at:
+          type: string
+          format: date-time
+          example: '2026-09-28T00:00:00Z'
+    NearbyStation:
+      description: Station with public distance.
+      allOf:
+        - $ref: '#/components/schemas/Station'
+        - type: object
+          required: [distance_m]
+          properties:
+            distance_m: {type: number, minimum: 0}
+    NearbyResult:
+      description: Nearby page; request point never echoed.
+      type: object
+      required: [items, generated_at]
+      properties:
+        items:
+          type: array
+          example: []
+          items: {$ref: '#/components/schemas/NearbyStation'}
+        next_cursor:
+          type: [string, "null"]
+          example: null
+        generated_at:
+          type: string
+          format: date-time
+          example: '2026-09-28T00:00:00Z'
+    PriceGroup:
+      description: >
+        One product/unit/condition group with independent official and
+        community sections. Community stays null until P04; a null is
+        UNKNOWN, never an ANP substitution (B-BR-001).
+      type: object
+      required: [station_id, fuel_product, unit, condition]
+      properties:
+        station_id: {type: string, format: uuid}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {$ref: '#/components/schemas/PriceUnit'}
+        condition:
+          type: object
+          required: [kind]
+          properties:
+            kind: {type: string, enum: [STANDARD]}
+            qualifier_id: {type: ["null"], example: null}
+        official:
+          type: [object, "null"]
+          required: [source, amount_milli_brl, currency, collected_on, survey_week, revision_id]
+          properties:
+            source: {type: string, enum: [ANP]}
+            amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+            currency: {type: string, enum: [BRL]}
+            collected_on: {type: string, format: date}
+            survey_week:
+              type: object
+              required: [start, end]
+              properties:
+                start: {type: string, format: date}
+                end: {type: string, format: date}
+            revision_id: {type: string, format: uuid}
+        community: {type: ["null"], example: null}
+    PriceGroups:
+      description: Product groups with official and community sections.
+      type: object
+      required: [items, generated_at]
+      properties:
+        items:
+          type: array
+          example: []
+          items: {$ref: '#/components/schemas/PriceGroup'}
+        generated_at:
+          type: string
+          format: date-time
+          example: '2026-09-28T00:00:00Z'
+    OfficialPriceEntry:
+      description: One published official price with provenance.
+      type: object
+      required: [revision_id, survey_week, collected_on, fuel_product, unit, amount_milli_brl, currency, source]
+      properties:
+        revision_id: {type: string, format: uuid}
+        survey_week:
+          type: object
+          required: [start, end]
+          properties:
+            start: {type: string, format: date}
+            end: {type: string, format: date}
+        collected_on: {type: string, format: date}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {$ref: '#/components/schemas/PriceUnit'}
+        amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        currency: {type: string, enum: [BRL]}
+        source:
+          type: object
+          required: [kind, url, checksum]
+          properties:
+            kind: {type: string, enum: [ANP]}
+            url: {type: string}
+            checksum: {type: string}
+    OfficialPriceHistory:
+      description: Revision-aware official history page.
+      type: object
+      required: [items, generated_at]
+      properties:
+        items:
+          type: array
+          example: []
+          items: {$ref: '#/components/schemas/OfficialPriceEntry'}
+        next_cursor:
+          type: [string, "null"]
+          example: null
+        generated_at:
+          type: string
+          format: date-time
+          example: '2026-09-28T00:00:00Z'
+  responses:
+    BadRequest:
+      description: Malformed input, cursor or bounds.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Missing resource; no ownership oracle.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

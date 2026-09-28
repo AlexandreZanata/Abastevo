@@ -20,6 +20,13 @@ backend/internal/modules/official/adapters/source
 backend/internal/modules/official/domain
 backend/internal/modules/official/adapters
 backend/internal/modules/directory/adapters/geocoder
+backend/internal/modules/directory/application
+backend/internal/modules/directory/adapters/read
+backend/internal/modules/directory/adapters/http
+backend/internal/modules/official/application
+backend/internal/modules/official/adapters/read
+backend/internal/modules/official/adapters/http
+backend/internal/platform/httpapi
 
 [required-checks]
 gofmt

@@ -251,6 +251,85 @@ func (q *Queries) ListLocationRevisions(ctx context.Context, stationID pgtype.UU
 	return items, nil
 }
 
+const nearbyStations = `-- name: NearbyStations :many
+SELECT id, display_name, address, municipality_code, state, status,
+    ST_AsText(current_point) AS current_point_wkt, current_quality,
+    current_revision_id, created_at,
+    ST_Distance(current_point, ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography) AS distance_m
+FROM directory_stations
+WHERE current_point IS NOT NULL
+    AND ST_DWithin(current_point, ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography, $3::int)
+    AND ($4::boolean = FALSE OR
+        (ST_Distance(current_point, ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography) > $5::float8) OR
+        (ST_Distance(current_point, ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography) = $5::float8 AND id::text > $6::text))
+ORDER BY distance_m ASC, id::text ASC
+LIMIT $7::int
+`
+
+type NearbyStationsParams struct {
+	Lon          float64 `json:"lon"`
+	Lat          float64 `json:"lat"`
+	RadiusM      int32   `json:"radius_m"`
+	HasCursor    bool    `json:"has_cursor"`
+	AfterDist    float64 `json:"after_dist"`
+	AfterID      string  `json:"after_id"`
+	LimitPlusOne int32   `json:"limit_plus_one"`
+}
+
+type NearbyStationsRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	DisplayName       string             `json:"display_name"`
+	Address           []byte             `json:"address"`
+	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
+	State             pgtype.Text        `json:"state"`
+	Status            string             `json:"status"`
+	CurrentPointWkt   interface{}        `json:"current_point_wkt"`
+	CurrentQuality    pgtype.Text        `json:"current_quality"`
+	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	DistanceM         interface{}        `json:"distance_m"`
+}
+
+func (q *Queries) NearbyStations(ctx context.Context, arg NearbyStationsParams) ([]NearbyStationsRow, error) {
+	rows, err := q.db.Query(ctx, nearbyStations,
+		arg.Lon,
+		arg.Lat,
+		arg.RadiusM,
+		arg.HasCursor,
+		arg.AfterDist,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NearbyStationsRow
+	for rows.Next() {
+		var i NearbyStationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+			&i.Status,
+			&i.CurrentPointWkt,
+			&i.CurrentQuality,
+			&i.CurrentRevisionID,
+			&i.CreatedAt,
+			&i.DistanceM,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolveActiveIdentifier = `-- name: ResolveActiveIdentifier :one
 SELECT s.id, s.display_name, s.municipality_code, s.state, s.status,
     ST_AsText(s.current_point) AS current_point_wkt, s.current_quality,
@@ -311,6 +390,89 @@ func (q *Queries) RetireIdentifier(ctx context.Context, arg RetireIdentifierPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const searchStations = `-- name: SearchStations :many
+SELECT id, display_name, address, municipality_code, state, status,
+    ST_AsText(current_point) AS current_point_wkt, current_quality,
+    current_revision_id, created_at
+FROM directory_stations
+WHERE ($1::text = '' OR state = $1)
+    AND ($2::text = '' OR municipality_code = $2)
+    AND ($3::text = '' OR display_name ILIKE '%' || $3 || '%')
+    AND ($4::text = '' OR id::text > $4::text)
+ORDER BY id::text ASC
+LIMIT $5::int
+`
+
+type SearchStationsParams struct {
+	State        string `json:"state"`
+	Municipality string `json:"municipality"`
+	Q            string `json:"q"`
+	AfterID      string `json:"after_id"`
+	LimitPlusOne int32  `json:"limit_plus_one"`
+}
+
+type SearchStationsRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	DisplayName       string             `json:"display_name"`
+	Address           []byte             `json:"address"`
+	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
+	State             pgtype.Text        `json:"state"`
+	Status            string             `json:"status"`
+	CurrentPointWkt   interface{}        `json:"current_point_wkt"`
+	CurrentQuality    pgtype.Text        `json:"current_quality"`
+	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) SearchStations(ctx context.Context, arg SearchStationsParams) ([]SearchStationsRow, error) {
+	rows, err := q.db.Query(ctx, searchStations,
+		arg.State,
+		arg.Municipality,
+		arg.Q,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchStationsRow
+	for rows.Next() {
+		var i SearchStationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+			&i.Status,
+			&i.CurrentPointWkt,
+			&i.CurrentQuality,
+			&i.CurrentRevisionID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const stationCNPJ = `-- name: StationCNPJ :one
+SELECT normalized_value FROM directory_identifiers
+WHERE station_id = $1 AND kind = 'CNPJ' AND valid_to IS NULL
+`
+
+func (q *Queries) StationCNPJ(ctx context.Context, stationID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, stationCNPJ, stationID)
+	var normalized_value string
+	err := row.Scan(&normalized_value)
+	return normalized_value, err
 }
 
 const updateStationProjection = `-- name: UpdateStationProjection :exec

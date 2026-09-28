@@ -7,11 +7,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
+	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
+	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
+	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -49,6 +55,26 @@ func run() error {
 	}
 	router.Get("/health/live", healthHandler.Live)
 	router.Get("/health/ready", healthHandler.Ready)
+	// Anonymous catalog reads (P02-T08). Only this composition root wires
+	// modules together: the official handler gets station existence as a
+	// closure so modules never cross-read.
+	stations := directoryread.NewReader(pool.Underlying())
+	prices := officialread.NewReader(pool.Underlying())
+	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	officialhttp.Handler{
+		Prices:  prices,
+		Secrets: cfg.CursorSecret,
+		StationsExist: func(ctx context.Context, id string) (bool, error) {
+			_, err := stations.Detail(ctx, id)
+			if err == nil {
+				return true, nil
+			}
+			if errors.Is(err, directoryapp.ErrUnknownStation) {
+				return false, nil
+			}
+			return false, err
+		},
+	}.RegisterRoutes(router)
 	server, err := httpserver.New(httpserver.Options{
 		Addr:              cfg.HTTPAddr,
 		ReadTimeout:       httpserver.DefaultReadTimeout,
