@@ -1,0 +1,19 @@
+{
+  "id": "anp-020",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "cnpj_text": "12ABC345/01DE-35"
+  },
+  "expected_backend": {
+    "cnpj_normalized": "12ABC34501DE35",
+    "alphanumeric": true,
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "cnpj_normalized": "12ABC34501DE35",
+    "alphanumeric": true,
+    "outcome": "ok"
+  }
+}

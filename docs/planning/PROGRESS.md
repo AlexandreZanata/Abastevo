@@ -1,13 +1,13 @@
 # Current execution state
 
-- Updated: 2026-09-28, P01-T17 LOCAL_DONE; G01-FLOW COMPLETE (activation).
-- Branch: `codex/phase-01-delivery-flow`, based on `07e7d6d`; clean.
-- Main protection ACTIVE: strict, required `[Quick verification]`, PR required (0 approvals, dismiss-stale), enforce-admins, no force/deletion, merge-commits allowed. Switched from `[fast,integration,test]` only after observing Quick verification SUCCESS — no gap. `backend.yml`/`ci.yml` untouched, still path-triggered signal. Red non-required integration/test alone no longer blocks; that evidence stays mandatory at task/phase-exit level.
-- Plan rule: after a verified merge, always delete the phase branch locally and remotely, verified. `finish` enforces it (test-flow 23/23).
-- P01-T01…T16: LOCAL_DONE. P01-T16: wiki.sh preview/export/publish, test-wiki 31/31; real preview 83 pages; publish deferred (WIKI_PENDING).
-- P01-T17: LOCAL_DONE — `quick.yml` (validated schema: all-PR+main triggers, no path filter, read token, concurrency, 12min timeout, fetch-depth 0, `make quick-verify`) committed in `27a5ee8`; controlled phase PR #2 head `27a5ee8`/base `3540011`: Quick verification SUCCESS 5m32s, fast 4m34s, integration 1m17s, test 4m1s; protection switched; PR #2 `clean` under new rules; evidence comment recorded. G01-FLOW activation COMPLETE. Phase READY_FOR_INTEGRATION — merge of PR #2 pending explicit approval (main mutation).
-- G01-FLOW: COMPLETE. P02-T01 unblocked after PR #2 merge (needs G01 + G01-FLOW on main).
-- Next: **merge PR #2 (explicit approval) or P02-T01 — Shared ANP fixtures** after merge. P02-T01 follows G01 + G01-FLOW.
+- Updated: 2026-09-28, P02-T01 LOCAL_DONE; P01 INTEGRATED.
+- Branch: `codex/phase-02-official-catalog`, based on `8c21945`; clean.
+- Phase P01+G01-FLOW INTEGRATED: PR #2 merged `2706ba4` → `8c21945` (match-head-commit, required Quick verification SUCCESS); PR #1 auto-closed (commits contained); branches `codex/phase-01-delivery-flow` and `codex/phase-01-delivery-plan` deleted locally + remotely, verified; merge recorded in PR #2 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
+- Main protection ACTIVE: strict, required `[Quick verification]`, PR required, enforce-admins, no force/deletion.
+- P02 entry G01 + G01-FLOW satisfied. Exit G02 pending; no Android modifications.
+- P02-T01: LOCAL_DONE — `contracts/testdata/anp/` manifest v1 + 30 synthetic normalization cases (7 products, A05 bridge, accents/spaces, precision/zero/negative, Excel/leap dates, week range, numeric/alnum/invalid CNPJ, address, header shift, duplicates, retry, corrected revision, malformed/missing-sheet, summaries) with sha256 provenance + compatibility classes; `backend/internal/platform/anpfixture` loader tests (manifest/hash, legacy-vs-target, 7-product units, A04/A05/A06 bridges, no-personal-data allowlist); RED proven by corruption, GREEN on restore; quick-packages manifest extended.
+- G02: P02-T02…T08 NOT STARTED.
+- Next: **P02-T02 — Price, product, condition and CNPJ values**.
 - Issues/milestone/PR/wiki: flow draft PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

@@ -1,0 +1,20 @@
+{
+  "id": "anp-026",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "source_checksum": "sha256:aaa",
+    "parser_version": "p02-t04",
+    "already_imported_checksum": "sha256:aaa",
+    "already_imported_parser": "p02-t04"
+  },
+  "expected_backend": {
+    "outcome": "ok-idempotent",
+    "new_revision": false
+  },
+  "expected_legacy": {
+    "outcome": "ok-idempotent",
+    "new_revision": false
+  }
+}

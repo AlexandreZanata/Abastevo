@@ -1,0 +1,24 @@
+{
+  "id": "anp-030",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "rows": [
+      {
+        "scope": "municipal-summary",
+        "municipio": "SAO PAULO",
+        "product": "GASOLINE_REGULAR",
+        "mean": "5,899"
+      }
+    ]
+  },
+  "expected_backend": {
+    "outcome": "skipped",
+    "reason_code": "scope-summary"
+  },
+  "expected_legacy": {
+    "outcome": "skipped",
+    "reason_code": "scope-summary"
+  }
+}

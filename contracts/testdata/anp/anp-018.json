@@ -1,0 +1,22 @@
+{
+  "id": "anp-018",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "week_start": "2024-12-30",
+    "week_end": "2025-01-05",
+    "collected_on": "2025-01-02",
+    "collected_time": "23:59:59"
+  },
+  "expected_backend": {
+    "week_id": "2024-W53",
+    "in_range": true,
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "week_id": "2024-W53",
+    "in_range": true,
+    "outcome": "ok"
+  }
+}

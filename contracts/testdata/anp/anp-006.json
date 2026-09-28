@@ -1,0 +1,25 @@
+{
+  "id": "anp-006",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "GNV",
+    "price_text": "4,599",
+    "unit": "M3"
+  },
+  "expected_backend": {
+    "product": "CNG",
+    "unit": "M3",
+    "amount_milli_brl": 4599,
+    "raw_price_text": "4,599",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "CNG",
+    "unit": "M3",
+    "amount_milli_brl": 4599,
+    "raw_price_text": "4,599",
+    "outcome": "ok"
+  }
+}

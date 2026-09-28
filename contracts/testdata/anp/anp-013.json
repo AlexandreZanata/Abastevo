@@ -1,0 +1,16 @@
+{
+  "id": "anp-013",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Missing required price quarantines; empty never becomes zero",
+  "input": {
+    "label": "GASOLINA COMUM",
+    "price_text": "",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "missing-price"
+  },
+  "expected_legacy": null
+}

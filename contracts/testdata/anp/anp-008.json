@@ -1,0 +1,25 @@
+{
+  "id": "anp-008",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "ÓLEO DIESEL S10",
+    "price_text": "6,189",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "product": "DIESEL_S10",
+    "unit": "L",
+    "amount_milli_brl": 6189,
+    "raw_price_text": "6,189",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "DIESEL_S10",
+    "unit": "L",
+    "amount_milli_brl": 6189,
+    "raw_price_text": "6,189",
+    "outcome": "ok"
+  }
+}

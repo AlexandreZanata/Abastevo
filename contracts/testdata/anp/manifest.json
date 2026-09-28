@@ -1,0 +1,193 @@
+{
+  "format_version": 1,
+  "provenance": "synthetic",
+  "parser_version": "unimplemented",
+  "compatibility_classes": {
+    "identical": "backend and legacy outputs match exactly",
+    "legacy-divergent": "intentional A05-style difference with documented reason; P10 adapter owns legacy side",
+    "backend-quarantine": "backend quarantines or fails; legacy expectation intentionally absent until P10"
+  },
+  "notes": "No production user data. CNPJ values are documented test identifiers with valid check digits (numeric 04218406000104 or alphanumeric 12ABC34501DE35); corrupted variants flip the final digit. Excel serials use the 1900 date system.",
+  "cases": [
+    {
+      "id": "anp-001",
+      "file": "anp-001.json",
+      "sha256": "c663a88c48a2071f79c178379c491438b551f2279c1c4d2214a36eef15e3adb0",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-002",
+      "file": "anp-002.json",
+      "sha256": "60e089f0af5c2340d10337d1b55e4abf17a9ad0dee9bf8d571f0853530d4db1a",
+      "compatibility": "legacy-divergent"
+    },
+    {
+      "id": "anp-003",
+      "file": "anp-003.json",
+      "sha256": "1ad2876003d1e5ba665896cbd09f4339cb947106d5a075a07f2d079f966d8fdc",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-004",
+      "file": "anp-004.json",
+      "sha256": "7d6bb15ed10b930dc33738dd4ab2053c4d217ddd4287207ad2954d09f856bd1e",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-005",
+      "file": "anp-005.json",
+      "sha256": "1eeb83f3e717b9c5f04fa13abb97c6bfba05108f96c87407250f3d8bcd8b59aa",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-006",
+      "file": "anp-006.json",
+      "sha256": "dde33832ee7264ff902ad45c3bf5519f40dfc4e82d2335b319109c32ad6264e4",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-007",
+      "file": "anp-007.json",
+      "sha256": "cf275df84b9840d8e8e0a0fa61ba19164a998ea44840bc49c2641040585e873b",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-008",
+      "file": "anp-008.json",
+      "sha256": "8dc09643c32b5ffaec99694554badf51ac8dd34b16b24dbf1fac44e109731ed3",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-009",
+      "file": "anp-009.json",
+      "sha256": "3d109b4825436d9ae4b9fb0d29b95b8057f2399ca8ade95f58fc9d1cec4501ca",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-010",
+      "file": "anp-010.json",
+      "sha256": "8e05c6deb19444d3935b0d23341ad20a382d0492ad4d86cac843df14fbd44d19",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-011",
+      "file": "anp-011.json",
+      "sha256": "0a71f46ee012cb3669063c9067eeb0e6f96efe587efb28876656eeb792263341",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-012",
+      "file": "anp-012.json",
+      "sha256": "704e3a53e8d7aec95509589386b25c282836d930719a52cb6fb4738d4389700a",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-013",
+      "file": "anp-013.json",
+      "sha256": "8a0823d0f953932bf79380b7fa5eb53069cabab742d643a6abe595d033746f43",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-014",
+      "file": "anp-014.json",
+      "sha256": "a752283cd34e36f76101921b93a56a133262ffd3bd6bd5b98db984a7a41a5b29",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-015",
+      "file": "anp-015.json",
+      "sha256": "2258e0e9468c44487416d4b476c8b8b1ed3d7d45ef637293db8a1afc4f8e5260",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-016",
+      "file": "anp-016.json",
+      "sha256": "a95749bbe00155eb116715ade9dc11aef93999c0d8e7f802ffab25be3319d1e7",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-017",
+      "file": "anp-017.json",
+      "sha256": "0a7cc88de00e1171b1cbb15386c76b0afda7aaba09396fd3159926e136a7e2c2",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-018",
+      "file": "anp-018.json",
+      "sha256": "18e97661c6df9546836554d6aa55becdc35f83fa003572208cd6c5ed3ca51a08",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-019",
+      "file": "anp-019.json",
+      "sha256": "374e70eff057598dc01ba9d8c950c9d029b2bb3bdd4c66543342bd261081f701",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-020",
+      "file": "anp-020.json",
+      "sha256": "a0e7bd13d200051150970ffa4352bbc5b32ab6f6d3a943f36b885e2996a33a3a",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-021",
+      "file": "anp-021.json",
+      "sha256": "9c9dfb01c7203f6d07d23e5ea27f8a054883ab0bb13552e7f9f81514c9e203a6",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-022",
+      "file": "anp-022.json",
+      "sha256": "07ee5230f93d2e5f9dc0133c5bb9dea1acd9c7ac40ee2b166331b01cc756a7bc",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-023",
+      "file": "anp-023.json",
+      "sha256": "53e9d726eebae2915518fdf8829a9d8320684d3ec2e984d56957f371ac2e2b55",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-024",
+      "file": "anp-024.json",
+      "sha256": "900fdd1288889ec5ff0966e996b41d827103f299ed3d41730442454f67929ff6",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-025",
+      "file": "anp-025.json",
+      "sha256": "51d52c4e9a3b918d0f7a89b6d9da55bd6bb191f62ca2c912f30f7f8c3beb4960",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-026",
+      "file": "anp-026.json",
+      "sha256": "0dc3ec1050662b13171421ae02bb47338efce60be12826ffc49896e262d55e83",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-027",
+      "file": "anp-027.json",
+      "sha256": "ba5a664acd3ddfc3f5bf118398a221870879ba28365be6a78386b551c6724261",
+      "compatibility": "identical"
+    },
+    {
+      "id": "anp-028",
+      "file": "anp-028.json",
+      "sha256": "8258a947a4fe110fda5397ed82f36b012ddb0316a035864e075b58501fbfce5d",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-029",
+      "file": "anp-029.json",
+      "sha256": "3e49ad3b9df15f6666b0c04929ec3cf4946ec920ba1f96050adfb2dea6a712dd",
+      "compatibility": "backend-quarantine"
+    },
+    {
+      "id": "anp-030",
+      "file": "anp-030.json",
+      "sha256": "517b58ea966fc20e39a28e699d8d552791e7e4c646da317c94409f71877e2296",
+      "compatibility": "identical"
+    }
+  ]
+}

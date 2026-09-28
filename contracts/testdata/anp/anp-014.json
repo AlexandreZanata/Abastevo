@@ -1,0 +1,17 @@
+{
+  "id": "anp-014",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Zero price is invalid input, not a free-fuel fact",
+  "input": {
+    "label": "GASOLINA COMUM",
+    "price_text": "0,00",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "zero-price",
+    "raw_price_text": "0,00"
+  },
+  "expected_legacy": null
+}

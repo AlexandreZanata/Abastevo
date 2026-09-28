@@ -1,0 +1,19 @@
+{
+  "id": "anp-029",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "Missing expected sheet fails the import; summary sheets are not station data",
+  "input": {
+    "file": "week.xlsx",
+    "expected_sheet": "DPC",
+    "present_sheets": [
+      "RESUMO"
+    ]
+  },
+  "expected_backend": {
+    "outcome": "import-failed",
+    "reason_code": "missing-sheet",
+    "published_rows": 0
+  },
+  "expected_legacy": null
+}

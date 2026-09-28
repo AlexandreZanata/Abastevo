@@ -1,0 +1,25 @@
+{
+  "id": "anp-003",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "ETANOL",
+    "price_text": "3,799",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "product": "ETHANOL",
+    "unit": "L",
+    "amount_milli_brl": 3799,
+    "raw_price_text": "3,799",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "ETHANOL",
+    "unit": "L",
+    "amount_milli_brl": 3799,
+    "raw_price_text": "3,799",
+    "outcome": "ok"
+  }
+}

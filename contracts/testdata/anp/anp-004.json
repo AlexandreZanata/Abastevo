@@ -1,0 +1,25 @@
+{
+  "id": "anp-004",
+  "provenance": "synthetic",
+  "compatibility": "identical",
+  "reason": "",
+  "input": {
+    "label": "OLEO DIESEL S500",
+    "price_text": "6,099",
+    "unit": "L"
+  },
+  "expected_backend": {
+    "product": "DIESEL_S500",
+    "unit": "L",
+    "amount_milli_brl": 6099,
+    "raw_price_text": "6,099",
+    "outcome": "ok"
+  },
+  "expected_legacy": {
+    "product": "DIESEL_S500",
+    "unit": "L",
+    "amount_milli_brl": 6099,
+    "raw_price_text": "6,099",
+    "outcome": "ok"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "anp-021",
+  "provenance": "synthetic",
+  "compatibility": "backend-quarantine",
+  "reason": "A06: invalid check digits quarantine; never coerce letters to digits",
+  "input": {
+    "cnpj_text": "04.218.406/0001-00"
+  },
+  "expected_backend": {
+    "outcome": "quarantine",
+    "reason_code": "cnpj-checksum-invalid"
+  },
+  "expected_legacy": null
+}

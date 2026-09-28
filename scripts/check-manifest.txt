@@ -11,6 +11,7 @@ backend/internal/platform/httpserver
 backend/internal/platform/apicontract
 backend/internal/platform/database
 backend/internal/platform/migrate
+backend/internal/platform/anpfixture
 
 [required-checks]
 gofmt
