@@ -1,7 +1,8 @@
 # Current execution state
 
-- Updated: 2026-09-29, P04-T05 LOCAL_DONE; P04 COMPLETE locally (T01…T05); G04 pending exit/integration.
-- Branch: `codex/phase-04-observations`, based on `6a12dcd`; clean.
+- Updated: 2026-09-30, P04 INTEGRATED; P05 opened (P05-T01 in progress).
+- Branch: `codex/phase-05-private-evidence`, based on `52e889a`; clean.
+- Phase P04 INTEGRATED: PR #5 merged `19c2800` → `52e889a` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-04-observations` deleted locally + remotely, verified; merge recorded in PR #5 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Phase P03 INTEGRATED: PR #4 merged `762615a` → `6a12dcd` (match-head-commit, all checks green); branch `codex/phase-03-anonymous-identity` deleted locally + remotely, verified; merge recorded in PR #4 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Main protection ACTIVE: strict, required `[Quick verification]`, PR required, enforce-admins, no force/deletion.
 - P04 entry G03 satisfied. Exit G04 pending; no current-price claim at receipt.
@@ -11,9 +12,9 @@
 - P04-T03: LOCAL_DONE — `db/migrations/000008` (observations with natural-key unique + price/contributor indexes, decisions with per-observation sequence unique, append-only) + `db/queries/community` (per-owner sqlc schemas) + `adapters` Store (fact+job atomic submit via injected enqueue closure, natural-key retry converging with divergent-payload conflict, machine-enforcing RecordDecision with exact sequence, readers); integration on real PostGIS: fact+job atomicity, retry/concurrency convergence, rollback on enqueue failure, out-of-order/forged-state refusal, history order, no destructive SQL paths; RED proven on the FromState guard (needed an exact known-pair case after a masking attempt), GREEN on restore; manifest extended.
 - P04-T04: LOCAL_DONE — `community/application` submit/status/history use-case (validated submit, quota, idempotent replay, owner-scoped status/history; RECEIVED only, missing+foreign share one 404) + `adapters/http` handlers (strict wire parse with canonical integer amounts, status/history reads, no-store, sealed keyset cursors with nano precision) + contract-first OpenAPI paths/schemas/vectors + `000009` attribution-token ledger + `cmd/api` composition (real auth/quota/idempotency/attribution/enqueue closures, errors mapped onto community sentinels); full-stack integration on real PostGIS: receipt envelope, replay convergence, body-conflict, validation matrix, owner/foreign/unknown/malformed cases, cursor walk with tamper refusal, cross-contributor isolation; RED proven on the quota-sentinel unwrap, GREEN on restore; race + quick-verify green.
 - P04-T05: LOCAL_DONE — `community/application` Validate (claim with job-ID proof, station/trust/evidence/location ports, metadata-only admits, photo path pends to 24h timeout, transients retry, terminal idempotent, admit enqueues `community-consensus`) + `adapters/jobs` validate-observation handler + `Store.RecordDecisionWithJob` atomic decision+job + worker wiring (real station ports; evidence/trust deferred honestly to P05/P06); RED proven by inverting the station guard, GREEN on restore; unit + race/integration (incl. atomic commit/rollback) + quick-verify green; manifest extended.
-- G04: P04-T01…T05 LOCAL_DONE; phase exit/integration pending (exit checks + PR ready/merge).
-- Next: **P04 phase closure, then P05-T01**.
-- Issues/milestone/PR/wiki: P04 phase PR pending; wiki once per merged phase; no invented IDs.
+- G04: P04-T01…T05 INTEGRATED (entry G04 satisfied for P05).
+- Next: **P05-T01 — Upload session domain**.
+- Issues/milestone/PR/wiki: P05 phase PR pending (draft after first push); wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
 ## Evidence pointers
