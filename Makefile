@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -40,6 +40,9 @@ test-backup:
 test-restore:
 	bash scripts/tests/test-restore.sh
 
+test-load:
+	bash scripts/tests/test-load.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -53,3 +56,4 @@ help:
 	@echo "  test-deploy     deploy/rollback failure-behavior harness (P08-T02)"
 	@echo "  test-backup     backup pipeline harness, real disposable DB (P08-T03)"
 	@echo "  test-restore    isolated restore drill harness, real disposable DB (P08-T04)"
+	@echo "  test-load       bounded load smoke + fault suite, real disposable DB (P08-T07)"

@@ -110,6 +110,17 @@ Local drill evidence lives in
 [docs/release-evidence/p08-t04-restore-drill.md](../docs/release-evidence/p08-t04-restore-drill.md);
 staging acceptance repeats it on provisioned infrastructure.
 
+## Bounded load and faults (P08-T07)
+
+`backend/testdata/load/seed.sql` seeds deterministic stations;
+`infra/scripts/load/run.sh` runs origin-read scenarios with p95/5xx
+budget gates and `faults.sh` proves outage/degraded behavior with
+recovery (database stop, storage outage, capped disk pressure);
+`make test-load` runs the bounded smoke profile. Local evidence in
+[docs/release-evidence/p08-t07-load.md](../docs/release-evidence/p08-t07-load.md)
+with explicit non-claims; the 30-minute acceptance matrix runs on
+staging (P09).
+
 ## Metrics and alerts (P08-T05)
 
 The API exposes Prometheus text on a loopback-only listener
