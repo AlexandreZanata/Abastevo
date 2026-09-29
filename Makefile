@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -34,6 +34,9 @@ test-infra:
 test-deploy:
 	bash scripts/tests/test-deploy.sh
 
+test-backup:
+	bash scripts/tests/test-backup.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -45,3 +48,4 @@ help:
 	@echo "  check-infra     staging/prod topology gate (P08-T01)"
 	@echo "  test-infra      infra gate failure-behavior harness"
 	@echo "  test-deploy     deploy/rollback failure-behavior harness (P08-T02)"
+	@echo "  test-backup     backup pipeline harness, real disposable DB (P08-T03)"

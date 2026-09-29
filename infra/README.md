@@ -87,3 +87,14 @@ release; `make test-deploy` proves every failure path with stubbed
 docker/curl. The full sequence, backup precheck, receipt keeping and
 the CI publish design live in [the deploy runbook](../docs/operator/deploy.md).
 No destructive down migration exists: rollback is a forward redeploy.
+
+## Encrypted off-host backups (P08-T03)
+
+`infra/scripts/backup.sh` writes daily encrypted dumps with a
+roles/extensions manifest (`run`), checksum-verifies them including
+the archive catalog (`verify`), prunes to 7 daily + 4 weekly copies
+and alarms on stale backups (`check-age`); `make test-backup` proves
+the pipeline against the disposable dev database. Schedules,
+credential scope, transport and recovery linkage live in
+[the backup runbook](../docs/operator/backup.md). The passphrase
+stays outside the VPS; manifests carry no secrets.
