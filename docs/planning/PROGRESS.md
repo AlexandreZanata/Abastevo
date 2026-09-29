@@ -7,8 +7,9 @@
 - P03 entry G02 satisfied (canonical identity, exact units/CNPJ, idempotent revisioned import, quarantine/reporting, fixture-based geolocation path pending D05, public official reads; no Android modifications).
 - P02-T01…T08: LOCAL_DONE (fixtures, kernel values, directory repository, stdlib parser, allowlisted fetch, revisioned publication, geocoder port, read API). G02 INTEGRATED.
 - P03-T01: LOCAL_DONE — `docs/security/identity-profile.md` frozen (P-256/SHA-512, exact covered set/order, raw R||S only, 5-min window, challenge binding, proxy rules; RFC 9421 inspiration explicitly not a compliance claim) + `contracts/testdata/identity/` 12 golden vectors (valid, body, 7 tampers, expired, wrong-key, DER, reorder, all attacker-mutated post-signing) + `modules/identity/profile` dual verifiers (shared-helper path and hand-rebuilt path incl. explicit curve check); ambiguous/reordered/duplicated lines rejected; RED proven by accepting all signatures, GREEN on restore; manifest extended. Cross-library RFC replay stays a later gate per ADR-007.
-- G03: P03-T02…T06 NOT STARTED.
-- Next: **P03-T02 — Contributor registration**.
+- P03-T02: LOCAL_DONE — `db/migrations/000004` (contributors without personal columns, keys with unique fingerprint, challenges with atomic consume + expiry index) + `db/queries/identity` (per-owner sqlc schemas) + `identity/domain` (purposes, fingerprint/nonce shapes, challenge validation, stdlib-only) + `adapters` Registrar (bound challenge issuance, proof-first verification via production `profile.Verify`/`Thumbprint`, single-tx consume+create, valid-proof duplicate returns existing, failed proof consumes nothing, fingerprint race rolls back to winner); integration on real PostGIS: happy path, tampered-proof retry + replay spent, bad-key/mismatch with zero rows persisted, 8-worker single contributor/key; RED proven by skipping verification, GREEN on restore; OpenAPI challenge/contributor paths + 3 vectors, spec 100/100; manifest extended.
+- G03: P03-T03…T06 NOT STARTED.
+- Next: **P03-T03 — Signed requests and replay defense**.
 - Issues/milestone/PR/wiki: P03 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

@@ -1,0 +1,247 @@
+package adapters
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/identity"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/profile"
+)
+
+// Registrar implements domain.Registrar.
+type Registrar struct {
+	pool *pgxpool.Pool
+	now  func() time.Time
+}
+
+// NewRegistrar wires the owned generated queries to a pool.
+func NewRegistrar(pool *pgxpool.Pool) *Registrar {
+	return &Registrar{pool: pool, now: time.Now}
+}
+
+func newUUIDv4() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	b[6] = b[6]&0x0f | 0x40
+	b[8] = b[8]&0x3f | 0x80
+	hexed := hex.EncodeToString(b[:])
+	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
+		hexed[16:20] + "-" + hexed[20:32], nil
+}
+
+func mustUUID(text string) (pgtype.UUID, error) {
+	raw, err := hex.DecodeString(stripDashes(text))
+	if err != nil || len(raw) != 16 {
+		return pgtype.UUID{}, errors.New("adapters: malformed UUID")
+	}
+	var id pgtype.UUID
+	copy(id.Bytes[:], raw)
+	id.Valid = true
+	return id, nil
+}
+
+func stripDashes(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != '-' {
+			out = append(out, s[i])
+		}
+	}
+	return string(out)
+}
+
+func uuidString(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	hexed := hex.EncodeToString(id.Bytes[:])
+	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
+		hexed[16:20] + "-" + hexed[20:32]
+}
+
+func nonceHash(nonce string) string {
+	sum := sha256.Sum256([]byte(nonce))
+	return hex.EncodeToString(sum[:])
+}
+
+// IssueChallenge mints a bound proof opportunity for one fingerprint and
+// purpose. The full nonce is returned once; only its hash is stored.
+func (r *Registrar) IssueChallenge(ctx context.Context, fingerprint, purpose string) (domain.Challenge, error) {
+	fp, err := domain.ParseFingerprint(fingerprint)
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	purpose, err = domain.ParsePurpose(purpose)
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	id, err := newUUIDv4()
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	var randPart [16]byte
+	if _, err := rand.Read(randPart[:]); err != nil {
+		return domain.Challenge{}, err
+	}
+	nonce := id + "." + hex.EncodeToString(randPart[:])
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	expires := r.now().Add(domain.ChallengeTTL)
+	if _, err := identity.New(r.pool).CreateChallenge(ctx, identity.CreateChallengeParams{
+		ID:          uid,
+		NonceHash:   nonceHash(nonce),
+		Fingerprint: fp,
+		Purpose:     purpose,
+		ExpiresAt:   pgtype.Timestamptz{Time: expires, Valid: true},
+	}); err != nil {
+		return domain.Challenge{}, err
+	}
+	return domain.Challenge{
+		ID: id, Nonce: nonce, Fingerprint: fp, Purpose: purpose, ExpiresAt: expires,
+	}, nil
+}
+
+// Register verifies the key proof, then consumes the challenge and creates
+// the contributor plus key atomically. A valid proof for a known fingerprint
+// returns the existing identity (Existed); failures consume nothing.
+func (r *Registrar) Register(ctx context.Context, req domain.RegistrationRequest) (domain.Registration, error) {
+	fp, err := profile.Thumbprint(req.JWKX, req.JWKY)
+	if err != nil {
+		return domain.Registration{}, fmt.Errorf("%w: bad key", domain.ErrProofRequired)
+	}
+	chID, _, err := domain.SplitNonce(req.Challenge.Nonce)
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	if chID != req.Challenge.ID {
+		return domain.Registration{}, fmt.Errorf("%w: nonce not bound to challenge", domain.ErrProofRequired)
+	}
+	if err := req.Challenge.Validate(r.now()); err != nil {
+		return domain.Registration{}, err
+	}
+	if req.Challenge.Purpose != domain.PurposeRegister {
+		return domain.Registration{}, fmt.Errorf("%w: wrong purpose", domain.ErrProofRequired)
+	}
+	challengeUUID, err := mustUUID(req.Challenge.ID)
+	if err != nil {
+		return domain.Registration{}, fmt.Errorf("%w: malformed challenge", domain.ErrProofRequired)
+	}
+	stored, err := identity.New(r.pool).GetChallenge(ctx, challengeUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Registration{}, fmt.Errorf("%w: unknown challenge", domain.ErrProofRequired)
+		}
+		return domain.Registration{}, err
+	}
+	if stored.ConsumedAt.Valid {
+		return domain.Registration{}, domain.ErrChallengeSpent
+	}
+	if !r.now().Before(stored.ExpiresAt.Time) {
+		return domain.Registration{}, domain.ErrChallengeExpired
+	}
+	if stored.Fingerprint != fp || stored.Fingerprint != req.Challenge.Fingerprint {
+		return domain.Registration{}, fmt.Errorf("%w: fingerprint mismatch", domain.ErrProofRequired)
+	}
+	if stored.NonceHash != nonceHash(req.Challenge.Nonce) {
+		return domain.Registration{}, fmt.Errorf("%w: nonce mismatch", domain.ErrProofRequired)
+	}
+	if err := profile.Verify(req.JWKX, req.JWKY, req.BaseLines, req.Signature, req.VerifiedAt); err != nil {
+		return domain.Registration{}, fmt.Errorf("%w: %v", domain.ErrProofRequired, err)
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tq := identity.New(tx)
+	consumed, err := tq.ConsumeChallenge(ctx, challengeUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Registration{}, domain.ErrChallengeSpent
+		}
+		return domain.Registration{}, err
+	}
+	_ = consumed
+	if existing, err := tq.FindKeyByFingerprint(ctx, fp); err == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return domain.Registration{}, err
+		}
+		return domain.Registration{
+			ContributorID: uuidString(existing.ContributorID),
+			KeyID:         uuidString(existing.ID),
+			Existed:       true,
+		}, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return domain.Registration{}, err
+	}
+	contributorText, err := newUUIDv4()
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	contributorID, err := mustUUID(contributorText)
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	if _, err := tq.CreateContributor(ctx, contributorID); err != nil {
+		return domain.Registration{}, err
+	}
+	keyText, err := newUUIDv4()
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	keyID, err := mustUUID(keyText)
+	if err != nil {
+		return domain.Registration{}, err
+	}
+	created, err := tq.CreateKey(ctx, identity.CreateKeyParams{
+		ID:            keyID,
+		ContributorID: contributorID,
+		Algorithm:     "ecdsa-p256-sha512",
+		PublicJwk:     canonicalJWK(req.JWKX, req.JWKY),
+		Fingerprint:   fp,
+	})
+	if err != nil {
+		// Lost the fingerprint race after a valid proof: ON CONFLICT DO
+		// NOTHING yields no row instead of a unique violation. Roll back
+		// the orphan contributor and resolve to the winner instead of
+		// forking identity. The challenge stays unconsumed, so a plain
+		// retry with a fresh challenge also converges.
+		if errors.Is(err, pgx.ErrNoRows) {
+			_ = tx.Rollback(ctx)
+			if existing, rerr := identity.New(r.pool).FindKeyByFingerprint(ctx, fp); rerr == nil {
+				return domain.Registration{
+					ContributorID: uuidString(existing.ContributorID),
+					KeyID:         uuidString(existing.ID),
+					Existed:       true,
+				}, nil
+			}
+		}
+		return domain.Registration{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Registration{}, err
+	}
+	return domain.Registration{
+		ContributorID: uuidString(created.ContributorID),
+		KeyID:         uuidString(created.ID),
+	}, nil
+}
+
+// canonicalJWK stores the public key in thumbprint order.
+func canonicalJWK(x, y string) string {
+	return `{"crv":"P-256","kty":"EC","x":"` + x + `","y":"` + y + `"}`
+}

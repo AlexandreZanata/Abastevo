@@ -1,0 +1,12 @@
+{
+  "id": "contributor-valid",
+  "version": 1,
+  "schema": "Contributor",
+  "valid": true,
+  "provenance": "P03-T02 registration shape; synthetic",
+  "value": {
+    "contributor_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+    "key_id": "aac027be-d331-40e4-8d63-52ec3b8d2f41",
+    "existed": false
+  }
+}
