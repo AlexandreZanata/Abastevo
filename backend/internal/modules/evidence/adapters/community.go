@@ -35,7 +35,13 @@ func (s *Store) ForCommunity(ctx context.Context, objectID string) (CommunityEvi
 		}
 		return CommunityEvidence{}, err
 	}
-	return CommunityEvidence{Found: true, Ready: true, OwnerRef: row.ContributorRef}, nil
+	// Present objects are READY facts by construction; once the
+	// sanitized bytes leave storage the fact reads unavailable while
+	// its duplicate-signal hashes survive to their bound.
+	return CommunityEvidence{
+		Found: true, Ready: !row.FinalDeletedAt.Valid,
+		OwnerRef: row.ContributorRef,
+	}, nil
 }
 
 // TryBindObject claims one object for one observation with

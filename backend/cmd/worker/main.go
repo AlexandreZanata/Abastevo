@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
@@ -38,7 +39,32 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// sweepJobPorts adapts the platform job lookup to the evidence sweep
+// port: only queued or leased verify jobs count as live leases.
+type sweepJobPorts struct {
+	hasLive func(ctx context.Context, sessionID string) (bool, error)
+}
+
+func (s sweepJobPorts) HasLiveJob(ctx context.Context, sessionID string) (bool, error) {
+	return s.hasLive(ctx, sessionID)
+}
+
+// sweepStoragePorts adapts presigned deletes to the sweep storage port,
+// one namespace per call site.
+type sweepStoragePorts struct {
+	deleteKey func(ctx context.Context, key, namespace string) error
+}
+
+func (s sweepStoragePorts) DeleteQuarantine(ctx context.Context, key string) error {
+	return s.deleteKey(ctx, key, "q/")
+}
+
+func (s sweepStoragePorts) DeleteFinal(ctx context.Context, key string) error {
+	return s.deleteKey(ctx, key, "f/")
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -208,6 +234,46 @@ func run() error {
 				}, sess)
 			},
 		},
+		"evidence-sweep": evidencejobs.Sweep{
+			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
+				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
+					Clock: time.Now,
+					Batch: evidenceapp.DefaultSweepBatch,
+					Store: evidenceStore,
+					Jobs: sweepJobPorts{hasLive: func(ctx context.Context, sessionID string) (bool, error) {
+						id, err := dbplatform.New(raw).GetJobByDedupe(ctx, pgtype.Text{String: "verify:" + sessionID, Valid: true})
+						if err != nil {
+							if errors.Is(err, pgx.ErrNoRows) {
+								return false, nil
+							}
+							return false, err
+						}
+						row, err := dbplatform.New(raw).GetJob(ctx, id)
+						if err != nil {
+							if errors.Is(err, pgx.ErrNoRows) {
+								return false, nil
+							}
+							return false, err
+						}
+						return row.Status == "queued" || row.Status == "leased", nil
+					}},
+					Storage: sweepStoragePorts{deleteKey: func(ctx context.Context, key, namespace string) error {
+						if cfg.R2 == nil {
+							return errors.New("evidence: storage not configured")
+						}
+						pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
+							Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+							Key: key, Namespace: namespace,
+							TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+						}, storageCreds())
+						if err != nil {
+							return err
+						}
+						return evidencestorage.Delete(ctx, httpClient, pre.URL)
+					}},
+				})
+			},
+		},
 	}
 	dispatch := &jobs.Dispatcher{
 		Queue: queue, Handlers: handlers,
@@ -223,6 +289,11 @@ func run() error {
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,
 			Interval: time.Hour, Enabled: false, Reason: "D05 pending: no live provider",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
+			Interval: time.Hour, Enabled: true,
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

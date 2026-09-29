@@ -56,6 +56,30 @@ func TestTransferMapsStatusErrors(t *testing.T) {
 	}
 }
 
+func TestDeleteIsIdempotent(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Method != http.MethodDelete {
+			http.Error(w, "method", http.StatusMethodNotAllowed)
+			return
+		}
+		if calls == 1 {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Error(w, "NoSuchKey", http.StatusNotFound)
+	}))
+	defer srv.Close()
+	if err := Delete(context.Background(), srv.Client(), srv.URL); err != nil {
+		t.Fatalf("delete = %v", err)
+	}
+	// Already gone converges: repeated sweeps never fail on absence.
+	if err := Delete(context.Background(), srv.Client(), srv.URL); err != nil {
+		t.Errorf("repeat delete = %v", err)
+	}
+}
+
 func TestPutSendsExactContentType(t *testing.T) {
 	var gotType string
 	var gotLength int64

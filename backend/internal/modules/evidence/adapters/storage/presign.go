@@ -119,9 +119,27 @@ func PresignGET(in PresignInput, cred Credentials) (PresignedPUT, error) {
 	}, nil
 }
 
+// PresignDELETE mints one SigV4 query-authenticated DELETE URL binding
+// the exact key. Only the retention sweeper uses it, with server
+// credentials, for quarantine and expired sanitized bytes. Missing keys
+// delete idempotently at the transport layer.
+func PresignDELETE(in PresignInput, cred Credentials) (PresignedPUT, error) {
+	rawURL, expiresAt, err := presign(httpMethodDelete, in, cred)
+	if err != nil {
+		return PresignedPUT{}, err
+	}
+	return PresignedPUT{
+		URL:             rawURL,
+		RequiredHeaders: map[string]string{},
+		ExpiresAt:       expiresAt,
+		MaxBytes:        in.MaxBytes,
+	}, nil
+}
+
 const (
-	httpMethodPut = "PUT"
-	httpMethodGet = "GET"
+	httpMethodPut    = "PUT"
+	httpMethodGet    = "GET"
+	httpMethodDelete = "DELETE"
 )
 
 // presign signs one method against the shared SigV4 core: PUT covers host
@@ -168,7 +186,7 @@ func presign(method string, in PresignInput, cred Credentials) (string, time.Tim
 	case httpMethodPut:
 		signedHeaders = "content-type;host"
 		canonicalHeaders = "content-type:" + strings.TrimSpace(in.ContentType) + "\n" + "host:" + endpoint.Host + "\n"
-	case httpMethodGet:
+	case httpMethodGet, httpMethodDelete:
 		signedHeaders = "host"
 		canonicalHeaders = "host:" + endpoint.Host + "\n"
 	default:

@@ -133,7 +133,7 @@ func (s *Store) resolveConflict(ctx context.Context, sess domain.Session) (domai
 		!strings.EqualFold(row.ClaimedSha256, sess.ClaimedSHA256) {
 		return domain.Session{}, false, domain.ErrConflict
 	}
-	return mapSession(row), true, nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), true, nil
 }
 
 // CompleteSession claims ISSUED→VERIFYING and enqueues the verify job in
@@ -283,7 +283,7 @@ func (s *Store) Session(ctx context.Context, id string) (domain.Session, error) 
 		}
 		return domain.Session{}, err
 	}
-	return mapSession(row), nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), nil
 }
 
 // SessionByNaturalKey loads one reservation by its retry key.
@@ -297,7 +297,7 @@ func (s *Store) SessionByNaturalKey(ctx context.Context, ref, client string) (do
 		}
 		return domain.Session{}, err
 	}
-	return mapSession(row), nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), nil
 }
 
 // ObjectIDBySession resolves the verified object of one session for
@@ -330,14 +330,213 @@ func (s *Store) CountSince(ctx context.Context, ref string, since time.Time) (in
 	return int(n), nil
 }
 
-func mapSession(row evidence.EvidenceSession) domain.Session {
+func checkBatch(batch int) (int32, error) {
+	if batch < 1 {
+		return 0, errors.New("adapters: sweep batch must be positive")
+	}
+	return int32(batch), nil
+}
+
+// ExpireIdleSessions flips past-deadline ISSUED sessions to EXPIRED,
+// returning their quarantine keys for object cleanup.
+func (s *Store) ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).ExpireIdleSessions(ctx, evidence.ExpireIdleSessionsParams{
+		Now: pgTime(now), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.SessionRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionRef{ID: uuidString(row.ID), QuarantineKey: row.QuarantineKey})
+	}
+	return out, nil
+}
+
+// ListStuckVerifying lists VERIFYING sessions older than the cutoff: the
+// sweeper expires the ones without a live job and requeues the young
+// ones it cannot see a job for.
+func (s *Store) ListStuckVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).ListStuckVerifying(ctx, evidence.ListStuckVerifyingParams{
+		Cutoff: pgTime(cutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.SessionRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionRef{
+			ID: uuidString(row.ID), QuarantineKey: row.QuarantineKey,
+			Status: domain.StateVerifying, CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+// ListYoungVerifying lists recent VERIFYING sessions for live-job
+// reconciliation: missing jobs are requeued, never deleted.
+func (s *Store) ListYoungVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).ListYoungVerifying(ctx, evidence.ListYoungVerifyingParams{
+		Cutoff: pgTime(cutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.SessionRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionRef{
+			ID: uuidString(row.ID), QuarantineKey: row.QuarantineKey,
+			Status: domain.StateVerifying, CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+// ExpireStuckSession flips one stuck VERIFYING session to EXPIRED after
+// the sweeper confirmed no live job holds it. The age cutoff rides in
+// the guarded statement itself, so a young session can never expire
+// through this path even if a caller skips the list step.
+func (s *Store) ExpireStuckSession(ctx context.Context, id string, cutoff time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	n, err := evidence.New(s.pool).ExpireStuckSession(ctx, evidence.ExpireStuckSessionParams{
+		ID: uid, Cutoff: pgTime(cutoff),
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return domain.ErrBadTransition
+	}
+	return nil
+}
+
+// MarkQuarantineDeleted records a removed original upload. Set-if-unset
+// converges repeated runs; unknown ids surface as errors.
+func (s *Store) MarkQuarantineDeleted(ctx context.Context, id string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := evidence.New(s.pool).MarkQuarantineDeleted(ctx, uid); err != nil {
+		return err
+	}
+	return nil
+}
+
+// QuarantineCandidates lists sessions whose originals may leave storage:
+// terminal or older-than-cap sessions with no deletion marker yet.
+// VERIFYING sessions only appear here past the hard cap, after the stuck
+// pass already expired the jobless ones.
+func (s *Store) QuarantineCandidates(ctx context.Context, oldCutoff time.Time, batch int) ([]domain.SessionRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).QuarantineCandidates(ctx, evidence.QuarantineCandidatesParams{
+		OldCutoff: pgTime(oldCutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.SessionRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionRef{
+			ID: uuidString(row.ID), QuarantineKey: row.QuarantineKey,
+			Status: row.Status, CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+// StaleFinalCandidates lists sanitized objects past the default
+// retention for policy evaluation in Go (extension and absolute cap).
+func (s *Store) StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).StaleFinalCandidates(ctx, evidence.StaleFinalCandidatesParams{
+		YoungCutoff: pgTime(youngCutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ObjectRef, 0, len(rows))
+	for _, row := range rows {
+		obj := domain.ObjectRef{
+			ID: uuidString(row.ID), FinalKey: row.FinalKey,
+			CreatedAt:    row.CreatedAt.Time,
+			HasExtension: row.RetentionExtendedUntil.Valid,
+		}
+		if obj.HasExtension {
+			obj.ExtendedUntil = row.RetentionExtendedUntil.Time
+		}
+		out = append(out, obj)
+	}
+	return out, nil
+}
+
+// MarkFinalDeleted records removed sanitized bytes, keeping the row with
+// its duplicate-signal hashes to the 90-day bound. Convergent on repeat.
+func (s *Store) MarkFinalDeleted(ctx context.Context, id string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := evidence.New(s.pool).MarkFinalDeleted(ctx, uid); err != nil {
+		return err
+	}
+	return nil
+}
+
+// PurgeObjectsBefore deletes object rows past the hash-retention bound,
+// returning the purged count for the observable sweep report.
+func (s *Store) PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	return evidence.New(s.pool).PurgeObjectsBefore(ctx, pgTime(cutoff))
+}
+
+// FindByDHash resolves recent objects sharing one perceptual hash: the
+// bounded duplicate-media signal for independence checks downstream.
+func (s *Store) FindByDHash(ctx context.Context, dhash uint64, since time.Time) ([]domain.ObjectRef, error) {
+	rows, err := evidence.New(s.pool).FindByDHash(ctx, evidence.FindByDHashParams{
+		Dhash: int64(dhash), Since: pgTime(since),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ObjectRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.ObjectRef{
+			ID: uuidString(row.ID), SessionID: uuidString(row.SessionID),
+			FinalKey: row.FinalKey, CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
+func mapSession(id pgtype.UUID, contributorRef, clientSessionID, mime string, declaredBytes int64, claimedSha256, quarantineKey, status string, createdAt, expiresAt, updatedAt pgtype.Timestamptz, policyVersion string) domain.Session {
 	return domain.Session{
-		ID: uuidString(row.ID), ContributorRef: row.ContributorRef,
-		ClientSessionID: row.ClientSessionID, MIME: row.Mime,
-		DeclaredBytes: row.DeclaredBytes, MaxBytes: domain.MaxUploadBytes,
-		ClaimedSHA256: row.ClaimedSha256, QuarantineKey: row.QuarantineKey,
-		Status: row.Status, CreatedAt: row.CreatedAt.Time,
-		ExpiresAt: row.ExpiresAt.Time, UpdatedAt: row.UpdatedAt.Time,
-		PolicyVersion: row.PolicyVersion,
+		ID: uuidString(id), ContributorRef: contributorRef,
+		ClientSessionID: clientSessionID, MIME: mime,
+		DeclaredBytes: declaredBytes, MaxBytes: domain.MaxUploadBytes,
+		ClaimedSHA256: claimedSha256, QuarantineKey: quarantineKey,
+		Status: status, CreatedAt: createdAt.Time,
+		ExpiresAt: expiresAt.Time, UpdatedAt: updatedAt.Time,
+		PolicyVersion: policyVersion,
 	}
 }

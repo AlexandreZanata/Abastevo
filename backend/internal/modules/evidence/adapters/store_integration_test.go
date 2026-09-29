@@ -339,8 +339,9 @@ func TestCountSinceScopesContributor(t *testing.T) {
 
 func TestNoDestructivePaths(t *testing.T) {
 	// Sessions mutate only through guarded conditional updates; objects
-	// stay insert-only apart from the single-column bind claim. Any
-	// DELETE, TRUNCATE or second objects UPDATE fails this test.
+	// stay insert-only apart from the single-column bind claim, the
+	// final-deleted marker and the 90-day hash purge. Any TRUNCATE,
+	// session DELETE or further objects mutation fails this test.
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime caller unavailable")
@@ -350,12 +351,193 @@ func TestNoDestructivePaths(t *testing.T) {
 		t.Fatalf("read owned queries: %v", err)
 	}
 	upper := strings.ToUpper(string(raw))
-	for _, verb := range []string{"DELETE FROM evidence_", "TRUNCATE"} {
-		if strings.Contains(upper, verb) {
-			t.Errorf("destructive statement present: %s", verb)
+	if strings.Contains(upper, "TRUNCATE") {
+		t.Error("destructive statement present: TRUNCATE")
+	}
+	if strings.Contains(upper, "DELETE FROM EVIDENCE_SESSIONS") {
+		t.Error("destructive statement present: session deletes")
+	}
+	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 2 {
+		t.Errorf("objects updates = %d, want exactly bind claim plus final-deleted marker", n)
+	}
+	if n := strings.Count(upper, "DELETE FROM EVIDENCE_OBJECTS"); n != 1 {
+		t.Errorf("objects deletes = %d, want exactly the 90-day purge", n)
+	}
+}
+
+func testSessionAt(id, client string, createdAt time.Time) domain.Session {
+	s, _, err := domain.NewSession(domain.Params{
+		ID: id, ContributorRef: "tok-c1",
+		ClientSessionID: client, MIME: "image/jpeg", DeclaredBytes: 512 << 10,
+		ClaimedSHA256: strings.Repeat("a", 64), QuarantineKey: "q/" + strings.ReplaceAll(id, "-", ""),
+		CreatedAt: createdAt,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func backdateObject(t *testing.T, pool *pgxpool.Pool, objectID string, createdAt time.Time) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), "UPDATE evidence_objects SET created_at = $1 WHERE id = $2", createdAt, objectID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExpireIdleSessions(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	old := time.Now().Add(-25 * time.Hour)
+	if _, _, err := s.ReserveSession(ctx, testSessionAt("e0000000-0000-4000-8000-000000000001", "upl-1", old)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000002", "upl-2")); err != nil {
+		t.Fatal(err)
+	}
+	expired, err := s.ExpireIdleSessions(ctx, time.Now(), 10)
+	if err != nil || len(expired) != 1 || expired[0].ID != "e0000000-0000-4000-8000-000000000001" {
+		t.Fatalf("expired = %+v, %v", expired, err)
+	}
+	if expired[0].QuarantineKey == "" {
+		t.Error("expired row carries no quarantine key")
+	}
+	got, err := s.Session(ctx, "e0000000-0000-4000-8000-000000000001")
+	if err != nil || got.Status != domain.StateExpired {
+		t.Fatalf("session = %+v, %v", got, err)
+	}
+	again, err := s.ExpireIdleSessions(ctx, time.Now(), 10)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("repeat = %+v, %v (want convergence)", again, err)
+	}
+}
+
+func TestVerifyingListsSplitByAge(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	var jobs [][]byte
+	young := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
+	if _, _, err := s.ReserveSession(ctx, young); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteSession(ctx, young.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	stuck := testSessionAt("e0000000-0000-4000-8000-000000000002", "upl-2", time.Now().Add(-26*time.Hour))
+	if _, _, err := s.ReserveSession(ctx, stuck); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteSession(ctx, stuck.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	stuckRows, err := s.ListStuckVerifying(ctx, time.Now().Add(-24*time.Hour), 10)
+	if err != nil || len(stuckRows) != 1 || stuckRows[0].ID != stuck.ID {
+		t.Fatalf("stuck = %+v, %v", stuckRows, err)
+	}
+	youngRows, err := s.ListYoungVerifying(ctx, time.Now().Add(-24*time.Hour), 10)
+	if err != nil || len(youngRows) != 1 || youngRows[0].ID != young.ID {
+		t.Fatalf("young = %+v, %v", youngRows, err)
+	}
+	cutoff := time.Now().Add(-24 * time.Hour)
+	if err := s.ExpireStuckSession(ctx, stuck.ID, cutoff); err != nil {
+		t.Fatalf("expire stuck: %v", err)
+	}
+	if err := s.ExpireStuckSession(ctx, young.ID, cutoff); !errors.Is(err, domain.ErrBadTransition) {
+		t.Errorf("young expiry = %v, want bad transition", err)
+	}
+	if err := s.ExpireStuckSession(ctx, stuck.ID, cutoff); !errors.Is(err, domain.ErrBadTransition) {
+		t.Errorf("second expiry = %v, want bad transition", err)
+	}
+}
+
+func TestQuarantineCandidatesAndMarks(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	readyObj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
+	_ = readyObj
+	rej := testSession("e0000000-0000-4000-8000-000000000002", "upl-2")
+	if _, _, err := s.ReserveSession(ctx, rej); err != nil {
+		t.Fatal(err)
+	}
+	var jobs [][]byte
+	if err := s.CompleteSession(ctx, rej.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordRejected(ctx, rej.ID, []string{"invalid-image"}); err != nil {
+		t.Fatal(err)
+	}
+	verifying := testSession("e0000000-0000-4000-8000-000000000003", "upl-3")
+	if _, _, err := s.ReserveSession(ctx, verifying); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteSession(ctx, verifying.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	cands, err := s.QuarantineCandidates(ctx, time.Now().Add(-24*time.Hour), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, c := range cands {
+		ids[c.ID] = true
+	}
+	if !ids["e0000000-0000-4000-8000-000000000001"] || !ids["e0000000-0000-4000-8000-000000000002"] {
+		t.Errorf("candidates = %v, want ready + rejected", ids)
+	}
+	if ids["e0000000-0000-4000-8000-000000000003"] {
+		t.Errorf("young verifying listed for deletion: %v", ids)
+	}
+	for _, c := range cands {
+		if err := s.MarkQuarantineDeleted(ctx, c.ID); err != nil {
+			t.Fatalf("mark: %v", err)
 		}
 	}
-	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 1 {
-		t.Errorf("objects updates = %d, want exactly the bind claim", n)
+	again, err := s.QuarantineCandidates(ctx, time.Now().Add(-24*time.Hour), 10)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("repeat = %+v, %v (want convergence)", again, err)
+	}
+}
+
+func TestStaleFinalsPurgeAndDHashSignals(t *testing.T) {
+	s, pool := freshStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	oldObj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
+	backdateObject(t, pool, oldObj.ID, now.Add(-15*24*time.Hour))
+	freshObj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000002", "upl-2")
+	ancientObj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000003", "upl-3")
+	backdateObject(t, pool, ancientObj.ID, now.Add(-91*24*time.Hour))
+
+	stale, err := s.StaleFinalCandidates(ctx, now.Add(-14*24*time.Hour), 10)
+	if err != nil || len(stale) != 2 {
+		t.Fatalf("stale = %+v, %v (want old + ancient)", stale, err)
+	}
+	if err := s.MarkFinalDeleted(ctx, oldObj.ID); err != nil {
+		t.Fatalf("mark final: %v", err)
+	}
+	view, err := s.ForCommunity(ctx, oldObj.ID)
+	if err != nil || !view.Found || view.Ready {
+		t.Fatalf("deleted view = %+v, %v (want found but unavailable)", view, err)
+	}
+	matches, err := s.FindByDHash(ctx, 123, now.Add(-100*24*time.Hour))
+	if err != nil || len(matches) != 3 {
+		t.Fatalf("dhash matches = %d, %v (want all three)", len(matches), err)
+	}
+	n, err := s.PurgeObjectsBefore(ctx, now.Add(-90*24*time.Hour))
+	if err != nil || n != 1 {
+		t.Fatalf("purged = %d, %v (want the ancient row)", n, err)
+	}
+	matches, err = s.FindByDHash(ctx, 123, now.Add(-100*24*time.Hour))
+	if err != nil || len(matches) != 2 {
+		t.Fatalf("dhash after purge = %d, %v (bounded signals survive)", len(matches), err)
+	}
+	_ = freshObj
+}
+
+func TestSweepBatchValidation(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	if _, err := s.ExpireIdleSessions(ctx, time.Now(), 0); err == nil {
+		t.Error("zero batch accepted")
 	}
 }

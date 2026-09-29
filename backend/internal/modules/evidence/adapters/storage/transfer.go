@@ -80,6 +80,29 @@ func Put(ctx context.Context, client *http.Client, rawURL, contentType string, b
 	return nil
 }
 
+// Delete removes one object by presigned URL. A missing key succeeds:
+// idempotent deletion converges repeated sweeps, and the store marker is
+// the source of truth, not the transport response.
+func Delete(ctx context.Context, client *http.Client, rawURL string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, rawURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	if resp.StatusCode/100 != 2 {
+		return statusError(resp)
+	}
+	return nil
+}
+
 func statusError(resp *http.Response) error {
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 128))
 	return &StatusError{Status: resp.StatusCode, Hint: strings.TrimSpace(string(raw))}

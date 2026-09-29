@@ -45,6 +45,27 @@ var (
 	ErrConflict         = errors.New("evidence: same key, different intent")
 )
 
+// SessionRef is the minimal session identity for retention sweeps:
+// identifiers plus the facts eligibility needs, never payloads.
+type SessionRef struct {
+	ID            string
+	QuarantineKey string
+	Status        string
+	CreatedAt     time.Time
+}
+
+// ObjectRef is the minimal object retention view: identity, final key,
+// age and case extension. Hashes stay in the store for duplicate
+// signals; the sweeper never needs them.
+type ObjectRef struct {
+	ID            string
+	SessionID     string
+	FinalKey      string
+	CreatedAt     time.Time
+	ExtendedUntil time.Time
+	HasExtension  bool
+}
+
 // Params carries reservation intent plus server-resolved ownership. Every
 // server-controlled field (ID, contributor, quarantine key, clock, policy)
 // arrives from the caller, never from the client body: the client supplies

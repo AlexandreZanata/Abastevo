@@ -61,10 +61,122 @@ func (q *Queries) CountSessionsSince(ctx context.Context, arg CountSessionsSince
 	return count, err
 }
 
+const expireIdleSessions = `-- name: ExpireIdleSessions :many
+
+UPDATE evidence_sessions AS s
+SET status = 'EXPIRED', updated_at = now()
+WHERE s.id IN (
+    SELECT inner_s.id FROM evidence_sessions AS inner_s
+    WHERE inner_s.status = 'ISSUED' AND inner_s.expires_at <= $1
+    ORDER BY inner_s.expires_at ASC
+    LIMIT $2
+)
+RETURNING s.id, s.quarantine_key
+`
+
+type ExpireIdleSessionsParams struct {
+	Now   pgtype.Timestamptz `json:"now"`
+	Batch int32              `json:"batch"`
+}
+
+type ExpireIdleSessionsRow struct {
+	ID            pgtype.UUID `json:"id"`
+	QuarantineKey string      `json:"quarantine_key"`
+}
+
+// Sweep inventory (P05-T05). State transitions stay conditional; every
+// deletion marker is set-if-unset so repeated runs converge. Postgres
+// UPDATE takes no LIMIT, so batched transitions select their keys in a
+// subquery instead.
+func (q *Queries) ExpireIdleSessions(ctx context.Context, arg ExpireIdleSessionsParams) ([]ExpireIdleSessionsRow, error) {
+	rows, err := q.db.Query(ctx, expireIdleSessions, arg.Now, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExpireIdleSessionsRow
+	for rows.Next() {
+		var i ExpireIdleSessionsRow
+		if err := rows.Scan(&i.ID, &i.QuarantineKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const expireStuckSession = `-- name: ExpireStuckSession :execrows
+UPDATE evidence_sessions
+SET status = 'EXPIRED', updated_at = now()
+WHERE id = $1 AND status = 'VERIFYING' AND created_at <= $2
+`
+
+type ExpireStuckSessionParams struct {
+	ID     pgtype.UUID        `json:"id"`
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+}
+
+func (q *Queries) ExpireStuckSession(ctx context.Context, arg ExpireStuckSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, expireStuckSession, arg.ID, arg.Cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findByDHash = `-- name: FindByDHash :many
+SELECT id, session_id, final_key, dhash, created_at
+FROM evidence_objects
+WHERE dhash = $1 AND created_at >= $2
+ORDER BY created_at ASC
+`
+
+type FindByDHashParams struct {
+	Dhash int64              `json:"dhash"`
+	Since pgtype.Timestamptz `json:"since"`
+}
+
+type FindByDHashRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	SessionID pgtype.UUID        `json:"session_id"`
+	FinalKey  string             `json:"final_key"`
+	Dhash     int64              `json:"dhash"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]FindByDHashRow, error) {
+	rows, err := q.db.Query(ctx, findByDHash, arg.Dhash, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FindByDHashRow
+	for rows.Next() {
+		var i FindByDHashRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionID,
+			&i.FinalKey,
+			&i.Dhash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getObject = `-- name: GetObject :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at,
+    o.bound_observation_id, o.created_at, o.final_deleted_at,
     s.contributor_ref, s.status
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
@@ -82,6 +194,7 @@ type GetObjectRow struct {
 	Dhash              int64              `json:"dhash"`
 	BoundObservationID pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	FinalDeletedAt     pgtype.Timestamptz `json:"final_deleted_at"`
 	ContributorRef     string             `json:"contributor_ref"`
 	Status             string             `json:"status"`
 }
@@ -100,6 +213,7 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 		&i.Dhash,
 		&i.BoundObservationID,
 		&i.CreatedAt,
+		&i.FinalDeletedAt,
 		&i.ContributorRef,
 		&i.Status,
 	)
@@ -109,7 +223,7 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 const getObjectBySession = `-- name: GetObjectBySession :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at,
+    o.bound_observation_id, o.created_at, o.final_deleted_at,
     s.contributor_ref, s.status
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
@@ -127,6 +241,7 @@ type GetObjectBySessionRow struct {
 	Dhash              int64              `json:"dhash"`
 	BoundObservationID pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	FinalDeletedAt     pgtype.Timestamptz `json:"final_deleted_at"`
 	ContributorRef     string             `json:"contributor_ref"`
 	Status             string             `json:"status"`
 }
@@ -145,6 +260,7 @@ func (q *Queries) GetObjectBySession(ctx context.Context, sessionID pgtype.UUID)
 		&i.Dhash,
 		&i.BoundObservationID,
 		&i.CreatedAt,
+		&i.FinalDeletedAt,
 		&i.ContributorRef,
 		&i.Status,
 	)
@@ -159,9 +275,25 @@ FROM evidence_sessions
 WHERE id = $1
 `
 
-func (q *Queries) GetSession(ctx context.Context, id pgtype.UUID) (EvidenceSession, error) {
+type GetSessionRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	ContributorRef  string             `json:"contributor_ref"`
+	ClientSessionID string             `json:"client_session_id"`
+	Mime            string             `json:"mime"`
+	DeclaredBytes   int64              `json:"declared_bytes"`
+	ClaimedSha256   string             `json:"claimed_sha256"`
+	QuarantineKey   string             `json:"quarantine_key"`
+	Status          string             `json:"status"`
+	StatusReason    []string           `json:"status_reason"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	PolicyVersion   string             `json:"policy_version"`
+}
+
+func (q *Queries) GetSession(ctx context.Context, id pgtype.UUID) (GetSessionRow, error) {
 	row := q.db.QueryRow(ctx, getSession, id)
-	var i EvidenceSession
+	var i GetSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContributorRef,
@@ -193,9 +325,25 @@ type GetSessionByNaturalKeyParams struct {
 	ClientSessionID string `json:"client_session_id"`
 }
 
-func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNaturalKeyParams) (EvidenceSession, error) {
+type GetSessionByNaturalKeyRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	ContributorRef  string             `json:"contributor_ref"`
+	ClientSessionID string             `json:"client_session_id"`
+	Mime            string             `json:"mime"`
+	DeclaredBytes   int64              `json:"declared_bytes"`
+	ClaimedSha256   string             `json:"claimed_sha256"`
+	QuarantineKey   string             `json:"quarantine_key"`
+	Status          string             `json:"status"`
+	StatusReason    []string           `json:"status_reason"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	PolicyVersion   string             `json:"policy_version"`
+}
+
+func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNaturalKeyParams) (GetSessionByNaturalKeyRow, error) {
 	row := q.db.QueryRow(ctx, getSessionByNaturalKey, arg.ContributorRef, arg.ClientSessionID)
-	var i EvidenceSession
+	var i GetSessionByNaturalKeyRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContributorRef,
@@ -304,6 +452,110 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (p
 	return id, err
 }
 
+const listStuckVerifying = `-- name: ListStuckVerifying :many
+SELECT id, quarantine_key, created_at FROM evidence_sessions
+WHERE status = 'VERIFYING' AND created_at <= $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type ListStuckVerifyingParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+type ListStuckVerifyingRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListStuckVerifying(ctx context.Context, arg ListStuckVerifyingParams) ([]ListStuckVerifyingRow, error) {
+	rows, err := q.db.Query(ctx, listStuckVerifying, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStuckVerifyingRow
+	for rows.Next() {
+		var i ListStuckVerifyingRow
+		if err := rows.Scan(&i.ID, &i.QuarantineKey, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listYoungVerifying = `-- name: ListYoungVerifying :many
+SELECT id, quarantine_key, created_at FROM evidence_sessions
+WHERE status = 'VERIFYING' AND created_at > $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type ListYoungVerifyingParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+type ListYoungVerifyingRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListYoungVerifying(ctx context.Context, arg ListYoungVerifyingParams) ([]ListYoungVerifyingRow, error) {
+	rows, err := q.db.Query(ctx, listYoungVerifying, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListYoungVerifyingRow
+	for rows.Next() {
+		var i ListYoungVerifyingRow
+		if err := rows.Scan(&i.ID, &i.QuarantineKey, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markFinalDeleted = `-- name: MarkFinalDeleted :execrows
+UPDATE evidence_objects
+SET final_deleted_at = now()
+WHERE id = $1 AND final_deleted_at IS NULL
+`
+
+func (q *Queries) MarkFinalDeleted(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markFinalDeleted, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markQuarantineDeleted = `-- name: MarkQuarantineDeleted :execrows
+UPDATE evidence_sessions
+SET quarantine_deleted_at = now()
+WHERE id = $1 AND quarantine_deleted_at IS NULL
+`
+
+func (q *Queries) MarkQuarantineDeleted(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markQuarantineDeleted, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const markSessionExpired = `-- name: MarkSessionExpired :execrows
 UPDATE evidence_sessions
 SET status = 'EXPIRED', updated_at = now()
@@ -349,4 +601,107 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const purgeObjectsBefore = `-- name: PurgeObjectsBefore :execrows
+DELETE FROM evidence_objects
+WHERE created_at < $1
+`
+
+func (q *Queries) PurgeObjectsBefore(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeObjectsBefore, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const quarantineCandidates = `-- name: QuarantineCandidates :many
+SELECT id, quarantine_key, status, created_at FROM evidence_sessions
+WHERE quarantine_deleted_at IS NULL
+    AND (status IN ('READY', 'REJECTED', 'EXPIRED') OR created_at <= $1)
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type QuarantineCandidatesParams struct {
+	OldCutoff pgtype.Timestamptz `json:"old_cutoff"`
+	Batch     int32              `json:"batch"`
+}
+
+type QuarantineCandidatesRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) QuarantineCandidates(ctx context.Context, arg QuarantineCandidatesParams) ([]QuarantineCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, quarantineCandidates, arg.OldCutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuarantineCandidatesRow
+	for rows.Next() {
+		var i QuarantineCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.QuarantineKey,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const staleFinalCandidates = `-- name: StaleFinalCandidates :many
+SELECT id, final_key, created_at, retention_extended_until
+FROM evidence_objects
+WHERE final_deleted_at IS NULL AND created_at <= $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type StaleFinalCandidatesParams struct {
+	YoungCutoff pgtype.Timestamptz `json:"young_cutoff"`
+	Batch       int32              `json:"batch"`
+}
+
+type StaleFinalCandidatesRow struct {
+	ID                     pgtype.UUID        `json:"id"`
+	FinalKey               string             `json:"final_key"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	RetentionExtendedUntil pgtype.Timestamptz `json:"retention_extended_until"`
+}
+
+func (q *Queries) StaleFinalCandidates(ctx context.Context, arg StaleFinalCandidatesParams) ([]StaleFinalCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, staleFinalCandidates, arg.YoungCutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StaleFinalCandidatesRow
+	for rows.Next() {
+		var i StaleFinalCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FinalKey,
+			&i.CreatedAt,
+			&i.RetentionExtendedUntil,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

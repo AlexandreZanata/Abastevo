@@ -79,7 +79,7 @@ type fakeS3 struct {
 }
 
 func (f *fakeS3) serve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut && r.Method != http.MethodGet {
+	if r.Method != http.MethodPut && r.Method != http.MethodGet && r.Method != http.MethodDelete {
 		http.Error(w, "method", http.StatusMethodNotAllowed)
 		return
 	}
@@ -335,6 +335,32 @@ func TestPresignedGETRoundTrip(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET = %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestPresignedDELETERoundTrip(t *testing.T) {
+	// Retention deletes ride the same SigV4 core: exact-key binding and
+	// expiry hold for DELETE as well.
+	fake := &fakeS3{t: t, secret: testCred().SecretAccessKey, access: testCred().AccessKeyID, bucket: "anpfuel-quarantine", key: "q/e0000000000000000000000000000001", now: testClock()}
+	srv := httptest.NewServer(http.HandlerFunc(fake.serve))
+	defer srv.Close()
+	in := testInput(srv.URL)
+	in.ContentType = ""
+	got, err := PresignDELETE(in, testCred())
+	if err != nil {
+		t.Fatalf("presign DELETE = %v", err)
+	}
+	req, err := http.NewRequest(http.MethodDelete, got.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("DELETE = %d, want 200", resp.StatusCode)
 	}
 }
 
