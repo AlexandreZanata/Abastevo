@@ -7,8 +7,9 @@
 - P04 entry G03 satisfied. Exit G04 pending; no current-price claim at receipt.
 - P03-T01…T08: LOCAL_DONE (profile vectors, registration, auth verifier, idempotency, quotas, rotation, durable queue, dispatch). G03 INTEGRATED.
 - P04-T01: LOCAL_DONE — `community/domain` immutable Observation (server IDs/times/attribution only, STANDARD sentinel, policy v1, freshness flags, PriceObserved event; stdlib-only with kernel cross-check test); invalid amount/unit/condition/identity/time cases, supersedes link, historical flags; RED proven by dropping the range check, GREEN on restore; manifest extended.
-- G04: P04-T02…T08 NOT STARTED.
-- Next: **P04-T02 — Validation state machine**.
+- P04-T02: LOCAL_DONE — `community/domain` validation state machine (RECEIVED→VALIDATING→VALIDATED/REJECTED, VALIDATED→REJECTED moderation-only; persisted command proof on claim, worker-only admit/reject, stable reasons, privileged case-bound invalidation; immutable decisions with sequence + event names; freshness/confidence/disputes kept separate); exhaustive valid/invalid/actor/reason/command matrix; RED proven by dropping the admit guard, GREEN on restore; no new manifest packages.
+- G04: P04-T03…T08 NOT STARTED.
+- Next: **P04-T03 — Observation persistence**.
 - Issues/milestone/PR/wiki: P04 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
