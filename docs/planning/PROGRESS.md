@@ -1,6 +1,6 @@
 # Current execution state
 
-- Updated: 2026-09-30, P04 INTEGRATED; P05 opened (P05-T01 in progress).
+- Updated: 2026-09-30, P04 INTEGRATED; P05-T01 LOCAL_DONE.
 - Branch: `codex/phase-05-private-evidence`, based on `52e889a`; clean.
 - Phase P04 INTEGRATED: PR #5 merged `19c2800` → `52e889a` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-04-observations` deleted locally + remotely, verified; merge recorded in PR #5 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Phase P03 INTEGRATED: PR #4 merged `762615a` → `6a12dcd` (match-head-commit, all checks green); branch `codex/phase-03-anonymous-identity` deleted locally + remotely, verified; merge recorded in PR #4 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
@@ -13,7 +13,9 @@
 - P04-T04: LOCAL_DONE — `community/application` submit/status/history use-case (validated submit, quota, idempotent replay, owner-scoped status/history; RECEIVED only, missing+foreign share one 404) + `adapters/http` handlers (strict wire parse with canonical integer amounts, status/history reads, no-store, sealed keyset cursors with nano precision) + contract-first OpenAPI paths/schemas/vectors + `000009` attribution-token ledger + `cmd/api` composition (real auth/quota/idempotency/attribution/enqueue closures, errors mapped onto community sentinels); full-stack integration on real PostGIS: receipt envelope, replay convergence, body-conflict, validation matrix, owner/foreign/unknown/malformed cases, cursor walk with tamper refusal, cross-contributor isolation; RED proven on the quota-sentinel unwrap, GREEN on restore; race + quick-verify green.
 - P04-T05: LOCAL_DONE — `community/application` Validate (claim with job-ID proof, station/trust/evidence/location ports, metadata-only admits, photo path pends to 24h timeout, transients retry, terminal idempotent, admit enqueues `community-consensus`) + `adapters/jobs` validate-observation handler + `Store.RecordDecisionWithJob` atomic decision+job + worker wiring (real station ports; evidence/trust deferred honestly to P05/P06); RED proven by inverting the station guard, GREEN on restore; unit + race/integration (incl. atomic commit/rollback) + quick-verify green; manifest extended.
 - G04: P04-T01…T05 INTEGRATED (entry G04 satisfied for P05).
-- Next: **P05-T01 — Upload session domain**.
+- P05-T01: LOCAL_DONE — `evidence/domain` upload session (JPEG-only, 1..3MiB declared, 64-hex hash claim normalized, server quarantine key, ISSUED→VERIFYING→READY/REJECTED + 24h ISSUED→EXPIRED, stdlib-only) + `evidence/application` Reserve (auth, quota-before-work with 429 delay, natural-key retry convergence, divergent-payload conflict, per-contributor isolation); RED proven by dropping the MIME guard, GREEN on restore; unit + quick-verify green; manifest extended. Presigned issuance/verification/binding stay in P05-T02…T04.
+- G05: P05-T01 LOCAL_DONE; P05-T02…T05 NOT STARTED.
+- Next: **P05-T02 — S3 adapter and presigned upload**.
 - Issues/milestone/PR/wiki: P05 phase PR pending (draft after first push); wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
