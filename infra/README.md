@@ -98,3 +98,15 @@ the pipeline against the disposable dev database. Schedules,
 credential scope, transport and recovery linkage live in
 [the backup runbook](../docs/operator/backup.md). The passphrase
 stays outside the VPS; manifests carry no secrets.
+
+## Isolated restore drill (P08-T04)
+
+`infra/scripts/restore.sh` restores one verified artifact into a fresh
+`anpfuel_drill_*` database, verifies the migration ledger, PostGIS,
+per-table counts and evidence join integrity, and reports pending
+ledger rows for `ops privacy replay` before traffic (see
+[the recovery runbook](../docs/operator/recovery.md)); `make
+test-restore` proves the full drill locally with the real ops binary.
+Local drill evidence lives in
+[docs/release-evidence/p08-t04-restore-drill.md](../docs/release-evidence/p08-t04-restore-drill.md);
+staging acceptance repeats it on provisioned infrastructure.
