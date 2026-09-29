@@ -42,6 +42,18 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
   - engine: postgresql
+    queries: db/queries/community
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000008_community.sql
+    gen:
+      go:
+        package: community
+        out: db/queries/community
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
     queries: db/queries/identity
     schema:
       - db/migrations/000001_enable_postgis.sql

@@ -8,8 +8,9 @@
 - P03-T01…T08: LOCAL_DONE (profile vectors, registration, auth verifier, idempotency, quotas, rotation, durable queue, dispatch). G03 INTEGRATED.
 - P04-T01: LOCAL_DONE — `community/domain` immutable Observation (server IDs/times/attribution only, STANDARD sentinel, policy v1, freshness flags, PriceObserved event; stdlib-only with kernel cross-check test); invalid amount/unit/condition/identity/time cases, supersedes link, historical flags; RED proven by dropping the range check, GREEN on restore; manifest extended.
 - P04-T02: LOCAL_DONE — `community/domain` validation state machine (RECEIVED→VALIDATING→VALIDATED/REJECTED, VALIDATED→REJECTED moderation-only; persisted command proof on claim, worker-only admit/reject, stable reasons, privileged case-bound invalidation; immutable decisions with sequence + event names; freshness/confidence/disputes kept separate); exhaustive valid/invalid/actor/reason/command matrix; RED proven by dropping the admit guard, GREEN on restore; no new manifest packages.
-- G04: P04-T03…T08 NOT STARTED.
-- Next: **P04-T03 — Observation persistence**.
+- P04-T03: LOCAL_DONE — `db/migrations/000008` (observations with natural-key unique + price/contributor indexes, decisions with per-observation sequence unique, append-only) + `db/queries/community` (per-owner sqlc schemas) + `adapters` Store (fact+job atomic submit via injected enqueue closure, natural-key retry converging with divergent-payload conflict, machine-enforcing RecordDecision with exact sequence, readers); integration on real PostGIS: fact+job atomicity, retry/concurrency convergence, rollback on enqueue failure, out-of-order/forged-state refusal, history order, no destructive SQL paths; RED proven on the FromState guard (needed an exact known-pair case after a masking attempt), GREEN on restore; manifest extended.
+- G04: P04-T04…T08 NOT STARTED.
+- Next: **P04-T04 — Observation submit and owner status**.
 - Issues/milestone/PR/wiki: P04 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

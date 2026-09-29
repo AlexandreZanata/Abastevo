@@ -36,6 +36,7 @@ backend/internal/modules/identity/application
 backend/internal/modules/official/adapters/jobs
 backend/internal/modules/directory/adapters/jobs
 backend/internal/modules/community/domain
+backend/internal/modules/community/adapters
 
 [required-checks]
 gofmt

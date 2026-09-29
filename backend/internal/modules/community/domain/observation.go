@@ -48,6 +48,7 @@ var (
 	ErrInvalidAmount      = errors.New("community: amount outside 1..1000000 milli-BRL")
 	ErrUnknownCondition   = errors.New("community: unknown condition")
 	ErrFutureCapture      = errors.New("community: capture too far in the future")
+	ErrConflict           = errors.New("community: same key, different payload")
 )
 
 // Freshness classifies the claimed capture time for downstream validation.
