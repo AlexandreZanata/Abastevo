@@ -1,0 +1,55 @@
+{
+  "id": "p09-t01-rehearsal-v1",
+  "provenance": "synthetic local rehearsal; no production data, keys or photos",
+  "candidate": "4ce5aaf79aa3bf8d8cf31c05635dfa2b30714556",
+  "topology": "disposable dev PostGIS via infra/compose.dev.yml; loopback API only",
+  "buc_chain": [
+    "BUC-001 official catalog read (anonymous)",
+    "BUC-002 identity register/rotate covered by integration suites",
+    "BUC-003 observe/validate covered by integration suites",
+    "BUC-004 evidence reserve/verify covered by integration suites",
+    "BUC-005 confirm/dispute/projection read (anonymous projection section)",
+    "BUC-006 moderation via restricted ops, audited",
+    "BUC-007 export/erase covered by integration suites; restore replays ledger",
+    "BUC-008 release/recover via deploy/backup/restore runbooks"
+  ],
+  "invariants": [
+    "B-BR-001 source separation: community null is UNKNOWN, never official substitution",
+    "B-BR-002 exact money: milli-BRL integers only, no floats",
+    "B-BR-008 freshness: expired projections served as STALE/UNKNOWN",
+    "B-BR-011 privacy: no contributor identity, GPS or secrets in public reads or logs"
+  ],
+  "synthetic_stations": [
+    {
+      "id": "c0000000-0000-4000-8000-000000000001",
+      "display_name": "Rehearsal Station 1",
+      "municipality_code": "3550308",
+      "state": "SP"
+    },
+    {
+      "id": "c0000000-0000-4000-8000-000000000002",
+      "display_name": "Rehearsal Station 2",
+      "municipality_code": "3304557",
+      "state": "RJ"
+    }
+  ],
+  "public_read_scenarios": [
+    "GET /health/live -> 200",
+    "GET /health/ready -> 200 when DB up",
+    "GET /v1/stations?q=Rehearsal&limit=20 -> 200 with rehearsal rows",
+    "GET /v1/stations/{id} -> 200 public cache",
+    "GET /v1/stations/{id}/prices?fuel_product=GASOLINE_REGULAR -> 200 source-separated",
+    "GET /v1/stations/{id}/official-prices?limit=5 -> 200 separate history"
+  ],
+  "denied_paths": [
+    "GET /v1/stations/not-a-uuid -> 400 station.bad-id",
+    "GET /v1/stations/00000000-0000-4000-8000-000000000000 -> 404",
+    "POST /v1/observations without auth -> 401",
+    "GET /v1/stations/nearby without lat/lon -> 400"
+  ],
+  "boundaries": [
+    "synthetic UUIDs with c000 prefix; scrubbed after the run",
+    "no real contributor keys, photos or PII",
+    "loopback only; no provisioned staging, R2 or TLS claims"
+  ]
+}

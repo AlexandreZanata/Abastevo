@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -49,6 +49,9 @@ check-security:
 test-security:
 	bash scripts/tests/test-security.sh
 
+test-rehearse:
+	bash scripts/tests/test-rehearse.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -65,3 +68,4 @@ help:
 	@echo "  test-load       bounded load smoke + fault suite, real disposable DB (P08-T07)"
 	@echo "  check-security  STRIDE/dependency release review gate (P08-T08)"
 	@echo "  test-security   security gate failure-behavior harness (P08-T08)"
+	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
