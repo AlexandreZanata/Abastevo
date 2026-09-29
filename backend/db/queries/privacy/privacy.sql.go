@@ -137,11 +137,11 @@ type InsertRequestParams struct {
 
 // Owned by privacy. Requests are insert-once: retries converge on the
 // owner natural key, and outcomes move forward only (REQUESTED to READY
-// or FAILED) through the guarded transitions below. No UPDATE outside
-// those guards and no DELETE path exists in this file: expiry purges
-// arrive with the retention scheduler (P07-T05), and erasure removes
-// payloads through the deletion workflow (P07-T04), never by editing
-// export history.
+// or FAILED) through the guarded transitions below. No mutation exists
+// outside those guards and no removal path exists in this file: expiry
+// purges arrive with the retention scheduler (P07-T05), and erasure
+// removes payloads through the deletion workflow (P07-T04), never by
+// editing export history.
 func (q *Queries) InsertRequest(ctx context.Context, arg InsertRequestParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, insertRequest,
 		arg.ID,
