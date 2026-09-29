@@ -1,0 +1,13 @@
+{
+  "id": "dispute-submit-invalid-reason",
+  "version": 1,
+  "schema": "DisputeSubmit",
+  "valid": false,
+  "provenance": "P06-T02 unknown reason rejected; synthetic",
+  "value": {
+    "client_submission_id": "dsp-2026-09-30-002",
+    "reason": "WRONG_EVERYTHING",
+    "detail": null,
+    "replacement_observation_id": null
+  }
+}

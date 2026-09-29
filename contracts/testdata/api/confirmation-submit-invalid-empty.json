@@ -1,0 +1,10 @@
+{
+  "id": "confirmation-submit-invalid-empty",
+  "version": 1,
+  "schema": "ConfirmationSubmit",
+  "valid": false,
+  "provenance": "P06-T02 empty client key rejected; synthetic",
+  "value": {
+    "client_submission_id": ""
+  }
+}

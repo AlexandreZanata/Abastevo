@@ -1,0 +1,10 @@
+{
+  "id": "confirmation-submit-valid",
+  "version": 1,
+  "schema": "ConfirmationSubmit",
+  "valid": true,
+  "provenance": "P06-T02 support vote shape; synthetic",
+  "value": {
+    "client_submission_id": "cfm-2026-09-30-001"
+  }
+}

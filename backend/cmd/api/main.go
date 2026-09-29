@@ -152,6 +152,29 @@ func run() error {
 		},
 		Store: communityStore,
 	}
+	// Support votes and structured reports (P06-T02). Same closure
+	// rule: quota, identity and recompute enqueue arrive as narrow
+	// functions; every accepted write enqueues consensus recomputation.
+	votePorts := communityapp.VotePorts{
+		Clock: time.Now,
+		NewID: newUUID,
+		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &communityapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+		Store: communityStore,
+	}
 	communityhttp.Handler{
 		Authenticate: func(r *http.Request) (communityapp.Caller, error) {
 			id, err := authVerifier.Verify(r.Context(), r)
@@ -207,6 +230,14 @@ func run() error {
 		},
 		History: func(ctx context.Context, caller communityapp.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]communityapp.HistoryItem, string, error) {
 			return communityapp.History(ctx, communityPorts, caller, limit, after, afterID, hasCursor)
+		},
+		Confirm: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.ConfirmDTO, _ []byte) (communityapp.ConfirmResult, error) {
+			dto.ObservationID = observationID
+			return communityapp.Confirm(ctx, votePorts, caller, dto)
+		},
+		Dispute: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.DisputeDTO, _ []byte) (communityapp.DisputeResult, error) {
+			dto.TargetObservationID = observationID
+			return communityapp.Dispute(ctx, votePorts, caller, dto)
 		},
 		Secrets: cfg.CursorSecret,
 	}.RegisterRoutes(router)

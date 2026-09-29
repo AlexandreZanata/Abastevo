@@ -26,6 +26,8 @@ type Handler struct {
 	Submit       func(ctx context.Context, caller application.Caller, key string, dto application.SubmitDTO, body []byte) (application.SubmitResult, bool, error)
 	Status       func(ctx context.Context, caller application.Caller, id string) (application.StatusResult, error)
 	History      func(ctx context.Context, caller application.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]application.HistoryItem, string, error)
+	Confirm      func(ctx context.Context, caller application.Caller, observationID string, dto application.ConfirmDTO, body []byte) (application.ConfirmResult, error)
+	Dispute      func(ctx context.Context, caller application.Caller, observationID string, dto application.DisputeDTO, body []byte) (application.DisputeResult, error)
 	Secrets      []byte
 }
 
@@ -34,6 +36,8 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/observations", h.submit)
 	r.Get("/v1/observations/{observation_id}", h.status)
 	r.Get("/v1/contributors/me/observations", h.history)
+	r.Post("/v1/observations/{observation_id}/confirmations", h.confirm)
+	r.Post("/v1/observations/{observation_id}/disputes", h.dispute)
 }
 
 func generatedNow() string { return time.Now().UTC().Format(time.RFC3339) }
@@ -57,8 +61,21 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, application.ErrUnauthorized):
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "community.auth-required", "authentication required", nil)
+	case errors.Is(err, application.ErrTargetNotFound):
+		httpapi.WriteError(w, r, http.StatusNotFound, "community.not-found", "observation not found", nil)
+	case errors.Is(err, domain.ErrSelfConfirmation):
+		httpapi.WriteError(w, r, http.StatusForbidden, "community.self-confirmation", "contributors cannot confirm their own observations", nil)
+	case errors.Is(err, application.ErrIneligibleTarget):
+		httpapi.WriteError(w, r, http.StatusConflict, "community.ineligible-target", "target not eligible for this command", nil)
+	case errors.Is(err, domain.ErrAlreadyConfirmed):
+		httpapi.WriteError(w, r, http.StatusConflict, "community.already-confirmed", "observation already confirmed by contributor", nil)
 	case errors.Is(err, application.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "community.conflict", "same key, different body", nil)
+	case errors.Is(err, domain.ErrUnknownReason),
+		errors.Is(err, domain.ErrInvalidDispute),
+		errors.Is(err, domain.ErrInvalidConfirmation):
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.invalid", "invalid vote or report",
+			[]httpapi.Detail{{Field: "body", Code: "invalid"}})
 	default:
 		httpapi.WriteError(w, r, http.StatusBadRequest, "community.invalid", "invalid submission",
 			[]httpapi.Detail{{Field: "body", Code: "invalid"}})
@@ -168,6 +185,120 @@ func (h Handler) submit(w http.ResponseWriter, r *http.Request) {
 		"validation_state": result.State,
 		"received_at":      result.ReceivedAt.Format(time.RFC3339),
 		"status_url":       "/v1/observations/" + result.ObservationID,
+	})
+	httpapi.WriteJSON(w, r, http.StatusCreated, "no-store", body)
+}
+
+// confirmDTO is the strict wire parse for support votes.
+type confirmDTO struct {
+	ClientSubmissionID string `json:"client_submission_id"`
+}
+
+// disputeDTO is the strict wire parse for structured reports.
+type disputeDTO struct {
+	ClientSubmissionID       string  `json:"client_submission_id"`
+	Reason                   string  `json:"reason"`
+	Detail                   string  `json:"detail"`
+	ReplacementObservationID *string `json:"replacement_observation_id"`
+}
+
+func parseConfirmBody(raw []byte) (application.ConfirmDTO, error) {
+	var in confirmDTO
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		return application.ConfirmDTO{}, err
+	}
+	if strings.TrimSpace(in.ClientSubmissionID) == "" {
+		return application.ConfirmDTO{}, errors.New("client_submission_id required")
+	}
+	return application.ConfirmDTO{ClientSubmissionID: in.ClientSubmissionID}, nil
+}
+
+func parseDisputeBody(raw []byte) (application.DisputeDTO, error) {
+	var in disputeDTO
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&in); err != nil {
+		return application.DisputeDTO{}, err
+	}
+	if strings.TrimSpace(in.ClientSubmissionID) == "" || strings.TrimSpace(in.Reason) == "" {
+		return application.DisputeDTO{}, errors.New("client_submission_id and reason required")
+	}
+	out := application.DisputeDTO{
+		ClientSubmissionID: in.ClientSubmissionID,
+		Reason:             in.Reason,
+		Detail:             in.Detail,
+	}
+	if in.ReplacementObservationID != nil {
+		out.ReplacementID = *in.ReplacementObservationID
+	}
+	return out, nil
+}
+
+func readVoteBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	raw, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.bad-body", "unreadable body",
+			[]httpapi.Detail{{Field: "body", Code: "unreadable"}})
+		return nil, false
+	}
+	return raw, true
+}
+
+func (h Handler) confirm(w http.ResponseWriter, r *http.Request) {
+	caller, ok := h.caller(w, r)
+	if !ok {
+		return
+	}
+	raw, ok := readVoteBody(w, r)
+	if !ok {
+		return
+	}
+	dto, err := parseConfirmBody(raw)
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.bad-body", "malformed confirmation",
+			[]httpapi.Detail{{Field: "body", Code: "malformed"}})
+		return
+	}
+	result, err := h.Confirm(r.Context(), caller, chi.URLParam(r, "observation_id"), dto, raw)
+	if err != nil {
+		writeAPIError(w, r, err)
+		return
+	}
+	body, _ := json.Marshal(map[string]any{
+		"confirmation_id": result.ConfirmationID,
+		"observation_id":  chi.URLParam(r, "observation_id"),
+		"received_at":     result.ReceivedAt.Format(time.RFC3339),
+	})
+	httpapi.WriteJSON(w, r, http.StatusCreated, "no-store", body)
+}
+
+func (h Handler) dispute(w http.ResponseWriter, r *http.Request) {
+	caller, ok := h.caller(w, r)
+	if !ok {
+		return
+	}
+	raw, ok := readVoteBody(w, r)
+	if !ok {
+		return
+	}
+	dto, err := parseDisputeBody(raw)
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.bad-body", "malformed dispute",
+			[]httpapi.Detail{{Field: "body", Code: "malformed"}})
+		return
+	}
+	result, err := h.Dispute(r.Context(), caller, chi.URLParam(r, "observation_id"), dto, raw)
+	if err != nil {
+		writeAPIError(w, r, err)
+		return
+	}
+	body, _ := json.Marshal(map[string]any{
+		"dispute_id":            result.DisputeID,
+		"target_observation_id": chi.URLParam(r, "observation_id"),
+		"state":                 result.State,
+		"received_at":           result.ReceivedAt.Format(time.RFC3339),
 	})
 	httpapi.WriteJSON(w, r, http.StatusCreated, "no-store", body)
 }

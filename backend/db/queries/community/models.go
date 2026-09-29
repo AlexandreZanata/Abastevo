@@ -8,6 +8,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CommunityConfirmation struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ObservationID      pgtype.UUID        `json:"observation_id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	PolicyVersion      string             `json:"policy_version"`
+}
+
+type CommunityDispute struct {
+	ID                  pgtype.UUID        `json:"id"`
+	TargetObservationID pgtype.UUID        `json:"target_observation_id"`
+	ContributorRef      string             `json:"contributor_ref"`
+	ClientSubmissionID  string             `json:"client_submission_id"`
+	Reason              string             `json:"reason"`
+	Detail              string             `json:"detail"`
+	ReplacementID       pgtype.UUID        `json:"replacement_id"`
+	Status              string             `json:"status"`
+	ReceivedAt          pgtype.Timestamptz `json:"received_at"`
+	PolicyVersion       string             `json:"policy_version"`
+}
+
 type CommunityObservation struct {
 	ID                 pgtype.UUID        `json:"id"`
 	ContributorRef     string             `json:"contributor_ref"`
