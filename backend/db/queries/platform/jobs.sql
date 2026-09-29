@@ -55,3 +55,12 @@ WHERE id = @id;
 
 -- name: GetJobByDedupe :one
 SELECT id FROM job_queue WHERE dedupe_key = @dedupe_key;
+
+-- Monitoring (P08-T05): queue depth, dead-letter count and oldest
+-- queued job for backlog alerts. One indexed scan, no payload reads.
+
+-- name: JobBacklog :one
+SELECT COUNT(*) FILTER (WHERE status = 'queued') AS queued,
+    COUNT(*) FILTER (WHERE status = 'dead') AS dead,
+    MIN(created_at) FILTER (WHERE status = 'queued') AS oldest_queued
+FROM job_queue;

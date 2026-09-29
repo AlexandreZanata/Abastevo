@@ -100,7 +100,6 @@ credential scope, transport and recovery linkage live in
 stays outside the VPS; manifests carry no secrets.
 
 ## Isolated restore drill (P08-T04)
-
 `infra/scripts/restore.sh` restores one verified artifact into a fresh
 `anpfuel_drill_*` database, verifies the migration ledger, PostGIS,
 per-table counts and evidence join integrity, and reports pending
@@ -110,3 +109,15 @@ test-restore` proves the full drill locally with the real ops binary.
 Local drill evidence lives in
 [docs/release-evidence/p08-t04-restore-drill.md](../docs/release-evidence/p08-t04-restore-drill.md);
 staging acceptance repeats it on provisioned infrastructure.
+
+## Metrics and alerts (P08-T05)
+
+The API exposes Prometheus text on a loopback-only listener
+(`ANPFUEL_METRICS_ADDR`, default `127.0.0.1:9090`, empty disables):
+bounded request counters by method/route-template/class, pool gauges,
+queue depth/dead-letter/oldest gauges and a dropped-series counter.
+Topologies publish no metrics port. `ops monitoring eval` runs the
+`db_down`/`jobs_dead`/`jobs_stuck`/`backup_stale` rules once for cron
+integration (exit 1 when anything fires). Catalog, PromQL starters,
+notification route and label policy live in
+[the monitoring runbook](../docs/operator/monitoring.md).

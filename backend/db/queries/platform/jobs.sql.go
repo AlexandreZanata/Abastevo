@@ -179,6 +179,29 @@ func (q *Queries) GetJobByDedupe(ctx context.Context, dedupeKey pgtype.Text) (pg
 	return id, err
 }
 
+const jobBacklog = `-- name: JobBacklog :one
+
+SELECT COUNT(*) FILTER (WHERE status = 'queued') AS queued,
+    COUNT(*) FILTER (WHERE status = 'dead') AS dead,
+    MIN(created_at) FILTER (WHERE status = 'queued') AS oldest_queued
+FROM job_queue
+`
+
+type JobBacklogRow struct {
+	Queued       int64       `json:"queued"`
+	Dead         int64       `json:"dead"`
+	OldestQueued interface{} `json:"oldest_queued"`
+}
+
+// Monitoring (P08-T05): queue depth, dead-letter count and oldest
+// queued job for backlog alerts. One indexed scan, no payload reads.
+func (q *Queries) JobBacklog(ctx context.Context) (JobBacklogRow, error) {
+	row := q.db.QueryRow(ctx, jobBacklog)
+	var i JobBacklogRow
+	err := row.Scan(&i.Queued, &i.Dead, &i.OldestQueued)
+	return i, err
+}
+
 const replayDeadJob = `-- name: ReplayDeadJob :execrows
 UPDATE job_queue
 SET status = 'queued', attempts = 0, last_error = $1,

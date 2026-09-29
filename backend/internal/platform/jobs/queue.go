@@ -226,6 +226,20 @@ func (q *Queue) ReplayDead(ctx context.Context, id, reason string) error {
 	return nil
 }
 
+// Backlog reports queue depth, dead-letter count and the oldest queued
+// job for backlog alerts (P08-T05): one indexed scan, no payload
+// reads. Zero oldest with no error means an empty queue.
+func (q *Queue) Backlog(ctx context.Context) (queued, dead int64, oldest time.Time, err error) {
+	row, err := platform.New(q.pool).JobBacklog(ctx)
+	if err != nil {
+		return 0, 0, time.Time{}, err
+	}
+	if ts, ok := row.OldestQueued.(pgtype.Timestamptz); ok {
+		oldest = ts.Time
+	}
+	return row.Queued, row.Dead, oldest, nil
+}
+
 func mapJob(id pgtype.UUID, kind string, payload []byte, dedupe pgtype.Text, status string, attempts, maxAttempts int32, token int64, worker, lastErr string, created pgtype.Timestamptz) Job {
 	return Job{
 		ID: idString(id), Kind: kind, Payload: payload,
