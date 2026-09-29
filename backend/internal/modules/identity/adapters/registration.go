@@ -245,3 +245,38 @@ func (r *Registrar) Register(ctx context.Context, req domain.RegistrationRequest
 func canonicalJWK(x, y string) string {
 	return `{"crv":"P-256","kty":"EC","x":"` + x + `","y":"` + y + `"}`
 }
+
+// AttributionToken resolves a contributor to its stable random token,
+// minting it once on first use. Observations carry the token, never the
+// contributor UUID, so public content cannot pivot to identity rows.
+func (r *Registrar) AttributionToken(ctx context.Context, contributorID string) (string, error) {
+	uid, err := mustUUID(contributorID)
+	if err != nil {
+		return "", err
+	}
+	q := identity.New(r.pool)
+	token, err := q.GetAttributionToken(ctx, uid)
+	if err != nil {
+		return "", err
+	}
+	if token.String != "" {
+		return token.String, nil
+	}
+	var randPart [16]byte
+	if _, err := rand.Read(randPart[:]); err != nil {
+		return "", err
+	}
+	fresh := "tok-" + hex.EncodeToString(randPart[:])
+	n, err := q.SetAttributionToken(ctx, identity.SetAttributionTokenParams{ID: uid, Token: pgtype.Text{String: fresh, Valid: true}})
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		after, rerr := q.GetAttributionToken(ctx, uid)
+		if rerr != nil {
+			return "", rerr
+		}
+		return after.String, nil
+	}
+	return fresh, nil
+}

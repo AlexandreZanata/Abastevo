@@ -172,6 +172,68 @@ func (q *Queries) InsertObservation(ctx context.Context, arg InsertObservationPa
 	return id, err
 }
 
+const listByContributor = `-- name: ListByContributor :many
+SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
+    unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+FROM community_observations
+WHERE contributor_ref = $1
+    AND ($2::boolean = FALSE OR
+        (received_at, id::text) < ($3, $4::text))
+ORDER BY received_at DESC, id::text DESC
+LIMIT $5
+`
+
+type ListByContributorParams struct {
+	ContributorRef string             `json:"contributor_ref"`
+	HasCursor      bool               `json:"has_cursor"`
+	AfterTime      pgtype.Timestamptz `json:"after_time"`
+	AfterID        string             `json:"after_id"`
+	LimitPlusOne   int32              `json:"limit_plus_one"`
+}
+
+func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorParams) ([]CommunityObservation, error) {
+	rows, err := q.db.Query(ctx, listByContributor,
+		arg.ContributorRef,
+		arg.HasCursor,
+		arg.AfterTime,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CommunityObservation
+	for rows.Next() {
+		var i CommunityObservation
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContributorRef,
+			&i.ClientSubmissionID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.RawPriceText,
+			&i.ConditionKind,
+			&i.QualifierKey,
+			&i.EvidenceID,
+			&i.ReceivedAt,
+			&i.ClaimedCapturedAt,
+			&i.SupersedesID,
+			&i.PolicyVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDecisions = `-- name: ListDecisions :many
 SELECT id, observation_id, sequence, to_state, reason_codes, policy_version,
     occurred_at, actor_ref

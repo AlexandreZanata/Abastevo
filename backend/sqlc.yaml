@@ -60,6 +60,7 @@ sql:
       - db/migrations/000004_identity.sql
       - db/migrations/000005_idempotency.sql
       - db/migrations/000006_quotas.sql
+      - db/migrations/000009_attribution.sql
     gen:
       go:
         package: identity

@@ -280,3 +280,23 @@ func mapObservation(row community.CommunityObservation) domain.Observation {
 		Freshness:         domain.CaptureFreshness(claimed, row.ReceivedAt.Time),
 	}
 }
+
+// ListByContributor returns one contributor's facts newest-first with
+// keyset pagination over (received_at, id).
+func (s *Store) ListByContributor(ctx context.Context, ref string, limit int, after time.Time, afterID string, hasCursor bool) ([]domain.Observation, error) {
+	rows, err := community.New(s.pool).ListByContributor(ctx, community.ListByContributorParams{
+		ContributorRef: ref,
+		HasCursor:      hasCursor,
+		AfterTime:      pgTime(after),
+		AfterID:        afterID,
+		LimitPlusOne:   int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Observation, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, mapObservation(row))
+	}
+	return out, nil
+}

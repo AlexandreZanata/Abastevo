@@ -42,3 +42,14 @@ SELECT id, observation_id, sequence, to_state, reason_codes, policy_version,
 FROM community_observation_decisions
 WHERE observation_id = @observation_id
 ORDER BY sequence ASC;
+
+-- name: ListByContributor :many
+SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
+    unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+FROM community_observations
+WHERE contributor_ref = @contributor_ref
+    AND (@has_cursor::boolean = FALSE OR
+        (received_at, id::text) < (@after_time, @after_id::text))
+ORDER BY received_at DESC, id::text DESC
+LIMIT @limit_plus_one;

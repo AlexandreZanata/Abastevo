@@ -40,6 +40,14 @@ SELECT id, status, created_at, deleted_at
 FROM identity_contributors
 WHERE id = @id;
 
+-- name: GetAttributionToken :one
+SELECT attribution_token FROM identity_contributors WHERE id = @id;
+
+-- name: SetAttributionToken :execrows
+UPDATE identity_contributors
+SET attribution_token = @token
+WHERE id = @id AND attribution_token IS NULL;
+
 -- name: RevokeKey :execrows
 UPDATE identity_keys
 SET revoked_at = now()
