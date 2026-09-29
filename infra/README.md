@@ -78,3 +78,12 @@ profile, never via `up`) → `up -d api worker caddy`. Rollback returns to
 the previous `ANPFUEL_RELEASE`; never `docker compose down -v` against
 persistent volumes. `ANPFUEL_CANONICAL_HOST` must equal `CADDY_DOMAIN`
 (signatures cover the canonical authority; proxy hosts are untrusted).
+
+## Deploy and rollback (P08-T02)
+
+`infra/scripts/deploy.sh` orchestrates one versioned release with
+readiness/smoke gates and automatic return to the previous compatible
+release; `make test-deploy` proves every failure path with stubbed
+docker/curl. The full sequence, backup precheck, receipt keeping and
+the CI publish design live in [the deploy runbook](../docs/operator/deploy.md).
+No destructive down migration exists: rollback is a forward redeploy.
