@@ -281,16 +281,13 @@ func (f Fetcher) Fetch(ctx context.Context, rawURL, etag, lastModified string) (
 	}, nil
 }
 
-// Probe reports whether a listing source changed since the known ETag,
-// downloading nothing. Schedulers retain the last known revision on any
-// error instead of treating failure as change.
+// Probe reports whether a source changed since the known ETag,
+// downloading nothing. Any allowlisted URL probes; the allowlist itself is
+// the guard. Schedulers retain the last known revision on any error instead
+// of treating failure as change.
 func (f Fetcher) Probe(ctx context.Context, rawURL, knownETag string) (changed bool, etag, lastModified string, err error) {
-	entry, err := Match(f.Allow, rawURL)
-	if err != nil {
+	if _, err := Match(f.Allow, rawURL); err != nil {
 		return false, "", "", err
-	}
-	if entry.Kind != KindListing && entry.Kind != KindHistoricalCSV {
-		return false, "", "", fmt.Errorf("%w: probe needs a listing entry", ErrURLRejected)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {

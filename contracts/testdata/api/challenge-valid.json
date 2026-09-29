@@ -1,0 +1,14 @@
+{
+  "id": "challenge-valid",
+  "version": 1,
+  "schema": "Challenge",
+  "valid": true,
+  "provenance": "P03-T02 challenge shape; synthetic",
+  "value": {
+    "challenge_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+    "nonce": "d6c74c23-63db-4c24-a2e5-408cb23bad26.9f2c4a7e8b1d3f5a",
+    "fingerprint": "fp:e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624",
+    "purpose": "REGISTER",
+    "expires_at": "2026-09-28T00:05:00Z"
+  }
+}

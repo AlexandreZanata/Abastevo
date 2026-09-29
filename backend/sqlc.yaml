@@ -11,6 +11,7 @@ sql:
     queries: db/queries/platform
     schema:
       - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000007_jobs.sql
     gen:
       go:
         package: platform
@@ -38,5 +39,18 @@ sql:
       go:
         package: official
         out: db/queries/official
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/identity
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000004_identity.sql
+      - db/migrations/000005_idempotency.sql
+      - db/migrations/000006_quotas.sql
+    gen:
+      go:
+        package: identity
+        out: db/queries/identity
         sql_package: pgx/v5
         emit_json_tags: true

@@ -28,6 +28,8 @@ tags:
     description: Anonymous public station catalog reads.
   - name: official
     description: Anonymous revision-aware official price reads.
+  - name: identity
+    description: Anonymous challenge and contributor registration.
 paths:
   /health/live:
     get:
@@ -67,6 +69,122 @@ paths:
                 $ref: '#/components/schemas/HealthStatus'
               example:
                 status: not_ready
+  /v1/identity/challenges:
+    post:
+      summary: Issue a bound challenge (anonymous).
+      operationId: issueChallenge
+      tags: [identity]
+      security: []
+      requestBody:
+        required: true
+        description: Challenge input for this operation.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+            example:
+              fingerprint: e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624
+              purpose: REGISTER
+      responses:
+        '201':
+          description: Challenge with single-use nonce.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Challenge'
+              example:
+                challenge_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                nonce: d6c74c23-63db-4c24-a2e5-408cb23bad26.9f2c4a7e8b1d3f5a
+                fingerprint: e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624
+                purpose: REGISTER
+                expires_at: '2026-09-28T00:05:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/contributors:
+    post:
+      summary: Register key ownership with proof (anonymous).
+      operationId: registerContributor
+      tags: [identity]
+      security: []
+      requestBody:
+        required: true
+        description: Registration input with key and proof.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorRegistration'
+            example:
+              public_jwk:
+                kty: EC
+                crv: P-256
+                x: 5H8pdbqwCE7YcVh0t7VNWgcQVrZ4S66TjfwBDE8tneE
+                y: WpcgI0Z8gndT_z9lTn8qgoevjDFsjVAlRvfpo6-KJIs
+              challenge_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+              proof:
+                lines:
+                  - '"@method": POST'
+                  - '"@authority": api.example.invalid'
+                  - '"@path": /v1/contributors'
+                  - '"@query": '
+                  - '"created": 1735689600'
+                  - '"expires": 1735689900'
+                  - '"keyid": "e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624"'
+                  - '"nonce": "d6c74c23-63db-4c24-a2e5-408cb23bad26.9f2c4a7e8b1d3f5a"'
+                signature: MEUCIQ
+      responses:
+        '201':
+          description: Contributor with key ownership; duplicates return existing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contributor'
+              example:
+                contributor_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                key_id: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                existed: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/contributors/me/keys/rotate:
+    post:
+      summary: Rotate to a new key with old and new proofs (anonymous).
+      operationId: rotateContributorKey
+      tags: [identity]
+      security: []
+      requestBody:
+        required: true
+        description: Old and new proofs plus the candidate key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyRotation'
+            example:
+              old:
+                challenge_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                lines: ['"@method": POST']
+                signature: MEUCIQ
+              new_jwk:
+                kty: EC
+                crv: P-256
+                x: 5H8pdbqwCE7YcVh0t7VNWgcQVrZ4S66TjfwBDE8tneE
+                y: WpcgI0Z8gndT_z9lTn8qgoevjDFsjVAlRvfpo6-KJIs
+              new:
+                challenge_id: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                lines: ['"@method": POST']
+                signature: MEUCIQ
+      responses:
+        '200':
+          description: Contributor preserved, old key revoked, new key bound.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rotation'
+              example:
+                contributor_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                old_key_id: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                new_key_id: bbd138ce-e442-4f57-a874-3c05d2e16f52
+                existed: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /v1/stations:
     get:
       summary: Directory search (anonymous).
@@ -572,6 +690,149 @@ components:
           type: string
           format: date-time
           example: '2026-09-28T00:00:00Z'
+    ChallengeRequest:
+      description: Fingerprint plus purpose for a bound challenge.
+      type: object
+      required: [fingerprint, purpose]
+      properties:
+        fingerprint:
+          type: string
+          description: Key fingerprint the challenge binds to.
+          example: fp:e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624
+        purpose:
+          type: string
+          enum: [REGISTER, SIGN]
+          example: REGISTER
+    Challenge:
+      description: Single-use bound challenge; proof must consume it once.
+      type: object
+      required: [challenge_id, nonce, fingerprint, purpose, expires_at]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        nonce:
+          type: string
+          description: Server nonce the proof signs over.
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26.9f2c4a7e8b1d3f5a
+        fingerprint:
+          type: string
+          example: fp:e568c4f52605d14215f6e649000e4ffc2da4caa4bdcbbf2b8bcd9937ff9ea624
+        purpose:
+          type: string
+          enum: [REGISTER, SIGN]
+          example: REGISTER
+        expires_at:
+          type: string
+          format: date-time
+          example: '2026-09-28T00:05:00Z'
+    PublicJWK:
+      description: P-256 public key; private material never crosses the wire.
+      type: object
+      required: [kty, crv, x, y]
+      properties:
+        kty: {type: string, enum: [EC], example: EC}
+        crv: {type: string, enum: [P-256], example: P-256}
+        x:
+          type: string
+          description: Base64url 32-byte X coordinate.
+          example: 5H8pdbqwCE7YcVh0t7VNWgcQVrZ4S66TjfwBDE8tneE
+        y:
+          type: string
+          description: Base64url 32-byte Y coordinate.
+          example: WpcgI0Z8gndT_z9lTn8qgoevjDFsjVAlRvfpo6-KJIs
+    ContributorRegistration:
+      description: Candidate key plus challenge proof over the live request.
+      type: object
+      required: [public_jwk, challenge_id, proof]
+      properties:
+        public_jwk:
+          $ref: '#/components/schemas/PublicJWK'
+        challenge_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        proof:
+          type: object
+          required: [lines, signature]
+          properties:
+            lines:
+              type: array
+              description: Covered base lines in frozen order.
+              example: ['"@method": POST']
+              items: {type: string}
+            signature:
+              type: string
+              description: Base64url raw 64-byte signature.
+              example: MEUCIQ
+    Contributor:
+      description: Key-owned anonymous identity; duplicates return existing.
+      type: object
+      required: [contributor_id, key_id, existed]
+      properties:
+        contributor_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        key_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        existed:
+          type: boolean
+          description: True when the key already owned this identity.
+          example: false
+    RotationProof:
+      description: One signed side of a rotation bound to its challenge.
+      type: object
+      required: [challenge_id, lines, signature]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        lines:
+          type: array
+          description: Rotation covered lines in frozen order.
+          example: ['"@method": POST']
+          items: {type: string}
+        signature:
+          type: string
+          description: Base64url raw 64-byte rotation signature.
+          example: MEUCIQ
+    KeyRotation:
+      description: Rotation request with both proofs and the candidate key.
+      type: object
+      required: [old, new_jwk, new]
+      properties:
+        old:
+          $ref: '#/components/schemas/RotationProof'
+        new_jwk:
+          $ref: '#/components/schemas/PublicJWK'
+        new:
+          $ref: '#/components/schemas/RotationProof'
+    Rotation:
+      description: Preserved contributor with revoked old and bound new key.
+      type: object
+      required: [contributor_id, old_key_id, new_key_id, existed]
+      properties:
+        contributor_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        old_key_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        new_key_id:
+          type: string
+          format: uuid
+          example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+        existed:
+          type: boolean
+          description: True when replaying an already completed rotation.
+          example: false
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

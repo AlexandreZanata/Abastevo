@@ -298,8 +298,8 @@ func TestProbeChangedUnchangedError(t *testing.T) {
 	if _, _, _, err := f.Probe(context.Background(), srv.URL+"/anp/broken", `"old"`); !errors.Is(err, ErrBadStatus) {
 		t.Errorf("broken probe accepted: %v", err)
 	}
-	if _, _, _, err := f.Probe(context.Background(), srv.URL+"/anp/file.xlsx", `"old"`); err == nil {
-		t.Error("probe accepted a non-listing entry")
+	if changed, _, _, err := f.Probe(context.Background(), srv.URL+"/anp/file.xlsx", `"old"`); err != nil || !changed {
+		t.Errorf("file probe = %v, %v", changed, err)
 	}
 }
 

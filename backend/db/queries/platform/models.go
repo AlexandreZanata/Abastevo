@@ -3,3 +3,23 @@
 //   sqlc v1.31.1
 
 package platform
+
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type JobQueue struct {
+	ID             pgtype.UUID        `json:"id"`
+	Kind           string             `json:"kind"`
+	Payload        []byte             `json:"payload"`
+	DedupeKey      pgtype.Text        `json:"dedupe_key"`
+	Status         string             `json:"status"`
+	Attempts       int32              `json:"attempts"`
+	MaxAttempts    int32              `json:"max_attempts"`
+	LeaseToken     int64              `json:"lease_token"`
+	LeaseExpiresAt pgtype.Timestamptz `json:"lease_expires_at"`
+	WorkerID       string             `json:"worker_id"`
+	NotBefore      pgtype.Timestamptz `json:"not_before"`
+	LastError      string             `json:"last_error"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
