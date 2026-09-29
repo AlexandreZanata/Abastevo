@@ -62,7 +62,7 @@ func servePrivate(h Handler, method, target, body string, headers map[string]str
 	return w
 }
 
-const submitBody = `{"client_submission_id":"sub-1","station_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","fuel_product":"GASOLINE_REGULAR","price":{"amount_milli_brl":5890,"currency":"BRL","unit":"L"},"condition":{"kind":"STANDARD"}}`
+const privateSubmitBody = `{"client_submission_id":"sub-1","station_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","fuel_product":"GASOLINE_REGULAR","price":{"amount_milli_brl":5890,"currency":"BRL","unit":"L"},"condition":{"kind":"STANDARD"}}`
 
 // TestPrivateWritesAreNeverSharedCached proves every owner write and
 // read carries no-store: signed commands, owner status, owner history,
@@ -77,7 +77,7 @@ func TestPrivateWritesAreNeverSharedCached(t *testing.T) {
 		body   string
 		want   int
 	}{
-		{"submit", http.MethodPost, "/v1/observations", submitBody, http.StatusCreated},
+		{"submit", http.MethodPost, "/v1/observations", privateSubmitBody, http.StatusCreated},
 		{"status", http.MethodGet, "/v1/observations/" + obsID, "", http.StatusOK},
 		{"history", http.MethodGet, "/v1/contributors/me/observations?limit=5", "", http.StatusOK},
 		{"confirm", http.MethodPost, "/v1/observations/" + obsID + "/confirmations", `{"client_submission_id":"cfm-1"}`, http.StatusCreated},
