@@ -35,6 +35,8 @@ import (
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
+	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
+	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -93,6 +95,7 @@ func run() error {
 
 	directoryRepo := directoryadapters.NewRepository(raw)
 	evidenceStore := evidenceadapters.NewStore(raw)
+	trustStore := trustadapters.NewStore(raw)
 	officialReader := officialread.NewReader(raw)
 	importer := officialadapters.NewImporter(raw)
 	fetcher := source.NewFetcher(source.DefaultAllowlist())
@@ -271,10 +274,16 @@ func run() error {
 						}
 						return err
 					},
-					// Trust decisions land in P06: every contributor is NEW
-					// per trust-v1 initial state, so nothing is blocked
-					// here. A blocked verdict arrives with the trust store.
-					Trust: func(context.Context, string) (bool, error) { return false, nil },
+					// Real trust ledger (P06-T03): unknown contributors
+					// read as NEW, only an audited BLOCKED verdict
+					// refuses. Promotion never consults volume or payment.
+					Trust: func(ctx context.Context, contributorRef string) (bool, error) {
+						tier, err := trustStore.Tier(ctx, contributorRef)
+						if err != nil {
+							return false, err
+						}
+						return tier == trustdomain.TierBlocked, nil
+					},
 					Store: store,
 					EnqueueConsensus: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 						_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
