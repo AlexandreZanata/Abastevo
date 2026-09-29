@@ -121,6 +121,17 @@ recovery (database stop, storage outage, capped disk pressure);
 with explicit non-claims; the 30-minute acceptance matrix runs on
 staging (P09).
 
+## Security release review (P08-T08)
+
+`scripts/check-security.sh` runs the static review (dependency/image
+pins, non-root runtimes, private DB, edge rules, placeholder-only
+examples, secret scans) plus `govulncheck` and the focused
+replay/IDOR/SSRF/oversize/role/secret suites in their owning modules;
+`make test-security` proves one refusal per fault class plus the live
+scans. Local evidence in
+[docs/release-evidence/p08-t08-security.md](../docs/release-evidence/p08-t08-security.md)
+with inventory and explicit non-claims; staging acceptance stays in P09.
+
 ## Metrics and alerts (P08-T05)
 
 The API exposes Prometheus text on a loopback-only listener
