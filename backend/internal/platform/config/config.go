@@ -39,6 +39,7 @@ const (
 	keyShutdownTimeout = "ANPFUEL_SHUTDOWN_TIMEOUT"
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
+	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -48,6 +49,10 @@ const (
 	defaultHTTPAddr        = ":8080"
 	defaultMaxBodyBytes    = 1 << 20
 	defaultShutdownTimeout = 10 * time.Second
+	// defaultMetricsAddr binds the metrics listener to loopback only:
+	// metrics stay on the private listener and are never published by
+	// the staging/production topologies. Empty disables the listener.
+	defaultMetricsAddr = "127.0.0.1:9090"
 
 	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
@@ -66,6 +71,8 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	CursorSecret    []byte
 	CanonicalHost   string
+	// MetricsAddr is the private metrics listener; empty disables it.
+	MetricsAddr string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2 *R2Config
@@ -184,6 +191,18 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
+
+	metrics, metricsSet := getenv(keyMetricsAddr)
+	if !metricsSet {
+		metrics = defaultMetricsAddr
+	}
+	// Explicit empty disables the listener; otherwise a valid host:port.
+	if metrics != "" {
+		if _, _, err := net.SplitHostPort(metrics); err != nil {
+			return Config{}, fmt.Errorf("%s must be a valid host:port or empty", keyMetricsAddr)
+		}
+		cfg.MetricsAddr = metrics
+	}
 
 	r2, err := loadR2(getenv)
 	if err != nil {

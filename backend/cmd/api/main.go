@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -43,6 +45,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
 
 // newUUID mints v4 identifiers for server-owned facts.
@@ -75,6 +78,20 @@ func run() error {
 		return err
 	}
 	router := httpserver.NewRouter(logger)
+	// Private service metrics (P08-T05): bounded request counters by
+	// method, route template and status class. The exposition stays on
+	// the loopback-only metrics listener wired below, never on the
+	// public router.
+	metricsReg := metrics.NewRegistry()
+	httpRequests, err := metricsReg.Counter("http_requests_total", "Requests by method, route template and status class.", "method", "route", "class")
+	if err != nil {
+		return err
+	}
+	httpSeconds, err := metricsReg.Counter("http_request_seconds_total", "Request seconds by method, route template and status class.", "method", "route", "class")
+	if err != nil {
+		return err
+	}
+	router.Use(metrics.Observe(metricsReg, httpRequests, httpSeconds))
 	// Lazy pool: the process boots (live, not ready) while PostgreSQL is
 	// down. Closed after the server drains, at shutdown.
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL, database.DefaultOptions())
@@ -88,6 +105,66 @@ func run() error {
 	}
 	router.Get("/health/live", healthHandler.Live)
 	router.Get("/health/ready", healthHandler.Ready)
+	// Scrape-time collectors (P08-T05): cheap readers evaluated per
+	// scrape; failures report NaN (unknown), never stale values.
+	rawPool := pool.Underlying()
+	jobQueue := platformjobs.NewQueue(rawPool)
+	scrapeCtx := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), 2*time.Second)
+	}
+	if _, err := metricsReg.GaugeFunc("db_up", "Database reachability: 1 up, 0 down.", func() float64 {
+		ctx, cancel := scrapeCtx()
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
+			return 0
+		}
+		return 1
+	}); err != nil {
+		return err
+	}
+	if _, err := metricsReg.GaugeFunc("db_pool_acquired", "Acquired pool connections.", func() float64 {
+		return float64(rawPool.Stat().AcquiredConns())
+	}); err != nil {
+		return err
+	}
+	if _, err := metricsReg.GaugeFunc("db_pool_idle", "Idle pool connections.", func() float64 {
+		return float64(rawPool.Stat().IdleConns())
+	}); err != nil {
+		return err
+	}
+	if _, err := metricsReg.GaugeFunc("jobs_queued", "Queued jobs awaiting claim.", func() float64 {
+		ctx, cancel := scrapeCtx()
+		defer cancel()
+		queued, _, _, err := jobQueue.Backlog(ctx)
+		if err != nil {
+			return math.NaN()
+		}
+		return float64(queued)
+	}); err != nil {
+		return err
+	}
+	if _, err := metricsReg.GaugeFunc("jobs_dead", "Dead-lettered jobs needing audited replay.", func() float64 {
+		ctx, cancel := scrapeCtx()
+		defer cancel()
+		_, dead, _, err := jobQueue.Backlog(ctx)
+		if err != nil {
+			return math.NaN()
+		}
+		return float64(dead)
+	}); err != nil {
+		return err
+	}
+	if _, err := metricsReg.GaugeFunc("jobs_oldest_queued_seconds", "Age of the oldest queued job.", func() float64 {
+		ctx, cancel := scrapeCtx()
+		defer cancel()
+		_, _, oldest, err := jobQueue.Backlog(ctx)
+		if err != nil || oldest.IsZero() {
+			return math.NaN()
+		}
+		return time.Since(oldest).Seconds()
+	}); err != nil {
+		return err
+	}
 	// Anonymous catalog reads (P02-T08). Only this composition root wires
 	// modules together: the official handler gets station existence as a
 	// closure so modules never cross-read.
@@ -354,5 +431,26 @@ func run() error {
 	logger.Info(context.Background(), "api.startup", "api serving")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// Private metrics listener (P08-T05): loopback-only by default,
+	// disabled when ANPFUEL_METRICS_ADDR is empty. Never published by
+	// the staging/production topologies.
+	if cfg.MetricsAddr != "" {
+		metricsServer := &http.Server{
+			Addr:              cfg.MetricsAddr,
+			Handler:           metricsReg.Handler(),
+			ReadHeaderTimeout: httpserver.DefaultReadHeaderTimeout,
+		}
+		go func() {
+			<-ctx.Done()
+			shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+			defer cancel()
+			_ = metricsServer.Shutdown(shutdown)
+		}()
+		go func() {
+			if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Error(context.Background(), "metrics.startup", "metrics listener failed", slog.String("error", err.Error()))
+			}
+		}()
+	}
 	return server.Run(ctx)
 }

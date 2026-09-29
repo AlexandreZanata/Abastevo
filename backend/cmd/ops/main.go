@@ -36,6 +36,8 @@ func run(args []string, getenv func(string) string) error {
 		return runModeration(args[1:], getenv)
 	case "privacy":
 		return runPrivacy(args[1:], getenv)
+	case "monitoring":
+		return runMonitoring(args[1:], getenv)
 	case "evidence-url":
 		return runEvidenceURL(args[1:], getenv)
 	case "-h", "-help", "--help", "help":
@@ -51,6 +53,7 @@ const usage = `usage:
   ops moderation block --case <id> --reason <text> [--operator <id>]
   ops privacy erase --contributor <id> --reason <text> [--client-key <k>] [--operator <id>]
   ops privacy replay --contributor <id> [--operator <id>]
+  ops monitoring eval [--webhook <url>] [--backup-manifest <path>]
   ops evidence-url --case <id> --evidence-id <id> [--operator <id>]
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.

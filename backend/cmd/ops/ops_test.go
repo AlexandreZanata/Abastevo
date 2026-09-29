@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -131,5 +132,58 @@ func TestParseReplayArgs(t *testing.T) {
 	}
 	if _, err := parseReplayArgs(nil); err == nil {
 		t.Error("missing --contributor accepted")
+	}
+}
+
+func TestStuckRuleBoundary(t *testing.T) {
+	now := time.Now()
+	if firing, _, _ := stuckRule(0, now.Add(-time.Hour), now); firing {
+		t.Error("empty queue fired")
+	}
+	if firing, _, _ := stuckRule(3, time.Time{}, now); firing {
+		t.Error("zero oldest fired")
+	}
+	if firing, detail, _ := stuckRule(3, now.Add(-6*time.Minute), now); !firing || detail == "" {
+		t.Errorf("stuck queue silent: %v %q", firing, detail)
+	}
+	if firing, _, _ := stuckRule(3, now.Add(-time.Minute), now); firing {
+		t.Error("fresh queue fired")
+	}
+}
+
+func TestDeadRule(t *testing.T) {
+	if firing, _, _ := deadRule(0); firing {
+		t.Error("clean queue fired")
+	}
+	if firing, detail, _ := deadRule(2); !firing || detail != "dead=2" {
+		t.Errorf("dead queue silent: %v %q", firing, detail)
+	}
+}
+
+func TestBackupRule(t *testing.T) {
+	now := time.Now()
+	missing := "/nonexistent/manifest.json"
+	if _, _, err := backupRule(missing, now); err == nil {
+		t.Error("missing manifest counted as fresh")
+	}
+	fresh, err := os.CreateTemp("", "manifest-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Remove(fresh.Name()) }()
+	if firing, _, err := backupRule(fresh.Name(), now); err != nil || firing {
+		t.Errorf("fresh manifest fired: %v %v", firing, err)
+	}
+	old, err := os.CreateTemp("", "manifest-*.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Remove(old.Name()) }()
+	past := now.Add(-30 * time.Hour)
+	if err := os.Chtimes(old.Name(), past, past); err != nil {
+		t.Fatal(err)
+	}
+	if firing, detail, err := backupRule(old.Name(), now); err != nil || !firing || detail == "" {
+		t.Errorf("stale manifest silent: %v %q %v", firing, detail, err)
 	}
 }

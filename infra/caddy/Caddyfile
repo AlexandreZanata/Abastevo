@@ -1,0 +1,67 @@
+# Caddy edge for staging and production (P08-T01).
+#
+# Domain and contact arrive as environment placeholders so one file
+# serves both topologies: CADDY_DOMAIN and CADDY_TLS_EMAIL are required
+# compose variables. TLS terminates here; only /v1/* and /health/*
+# proxy to the API. There is no metrics, database or admin route: the
+# API serves no /metrics path, and the Caddy admin endpoint stays off.
+{
+	admin off
+	email {$CADDY_TLS_EMAIL}
+
+	servers {
+		# Only private/proxy ranges may set forwarding headers; public
+		# clients cannot spoof origin identity. Any broader
+		# trusted_proxies value fails the infra gate.
+		trusted_proxies private_ranges
+	}
+}
+
+{$CADDY_DOMAIN} {
+	tls {
+		protocols tls1.2 tls1.3
+	}
+
+	encode gzip
+
+	# JSON access log to stdout (no bodies, tokens or signed URLs: the
+	# API never emits them and Caddy never logs request/response
+	# bodies). Retain per the 7-day security-investigation bound.
+	log {
+		output stdout
+		format json
+	}
+
+	# Shared-cacheable reads ignore identity by contract (proven by the
+	# invariance tests): strip Cookie/Authorization so edge caches key
+	# on method+URL only. Signed owner reads and writes never match
+	# this set, so their proofs always reach the origin. The nearby
+	# search overlaps the wildcard but ignores identity and stays
+	# no-store, so stripping there is equally safe.
+	@shared_cacheable {
+		method GET
+		path /v1/stations /v1/stations/* /v1/stations/*/prices /v1/stations/*/official-prices
+	}
+	request_header @shared_cacheable -Cookie
+	request_header @shared_cacheable -Authorization
+
+	@v1 path /v1/* /health/*
+	handle @v1 {
+		reverse_proxy api:8080 {
+			trusted_proxies private_ranges
+
+			# Canonical origin headers: the API verifies proofs against
+			# ANPFUEL_CANONICAL_HOST, which must equal CADDY_DOMAIN.
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Everything else is a plain 404: no version disclosure, no
+	# fallback proxying.
+	handle {
+		respond "Not found" 404
+	}
+}

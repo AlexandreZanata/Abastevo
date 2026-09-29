@@ -146,3 +146,28 @@ func TestLoadValidStagingConfig(t *testing.T) {
 		t.Errorf("MaxBodyBytes = %d, want 2097152", cfg.MaxBodyBytes)
 	}
 }
+
+func TestLoadMetricsAddrDefaultsLoopback(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.MetricsAddr != "127.0.0.1:9090" {
+		t.Errorf("MetricsAddr = %q, want loopback default", cfg.MetricsAddr)
+	}
+}
+
+func TestLoadMetricsAddrValidation(t *testing.T) {
+	cfg, err := load(envFunc(map[string]string{keyMetricsAddr: ""}))
+	if err != nil || cfg.MetricsAddr != "" {
+		t.Errorf("explicit empty must disable, got %q, %v", cfg.MetricsAddr, err)
+	}
+	if _, err := load(envFunc(map[string]string{keyMetricsAddr: "not-an-addr"})); err == nil {
+		t.Error("malformed metrics addr accepted")
+	} else if !strings.Contains(err.Error(), keyMetricsAddr) {
+		t.Errorf("error %q must name the variable", err)
+	}
+	if _, err := load(envFunc(map[string]string{keyMetricsAddr: "0.0.0.0:9090"})); err != nil {
+		t.Errorf("explicit non-loopback must parse (firewall owns exposure): %v", err)
+	}
+}

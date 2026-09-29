@@ -1,0 +1,161 @@
+# Staging topology (P08-T01): separate database, storage identity and
+# hostname from production and development. Review-only artifact: no
+# resources are provisioned by committing this file.
+#
+# Required environment for every command (see infra/env.staging.example):
+#   ANPFUEL_RELEASE  immutable image tag, e.g. 2026.09.30-p08t01 (never latest)
+#   ANPFUEL_ENV_FILE path to the operator-owned staging env file (never committed)
+#   ANPFUEL_DB_USER / ANPFUEL_DB_NAME (non-dev defaults encouraged)
+#   ANPFUEL_DB_PASSWORD (required, no default)
+#
+# Validate: docker compose -f infra/compose.staging.yml config
+# Boot order: db -> migrate (one-shot) -> api/worker -> caddy.
+name: anpfuel-staging
+
+services:
+  db:
+    image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
+    environment:
+      POSTGRES_USER: ${ANPFUEL_DB_USER:-anpfuel_staging}
+      POSTGRES_PASSWORD: ${ANPFUEL_DB_PASSWORD:?ANPFUEL_DB_PASSWORD is required}
+      POSTGRES_DB: ${ANPFUEL_DB_NAME:-anpfuel_staging}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # No published ports: the database lives on the private back
+    # network only. Any `ports:` entry here fails the infra gate.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - back
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ANPFUEL_DB_USER:-anpfuel_staging} -d ${ANPFUEL_DB_NAME:-anpfuel_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 6G
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: migrate
+    image: anpfuel-migrate:${ANPFUEL_RELEASE:?ANPFUEL_RELEASE is required (never latest)}
+    env_file:
+      - ${ANPFUEL_ENV_FILE:?ANPFUEL_ENV_FILE is required}
+    networks:
+      - back
+    depends_on:
+      db:
+        condition: service_healthy
+    # One-shot schema migration with lock/checksum ledger; run
+    # explicitly, never as part of `up`:
+    #   docker compose -f infra/compose.staging.yml run --rm migrate
+    profiles:
+      - tools
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: api
+    image: anpfuel-api:${ANPFUEL_RELEASE:?ANPFUEL_RELEASE is required (never latest)}
+    environment:
+      ANPFUEL_ENV: staging
+      ANPFUEL_HTTP_ADDR: ":8080"
+    env_file:
+      - ${ANPFUEL_ENV_FILE:?ANPFUEL_ENV_FILE is required}
+    # No published ports: only Caddy on the front network reaches the
+    # API. Any `ports:` entry here fails the infra gate.
+    networks:
+      - front
+      - back
+    depends_on:
+      db:
+        condition: service_healthy
+    # No container healthcheck: distroless runtimes ship no shell for
+    # CMD-SHELL probes. Readiness is the /health/ready endpoint,
+    # verified by the deploy smoke step before traffic switches.
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    image: anpfuel-worker:${ANPFUEL_RELEASE:?ANPFUEL_RELEASE is required (never latest)}
+    environment:
+      ANPFUEL_ENV: staging
+    env_file:
+      - ${ANPFUEL_ENV_FILE:?ANPFUEL_ENV_FILE is required}
+    # Background role only: no front-network attachment and no
+    # published ports.
+    networks:
+      - back
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:?CADDY_DOMAIN is required}
+      CADDY_TLS_EMAIL: ${CADDY_TLS_EMAIL:?CADDY_TLS_EMAIL is required}
+    ports:
+      # The only publicly bound service. Origin ports (API/DB) stay
+      # unmapped; any additional `ports:` entry fails the infra gate.
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - front
+    depends_on:
+      api:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+networks:
+  front:
+    name: anpfuel-staging-front
+  back:
+    name: anpfuel-staging-back
+    internal: true
+
+volumes:
+  pgdata:
+    name: anpfuel-pgdata-staging
+  caddy_data:
+    name: anpfuel-caddy-data-staging
+  caddy_config:
+    name: anpfuel-caddy-config-staging

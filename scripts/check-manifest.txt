@@ -7,6 +7,8 @@
 backend/internal/platform/config
 backend/internal/platform/health
 backend/internal/platform/telemetry
+backend/internal/platform/telemetry/metrics
+backend/internal/platform/telemetry/alerts
 backend/internal/platform/httpserver
 backend/internal/platform/apicontract
 backend/internal/platform/database

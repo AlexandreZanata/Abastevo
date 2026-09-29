@@ -119,7 +119,7 @@ echo "== secret scan (working tree + PR diff) =="
 # prose the same way the tracked scanner excludes them. This step covers the
 # committed diff so a clean CI checkout still detects a merged secret.
 SECRET_PATTERN='ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-'
-SCAN_LIST="$(printf "%s" "$CHANGED_ALL" | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
+SCAN_LIST="$(printf "%s" "$CHANGED_ALL" | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/check-security.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
 if [[ -n "$SCAN_LIST" ]]; then
     FILES=""
     # shellcheck disable=SC2086

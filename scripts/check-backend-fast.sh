@@ -50,7 +50,7 @@ bash scripts/scan-secrets.sh
 
 echo "== secret scan (changed files) =="
 # Scanner scripts carry detection pattern literals; never scan themselves.
-CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
+CHANGED="$(git status --porcelain -- backend/ contracts/ infra/ scripts/ .github/ 2>/dev/null | awk '{print $2}' | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/check-security.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
 if [ -n "$CHANGED" ]; then
     FILES=""
     # shellcheck disable=SC2086

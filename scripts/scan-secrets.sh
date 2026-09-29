@@ -34,6 +34,7 @@ PATH_SPECS=(
     # Detection pattern literals live here; same rationale as above.
     ':!scripts/check-backend-fast.sh'
     ':!scripts/quick-verify.sh'
+    ':!scripts/check-security.sh'
     ':!scripts/wiki.sh'
     ':!scripts/tests/test-gate-selection.sh'
     ':!docs/**'

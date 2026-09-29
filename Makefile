@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -24,6 +24,31 @@ test-issues:
 test-wiki:
 	bash scripts/tests/test-wiki.sh
 
+check-infra:
+	bash scripts/check-infra-config.sh staging
+	bash scripts/check-infra-config.sh prod
+
+test-infra:
+	bash scripts/tests/test-infra-config.sh
+
+test-deploy:
+	bash scripts/tests/test-deploy.sh
+
+test-backup:
+	bash scripts/tests/test-backup.sh
+
+test-restore:
+	bash scripts/tests/test-restore.sh
+
+test-load:
+	bash scripts/tests/test-load.sh
+
+check-security:
+	bash scripts/check-security.sh
+
+test-security:
+	bash scripts/tests/test-security.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -32,3 +57,11 @@ help:
 	@echo "  test-flow       synthetic git/fake-gh lifecycle for phase controller"
 	@echo "  test-issues     fake-API reconciliation for issues/milestones"
 	@echo "  test-wiki       fixture-repo exporter/publisher for wiki mirror"
+	@echo "  check-infra     staging/prod topology gate (P08-T01)"
+	@echo "  test-infra      infra gate failure-behavior harness"
+	@echo "  test-deploy     deploy/rollback failure-behavior harness (P08-T02)"
+	@echo "  test-backup     backup pipeline harness, real disposable DB (P08-T03)"
+	@echo "  test-restore    isolated restore drill harness, real disposable DB (P08-T04)"
+	@echo "  test-load       bounded load smoke + fault suite, real disposable DB (P08-T07)"
+	@echo "  check-security  STRIDE/dependency release review gate (P08-T08)"
+	@echo "  test-security   security gate failure-behavior harness (P08-T08)"
