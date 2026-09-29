@@ -32,6 +32,7 @@ import (
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
+	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -163,6 +164,8 @@ func run() error {
 	}
 	communityStore := communityadapters.NewStore(raw)
 	privacyStore := privacyadapters.NewStore(raw)
+	modStore := moderationadapters.NewStore(raw)
+	identityRunner := identityadapters.NewRunner(raw)
 	identityRegistrar := identityadapters.NewRegistrar(raw)
 	// exportInventory assembles one owner's export sections from the
 	// real ledgers (P07-T03): identity profile, owned observations with
@@ -273,6 +276,39 @@ func run() error {
 			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
 			return err
 		},
+	}
+	// retentionPurges runs every inventory category bounded
+	// oldest-first (P07-T05): expired challenges, idempotency windows
+	// and export bytes purge on expiry; long-closed moderation cases
+	// and aged-out ledger rows purge on their horizons; the
+	// observation horizon reports metrics only until an FK-consistent
+	// cascade design lands. Rate windows self-clean on check and
+	// evidence media purges on its hourly sweeper.
+	retentionPurges := []privacyapp.NamedPurge{
+		{Name: "identity-challenges", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := identityRegistrar.PurgeExpiredChallenges(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "identity-idempotency", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := identityRunner.PurgeExpiredAttempts(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "moderation-closed", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			cases, actions, oldest, err := modStore.PurgeClosedCases(ctx, time.Now().Add(-privacyapp.ModerationClosedTTL), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: cases + actions, OldestOverdue: oldest}, err
+		}},
+		{Name: "privacy-archives", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := privacyStore.PurgeExpiredArchives(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "privacy-ledger", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := privacyStore.PurgeOldLedger(ctx, time.Now().Add(-privacyapp.LedgerHorizon), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "community-observations", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			oldest, err := communityStore.OldestObservation(ctx)
+			return privacyapp.CategoryReport{Purged: 0, OldestOverdue: oldest}, err
+		}},
 	}
 	// resolvePhoto verifies one evidence object for both consumers:
 	// the signals loader counts independent duplicates, the recompute
@@ -551,6 +587,22 @@ func run() error {
 				return privacyapp.Erase(ctx, privacyErasePorts, contributorID, dto)
 			},
 		},
+		// Retention sweep (P07-T05): every inventory category purges
+		// bounded oldest-first with per-category metrics; evidence
+		// media keeps its own hourly sweeper, and the 24-month
+		// observation horizon reports metrics only.
+		"privacy-retention": privacyjobs.Retention{
+			Run: func(ctx context.Context) (privacyapp.RetentionReport, error) {
+				_ = ctx
+				return privacyapp.Retain(ctx, privacyapp.RetentionPorts{
+					Clock:  time.Now,
+					Purges: retentionPurges,
+				})
+			},
+			Log: func(msg string, args ...any) {
+				logger.Info(context.Background(), "retention.sweep", msg, args...)
+			},
+		},
 		"evidence-sweep": evidencejobs.Sweep{
 			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
 				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
@@ -610,6 +662,11 @@ func run() error {
 		{
 			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
 			Interval: time.Hour, Enabled: true,
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
+		},
+		{
+			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
+			Interval: 24 * time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 	})

@@ -287,16 +287,19 @@ func TestNoDestructiveSQLPaths(t *testing.T) {
 	upper := strings.ToUpper(string(raw))
 	// The single allowed mutating path is the guarded case-status
 	// transition (actionable states only, never target/reason edits):
-	// exactly one UPDATE carrying the terminal-state guard, zero DELETE.
+	// exactly one UPDATE carrying the terminal-state guard, plus the
+	// two documented retention purges (audit rows, then their
+	// long-closed cases). Nothing else mutates.
 	if got := strings.Count(upper, "UPDATE MODERATION_CASES"); got != 1 {
 		t.Errorf("moderation.sql has %d case UPDATEs, want exactly the guarded transition", got)
 	}
 	if !strings.Contains(upper, "STATUS IN ('OPEN', 'IN_REVIEW')") {
 		t.Error("guarded transition lost its terminal-state guard")
 	}
-	for _, verb := range []string{"\nDELETE ", "DELETE FROM MODERATION_"} {
-		if strings.Contains(upper, verb) {
-			t.Errorf("destructive path in moderation.sql: %q", strings.TrimSpace(verb))
-		}
+	if got := strings.Count(upper, "DELETE FROM MODERATION_"); got != 2 {
+		t.Errorf("moderation.sql has %d DELETEs, want exactly the two retention purges", got)
+	}
+	if strings.Contains(upper, "DELETE FROM COMMUNITY_") || strings.Contains(upper, "DELETE FROM IDENTITY_") {
+		t.Error("cross-module destructive path in moderation.sql")
 	}
 }

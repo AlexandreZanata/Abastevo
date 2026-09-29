@@ -75,3 +75,14 @@ WHERE contributor_ref = @contributor_ref;
 UPDATE community_disputes
 SET contributor_ref = 'erased-' || id::text
 WHERE contributor_ref = @contributor_ref;
+
+-- Retention metric (P07-T05): oldest stored fact for the retention
+-- report. The 24-month observation purge needs an FK-consistent
+-- cascade design before it deletes; until then this metric keeps the
+-- horizon visible without touching history.
+
+-- name: OldestObservation :one
+SELECT received_at
+FROM community_observations
+ORDER BY received_at ASC
+LIMIT 1;

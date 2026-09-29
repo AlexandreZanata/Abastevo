@@ -271,6 +271,25 @@ func (q *Queries) ListDecisions(ctx context.Context, observationID pgtype.UUID) 
 	return items, nil
 }
 
+const oldestObservation = `-- name: OldestObservation :one
+
+SELECT received_at
+FROM community_observations
+ORDER BY received_at ASC
+LIMIT 1
+`
+
+// Retention metric (P07-T05): oldest stored fact for the retention
+// report. The 24-month observation purge needs an FK-consistent
+// cascade design before it deletes; until then this metric keeps the
+// horizon visible without touching history.
+func (q *Queries) OldestObservation(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestObservation)
+	var received_at pgtype.Timestamptz
+	err := row.Scan(&received_at)
+	return received_at, err
+}
+
 const unlinkConfirmations = `-- name: UnlinkConfirmations :execrows
 UPDATE community_confirmations
 SET contributor_ref = 'erased-' || id::text

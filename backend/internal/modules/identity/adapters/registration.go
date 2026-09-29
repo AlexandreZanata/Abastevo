@@ -327,3 +327,28 @@ func (r *Registrar) DeleteContributor(ctx context.Context, contributorID string)
 	}
 	return n == 1, keys, nil
 }
+
+// PurgeExpiredChallenges deletes expired challenges in bounded batches
+// (P07-T05 retention): each pass removes at most batch rows, oldest
+// first, and reports the total plus the oldest overdue expiry observed
+// before purging (zero time when nothing was overdue).
+func (r *Registrar) PurgeExpiredChallenges(ctx context.Context, now time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := identity.New(r.pool)
+	ts, oerr := q.OldestExpiredChallenge(ctx, pgtype.Timestamptz{Time: now, Valid: true})
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeExpiredChallenges(ctx, identity.PurgeExpiredChallengesParams{
+			Now: pgtype.Timestamptz{Time: now, Valid: true}, Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}

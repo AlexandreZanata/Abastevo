@@ -265,6 +265,72 @@ func (q *Queries) ListOpenCases(ctx context.Context, arg ListOpenCasesParams) ([
 	return items, nil
 }
 
+const oldestClosedCase = `-- name: OldestClosedCase :one
+
+SELECT opened_at
+FROM moderation_cases
+WHERE status IN ('RESOLVED', 'REJECTED') AND opened_at < $1
+ORDER BY opened_at ASC
+LIMIT 1
+`
+
+// Retention (P07-T05): purge long-closed cases with their audit rows.
+// Accountability retention is 12 months initially (SECURITY_PRIVACY):
+// only RESOLVED/REJECTED cases older than the cutoff go, oldest first
+// in bounded batches, audit rows before their cases.
+func (q *Queries) OldestClosedCase(ctx context.Context, cutoff pgtype.Timestamptz) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestClosedCase, cutoff)
+	var opened_at pgtype.Timestamptz
+	err := row.Scan(&opened_at)
+	return opened_at, err
+}
+
+const purgeClosedCaseActions = `-- name: PurgeClosedCaseActions :execrows
+DELETE FROM moderation_actions
+WHERE case_id IN (
+    SELECT old.id FROM moderation_cases AS old
+    WHERE old.status IN ('RESOLVED', 'REJECTED') AND old.opened_at < $1
+    ORDER BY old.opened_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeClosedCaseActionsParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeClosedCaseActions(ctx context.Context, arg PurgeClosedCaseActionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeClosedCaseActions, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeClosedCases = `-- name: PurgeClosedCases :execrows
+DELETE FROM moderation_cases AS gone
+WHERE gone.id IN (
+    SELECT old.id FROM moderation_cases AS old
+    WHERE old.status IN ('RESOLVED', 'REJECTED') AND old.opened_at < $1
+    ORDER BY old.opened_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeClosedCasesParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeClosedCases(ctx context.Context, arg PurgeClosedCasesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeClosedCases, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const transitionCase = `-- name: TransitionCase :one
 UPDATE moderation_cases SET status = $1
 WHERE id = $2 AND status IN ('OPEN', 'IN_REVIEW')

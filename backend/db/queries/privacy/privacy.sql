@@ -78,3 +78,40 @@ WHERE id = @id;
 UPDATE privacy_requests
 SET archive = NULL
 WHERE contributor_id = @contributor_id AND archive IS NOT NULL;
+
+-- Retention (P07-T05): purge expired export bytes and aged-out ledger
+-- rows in bounded batches. Receipts stay; only payload goes, and the
+-- ledger keeps exactly the backup horizon (35 days).
+
+-- name: OldestExpiredArchive :one
+SELECT expires_at
+FROM privacy_requests
+WHERE status = 'READY' AND archive IS NOT NULL AND expires_at < @now
+ORDER BY expires_at ASC
+LIMIT 1;
+
+-- name: PurgeExpiredArchives :execrows
+UPDATE privacy_requests AS dead
+SET archive = NULL
+WHERE dead.id IN (
+    SELECT live.id FROM privacy_requests AS live
+    WHERE live.status = 'READY' AND live.archive IS NOT NULL AND live.expires_at < @now
+    ORDER BY live.expires_at ASC
+    LIMIT @batch
+);
+
+-- name: OldestLedgerRow :one
+SELECT occurred_at
+FROM privacy_deletion_ledger
+WHERE occurred_at < @cutoff
+ORDER BY occurred_at ASC
+LIMIT 1;
+
+-- name: PurgeOldLedger :execrows
+DELETE FROM privacy_deletion_ledger AS dead
+WHERE dead.id IN (
+    SELECT live.id FROM privacy_deletion_ledger AS live
+    WHERE live.occurred_at < @cutoff
+    ORDER BY live.occurred_at ASC
+    LIMIT @batch
+);

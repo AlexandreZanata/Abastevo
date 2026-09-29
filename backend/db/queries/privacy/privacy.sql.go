@@ -285,6 +285,87 @@ func (q *Queries) MarkReady(ctx context.Context, arg MarkReadyParams) (pgtype.UU
 	return id, err
 }
 
+const oldestExpiredArchive = `-- name: OldestExpiredArchive :one
+
+SELECT expires_at
+FROM privacy_requests
+WHERE status = 'READY' AND archive IS NOT NULL AND expires_at < $1
+ORDER BY expires_at ASC
+LIMIT 1
+`
+
+// Retention (P07-T05): purge expired export bytes and aged-out ledger
+// rows in bounded batches. Receipts stay; only payload goes, and the
+// ledger keeps exactly the backup horizon (35 days).
+func (q *Queries) OldestExpiredArchive(ctx context.Context, now pgtype.Timestamptz) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestExpiredArchive, now)
+	var expires_at pgtype.Timestamptz
+	err := row.Scan(&expires_at)
+	return expires_at, err
+}
+
+const oldestLedgerRow = `-- name: OldestLedgerRow :one
+SELECT occurred_at
+FROM privacy_deletion_ledger
+WHERE occurred_at < $1
+ORDER BY occurred_at ASC
+LIMIT 1
+`
+
+func (q *Queries) OldestLedgerRow(ctx context.Context, cutoff pgtype.Timestamptz) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestLedgerRow, cutoff)
+	var occurred_at pgtype.Timestamptz
+	err := row.Scan(&occurred_at)
+	return occurred_at, err
+}
+
+const purgeExpiredArchives = `-- name: PurgeExpiredArchives :execrows
+UPDATE privacy_requests AS dead
+SET archive = NULL
+WHERE dead.id IN (
+    SELECT live.id FROM privacy_requests AS live
+    WHERE live.status = 'READY' AND live.archive IS NOT NULL AND live.expires_at < $1
+    ORDER BY live.expires_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeExpiredArchivesParams struct {
+	Now   pgtype.Timestamptz `json:"now"`
+	Batch int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeExpiredArchives(ctx context.Context, arg PurgeExpiredArchivesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredArchives, arg.Now, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeOldLedger = `-- name: PurgeOldLedger :execrows
+DELETE FROM privacy_deletion_ledger AS dead
+WHERE dead.id IN (
+    SELECT live.id FROM privacy_deletion_ledger AS live
+    WHERE live.occurred_at < $1
+    ORDER BY live.occurred_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeOldLedgerParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeOldLedger(ctx context.Context, arg PurgeOldLedgerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeOldLedger, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const purgeOwnerArchives = `-- name: PurgeOwnerArchives :execrows
 UPDATE privacy_requests
 SET archive = NULL

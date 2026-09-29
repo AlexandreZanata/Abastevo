@@ -67,3 +67,23 @@ WHERE id = @id AND status != 'deleted';
 UPDATE identity_keys
 SET revoked_at = now()
 WHERE contributor_id = @contributor_id AND revoked_at IS NULL;
+
+-- Retention (P07-T05): purge expired challenges in bounded batches.
+-- Consumed challenges stay until expiry so replays keep failing
+-- closed instead of looking unknown.
+
+-- name: OldestExpiredChallenge :one
+SELECT expires_at
+FROM identity_challenges
+WHERE expires_at < @now
+ORDER BY expires_at ASC
+LIMIT 1;
+
+-- name: PurgeExpiredChallenges :execrows
+DELETE FROM identity_challenges AS dead
+WHERE dead.id IN (
+    SELECT live.id FROM identity_challenges AS live
+    WHERE live.expires_at < @now
+    ORDER BY live.expires_at ASC
+    LIMIT @batch
+);

@@ -66,3 +66,33 @@ ORDER BY occurred_at ASC, id ASC;
 UPDATE moderation_cases SET status = @status
 WHERE id = @id AND status IN ('OPEN', 'IN_REVIEW')
 RETURNING id;
+
+-- Retention (P07-T05): purge long-closed cases with their audit rows.
+-- Accountability retention is 12 months initially (SECURITY_PRIVACY):
+-- only RESOLVED/REJECTED cases older than the cutoff go, oldest first
+-- in bounded batches, audit rows before their cases.
+
+-- name: OldestClosedCase :one
+SELECT opened_at
+FROM moderation_cases
+WHERE status IN ('RESOLVED', 'REJECTED') AND opened_at < @cutoff
+ORDER BY opened_at ASC
+LIMIT 1;
+
+-- name: PurgeClosedCaseActions :execrows
+DELETE FROM moderation_actions
+WHERE case_id IN (
+    SELECT old.id FROM moderation_cases AS old
+    WHERE old.status IN ('RESOLVED', 'REJECTED') AND old.opened_at < @cutoff
+    ORDER BY old.opened_at ASC
+    LIMIT @batch
+);
+
+-- name: PurgeClosedCases :execrows
+DELETE FROM moderation_cases AS gone
+WHERE gone.id IN (
+    SELECT old.id FROM moderation_cases AS old
+    WHERE old.status IN ('RESOLVED', 'REJECTED') AND old.opened_at < @cutoff
+    ORDER BY old.opened_at ASC
+    LIMIT @batch
+);

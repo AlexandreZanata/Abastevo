@@ -138,3 +138,29 @@ func complete(ctx context.Context, tx pgx.Tx, key domain.IdempotencyKey, contrib
 		ResponseJson:  resp,
 	})
 }
+
+// PurgeExpiredAttempts deletes expired idempotency windows in bounded
+// batches (P07-T05 retention): each pass removes at most batch rows,
+// oldest first, and reports the total plus the oldest overdue expiry
+// observed before purging (zero time when nothing was overdue).
+// Expired outcomes are never replayed, so removal only frees space.
+func (r *Runner) PurgeExpiredAttempts(ctx context.Context, now time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := identity.New(r.pool)
+	ts, oerr := q.OldestExpiredAttempt(ctx, pgtype.Timestamptz{Time: now, Valid: true})
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeExpiredAttempts(ctx, identity.PurgeExpiredAttemptsParams{
+			Now: pgtype.Timestamptz{Time: now, Valid: true}, Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}

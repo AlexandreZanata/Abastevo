@@ -211,6 +211,48 @@ func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (GetContri
 	return i, err
 }
 
+const oldestExpiredChallenge = `-- name: OldestExpiredChallenge :one
+
+SELECT expires_at
+FROM identity_challenges
+WHERE expires_at < $1
+ORDER BY expires_at ASC
+LIMIT 1
+`
+
+// Retention (P07-T05): purge expired challenges in bounded batches.
+// Consumed challenges stay until expiry so replays keep failing
+// closed instead of looking unknown.
+func (q *Queries) OldestExpiredChallenge(ctx context.Context, now pgtype.Timestamptz) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestExpiredChallenge, now)
+	var expires_at pgtype.Timestamptz
+	err := row.Scan(&expires_at)
+	return expires_at, err
+}
+
+const purgeExpiredChallenges = `-- name: PurgeExpiredChallenges :execrows
+DELETE FROM identity_challenges AS dead
+WHERE dead.id IN (
+    SELECT live.id FROM identity_challenges AS live
+    WHERE live.expires_at < $1
+    ORDER BY live.expires_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeExpiredChallengesParams struct {
+	Now   pgtype.Timestamptz `json:"now"`
+	Batch int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeExpiredChallenges(ctx context.Context, arg PurgeExpiredChallengesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredChallenges, arg.Now, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const revokeContributorKeys = `-- name: RevokeContributorKeys :execrows
 UPDATE identity_keys
 SET revoked_at = now()

@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -97,4 +98,38 @@ func (s *Store) ListActions(ctx context.Context, caseID string) ([]domain.Action
 		})
 	}
 	return out, nil
+}
+
+// PurgeClosedCases deletes long-closed cases with their audit rows in
+// bounded batches (P07-T05 retention): audit rows go before their
+// cases, oldest first, and the run reports the total plus the oldest
+// closure observed before purging (zero time when nothing was due).
+// Only RESOLVED/REJECTED cases older than the cutoff go; open and
+// triaged cases are never touched.
+func (s *Store) PurgeClosedCases(ctx context.Context, cutoff time.Time, batch int32) (cases, actions int64, oldest time.Time, err error) {
+	q := dbmoderation.New(s.pool)
+	ts, oerr := q.OldestClosedCase(ctx, pgTime(cutoff))
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		na, derr := q.PurgeClosedCaseActions(ctx, dbmoderation.PurgeClosedCaseActionsParams{
+			Cutoff: pgTime(cutoff), Batch: batch,
+		})
+		if derr != nil {
+			return cases, actions, oldest, derr
+		}
+		actions += na
+		nc, derr := q.PurgeClosedCases(ctx, dbmoderation.PurgeClosedCasesParams{
+			Cutoff: pgTime(cutoff), Batch: batch,
+		})
+		if derr != nil {
+			return cases, actions, oldest, derr
+		}
+		cases += nc
+		if nc < int64(batch) {
+			return cases, actions, oldest, nil
+		}
+	}
 }

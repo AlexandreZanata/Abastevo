@@ -318,17 +318,102 @@ func TestNoDestructiveSQLPaths(t *testing.T) {
 	}
 	upper := strings.ToUpper(string(raw))
 	// The only mutating paths are the three guarded forward transitions
-	// (REQUESTED to READY/FAILED plus deletion receipts) and the
-	// erasure archive purge; zero row removal, no unguarded mutation.
-	if got := strings.Count(upper, "UPDATE PRIVACY_REQUESTS"); got != 4 {
-		t.Errorf("privacy.sql has %d UPDATEs, want exactly the guarded transitions plus the archive purge", got)
+	// (REQUESTED to READY/FAILED plus deletion receipts) and the two
+	// retention/archive purges; zero row removal, no unguarded UPDATE.
+	if got := strings.Count(upper, "UPDATE PRIVACY_REQUESTS"); got != 5 {
+		t.Errorf("privacy.sql has %d UPDATEs, want exactly the guarded transitions plus the purges", got)
 	}
 	if strings.Count(upper, "STATUS = 'REQUESTED'") < 3 {
 		t.Error("guarded transitions lost their state guard")
 	}
-	for _, verb := range []string{"\nDELETE ", "DELETE FROM PRIVACY_"} {
-		if strings.Contains(upper, verb) {
-			t.Errorf("destructive path in privacy.sql: %q", strings.TrimSpace(verb))
+	if got := strings.Count(upper, "DELETE FROM PRIVACY_"); got != 1 {
+		t.Errorf("privacy.sql has %d DELETEs, want exactly the ledger-horizon purge", got)
+	}
+}
+
+func TestPurgeExpiredArchives(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	base := time.Now().Truncate(time.Millisecond)
+	mkreq := func(id, key string) domain.Request {
+		r, err := domain.NewRequest(domain.RequestParams{
+			ID: id, ContributorID: "c1", ContributorRef: "tok-c1",
+			ClientSubmissionID: key, Type: domain.TypeExport, RequestedAt: base.Add(-48 * time.Hour),
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
+		return r
+	}
+	var jobs int
+	old := mkreq("e0000000-0000-4000-8000-000000000001", "export-old")
+	if _, _, err := s.RequestExport(ctx, old, enqueueOK(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	fresh := mkreq("e0000000-0000-4000-8000-000000000002", "export-fresh")
+	if _, _, err := s.RequestExport(ctx, fresh, enqueueOK(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	archive := []byte(`{"format":"privacy-export-v1"}`)
+	sha := ArchiveSHA256(archive)
+	// Expired window (ready 25 h ago); boundary-fresh ready now.
+	if err := s.CompleteExport(ctx, old.ID, archive, sha, base.Add(-25*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteExport(ctx, fresh.ID, archive, sha, base); err != nil {
+		t.Fatal(err)
+	}
+	purged, oldest, err := s.PurgeExpiredArchives(ctx, base, 500)
+	if err != nil {
+		t.Fatalf("purge = %v", err)
+	}
+	if purged != 1 {
+		t.Errorf("purged = %d, want 1", purged)
+	}
+	if oldest.IsZero() || oldest.After(base.Add(-time.Hour)) {
+		t.Errorf("oldest = %v", oldest)
+	}
+	gotOld, rawOld, err := s.GetForOwner(ctx, "c1", old.ID)
+	if err != nil || gotOld.Status != domain.StatusReady || len(rawOld) != 0 {
+		t.Errorf("expired receipt = %+v bytes=%d %v", gotOld, len(rawOld), err)
+	}
+	if _, rawFresh, err := s.GetForOwner(ctx, "c1", fresh.ID); err != nil || len(rawFresh) == 0 {
+		t.Errorf("fresh archive purged: bytes=%d %v", len(rawFresh), err)
+	}
+}
+
+func TestPurgeOldLedger(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	base := time.Now().Truncate(time.Millisecond)
+	mkentry := func(id, scope string, at time.Time) domain.LedgerEntry {
+		e, err := domain.NewLedgerEntry(domain.LedgerParams{
+			ID: id, ContributorID: "c1", ContributorRef: "tok-c1",
+			Scope: scope, Reason: "r", OccurredAt: at,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	if _, _, err := s.RecordLedger(ctx, mkentry("d0000000-0000-4000-8000-000000000001", domain.ScopeIdentity, base.Add(-40*24*time.Hour))); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.RecordLedger(ctx, mkentry("d0000000-0000-4000-8000-000000000002", domain.ScopeCommunity, base)); err != nil {
+		t.Fatal(err)
+	}
+	purged, oldest, err := s.PurgeOldLedger(ctx, base.Add(-35*24*time.Hour), 500)
+	if err != nil {
+		t.Fatalf("purge = %v", err)
+	}
+	if purged != 1 {
+		t.Errorf("purged = %d, want 1", purged)
+	}
+	if oldest.IsZero() {
+		t.Error("oldest not reported")
+	}
+	rows, err := s.ListLedger(ctx, "c1")
+	if err != nil || len(rows) != 1 || rows[0].Scope != domain.ScopeCommunity {
+		t.Errorf("ledger = %+v, %v", rows, err)
 	}
 }

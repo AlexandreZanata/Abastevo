@@ -333,3 +333,53 @@ func (s *Store) CompleteDeletionRequest(ctx context.Context, id string, at time.
 	}
 	return nil
 }
+
+// PurgeExpiredArchives clears the bytes of READY exports past their
+// download window in bounded batches (P07-T05 retention): receipts
+// stay for audit, only payload goes. Reports the total plus the oldest
+// expiry observed before purging (zero time when nothing was due).
+func (s *Store) PurgeExpiredArchives(ctx context.Context, now time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := dbprivacy.New(s.pool)
+	ts, oerr := q.OldestExpiredArchive(ctx, pgTime(now))
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeExpiredArchives(ctx, dbprivacy.PurgeExpiredArchivesParams{
+			Now: pgTime(now), Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}
+
+// PurgeOldLedger deletes deletion-ledger rows older than the backup
+// horizon in bounded batches (P07-T05 retention): rows that cover no
+// existing backup carry no replay value. Reports the total plus the
+// oldest occurrence observed before purging.
+func (s *Store) PurgeOldLedger(ctx context.Context, cutoff time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := dbprivacy.New(s.pool)
+	ts, oerr := q.OldestLedgerRow(ctx, pgTime(cutoff))
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeOldLedger(ctx, dbprivacy.PurgeOldLedgerParams{
+			Cutoff: pgTime(cutoff), Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}
