@@ -24,6 +24,18 @@ type IdentityContributor struct {
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type IdentityIdempotency struct {
+	ContributorID pgtype.UUID        `json:"contributor_id"`
+	Method        string             `json:"method"`
+	Route         string             `json:"route"`
+	Key           string             `json:"key"`
+	RequestHash   string             `json:"request_hash"`
+	ResponseCode  pgtype.Int4        `json:"response_code"`
+	ResponseJson  []byte             `json:"response_json"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
+
 type IdentityKey struct {
 	ID            pgtype.UUID        `json:"id"`
 	ContributorID pgtype.UUID        `json:"contributor_id"`

@@ -9,8 +9,9 @@
 - P03-T01: LOCAL_DONE — `docs/security/identity-profile.md` frozen (P-256/SHA-512, exact covered set/order, raw R||S only, 5-min window, challenge binding, proxy rules; RFC 9421 inspiration explicitly not a compliance claim) + `contracts/testdata/identity/` 12 golden vectors (valid, body, 7 tampers, expired, wrong-key, DER, reorder, all attacker-mutated post-signing) + `modules/identity/profile` dual verifiers (shared-helper path and hand-rebuilt path incl. explicit curve check); ambiguous/reordered/duplicated lines rejected; RED proven by accepting all signatures, GREEN on restore; manifest extended. Cross-library RFC replay stays a later gate per ADR-007.
 - P03-T02: LOCAL_DONE — challenge-bound registration, RED→GREEN.
 - P03-T03: LOCAL_DONE — `identity/adapters/auth` Verifier rebuilding the base from the live request (configured authority, exact body digest), verifying against server-stored keys, consuming SIGN nonces atomically with fingerprint/purpose/hash binding; duplicate/missing headers, tamper, expiry, revoked/blocked/unknown denied; failed proofs never consume; integration on real PostGIS: happy read/write, tamper matrix, replay once, 8-worker same-nonce once, expired/revoked/blocked/unknown; RED proven by skipping consume, GREEN on restore; manifest extended.
-- G03: P03-T04…T06 NOT STARTED.
-- Next: **P03-T04 — Operation idempotency**.
+- P03-T04: LOCAL_DONE — `db/migrations/000005` (ledger keyed by contributor+method+route+key, NULL response = in flight, hash only, expiry index) + reserve/lock/complete/delete queries + `identity/domain` (key, outcome, 409 conflict, 7-day TTL, body hash) + `identity/application` Decide truth table + `adapters` Runner (reserve+write+record in one tx, blocking lock-read for duplicates, expired/aborted re-execute); integration on real PostGIS: replay once, changed-body 409, failed attempt retries fresh, 8-worker single execution, expired re-executes, body never persisted, new key re-executes; replay is semantic (jsonb normalization), not byte-exact; RED proven by ignoring the hash, GREEN on restore; manifest extended.
+- G03: P03-T05…T06 NOT STARTED.
+- Next: **P03-T05 — Registration and write quotas**.
 - Issues/milestone/PR/wiki: P03 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

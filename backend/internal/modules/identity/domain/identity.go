@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
@@ -18,13 +20,14 @@ const (
 const ChallengeTTL = 5 * time.Minute
 
 var (
-	ErrUnknownPurpose   = errors.New("identity: unknown challenge purpose")
-	ErrBadFingerprint   = errors.New("identity: malformed fingerprint")
-	ErrBadNonce         = errors.New("identity: malformed nonce")
-	ErrChallengeExpired = errors.New("identity: challenge expired")
-	ErrChallengeSpent   = errors.New("identity: challenge already consumed")
-	ErrProofRequired    = errors.New("identity: valid key proof required")
-	ErrDuplicateKey     = errors.New("identity: key already registered")
+	ErrUnknownPurpose     = errors.New("identity: unknown challenge purpose")
+	ErrBadFingerprint     = errors.New("identity: malformed fingerprint")
+	ErrBadNonce           = errors.New("identity: malformed nonce")
+	ErrChallengeExpired   = errors.New("identity: challenge expired")
+	ErrChallengeSpent     = errors.New("identity: challenge already consumed")
+	ErrProofRequired      = errors.New("identity: valid key proof required")
+	ErrDuplicateKey       = errors.New("identity: key already registered")
+	ErrIdempotentConflict = errors.New("identity: same key, different body")
 )
 
 // ParsePurpose accepts exactly the stored purposes.
@@ -116,6 +119,34 @@ type Registration struct {
 	ContributorID string
 	KeyID         string
 	Existed       bool
+}
+
+// IdempotencyTTL bounds how long a stored outcome replays (API_PLAN: 7 days).
+const IdempotencyTTL = 7 * 24 * time.Hour
+
+// IdempotencyKey scopes one operation: contributor plus method plus route
+// template plus client key. Route templates never carry IDs or query values.
+type IdempotencyKey struct {
+	ContributorID string
+	Method        string
+	Route         string
+	Key           string
+}
+
+// AttemptOutcome is the stored safe result. Only the hash of the request is
+// kept, never the body, so retries cannot leak sensitive payloads from the
+// ledger.
+type AttemptOutcome struct {
+	StatusCode int
+	Response   []byte
+	ExpiresAt  time.Time
+	Completed  bool
+}
+
+// HashBody digests the exact transmitted bytes for equality checks.
+func HashBody(body []byte) string {
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:])
 }
 
 // Registrar persists challenges and keys atomically.

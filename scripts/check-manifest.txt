@@ -31,6 +31,7 @@ backend/internal/modules/identity/profile
 backend/internal/modules/identity/domain
 backend/internal/modules/identity/adapters
 backend/internal/modules/identity/adapters/auth
+backend/internal/modules/identity/application
 
 [required-checks]
 gofmt
