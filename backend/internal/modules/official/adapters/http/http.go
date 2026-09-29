@@ -14,11 +14,35 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
 
-// Handler serves anonymous official reads.
+// Handler serves anonymous official reads. Community, when set, fills
+// the community section of each price group from the current
+// projection; nil keeps the historical null (UNKNOWN, never an
+// official substitution).
 type Handler struct {
 	Prices        application.PriceReader
 	StationsExist func(ctx context.Context, id string) (bool, error)
+	Community     func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (CommunityPrice, bool, error)
 	Secrets       []byte
+}
+
+// CommunityPrice is one projected community section: source-separated
+// counts and freshness without contributor identities or supporting
+// event IDs.
+type CommunityPrice struct {
+	Availability      string
+	Confidence        string
+	Freshness         string
+	AmountMilli       int64
+	HasAmount         bool
+	Supporters        int
+	Confirmations     int
+	RepresentativeID  string
+	AnchorReceivedAt  time.Time
+	HasAnchor         bool
+	ExpiresAt         time.Time
+	HasExpiry         bool
+	AlgorithmVersion  string
+	ProjectionVersion int64
 }
 
 // RegisterRoutes mounts the official reads under /v1.
@@ -54,13 +78,53 @@ type wireOfficial struct {
 	RevisionID string `json:"revision_id"`
 }
 
+type wireCommunity struct {
+	Source            string  `json:"source"`
+	Availability      string  `json:"availability"`
+	AmountMilli       *int64  `json:"amount_milli_brl"`
+	Currency          string  `json:"currency"`
+	Confidence        string  `json:"confidence"`
+	Freshness         string  `json:"freshness"`
+	Supporters        int     `json:"independent_supporters"`
+	Confirmations     int     `json:"confirmation_count"`
+	RepresentativeID  *string `json:"representative_observation_id"`
+	LastReceivedAt    *string `json:"last_observation_received_at"`
+	ExpiresAt         *string `json:"expires_at"`
+	AlgorithmVersion  string  `json:"algorithm_version"`
+	ProjectionVersion int64   `json:"projection_version"`
+}
+
 type wireGroup struct {
 	StationID string         `json:"station_id"`
 	Product   string         `json:"fuel_product"`
 	Unit      string         `json:"unit"`
 	Condition map[string]any `json:"condition"`
 	Official  *wireOfficial  `json:"official"`
-	Community *string        `json:"community"`
+	Community *wireCommunity `json:"community"`
+}
+
+func wireCommunityPrice(v CommunityPrice) *wireCommunity {
+	out := &wireCommunity{
+		Source: "COMMUNITY", Availability: v.Availability,
+		Currency: "BRL", Confidence: v.Confidence, Freshness: v.Freshness,
+		Supporters: v.Supporters, Confirmations: v.Confirmations,
+		AlgorithmVersion: v.AlgorithmVersion, ProjectionVersion: v.ProjectionVersion,
+	}
+	if v.HasAmount {
+		out.AmountMilli = &v.AmountMilli
+	}
+	if v.RepresentativeID != "" {
+		out.RepresentativeID = &v.RepresentativeID
+	}
+	if v.HasAnchor {
+		s := v.AnchorReceivedAt.Format(time.RFC3339)
+		out.LastReceivedAt = &s
+	}
+	if v.HasExpiry {
+		s := v.ExpiresAt.Format(time.RFC3339)
+		out.ExpiresAt = &s
+	}
+	return out
 }
 
 func (h Handler) groups(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +153,14 @@ func (h Handler) groups(w http.ResponseWriter, r *http.Request) {
 		wg := wireGroup{
 			StationID: g.StationID, Product: g.Product, Unit: g.Unit,
 			Condition: map[string]any{"kind": g.Condition.Kind, "qualifier_id": nil},
-			Community: nil,
+		}
+		if h.Community != nil {
+			if view, ok, err := h.Community(r.Context(), g.StationID, g.Product, g.Unit, g.Condition.Kind, "STANDARD"); err == nil && ok {
+				wg.Community = wireCommunityPrice(view)
+			} else if err != nil {
+				httpapi.WriteError(w, r, http.StatusInternalServerError, "official.unavailable", "try again later", nil)
+				return
+			}
 		}
 		if g.Official != nil {
 			o := &wireOfficial{

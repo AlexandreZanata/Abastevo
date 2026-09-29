@@ -1,0 +1,22 @@
+{
+  "id": "community-price-valid",
+  "version": 1,
+  "schema": "CommunityPrice",
+  "valid": true,
+  "provenance": "P06-T05 projected community section; synthetic",
+  "value": {
+    "source": "COMMUNITY",
+    "availability": "AVAILABLE",
+    "amount_milli_brl": 5890,
+    "currency": "BRL",
+    "confidence": "MEDIUM",
+    "freshness": "FRESH",
+    "independent_supporters": 2,
+    "confirmation_count": 1,
+    "representative_observation_id": "45d0e8bc-01b1-441e-9b28-f8c16df7cb35",
+    "last_observation_received_at": "2026-09-28T12:00:00Z",
+    "expires_at": "2026-09-30T12:00:00Z",
+    "algorithm_version": "consensus-v1",
+    "projection_version": 7
+  }
+}

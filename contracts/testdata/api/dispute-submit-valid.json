@@ -1,0 +1,13 @@
+{
+  "id": "dispute-submit-valid",
+  "version": 1,
+  "schema": "DisputeSubmit",
+  "valid": true,
+  "provenance": "P06-T02 report shape; synthetic",
+  "value": {
+    "client_submission_id": "dsp-2026-09-30-001",
+    "reason": "WRONG_PRODUCT",
+    "detail": null,
+    "replacement_observation_id": null
+  }
+}

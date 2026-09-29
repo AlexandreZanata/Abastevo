@@ -541,3 +541,20 @@ func TestSweepBatchValidation(t *testing.T) {
 		t.Error("zero batch accepted")
 	}
 }
+
+func TestObjectSignalsResolveDHash(t *testing.T) {
+	s, _ := freshStore(t)
+	ctx := context.Background()
+	obj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
+	dhash, owner, err := s.ObjectSignals(ctx, obj.ID)
+	if err != nil {
+		t.Fatalf("signals: %v", err)
+	}
+	if dhash != 123 || owner != "tok-c1" {
+		t.Errorf("signals = %d %q", dhash, owner)
+	}
+	missing, _ := newUUIDv4()
+	if _, _, err := s.ObjectSignals(ctx, missing); !errors.Is(err, ErrNoObject) {
+		t.Errorf("missing = %v, want no-object", err)
+	}
+}

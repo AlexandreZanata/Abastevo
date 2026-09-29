@@ -264,6 +264,104 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/observations/{observation_id}/confirmations:
+    post:
+      summary: Confirm one validated observation (signed, idempotent).
+      operationId: confirmObservation
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        description: Support vote; the supporter derives from proof and must differ from the author.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmationSubmit'
+            example:
+              client_submission_id: cfm-2026-09-30-001
+      responses:
+        '201':
+          description: Recorded support, never a projection claim.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationReceipt'
+              example:
+                confirmation_id: c6c74c23-63db-4c24-a2e5-408cb23bad26
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                received_at: '2026-09-30T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/observations/{observation_id}/disputes:
+    post:
+      summary: Report one observation for review (signed, idempotent).
+      operationId: disputeObservation
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        description: Structured report; reports flag content for review and never erase prices.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisputeSubmit'
+            example:
+              client_submission_id: dsp-2026-09-30-001
+              reason: WRONG_PRODUCT
+              detail: null
+              replacement_observation_id: null
+      responses:
+        '201':
+          description: Open report, never a price change.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisputeReceipt'
+              example:
+                dispute_id: e6c74c23-63db-4c24-a2e5-408cb23bad26
+                target_observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                state: OPEN
+                received_at: '2026-09-30T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
@@ -849,7 +947,70 @@ components:
                 start: {type: string, format: date}
                 end: {type: string, format: date}
             revision_id: {type: string, format: uuid}
-        community: {type: ["null"], example: null}
+        community:
+          description: Projected community section, or null when unknown (never an ANP substitution).
+          example: null
+          oneOf:
+            - type: "null"
+            - $ref: '#/components/schemas/CommunityPrice'
+    CommunityPrice:
+      description: Projected community section with explanatory counts and freshness, never contributor identities.
+      type: object
+      required: [source, availability, currency, confidence, freshness, independent_supporters, confirmation_count, algorithm_version, projection_version]
+      properties:
+        source:
+          type: string
+          enum: [COMMUNITY]
+          example: COMMUNITY
+        availability:
+          type: string
+          enum: [AVAILABLE, DISPUTED, UNKNOWN]
+          example: AVAILABLE
+        amount_milli_brl:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 1000000
+          description: Projected amount, null unless AVAILABLE.
+          example: 5890
+        currency:
+          type: string
+          enum: [BRL]
+          example: BRL
+        confidence:
+          type: string
+          example: MEDIUM
+        freshness:
+          type: string
+          enum: [FRESH, AGING, STALE, UNKNOWN]
+          example: FRESH
+        independent_supporters:
+          type: integer
+          minimum: 0
+          example: 2
+        confirmation_count:
+          type: integer
+          minimum: 0
+          example: 1
+        representative_observation_id:
+          type: [string, "null"]
+          format: uuid
+          description: Eligible anchor bound to the displayed amount, for confirmation and dispute targeting.
+          example: 45d0e8bc-01b1-441e-9b28-f8c16df7cb35
+        last_observation_received_at:
+          type: [string, "null"]
+          format: date-time
+          example: '2026-09-28T12:00:00Z'
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          example: '2026-09-30T12:00:00Z'
+        algorithm_version:
+          type: string
+          example: consensus-v1
+        projection_version:
+          type: integer
+          minimum: 1
+          example: 7
     PriceGroups:
       description: Product groups with official and community sections.
       type: object
@@ -1204,6 +1365,79 @@ components:
           type: string
           format: date-time
           example: '2026-09-28T00:00:00Z'
+    ConfirmationSubmit:
+      description: Support vote; the supporter derives from proof and must differ from the author.
+      type: object
+      required: [client_submission_id]
+      properties:
+        client_submission_id:
+          type: string
+          minLength: 1
+          description: Client operation identity for safe retries.
+          example: cfm-2026-09-30-001
+    ConfirmationReceipt:
+      description: Recorded support, never a projection claim.
+      type: object
+      required: [confirmation_id, observation_id, received_at]
+      properties:
+        confirmation_id:
+          type: string
+          format: uuid
+          example: c6c74c23-63db-4c24-a2e5-408cb23bad26
+        observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        received_at:
+          type: string
+          format: date-time
+          example: '2026-09-30T00:00:00Z'
+    DisputeReason:
+      description: Structured report reason; reports never erase prices.
+      type: string
+      enum: [PRICE_CHANGED, WRONG_STATION, WRONG_PRODUCT, WRONG_CONDITION, EVIDENCE_MISMATCH, OTHER]
+      example: WRONG_PRODUCT
+    DisputeSubmit:
+      description: Structured report; the reporter derives from proof.
+      type: object
+      required: [client_submission_id, reason]
+      properties:
+        client_submission_id:
+          type: string
+          minLength: 1
+          description: Client operation identity for safe retries.
+          example: dsp-2026-09-30-001
+        reason:
+          $ref: '#/components/schemas/DisputeReason'
+        detail:
+          type: [string, "null"]
+          example: null
+        replacement_observation_id:
+          type: [string, "null"]
+          format: uuid
+          description: Replacement reference for PRICE_CHANGED, when available.
+          example: null
+    DisputeReceipt:
+      description: Open report, never a price change.
+      type: object
+      required: [dispute_id, target_observation_id, state, received_at]
+      properties:
+        dispute_id:
+          type: string
+          format: uuid
+          example: e6c74c23-63db-4c24-a2e5-408cb23bad26
+        target_observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        state:
+          type: string
+          enum: [OPEN]
+          example: OPEN
+        received_at:
+          type: string
+          format: date-time
+          example: '2026-09-30T00:00:00Z'
     UploadReserveRequest:
       description: Upload intent; the object key is server-generated, never client-supplied.
       type: object
@@ -1302,6 +1536,12 @@ components:
             $ref: '#/components/schemas/ApiError'
     Unauthorized:
       description: Missing or invalid proof; no detail leaks.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Authenticated but forbidden for this caller; no detail leaks.
       content:
         application/json:
           schema:

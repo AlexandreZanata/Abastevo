@@ -22,6 +22,7 @@ import (
 
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
+	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
@@ -92,6 +93,7 @@ func run() error {
 	// closure so modules never cross-read.
 	stations := directoryread.NewReader(pool.Underlying())
 	prices := officialread.NewReader(pool.Underlying())
+	communityPrices := communityread.NewReader(pool.Underlying())
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	officialhttp.Handler{
 		Prices:  prices,
@@ -105,6 +107,29 @@ func run() error {
 				return false, nil
 			}
 			return false, err
+		},
+		// Projected community section (P06-T05): one indexed row per
+		// exact key, mapped onto the public shape without contributor
+		// identities. Missing keys stay null, never an ANP fill-in.
+		Community: func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (officialhttp.CommunityPrice, bool, error) {
+			view, err := communityPrices.CurrentPrice(ctx, stationID, product, unit, conditionKind, qualifier)
+			if err != nil {
+				return officialhttp.CommunityPrice{}, false, err
+			}
+			if !view.Found {
+				return officialhttp.CommunityPrice{}, false, nil
+			}
+			return officialhttp.CommunityPrice{
+				Availability: view.Availability, Confidence: view.Confidence,
+				Freshness: view.Freshness, AmountMilli: view.AmountMilliBrl,
+				HasAmount: view.HasAmount, Supporters: view.Supporters,
+				Confirmations:    view.Confirmations,
+				RepresentativeID: view.RepresentativeID,
+				AnchorReceivedAt: view.AnchorReceivedAt, HasAnchor: view.HasAnchor,
+				ExpiresAt: view.ExpiresAt, HasExpiry: view.HasExpiry,
+				AlgorithmVersion:  view.AlgorithmVersion,
+				ProjectionVersion: view.ProjectionVersion,
+			}, true, nil
 		},
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
@@ -145,6 +170,29 @@ func run() error {
 				return communityapp.Outcome{}, err
 			}
 			return communityapp.Outcome{StatusCode: out.StatusCode, Body: out.Response, Replayed: out.Replayed}, nil
+		},
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+		Store: communityStore,
+	}
+	// Support votes and structured reports (P06-T02). Same closure
+	// rule: quota, identity and recompute enqueue arrive as narrow
+	// functions; every accepted write enqueues consensus recomputation.
+	votePorts := communityapp.VotePorts{
+		Clock: time.Now,
+		NewID: newUUID,
+		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &communityapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
 		},
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
@@ -207,6 +255,14 @@ func run() error {
 		},
 		History: func(ctx context.Context, caller communityapp.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]communityapp.HistoryItem, string, error) {
 			return communityapp.History(ctx, communityPorts, caller, limit, after, afterID, hasCursor)
+		},
+		Confirm: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.ConfirmDTO, _ []byte) (communityapp.ConfirmResult, error) {
+			dto.ObservationID = observationID
+			return communityapp.Confirm(ctx, votePorts, caller, dto)
+		},
+		Dispute: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.DisputeDTO, _ []byte) (communityapp.DisputeResult, error) {
+			dto.TargetObservationID = observationID
+			return communityapp.Dispute(ctx, votePorts, caller, dto)
 		},
 		Secrets: cfg.CursorSecret,
 	}.RegisterRoutes(router)
