@@ -305,3 +305,25 @@ func (r *Registrar) Profile(ctx context.Context, contributorID string) (Contribu
 		CreatedAt: row.CreatedAt.Time, Deleted: row.DeletedAt.Valid,
 	}, nil
 }
+
+// DeleteContributor revokes one owner's writes and unlinks identity in
+// the narrow erasure workflow (P07-T04, B-BR-016): status moves to
+// deleted, the attribution token is cleared so owner rows no longer
+// resolve, and every live key is revoked. Re-running on an already
+// deleted contributor converges (deleted=false, keys 0).
+func (r *Registrar) DeleteContributor(ctx context.Context, contributorID string) (deleted bool, keysRevoked int64, err error) {
+	uid, err := mustUUID(contributorID)
+	if err != nil {
+		return false, 0, err
+	}
+	q := identity.New(r.pool)
+	n, err := q.DeleteContributor(ctx, uid)
+	if err != nil {
+		return false, 0, err
+	}
+	keys, err := q.RevokeContributorKeys(ctx, uid)
+	if err != nil {
+		return false, 0, err
+	}
+	return n == 1, keys, nil
+}

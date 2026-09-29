@@ -74,6 +74,45 @@ func (q *Queries) GetRequestByNaturalKey(ctx context.Context, arg GetRequestByNa
 	return i, err
 }
 
+const insertLedgerEntry = `-- name: InsertLedgerEntry :one
+
+INSERT INTO privacy_deletion_ledger
+    (id, contributor_id, contributor_ref, scope, reason, occurred_at,
+     policy_version)
+VALUES ($1, $2, $3, $4, $5,
+    $6, $7)
+ON CONFLICT DO NOTHING
+RETURNING id
+`
+
+type InsertLedgerEntryParams struct {
+	ID             pgtype.UUID        `json:"id"`
+	ContributorID  string             `json:"contributor_id"`
+	ContributorRef string             `json:"contributor_ref"`
+	Scope          string             `json:"scope"`
+	Reason         string             `json:"reason"`
+	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
+	PolicyVersion  string             `json:"policy_version"`
+}
+
+// Deletion replay ledger (P07-T04): insert-once per contributor and
+// scope, contributor-scoped reads, replay marks. No DELETE path: the
+// ledger ages out with the backup horizon under retention (P07-T05).
+func (q *Queries) InsertLedgerEntry(ctx context.Context, arg InsertLedgerEntryParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, insertLedgerEntry,
+		arg.ID,
+		arg.ContributorID,
+		arg.ContributorRef,
+		arg.Scope,
+		arg.Reason,
+		arg.OccurredAt,
+		arg.PolicyVersion,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertRequest = `-- name: InsertRequest :one
 
 INSERT INTO privacy_requests
@@ -119,6 +158,63 @@ func (q *Queries) InsertRequest(ctx context.Context, arg InsertRequestParams) (p
 	return id, err
 }
 
+const listLedgerByContributor = `-- name: ListLedgerByContributor :many
+SELECT id, contributor_id, contributor_ref, scope, reason, occurred_at,
+    replayed_at, policy_version
+FROM privacy_deletion_ledger
+WHERE contributor_id = $1
+ORDER BY scope ASC
+`
+
+func (q *Queries) ListLedgerByContributor(ctx context.Context, contributorID string) ([]PrivacyDeletionLedger, error) {
+	rows, err := q.db.Query(ctx, listLedgerByContributor, contributorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PrivacyDeletionLedger
+	for rows.Next() {
+		var i PrivacyDeletionLedger
+		if err := rows.Scan(
+			&i.ID,
+			&i.ContributorID,
+			&i.ContributorRef,
+			&i.Scope,
+			&i.Reason,
+			&i.OccurredAt,
+			&i.ReplayedAt,
+			&i.PolicyVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markDeletionReady = `-- name: MarkDeletionReady :one
+UPDATE privacy_requests
+SET status = 'READY', ready_at = $1, completed_at = $2
+WHERE id = $3 AND status = 'REQUESTED' AND type = 'DELETION'
+RETURNING id
+`
+
+type MarkDeletionReadyParams struct {
+	ReadyAt     pgtype.Timestamptz `json:"ready_at"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) MarkDeletionReady(ctx context.Context, arg MarkDeletionReadyParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, markDeletionReady, arg.ReadyAt, arg.CompletedAt, arg.ID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const markFailed = `-- name: MarkFailed :one
 UPDATE privacy_requests
 SET status = 'FAILED', completed_at = $1
@@ -136,6 +232,25 @@ func (q *Queries) MarkFailed(ctx context.Context, arg MarkFailedParams) (pgtype.
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const markLedgerReplayed = `-- name: MarkLedgerReplayed :execrows
+UPDATE privacy_deletion_ledger
+SET replayed_at = $1
+WHERE id = $2
+`
+
+type MarkLedgerReplayedParams struct {
+	ReplayedAt pgtype.Timestamptz `json:"replayed_at"`
+	ID         pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) MarkLedgerReplayed(ctx context.Context, arg MarkLedgerReplayedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markLedgerReplayed, arg.ReplayedAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markReady = `-- name: MarkReady :one
@@ -168,4 +283,18 @@ func (q *Queries) MarkReady(ctx context.Context, arg MarkReadyParams) (pgtype.UU
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const purgeOwnerArchives = `-- name: PurgeOwnerArchives :execrows
+UPDATE privacy_requests
+SET archive = NULL
+WHERE contributor_id = $1 AND archive IS NOT NULL
+`
+
+func (q *Queries) PurgeOwnerArchives(ctx context.Context, contributorID string) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeOwnerArchives, contributorID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

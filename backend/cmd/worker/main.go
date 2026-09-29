@@ -40,6 +40,7 @@ import (
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -233,6 +234,41 @@ func run() error {
 		},
 		Store:     privacyStore,
 		Inventory: inventoryFunc(exportInventory),
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	// privacyErasePorts drives owner erasure over the same real
+	// ledgers (P07-T04): identity revocation, community unlinking with
+	// recompute, evidence purge with server-side storage deletes, trust
+	// removal and export-archive purge, all converging on re-run.
+	erasureDelete := func(ctx context.Context, key, namespace string) error {
+		if cfg.R2 == nil {
+			return errors.New("evidence: storage not configured")
+		}
+		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+			Key: key, Namespace: namespace,
+			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, storageCreds())
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Delete(ctx, httpClient, pre.URL)
+	}
+	privacyErasePorts := privacyapp.ErasePorts{
+		Clock: time.Now,
+		NewID: jobs.NewUUIDv4,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store:        privacyStore,
+		Identity:     identityRegistrar,
+		Community:    communityStore,
+		Evidence:     evidenceStore,
+		Trust:        trustStore,
+		DeleteObject: erasureDelete,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
 			return err
@@ -502,6 +538,17 @@ func run() error {
 		"privacy-export-build": privacyjobs.ExportBuild{
 			Build: func(ctx context.Context, requestID string) (string, bool, error) {
 				return privacyapp.Build(ctx, privacyPorts, requestID)
+			},
+		},
+		// Owner erasure (P07-T04): durable deletion requests revoke and
+		// purge scope by scope with ledger rows; terminal replays
+		// converge and scope failures park for audited retry.
+		"privacy-erasure": privacyjobs.Erasure{
+			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
+				return privacyStore.Get(ctx, requestID)
+			},
+			Erase: func(ctx context.Context, contributorID string, dto privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
+				return privacyapp.Erase(ctx, privacyErasePorts, contributorID, dto)
 			},
 		},
 		"evidence-sweep": evidencejobs.Sweep{

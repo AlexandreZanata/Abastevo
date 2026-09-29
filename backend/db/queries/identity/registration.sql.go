@@ -115,6 +115,25 @@ func (q *Queries) CreateKey(ctx context.Context, arg CreateKeyParams) (CreateKey
 	return i, err
 }
 
+const deleteContributor = `-- name: DeleteContributor :execrows
+
+UPDATE identity_contributors
+SET status = 'deleted', attribution_token = NULL, deleted_at = now()
+WHERE id = $1 AND status != 'deleted'
+`
+
+// Erasure (P07-T04, B-BR-016): revoke writes and unlink identity in the
+// narrow privacy workflow. Only these queries may move a contributor to
+// deleted or clear its attribution token; normal writes never touch
+// them.
+func (q *Queries) DeleteContributor(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteContributor, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const findKeyByFingerprint = `-- name: FindKeyByFingerprint :one
 SELECT id, contributor_id, algorithm, public_jwk, fingerprint, created_at, revoked_at
 FROM identity_keys
@@ -190,6 +209,20 @@ func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (GetContri
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const revokeContributorKeys = `-- name: RevokeContributorKeys :execrows
+UPDATE identity_keys
+SET revoked_at = now()
+WHERE contributor_id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeContributorKeys(ctx context.Context, contributorID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeContributorKeys, contributorID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const revokeKey = `-- name: RevokeKey :execrows

@@ -11,6 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteTrustCurrent = `-- name: DeleteTrustCurrent :execrows
+
+DELETE FROM trust_current
+WHERE contributor_ref = $1
+`
+
+// Erasure (P07-T04, B-BR-016): drop the rebuildable current view so the
+// erased owner reads as NEW, and unlink decision history to an opaque
+// token (reviewed-outcome counts survive, identity links do not). Only
+// these queries may remove trust rows; verdict recording stays
+// append-only.
+func (q *Queries) DeleteTrustCurrent(ctx context.Context, contributorRef string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTrustCurrent, contributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getCurrent = `-- name: GetCurrent :one
 SELECT contributor_ref, tier, version, updated_at
 FROM trust_current
@@ -102,6 +121,25 @@ func (q *Queries) ListDecisions(ctx context.Context, contributorRef string) ([]T
 		return nil, err
 	}
 	return items, nil
+}
+
+const unlinkTrustDecisions = `-- name: UnlinkTrustDecisions :execrows
+UPDATE trust_decisions
+SET contributor_ref = $1
+WHERE contributor_ref = $2
+`
+
+type UnlinkTrustDecisionsParams struct {
+	AnonRef        string `json:"anon_ref"`
+	ContributorRef string `json:"contributor_ref"`
+}
+
+func (q *Queries) UnlinkTrustDecisions(ctx context.Context, arg UnlinkTrustDecisionsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unlinkTrustDecisions, arg.AnonRef, arg.ContributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertCurrent = `-- name: UpsertCurrent :one

@@ -110,6 +110,7 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000018_privacy_requests.sql
+      - db/migrations/000019_privacy_deletion_ledger.sql
     gen:
       go:
         package: privacy

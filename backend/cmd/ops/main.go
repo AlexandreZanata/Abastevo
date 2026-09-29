@@ -34,6 +34,8 @@ func run(args []string, getenv func(string) string) error {
 	switch args[0] {
 	case "moderation":
 		return runModeration(args[1:], getenv)
+	case "privacy":
+		return runPrivacy(args[1:], getenv)
 	case "evidence-url":
 		return runEvidenceURL(args[1:], getenv)
 	case "-h", "-help", "--help", "help":
@@ -47,6 +49,8 @@ const usage = `usage:
   ops moderation act --case <id> --action REVIEW|INVALIDATE|BLOCK|RESOLVE|DISMISS --reason <text> [--operator <id>]
   ops moderation invalidate --case <id> --reason <text> [--operator <id>]
   ops moderation block --case <id> --reason <text> [--operator <id>]
+  ops privacy erase --contributor <id> --reason <text> [--client-key <k>] [--operator <id>]
+  ops privacy replay --contributor <id> [--operator <id>]
   ops evidence-url --case <id> --evidence-id <id> [--operator <id>]
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.

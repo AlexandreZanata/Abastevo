@@ -76,6 +76,14 @@ func exportPayload(requestID string) []byte {
 	return raw
 }
 
+// erasurePayload is the versioned erasure envelope: the request ID
+// plus the reviewed reason for the ledger rows. Owner identity
+// resolves server-side from the loaded request, never from payload.
+func erasurePayload(requestID, reason string) []byte {
+	raw, _ := json.Marshal(map[string]any{"version": 1, "request_id": requestID, "reason": reason})
+	return raw
+}
+
 func rowToRequest(row dbprivacy.PrivacyRequest) domain.Request {
 	return domain.Request{
 		ID: uuidString(row.ID), ContributorID: row.ContributorID,
@@ -88,11 +96,22 @@ func rowToRequest(row dbprivacy.PrivacyRequest) domain.Request {
 	}
 }
 
-// RequestExport persists one intent with its durable build job in a
-// single transaction. Identical retries converge on the owner natural
-// key; divergent payloads surface the conflicting row so the caller
-// maps a stable 409 instead of forking history.
+// RequestExport persists one export intent with its durable build job
+// in a single transaction. Identical retries converge on the owner
+// natural key; divergent payloads surface the conflicting row so the
+// caller maps a stable 409 instead of forking history.
 func (s *Store) RequestExport(ctx context.Context, r domain.Request, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
+	return s.requestIntent(ctx, r, "privacy-export-build", exportPayload(r.ID), "privacy-export:"+r.ID, enqueue)
+}
+
+// RequestDeletion persists one erasure intent with its durable erasure
+// job in a single transaction, converging retries like exports. The
+// reason travels in the job payload for the ledger rows.
+func (s *Store) RequestDeletion(ctx context.Context, r domain.Request, reason string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
+	return s.requestIntent(ctx, r, "privacy-erasure", erasurePayload(r.ID, reason), "privacy-erasure:"+r.ID, enqueue)
+}
+
+func (s *Store) requestIntent(ctx context.Context, r domain.Request, kind string, payload []byte, dedupe string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
 	uid, err := mustUUID(r.ID)
 	if err != nil {
 		return "", false, err
@@ -118,7 +137,7 @@ func (s *Store) RequestExport(ctx context.Context, r domain.Request, enqueue fun
 		}
 		return "", false, err
 	}
-	if err := enqueue(ctx, tx, "privacy-export-build", exportPayload(r.ID), "privacy-export:"+r.ID); err != nil {
+	if err := enqueue(ctx, tx, kind, payload, dedupe); err != nil {
 		return "", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -226,4 +245,91 @@ func (s *Store) GetForOwner(ctx context.Context, contributorID, id string) (doma
 		return domain.Request{}, nil, domain.ErrNotFound
 	}
 	return rowToRequest(row), row.Archive, nil
+}
+
+// RecordLedger appends one deletion-ledger row. Replays converge on
+// the contributor/scope natural key: the first record wins and later
+// duplicates return it with replayed=true.
+func (s *Store) RecordLedger(ctx context.Context, e domain.LedgerEntry) (string, bool, error) {
+	uid, err := mustUUID(e.ID)
+	if err != nil {
+		return "", false, err
+	}
+	inserted, err := dbprivacy.New(s.pool).InsertLedgerEntry(ctx, dbprivacy.InsertLedgerEntryParams{
+		ID: uid, ContributorID: e.ContributorID,
+		ContributorRef: e.ContributorRef, Scope: e.Scope, Reason: e.Reason,
+		OccurredAt: pgTime(e.OccurredAt), PolicyVersion: e.PolicyVersion,
+	})
+	_ = inserted
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			rows, lerr := dbprivacy.New(s.pool).ListLedgerByContributor(ctx, e.ContributorID)
+			if lerr != nil {
+				return "", false, lerr
+			}
+			for _, row := range rows {
+				if row.Scope == e.Scope {
+					return uuidString(row.ID), true, nil
+				}
+			}
+			return "", false, err
+		}
+		return "", false, err
+	}
+	return e.ID, false, nil
+}
+
+// ListLedger returns one contributor's deletion-ledger rows ordered by
+// scope for audit and restore replay.
+func (s *Store) ListLedger(ctx context.Context, contributorID string) ([]domain.LedgerEntry, error) {
+	rows, err := dbprivacy.New(s.pool).ListLedgerByContributor(ctx, contributorID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.LedgerEntry, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.LedgerEntry{
+			ID: uuidString(row.ID), ContributorID: row.ContributorID,
+			ContributorRef: row.ContributorRef, Scope: row.Scope,
+			Reason: row.Reason, OccurredAt: row.OccurredAt.Time,
+			ReplayedAt: row.ReplayedAt.Time, PolicyVersion: row.PolicyVersion,
+		})
+	}
+	return out, nil
+}
+
+// MarkLedgerReplayed stamps one ledger row after its scope re-ran.
+func (s *Store) MarkLedgerReplayed(ctx context.Context, id string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	_, err = dbprivacy.New(s.pool).MarkLedgerReplayed(ctx, dbprivacy.MarkLedgerReplayedParams{
+		ID: uid, ReplayedAt: pgTime(at),
+	})
+	return err
+}
+
+// PurgeOwnerArchives removes one owner's READY export bytes after
+// erasure. History rows stay for audit; only payload goes.
+func (s *Store) PurgeOwnerArchives(ctx context.Context, contributorID string) (int64, error) {
+	return dbprivacy.New(s.pool).PurgeOwnerArchives(ctx, contributorID)
+}
+
+// CompleteDeletionRequest moves a REQUESTED deletion intent to READY
+// without an archive: erasure produces a receipt, not bytes.
+func (s *Store) CompleteDeletionRequest(ctx context.Context, id string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := dbprivacy.New(s.pool).MarkDeletionReady(ctx, dbprivacy.MarkDeletionReadyParams{
+		ID: uid, ReadyAt: pgTime(at), CompletedAt: pgTime(at),
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrBadState
+		}
+		return err
+	}
+	return nil
 }

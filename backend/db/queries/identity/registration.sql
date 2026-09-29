@@ -52,3 +52,18 @@ WHERE id = @id AND attribution_token IS NULL;
 UPDATE identity_keys
 SET revoked_at = now()
 WHERE id = @id AND revoked_at IS NULL;
+
+-- Erasure (P07-T04, B-BR-016): revoke writes and unlink identity in the
+-- narrow privacy workflow. Only these queries may move a contributor to
+-- deleted or clear its attribution token; normal writes never touch
+-- them.
+
+-- name: DeleteContributor :execrows
+UPDATE identity_contributors
+SET status = 'deleted', attribution_token = NULL, deleted_at = now()
+WHERE id = @id AND status != 'deleted';
+
+-- name: RevokeContributorKeys :execrows
+UPDATE identity_keys
+SET revoked_at = now()
+WHERE contributor_id = @contributor_id AND revoked_at IS NULL;

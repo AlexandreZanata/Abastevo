@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type PrivacyDeletionLedger struct {
+	ID             pgtype.UUID        `json:"id"`
+	ContributorID  string             `json:"contributor_id"`
+	ContributorRef string             `json:"contributor_ref"`
+	Scope          string             `json:"scope"`
+	Reason         string             `json:"reason"`
+	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
+	ReplayedAt     pgtype.Timestamptz `json:"replayed_at"`
+	PolicyVersion  string             `json:"policy_version"`
+}
+
 type PrivacyRequest struct {
 	ID                 pgtype.UUID        `json:"id"`
 	ContributorID      string             `json:"contributor_id"`

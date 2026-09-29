@@ -31,3 +31,18 @@ RETURNING contributor_ref;
 SELECT contributor_ref, tier, version, updated_at
 FROM trust_current
 WHERE contributor_ref = @contributor_ref;
+
+-- Erasure (P07-T04, B-BR-016): drop the rebuildable current view so the
+-- erased owner reads as NEW, and unlink decision history to an opaque
+-- token (reviewed-outcome counts survive, identity links do not). Only
+-- these queries may remove trust rows; verdict recording stays
+-- append-only.
+
+-- name: DeleteTrustCurrent :execrows
+DELETE FROM trust_current
+WHERE contributor_ref = @contributor_ref;
+
+-- name: UnlinkTrustDecisions :execrows
+UPDATE trust_decisions
+SET contributor_ref = @anon_ref
+WHERE contributor_ref = @contributor_ref;

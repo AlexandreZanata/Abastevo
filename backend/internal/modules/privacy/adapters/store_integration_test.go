@@ -317,12 +317,13 @@ func TestNoDestructiveSQLPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	upper := strings.ToUpper(string(raw))
-	// The only mutating paths are the two guarded forward transitions
-	// (REQUESTED to READY/FAILED); zero DELETE, no unguarded UPDATE.
-	if got := strings.Count(upper, "UPDATE PRIVACY_REQUESTS"); got != 2 {
-		t.Errorf("privacy.sql has %d UPDATEs, want exactly the two guarded transitions", got)
+	// The only mutating paths are the three guarded forward transitions
+	// (REQUESTED to READY/FAILED plus deletion receipts) and the
+	// erasure archive purge; zero row removal, no unguarded mutation.
+	if got := strings.Count(upper, "UPDATE PRIVACY_REQUESTS"); got != 4 {
+		t.Errorf("privacy.sql has %d UPDATEs, want exactly the guarded transitions plus the archive purge", got)
 	}
-	if strings.Count(upper, "STATUS = 'REQUESTED'") < 2 {
+	if strings.Count(upper, "STATUS = 'REQUESTED'") < 3 {
 		t.Error("guarded transitions lost their state guard")
 	}
 	for _, verb := range []string{"\nDELETE ", "DELETE FROM PRIVACY_"} {

@@ -135,8 +135,9 @@ type DownloadResult struct {
 }
 
 // Download returns one READY archive to its owner inside the 24 h
-// window. Expired archives refuse (request a fresh export); missing,
-// foreign and non-ready requests share safe shapes.
+// window. Expired archives refuse (request a fresh export); purged
+// archives (post-erasure) read as unavailable; missing, foreign and
+// non-ready requests share safe shapes.
 func Download(ctx context.Context, p Ports, caller Caller, id string) (DownloadResult, error) {
 	if strings.TrimSpace(caller.ContributorID) == "" {
 		return DownloadResult{}, ErrUnauthorized
@@ -152,7 +153,7 @@ func Download(ctx context.Context, p Ports, caller Caller, id string) (DownloadR
 	if req.Status != domain.StatusReady {
 		return DownloadResult{}, domain.ErrBadState
 	}
-	if domain.Expired(req, now) {
+	if domain.Expired(req, now) || len(archive) == 0 {
 		return DownloadResult{}, domain.ErrExpired
 	}
 	return DownloadResult{Archive: archive, SHA256: req.ArchiveSHA256}, nil

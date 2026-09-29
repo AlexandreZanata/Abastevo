@@ -97,4 +97,39 @@ func TestRunRejectsUnknownCommand(t *testing.T) {
 	if err := run(nil, getenvNone); err == nil {
 		t.Error("empty invocation accepted")
 	}
+	if err := run([]string{"privacy", "launch"}, getenvNone); err == nil {
+		t.Error("unknown privacy command accepted")
+	}
+}
+
+func TestParseEraseArgs(t *testing.T) {
+	e, err := parseEraseArgs([]string{"--contributor", "c1", "--reason", "owner request"})
+	if err != nil {
+		t.Fatalf("parse = %v", err)
+	}
+	if e.contributor != "c1" || e.reason != "owner request" {
+		t.Errorf("args = %+v", e)
+	}
+	if e.clientKey == "" {
+		t.Error("client key not defaulted")
+	}
+	if _, err := parseEraseArgs([]string{"--contributor", "c1"}); err == nil {
+		t.Error("missing --reason accepted")
+	}
+	if _, err := parseEraseArgs([]string{"--reason", "r"}); err == nil {
+		t.Error("missing --contributor accepted")
+	}
+}
+
+func TestParseReplayArgs(t *testing.T) {
+	r, err := parseReplayArgs([]string{"--contributor", "c1"})
+	if err != nil {
+		t.Fatalf("parse = %v", err)
+	}
+	if r.contributor != "c1" {
+		t.Errorf("args = %+v", r)
+	}
+	if _, err := parseReplayArgs(nil); err == nil {
+		t.Error("missing --contributor accepted")
+	}
 }
