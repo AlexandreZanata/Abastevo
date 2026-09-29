@@ -11,6 +11,7 @@ sql:
     queries: db/queries/platform
     schema:
       - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000007_jobs.sql
     gen:
       go:
         package: platform

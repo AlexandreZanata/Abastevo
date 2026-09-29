@@ -27,6 +27,7 @@ backend/internal/modules/official/application
 backend/internal/modules/official/adapters/read
 backend/internal/modules/official/adapters/http
 backend/internal/platform/httpapi
+backend/internal/platform/jobs
 backend/internal/modules/identity/profile
 backend/internal/modules/identity/domain
 backend/internal/modules/identity/adapters

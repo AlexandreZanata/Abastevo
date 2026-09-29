@@ -12,8 +12,9 @@
 - P03-T04: LOCAL_DONE — idempotency runner, RED→GREEN.
 - P03-T05: LOCAL_DONE — quotas, RED→GREEN.
 - P03-T06: LOCAL_DONE — `adapters` Rotate with old/new SIGN proofs: server-stored old coords, fingerprint/purpose/nonce binding, single-tx consume-both + revoke + bind, takeover refused, revoked-old only replays same-contributor bindings, no lost-key recovery; integration on real PostGIS: happy path with old-denied/new-works via auth Verifier, old/new proof failures preserving challenges, concurrent exactly-one-wins, idempotent replay, takeover refused with old intact, stranger denied; RED proven by skipping revoke, GREEN on restore; rotate path + schemas + 2 vectors, spec 100/100; no new manifest packages.
-- G03: P03-T07…T08 NOT STARTED (P03 scope runs T01…T08; phase PR body to update).
-- Next: **P03-T07 — PostgreSQL job queue**.
+- P03-T07: LOCAL_DONE — `db/migrations/000007` (queue with fencing leases, dedupe unique, claim/expiry indexes, no cross-owner FKs) + `db/queries/platform/jobs.sql` + `platform/jobs` (transactional Enqueue with dedupe convergence, SKIP LOCKED claim with lease tokens, token-bound complete/fail with capped DEAD parking, audited replay, stale-lease denial); integration on real PostGIS: disjoint two-worker claim, expiry with fenced stale ack, crash redelivery with idempotent effect, poison parks/dead/replays with fresh budget, dedupe convergence; RED proven by dropping the fence token (stale ack wins), GREEN on restore; manifest extended.
+- G03: P03-T08 NOT STARTED (P03 scope runs T01…T08; phase PR body to update).
+- Next: **P03-T08 — Worker dispatch and recurring schedules**.
 - Issues/milestone/PR/wiki: P03 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
