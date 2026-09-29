@@ -155,3 +155,21 @@ func (q *Queries) GetChallenge(ctx context.Context, id pgtype.UUID) (IdentityCha
 	)
 	return i, err
 }
+
+const getContributor = `-- name: GetContributor :one
+SELECT id, status, created_at, deleted_at
+FROM identity_contributors
+WHERE id = $1
+`
+
+func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (IdentityContributor, error) {
+	row := q.db.QueryRow(ctx, getContributor, id)
+	var i IdentityContributor
+	err := row.Scan(
+		&i.ID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}

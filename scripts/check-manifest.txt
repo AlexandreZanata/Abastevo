@@ -30,6 +30,7 @@ backend/internal/platform/httpapi
 backend/internal/modules/identity/profile
 backend/internal/modules/identity/domain
 backend/internal/modules/identity/adapters
+backend/internal/modules/identity/adapters/auth
 
 [required-checks]
 gofmt

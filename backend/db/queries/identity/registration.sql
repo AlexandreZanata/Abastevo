@@ -34,3 +34,8 @@ RETURNING id, contributor_id;
 SELECT id, contributor_id, algorithm, public_jwk, fingerprint, created_at, revoked_at
 FROM identity_keys
 WHERE fingerprint = @fingerprint;
+
+-- name: GetContributor :one
+SELECT id, status, created_at, deleted_at
+FROM identity_contributors
+WHERE id = @id;
