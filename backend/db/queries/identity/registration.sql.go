@@ -136,6 +136,17 @@ func (q *Queries) FindKeyByFingerprint(ctx context.Context, fingerprint string) 
 	return i, err
 }
 
+const getAttributionToken = `-- name: GetAttributionToken :one
+SELECT attribution_token FROM identity_contributors WHERE id = $1
+`
+
+func (q *Queries) GetAttributionToken(ctx context.Context, id pgtype.UUID) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getAttributionToken, id)
+	var attribution_token pgtype.Text
+	err := row.Scan(&attribution_token)
+	return attribution_token, err
+}
+
 const getChallenge = `-- name: GetChallenge :one
 SELECT id, nonce_hash, fingerprint, purpose, expires_at, consumed_at
 FROM identity_challenges
@@ -162,9 +173,16 @@ FROM identity_contributors
 WHERE id = $1
 `
 
-func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (IdentityContributor, error) {
+type GetContributorRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (GetContributorRow, error) {
 	row := q.db.QueryRow(ctx, getContributor, id)
-	var i IdentityContributor
+	var i GetContributorRow
 	err := row.Scan(
 		&i.ID,
 		&i.Status,
@@ -182,6 +200,25 @@ WHERE id = $1 AND revoked_at IS NULL
 
 func (q *Queries) RevokeKey(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, revokeKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setAttributionToken = `-- name: SetAttributionToken :execrows
+UPDATE identity_contributors
+SET attribution_token = $1
+WHERE id = $2 AND attribution_token IS NULL
+`
+
+type SetAttributionTokenParams struct {
+	Token pgtype.Text `json:"token"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetAttributionToken(ctx context.Context, arg SetAttributionTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setAttributionToken, arg.Token, arg.ID)
 	if err != nil {
 		return 0, err
 	}

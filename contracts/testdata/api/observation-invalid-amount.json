@@ -1,0 +1,21 @@
+{
+  "id": "observation-invalid-amount",
+  "version": 1,
+  "schema": "ObservationSubmit",
+  "valid": false,
+  "provenance": "P04-T04 negative: zero amount rejected",
+  "value": {
+    "client_submission_id": "sub-2026-09-28-001",
+    "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+    "fuel_product": "GASOLINE_REGULAR",
+    "price": {
+      "amount_milli_brl": 0,
+      "currency": "BRL",
+      "unit": "L"
+    },
+    "condition": {
+      "kind": "STANDARD",
+      "qualifier_id": null
+    }
+  }
+}

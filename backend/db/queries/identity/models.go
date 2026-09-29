@@ -18,10 +18,11 @@ type IdentityChallenge struct {
 }
 
 type IdentityContributor struct {
-	ID        pgtype.UUID        `json:"id"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+	ID               pgtype.UUID        `json:"id"`
+	Status           string             `json:"status"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	AttributionToken pgtype.Text        `json:"attribution_token"`
 }
 
 type IdentityIdempotency struct {

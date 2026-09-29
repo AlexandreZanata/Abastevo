@@ -1,0 +1,25 @@
+{
+  "id": "observation-status-valid",
+  "version": 1,
+  "schema": "ObservationStatus",
+  "valid": true,
+  "provenance": "P04-T04 status shape; synthetic",
+  "value": {
+    "observation": {
+      "id": "d6c74c23-63db-4c24-a2e5-408cb23bad27",
+      "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+      "fuel_product": "GASOLINE_REGULAR",
+      "unit": "L",
+      "amount_milli_brl": 5999,
+      "condition": {
+        "kind": "STANDARD",
+        "qualifier_id": null
+      },
+      "validation_state": "RECEIVED",
+      "received_at": "2026-09-28T00:00:00Z",
+      "policy_version": "community-pricing-v1"
+    },
+    "validation_state": "RECEIVED",
+    "decisions": []
+  }
+}

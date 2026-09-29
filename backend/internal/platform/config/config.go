@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,6 +38,7 @@ const (
 	keyMaxBodyBytes    = "ANPFUEL_MAX_BODY_BYTES"
 	keyShutdownTimeout = "ANPFUEL_SHUTDOWN_TIMEOUT"
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
+	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -53,7 +55,8 @@ const (
 // Config is the validated process configuration. CursorSecret signs
 // pagination cursors and is never logged; an unset value generates one
 // per-boot key (single-instance default: cursors invalidate on restart,
-// multi-instance production must set a shared secret).
+// multi-instance production must set a shared secret). CanonicalHost is the
+// authority proofs cover; proxy hosts are never trusted.
 type Config struct {
 	Env             Environment
 	LogLevel        string
@@ -62,6 +65,7 @@ type Config struct {
 	MaxBodyBytes    int64
 	ShutdownTimeout time.Duration
 	CursorSecret    []byte
+	CanonicalHost   string
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -167,6 +171,15 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		}
 		cfg.CursorSecret = []byte(secret)
 	}
+
+	host, _ := getenv(keyCanonicalHost)
+	if host == "" {
+		host = "api.example.invalid"
+	}
+	if strings.ContainsAny(host, " /:?#@") {
+		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
+	}
+	cfg.CanonicalHost = strings.ToLower(host)
 
 	return cfg, nil
 }
