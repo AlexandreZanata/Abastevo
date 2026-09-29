@@ -45,3 +45,36 @@ Verified: api/worker/migrate boot and terminate (exit 0); image Env carries
 no secrets; `docker history` shows no credential layers; runtime user
 `65532:65532`. Rollback: discard unpromoted images, return to the previous
 digest; data and migrations are untouched by image changes.
+
+## Staging and production topologies (P08-T01)
+
+Review-only artifacts until provisioning is authorized: `compose.staging.yml`
+(project `anpfuel-staging`) and `compose.prod.yml` (`anpfuel-prod`), sharing
+`caddy/Caddyfile` plus per-environment templates (`env.staging.example`,
+`env.prod.example`). Staging and production differ by project/network/volume
+names, resource limits and credentials; the database image digest matches
+development, and all other images pin digests or immutable release tags
+(never `latest`).
+
+Rules enforced by `make check-infra` (and its `make test-infra` mutant
+harness): compose files parse; only Caddy publishes ports (80/443); no dev
+credentials, loopback dev URLs or dev volumes; Caddy runs `admin off` with
+TLS and `trusted_proxies private_ranges` only, and serves no metrics, admin
+or database route; examples carry `REPLACE_ME` placeholders, never secrets.
+
+```sh
+cp infra/env.staging.example /srv/anpfuel/staging.env  # outside the repo
+$EDITOR /srv/anpfuel/staging.env                        # fill real values
+ANPFUEL_ENV_FILE=/srv/anpfuel/staging.env ANPFUEL_RELEASE=<tag> \
+  docker compose -f infra/compose.staging.yml config   # validate
+make check-infra                                        # topology gate
+make test-infra                                         # gate failure proof
+bash scripts/infra-smoke.sh                             # static smoke
+bash scripts/infra-smoke.sh --live <host>               # edge smoke at deploy
+```
+
+Boot order per environment: `db` → `run --rm migrate` (one-shot, `tools`
+profile, never via `up`) → `up -d api worker caddy`. Rollback returns to
+the previous `ANPFUEL_RELEASE`; never `docker compose down -v` against
+persistent volumes. `ANPFUEL_CANONICAL_HOST` must equal `CADDY_DOMAIN`
+(signatures cover the canonical authority; proxy hosts are untrusted).

@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -24,6 +24,13 @@ test-issues:
 test-wiki:
 	bash scripts/tests/test-wiki.sh
 
+check-infra:
+	bash scripts/check-infra-config.sh staging
+	bash scripts/check-infra-config.sh prod
+
+test-infra:
+	bash scripts/tests/test-infra-config.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -32,3 +39,5 @@ help:
 	@echo "  test-flow       synthetic git/fake-gh lifecycle for phase controller"
 	@echo "  test-issues     fake-API reconciliation for issues/milestones"
 	@echo "  test-wiki       fixture-repo exporter/publisher for wiki mirror"
+	@echo "  check-infra     staging/prod topology gate (P08-T01)"
+	@echo "  test-infra      infra gate failure-behavior harness"
