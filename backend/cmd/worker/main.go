@@ -17,8 +17,12 @@ import (
 	"syscall"
 	"time"
 
+	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
+	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
+	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
+	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -27,6 +31,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
+	"github.com/jackc/pgx/v5"
 )
 
 func main() {
@@ -87,6 +92,50 @@ func run() error {
 			Pool:    raw,
 			Service: nil,
 			Batch:   25,
+		},
+		"validate-observation": communityjobs.Validate{
+			Run: func(ctx context.Context, observationID, commandRef string) (string, error) {
+				store := communityadapters.NewStore(raw)
+				return communityapp.Validate(ctx, communityapp.ValidateDeps{
+					Clock: time.Now,
+					StationExists: func(ctx context.Context, stationID string) (bool, error) {
+						if _, err := directoryRepo.Station(ctx, stationID); err != nil {
+							if errors.Is(err, directorydomain.ErrUnknownStation) {
+								return false, nil
+							}
+							return false, err
+						}
+						return true, nil
+					},
+					StationLocation: func(ctx context.Context, stationID string) (string, bool, error) {
+						st, err := directoryRepo.Station(ctx, stationID)
+						if err != nil {
+							return "", false, err
+						}
+						if st.CurrentPointWKT == "" || st.CurrentQuality == "" {
+							return "unknown", false, nil
+						}
+						return st.CurrentQuality, true, nil
+					},
+					// Evidence storage lands in P05: no evidence object is
+					// ready yet, so photo-dependent observations wait in
+					// VALIDATING until the deadline instead of verifying
+					// against an unavailable signal. Metadata-only
+					// observations validate without waiting.
+					Evidence: func(context.Context, string) (communityapp.EvidenceState, error) {
+						return communityapp.EvidenceState{}, nil
+					},
+					// Trust decisions land in P06: every contributor is NEW
+					// per trust-v1 initial state, so nothing is blocked
+					// here. A blocked verdict arrives with the trust store.
+					Trust: func(context.Context, string) (bool, error) { return false, nil },
+					Store: store,
+					EnqueueConsensus: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+						_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+						return err
+					},
+				}, observationID, commandRef)
+			},
 		},
 	}
 	dispatch := &jobs.Dispatcher{

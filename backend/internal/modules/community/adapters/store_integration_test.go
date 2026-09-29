@@ -19,6 +19,7 @@ import (
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
@@ -261,6 +262,93 @@ func TestRecordDecisionEnforcesMachine(t *testing.T) {
 	}
 	if history[0].ToState != domain.StateValidating || history[1].ToState != domain.StateValidated {
 		t.Errorf("history = %+v", history)
+	}
+}
+
+func TestRecordDecisionWithJobCommitsAtomically(t *testing.T) {
+	// P04-T05: the VALIDATED decision and its consensus intent commit in
+	// one transaction, so no validated fact waits without downstream work.
+	s, pool, _ := freshStore(t)
+	ctx := context.Background()
+	obs := testObs("d6c74c23-63db-4c24-a2e5-408cb23bad26", "sub-1")
+	var stub [][]byte
+	if _, _, err := s.Submit(ctx, obs, enqueueStub(&stub)); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	claim, err := domain.ClaimValidation(obs, domain.StateReceived, "job-9", domain.ActorWorker, now, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordDecision(ctx, claim); err != nil {
+		t.Fatalf("record claim: %v", err)
+	}
+	admit, err := domain.Admit(obs, domain.StateValidating, domain.ActorWorker, now, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte(`{"version":1,"observation_id":"` + obs.ID + `"}`)
+	enqueue := func(ctx context.Context, tx pgx.Tx, kind string, p []byte, dedupe string) error {
+		_, err := platformjobs.Enqueue(ctx, tx, kind, p, dedupe, 5, time.Time{})
+		return err
+	}
+	if err := s.RecordDecisionWithJob(ctx, admit, "community-consensus", payload, "consensus:"+obs.ID, enqueue); err != nil {
+		t.Fatalf("record with job: %v", err)
+	}
+	history, err := s.Decisions(ctx, obs.ID)
+	if err != nil || len(history) != 2 || history[1].ToState != domain.StateValidated {
+		t.Fatalf("decisions = %+v, %v", history, err)
+	}
+	var n int64
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE dedupe_key = $1", "consensus:"+obs.ID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("consensus jobs = %d, want exactly the downstream intent", n)
+	}
+}
+
+func TestRecordDecisionWithJobRollsBackOnEnqueueFailure(t *testing.T) {
+	// The enqueue failure must roll back the decision too: a retried
+	// validation finds VALIDATING with no phantom VALIDATED row.
+	s, pool, _ := freshStore(t)
+	ctx := context.Background()
+	obs := testObs("d6c74c23-63db-4c24-a2e5-408cb23bad26", "sub-1")
+	var stub [][]byte
+	if _, _, err := s.Submit(ctx, obs, enqueueStub(&stub)); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	claim, err := domain.ClaimValidation(obs, domain.StateReceived, "job-9", domain.ActorWorker, now, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordDecision(ctx, claim); err != nil {
+		t.Fatalf("record claim: %v", err)
+	}
+	admit, err := domain.Admit(obs, domain.StateValidating, domain.ActorWorker, now, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failEnqueue := func(context.Context, pgx.Tx, string, []byte, string) error {
+		return fmt.Errorf("queue down")
+	}
+	if err := s.RecordDecisionWithJob(ctx, admit, "community-consensus", []byte(`{}`), "consensus:"+obs.ID, failEnqueue); err == nil {
+		t.Fatal("enqueue failure accepted")
+	}
+	history, err := s.Decisions(ctx, obs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 1 || history[0].ToState != domain.StateValidating {
+		t.Errorf("decisions after rollback = %+v, want only the claim", history)
+	}
+	var n int64
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE dedupe_key = $1", "consensus:"+obs.ID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("consensus jobs = %d after rollback, want 0", n)
 	}
 }
 
