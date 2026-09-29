@@ -1,0 +1,13 @@
+{
+  "id": "upload-reserve-valid",
+  "version": 1,
+  "schema": "UploadReserveRequest",
+  "valid": true,
+  "provenance": "P05-T02 reserve shape; synthetic",
+  "value": {
+    "client_submission_id": "upl-2026-09-30-001",
+    "content_type": "image/jpeg",
+    "size_bytes": 524288,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}
