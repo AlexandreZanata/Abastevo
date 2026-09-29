@@ -33,6 +33,19 @@ Initial **acceptance workload**, not production capacity claim: 50 read requests
 
 Alerts initially: DB unavailable/5xx spike; disk >75% warning/>85% critical; backup age >26 h; failed restore drill; oldest critical job >5 min; dead jobs; rejected ANP revision/layout change; media cost/quota anomalies. Establish one tested operator notification route during provisioning; do not send real notifications without a configured operational recipient.
 
+## Edge additive limits (P03-T05 plan)
+
+Edge (CDN/WAF) enforces coarse per-IP rate limits, burst caps and
+blocklists ADDITIVELY: it absorbs floods before they reach the API, but it
+never replaces the transactional DB quotas, which alone decide admission.
+Edge sees NAT-shared and proxied addresses, so its limits stay coarse and
+fail open to origin on misconfiguration; precision (per-contributor and
+per-operation budgets, 429 with Retry-After) lives in `identity_rate_windows`.
+Quota policy versions ship with the code that enforces them; edge rule
+changes ship with the infrastructure change that documents them. No IP-only
+bans: blocks are time-boxed, reviewed and appealable through the moderation
+workflow, with abuse evidence retained per the documented inventory.
+
 ## Failure-mode runbook
 
 - PostgreSQL down: reject writes with 503, readiness false, keep process alive; restore connectivity/check disk before retrying. Never pretend writes were stored.

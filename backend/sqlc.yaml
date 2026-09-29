@@ -46,6 +46,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000004_identity.sql
       - db/migrations/000005_idempotency.sql
+      - db/migrations/000006_quotas.sql
     gen:
       go:
         package: identity

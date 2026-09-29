@@ -45,3 +45,11 @@ type IdentityKey struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
+
+type IdentityRateWindow struct {
+	SubjectDigest string             `json:"subject_digest"`
+	Operation     string             `json:"operation"`
+	WindowStart   pgtype.Timestamptz `json:"window_start"`
+	Count         int32              `json:"count"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+}
