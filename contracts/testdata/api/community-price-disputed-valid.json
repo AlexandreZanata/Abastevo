@@ -1,0 +1,22 @@
+{
+  "id": "community-price-disputed-valid",
+  "version": 1,
+  "schema": "CommunityPrice",
+  "valid": true,
+  "provenance": "P06-T05 disputed section carries no amount; synthetic",
+  "value": {
+    "source": "COMMUNITY",
+    "availability": "DISPUTED",
+    "amount_milli_brl": null,
+    "currency": "BRL",
+    "confidence": "",
+    "freshness": "FRESH",
+    "independent_supporters": 0,
+    "confirmation_count": 0,
+    "representative_observation_id": null,
+    "last_observation_received_at": null,
+    "expires_at": "2026-09-30T12:00:00Z",
+    "algorithm_version": "consensus-v1",
+    "projection_version": 2
+  }
+}

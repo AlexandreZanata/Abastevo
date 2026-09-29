@@ -22,6 +22,7 @@ import (
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
+	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
@@ -148,6 +149,92 @@ func run() error {
 		_, err = jobs.Enqueue(ctx, raw, "anp-import", encoded, dedupe, 3, time.Time{})
 		return err
 	}
+	communityStore := communityadapters.NewStore(raw)
+	// resolvePhoto verifies one evidence object for both consumers:
+	// the signals loader counts independent duplicates, the recompute
+	// loader binds validated bytes with proximity. Absent or
+	// unavailable objects report empty without error.
+	type photoResolved struct {
+		present   bool
+		validated bool
+		dhash     uint64
+	}
+	resolvePhoto := func(ctx context.Context, evidenceID string) (photoResolved, error) {
+		view, err := evidenceStore.ForCommunity(ctx, evidenceID)
+		if err != nil {
+			return photoResolved{}, err
+		}
+		if !view.Found || !view.Ready {
+			return photoResolved{}, nil
+		}
+		dhash, _, err := evidenceStore.ObjectSignals(ctx, evidenceID)
+		if err != nil {
+			return photoResolved{}, err
+		}
+		return photoResolved{present: true, validated: true, dhash: dhash}, nil
+	}
+	duplicateCount := func(ctx context.Context, dhash uint64) (int, error) {
+		matches, err := evidenceStore.FindByDHash(ctx, dhash, time.Now().Add(-90*24*time.Hour))
+		if err != nil {
+			return 0, err
+		}
+		if dups := len(matches) - 1; dups > 0 {
+			return dups, nil
+		}
+		return 0, nil
+	}
+	recomputePorts := communityapp.RecomputePorts{
+		Clock: time.Now,
+		Store: communityStore,
+		Anchors: func(ctx context.Context, key communitydomain.PriceKey, cutoff time.Time) ([]communitydomain.Observation, error) {
+			return communityStore.EligibleAnchors(ctx, key, cutoff)
+		},
+		Confirmations: func(ctx context.Context, anchorIDs []string) ([]communityapp.ConfirmationVote, error) {
+			return communityStore.ConfirmationsForAnchors(ctx, anchorIDs)
+		},
+		Tiers: func(ctx context.Context, refs []string) (map[string]string, error) {
+			out := make(map[string]string, len(refs))
+			for _, ref := range refs {
+				tier, err := trustStore.Tier(ctx, ref)
+				if err != nil {
+					return nil, err
+				}
+				out[ref] = tier
+			}
+			return out, nil
+		},
+		Photo: func(ctx context.Context, anchor communitydomain.Observation) (communityapp.PhotoInfo, error) {
+			if anchor.EvidenceID == "" {
+				return communityapp.PhotoInfo{}, nil
+			}
+			resolved, err := resolvePhoto(ctx, anchor.EvidenceID)
+			if err != nil || !resolved.present {
+				return communityapp.PhotoInfo{}, err
+			}
+			// Proximity comes from the anchor's own derived signals;
+			// missing bands fail closed to no proximity, never to
+			// verified.
+			proximity := false
+			signals, err := communityStore.LoadSignals(ctx, anchor.ID)
+			if err != nil {
+				if !errors.Is(err, communityadapters.ErrNoSignals) {
+					return communityapp.PhotoInfo{}, err
+				}
+			} else if signals.Proximity == communityapp.ProximityNear {
+				proximity = true
+			}
+			return communityapp.PhotoInfo{
+				Found: true, Validated: true,
+				ProximityOK: proximity, MediaKey: fmt.Sprintf("%016x", resolved.dhash),
+			}, nil
+		},
+		// Regional deviation already routes through the
+		// derived signals (P06-T01); consensus weighs votes
+		// only, never benchmarks.
+		Moderation: func(context.Context, communitydomain.PriceKey) (bool, error) {
+			return false, nil
+		},
+	}
 	handlers := map[string]jobs.Handler{
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
@@ -198,20 +285,13 @@ func run() error {
 						return communityapp.SitePrecise, nil
 					},
 					Photo: func(ctx context.Context, evidenceID string) (bool, int, error) {
-						dhash, _, err := evidenceStore.ObjectSignals(ctx, evidenceID)
-						if err != nil {
-							if errors.Is(err, evidenceadapters.ErrNoObject) {
-								return false, 0, nil
-							}
+						resolved, err := resolvePhoto(ctx, evidenceID)
+						if err != nil || !resolved.present {
 							return false, 0, err
 						}
-						matches, err := evidenceStore.FindByDHash(ctx, dhash, time.Now().Add(-90*24*time.Hour))
+						dups, err := duplicateCount(ctx, resolved.dhash)
 						if err != nil {
 							return false, 0, err
-						}
-						dups := len(matches) - 1
-						if dups < 0 {
-							dups = 0
 						}
 						return true, dups, nil
 					},
@@ -301,6 +381,31 @@ func run() error {
 					Download: downloadSnapshot,
 					Upload:   uploadFinal,
 				}, sess)
+			},
+		},
+		// Price recomputation (P06-T05): trigger observations resolve
+		// their key, eligible votes assemble through ports, Compute
+		// decides, and the versioned projection persists under the
+		// price-key lock. This handler also drains the consensus jobs
+		// parked since P04-T05: their observation_id payloads replay
+		// through the same path.
+		"community-consensus": communityjobs.Consensus{
+			ByObservation: func(ctx context.Context, observationID string) (communitydomain.Result, error) {
+				return communityapp.Recompute(ctx, recomputePorts, observationID)
+			},
+			ByKey: func(ctx context.Context, key communitydomain.PriceKey) (communitydomain.Result, error) {
+				return communityapp.RecomputeKey(ctx, recomputePorts, key)
+			},
+		},
+		"consensus-boundary": communityjobs.Boundary{
+			Clock: time.Now,
+			Batch: 100,
+			Due: func(ctx context.Context, now time.Time, batch int) ([]communitydomain.PriceKey, error) {
+				return communityStore.DueProjections(ctx, now, batch)
+			},
+			Enqueue: func(ctx context.Context, kind string, payload []byte, dedupe string) error {
+				_, err := jobs.Enqueue(ctx, raw, kind, payload, dedupe, 5, time.Time{})
+				return err
 			},
 		},
 		"evidence-sweep": evidencejobs.Sweep{

@@ -12,8 +12,10 @@ import (
 // reinterpretation: unknown versions fail loudly for replay safety.
 const ConsensusV1 = "consensus-v1"
 
+// ConsensusWindow bounds input eligibility and projection expiry: 48 h.
 // Recency factors by vote age at evaluation time T.
 const (
+	ConsensusWindow   = 48 * time.Hour
 	recencyFreshHours = 6
 	recencyAgingHours = 48
 	windowHours       = 48
@@ -123,19 +125,23 @@ type Options struct {
 
 // Result is one deterministic projection: verdict plus explanatory
 // counts, freshness and reason codes. Weights, thresholds and
-// contributor identities never leave this package's callers.
+// contributor identities never leave this package's callers. Winner
+// observation and confirmation IDs feed the restricted audit inputs;
+// they stay out of public responses.
 type Result struct {
-	Verdict          string    `json:"verdict"`
-	AmountMilli      int64     `json:"amount_milli"`
-	Confidence       string    `json:"confidence"`
-	Freshness        string    `json:"freshness"`
-	ExpiresAt        time.Time `json:"expires_at"`
-	ComputedAt       time.Time `json:"computed_at"`
-	Supporters       int       `json:"supporters"`
-	Confirmations    int       `json:"confirmations"`
-	Groups           int       `json:"groups"`
-	Reasons          []string  `json:"reasons"`
-	AlgorithmVersion string    `json:"algorithm_version"`
+	Verdict               string    `json:"verdict"`
+	AmountMilli           int64     `json:"amount_milli"`
+	Confidence            string    `json:"confidence"`
+	Freshness             string    `json:"freshness"`
+	ExpiresAt             time.Time `json:"expires_at"`
+	ComputedAt            time.Time `json:"computed_at"`
+	Supporters            int       `json:"supporters"`
+	Confirmations         int       `json:"confirmations"`
+	Groups                int       `json:"groups"`
+	Reasons               []string  `json:"reasons"`
+	WinnerObservationIDs  []string  `json:"winner_observation_ids"`
+	WinnerConfirmationIDs []string  `json:"winner_confirmation_ids"`
+	AlgorithmVersion      string    `json:"algorithm_version"`
 }
 
 // Compute evaluates one price key at injected UTC time T through
@@ -215,7 +221,10 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 		Confidence: confidence, Freshness: freshness, ExpiresAt: expires,
 		ComputedAt: now, Supporters: leader.supporters,
 		Confirmations: leader.confirmations, Groups: len(groups),
-		Reasons: append(reasons, confReasons...), AlgorithmVersion: ConsensusV1,
+		Reasons:               append(reasons, confReasons...),
+		WinnerObservationIDs:  leader.sortedAnchorIDs(),
+		WinnerConfirmationIDs: leader.sortedConfirmationIDs(),
+		AlgorithmVersion:      ConsensusV1,
 	}
 	return out, nil
 }
@@ -325,17 +334,34 @@ func reducePerContributor(votes []eligibleVote) []eligibleVote {
 
 // amountGroup aggregates one exact milli-BRL amount: total weight,
 // independent supporters, confirmations, newest anchor receipt,
-// smallest anchor observation UUID, established count and the distinct
-// validated photo anchors with proximity.
+// smallest anchor observation UUID, established count, the distinct
+// validated photo anchors with proximity, and the winner fact IDs for
+// restricted audit inputs.
 type amountGroup struct {
-	amount         int64
-	weight         int64
-	supporters     int
-	confirmations  int
-	newestAnchor   time.Time
-	minObservation string
-	established    int
-	photos         []photoAnchor
+	amount          int64
+	weight          int64
+	supporters      int
+	confirmations   int
+	newestAnchor    time.Time
+	minObservation  string
+	established     int
+	photos          []photoAnchor
+	anchors         []string
+	confirmationIDs []string
+}
+
+// sortedAnchorIDs returns the winner anchor IDs in stable sorted order.
+func (g amountGroup) sortedAnchorIDs() []string {
+	out := append([]string{}, g.anchors...)
+	sort.Strings(out)
+	return out
+}
+
+// sortedConfirmationIDs returns the winner confirmation IDs in stable order.
+func (g amountGroup) sortedConfirmationIDs() []string {
+	out := append([]string{}, g.confirmationIDs...)
+	sort.Strings(out)
+	return out
 }
 
 type photoAnchor struct {
@@ -361,6 +387,9 @@ func groupByAmount(votes []eligibleVote) []amountGroup {
 		g.supporters++
 		if v.vote.ConfirmationID != "" {
 			g.confirmations++
+			g.confirmationIDs = append(g.confirmationIDs, v.vote.ConfirmationID)
+		} else {
+			g.anchors = append(g.anchors, v.vote.ObservationID)
 		}
 		if v.vote.AnchorReceivedAt.After(g.newestAnchor) {
 			g.newestAnchor = v.vote.AnchorReceivedAt

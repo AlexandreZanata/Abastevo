@@ -22,6 +22,7 @@ import (
 
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
+	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
@@ -92,6 +93,7 @@ func run() error {
 	// closure so modules never cross-read.
 	stations := directoryread.NewReader(pool.Underlying())
 	prices := officialread.NewReader(pool.Underlying())
+	communityPrices := communityread.NewReader(pool.Underlying())
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	officialhttp.Handler{
 		Prices:  prices,
@@ -105,6 +107,29 @@ func run() error {
 				return false, nil
 			}
 			return false, err
+		},
+		// Projected community section (P06-T05): one indexed row per
+		// exact key, mapped onto the public shape without contributor
+		// identities. Missing keys stay null, never an ANP fill-in.
+		Community: func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (officialhttp.CommunityPrice, bool, error) {
+			view, err := communityPrices.CurrentPrice(ctx, stationID, product, unit, conditionKind, qualifier)
+			if err != nil {
+				return officialhttp.CommunityPrice{}, false, err
+			}
+			if !view.Found {
+				return officialhttp.CommunityPrice{}, false, nil
+			}
+			return officialhttp.CommunityPrice{
+				Availability: view.Availability, Confidence: view.Confidence,
+				Freshness: view.Freshness, AmountMilli: view.AmountMilliBrl,
+				HasAmount: view.HasAmount, Supporters: view.Supporters,
+				Confirmations:    view.Confirmations,
+				RepresentativeID: view.RepresentativeID,
+				AnchorReceivedAt: view.AnchorReceivedAt, HasAnchor: view.HasAnchor,
+				ExpiresAt: view.ExpiresAt, HasExpiry: view.HasExpiry,
+				AlgorithmVersion:  view.AlgorithmVersion,
+				ProjectionVersion: view.ProjectionVersion,
+			}, true, nil
 		},
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every

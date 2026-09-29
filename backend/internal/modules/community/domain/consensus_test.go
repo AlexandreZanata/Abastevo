@@ -244,3 +244,34 @@ func TestNoPaidWeightByConstruction(t *testing.T) {
 		}
 	}
 }
+
+func TestWinnerIDsFeedRestrictedAudit(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "s", Product: "GASOLINE_REGULAR", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	mk := func(voter, obs, conf, event string) Vote {
+		return Vote{
+			VoterRef: voter, ObservationID: obs, ConfirmationID: conf, EventID: event,
+			AuthorRef: "c1", AmountMilli: 5999,
+			ReceivedAt: now.Add(-time.Hour), AnchorReceivedAt: now.Add(-time.Hour),
+			TrustTier: "NEW", StationID: "s", Product: "GASOLINE_REGULAR",
+			Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD",
+		}
+	}
+	got, err := Compute(key, []Vote{
+		mk("c1", "o9", "", "e1"),
+		mk("c2", "o9", "k2", "e2"),
+		mk("c3", "o1", "", "e3"),
+	}, now, Options{Version: ConsensusV1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Verdict != VerdictPrice || len(got.WinnerObservationIDs) != 2 || len(got.WinnerConfirmationIDs) != 1 {
+		t.Fatalf("result = %+v", got)
+	}
+	if got.WinnerObservationIDs[0] != "o1" || got.WinnerObservationIDs[1] != "o9" {
+		t.Errorf("anchors not stably sorted: %v", got.WinnerObservationIDs)
+	}
+	if got.WinnerConfirmationIDs[0] != "k2" {
+		t.Errorf("confirmations = %v", got.WinnerConfirmationIDs)
+	}
+}

@@ -11,6 +11,11 @@ import (
 	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 )
 
+// ErrNoSignals marks observations whose bands were never derived:
+// pre-hook history or a derivation that has not run yet. Callers fail
+// closed to no-proximity, never to verified.
+var ErrNoSignals = errors.New("adapters: unknown signals")
+
 // UpsertSignals persists one derived signal set, converging recomputation
 // without history forks: the projection is mutable and rebuildable by
 // design, bands only, never coordinates.
@@ -46,7 +51,7 @@ func (s *Store) LoadSignals(ctx context.Context, observationID string) (applicat
 	row, err := community.New(s.pool).GetSignals(ctx, uid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return application.Bands{}, errors.New("adapters: unknown signals")
+			return application.Bands{}, ErrNoSignals
 		}
 		return application.Bands{}, err
 	}

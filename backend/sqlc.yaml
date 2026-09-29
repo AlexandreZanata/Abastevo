@@ -49,6 +49,7 @@ sql:
       - db/migrations/000008_community.sql
       - db/migrations/000012_community_signals.sql
       - db/migrations/000013_community_votes.sql
+      - db/migrations/000015_community_projection.sql
     gen:
       go:
         package: community

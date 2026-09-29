@@ -947,7 +947,70 @@ components:
                 start: {type: string, format: date}
                 end: {type: string, format: date}
             revision_id: {type: string, format: uuid}
-        community: {type: ["null"], example: null}
+        community:
+          description: Projected community section, or null when unknown (never an ANP substitution).
+          example: null
+          oneOf:
+            - type: "null"
+            - $ref: '#/components/schemas/CommunityPrice'
+    CommunityPrice:
+      description: Projected community section with explanatory counts and freshness, never contributor identities.
+      type: object
+      required: [source, availability, currency, confidence, freshness, independent_supporters, confirmation_count, algorithm_version, projection_version]
+      properties:
+        source:
+          type: string
+          enum: [COMMUNITY]
+          example: COMMUNITY
+        availability:
+          type: string
+          enum: [AVAILABLE, DISPUTED, UNKNOWN]
+          example: AVAILABLE
+        amount_milli_brl:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 1000000
+          description: Projected amount, null unless AVAILABLE.
+          example: 5890
+        currency:
+          type: string
+          enum: [BRL]
+          example: BRL
+        confidence:
+          type: string
+          example: MEDIUM
+        freshness:
+          type: string
+          enum: [FRESH, AGING, STALE, UNKNOWN]
+          example: FRESH
+        independent_supporters:
+          type: integer
+          minimum: 0
+          example: 2
+        confirmation_count:
+          type: integer
+          minimum: 0
+          example: 1
+        representative_observation_id:
+          type: [string, "null"]
+          format: uuid
+          description: Eligible anchor bound to the displayed amount, for confirmation and dispute targeting.
+          example: 45d0e8bc-01b1-441e-9b28-f8c16df7cb35
+        last_observation_received_at:
+          type: [string, "null"]
+          format: date-time
+          example: '2026-09-28T12:00:00Z'
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+          example: '2026-09-30T12:00:00Z'
+        algorithm_version:
+          type: string
+          example: consensus-v1
+        projection_version:
+          type: integer
+          minimum: 1
+          example: 7
     PriceGroups:
       description: Product groups with official and community sections.
       type: object

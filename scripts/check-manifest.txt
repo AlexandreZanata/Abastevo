@@ -37,8 +37,9 @@ backend/internal/modules/official/adapters/jobs
 backend/internal/modules/directory/adapters/jobs
 backend/internal/modules/community/domain
 backend/internal/modules/community/adapters
-backend/internal/modules/community/application
+backend/internal/modules/community/adapters/http
 backend/internal/modules/community/adapters/jobs
+backend/internal/modules/community/adapters/read
 backend/internal/modules/evidence/domain
 backend/internal/modules/evidence/application
 backend/internal/modules/evidence/adapters/storage

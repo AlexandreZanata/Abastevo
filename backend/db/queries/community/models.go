@@ -17,6 +17,27 @@ type CommunityConfirmation struct {
 	PolicyVersion      string             `json:"policy_version"`
 }
 
+type CommunityCurrentPrice struct {
+	StationID                   pgtype.UUID        `json:"station_id"`
+	FuelProduct                 string             `json:"fuel_product"`
+	Unit                        string             `json:"unit"`
+	ConditionKind               string             `json:"condition_kind"`
+	QualifierKey                string             `json:"qualifier_key"`
+	AmountMilliBrl              pgtype.Int8        `json:"amount_milli_brl"`
+	Availability                string             `json:"availability"`
+	Confidence                  string             `json:"confidence"`
+	RepresentativeObservationID pgtype.UUID        `json:"representative_observation_id"`
+	IndependentSupporters       int32              `json:"independent_supporters"`
+	ConfirmationCount           int32              `json:"confirmation_count"`
+	AnchorReceivedAt            pgtype.Timestamptz `json:"anchor_received_at"`
+	ExpiresAt                   pgtype.Timestamptz `json:"expires_at"`
+	NextRecomputeAt             pgtype.Timestamptz `json:"next_recompute_at"`
+	ComputedAt                  pgtype.Timestamptz `json:"computed_at"`
+	ProjectionVersion           int64              `json:"projection_version"`
+	AlgorithmVersion            string             `json:"algorithm_version"`
+	PolicyConfigVersion         string             `json:"policy_config_version"`
+}
+
 type CommunityDispute struct {
 	ID                  pgtype.UUID        `json:"id"`
 	TargetObservationID pgtype.UUID        `json:"target_observation_id"`
@@ -71,6 +92,15 @@ type CommunityObservationSignal struct {
 	NeedsReview    bool               `json:"needs_review"`
 	PolicyVersion  string             `json:"policy_version"`
 	ComputedAt     pgtype.Timestamptz `json:"computed_at"`
+}
+
+type CommunityProjectionInput struct {
+	ProjectionKey      string             `json:"projection_key"`
+	Version            int64              `json:"version"`
+	InputCutoff        pgtype.Timestamptz `json:"input_cutoff"`
+	SupportingEventIds []string           `json:"supporting_event_ids"`
+	ReasonCodes        []string           `json:"reason_codes"`
+	ComputedAt         pgtype.Timestamptz `json:"computed_at"`
 }
 
 type DirectoryIdentifier struct {
