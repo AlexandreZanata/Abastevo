@@ -121,3 +121,14 @@ Topologies publish no metrics port. `ops monitoring eval` runs the
 integration (exit 1 when anything fires). Catalog, PromQL starters,
 notification route and label policy live in
 [the monitoring runbook](../docs/operator/monitoring.md).
+
+## Edge cache (P08-T06)
+
+Public station/price reads cache at the edge with bounded TTLs and
+ETags; nearby, writes, owner reads and errors stay `no-store`, and
+identity headers never change public bodies (proven by the
+`*IgnoreIdentity` unit tests). Caddy strips `Cookie`/`Authorization`
+on the shared-cacheable GET set. CDN allowlist, key policy, purge
+procedure, signature-through-proxy notes and the live regression
+suite (`BASE_URL=... bash scripts/cache-regression.sh`) live in
+[the edge-cache runbook](../docs/operator/edge-cache.md).

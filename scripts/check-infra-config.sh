@@ -90,6 +90,10 @@ if grep -q '0\.0\.0\.0/0' "$CADDYFILE"; then refuse "caddy trusts the open inter
 if grep -vE '^[[:space:]]*#' "$CADDYFILE" | grep -qi 'metrics'; then refuse "caddy exposes a metrics path"; fi
 if grep -q ':2019' "$CADDYFILE"; then refuse "caddy admin port exposed"; fi
 grep -q '{$CADDY_DOMAIN}' "$CADDYFILE" || refuse "caddy domain not parameterized"
+# Shared-cacheable paths must strip identity so edge caches key on
+# method+URL only (invariance proven in the http cache tests).
+grep -q 'request_header @shared_cacheable -Cookie' "$CADDYFILE" || refuse "caddy keeps Cookie on shared-cacheable paths"
+grep -q 'request_header @shared_cacheable -Authorization' "$CADDYFILE" || refuse "caddy keeps Authorization on shared-cacheable paths"
 
 # Examples carry placeholders, never secret-shaped values.
 for marker in 'anpfuel/anpfuel' '127.0.0.1' 'changeme' 'password123' 'secret123'; do

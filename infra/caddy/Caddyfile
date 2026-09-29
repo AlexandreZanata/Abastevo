@@ -32,6 +32,19 @@
 		format json
 	}
 
+	# Shared-cacheable reads ignore identity by contract (proven by the
+	# invariance tests): strip Cookie/Authorization so edge caches key
+	# on method+URL only. Signed owner reads and writes never match
+	# this set, so their proofs always reach the origin. The nearby
+	# search overlaps the wildcard but ignores identity and stays
+	# no-store, so stripping there is equally safe.
+	@shared_cacheable {
+		method GET
+		path /v1/stations /v1/stations/* /v1/stations/*/prices /v1/stations/*/official-prices
+	}
+	request_header @shared_cacheable -Cookie
+	request_header @shared_cacheable -Authorization
+
 	@v1 path /v1/* /health/*
 	handle @v1 {
 		reverse_proxy api:8080 {
