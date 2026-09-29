@@ -284,3 +284,91 @@ func TestValidateBlockedContributorRejects(t *testing.T) {
 		t.Fatalf("state = %q, want REJECTED for blocked contributor", state)
 	}
 }
+
+func TestValidateBindsEvidenceOnce(t *testing.T) {
+	// P05-T04: the photo path claims its object exactly once; reuse
+	// across observations rejects with a stable reason and no consensus
+	// job, while transient claim failures retry in VALIDATING.
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	newPhotoObs := func(store *fakeValidateStore) {
+		obs := validateObs("d6c74c23-63db-4c24-a2e5-408cb23bad26", "e0000000-0000-4000-8000-000000000001", "", now)
+		store.obs[obs.ID] = obs
+	}
+	readyDeps := func(store *fakeValidateStore) ValidateDeps {
+		deps := validateDeps(store, now)
+		deps.Evidence = func(context.Context, string) (EvidenceState, error) {
+			return EvidenceState{Found: true, Ready: true, OwnerRef: "tok-c1"}, nil
+		}
+		return deps
+	}
+
+	claimed := map[string]string{}
+	claim := func(_ context.Context, evidenceID, observationID, _ string) error {
+		if owner, ok := claimed[evidenceID]; ok && owner != observationID {
+			return ErrEvidenceInUse
+		}
+		claimed[evidenceID] = observationID
+		return nil
+	}
+
+	store := newFakeValidateStore()
+	newPhotoObs(store)
+	deps := readyDeps(store)
+	deps.ClaimEvidence = claim
+	state, err := Validate(context.Background(), deps, "d6c74c23-63db-4c24-a2e5-408cb23bad27", "job-1")
+	if err != nil || state != domain.StateValidated {
+		t.Fatalf("first bind = %q, %v", state, err)
+	}
+	if len(store.jobs) != 1 {
+		t.Fatalf("jobs = %v, want the consensus intent", store.jobs)
+	}
+
+	// Same evidence, same observation (late retry): the terminal state
+	// converges without re-claiming or duplicating work. Same-pair
+	// claim replay itself is proven in the evidence store suite.
+	replayed, err := Validate(context.Background(), deps, "d6c74c23-63db-4c24-a2e5-408cb23bad27", "job-2")
+	if err != nil || replayed != domain.StateValidated {
+		t.Fatalf("replay = %q, %v", replayed, err)
+	}
+
+	// A transient claim failure retries without terminal progress.
+	flaky := newFakeValidateStore()
+	newPhotoObs(flaky)
+	fdeps := readyDeps(flaky)
+	fdeps.ClaimEvidence = func(context.Context, string, string, string) error {
+		return errors.New("evidence store down")
+	}
+	if _, err := Validate(context.Background(), fdeps, "d6c74c23-63db-4c24-a2e5-408cb23bad27", "job-1"); err == nil {
+		t.Fatal("transient claim accepted")
+	}
+	if got := currentState(flaky.decisions["d6c74c23-63db-4c24-a2e5-408cb23bad27"]); got != domain.StateValidating {
+		t.Fatalf("state = %q, want VALIDATING after transient", got)
+	}
+}
+
+func TestValidateRejectsReusedEvidence(t *testing.T) {
+	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	store := newFakeValidateStore()
+	obs := validateObs("d6c74c23-63db-4c24-a2e5-408cb23bad26", "e0000000-0000-4000-8000-000000000001", "", now)
+	store.obs[obs.ID] = obs
+	deps := validateDeps(store, now)
+	deps.Evidence = func(context.Context, string) (EvidenceState, error) {
+		return EvidenceState{Found: true, Ready: true, OwnerRef: "tok-c1"}, nil
+	}
+	deps.ClaimEvidence = func(context.Context, string, string, string) error { return ErrEvidenceInUse }
+	state, err := Validate(context.Background(), deps, obs.ID, "job-1")
+	if err != nil {
+		t.Fatalf("validate = %v", err)
+	}
+	if state != domain.StateRejected {
+		t.Fatalf("state = %q, want REJECTED for reused evidence", state)
+	}
+	ds := store.decisions[obs.ID]
+	last := ds[len(ds)-1]
+	if len(last.ReasonCodes) == 0 || last.ReasonCodes[0] != ReasonEvidenceReused {
+		t.Fatalf("reasons = %+v", last.ReasonCodes)
+	}
+	if len(store.jobs) != 0 {
+		t.Fatalf("rejected observation enqueued consensus: %v", store.jobs)
+	}
+}

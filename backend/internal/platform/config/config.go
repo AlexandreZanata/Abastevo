@@ -66,6 +66,9 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	CursorSecret    []byte
 	CanonicalHost   string
+	// R2 is nil unless private storage is configured; upload issuance
+	// refuses explicitly while nil instead of misbehaving.
+	R2 *R2Config
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -78,6 +81,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Int64("max_body_bytes", c.MaxBodyBytes),
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
+		slog.Any("r2", c.R2.r2LogValue()),
 	)
 }
 
@@ -180,6 +184,12 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
+
+	r2, err := loadR2(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.R2 = r2
 
 	return cfg, nil
 }

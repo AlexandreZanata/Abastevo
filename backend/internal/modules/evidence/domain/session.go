@@ -42,6 +42,7 @@ var (
 	ErrBadTransition    = errors.New("evidence: transition not allowed")
 	ErrBadReason        = errors.New("evidence: stable reason codes required")
 	ErrNotExpired       = errors.New("evidence: session still within its reservation deadline")
+	ErrConflict         = errors.New("evidence: same key, different intent")
 )
 
 // Params carries reservation intent plus server-resolved ownership. Every
@@ -75,6 +76,7 @@ type Session struct {
 	Status          string
 	CreatedAt       time.Time
 	ExpiresAt       time.Time
+	UpdatedAt       time.Time
 	PolicyVersion   string
 }
 
@@ -137,7 +139,8 @@ func NewSession(p Params) (Session, Event, error) {
 		DeclaredBytes: p.DeclaredBytes, MaxBytes: MaxUploadBytes,
 		ClaimedSHA256: claim, QuarantineKey: p.QuarantineKey,
 		Status: StateIssued, CreatedAt: p.CreatedAt,
-		ExpiresAt: p.CreatedAt.Add(SessionTTL), PolicyVersion: p.PolicyVersion,
+		ExpiresAt: p.CreatedAt.Add(SessionTTL), UpdatedAt: p.CreatedAt,
+		PolicyVersion: p.PolicyVersion,
 	}
 	return s, Event{SessionID: s.ID, To: StateIssued, OccurredAt: s.CreatedAt}, nil
 }
@@ -184,6 +187,7 @@ func RequestVerification(s Session, at time.Time) (Session, Event, error) {
 	}
 	next := s
 	next.Status = StateVerifying
+	next.UpdatedAt = at
 	return next, Event{SessionID: s.ID, From: StateIssued, To: StateVerifying, OccurredAt: at}, nil
 }
 
@@ -194,6 +198,7 @@ func MarkReady(s Session, at time.Time) (Session, Event, error) {
 	}
 	next := s
 	next.Status = StateReady
+	next.UpdatedAt = at
 	return next, Event{SessionID: s.ID, From: StateVerifying, To: StateReady, OccurredAt: at}, nil
 }
 
@@ -212,6 +217,7 @@ func Reject(s Session, reasons []string, at time.Time) (Session, Event, error) {
 	}
 	next := s
 	next.Status = StateRejected
+	next.UpdatedAt = at
 	return next, Event{SessionID: s.ID, From: StateVerifying, To: StateRejected, OccurredAt: at}, nil
 }
 
@@ -227,5 +233,6 @@ func Expire(s Session, now time.Time) (Session, Event, error) {
 	}
 	next := s
 	next.Status = StateExpired
+	next.UpdatedAt = now
 	return next, Event{SessionID: s.ID, From: StateIssued, To: StateExpired, OccurredAt: now}, nil
 }

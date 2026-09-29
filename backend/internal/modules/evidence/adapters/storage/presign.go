@@ -32,7 +32,8 @@ const (
 var (
 	ErrBadEndpoint    = errors.New("storage: endpoint must be http(s) with a host")
 	ErrBadBucket      = errors.New("storage: bucket must be 3..63 lowercase alphanumerics, dots or dashes")
-	ErrBadKey         = errors.New("storage: key must live under the quarantine namespace without traversal")
+	ErrBadKey         = errors.New("storage: key must live under the required namespace without traversal")
+	ErrBadNamespace   = errors.New("storage: object namespace is required")
 	ErrBadContentType = errors.New("storage: only the session media type is presignable")
 	ErrBadSize        = errors.New("storage: bound outside 1..session maximum")
 	ErrBadTTL         = errors.New("storage: TTL outside 1..15 minutes")
@@ -47,13 +48,17 @@ type Credentials struct {
 	SecretAccessKey string
 }
 
-// PresignInput describes exactly one intended upload. Every field is
-// validated before any URL exists; the minted URL binds method, key,
-// content type and expiry together under the signature.
+// PresignInput describes exactly one intended transfer. Every field is
+// validated before any URL exists; the minted URL binds method, key and
+// expiry together under the signature. Namespace scopes the key space
+// per call site: quarantine uploads ("q/") and server-only finals ("f/")
+// never share a minted URL, and client credentials only authorize the
+// quarantine namespace.
 type PresignInput struct {
 	Endpoint    string
 	Bucket      string
 	Key         string
+	Namespace   string
 	ContentType string
 	MaxBytes    int64
 	TTL         time.Duration
@@ -74,35 +79,76 @@ type PresignedPUT struct {
 }
 
 // PresignPUT mints one SigV4 query-authenticated PUT URL with payload
-// UNSIGNED-PAYLOAD (R2/S3 compatible). The bucket stays private: no ACL
-// or grant parameter is ever emitted, and keys outside the quarantine
-// namespace are refused before signing.
+// UNSIGNED-PAYLOAD (R2/S3 compatible), binding the exact key and content
+// type. The bucket stays private: no ACL or grant parameter is ever
+// emitted, and keys outside the required namespace are refused before
+// signing.
 func PresignPUT(in PresignInput, cred Credentials) (PresignedPUT, error) {
-	if strings.TrimSpace(cred.AccessKeyID) == "" || cred.SecretAccessKey == "" {
-		return PresignedPUT{}, ErrBadCredentials
-	}
-	endpoint, err := parseEndpoint(in.Endpoint)
-	if err != nil {
-		return PresignedPUT{}, err
-	}
-	if !validBucket(in.Bucket) {
-		return PresignedPUT{}, ErrBadBucket
-	}
-	if !validQuarantineKey(in.Key) {
-		return PresignedPUT{}, ErrBadKey
-	}
 	if in.ContentType != domain.AllowedMIME {
 		return PresignedPUT{}, ErrBadContentType
 	}
 	if in.MaxBytes < 1 || in.MaxBytes > domain.MaxUploadBytes {
 		return PresignedPUT{}, ErrBadSize
 	}
+	rawURL, expiresAt, err := presign(httpMethodPut, in, cred)
+	if err != nil {
+		return PresignedPUT{}, err
+	}
+	return PresignedPUT{
+		URL:             rawURL,
+		RequiredHeaders: map[string]string{"Content-Type": in.ContentType},
+		ExpiresAt:       expiresAt,
+		MaxBytes:        in.MaxBytes,
+	}, nil
+}
+
+// PresignGET mints one SigV4 query-authenticated GET URL binding the
+// exact key. The worker uses it for bounded server-side downloads with
+// its own credentials; clients never receive GET URLs to private
+// objects (reads stay owner-scoped through the API).
+func PresignGET(in PresignInput, cred Credentials) (PresignedPUT, error) {
+	rawURL, expiresAt, err := presign(httpMethodGet, in, cred)
+	if err != nil {
+		return PresignedPUT{}, err
+	}
+	return PresignedPUT{
+		URL:             rawURL,
+		RequiredHeaders: map[string]string{},
+		ExpiresAt:       expiresAt,
+		MaxBytes:        in.MaxBytes,
+	}, nil
+}
+
+const (
+	httpMethodPut = "PUT"
+	httpMethodGet = "GET"
+)
+
+// presign signs one method against the shared SigV4 core: PUT covers host
+// plus content type, GET covers host only.
+func presign(method string, in PresignInput, cred Credentials) (string, time.Time, error) {
+	if strings.TrimSpace(cred.AccessKeyID) == "" || cred.SecretAccessKey == "" {
+		return "", time.Time{}, ErrBadCredentials
+	}
+	endpoint, err := parseEndpoint(in.Endpoint)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if !validBucket(in.Bucket) {
+		return "", time.Time{}, ErrBadBucket
+	}
+	if strings.TrimSpace(in.Namespace) == "" {
+		return "", time.Time{}, ErrBadNamespace
+	}
+	if !validObjectKey(in.Key, in.Namespace) {
+		return "", time.Time{}, ErrBadKey
+	}
 	ttl := in.TTL
 	if ttl == 0 {
 		ttl = DefaultURLTTL
 	}
 	if ttl < MinURLTTL || ttl > MaxURLTTL {
-		return PresignedPUT{}, ErrBadTTL
+		return "", time.Time{}, ErrBadTTL
 	}
 	region := in.Region
 	if strings.TrimSpace(region) == "" {
@@ -117,7 +163,17 @@ func PresignPUT(in PresignInput, cred Credentials) (PresignedPUT, error) {
 	amzDate := now.Format("20060102T150405Z")
 	dateStamp := now.Format("20060102")
 	credentialScope := dateStamp + "/" + region + "/s3/aws4_request"
-	signedHeaders := "content-type;host"
+	var signedHeaders, canonicalHeaders string
+	switch method {
+	case httpMethodPut:
+		signedHeaders = "content-type;host"
+		canonicalHeaders = "content-type:" + strings.TrimSpace(in.ContentType) + "\n" + "host:" + endpoint.Host + "\n"
+	case httpMethodGet:
+		signedHeaders = "host"
+		canonicalHeaders = "host:" + endpoint.Host + "\n"
+	default:
+		return "", time.Time{}, errors.New("storage: unsupported presign method")
+	}
 
 	canonicalURI := "/" + in.Bucket + "/" + encodeKey(in.Key)
 	query := map[string]string{
@@ -128,18 +184,12 @@ func PresignPUT(in PresignInput, cred Credentials) (PresignedPUT, error) {
 		"X-Amz-SignedHeaders": signedHeaders,
 	}
 	canonicalQuery := canonicalQueryString(query)
-	canonicalHeaders := "content-type:" + strings.TrimSpace(in.ContentType) + "\n" + "host:" + endpoint.Host + "\n"
-	payloadHash := sha256.Sum256([]byte("PUT\n" + canonicalURI + "\n" + canonicalQuery + "\n" + canonicalHeaders + "\n" + signedHeaders + "\nUNSIGNED-PAYLOAD"))
+	payloadHash := sha256.Sum256([]byte(method + "\n" + canonicalURI + "\n" + canonicalQuery + "\n" + canonicalHeaders + "\n" + signedHeaders + "\nUNSIGNED-PAYLOAD"))
 	stringToSign := "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + hex.EncodeToString(payloadHash[:])
 	signature := hex.EncodeToString(sign(deriveSigningKey(cred.SecretAccessKey, dateStamp, region), stringToSign))
 
 	rawURL := strings.TrimSuffix(endpoint.String(), "/") + canonicalURI + "?" + canonicalQuery + "&X-Amz-Signature=" + signature
-	return PresignedPUT{
-		URL:             rawURL,
-		RequiredHeaders: map[string]string{"Content-Type": in.ContentType},
-		ExpiresAt:       now.Add(ttl),
-		MaxBytes:        in.MaxBytes,
-	}, nil
+	return rawURL, now.Add(ttl), nil
 }
 
 // parseEndpoint accepts https anywhere and http for loopback only, so a
@@ -180,11 +230,11 @@ func validBucket(b string) bool {
 	return true
 }
 
-func validQuarantineKey(k string) bool {
+func validObjectKey(k, namespace string) bool {
 	if k == "" || len(k) > maxKeyBytes {
 		return false
 	}
-	if !strings.HasPrefix(k, QuarantinePrefix) || strings.HasPrefix(k, "/") {
+	if !strings.HasPrefix(k, namespace) || strings.HasPrefix(k, "/") {
 		return false
 	}
 	if strings.Contains(k, "..") || strings.Contains(k, "\\") {

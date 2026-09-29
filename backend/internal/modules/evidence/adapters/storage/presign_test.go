@@ -79,7 +79,7 @@ type fakeS3 struct {
 }
 
 func (f *fakeS3) serve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
+	if r.Method != http.MethodPut && r.Method != http.MethodGet {
 		http.Error(w, "method", http.StatusMethodNotAllowed)
 		return
 	}
@@ -135,7 +135,7 @@ func (f *fakeS3) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	canonical := "PUT\n" + r.URL.EscapedPath() + "\n" + canonicalQuerySpec(r.URL) + "\n" +
+	canonical := r.Method + "\n" + r.URL.EscapedPath() + "\n" + canonicalQuerySpec(r.URL) + "\n" +
 		canonicalHeaders.String() + "\n" + strings.Join(signed, ";") + "\nUNSIGNED-PAYLOAD"
 	sum := sha256.Sum256([]byte(canonical))
 	toSign := "AWS4-HMAC-SHA256\n" + q.Get("X-Amz-Date") + "\n" + parts[1] + "/" + parts[2] + "/s3/aws4_request\n" + hex.EncodeToString(sum[:])
@@ -160,7 +160,7 @@ func testClock() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC
 func testInput(endpoint string) PresignInput {
 	return PresignInput{
 		Endpoint: endpoint, Bucket: "anpfuel-quarantine",
-		Key:         "q/e0000000000000000000000000000001",
+		Key: "q/e0000000000000000000000000000001", Namespace: "q/",
 		ContentType: "image/jpeg", MaxBytes: 3 << 20,
 		TTL: 5 * time.Minute, Region: "auto", Now: testClock(),
 	}
@@ -218,7 +218,8 @@ func TestPresignRejectsBadInput(t *testing.T) {
 		"bucket-short":    func(p *PresignInput) { p.Bucket = "ab" },
 		"key-absolute":    func(p *PresignInput) { p.Key = "/q/x" },
 		"key-traverse":    func(p *PresignInput) { p.Key = "q/../x" },
-		"key-namespace":   func(p *PresignInput) { p.Key = "final/x" },
+		"key-namespace":   func(p *PresignInput) { p.Key = "f/x" },
+		"namespace-empty": func(p *PresignInput) { p.Namespace = "" },
 		"content-type":    func(p *PresignInput) { p.ContentType = "image/png" },
 		"size-zero":       func(p *PresignInput) { p.MaxBytes = 0 },
 		"size-over":       func(p *PresignInput) { p.MaxBytes = (3 << 20) + 1 },
@@ -308,6 +309,32 @@ func TestPresignDoesNotEnforceSize(t *testing.T) {
 	}
 	if fake.lastLength != int64(len(huge)) {
 		t.Errorf("stored length = %d", fake.lastLength)
+	}
+}
+
+func TestPresignedGETRoundTrip(t *testing.T) {
+	// The worker downloads its own snapshot through a short GET URL
+	// minted with the same core: exact-key binding and expiry hold, and
+	// no content type travels on a bodyless request.
+	fake := &fakeS3{t: t, secret: testCred().SecretAccessKey, access: testCred().AccessKeyID, bucket: "anpfuel-quarantine", key: "q/e0000000000000000000000000000001", now: testClock()}
+	srv := httptest.NewServer(http.HandlerFunc(fake.serve))
+	defer srv.Close()
+	in := testInput(srv.URL)
+	in.ContentType = ""
+	got, err := PresignGET(in, testCred())
+	if err != nil {
+		t.Fatalf("presign GET = %v", err)
+	}
+	if len(got.RequiredHeaders) != 0 {
+		t.Errorf("GET headers = %v, want none", got.RequiredHeaders)
+	}
+	resp, err := http.Get(got.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET = %d, want 200", resp.StatusCode)
 	}
 }
 
