@@ -55,3 +55,40 @@ func TestHandlePropagatesPendingAndTransient(t *testing.T) {
 		t.Errorf("transient = %v", err)
 	}
 }
+
+func TestHandleDerivesAfterValidatedOnly(t *testing.T) {
+	// Fresh bands persist after admission; rejections, errors and a nil
+	// hook skip derivation entirely.
+	derived := 0
+	derive := func(context.Context, string) error { derived++; return nil }
+	validated := Validate{
+		Run:    func(context.Context, string, string) (string, error) { return "VALIDATED", nil },
+		Derive: derive,
+	}
+	if err := validated.Handle(context.Background(), jobs.Job{ID: "j", Payload: []byte(`{"version":1,"observation_id":"o"}`)}); err != nil {
+		t.Fatalf("handle = %v", err)
+	}
+	if derived != 1 {
+		t.Errorf("derived = %d, want exactly one post-admit run", derived)
+	}
+	rejected := Validate{
+		Run:    func(context.Context, string, string) (string, error) { return "REJECTED", nil },
+		Derive: derive,
+	}
+	if err := rejected.Handle(context.Background(), jobs.Job{ID: "j", Payload: []byte(`{"version":1,"observation_id":"o"}`)}); err != nil {
+		t.Fatalf("handle = %v", err)
+	}
+	if derived != 1 {
+		t.Errorf("rejection derived bands: %d", derived)
+	}
+	// A derivation failure retries the whole job; the upsert converges,
+	// so no history forks on replay.
+	boom := errors.New("signals store down")
+	failing := Validate{
+		Run:    func(context.Context, string, string) (string, error) { return "VALIDATED", nil },
+		Derive: func(context.Context, string) error { return boom },
+	}
+	if err := failing.Handle(context.Background(), jobs.Job{ID: "j", Payload: []byte(`{"version":1,"observation_id":"o"}`)}); !errors.Is(err, boom) {
+		t.Errorf("derive failure = %v", err)
+	}
+}

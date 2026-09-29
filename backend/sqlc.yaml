@@ -47,6 +47,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000008_community.sql
+      - db/migrations/000012_community_signals.sql
     gen:
       go:
         package: community

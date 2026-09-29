@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
@@ -370,6 +371,93 @@ func TestNoDestructivePaths(t *testing.T) {
 	for _, verb := range []string{"UPDATE community_", "DELETE FROM community_", "TRUNCATE"} {
 		if strings.Contains(upper, verb) {
 			t.Errorf("destructive statement present: %s", verb)
+		}
+	}
+}
+
+func testBands() application.Bands {
+	return application.Bands{
+		Proximity: application.ProximityUnknown, Recency: application.RecencyFresh,
+		Capture: application.CaptureFresh, Photo: application.PhotoPresent,
+		Regional:  application.RegionalConsistent,
+		RiskCodes: []string{application.RiskMissingClaim}, NeedsReview: true,
+		PolicyVersion: application.SignalsV1,
+	}
+}
+
+func TestUpsertSignalsConvergesRecomputation(t *testing.T) {
+	s, _, stationID := freshStore(t)
+	ctx := context.Background()
+	obs := testObs(stationID, "sub-1")
+	var jobs [][]byte
+	id, _, err := s.Submit(ctx, obs, enqueueStub(&jobs))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := s.UpsertSignals(ctx, id, testBands(), now); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+	loaded, err := s.LoadSignals(ctx, id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if loaded.Photo != application.PhotoPresent || !loaded.NeedsReview ||
+		len(loaded.RiskCodes) != 1 || loaded.PolicyVersion != application.SignalsV1 {
+		t.Errorf("loaded = %+v", loaded)
+	}
+	// Recomputation with new inputs converges on one row, no fork.
+	evolved := testBands()
+	evolved.Photo = application.PhotoDuplicate
+	evolved.DuplicateCount = 2
+	evolved.RiskCodes = []string{application.RiskMissingClaim, application.RiskDuplicateImage}
+	if err := s.UpsertSignals(ctx, id, evolved, now); err != nil {
+		t.Fatalf("recompute: %v", err)
+	}
+	loaded, err = s.LoadSignals(ctx, id)
+	if err != nil || loaded.Photo != application.PhotoDuplicate || loaded.DuplicateCount != 2 {
+		t.Fatalf("recomputed = %+v, %v", loaded, err)
+	}
+	if _, err := s.LoadSignals(ctx, "d6c74c23-63db-4c24-a2e5-000000000000"); err == nil {
+		t.Error("missing signals accepted")
+	}
+}
+
+func TestSignalsSchemaHoldsNoExactPayload(t *testing.T) {
+	// Privacy by schema: the owned signals migration and queries must
+	// never gain coordinate, meter-level or payload columns. Exact
+	// inputs live in memory during derivation and never persist.
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime caller unavailable")
+	}
+	base := filepath.Join(filepath.Dir(file), "..", "..", "..", "..")
+	for _, rel := range []string{
+		"db/migrations/000012_community_signals.sql",
+		"db/queries/community/signals.sql",
+	} {
+		raw, err := os.ReadFile(filepath.Join(base, rel))
+		if err != nil {
+			t.Fatalf("read %s: %v", rel, err)
+		}
+		// Scan code, not comments: strip line comments first so the
+		// guard judges stored columns rather than documentation.
+		var code strings.Builder
+		for _, line := range strings.Split(string(raw), "\n") {
+			if idx := strings.Index(line, "--"); idx >= 0 {
+				line = line[:idx]
+			}
+			code.WriteString(line + "\n")
+		}
+		upper := strings.ToUpper(code.String())
+		for _, token := range []string{
+			"LATITUDE", "LONGITUDE", "GEOGRAPHY", "POINT(",
+			"ACCURACY_M", "DISTANCE_M", "COORD", "PAYLOAD",
+			"DOUBLE PRECISION",
+		} {
+			if strings.Contains(upper, token) {
+				t.Errorf("%s stores exact payload: %s", rel, token)
+			}
 		}
 	}
 }

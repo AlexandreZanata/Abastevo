@@ -6,15 +6,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
 // Validate handles one validate-observation job. Run is the application
 // orchestration bound at the composition root; the job ID travels as the
 // persisted command proof so RECEIVED→VALIDATING is worker-owned, never
-// claimed from an HTTP handler.
+// claimed from an HTTP handler. Derive, when set, persists fresh signal
+// bands after a VALIDATED outcome; its upsert converges, so a Derive
+// failure safely retries the whole job without forking history.
 type Validate struct {
-	Run func(ctx context.Context, observationID, commandRef string) (string, error)
+	Run    func(ctx context.Context, observationID, commandRef string) (string, error)
+	Derive func(ctx context.Context, observationID string) error
 }
 
 // Kind implements jobs.Handler.
@@ -41,6 +45,12 @@ func (v Validate) Handle(ctx context.Context, job jobs.Job) error {
 	if v.Run == nil {
 		return fmt.Errorf("validate: no orchestration configured")
 	}
-	_, err := v.Run(ctx, payload.ObservationID, job.ID)
-	return err
+	state, err := v.Run(ctx, payload.ObservationID, job.ID)
+	if err != nil {
+		return err
+	}
+	if state == domain.StateValidated && v.Derive != nil {
+		return v.Derive(ctx, payload.ObservationID)
+	}
+	return nil
 }

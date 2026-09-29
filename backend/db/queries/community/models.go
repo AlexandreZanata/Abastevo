@@ -37,6 +37,20 @@ type CommunityObservationDecision struct {
 	ActorRef      string             `json:"actor_ref"`
 }
 
+type CommunityObservationSignal struct {
+	ObservationID  pgtype.UUID        `json:"observation_id"`
+	ProximityBand  string             `json:"proximity_band"`
+	RecencyBand    string             `json:"recency_band"`
+	CaptureFlag    string             `json:"capture_flag"`
+	PhotoSignal    string             `json:"photo_signal"`
+	DuplicateCount int32              `json:"duplicate_count"`
+	RegionalBand   string             `json:"regional_band"`
+	RiskCodes      []string           `json:"risk_codes"`
+	NeedsReview    bool               `json:"needs_review"`
+	PolicyVersion  string             `json:"policy_version"`
+	ComputedAt     pgtype.Timestamptz `json:"computed_at"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`

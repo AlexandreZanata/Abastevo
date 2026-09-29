@@ -300,6 +300,25 @@ func (s *Store) SessionByNaturalKey(ctx context.Context, ref, client string) (do
 	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), nil
 }
 
+// ObjectSignals resolves one object's duplicate-detection signals for
+// consensus input derivation: the perceptual hash plus the owner the
+// community port already trusts. Missing objects report ErrNoObject;
+// purged payloads keep their hashes by design (bounded signals).
+func (s *Store) ObjectSignals(ctx context.Context, objectID string) (dhash uint64, ownerRef string, err error) {
+	uid, err := mustUUID(objectID)
+	if err != nil {
+		return 0, "", err
+	}
+	row, err := evidence.New(s.pool).GetObject(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, "", ErrNoObject
+		}
+		return 0, "", err
+	}
+	return uint64(row.Dhash), row.ContributorRef, nil
+}
+
 // ObjectIDBySession resolves the verified object of one session for
 // owner status reads. Sessions without an object (never READY) report
 // ErrNoObject instead of an empty id.

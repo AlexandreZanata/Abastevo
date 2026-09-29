@@ -33,6 +33,7 @@ import (
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
+	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
@@ -92,6 +93,7 @@ func run() error {
 
 	directoryRepo := directoryadapters.NewRepository(raw)
 	evidenceStore := evidenceadapters.NewStore(raw)
+	officialReader := officialread.NewReader(raw)
 	importer := officialadapters.NewImporter(raw)
 	fetcher := source.NewFetcher(source.DefaultAllowlist())
 	queue := jobs.NewQueue(raw)
@@ -167,6 +169,64 @@ func run() error {
 			Batch:   25,
 		},
 		"validate-observation": communityjobs.Validate{
+			// Fresh signal bands persist after admission (P06-T01):
+			// claimant-position intake does not exist yet, so the
+			// loader derives UNKNOWN proximity honestly while the
+			// tested NEAR/FAR matrix activates with the intake. The
+			// upsert converges, so derivation failures safely retry
+			// the whole job without forking history.
+			Derive: func(ctx context.Context, observationID string) error {
+				_, err := communityapp.DeriveSignals(ctx, communityapp.SignalPorts{
+					Clock: time.Now,
+					Store: communityadapters.NewStore(raw),
+					Station: func(ctx context.Context, stationID string) (communityapp.StationSite, error) {
+						st, err := directoryRepo.Station(ctx, stationID)
+						if err != nil {
+							if errors.Is(err, directorydomain.ErrUnknownStation) {
+								return communityapp.SiteUnknown, nil
+							}
+							return "", err
+						}
+						// Only reviewed precise points count; city
+						// centroids never stand in for position (B-BR-014).
+						if st.CurrentPointWKT == "" || st.CurrentQuality != directorydomain.QualityReviewed {
+							return communityapp.SiteUnknown, nil
+						}
+						return communityapp.SitePrecise, nil
+					},
+					Photo: func(ctx context.Context, evidenceID string) (bool, int, error) {
+						dhash, _, err := evidenceStore.ObjectSignals(ctx, evidenceID)
+						if err != nil {
+							if errors.Is(err, evidenceadapters.ErrNoObject) {
+								return false, 0, nil
+							}
+							return false, 0, err
+						}
+						matches, err := evidenceStore.FindByDHash(ctx, dhash, time.Now().Add(-90*24*time.Hour))
+						if err != nil {
+							return false, 0, err
+						}
+						dups := len(matches) - 1
+						if dups < 0 {
+							dups = 0
+						}
+						return true, dups, nil
+					},
+					Regional: func(ctx context.Context, stationID, product, unit string) (int64, bool, error) {
+						groups, err := officialReader.Groups(ctx, stationID, product)
+						if err != nil {
+							return 0, false, err
+						}
+						for _, g := range groups {
+							if g.Product == product && g.Unit == unit && g.Official != nil {
+								return g.Official.AmountMilli, true, nil
+							}
+						}
+						return 0, false, nil
+					},
+				}, observationID)
+				return err
+			},
 			Run: func(ctx context.Context, observationID, commandRef string) (string, error) {
 				store := communityadapters.NewStore(raw)
 				return communityapp.Validate(ctx, communityapp.ValidateDeps{
