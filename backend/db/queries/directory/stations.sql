@@ -92,3 +92,14 @@ LIMIT @limit_plus_one::int;
 -- name: StationCNPJ :one
 SELECT normalized_value FROM directory_identifiers
 WHERE station_id = @station_id AND kind = 'CNPJ' AND valid_to IS NULL;
+
+-- name: StationsMissingProjection :many
+SELECT s.id, s.display_name, s.address, s.municipality_code, s.state
+FROM directory_stations AS s
+WHERE s.current_point IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM directory_location_revisions AS r
+        WHERE r.station_id = s.id
+    )
+ORDER BY s.created_at ASC, s.id ASC
+LIMIT @limit_n;

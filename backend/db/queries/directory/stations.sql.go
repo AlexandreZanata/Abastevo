@@ -475,6 +475,52 @@ func (q *Queries) StationCNPJ(ctx context.Context, stationID pgtype.UUID) (strin
 	return normalized_value, err
 }
 
+const stationsMissingProjection = `-- name: StationsMissingProjection :many
+SELECT s.id, s.display_name, s.address, s.municipality_code, s.state
+FROM directory_stations AS s
+WHERE s.current_point IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM directory_location_revisions AS r
+        WHERE r.station_id = s.id
+    )
+ORDER BY s.created_at ASC, s.id ASC
+LIMIT $1
+`
+
+type StationsMissingProjectionRow struct {
+	ID               pgtype.UUID `json:"id"`
+	DisplayName      string      `json:"display_name"`
+	Address          []byte      `json:"address"`
+	MunicipalityCode pgtype.Text `json:"municipality_code"`
+	State            pgtype.Text `json:"state"`
+}
+
+func (q *Queries) StationsMissingProjection(ctx context.Context, limitN int32) ([]StationsMissingProjectionRow, error) {
+	rows, err := q.db.Query(ctx, stationsMissingProjection, limitN)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationsMissingProjectionRow
+	for rows.Next() {
+		var i StationsMissingProjectionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateStationProjection = `-- name: UpdateStationProjection :exec
 UPDATE directory_stations
 SET current_point = ST_GeogFromText(NULLIF($1, '')),
