@@ -108,6 +108,20 @@ func (q *Queries) ExpireIdleSessions(ctx context.Context, arg ExpireIdleSessions
 	return items, nil
 }
 
+const expireSessionsByContributor = `-- name: ExpireSessionsByContributor :execrows
+UPDATE evidence_sessions
+SET status = 'EXPIRED', updated_at = now()
+WHERE contributor_ref = $1 AND status != 'EXPIRED'
+`
+
+func (q *Queries) ExpireSessionsByContributor(ctx context.Context, contributorRef string) (int64, error) {
+	result, err := q.db.Exec(ctx, expireSessionsByContributor, contributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const expireStuckSession = `-- name: ExpireStuckSession :execrows
 UPDATE evidence_sessions
 SET status = 'EXPIRED', updated_at = now()
@@ -450,6 +464,101 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (p
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listObjectsByContributor = `-- name: ListObjectsByContributor :many
+SELECT o.id, o.session_id, o.final_key, o.created_at
+FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = $1
+ORDER BY o.created_at ASC
+LIMIT $2
+`
+
+type ListObjectsByContributorParams struct {
+	ContributorRef string `json:"contributor_ref"`
+	PageLimit      int32  `json:"page_limit"`
+}
+
+type ListObjectsByContributorRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	SessionID pgtype.UUID        `json:"session_id"`
+	FinalKey  string             `json:"final_key"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListObjectsByContributor(ctx context.Context, arg ListObjectsByContributorParams) ([]ListObjectsByContributorRow, error) {
+	rows, err := q.db.Query(ctx, listObjectsByContributor, arg.ContributorRef, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListObjectsByContributorRow
+	for rows.Next() {
+		var i ListObjectsByContributorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionID,
+			&i.FinalKey,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSessionsByContributor = `-- name: ListSessionsByContributor :many
+
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE contributor_ref = $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type ListSessionsByContributorParams struct {
+	ContributorRef string `json:"contributor_ref"`
+	PageLimit      int32  `json:"page_limit"`
+}
+
+type ListSessionsByContributorRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// Erasure inventory (P07-T04, B-BR-016): owner sessions and objects for
+// purge. Keys travel only into the storage-delete port, never into
+// exports or logs.
+func (q *Queries) ListSessionsByContributor(ctx context.Context, arg ListSessionsByContributorParams) ([]ListSessionsByContributorRow, error) {
+	rows, err := q.db.Query(ctx, listSessionsByContributor, arg.ContributorRef, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSessionsByContributorRow
+	for rows.Next() {
+		var i ListSessionsByContributorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.QuarantineKey,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listStuckVerifying = `-- name: ListStuckVerifying :many

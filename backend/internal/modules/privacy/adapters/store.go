@@ -1,0 +1,385 @@
+package adapters
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	dbprivacy "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/privacy"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+)
+
+// Store persists privacy requests and their bounded outcomes.
+type Store struct {
+	pool *pgxpool.Pool
+}
+
+// NewStore wires the owned generated queries to a pool.
+func NewStore(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool}
+}
+
+func mustUUID(text string) (pgtype.UUID, error) {
+	raw, err := hex.DecodeString(stripDashes(text))
+	if err != nil || len(raw) != 16 {
+		return pgtype.UUID{}, errors.New("adapters: malformed UUID")
+	}
+	var id pgtype.UUID
+	copy(id.Bytes[:], raw)
+	id.Valid = true
+	return id, nil
+}
+
+func stripDashes(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != '-' {
+			out = append(out, s[i])
+		}
+	}
+	return string(out)
+}
+
+func uuidString(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	hexed := hex.EncodeToString(id.Bytes[:])
+	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
+		hexed[16:20] + "-" + hexed[20:32]
+}
+
+func pgTime(t time.Time) pgtype.Timestamptz {
+	if t.IsZero() {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: t, Valid: true}
+}
+
+// ArchiveSHA256 records the canonical content hash of export bytes.
+func ArchiveSHA256(archive []byte) string {
+	sum := sha256.Sum256(archive)
+	return hex.EncodeToString(sum[:])
+}
+
+// exportPayload is the versioned build envelope: the request ID only,
+// never owner data (B-BR-011).
+func exportPayload(requestID string) []byte {
+	raw, _ := json.Marshal(map[string]any{"version": 1, "request_id": requestID})
+	return raw
+}
+
+// erasurePayload is the versioned erasure envelope: the request ID
+// plus the reviewed reason for the ledger rows. Owner identity
+// resolves server-side from the loaded request, never from payload.
+func erasurePayload(requestID, reason string) []byte {
+	raw, _ := json.Marshal(map[string]any{"version": 1, "request_id": requestID, "reason": reason})
+	return raw
+}
+
+func rowToRequest(row dbprivacy.PrivacyRequest) domain.Request {
+	return domain.Request{
+		ID: uuidString(row.ID), ContributorID: row.ContributorID,
+		ContributorRef:     row.ContributorRef,
+		ClientSubmissionID: row.ClientSubmissionID, Type: row.Type,
+		Status: row.Status, ArchiveSHA256: row.ArchiveSha256,
+		RequestedAt: row.RequestedAt.Time, ReadyAt: row.ReadyAt.Time,
+		ExpiresAt: row.ExpiresAt.Time, CompletedAt: row.CompletedAt.Time,
+		PolicyVersion: row.PolicyVersion,
+	}
+}
+
+// RequestExport persists one export intent with its durable build job
+// in a single transaction. Identical retries converge on the owner
+// natural key; divergent payloads surface the conflicting row so the
+// caller maps a stable 409 instead of forking history.
+func (s *Store) RequestExport(ctx context.Context, r domain.Request, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
+	return s.requestIntent(ctx, r, "privacy-export-build", exportPayload(r.ID), "privacy-export:"+r.ID, enqueue)
+}
+
+// RequestDeletion persists one erasure intent with its durable erasure
+// job in a single transaction, converging retries like exports. The
+// reason travels in the job payload for the ledger rows.
+func (s *Store) RequestDeletion(ctx context.Context, r domain.Request, reason string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
+	return s.requestIntent(ctx, r, "privacy-erasure", erasurePayload(r.ID, reason), "privacy-erasure:"+r.ID, enqueue)
+}
+
+func (s *Store) requestIntent(ctx context.Context, r domain.Request, kind string, payload []byte, dedupe string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, bool, error) {
+	uid, err := mustUUID(r.ID)
+	if err != nil {
+		return "", false, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tq := dbprivacy.New(tx)
+	inserted, err := tq.InsertRequest(ctx, dbprivacy.InsertRequestParams{
+		ID: uid, ContributorID: r.ContributorID,
+		ContributorRef:     r.ContributorRef,
+		ClientSubmissionID: r.ClientSubmissionID, Type: r.Type,
+		Status: r.Status, RequestedAt: pgTime(r.RequestedAt),
+		PolicyVersion: r.PolicyVersion,
+	})
+	_ = inserted
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return s.resolveRequestConflict(ctx, r)
+		}
+		return "", false, err
+	}
+	if err := enqueue(ctx, tx, kind, payload, dedupe); err != nil {
+		return "", false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", false, err
+	}
+	return r.ID, false, nil
+}
+
+// resolveRequestConflict compares a retried intent against the stored row.
+// Identical retries converge on the stored identity regardless of the
+// newly minted request ID; divergent payloads (type or owner reference)
+// conflict instead of forking history.
+func (s *Store) resolveRequestConflict(ctx context.Context, r domain.Request) (string, bool, error) {
+	row, err := dbprivacy.New(s.pool).GetRequestByNaturalKey(ctx, dbprivacy.GetRequestByNaturalKeyParams{
+		ContributorID: r.ContributorID, ClientSubmissionID: r.ClientSubmissionID,
+	})
+	if err != nil {
+		return "", false, err
+	}
+	if row.Type != r.Type || row.ContributorRef != r.ContributorRef {
+		return "", false, domain.ErrConflict
+	}
+	return uuidString(row.ID), true, nil
+}
+
+// CompleteExport stores one bounded archive with its hash through the
+// guarded REQUESTED→READY transition. Oversize archives and wrong-state
+// completions refuse before any write.
+func (s *Store) CompleteExport(ctx context.Context, id string, archive []byte, sha string, readyAt time.Time) error {
+	if len(archive) == 0 || len(archive) > domain.MaxArchiveBytes {
+		return domain.ErrTooLarge
+	}
+	if ArchiveSHA256(archive) != sha {
+		return domain.ErrMismatch
+	}
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := dbprivacy.New(s.pool).MarkReady(ctx, dbprivacy.MarkReadyParams{
+		ID: uid, Archive: archive, ArchiveSha256: sha,
+		ReadyAt: pgTime(readyAt), ExpiresAt: pgTime(readyAt.Add(domain.DownloadTTL)),
+		CompletedAt: pgTime(readyAt),
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrBadState
+		}
+		return err
+	}
+	return nil
+}
+
+// FailExport records one build failure through the guarded
+// REQUESTED→FAILED transition.
+func (s *Store) FailExport(ctx context.Context, id string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := dbprivacy.New(s.pool).MarkFailed(ctx, dbprivacy.MarkFailedParams{
+		ID: uid, CompletedAt: pgTime(at),
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrBadState
+		}
+		return err
+	}
+	return nil
+}
+
+// Get returns one request for the durable build job. This unscoped
+// read never serves owner traffic: every owner-facing path uses
+// GetForOwner.
+func (s *Store) Get(ctx context.Context, id string) (domain.Request, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.Request{}, err
+	}
+	row, err := dbprivacy.New(s.pool).GetRequest(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Request{}, domain.ErrNotFound
+		}
+		return domain.Request{}, err
+	}
+	return rowToRequest(row), nil
+}
+
+// GetForOwner returns one request only to its owner: contributor ID
+// mismatch shares one not-found shape, so export existence is never an
+// ownership oracle (B-BR-011).
+func (s *Store) GetForOwner(ctx context.Context, contributorID, id string) (domain.Request, []byte, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.Request{}, nil, err
+	}
+	row, err := dbprivacy.New(s.pool).GetRequest(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Request{}, nil, domain.ErrNotFound
+		}
+		return domain.Request{}, nil, err
+	}
+	if row.ContributorID != contributorID {
+		return domain.Request{}, nil, domain.ErrNotFound
+	}
+	return rowToRequest(row), row.Archive, nil
+}
+
+// RecordLedger appends one deletion-ledger row. Replays converge on
+// the contributor/scope natural key: the first record wins and later
+// duplicates return it with replayed=true.
+func (s *Store) RecordLedger(ctx context.Context, e domain.LedgerEntry) (string, bool, error) {
+	uid, err := mustUUID(e.ID)
+	if err != nil {
+		return "", false, err
+	}
+	inserted, err := dbprivacy.New(s.pool).InsertLedgerEntry(ctx, dbprivacy.InsertLedgerEntryParams{
+		ID: uid, ContributorID: e.ContributorID,
+		ContributorRef: e.ContributorRef, Scope: e.Scope, Reason: e.Reason,
+		OccurredAt: pgTime(e.OccurredAt), PolicyVersion: e.PolicyVersion,
+	})
+	_ = inserted
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			rows, lerr := dbprivacy.New(s.pool).ListLedgerByContributor(ctx, e.ContributorID)
+			if lerr != nil {
+				return "", false, lerr
+			}
+			for _, row := range rows {
+				if row.Scope == e.Scope {
+					return uuidString(row.ID), true, nil
+				}
+			}
+			return "", false, err
+		}
+		return "", false, err
+	}
+	return e.ID, false, nil
+}
+
+// ListLedger returns one contributor's deletion-ledger rows ordered by
+// scope for audit and restore replay.
+func (s *Store) ListLedger(ctx context.Context, contributorID string) ([]domain.LedgerEntry, error) {
+	rows, err := dbprivacy.New(s.pool).ListLedgerByContributor(ctx, contributorID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.LedgerEntry, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.LedgerEntry{
+			ID: uuidString(row.ID), ContributorID: row.ContributorID,
+			ContributorRef: row.ContributorRef, Scope: row.Scope,
+			Reason: row.Reason, OccurredAt: row.OccurredAt.Time,
+			ReplayedAt: row.ReplayedAt.Time, PolicyVersion: row.PolicyVersion,
+		})
+	}
+	return out, nil
+}
+
+// MarkLedgerReplayed stamps one ledger row after its scope re-ran.
+func (s *Store) MarkLedgerReplayed(ctx context.Context, id string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	_, err = dbprivacy.New(s.pool).MarkLedgerReplayed(ctx, dbprivacy.MarkLedgerReplayedParams{
+		ID: uid, ReplayedAt: pgTime(at),
+	})
+	return err
+}
+
+// PurgeOwnerArchives removes one owner's READY export bytes after
+// erasure. History rows stay for audit; only payload goes.
+func (s *Store) PurgeOwnerArchives(ctx context.Context, contributorID string) (int64, error) {
+	return dbprivacy.New(s.pool).PurgeOwnerArchives(ctx, contributorID)
+}
+
+// CompleteDeletionRequest moves a REQUESTED deletion intent to READY
+// without an archive: erasure produces a receipt, not bytes.
+func (s *Store) CompleteDeletionRequest(ctx context.Context, id string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	if _, err := dbprivacy.New(s.pool).MarkDeletionReady(ctx, dbprivacy.MarkDeletionReadyParams{
+		ID: uid, ReadyAt: pgTime(at), CompletedAt: pgTime(at),
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrBadState
+		}
+		return err
+	}
+	return nil
+}
+
+// PurgeExpiredArchives clears the bytes of READY exports past their
+// download window in bounded batches (P07-T05 retention): receipts
+// stay for audit, only payload goes. Reports the total plus the oldest
+// expiry observed before purging (zero time when nothing was due).
+func (s *Store) PurgeExpiredArchives(ctx context.Context, now time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := dbprivacy.New(s.pool)
+	ts, oerr := q.OldestExpiredArchive(ctx, pgTime(now))
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeExpiredArchives(ctx, dbprivacy.PurgeExpiredArchivesParams{
+			Now: pgTime(now), Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}
+
+// PurgeOldLedger deletes deletion-ledger rows older than the backup
+// horizon in bounded batches (P07-T05 retention): rows that cover no
+// existing backup carry no replay value. Reports the total plus the
+// oldest occurrence observed before purging.
+func (s *Store) PurgeOldLedger(ctx context.Context, cutoff time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := dbprivacy.New(s.pool)
+	ts, oerr := q.OldestLedgerRow(ctx, pgTime(cutoff))
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeOldLedger(ctx, dbprivacy.PurgeOldLedgerParams{
+			Cutoff: pgTime(cutoff), Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}

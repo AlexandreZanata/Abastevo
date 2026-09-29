@@ -93,3 +93,27 @@ sql:
         out: db/queries/identity
         sql_package: pgx/v5
         emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/moderation
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000016_moderation.sql
+      - db/migrations/000017_moderation_actions.sql
+    gen:
+      go:
+        package: moderation
+        out: db/queries/moderation
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/privacy
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000018_privacy_requests.sql
+      - db/migrations/000019_privacy_deletion_ledger.sql
+    gen:
+      go:
+        package: privacy
+        out: db/queries/privacy
+        sql_package: pgx/v5
+        emit_json_tags: true

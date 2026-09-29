@@ -151,3 +151,27 @@ WHERE o.session_id = @session_id;
 UPDATE evidence_objects
 SET bound_observation_id = @observation_id
 WHERE id = @id AND (bound_observation_id IS NULL OR bound_observation_id = @observation_id);
+
+-- Erasure inventory (P07-T04, B-BR-016): owner sessions and objects for
+-- purge. Keys travel only into the storage-delete port, never into
+-- exports or logs.
+
+-- name: ListSessionsByContributor :many
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref
+ORDER BY created_at ASC
+LIMIT @page_limit;
+
+-- name: ListObjectsByContributor :many
+SELECT o.id, o.session_id, o.final_key, o.created_at
+FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = @contributor_ref
+ORDER BY o.created_at ASC
+LIMIT @page_limit;
+
+-- name: ExpireSessionsByContributor :execrows
+UPDATE evidence_sessions
+SET status = 'EXPIRED', updated_at = now()
+WHERE contributor_ref = @contributor_ref AND status != 'EXPIRED';

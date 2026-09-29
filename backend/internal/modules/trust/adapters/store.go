@@ -132,3 +132,18 @@ func (s *Store) History(ctx context.Context, contributorRef string) ([]domain.De
 	}
 	return out, nil
 }
+
+// EraseContributor removes one owner's trust footprint in the narrow
+// erasure workflow (P07-T04, B-BR-016): the rebuildable current view
+// drops (the erased owner reads as NEW) and decision history unlinks
+// to an opaque token, preserving reviewed-outcome counts without
+// identity links. Re-running converges (zero rows touched).
+func (s *Store) EraseContributor(ctx context.Context, ref, anon string) (unlinked int64, err error) {
+	q := trust.New(s.pool)
+	if _, err := q.DeleteTrustCurrent(ctx, ref); err != nil {
+		return 0, err
+	}
+	return q.UnlinkTrustDecisions(ctx, trust.UnlinkTrustDecisionsParams{
+		ContributorRef: ref, AnonRef: anon,
+	})
+}

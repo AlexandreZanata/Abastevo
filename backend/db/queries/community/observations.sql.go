@@ -270,3 +270,76 @@ func (q *Queries) ListDecisions(ctx context.Context, observationID pgtype.UUID) 
 	}
 	return items, nil
 }
+
+const oldestObservation = `-- name: OldestObservation :one
+
+SELECT received_at
+FROM community_observations
+ORDER BY received_at ASC
+LIMIT 1
+`
+
+// Retention metric (P07-T05): oldest stored fact for the retention
+// report. The 24-month observation purge needs an FK-consistent
+// cascade design before it deletes; until then this metric keeps the
+// horizon visible without touching history.
+func (q *Queries) OldestObservation(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestObservation)
+	var received_at pgtype.Timestamptz
+	err := row.Scan(&received_at)
+	return received_at, err
+}
+
+const unlinkConfirmations = `-- name: UnlinkConfirmations :execrows
+UPDATE community_confirmations
+SET contributor_ref = 'erased-' || id::text
+WHERE contributor_ref = $1
+`
+
+func (q *Queries) UnlinkConfirmations(ctx context.Context, contributorRef string) (int64, error) {
+	result, err := q.db.Exec(ctx, unlinkConfirmations, contributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const unlinkDisputes = `-- name: UnlinkDisputes :execrows
+UPDATE community_disputes
+SET contributor_ref = 'erased-' || id::text
+WHERE contributor_ref = $1
+`
+
+func (q *Queries) UnlinkDisputes(ctx context.Context, contributorRef string) (int64, error) {
+	result, err := q.db.Exec(ctx, unlinkDisputes, contributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const unlinkObservations = `-- name: UnlinkObservations :execrows
+
+UPDATE community_observations
+SET contributor_ref = $1
+WHERE contributor_ref = $2
+`
+
+type UnlinkObservationsParams struct {
+	AnonRef        string `json:"anon_ref"`
+	ContributorRef string `json:"contributor_ref"`
+}
+
+// Erasure (P07-T04, B-BR-016, ADR-008): unlink contributor links in the
+// narrow privacy workflow while immutable price facts stay for history.
+// Observations keep product/price/provenance with an anonymized
+// reference; reporter references unlink per row so pair uniqueness
+// survives. Only these queries may rewrite contributor references;
+// normal writes never touch them.
+func (q *Queries) UnlinkObservations(ctx context.Context, arg UnlinkObservationsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unlinkObservations, arg.AnonRef, arg.ContributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

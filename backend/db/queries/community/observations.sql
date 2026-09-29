@@ -53,3 +53,36 @@ WHERE contributor_ref = @contributor_ref
         (received_at, id::text) < (@after_time, @after_id::text))
 ORDER BY received_at DESC, id::text DESC
 LIMIT @limit_plus_one;
+
+-- Erasure (P07-T04, B-BR-016, ADR-008): unlink contributor links in the
+-- narrow privacy workflow while immutable price facts stay for history.
+-- Observations keep product/price/provenance with an anonymized
+-- reference; reporter references unlink per row so pair uniqueness
+-- survives. Only these queries may rewrite contributor references;
+-- normal writes never touch them.
+
+-- name: UnlinkObservations :execrows
+UPDATE community_observations
+SET contributor_ref = @anon_ref
+WHERE contributor_ref = @contributor_ref;
+
+-- name: UnlinkConfirmations :execrows
+UPDATE community_confirmations
+SET contributor_ref = 'erased-' || id::text
+WHERE contributor_ref = @contributor_ref;
+
+-- name: UnlinkDisputes :execrows
+UPDATE community_disputes
+SET contributor_ref = 'erased-' || id::text
+WHERE contributor_ref = @contributor_ref;
+
+-- Retention metric (P07-T05): oldest stored fact for the retention
+-- report. The 24-month observation purge needs an FK-consistent
+-- cascade design before it deletes; until then this metric keeps the
+-- horizon visible without touching history.
+
+-- name: OldestObservation :one
+SELECT received_at
+FROM community_observations
+ORDER BY received_at ASC
+LIMIT 1;

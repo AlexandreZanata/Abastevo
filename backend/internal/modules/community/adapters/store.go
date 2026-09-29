@@ -366,3 +366,17 @@ func (s *Store) ListByContributor(ctx context.Context, ref string, limit int, af
 	}
 	return out, nil
 }
+
+// OldestObservation reports the oldest stored fact for the retention
+// report (P07-T05): the 24-month observation horizon stays visible
+// without touching history. Zero time with no error means no rows.
+func (s *Store) OldestObservation(ctx context.Context) (time.Time, error) {
+	ts, err := community.New(s.pool).OldestObservation(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, nil
+		}
+		return time.Time{}, err
+	}
+	return ts.Time, nil
+}

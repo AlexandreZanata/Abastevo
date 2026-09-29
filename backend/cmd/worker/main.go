@@ -31,11 +31,17 @@ import (
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
+	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
+	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
+	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
+	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
+	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -45,6 +51,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// inventoryFunc adapts a closure to the privacy inventory port.
+type inventoryFunc func(ctx context.Context, contributorID, contributorRef string) (privacyapp.RawInventory, error)
+
+func (f inventoryFunc) Snapshot(ctx context.Context, contributorID, contributorRef string) (privacyapp.RawInventory, error) {
+	return f(ctx, contributorID, contributorRef)
+}
 
 // sweepJobPorts adapts the platform job lookup to the evidence sweep
 // port: only queued or leased verify jobs count as live leases.
@@ -150,6 +163,153 @@ func run() error {
 		return err
 	}
 	communityStore := communityadapters.NewStore(raw)
+	privacyStore := privacyadapters.NewStore(raw)
+	modStore := moderationadapters.NewStore(raw)
+	identityRunner := identityadapters.NewRunner(raw)
+	identityRegistrar := identityadapters.NewRegistrar(raw)
+	// exportInventory assembles one owner's export sections from the
+	// real ledgers (P07-T03): identity profile, owned observations with
+	// derived validation states, and the current trust tier. Every row
+	// is read through the owner's attribution token; evidence object
+	// metadata joins with the erasure inventory in P07-T04, which needs
+	// the same owner listing. Reads page bounded (100/page, 5000 cap)
+	// so one export stays a bounded archive.
+	exportInventory := func(ctx context.Context, contributorID, contributorRef string) (privacyapp.RawInventory, error) {
+		var out privacyapp.RawInventory
+		profile, err := identityRegistrar.Profile(ctx, contributorID)
+		if err != nil {
+			return privacyapp.RawInventory{}, err
+		}
+		out.Contributor = privacyapp.ContributorView{
+			ContributorID: profile.ContributorID, Status: profile.Status,
+			CreatedAt: profile.CreatedAt.UTC().Format(time.RFC3339),
+		}
+		var after time.Time
+		var afterID string
+		hasCursor := false
+		for total := 0; total < 5000; {
+			page, err := communityStore.ListByContributor(ctx, contributorRef, 100, after, afterID, hasCursor)
+			if err != nil {
+				return privacyapp.RawInventory{}, err
+			}
+			if len(page) == 0 {
+				break
+			}
+			for _, obs := range page {
+				decisions, err := communityStore.Decisions(ctx, obs.ID)
+				if err != nil {
+					return privacyapp.RawInventory{}, err
+				}
+				state := communitydomain.StateReceived
+				for _, d := range decisions {
+					state = d.ToState
+				}
+				out.Observations = append(out.Observations, privacyapp.RawObservation{
+					OwnerRef: contributorRef,
+					View: privacyapp.ObservationView{
+						ObservationID: obs.ID, StationID: obs.StationID,
+						Product: obs.Product, Unit: obs.Unit,
+						AmountMilli: obs.AmountMilli, Condition: obs.ConditionKind,
+						State:      state,
+						ReceivedAt: obs.ReceivedAt.UTC().Format(time.RFC3339),
+					},
+				})
+				total++
+			}
+			last := page[len(page)-1]
+			after, afterID, hasCursor = last.ReceivedAt, last.ID, true
+			if len(page) < 100 {
+				break
+			}
+		}
+		tier, err := trustStore.Tier(ctx, contributorRef)
+		if err != nil {
+			return privacyapp.RawInventory{}, err
+		}
+		out.Trust = privacyapp.RawTrust{OwnerRef: contributorRef, Tier: tier}
+		return out, nil
+	}
+	privacyPorts := privacyapp.Ports{
+		Clock: time.Now,
+		NewID: jobs.NewUUIDv4,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store:     privacyStore,
+		Inventory: inventoryFunc(exportInventory),
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	// privacyErasePorts drives owner erasure over the same real
+	// ledgers (P07-T04): identity revocation, community unlinking with
+	// recompute, evidence purge with server-side storage deletes, trust
+	// removal and export-archive purge, all converging on re-run.
+	erasureDelete := func(ctx context.Context, key, namespace string) error {
+		if cfg.R2 == nil {
+			return errors.New("evidence: storage not configured")
+		}
+		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+			Key: key, Namespace: namespace,
+			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, storageCreds())
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Delete(ctx, httpClient, pre.URL)
+	}
+	privacyErasePorts := privacyapp.ErasePorts{
+		Clock: time.Now,
+		NewID: jobs.NewUUIDv4,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store:        privacyStore,
+		Identity:     identityRegistrar,
+		Community:    communityStore,
+		Evidence:     evidenceStore,
+		Trust:        trustStore,
+		DeleteObject: erasureDelete,
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	// retentionPurges runs every inventory category bounded
+	// oldest-first (P07-T05): expired challenges, idempotency windows
+	// and export bytes purge on expiry; long-closed moderation cases
+	// and aged-out ledger rows purge on their horizons; the
+	// observation horizon reports metrics only until an FK-consistent
+	// cascade design lands. Rate windows self-clean on check and
+	// evidence media purges on its hourly sweeper.
+	retentionPurges := []privacyapp.NamedPurge{
+		{Name: "identity-challenges", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := identityRegistrar.PurgeExpiredChallenges(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "identity-idempotency", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := identityRunner.PurgeExpiredAttempts(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "moderation-closed", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			cases, actions, oldest, err := modStore.PurgeClosedCases(ctx, time.Now().Add(-privacyapp.ModerationClosedTTL), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: cases + actions, OldestOverdue: oldest}, err
+		}},
+		{Name: "privacy-archives", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := privacyStore.PurgeExpiredArchives(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "privacy-ledger", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			purged, oldest, err := privacyStore.PurgeOldLedger(ctx, time.Now().Add(-privacyapp.LedgerHorizon), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
+		}},
+		{Name: "community-observations", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			oldest, err := communityStore.OldestObservation(ctx)
+			return privacyapp.CategoryReport{Purged: 0, OldestOverdue: oldest}, err
+		}},
+	}
 	// resolvePhoto verifies one evidence object for both consumers:
 	// the signals loader counts independent duplicates, the recompute
 	// loader binds validated bytes with proximity. Absent or
@@ -408,6 +568,41 @@ func run() error {
 				return err
 			},
 		},
+		// Owner export assembly (P07-T03): durable requests build one
+		// bounded owner-only archive over the real ledgers; terminal
+		// replays converge and inventory failures mark FAILED.
+		"privacy-export-build": privacyjobs.ExportBuild{
+			Build: func(ctx context.Context, requestID string) (string, bool, error) {
+				return privacyapp.Build(ctx, privacyPorts, requestID)
+			},
+		},
+		// Owner erasure (P07-T04): durable deletion requests revoke and
+		// purge scope by scope with ledger rows; terminal replays
+		// converge and scope failures park for audited retry.
+		"privacy-erasure": privacyjobs.Erasure{
+			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
+				return privacyStore.Get(ctx, requestID)
+			},
+			Erase: func(ctx context.Context, contributorID string, dto privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
+				return privacyapp.Erase(ctx, privacyErasePorts, contributorID, dto)
+			},
+		},
+		// Retention sweep (P07-T05): every inventory category purges
+		// bounded oldest-first with per-category metrics; evidence
+		// media keeps its own hourly sweeper, and the 24-month
+		// observation horizon reports metrics only.
+		"privacy-retention": privacyjobs.Retention{
+			Run: func(ctx context.Context) (privacyapp.RetentionReport, error) {
+				_ = ctx
+				return privacyapp.Retain(ctx, privacyapp.RetentionPorts{
+					Clock:  time.Now,
+					Purges: retentionPurges,
+				})
+			},
+			Log: func(msg string, args ...any) {
+				logger.Info(context.Background(), "retention.sweep", msg, args...)
+			},
+		},
 		"evidence-sweep": evidencejobs.Sweep{
 			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
 				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
@@ -467,6 +662,11 @@ func run() error {
 		{
 			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
 			Interval: time.Hour, Enabled: true,
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
+		},
+		{
+			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
+			Interval: 24 * time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 	})

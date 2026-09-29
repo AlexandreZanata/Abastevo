@@ -100,6 +100,49 @@ func (q *Queries) LockAttempt(ctx context.Context, arg LockAttemptParams) (Ident
 	return i, err
 }
 
+const oldestExpiredAttempt = `-- name: OldestExpiredAttempt :one
+
+SELECT expires_at
+FROM identity_idempotency
+WHERE expires_at < $1
+ORDER BY expires_at ASC
+LIMIT 1
+`
+
+// Retention (P07-T05): purge expired idempotency windows in bounded
+// batches. Expired outcomes are never replayed, so removal only frees
+// space; seven-day mobile retries use fresh keys.
+func (q *Queries) OldestExpiredAttempt(ctx context.Context, now pgtype.Timestamptz) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestExpiredAttempt, now)
+	var expires_at pgtype.Timestamptz
+	err := row.Scan(&expires_at)
+	return expires_at, err
+}
+
+const purgeExpiredAttempts = `-- name: PurgeExpiredAttempts :execrows
+DELETE FROM identity_idempotency AS dead
+WHERE (dead.contributor_id, dead.method, dead.route, dead.key) IN (
+    SELECT live.contributor_id, live.method, live.route, live.key
+    FROM identity_idempotency AS live
+    WHERE live.expires_at < $1
+    ORDER BY live.expires_at ASC
+    LIMIT $2
+)
+`
+
+type PurgeExpiredAttemptsParams struct {
+	Now   pgtype.Timestamptz `json:"now"`
+	Batch int32              `json:"batch"`
+}
+
+func (q *Queries) PurgeExpiredAttempts(ctx context.Context, arg PurgeExpiredAttemptsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredAttempts, arg.Now, arg.Batch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const reserveAttempt = `-- name: ReserveAttempt :one
 
 INSERT INTO identity_idempotency

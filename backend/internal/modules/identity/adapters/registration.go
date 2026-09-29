@@ -280,3 +280,75 @@ func (r *Registrar) AttributionToken(ctx context.Context, contributorID string) 
 	}
 	return fresh, nil
 }
+
+// ContributorProfile is the owner identity section for export
+// (P07-T03): status and dates only, never keys, tokens or challenges.
+type ContributorProfile struct {
+	ContributorID string
+	Status        string
+	CreatedAt     time.Time
+	Deleted       bool
+}
+
+// Profile resolves one contributor's export-safe identity section.
+func (r *Registrar) Profile(ctx context.Context, contributorID string) (ContributorProfile, error) {
+	uid, err := mustUUID(contributorID)
+	if err != nil {
+		return ContributorProfile{}, err
+	}
+	row, err := identity.New(r.pool).GetContributor(ctx, uid)
+	if err != nil {
+		return ContributorProfile{}, err
+	}
+	return ContributorProfile{
+		ContributorID: uuidString(row.ID), Status: row.Status,
+		CreatedAt: row.CreatedAt.Time, Deleted: row.DeletedAt.Valid,
+	}, nil
+}
+
+// DeleteContributor revokes one owner's writes and unlinks identity in
+// the narrow erasure workflow (P07-T04, B-BR-016): status moves to
+// deleted, the attribution token is cleared so owner rows no longer
+// resolve, and every live key is revoked. Re-running on an already
+// deleted contributor converges (deleted=false, keys 0).
+func (r *Registrar) DeleteContributor(ctx context.Context, contributorID string) (deleted bool, keysRevoked int64, err error) {
+	uid, err := mustUUID(contributorID)
+	if err != nil {
+		return false, 0, err
+	}
+	q := identity.New(r.pool)
+	n, err := q.DeleteContributor(ctx, uid)
+	if err != nil {
+		return false, 0, err
+	}
+	keys, err := q.RevokeContributorKeys(ctx, uid)
+	if err != nil {
+		return false, 0, err
+	}
+	return n == 1, keys, nil
+}
+
+// PurgeExpiredChallenges deletes expired challenges in bounded batches
+// (P07-T05 retention): each pass removes at most batch rows, oldest
+// first, and reports the total plus the oldest overdue expiry observed
+// before purging (zero time when nothing was overdue).
+func (r *Registrar) PurgeExpiredChallenges(ctx context.Context, now time.Time, batch int32) (purged int64, oldest time.Time, err error) {
+	q := identity.New(r.pool)
+	ts, oerr := q.OldestExpiredChallenge(ctx, pgtype.Timestamptz{Time: now, Valid: true})
+	if oerr != nil && !errors.Is(oerr, pgx.ErrNoRows) {
+		return 0, time.Time{}, oerr
+	}
+	oldest = ts.Time
+	for {
+		n, derr := q.PurgeExpiredChallenges(ctx, identity.PurgeExpiredChallengesParams{
+			Now: pgtype.Timestamptz{Time: now, Valid: true}, Batch: batch,
+		})
+		if derr != nil {
+			return purged, oldest, derr
+		}
+		purged += n
+		if n < int64(batch) {
+			return purged, oldest, nil
+		}
+	}
+}
