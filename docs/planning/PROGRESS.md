@@ -1,7 +1,8 @@
 # Current execution state
 
-- Updated: 2026-09-30, P07 INTEGRATED; P08-T08 LOCAL_DONE (P08 tasks complete locally, exit G08 pending).
-- Branch: `codex/phase-08-hardening`, based on `16cf91c`; clean.
+- Updated: 2026-09-30, P08 INTEGRATED; P09 opened (P09-T01 release rehearsal next).
+- Branch: `codex/phase-09-release-gate`, based on `4ce5aaf`; clean.
+- Phase P08 INTEGRATED: PR #9 merged `134d057` → `4ce5aaf` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-08-hardening` deleted locally + remotely, verified; merge recorded in PR #9 metadata; wiki WIKI_PENDING. Includes fix `134d057` for community cache_test collision that blocked integration. Post-merge main CI runs automatically.
 - Phase P07 INTEGRATED: PR #8 merged `c651b3e` → `16cf91c` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-07-moderation-privacy` deleted locally + remotely, verified; merge recorded in PR #8 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Phase P06 INTEGRATED: PR #7 merged `abd164e` → `cb38848` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-06-consensus-trust` deleted locally + remotely (auto-delete on merge), verified; merge recorded in PR #7 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Phase P05 INTEGRATED: PR #6 merged `0e4d326` → `2213685` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-05-private-evidence` deleted locally + remotely (auto-delete on merge), verified; merge recorded in PR #6 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
@@ -42,8 +43,9 @@
 - P08-T06: LOCAL_DONE — cache allowlist pinned in handlers (public search/detail/prices/history with bounded TTLs + ETag/304; nearby/writes/owner-reads/errors no-store) + new `cache_test.go` invariance suites (identical bodies with Authorization/Cookie, no Vary on identity, bodiless 304, error no-store) + Caddy `request_header` stripping of Cookie/Authorization on the shared-cacheable GET set (signed traffic never matches) enforced by the infra gate + `docs/operator/edge-cache.md` (allowlist table, key policy, Cloudflare rules, purge procedure, signature-through-proxy, rollback) + `scripts/cache-regression.sh` live matrix; live proof against booted api: 10/10 (missing-fixture 404s and short-query 400 diagnosed as fixtures, fixed with seeded station + valid query); unit + quick-verify green. Load/failure campaign stays in P08-T07.
 - P08-T07: LOCAL_DONE — `backend/testdata/load/seed.sql` (deterministic idempotent stations) + `infra/scripts/load/run.sh` (seed assert, api boot, origin-read RPS with p95/5xx budget gates, seed scrub) + `faults.sh` (db outage fail-closed + recovery, storage-outage 401 with no costly grant, capped disk pressure) + `stats.py` (percentiles + self-test) + `scripts/tests/test-load.sh` harness + Makefile test-load + `docs/release-evidence/p08-t07-load.md` (54,951 reqs, p95 8.1 ms, 0 5xx, faults 7/7, explicit non-claims); RED proven by comment-eaten SQL, uuid/format specifiers, unset-trap vars and missing cleanup fn, GREEN after; staging 30-minute matrix stays in P09. Security review stays in P08-T08.
 - P08-T08: LOCAL_DONE — `scripts/check-security.sh` (static pins/provenance/edge/placeholder/secret review + `govulncheck` + 18 focused replay/IDOR/SSRF/oversize/role/secret suites) + `scripts/tests/test-security.sh` harness (10/10: static accept, 7 mutant refusals, live govulncheck, adversarial selection) + Makefile check-security/test-security + `docs/release-evidence/p08-t08-security.md` (no critical/high, inventory, non-claims); scanner exclusion for the new gate literal in scan/quick/fast gates; RED per fault class via mutants, GREEN full gate + quick-verify green; manifest unchanged.
-- Next: **P08 exit G08 then P09-T01 release rehearsal** (phase PR integration).
-- Issues/milestone/PR/wiki: P08 phase PR pending (draft after first push); wiki once per merged phase; no invented IDs.
+- G08: P08-T01…T08 INTEGRATED (entry G08 satisfied for P09).
+- Next: **P09-T01 — End-to-end backend release rehearsal** (candidate `4ce5aaf`, full matrix, no Android edits).
+- Issues/milestone/PR/wiki: P09 phase PR pending (draft after first product commit); wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
 ## Evidence pointers
