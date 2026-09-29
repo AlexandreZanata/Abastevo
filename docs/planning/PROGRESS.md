@@ -46,9 +46,10 @@
 - G08: P08-T01…T08 INTEGRATED (entry G08 satisfied for P09).
 - P09-T01: LOCAL_DONE — `backend/testdata/e2e` (candidate `4ce5aaf`, BUC-001…008 chain, B-BR-001/002/008/011, synthetic `c000…` stations) + `infra/scripts/rehearse.sh` (candidate/clean/core-tree gates, PostGIS, seed 2, API boot, 6 reads + 4 denied, source-separation + no-secrets checks, scrub) + `scripts/tests/test-rehearse.sh` (happy + 3 mutant refusals) + Makefile test-rehearse + `docs/release-evidence/p09-t01-rehearsal.md`; full `go test -race -tags=integration ./...` 57 ok/0 FAIL on disposable DB; RED via search-term/JSON-key bugs, GREEN on restore; quick-verify 8s green; deployed staging matrix stays pending.
 - P09-T02: LOCAL_DONE — `contracts/testdata/compat/legacy-deltas.json` (frozen A01-A13 fuel/CNPJ/precision/FTS/schema/parser/policy deltas for P10) + `scripts/check-compat.sh` (vacuum 0 errors, fixture + wire-enum + runbook gates) + `scripts/tests/test-compat.sh` (happy + 2 mutant refusals) + Makefile check-compat/test-compat + `docs/release-evidence/p09-t02-compatibility.md` (A01-A13 table, vacuum 0 err/9 info + apicontract ok, Android baseline BUILD SUCCESSFUL 11s up-to-date, no Kotlin-Go harness claimed); RED via mutants, GREEN; docs-only, no Android edits.
-- Next: **P09-T03 — Backend readiness sign-off** (G09 checklist, no Android edits until G09).
-- Issues/milestone/PR/wiki: P09 phase PR pending (draft after first push); wiki once per merged phase; no invented IDs.
-- G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
+- P09-T03: LOCAL_DONE — `docs/release-evidence/G09.md` (G09 BLOCKED: candidate `4ce5aaf`, 8/12 boxes green, 4 staging/legal blockers, P10 stays blocked) + `scripts/check-g09.sh` (BLOCKED + evidence + candidate gates, refuses COMPLETE) + `scripts/tests/test-g09.sh` (happy + 2 mutant refusals) + Makefile check-g09/test-g09; evidence reviewed, T01/T02 suites reused unchanged (no product diff vs candidate); RED via mutants, GREEN; quick-verify green; docs-only.
+- Next: **P09 phase closure (PR #10 merge), then provisioned staging** (G09 stays BLOCKED; P10 BLOCKED).
+- Issues/milestone/PR/wiki: P09 phase PR #10 draft OPEN; wiki once per merged phase; no invented IDs.
+- G09 BLOCKED (P09-T03 sign-off); P10 BLOCKED BY G09; roadmap 78 tasks.
 
 ## Evidence pointers
 

@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -58,6 +58,12 @@ check-compat:
 test-compat:
 	bash scripts/tests/test-compat.sh
 
+check-g09:
+	bash scripts/check-g09.sh
+
+test-g09:
+	bash scripts/tests/test-g09.sh
+
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
@@ -77,3 +83,5 @@ help:
 	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
 	@echo "  check-compat    contract + frozen deltas + runbooks gate (P09-T02)"
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
+	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"
+	@echo "  test-g09        G09 gate failure-behavior harness (P09-T03)"
