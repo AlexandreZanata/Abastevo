@@ -1,0 +1,101 @@
+{
+  "id": "conflicting-prices-disputed",
+  "version": 1,
+  "provenance": "P06-T04 spec golden: two supported conflicting prices yield DISPUTED; synthetic",
+  "price_key": {
+    "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+    "fuel_product": "GASOLINE_REGULAR",
+    "unit": "L",
+    "condition_kind": "STANDARD",
+    "qualifier_id": "STANDARD"
+  },
+  "now": "2026-09-30T12:00:00Z",
+  "moderation_open": false,
+  "consensus_version": "consensus-v1",
+  "votes": [
+    {
+      "voter": "c1",
+      "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad27",
+      "confirmation_id": "",
+      "event_id": "e1",
+      "author": "c1",
+      "amount_milli": 5999,
+      "received_at": "2026-09-30T11:00:00Z",
+      "anchor_received_at": "2026-09-30T11:00:00Z",
+      "trust": "ESTABLISHED",
+      "photo_validated": false,
+      "photo_proximity_ok": false,
+      "media_key": "",
+      "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+      "fuel_product": "GASOLINE_REGULAR",
+      "unit": "L",
+      "condition_kind": "STANDARD",
+      "qualifier_id": "STANDARD"
+    },
+    {
+      "voter": "c2",
+      "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad28",
+      "confirmation_id": "",
+      "event_id": "e2",
+      "author": "c2",
+      "amount_milli": 5999,
+      "received_at": "2026-09-30T11:00:00Z",
+      "anchor_received_at": "2026-09-30T11:00:00Z",
+      "trust": "NEW",
+      "photo_validated": false,
+      "photo_proximity_ok": false,
+      "media_key": "",
+      "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+      "fuel_product": "GASOLINE_REGULAR",
+      "unit": "L",
+      "condition_kind": "STANDARD",
+      "qualifier_id": "STANDARD"
+    },
+    {
+      "voter": "c3",
+      "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad29",
+      "confirmation_id": "",
+      "event_id": "e3",
+      "author": "c3",
+      "amount_milli": 6099,
+      "received_at": "2026-09-30T11:30:00Z",
+      "anchor_received_at": "2026-09-30T11:30:00Z",
+      "trust": "NEW",
+      "photo_validated": false,
+      "photo_proximity_ok": false,
+      "media_key": "",
+      "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+      "fuel_product": "GASOLINE_REGULAR",
+      "unit": "L",
+      "condition_kind": "STANDARD",
+      "qualifier_id": "STANDARD"
+    },
+    {
+      "voter": "c4",
+      "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad30",
+      "confirmation_id": "",
+      "event_id": "e4",
+      "author": "c4",
+      "amount_milli": 6099,
+      "received_at": "2026-09-30T10:00:00Z",
+      "anchor_received_at": "2026-09-30T10:00:00Z",
+      "trust": "NEW",
+      "photo_validated": false,
+      "photo_proximity_ok": false,
+      "media_key": "",
+      "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+      "fuel_product": "GASOLINE_REGULAR",
+      "unit": "L",
+      "condition_kind": "STANDARD",
+      "qualifier_id": "STANDARD"
+    }
+  ],
+  "expect": {
+    "verdict": "DISPUTED",
+    "freshness": "FRESH",
+    "expires_at": "2026-10-02T11:30:00Z",
+    "reasons": [
+      "runner-up-conflict"
+    ]
+  }
+}
