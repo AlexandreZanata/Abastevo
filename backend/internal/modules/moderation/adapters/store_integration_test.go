@@ -238,8 +238,8 @@ func TestSchemaCarriesNoSensitiveColumns(t *testing.T) {
 	_ = s
 	ctx := context.Background()
 	rows, err := pool.Query(ctx, `
-		SELECT column_name, data_type FROM information_schema.columns
-		WHERE table_name = 'moderation_cases'`)
+		SELECT table_name, column_name, data_type FROM information_schema.columns
+		WHERE table_name IN ('moderation_cases', 'moderation_actions')`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,11 +251,11 @@ func TestSchemaCarriesNoSensitiveColumns(t *testing.T) {
 	}
 	found := map[string]string{}
 	for rows.Next() {
-		var name, typ string
-		if err := rows.Scan(&name, &typ); err != nil {
+		var table, name, typ string
+		if err := rows.Scan(&table, &name, &typ); err != nil {
 			t.Fatal(err)
 		}
-		found[strings.ToLower(name)] = strings.ToLower(typ)
+		found[table+"."+strings.ToLower(name)] = strings.ToLower(typ)
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
@@ -270,9 +270,9 @@ func TestSchemaCarriesNoSensitiveColumns(t *testing.T) {
 			t.Errorf("bytea payload column: %q", col)
 		}
 	}
-	for _, want := range []string{"id", "target_type", "target_id", "status", "priority", "reason", "opened_at", "policy_version"} {
+	for _, want := range []string{"moderation_cases.id", "moderation_cases.target_type", "moderation_cases.target_id", "moderation_cases.status", "moderation_cases.priority", "moderation_cases.reason", "moderation_cases.opened_at", "moderation_cases.policy_version", "moderation_actions.id", "moderation_actions.case_id", "moderation_actions.actor_id", "moderation_actions.action", "moderation_actions.reason"} {
 		if _, ok := found[want]; !ok {
-			t.Errorf("missing queue column %q (got %v)", want, found)
+			t.Errorf("missing ledger column %q (got %v)", want, found)
 		}
 	}
 }
@@ -285,7 +285,16 @@ func TestNoDestructiveSQLPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	upper := strings.ToUpper(string(raw))
-	for _, verb := range []string{"\nUPDATE ", "\nDELETE ", "UPDATE MODERATION_", "DELETE FROM MODERATION_"} {
+	// The single allowed mutating path is the guarded case-status
+	// transition (actionable states only, never target/reason edits):
+	// exactly one UPDATE carrying the terminal-state guard, zero DELETE.
+	if got := strings.Count(upper, "UPDATE MODERATION_CASES"); got != 1 {
+		t.Errorf("moderation.sql has %d case UPDATEs, want exactly the guarded transition", got)
+	}
+	if !strings.Contains(upper, "STATUS IN ('OPEN', 'IN_REVIEW')") {
+		t.Error("guarded transition lost its terminal-state guard")
+	}
+	for _, verb := range []string{"\nDELETE ", "DELETE FROM MODERATION_"} {
 		if strings.Contains(upper, verb) {
 			t.Errorf("destructive path in moderation.sql: %q", strings.TrimSpace(verb))
 		}

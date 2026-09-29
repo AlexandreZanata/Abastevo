@@ -98,6 +98,7 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000016_moderation.sql
+      - db/migrations/000017_moderation_actions.sql
     gen:
       go:
         package: moderation

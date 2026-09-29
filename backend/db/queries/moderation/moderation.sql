@@ -39,3 +39,30 @@ ORDER BY
     CASE priority WHEN 'P1' THEN 0 WHEN 'P2' THEN 1 ELSE 2 END ASC,
     opened_at ASC, id ASC
 LIMIT sqlc.arg(page_limit);
+
+-- Actions are insert-only. The case status moves exactly once per
+-- action through TransitionCase below: the only UPDATE path in this
+-- file, guarded to actionable states so closed cases never reopen.
+
+-- name: InsertAction :one
+INSERT INTO moderation_actions
+    (id, case_id, actor_id, action, reason, occurred_at, policy_version)
+VALUES (@id, @case_id, @actor_id, @action, @reason, @occurred_at,
+    @policy_version)
+RETURNING id;
+
+-- name: GetAction :one
+SELECT id, case_id, actor_id, action, reason, occurred_at, policy_version
+FROM moderation_actions
+WHERE id = @id;
+
+-- name: ListActionsByCase :many
+SELECT id, case_id, actor_id, action, reason, occurred_at, policy_version
+FROM moderation_actions
+WHERE case_id = @case_id
+ORDER BY occurred_at ASC, id ASC;
+
+-- name: TransitionCase :one
+UPDATE moderation_cases SET status = @status
+WHERE id = @id AND status IN ('OPEN', 'IN_REVIEW')
+RETURNING id;

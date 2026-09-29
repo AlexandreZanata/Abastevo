@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ModerationAction struct {
+	ID            pgtype.UUID        `json:"id"`
+	CaseID        pgtype.UUID        `json:"case_id"`
+	ActorID       string             `json:"actor_id"`
+	Action        string             `json:"action"`
+	Reason        string             `json:"reason"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+	PolicyVersion string             `json:"policy_version"`
+}
+
 type ModerationCase struct {
 	ID            pgtype.UUID        `json:"id"`
 	TargetType    string             `json:"target_type"`

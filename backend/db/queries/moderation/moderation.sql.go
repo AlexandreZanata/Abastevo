@@ -11,6 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getAction = `-- name: GetAction :one
+SELECT id, case_id, actor_id, action, reason, occurred_at, policy_version
+FROM moderation_actions
+WHERE id = $1
+`
+
+func (q *Queries) GetAction(ctx context.Context, id pgtype.UUID) (ModerationAction, error) {
+	row := q.db.QueryRow(ctx, getAction, id)
+	var i ModerationAction
+	err := row.Scan(
+		&i.ID,
+		&i.CaseID,
+		&i.ActorID,
+		&i.Action,
+		&i.Reason,
+		&i.OccurredAt,
+		&i.PolicyVersion,
+	)
+	return i, err
+}
+
 const getCase = `-- name: GetCase :one
 SELECT id, target_type, target_id, status, priority, reason, detail,
     evidence_id, opened_at, policy_version
@@ -67,6 +88,43 @@ func (q *Queries) GetOpenCase(ctx context.Context, arg GetOpenCaseParams) (Moder
 	return i, err
 }
 
+const insertAction = `-- name: InsertAction :one
+
+INSERT INTO moderation_actions
+    (id, case_id, actor_id, action, reason, occurred_at, policy_version)
+VALUES ($1, $2, $3, $4, $5, $6,
+    $7)
+RETURNING id
+`
+
+type InsertActionParams struct {
+	ID            pgtype.UUID        `json:"id"`
+	CaseID        pgtype.UUID        `json:"case_id"`
+	ActorID       string             `json:"actor_id"`
+	Action        string             `json:"action"`
+	Reason        string             `json:"reason"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+	PolicyVersion string             `json:"policy_version"`
+}
+
+// Actions are insert-only. The case status moves exactly once per
+// action through TransitionCase below: the only UPDATE path in this
+// file, guarded to actionable states so closed cases never reopen.
+func (q *Queries) InsertAction(ctx context.Context, arg InsertActionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, insertAction,
+		arg.ID,
+		arg.CaseID,
+		arg.ActorID,
+		arg.Action,
+		arg.Reason,
+		arg.OccurredAt,
+		arg.PolicyVersion,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertCase = `-- name: InsertCase :one
 
 INSERT INTO moderation_cases
@@ -112,6 +170,41 @@ func (q *Queries) InsertCase(ctx context.Context, arg InsertCaseParams) (pgtype.
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listActionsByCase = `-- name: ListActionsByCase :many
+SELECT id, case_id, actor_id, action, reason, occurred_at, policy_version
+FROM moderation_actions
+WHERE case_id = $1
+ORDER BY occurred_at ASC, id ASC
+`
+
+func (q *Queries) ListActionsByCase(ctx context.Context, caseID pgtype.UUID) ([]ModerationAction, error) {
+	rows, err := q.db.Query(ctx, listActionsByCase, caseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ModerationAction
+	for rows.Next() {
+		var i ModerationAction
+		if err := rows.Scan(
+			&i.ID,
+			&i.CaseID,
+			&i.ActorID,
+			&i.Action,
+			&i.Reason,
+			&i.OccurredAt,
+			&i.PolicyVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOpenCases = `-- name: ListOpenCases :many
@@ -170,4 +263,22 @@ func (q *Queries) ListOpenCases(ctx context.Context, arg ListOpenCasesParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const transitionCase = `-- name: TransitionCase :one
+UPDATE moderation_cases SET status = $1
+WHERE id = $2 AND status IN ('OPEN', 'IN_REVIEW')
+RETURNING id
+`
+
+type TransitionCaseParams struct {
+	Status string      `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) TransitionCase(ctx context.Context, arg TransitionCaseParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, transitionCase, arg.Status, arg.ID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
