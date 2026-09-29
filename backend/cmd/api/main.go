@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,6 +26,10 @@ import (
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
+	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
+	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
+	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
@@ -204,6 +209,78 @@ func run() error {
 			return communityapp.History(ctx, communityPorts, caller, limit, after, afterID, hasCursor)
 		},
 		Secrets: cfg.CursorSecret,
+	}.RegisterRoutes(router)
+	// Private upload reservation and owner status (P05-T04). The
+	// presigned issuance arrives as a narrow port built here from the
+	// configured storage identity; unset storage refuses explicitly
+	// with 503 instead of misbehaving.
+	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
+	evidencePorts := evidenceapp.Ports{
+		Clock: time.Now,
+		NewID: newUUID,
+		NewKey: func() (string, error) {
+			id, err := newUUID()
+			if err != nil {
+				return "", err
+			}
+			return "q/" + strings.ReplaceAll(id, "-", ""), nil
+		},
+		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &evidenceapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
+		Presign: func(ctx context.Context, key, mime string, maxBytes int64) (string, map[string]string, time.Time, error) {
+			if cfg.R2 == nil {
+				return "", nil, time.Time{}, evidenceapp.ErrStorageUnavailable
+			}
+			pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
+				Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+				Key: key, Namespace: "q/",
+				ContentType: mime, MaxBytes: maxBytes,
+				TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+			}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
+			if err != nil {
+				return "", nil, time.Time{}, err
+			}
+			return pre.URL, pre.RequiredHeaders, pre.ExpiresAt, nil
+		},
+		Store: evidenceStore,
+	}
+	evidenceComplete := evidenceapp.CompletePorts{
+		Store: evidenceStore,
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	evidencehttp.Handler{
+		Authenticate: func(r *http.Request) (evidenceapp.Caller, error) {
+			id, err := authVerifier.Verify(r.Context(), r)
+			if err != nil {
+				return evidenceapp.Caller{}, err
+			}
+			token, err := identityRegistrar.AttributionToken(r.Context(), id.ContributorID)
+			if err != nil {
+				return evidenceapp.Caller{}, err
+			}
+			return evidenceapp.Caller{ContributorID: id.ContributorID, Token: token}, nil
+		},
+		Reserve: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent, _ []byte) (evidenceapp.Result, error) {
+			return evidenceapp.Reserve(ctx, evidencePorts, caller, in)
+		},
+		Complete: func(ctx context.Context, caller evidenceapp.Caller, id string) (evidenceapp.StatusView, error) {
+			return evidenceapp.Complete(ctx, evidenceComplete, caller, id)
+		},
+		Status: func(ctx context.Context, caller evidenceapp.Caller, id string) (evidenceapp.StatusView, error) {
+			return evidenceapp.Status(ctx, evidenceStore, caller, id)
+		},
 	}.RegisterRoutes(router)
 	server, err := httpserver.New(httpserver.Options{
 		Addr:              cfg.HTTPAddr,

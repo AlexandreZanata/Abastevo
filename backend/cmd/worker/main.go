@@ -12,17 +12,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
+	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
+	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
+	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
+	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
+	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -32,7 +39,32 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// sweepJobPorts adapts the platform job lookup to the evidence sweep
+// port: only queued or leased verify jobs count as live leases.
+type sweepJobPorts struct {
+	hasLive func(ctx context.Context, sessionID string) (bool, error)
+}
+
+func (s sweepJobPorts) HasLiveJob(ctx context.Context, sessionID string) (bool, error) {
+	return s.hasLive(ctx, sessionID)
+}
+
+// sweepStoragePorts adapts presigned deletes to the sweep storage port,
+// one namespace per call site.
+type sweepStoragePorts struct {
+	deleteKey func(ctx context.Context, key, namespace string) error
+}
+
+func (s sweepStoragePorts) DeleteQuarantine(ctx context.Context, key string) error {
+	return s.deleteKey(ctx, key, "q/")
+}
+
+func (s sweepStoragePorts) DeleteFinal(ctx context.Context, key string) error {
+	return s.deleteKey(ctx, key, "f/")
+}
 
 func main() {
 	if err := run(); err != nil {
@@ -59,9 +91,50 @@ func run() error {
 	raw := pool.Underlying()
 
 	directoryRepo := directoryadapters.NewRepository(raw)
+	evidenceStore := evidenceadapters.NewStore(raw)
 	importer := officialadapters.NewImporter(raw)
 	fetcher := source.NewFetcher(source.DefaultAllowlist())
 	queue := jobs.NewQueue(raw)
+	httpClient := &http.Client{Timeout: time.Minute}
+	storageCreds := func() evidencestorage.Credentials {
+		if cfg.R2 == nil {
+			return evidencestorage.Credentials{}
+		}
+		return evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey}
+	}
+	// Bounded server-side download through a self-minted short GET URL:
+	// the worker holds the credentials, clients never see GET URLs.
+	downloadSnapshot := func(ctx context.Context, key string, maxBytes int64) ([]byte, error) {
+		if cfg.R2 == nil {
+			return nil, errors.New("evidence: storage not configured")
+		}
+		pre, err := evidencestorage.PresignGET(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+			Key: key, Namespace: "q/",
+			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, storageCreds())
+		if err != nil {
+			return nil, err
+		}
+		return evidencestorage.Get(ctx, httpClient, pre.URL, maxBytes)
+	}
+	// Sanitized final upload through a self-minted short PUT URL under
+	// the server-only namespace: never exposed, never client-writable.
+	uploadFinal := func(ctx context.Context, key, contentType string, body []byte) error {
+		if cfg.R2 == nil {
+			return errors.New("evidence: storage not configured")
+		}
+		pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+			Key: key, Namespace: "f/",
+			ContentType: contentType, MaxBytes: int64(len(body)),
+			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, storageCreds())
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Put(ctx, httpClient, pre.URL, contentType, body)
+	}
 	enqueueImport := func(ctx context.Context, payload officialjobs.ImportPayload, dedupe string) error {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
@@ -117,13 +190,26 @@ func run() error {
 						}
 						return st.CurrentQuality, true, nil
 					},
-					// Evidence storage lands in P05: no evidence object is
-					// ready yet, so photo-dependent observations wait in
-					// VALIDATING until the deadline instead of verifying
-					// against an unavailable signal. Metadata-only
-					// observations validate without waiting.
-					Evidence: func(context.Context, string) (communityapp.EvidenceState, error) {
-						return communityapp.EvidenceState{}, nil
+					// Real evidence reader (P05-T04): missing objects wait
+					// for READY or the evidence deadline; present ones are
+					// READY facts with owner. Metadata-only observations
+					// validate without waiting.
+					Evidence: func(ctx context.Context, evidenceID string) (communityapp.EvidenceState, error) {
+						view, err := evidenceStore.ForCommunity(ctx, evidenceID)
+						if err != nil {
+							return communityapp.EvidenceState{}, err
+						}
+						return communityapp.EvidenceState{Found: view.Found, Ready: view.Ready, OwnerRef: view.OwnerRef}, nil
+					},
+					// Exactly-once photo binding (P05-T04): set-if-unbound-
+					// or-same converges replays, reuse across observations
+					// maps onto the stable reused refusal.
+					ClaimEvidence: func(ctx context.Context, evidenceID, observationID, contributorRef string) error {
+						err := evidenceStore.TryBindObject(ctx, evidenceID, observationID, contributorRef)
+						if errors.Is(err, evidenceadapters.ErrAlreadyBound) {
+							return communityapp.ErrEvidenceInUse
+						}
+						return err
 					},
 					// Trust decisions land in P06: every contributor is NEW
 					// per trust-v1 initial state, so nothing is blocked
@@ -135,6 +221,57 @@ func run() error {
 						return err
 					},
 				}, observationID, commandRef)
+			},
+		},
+		"verify-evidence": evidencejobs.Verify{
+			Store: evidenceStore,
+			NewID: jobs.NewUUIDv4,
+			Verify: func(ctx context.Context, sess evidencedomain.Session) (evidenceapp.Outcome, error) {
+				return evidenceapp.Verify(ctx, evidenceapp.VerifyPorts{
+					Clock:    time.Now,
+					Download: downloadSnapshot,
+					Upload:   uploadFinal,
+				}, sess)
+			},
+		},
+		"evidence-sweep": evidencejobs.Sweep{
+			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
+				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
+					Clock: time.Now,
+					Batch: evidenceapp.DefaultSweepBatch,
+					Store: evidenceStore,
+					Jobs: sweepJobPorts{hasLive: func(ctx context.Context, sessionID string) (bool, error) {
+						id, err := dbplatform.New(raw).GetJobByDedupe(ctx, pgtype.Text{String: "verify:" + sessionID, Valid: true})
+						if err != nil {
+							if errors.Is(err, pgx.ErrNoRows) {
+								return false, nil
+							}
+							return false, err
+						}
+						row, err := dbplatform.New(raw).GetJob(ctx, id)
+						if err != nil {
+							if errors.Is(err, pgx.ErrNoRows) {
+								return false, nil
+							}
+							return false, err
+						}
+						return row.Status == "queued" || row.Status == "leased", nil
+					}},
+					Storage: sweepStoragePorts{deleteKey: func(ctx context.Context, key, namespace string) error {
+						if cfg.R2 == nil {
+							return errors.New("evidence: storage not configured")
+						}
+						pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
+							Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+							Key: key, Namespace: namespace,
+							TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+						}, storageCreds())
+						if err != nil {
+							return err
+						}
+						return evidencestorage.Delete(ctx, httpClient, pre.URL)
+					}},
+				})
 			},
 		},
 	}
@@ -152,6 +289,11 @@ func run() error {
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,
 			Interval: time.Hour, Enabled: false, Reason: "D05 pending: no live provider",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
+			Interval: time.Hour, Enabled: true,
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 	})
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

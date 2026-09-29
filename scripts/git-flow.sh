@@ -196,12 +196,16 @@ cmd_finish() {
     # Required checks on the exact head: missing/failed/skipped/cancelled all refuse.
     local IFS=,
     for ctx in $required; do
-        ctx="$(echo "$ctx" | tr -d ' ')"
+        # Trim list separators only: check names may contain interior
+        # spaces (e.g. "Quick verification"), which tr -d would destroy.
+        ctx="$(echo "$ctx" | sed -e 's/^ *//' -e 's/ *$//')"
         [[ -n "$ctx" ]] || continue
         local runs status conclusion
         runs="$(gh_json api "repos/AlexandreZanata/brazil-fuel-prices/commits/$head/check-runs" --paginate 2>/dev/null || true)"
-        status="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"status\":\"[^\"]*\"" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1)"
-        conclusion="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"conclusion\":\"[^\"]*\"" | grep -o '"conclusion":"[^"]*"' | cut -d'"' -f4 | head -1)"
+        # Trailing || true keeps a genuine miss loud: without it, pipefail
+        # turns an empty grep into a silent exit instead of the die below.
+        status="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"status\":\"[^\"]*\"" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1 || true)"
+        conclusion="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"conclusion\":\"[^\"]*\"" | grep -o '"conclusion":"[^"]*"' | cut -d'"' -f4 | head -1 || true)"
         if [[ -z "$status" ]]; then
             die "missing required check '$ctx' on $head"
         fi

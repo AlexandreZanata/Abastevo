@@ -1,0 +1,13 @@
+{
+  "id": "upload-status-issued-valid",
+  "version": 1,
+  "schema": "UploadStatus",
+  "valid": true,
+  "provenance": "P05-T02 issued status carries no evidence; synthetic",
+  "value": {
+    "upload_id": "e0000000-0000-4000-8000-000000000001",
+    "state": "ISSUED",
+    "evidence_id": null,
+    "updated_at": "2026-09-30T12:00:00Z"
+  }
+}

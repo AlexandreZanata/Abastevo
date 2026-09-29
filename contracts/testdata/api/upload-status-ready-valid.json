@@ -1,0 +1,13 @@
+{
+  "id": "upload-status-ready-valid",
+  "version": 1,
+  "schema": "UploadStatus",
+  "valid": true,
+  "provenance": "P05-T02 ready status carries evidence id, never an object URL; synthetic",
+  "value": {
+    "upload_id": "e0000000-0000-4000-8000-000000000001",
+    "state": "READY",
+    "evidence_id": "e0000000-0000-4000-8000-000000000002",
+    "updated_at": "2026-09-30T12:01:00Z"
+  }
+}

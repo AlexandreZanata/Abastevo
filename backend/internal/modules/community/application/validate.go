@@ -15,12 +15,12 @@ import (
 // Stable reason codes recorded on VALIDATING→REJECTED decisions. They are
 // part of the contract: rename only with a policy-version bump.
 const (
-	ReasonInvalidStation          = "invalid-station"
-	ReasonInvalidSupersedes       = "invalid-supersedes"
-	ReasonEvidenceOwnerMismatch   = "evidence-owner-mismatch"
-	ReasonEvidenceTimeout         = "evidence-timeout"
-	ReasonContributorBlocked      = "contributor-blocked"
-	ReasonEvidenceNotReadyTimeout = ReasonEvidenceTimeout
+	ReasonInvalidStation        = "invalid-station"
+	ReasonInvalidSupersedes     = "invalid-supersedes"
+	ReasonEvidenceOwnerMismatch = "evidence-owner-mismatch"
+	ReasonEvidenceTimeout       = "evidence-timeout"
+	ReasonEvidenceReused        = "evidence-reused"
+	ReasonContributorBlocked    = "contributor-blocked"
 )
 
 // EvidenceTimeout bounds the media-required path: an explicitly
@@ -39,6 +39,11 @@ const ConsensusJobKind = "community-consensus"
 // retries. It is distinct from transient infrastructure errors so the
 // handler can back off without treating the wait as a failure.
 var ErrPending = errors.New("community: validation pending, evidence not ready")
+
+// ErrEvidenceInUse marks an evidence object already bound to a different
+// observation. The composition root maps the evidence store refusal onto
+// this sentinel; no community code imports the evidence module.
+var ErrEvidenceInUse = errors.New("community: evidence already bound to another observation")
 
 // EvidenceState is the read-only evidence signal. Found=false (with nil
 // error) means the evidence is missing or not yet ready: pending while
@@ -66,7 +71,12 @@ type ValidateDeps struct {
 	// Trust reports whether the contributor is currently blocked. Unknown
 	// trust is fail-closed toward retry (error), never toward verified.
 	Trust func(ctx context.Context, contributorRef string) (blocked bool, err error)
-	Store ValidateStore
+	// ClaimEvidence binds one READY object to this observation with
+	// set-if-unbound-or-same semantics. Nil skips the claim (pre-binding
+	// behavior); the composition root injects the evidence store claim
+	// and maps its refusal onto ErrEvidenceInUse.
+	ClaimEvidence func(ctx context.Context, evidenceID, observationID, contributorRef string) error
+	Store         ValidateStore
 	// EnqueueConsensus persists the downstream consensus intent in the
 	// same transaction as the VALIDATED decision. It receives the open
 	// transaction as an opaque handle, mirroring Submit's EnqueueJob.
@@ -198,6 +208,16 @@ func Validate(ctx context.Context, deps ValidateDeps, observationID, commandRef 
 		}
 		if st.OwnerRef != obs.ContributorRef {
 			return reject(ctx, deps, obs, []string{ReasonEvidenceOwnerMismatch}, now, seq)
+		}
+		// Bind exactly once: a photo backs a single observation, so a
+		// reused object rejects instead of double-counting support.
+		if deps.ClaimEvidence != nil {
+			if err := deps.ClaimEvidence(ctx, obs.EvidenceID, obs.ID, obs.ContributorRef); err != nil {
+				if errors.Is(err, ErrEvidenceInUse) {
+					return reject(ctx, deps, obs, []string{ReasonEvidenceReused}, now, seq)
+				}
+				return state, err
+			}
 		}
 	}
 

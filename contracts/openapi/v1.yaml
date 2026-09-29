@@ -30,6 +30,8 @@ tags:
     description: Anonymous revision-aware official price reads.
   - name: community
     description: Signed observation submit and owner reads.
+  - name: evidence
+    description: Signed private upload reservation and owner status.
   - name: identity
     description: Anonymous challenge and contributor registration.
 paths:
@@ -296,6 +298,106 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /v1/uploads:
+    post:
+      summary: Reserve an owned upload session with a short PUT authorization (signed).
+      operationId: reserveUpload
+      tags: [evidence]
+      security: []
+      requestBody:
+        required: true
+        description: Upload intent; the object key is server-generated, never client-supplied.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadReserveRequest'
+            example:
+              client_submission_id: upl-2026-09-30-001
+              content_type: image/jpeg
+              size_bytes: 524288
+              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      responses:
+        '201':
+          description: Reserved session with a short direct PUT authorization; the URL enforces transport only, never size.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReservation'
+              example:
+                upload_id: e0000000-0000-4000-8000-000000000001
+                method: PUT
+                url: https://xxx.r2.cloudflarestorage.com/anpfuel-quarantine/q/e0000000000000000000000000000001?X-Amz-Algorithm=AWS4-HMAC-SHA256
+                required_headers:
+                  content-type: image/jpeg
+                expires_at: '2026-09-30T12:05:00Z'
+                max_bytes: 3145728
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/uploads/{upload_id}:
+    get:
+      summary: Owner upload status (signed).
+      operationId: uploadStatus
+      tags: [evidence]
+      security: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session identifier.
+          schema: {type: string, format: uuid}
+          example: e0000000-0000-4000-8000-000000000001
+      responses:
+        '200':
+          description: Session state; READY carries the evidence id, never an object URL.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/uploads/{upload_id}/complete:
+    post:
+      summary: Completion intent moving the session to verification (signed, idempotent).
+      operationId: completeUpload
+      tags: [evidence]
+      security: []
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          description: Upload session identifier.
+          schema: {type: string, format: uuid}
+          example: e0000000-0000-4000-8000-000000000001
+      responses:
+        '202':
+          description: Accepted for verification; repeated completion is idempotent.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/stations:
     get:
       summary: Directory search (anonymous).
@@ -1102,6 +1204,89 @@ components:
           type: string
           format: date-time
           example: '2026-09-28T00:00:00Z'
+    UploadReserveRequest:
+      description: Upload intent; the object key is server-generated, never client-supplied.
+      type: object
+      required: [client_submission_id, content_type, size_bytes, sha256]
+      properties:
+        client_submission_id:
+          type: string
+          minLength: 1
+          description: Client operation identity for safe retries.
+          example: upl-2026-09-30-001
+        content_type:
+          type: string
+          enum: [image/jpeg]
+          example: image/jpeg
+        size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 3145728
+          description: Declared intent only; actual length is verified after upload.
+          example: 524288
+        sha256:
+          type: string
+          pattern: '^[0-9a-fA-F]{64}$'
+          description: Client hash claim, verified after upload.
+          example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    UploadReservation:
+      description: Reserved session with a short direct PUT authorization.
+      type: object
+      required: [upload_id, method, url, required_headers, expires_at, max_bytes]
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+          example: e0000000-0000-4000-8000-000000000001
+        method:
+          type: string
+          enum: [PUT]
+          example: PUT
+        url:
+          type: string
+          format: uri
+          description: Short presigned PUT bound to one quarantine key; transport only, never a size bound.
+          example: https://xxx.r2.cloudflarestorage.com/anpfuel-quarantine/q/e0000000000000000000000000000001?X-Amz-Algorithm=AWS4-HMAC-SHA256
+        required_headers:
+          type: object
+          required: [content-type]
+          properties:
+            content-type:
+              type: string
+              enum: [image/jpeg]
+              example: image/jpeg
+        expires_at:
+          type: string
+          format: date-time
+          example: '2026-09-30T12:05:00Z'
+        max_bytes:
+          type: integer
+          example: 3145728
+    UploadState:
+      description: Upload session lifecycle state.
+      type: string
+      enum: [ISSUED, VERIFYING, READY, REJECTED, EXPIRED]
+      example: ISSUED
+    UploadStatus:
+      description: Owner session state; READY carries the evidence id, never an object URL.
+      type: object
+      required: [upload_id, state, updated_at]
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+          example: e0000000-0000-4000-8000-000000000001
+        state:
+          $ref: '#/components/schemas/UploadState'
+        evidence_id:
+          type: [string, "null"]
+          format: uuid
+          description: Bound evidence reference once READY; null otherwise.
+          example: null
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-09-30T12:00:00Z'
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

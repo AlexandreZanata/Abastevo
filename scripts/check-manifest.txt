@@ -39,6 +39,13 @@ backend/internal/modules/community/domain
 backend/internal/modules/community/adapters
 backend/internal/modules/community/application
 backend/internal/modules/community/adapters/jobs
+backend/internal/modules/evidence/domain
+backend/internal/modules/evidence/application
+backend/internal/modules/evidence/adapters/storage
+backend/internal/modules/evidence/adapters/media
+backend/internal/modules/evidence/adapters
+backend/internal/modules/evidence/adapters/http
+backend/internal/modules/evidence/adapters/jobs
 
 [required-checks]
 gofmt

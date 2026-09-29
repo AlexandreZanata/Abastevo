@@ -54,6 +54,18 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
   - engine: postgresql
+    queries: db/queries/evidence
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000010_evidence.sql
+      - db/migrations/000011_evidence_retention.sql
+    gen:
+      go:
+        package: evidence
+        out: db/queries/evidence
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
     queries: db/queries/identity
     schema:
       - db/migrations/000001_enable_postgis.sql

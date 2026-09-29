@@ -1,0 +1,13 @@
+{
+  "id": "upload-reserve-invalid-size",
+  "version": 1,
+  "schema": "UploadReserveRequest",
+  "valid": false,
+  "provenance": "P05-T02 over-cap intent rejected; synthetic",
+  "value": {
+    "client_submission_id": "upl-2026-09-30-003",
+    "content_type": "image/jpeg",
+    "size_bytes": 3145729,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

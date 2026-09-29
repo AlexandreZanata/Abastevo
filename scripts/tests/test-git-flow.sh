@@ -134,6 +134,21 @@ if bash "$FLOW" finish --skip-quick --pr 7 >/dev/null 2>&1; then
     git -C "$WORK" rev-parse --verify origin/codex/phase-02-lifecycle >/dev/null 2>&1 && bad "remote branch not cleaned" || ok "remote branch cleaned"
 else bad "guarded finish should succeed"; fi
 
+echo "== multi-word required context matches exactly =="
+# No branch-unique commit here: the fake merge is a no-op, so only a head
+# already contained in the base clears the ancestry guard — exactly like
+# the passing single-word success case above. The regression under test
+# is the required-check name match, which still runs fully.
+bash "$FLOW" start --phase 03 --slug words >/dev/null
+HEAD_SHA="$(git -C "$WORK" rev-parse HEAD)"
+pr_json "$HEAD_SHA" > "$GH_PR_JSON"
+printf '{"check_runs":[{"name":"Quick verification","status":"completed","conclusion":"success"}]}' > "$GH_CHECKS_JSON"
+: > "$GH_LOG"
+if bash "$FLOW" finish --skip-quick --pr 7 --required "Quick verification" >/dev/null 2>&1; then
+    grep -q "fake-merge" "$GH_LOG" && ok "multi-word context merges with head guard" || bad "multi-word context missed merge guard"
+    git -C "$WORK" rev-parse --verify origin/codex/phase-03-words >/dev/null 2>&1 && bad "words branch not cleaned" || ok "words branch cleaned remotely"
+else bad "multi-word required check refused"; fi
+
 echo "== safe deletion only =="
 if grep -q 'branch -D' "$FLOW"; then bad "script contains unsafe branch -D"; else ok "no unsafe branch -D"; fi
 git -C "$WORK" checkout -q -b codex/phase-99-unmerged

@@ -1,0 +1,13 @@
+{
+  "id": "upload-reserve-invalid-mime",
+  "version": 1,
+  "schema": "UploadReserveRequest",
+  "valid": false,
+  "provenance": "P05-T02 non-JPEG intent rejected; synthetic",
+  "value": {
+    "client_submission_id": "upl-2026-09-30-002",
+    "content_type": "image/png",
+    "size_bytes": 524288,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}
