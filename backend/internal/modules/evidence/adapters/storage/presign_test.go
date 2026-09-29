@@ -278,8 +278,14 @@ func TestWrongKeyAndTamperingRefused(t *testing.T) {
 	if code := put(t, got.URL, "image/png", []byte("x")); code != http.StatusForbidden {
 		t.Errorf("tampered content-type PUT = %d, want 403", code)
 	}
-	// A flipped signature bit fails verification.
-	broken := got.URL[:len(got.URL)-1] + "0"
+	// A flipped signature bit fails verification. The replacement char
+	// is guaranteed to differ: the port (hence the signature tail)
+	// varies per run, so a fixed "0" sometimes no-ops into 200.
+	tail := "a"
+	if strings.HasSuffix(got.URL, "a") {
+		tail = "b"
+	}
+	broken := got.URL[:len(got.URL)-1] + tail
 	if code := put(t, broken, "image/jpeg", []byte("x")); code != http.StatusForbidden {
 		t.Errorf("tampered signature PUT = %d, want 403", code)
 	}

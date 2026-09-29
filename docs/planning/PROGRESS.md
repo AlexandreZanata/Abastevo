@@ -1,6 +1,6 @@
 # Current execution state
 
-- Updated: 2026-09-30, P04 INTEGRATED; P05-T02 LOCAL_DONE.
+- Updated: 2026-09-30, P04 INTEGRATED; P05-T03 LOCAL_DONE.
 - Branch: `codex/phase-05-private-evidence`, based on `52e889a`; clean.
 - Phase P04 INTEGRATED: PR #5 merged `19c2800` → `52e889a` (match-head-commit, Quick verification + fast/integration/test green); branch `codex/phase-04-observations` deleted locally + remotely, verified; merge recorded in PR #5 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
 - Phase P03 INTEGRATED: PR #4 merged `762615a` → `6a12dcd` (match-head-commit, all checks green); branch `codex/phase-03-anonymous-identity` deleted locally + remotely, verified; merge recorded in PR #4 metadata; wiki WIKI_PENDING. Post-merge main CI runs automatically.
@@ -15,8 +15,9 @@
 - G04: P04-T01…T05 INTEGRATED (entry G04 satisfied for P05).
 - P05-T01: LOCAL_DONE — `evidence/domain` upload session (JPEG-only, 1..3MiB declared, 64-hex hash claim normalized, server quarantine key, ISSUED→VERIFYING→READY/REJECTED + 24h ISSUED→EXPIRED, stdlib-only) + `evidence/application` Reserve (auth, quota-before-work with 429 delay, natural-key retry convergence, divergent-payload conflict, per-contributor isolation); RED proven by dropping the MIME guard, GREEN on restore; unit + quick-verify green; manifest extended. Presigned issuance/verification/binding stay in P05-T02…T04.
 - P05-T02: LOCAL_DONE — `evidence/adapters/storage` stdlib SigV4 presigned PUT (exact-key/content-type/expiry binding, q/ namespace, 1..15min TTL, no ACL grants, no logged secrets) proven against an independent spec reimplementation (round-trip, expiry, foreign-key/tamper refusal, size-unenforced-by-design, determinism); contract-first OpenAPI `POST /v1/uploads`, `POST .../complete`, `GET ...` + 5 golden vectors (vacuum 0 errors/warnings, apicontract green); no new dependency. Emulator + isolated R2 staging PENDING (no registry access for minio image, no staging credentials in this environment); adapter targets real SigV4 so both can run when available.
-- G05: P05-T01…T02 LOCAL_DONE; P05-T03…T05 NOT STARTED.
-- Next: **P05-T03 — Safe image verification**.
+- P05-T03: LOCAL_DONE — `evidence/adapters/media` stdlib snapshot pipeline (bounded size + server SHA-256, magic + strict segment walk with EOI-terminal enforcement, 12MP/8192px caps pre-decode, full decode, EXIF-free deterministic re-encode, server dHash, content-addressed f/ key) + `evidence/application` Verify (VERIFYING-only, exactly-once download, size/checksum/structure/dimension gates with stable reasons, transient transport errors, READY outcome with final key + signals); fixtures: checked-in 4x4 JPEG plus in-test EXIF splice, SOF bomb headers, polyglot tail; RED proven on unsigned-content-type (T02) and dHash test bug fixed (monotonic fixtures shared bits); storage tamper-test flake fixed (port-varying signature tail now flips deterministically; 20x + race green); manifest extended. Persistence/binding stay in P05-T04.
+- G05: P05-T01…T03 LOCAL_DONE; P05-T04…T05 NOT STARTED.
+- Next: **P05-T04 — Completion and observation binding**.
 - Issues/milestone/PR/wiki: P05 phase PR pending (draft after first push); wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 
