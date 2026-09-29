@@ -53,6 +53,10 @@ backend/internal/modules/trust/application
 backend/internal/modules/moderation/domain
 backend/internal/modules/moderation/adapters
 backend/internal/modules/moderation/application
+backend/internal/modules/privacy/domain
+backend/internal/modules/privacy/adapters
+backend/internal/modules/privacy/application
+backend/internal/modules/privacy/adapters/jobs
 
 [required-checks]
 gofmt

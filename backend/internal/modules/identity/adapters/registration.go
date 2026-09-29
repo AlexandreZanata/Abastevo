@@ -280,3 +280,28 @@ func (r *Registrar) AttributionToken(ctx context.Context, contributorID string) 
 	}
 	return fresh, nil
 }
+
+// ContributorProfile is the owner identity section for export
+// (P07-T03): status and dates only, never keys, tokens or challenges.
+type ContributorProfile struct {
+	ContributorID string
+	Status        string
+	CreatedAt     time.Time
+	Deleted       bool
+}
+
+// Profile resolves one contributor's export-safe identity section.
+func (r *Registrar) Profile(ctx context.Context, contributorID string) (ContributorProfile, error) {
+	uid, err := mustUUID(contributorID)
+	if err != nil {
+		return ContributorProfile{}, err
+	}
+	row, err := identity.New(r.pool).GetContributor(ctx, uid)
+	if err != nil {
+		return ContributorProfile{}, err
+	}
+	return ContributorProfile{
+		ContributorID: uuidString(row.ID), Status: row.Status,
+		CreatedAt: row.CreatedAt.Time, Deleted: row.DeletedAt.Valid,
+	}, nil
+}

@@ -105,3 +105,14 @@ sql:
         out: db/queries/moderation
         sql_package: pgx/v5
         emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/privacy
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000018_privacy_requests.sql
+    gen:
+      go:
+        package: privacy
+        out: db/queries/privacy
+        sql_package: pgx/v5
+        emit_json_tags: true
