@@ -39,3 +39,8 @@ WHERE fingerprint = @fingerprint;
 SELECT id, status, created_at, deleted_at
 FROM identity_contributors
 WHERE id = @id;
+
+-- name: RevokeKey :execrows
+UPDATE identity_keys
+SET revoked_at = now()
+WHERE id = @id AND revoked_at IS NULL;

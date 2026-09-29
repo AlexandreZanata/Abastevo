@@ -173,3 +173,17 @@ func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (IdentityC
 	)
 	return i, err
 }
+
+const revokeKey = `-- name: RevokeKey :execrows
+UPDATE identity_keys
+SET revoked_at = now()
+WHERE id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeKey(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

@@ -10,9 +10,10 @@
 - P03-T02: LOCAL_DONE — challenge-bound registration, RED→GREEN.
 - P03-T03: LOCAL_DONE — `identity/adapters/auth` Verifier rebuilding the base from the live request (configured authority, exact body digest), verifying against server-stored keys, consuming SIGN nonces atomically with fingerprint/purpose/hash binding; duplicate/missing headers, tamper, expiry, revoked/blocked/unknown denied; failed proofs never consume; integration on real PostGIS: happy read/write, tamper matrix, replay once, 8-worker same-nonce once, expired/revoked/blocked/unknown; RED proven by skipping consume, GREEN on restore; manifest extended.
 - P03-T04: LOCAL_DONE — idempotency runner, RED→GREEN.
-- P03-T05: LOCAL_DONE — `db/migrations/000006` (per-subject/operation/window counters, NULL-free design, expiry index) + atomic capped-upsert/lock/cleanup queries + `identity/domain` (versioned v1 budgets, rotating keyed IP digests with no raw IPs stored, window math, stdlib-only) + `adapters` Limiter (check-before-work per B-BR-015, positive Retry-After on denial, QuotaError for 429 mapping) + edge additive-limits plan in INFRASTRUCTURE_PLAN (coarse, fail-open, never replacing DB quotas, no IP-only bans); integration on real PostGIS: exact 3/9 concurrent boundary, NAT-shared binding with cross-IP/operation isolation, Retry-After shape, expiry cleanup restoring budget, unknown operation refused; RED proven by ignoring the cap, GREEN on restore; no new manifest packages (domain/adapters listed).
-- G03: P03-T06 NOT STARTED.
-- Next: **P03-T06 — Key rotation and revocation**.
+- P03-T05: LOCAL_DONE — quotas, RED→GREEN.
+- P03-T06: LOCAL_DONE — `adapters` Rotate with old/new SIGN proofs: server-stored old coords, fingerprint/purpose/nonce binding, single-tx consume-both + revoke + bind, takeover refused, revoked-old only replays same-contributor bindings, no lost-key recovery; integration on real PostGIS: happy path with old-denied/new-works via auth Verifier, old/new proof failures preserving challenges, concurrent exactly-one-wins, idempotent replay, takeover refused with old intact, stranger denied; RED proven by skipping revoke, GREEN on restore; rotate path + schemas + 2 vectors, spec 100/100; no new manifest packages.
+- G03: P03-T07…T08 NOT STARTED (P03 scope runs T01…T08; phase PR body to update).
+- Next: **P03-T07 — PostgreSQL job queue**.
 - Issues/milestone/PR/wiki: P03 phase PR pending; wiki once per merged phase; no invented IDs.
 - G09 NOT STARTED; P10 BLOCKED BY G09; roadmap 78 tasks.
 

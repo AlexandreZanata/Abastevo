@@ -144,6 +144,47 @@ paths:
                 existed: false
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/contributors/me/keys/rotate:
+    post:
+      summary: Rotate to a new key with old and new proofs (anonymous).
+      operationId: rotateContributorKey
+      tags: [identity]
+      security: []
+      requestBody:
+        required: true
+        description: Old and new proofs plus the candidate key.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyRotation'
+            example:
+              old:
+                challenge_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                lines: ['"@method": POST']
+                signature: MEUCIQ
+              new_jwk:
+                kty: EC
+                crv: P-256
+                x: 5H8pdbqwCE7YcVh0t7VNWgcQVrZ4S66TjfwBDE8tneE
+                y: WpcgI0Z8gndT_z9lTn8qgoevjDFsjVAlRvfpo6-KJIs
+              new:
+                challenge_id: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                lines: ['"@method": POST']
+                signature: MEUCIQ
+      responses:
+        '200':
+          description: Contributor preserved, old key revoked, new key bound.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rotation'
+              example:
+                contributor_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                old_key_id: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                new_key_id: bbd138ce-e442-4f57-a874-3c05d2e16f52
+                existed: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /v1/stations:
     get:
       summary: Directory search (anonymous).
@@ -741,6 +782,56 @@ components:
         existed:
           type: boolean
           description: True when the key already owned this identity.
+          example: false
+    RotationProof:
+      description: One signed side of a rotation bound to its challenge.
+      type: object
+      required: [challenge_id, lines, signature]
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        lines:
+          type: array
+          description: Rotation covered lines in frozen order.
+          example: ['"@method": POST']
+          items: {type: string}
+        signature:
+          type: string
+          description: Base64url raw 64-byte rotation signature.
+          example: MEUCIQ
+    KeyRotation:
+      description: Rotation request with both proofs and the candidate key.
+      type: object
+      required: [old, new_jwk, new]
+      properties:
+        old:
+          $ref: '#/components/schemas/RotationProof'
+        new_jwk:
+          $ref: '#/components/schemas/PublicJWK'
+        new:
+          $ref: '#/components/schemas/RotationProof'
+    Rotation:
+      description: Preserved contributor with revoked old and bound new key.
+      type: object
+      required: [contributor_id, old_key_id, new_key_id, existed]
+      properties:
+        contributor_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        old_key_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        new_key_id:
+          type: string
+          format: uuid
+          example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+        existed:
+          type: boolean
+          description: True when replaying an already completed rotation.
           example: false
   responses:
     BadRequest:

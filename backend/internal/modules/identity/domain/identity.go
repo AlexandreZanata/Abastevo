@@ -28,6 +28,7 @@ var (
 	ErrProofRequired      = errors.New("identity: valid key proof required")
 	ErrDuplicateKey       = errors.New("identity: key already registered")
 	ErrIdempotentConflict = errors.New("identity: same key, different body")
+	ErrKeyTakeover        = errors.New("identity: key owned by another contributor")
 )
 
 // ParsePurpose accepts exactly the stored purposes.
@@ -165,4 +166,33 @@ type RegistrationRequest struct {
 	BaseLines  []string
 	Signature  string
 	VerifiedAt time.Time
+}
+
+// RotationProof is one side of a rotation: the challenge that binds it,
+// the covered base lines and the signature. Old and new proofs travel
+// together so neither key alone can move the identity.
+type RotationProof struct {
+	Challenge Challenge
+	BaseLines []string
+	Signature string
+}
+
+// RotationRequest rotates a contributor from an old key to a new one. Both
+// proofs verify before anything mutates; without the old private key there
+// is no recovery, by design.
+type RotationRequest struct {
+	Old        RotationProof
+	NewJWKX    string
+	NewJWKY    string
+	New        RotationProof
+	VerifiedAt time.Time
+}
+
+// Rotation is the outcome: the contributor preserved, the old key revoked,
+// the new key bound.
+type Rotation struct {
+	ContributorID string
+	OldKeyID      string
+	NewKeyID      string
+	Existed       bool
 }
