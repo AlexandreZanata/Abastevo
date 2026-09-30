@@ -1513,4 +1513,3 @@ Exit gate: **G11: optional account/billing/sync specifications and implementatio
 - [ ] Load/fault/cache tests meet accepted capacity and freshness budgets.
 - [ ] Operator can deploy, monitor, moderate, revoke, rollback and restore using tested runbooks.
 - [ ] Release evidence signed off; P10-T01 is explicitly unblocked.
-
