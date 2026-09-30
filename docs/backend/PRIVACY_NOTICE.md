@@ -21,6 +21,17 @@ account, email, billing, sync and analytics are not collected in MVP
   Price facts stay for history with anonymized references (never as
   your data). Backed-up copies age out with the encrypted backup
   horizon (35 days max); notices explain this delay accurately.
+- After your photo expires: the bytes are gone from storage (backups
+  never held them — database backups carry keys and hashes only),
+  while the price fact you supported stays as history with an
+  anonymized reference and duplicate-detection hashes age out at
+  90 days. An expired photo is never advertised as still available
+  for audit; reviewers see the retained fact with its confidence
+  explanation instead.
+- A powered-off device cannot run its cleanup job: on-device
+  transient copies delete at the next launch/resume/read after the
+  24 h lifetime, and expiry is enforced server-side regardless, so
+  offline devices never extend what anyone else can access.
 - Losing your device key loses the anonymous identity: data cannot be
   disclosed from unverifiable claims. A support procedure may help
   with alternate evidence, without disclosing unrelated data.
@@ -33,7 +44,7 @@ account, email, billing, sync and analytics are not collected in MVP
 | Attribution token | Link owner rows without exposing identity | Same as contributor | Owning modules only | Cleared on erasure; facts unlink to opaque refs |
 | Exact GPS/fix, OCR claims | Short-lived proximity derivation | Deleted after derivation, hard cap 24 h | Worker only | Immediate post-derivation delete (no long-lived store in v1) |
 | Quarantine photo | Decoding/verification only | Deleted after sanitization, hard cap 24 h | Worker only | Retention sweeper (`evidence-sweep-hourly`) |
-| Sanitized evidence | Private review | 14 days; substantiated open case extends to 30 days max | Restricted moderation via 60 s audited download | Sweeper; erasure purges immediately |
+| Sanitized evidence | Private review | Every copy 24 h from first receipt (P15); reviews never extend it | Restricted moderation via 60 s audited download, denied at the deadline even before cleanup | Sweeper; erasure purges immediately |
 | Verified/perceptual hashes, fraud signals | Duplicate detection | 90 days | Restricted trust role | Sweeper; erasure purges immediately |
 | Observation facts (product/price/condition/provenance) | Product history | 24 months initially, then anonymization review | Public (source-separated, no identities) | Unlinked on erasure; timed purge needs FK-consistent cascade design (metrics visible, enforcement follows) |
 | Confirmations/disputes | Independent support/reporting | Same as observations | Owner history private; aggregates public | Reporter refs unlinked per row on erasure |
@@ -60,4 +71,10 @@ account, email, billing, sync and analytics are not collected in MVP
 
 ## Target revision pending P13/P14/P15
 
-This remains an unapproved draft and the table above reflects v1 implementation. The new target requires free email-code/Google/Apple account data, authenticated social revisions/votes and **all photo copies expiring within 24 hours, with no 14/30-day exception**. [Account](../security/FREE_ACCOUNT_ACCESS.md) and [media/location](../security/LOCAL_MEDIA_LOCATION_POLICY.md) contracts own the changes. Revise the full inventory/table and verify enforcement before public G09/P10-T09 launch; this note is not a claim that current jobs meet the target.
+This remains an unapproved draft. The media rows above now reflect
+the P15 forward rule (every copy 24 h, no 14/30-day exception);
+account/social rows still await their revision. [Account](../security/FREE_ACCOUNT_ACCESS.md)
+and [media/location](../security/LOCAL_MEDIA_LOCATION_POLICY.md)
+contracts own the remaining changes. Revise the full inventory/table
+and verify enforcement before public G09/P10-T09 launch; this note
+is not a claim that current jobs meet the target.

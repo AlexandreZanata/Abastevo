@@ -18,6 +18,16 @@ jobs cap retries then park for audited replay. There is no manual
 purge procedure: ad-hoc SQL deletes outside these jobs are findings,
 not operations.
 
+## Powered-off devices (frozen limitation, M05)
+
+A powered-off device cannot run its cleanup job: transient copies
+delete at the next launch/resume/read after their 24 h lifetime,
+and server-side expiry denies every other access regardless. Never
+promise remote physical deletion while a device is offline; restore
+traffic gates on retention first (see [recovery](recovery.md)), and
+the app discloses this limitation in its notice instead of hiding
+it behind a sync spinner.
+
 ## Reading the metrics
 
 Each `privacy-retention` run logs one structured line:
