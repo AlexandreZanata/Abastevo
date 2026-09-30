@@ -24,9 +24,6 @@ import (
 // Without the old private key there is no recovery, by design.
 func (r *Registrar) Rotate(ctx context.Context, req domain.RotationRequest) (domain.Rotation, error) {
 	now := r.now()
-	if !req.VerifiedAt.IsZero() {
-		now = req.VerifiedAt
-	}
 	newFp, err := profile.Thumbprint(req.NewJWKX, req.NewJWKY)
 	if err != nil {
 		return domain.Rotation{}, fmt.Errorf("%w: new key", domain.ErrProofRequired)
@@ -44,6 +41,9 @@ func (r *Registrar) Rotate(ctx context.Context, req domain.RotationRequest) (dom
 	}
 	if newSide.challenge.Fingerprint != newFp {
 		return domain.Rotation{}, fmt.Errorf("%w: new side mismatch", domain.ErrProofRequired)
+	}
+	if newFp == old.keyFp {
+		return domain.Rotation{}, domain.ErrProofRequired
 	}
 	oldJWKX, oldJWKY := old.jwkX, old.jwkY
 	if err := profile.Verify(oldJWKX, oldJWKY, req.Old.BaseLines, req.Old.Signature, now); err != nil {
@@ -74,11 +74,15 @@ func (r *Registrar) Rotate(ctx context.Context, req domain.RotationRequest) (dom
 	if err != nil {
 		return domain.Rotation{}, err
 	}
-	if _, err := tq.RevokeKey(ctx, oldKeyUUID); err != nil {
+	revoked, err := tq.RevokeKey(ctx, oldKeyUUID)
+	if err != nil {
 		return domain.Rotation{}, err
 	}
+	if revoked != 1 {
+		return domain.Rotation{}, domain.ErrProofRequired
+	}
 	if existing, err := tq.FindKeyByFingerprint(ctx, newFp); err == nil {
-		if uuidString(existing.ContributorID) != old.contributorID {
+		if existing.RevokedAt.Valid || uuidString(existing.ContributorID) != old.contributorID {
 			return domain.Rotation{}, domain.ErrKeyTakeover
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -166,6 +170,12 @@ func (r *Registrar) checkRotationSide(ctx context.Context, proof domain.Rotation
 		}
 		return out, err
 	}
+	if stored.Purpose != purpose || stored.Fingerprint != proof.Challenge.Fingerprint || stored.NonceHash != nonceHash(proof.Challenge.Nonce) || !proofBinds(proof.BaseLines, stored.Fingerprint, proof.Challenge.Nonce) {
+		return out, domain.ErrProofRequired
+	}
+	if !now.Before(stored.ExpiresAt.Time) {
+		return out, domain.ErrChallengeExpired
+	}
 	if stored.ConsumedAt.Valid {
 		return out, domain.ErrChallengeSpent
 	}
@@ -220,7 +230,7 @@ func (r *Registrar) replayRotation(ctx context.Context, old rotationSide, newCha
 		}
 		return domain.Rotation{}, err
 	}
-	if uuidString(existing.ContributorID) != old.contributorID {
+	if existing.RevokedAt.Valid || uuidString(existing.ContributorID) != old.contributorID {
 		return domain.Rotation{}, domain.ErrKeyTakeover
 	}
 	if err := tx.Commit(ctx); err != nil {

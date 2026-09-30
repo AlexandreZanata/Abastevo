@@ -67,7 +67,7 @@ func ParseCursor(secret []byte, raw, filterHash string, now time.Time) (string, 
 // ETag returns the quoted entity tag for a response body.
 func ETag(body []byte) string {
 	sum := sha256.Sum256(body)
-	return fmt.Sprintf("%q", "W/"+fmt.Sprintf("%x", sum))
+	return fmt.Sprintf(`W/"%x"`, sum)
 }
 
 // IfNoneMatch reports whether the client already holds etag.
@@ -87,7 +87,7 @@ func WriteJSON(w http.ResponseWriter, r *http.Request, status int, cacheControl 
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", cacheControl)
-	if IfNoneMatch(r, etag) {
+	if (r.Method == http.MethodGet || r.Method == http.MethodHead) && status == http.StatusOK && strings.HasPrefix(cacheControl, "public,") && IfNoneMatch(r, etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}

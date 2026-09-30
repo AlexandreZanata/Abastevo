@@ -154,3 +154,19 @@ on the shared-cacheable GET set. CDN allowlist, key policy, purge
 procedure, signature-through-proxy notes and the live regression
 suite (`BASE_URL=... bash scripts/cache-regression.sh`) live in
 [the edge-cache runbook](../docs/operator/edge-cache.md).
+
+### Isolated validation topology
+
+`compose.validation.yml` is exclusively for `scripts/tests/test-local-backend.sh`:
+a unique Compose project, dynamic loopback ports, tmpfs data, fixed image digests
+and synthetic credentials. It does not share the development volume or any
+production configuration. The outage harness uses pause/unpause for this tmpfs
+fixture, preserving the cluster while exercising actual query timeouts; recovery
+must return HTTP success (`curl -f`), not just a successful TCP connection.
+
+The Caddy global `servers` directive uses `trusted_proxies static private_ranges`;
+the reverse-proxy directive uses `trusted_proxies private_ranges`. Its aggregate
+access logs remove the whole request and response-header fields because custom
+signature headers, contributor IPs and nearby query strings are private. See the
+[Caddy proxy options](https://caddyserver.com/docs/caddyfile/options#trusted-proxies)
+and [logging filter](https://caddyserver.com/docs/caddyfile/directives/log#filter).

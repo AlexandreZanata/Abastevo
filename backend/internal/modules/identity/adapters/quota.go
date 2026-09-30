@@ -21,6 +21,7 @@ type QuotaError struct {
 }
 
 func (e *QuotaError) Error() string { return domain.ErrQuotaExceeded.Error() }
+func (e *QuotaError) Unwrap() error { return domain.ErrQuotaExceeded }
 
 // Limiter enforces versioned budgets with one atomic database counter per
 // subject, operation and window. No successful operation can exceed quota

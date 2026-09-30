@@ -60,3 +60,21 @@ Use fixed clock and UUID sequences, stable sort/tie-breaks, barriers rather than
 ## Gate evidence
 
 For every task record commands, tested commit/tree, environment, pass/fail and limitation in the compact phase record linked from docs/planning/PROGRESS.md. Archive long histories; keep current state short. LOCAL_DONE, phase INTEGRATED and RELEASE_CERTIFIED are separate states. No disabled/deleted tests to create green CI. A failed prerequisite is BLOCKED, not PASS. G09 cannot be checked off while restore/security/runtime/backend requirements remain theoretical.
+
+## Local process validation (P09-T01 follow-up)
+
+The public-process integration test in `cmd/api` starts the actual API with a
+fresh database, requires an explicit disposable `ANPFUEL_TEST_DATABASE_URL`, and
+checks schema readiness, challenge/enrollment, exact wire fuel/unit, idempotency,
+replay, owner isolation and rotation. Set all `ANPFUEL_TEST_STORAGE_{ENDPOINT,
+BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` values to enable the real worker
+and private S3-compatible photo flow (valid JPEG, malformed image, independent
+confirmation and dispute). Missing storage selects the deliberate 503 path;
+it does not count as successful S3 validation.
+
+`ANPFUEL_ANP_DISCOVERY_ENABLED=false` suppresses the external-source scheduler
+for isolated process tests. Its default is true; disable it explicitly for local
+synthetic runs. Local S3 and local HTTP/TLS results do not certify real R2/CDN,
+production infrastructure or a public release. Private/no-store responses and
+mutations must never become 304 through `If-None-Match`. Storage transports must
+refuse redirects and omit signed URLs and remote response bodies from errors.

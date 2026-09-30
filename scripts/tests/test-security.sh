@@ -102,7 +102,7 @@ clear_overrides
 # 3. Open trusted_proxies.
 M3="$(mktemp -d)"
 mutant_root "$M3"
-sed -i 's/trusted_proxies private_ranges/trusted_proxies 0.0.0.0\/0/' "$M3/infra/caddy/Caddyfile"
+sed -i 's/trusted_proxies static private_ranges/trusted_proxies 0.0.0.0\/0/' "$M3/infra/caddy/Caddyfile"
 with_overrides "$M3"
 assert_fail "open trusted_proxies refused" bash scripts/check-security.sh --static-only
 clear_overrides

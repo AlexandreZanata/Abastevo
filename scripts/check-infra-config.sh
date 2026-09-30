@@ -84,8 +84,10 @@ fi
 # Edge rules on the Caddyfile source (placeholders intact).
 grep -qE '^[[:space:]]*admin off' "$CADDYFILE" || refuse "caddy admin not off"
 grep -qE '^[[:space:]]*tls \{' "$CADDYFILE" || refuse "caddy TLS block missing"
-grep -q 'trusted_proxies private_ranges' "$CADDYFILE" || refuse "caddy trusted_proxies not restricted to private_ranges"
+grep -q 'trusted_proxies static private_ranges' "$CADDYFILE" || refuse "caddy trusted_proxies not restricted to private_ranges"
 if grep -q '0\.0\.0\.0/0' "$CADDYFILE"; then refuse "caddy trusts the open internet"; fi
+    grep -qE '^[[:space:]]*request delete$' "$CADDYFILE" || refuse "caddy request privacy filter missing"
+    grep -qE '^[[:space:]]*resp_headers delete$' "$CADDYFILE" || refuse "caddy response-header privacy filter missing"
 # Metrics check skips `#` comments: only a routed path counts.
 if grep -vE '^[[:space:]]*#' "$CADDYFILE" | grep -qi 'metrics'; then refuse "caddy exposes a metrics path"; fi
 if grep -q ':2019' "$CADDYFILE"; then refuse "caddy admin port exposed"; fi

@@ -22,10 +22,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
+	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
@@ -35,6 +37,7 @@ import (
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
+	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
@@ -44,6 +47,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
@@ -99,7 +103,7 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
-	healthHandler, err := health.New(logger, 0, health.Check{Name: "db", Fn: pool.Ping})
+	healthHandler, err := health.New(logger, 0, health.Check{Name: "db", Fn: pool.Ping}, health.Check{Name: "schema", Fn: func(ctx context.Context) error { return migrate.Check(ctx, pool.Underlying(), dbmigrations.Files) }})
 	if err != nil {
 		return err
 	}
@@ -215,6 +219,7 @@ func run() error {
 	identityRegistrar := identityadapters.NewRegistrar(pool.Underlying())
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
+	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,
@@ -293,32 +298,24 @@ func run() error {
 			}, nil
 		},
 		Submit: func(ctx context.Context, caller communityapp.Caller, key string, dto communityapp.SubmitDTO, body []byte) (communityapp.SubmitResult, bool, error) {
-			// Kernel validation first so only exact values reach the domain.
-			product, err := kernel.ParseProduct(dto.Product)
-			if err != nil {
-				return communityapp.SubmitResult{}, false, err
-			}
+			// Wire enums are not ANP source labels: the source-label parser
+			// deliberately rejects GASOLINE_REGULAR. Validate the wire value
+			// through its fixed unit without changing the submitted amount.
+			product := kernel.Product(dto.Product)
 			unit, err := product.Unit()
 			if err != nil {
-				return communityapp.SubmitResult{}, false, err
+				return communityapp.SubmitResult{}, false, communitydomain.ErrUnknownProduct
 			}
-			price, err := kernel.ParsePrice(product, unit, dto.RawText)
-			if err != nil {
-				// Fall back to the DTO amount only when no raw text exists.
-				if dto.RawText != "" {
-					return communityapp.SubmitResult{}, false, err
-				}
-				price = kernel.Price{Product: product, Unit: unit, Milli: dto.AmountMilli, Raw: ""}
+			if dto.Unit != string(unit) {
+				return communityapp.SubmitResult{}, false, communitydomain.ErrUnitMismatch
 			}
-			_ = price
-			dto.Product, dto.Unit, dto.AmountMilli = string(product), string(unit), price.Milli
 			if dto.ConditionKind != "" {
 				var qualifier *string
 				if dto.Qualifier != "" {
 					qualifier = &dto.Qualifier
 				}
 				if _, err := kernel.ParseCondition(dto.ConditionKind, qualifier); err != nil {
-					return communityapp.SubmitResult{}, false, err
+					return communityapp.SubmitResult{}, false, communitydomain.ErrUnknownCondition
 				}
 			}
 			res, err := communityapp.Submit(ctx, communityPorts, caller, http.MethodPost, "/v1/observations", key, body, dto)

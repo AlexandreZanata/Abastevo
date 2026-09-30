@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
@@ -47,6 +48,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -106,6 +108,12 @@ func run() error {
 	}
 	defer pool.Close()
 	raw := pool.Underlying()
+	startup, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
+	err = migrate.Check(startup, raw, dbmigrations.Files)
+	cancelStartup()
+	if err != nil {
+		return errors.New("worker: database schema is not compatible")
+	}
 
 	directoryRepo := directoryadapters.NewRepository(raw)
 	evidenceStore := evidenceadapters.NewStore(raw)
@@ -651,7 +659,7 @@ func run() error {
 	scheduler := jobs.NewScheduler(raw, []jobs.Schedule{
 		{
 			Name: "anp-discovery-daily", Kind: "anp-discovery", Version: 1,
-			Interval: 24 * time.Hour, Enabled: true,
+			Interval: 24 * time.Hour, Enabled: cfg.ANPDiscoveryEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
 		},
 		{

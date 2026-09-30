@@ -69,3 +69,28 @@ origin-form target. Any deviation fails closed.
 Vectors use fixed-entropy generated keys for byte stability. They are
 synthetic, carry no identity, and must never leave `contracts/testdata/`.
 Production signs with `crypto/rand`; test-only determinism never ships.
+
+## HTTP registration and rotation binding
+
+The identity endpoints use JSON objects of at most 64 KiB. Unknown or duplicate
+fields (including case aliases), trailing JSON/text and private JWK members are
+rejected. Anonymous challenge/registration quotas use a daily HMAC of the socket
+peer IP plus the fingerprint; untrusted forwarding headers never select an owner.
+Only public `EC`/`P-256` JWK coordinates are accepted.
+
+Registration signs the eight bodyless profile lines for the actual POST path,
+query and configured authority. Its challenge/nonce binds the independently
+verified public key. The envelope containing the signature cannot sign itself.
+Rotation signs ten lines, including `application/json` and the digest of this
+canonical intent (UTF-8, no whitespace, field order exactly as shown):
+
+```json
+{"new_jwk":{"kty":"EC","crv":"P-256","x":"<x>","y":"<y>"},"old_challenge_id":"<old-id>","new_challenge_id":"<new-id>"}
+```
+
+Both old and new proofs cover that same intent, each with its own keyid/nonce.
+The server reconstructs those bytes. Substituting the new key, either challenge,
+path, authority or query invalidates the proof. Challenge metadata and verification
+time come from the server. Failure consumes neither challenge; successful rotation
+consumes both and revokes the old key atomically. This implements B-BR-004/005
+without password recovery or a tenant model.

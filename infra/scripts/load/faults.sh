@@ -18,6 +18,8 @@ DB_NAME="${LOAD_DB_NAME:?LOAD_DB_NAME is required}"
 DB_PASSWORD="${LOAD_DB_PASSWORD:?LOAD_DB_PASSWORD is required}"
 BIN="${LOAD_API_BIN:?LOAD_API_BIN is required (go build ./cmd/api)}"
 ADDR="127.0.0.1:18083"
+FAULT_MODE="${LOAD_DB_FAULT_MODE:-stop}"
+[[ "$FAULT_MODE" == stop || "$FAULT_MODE" == pause ]] || { echo "invalid DB fault mode" >&2; exit 2; }
 
 PASS=0
 FAIL=0
@@ -62,7 +64,11 @@ db() {
 }
 
 restart_db() {
-    docker compose -f "$COMPOSE" start db >/dev/null 2>&1 || true
+    if [[ "$FAULT_MODE" == pause ]]; then
+        docker compose -f "$COMPOSE" unpause db >/dev/null 2>&1 || true
+    else
+        docker compose -f "$COMPOSE" start db >/dev/null 2>&1 || true
+    fi
     local i
     for i in $(seq 1 30); do
         if db "SELECT 1;" | grep -q 1; then
@@ -88,7 +94,11 @@ else
 fi
 
 # --- fault 1: database outage rejects writes/reads as unavailable ---
-docker compose -f "$COMPOSE" stop db >/dev/null 2>&1
+if [[ "$FAULT_MODE" == pause ]]; then
+    docker compose -f "$COMPOSE" pause db >/dev/null 2>&1
+else
+    docker compose -f "$COMPOSE" stop db >/dev/null 2>&1
+fi
 sleep 3
 capture curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "http://$ADDR/health/ready"
 if [[ "$CAP_CODE" -ne 0 || "$CAP_OUT" == "503" ]]; then
@@ -108,7 +118,7 @@ else
     fail "database recovers"
 fi
 sleep 2
-if curl -sS --max-time 10 "http://$ADDR/health/ready" >/dev/null 2>&1; then
+if curl -fsS --max-time 10 "http://$ADDR/health/ready" >/dev/null 2>&1; then
     pass "readiness returns after recovery"
 else
     fail "readiness returns after recovery"

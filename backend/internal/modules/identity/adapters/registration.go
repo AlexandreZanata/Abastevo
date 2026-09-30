@@ -156,10 +156,13 @@ func (r *Registrar) Register(ctx context.Context, req domain.RegistrationRequest
 	if stored.Fingerprint != fp || stored.Fingerprint != req.Challenge.Fingerprint {
 		return domain.Registration{}, fmt.Errorf("%w: fingerprint mismatch", domain.ErrProofRequired)
 	}
+	if stored.Purpose != domain.PurposeRegister || !proofBinds(req.BaseLines, fp, req.Challenge.Nonce) {
+		return domain.Registration{}, domain.ErrProofRequired
+	}
 	if stored.NonceHash != nonceHash(req.Challenge.Nonce) {
 		return domain.Registration{}, fmt.Errorf("%w: nonce mismatch", domain.ErrProofRequired)
 	}
-	if err := profile.Verify(req.JWKX, req.JWKY, req.BaseLines, req.Signature, req.VerifiedAt); err != nil {
+	if err := profile.Verify(req.JWKX, req.JWKY, req.BaseLines, req.Signature, r.now()); err != nil {
 		return domain.Registration{}, fmt.Errorf("%w: %v", domain.ErrProofRequired, err)
 	}
 	tx, err := r.pool.Begin(ctx)
@@ -351,4 +354,38 @@ func (r *Registrar) PurgeExpiredChallenges(ctx context.Context, now time.Time, b
 			return purged, oldest, nil
 		}
 	}
+}
+
+// Challenge resolves server-owned metadata, rejecting substituted nonces.
+func (r *Registrar) Challenge(ctx context.Context, id, nonce string) (domain.Challenge, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.Challenge{}, domain.ErrProofRequired
+	}
+	nonceID, _, err := domain.SplitNonce(nonce)
+	if err != nil || nonceID != id {
+		return domain.Challenge{}, domain.ErrProofRequired
+	}
+	row, err := identity.New(r.pool).GetChallenge(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Challenge{}, domain.ErrProofRequired
+	}
+	if err != nil {
+		return domain.Challenge{}, err
+	}
+	if row.NonceHash != nonceHash(nonce) {
+		return domain.Challenge{}, domain.ErrProofRequired
+	}
+	if row.ConsumedAt.Valid {
+		return domain.Challenge{}, domain.ErrChallengeSpent
+	}
+	if !r.now().Before(row.ExpiresAt.Time) {
+		return domain.Challenge{}, domain.ErrChallengeExpired
+	}
+	return domain.Challenge{ID: id, Nonce: nonce, Fingerprint: row.Fingerprint, Purpose: row.Purpose, ExpiresAt: row.ExpiresAt.Time}, nil
+}
+
+// Proof metadata must name the exact server-owned challenge being consumed.
+func proofBinds(lines []string, fingerprint, nonce string) bool {
+	return len(lines) >= 2 && lines[len(lines)-2] == `"keyid": "`+fingerprint+`"` && lines[len(lines)-1] == `"nonce": "`+nonce+`"`
 }
