@@ -56,7 +56,9 @@ type VerifyPorts struct {
 
 // Outcome binds one verified snapshot: the READY session plus the
 // content-addressed final key and the server-computed signals. Only these
-// bytes may become READY downstream (T04 persists them).
+// bytes may become READY downstream (T04 persists them). ExpiresAt
+// carries the forward 24 h copy deadline (P15-T03); the v1 path leaves
+// it zero and the retention sweeper owns that lifecycle instead.
 type Outcome struct {
 	Session         domain.Session
 	FinalKey        string
@@ -65,6 +67,7 @@ type Outcome struct {
 	Width           int
 	Height          int
 	DHash           uint64
+	ExpiresAt       time.Time
 }
 
 // Verify validates one VERIFYING session through exactly one bounded

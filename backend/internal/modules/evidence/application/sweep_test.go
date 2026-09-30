@@ -16,6 +16,7 @@ type fakeSweepStore struct {
 	stuck      []domain.SessionRef
 	cands      []domain.SessionRef
 	finals     []domain.ObjectRef
+	overdue    []domain.ObjectRef
 	expired    []string
 	qdel       []string
 	fdel       []string
@@ -58,6 +59,10 @@ func (f *fakeSweepStore) StaleFinalCandidates(_ context.Context, _ time.Time, _ 
 	out := f.finals
 	f.finals = nil
 	return out, nil
+}
+
+func (f *fakeSweepStore) OverdueFinals(_ context.Context, _ time.Time, _ int) ([]domain.ObjectRef, error) {
+	return f.overdue, nil
 }
 
 func (f *fakeSweepStore) MarkFinalDeleted(_ context.Context, id string) error {
@@ -209,31 +214,39 @@ func TestSweepContinuesPastStorageErrors(t *testing.T) {
 func TestFinalDuePolicy(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	old := func() domain.ObjectRef {
-		return domain.ObjectRef{ID: "o", FinalKey: "f/old", CreatedAt: now.Add(-15 * 24 * time.Hour)}
+		return domain.ObjectRef{
+			ID: "o", FinalKey: "f/old",
+			CreatedAt:  now.Add(-25 * time.Hour),
+			ReceivedAt: now.Add(-25 * time.Hour),
+		}
 	}
 	if !FinalDue(old(), now) {
-		t.Error("15-day default not due")
+		t.Error("25-hour copy not due")
 	}
 	young := old()
-	young.CreatedAt = now.Add(-13 * 24 * time.Hour)
+	young.ReceivedAt = now.Add(-23 * time.Hour)
 	if FinalDue(young, now) {
-		t.Error("13-day default due early")
+		t.Error("23-hour copy due early")
 	}
+	atDeadline := old()
+	atDeadline.ReceivedAt = now.Add(-CopyRetention)
+	if !FinalDue(atDeadline, now) {
+		t.Error("copy exactly at deadline not due")
+	}
+	// Reviewed extensions no longer move photo bytes (M01): a
+	// 25-hour copy with a +5-day extension is still due.
 	extended := old()
 	extended.HasExtension = true
 	extended.ExtendedUntil = now.Add(5 * 24 * time.Hour)
-	if FinalDue(extended, now) {
-		t.Error("reviewed extension ignored")
+	if !FinalDue(extended, now) {
+		t.Error("extension must not delay photo bytes")
 	}
-	// The 30-day cap clamps runaway extensions: 31 days old with a
-	// +60-day extension is due (clamped to yesterday), while an
-	// unclamped reading would keep it forever.
-	overlong := old()
-	overlong.CreatedAt = now.Add(-31 * 24 * time.Hour)
-	overlong.HasExtension = true
-	overlong.ExtendedUntil = now.Add(60 * 24 * time.Hour)
-	if !FinalDue(overlong, now) {
-		t.Error("30-day absolute cap not enforced")
+	// First receipt wins over creation: backfilled rows use
+	// created_at, forward rows use received_at.
+	backfilled := old()
+	backfilled.ReceivedAt = time.Time{}
+	if !FinalDue(backfilled, now) {
+		t.Error("backfilled row must fall back to created_at")
 	}
 }
 
@@ -241,7 +254,11 @@ func TestSweepDeletesStaleFinalsAndPurgesHashes(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	store := &fakeSweepStore{
 		finals: []domain.ObjectRef{
-			{ID: "o1", FinalKey: "f/old", CreatedAt: now.Add(-15 * 24 * time.Hour)},
+			{
+				ID: "o1", FinalKey: "f/old",
+				CreatedAt:  now.Add(-25 * time.Hour),
+				ReceivedAt: now.Add(-25 * time.Hour),
+			},
 		},
 		purged: 3,
 	}
@@ -255,6 +272,31 @@ func TestSweepDeletesStaleFinalsAndPurgesHashes(t *testing.T) {
 	}
 	if rep.ObjectsPurged != 3 {
 		t.Errorf("purged = %+v", rep)
+	}
+}
+
+func TestAuditOverdueSignalsFailingPolicy(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	store := &fakeSweepStore{overdue: []domain.ObjectRef{
+		{ID: "o1", FinalKey: "f/a", ReceivedAt: now.Add(-30 * time.Hour)},
+		{ID: "o2", FinalKey: "f/b", ReceivedAt: now.Add(-26 * time.Hour)},
+	}}
+	rep, err := AuditOverdue(context.Background(), store, now, 100)
+	if err != nil {
+		t.Fatalf("audit = %v", err)
+	}
+	if rep.Count != 2 {
+		t.Errorf("count = %+v", rep)
+	}
+	if !rep.Oldest.Equal(now.Add(-30 * time.Hour)) {
+		t.Errorf("oldest = %+v", rep)
+	}
+	empty, err := AuditOverdue(context.Background(), &fakeSweepStore{}, now, 100)
+	if err != nil || empty.Count != 0 {
+		t.Errorf("empty ledger must audit healthy zero, got %+v %v", empty, err)
+	}
+	if _, err := AuditOverdue(context.Background(), &fakeSweepStore{}, now, 0); err == nil {
+		t.Error("zero batch accepted")
 	}
 }
 

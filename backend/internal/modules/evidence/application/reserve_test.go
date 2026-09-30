@@ -250,6 +250,24 @@ func TestReserveSurfacesStorageOutage(t *testing.T) {
 	}
 }
 
+func TestReserveBreakerStopsIntakeWhileOverdue(t *testing.T) {
+	// Overdue copies mean the enforcement loop is behind: intake
+	// refuses before quota burn and before any store write.
+	store := newFakeStore()
+	p := testPorts(store)
+	p.Enforcement = func(context.Context) error { return ErrEnforcementUnhealthy }
+	if _, err := Reserve(context.Background(), p, testCaller(), testIntent()); !errors.Is(err, ErrEnforcementUnhealthy) {
+		t.Errorf("unhealthy enforcement = %v, want enforcement-unhealthy", err)
+	}
+	if store.saves != 0 {
+		t.Errorf("breaker must write nothing, saves = %d", store.saves)
+	}
+	// Nil enforcement preserves every existing caller: healthy intake.
+	if _, err := Reserve(context.Background(), testPorts(newFakeStore()), testCaller(), testIntent()); err != nil {
+		t.Errorf("nil enforcement must stay healthy, got %v", err)
+	}
+}
+
 func TestReserveIsolatesContributors(t *testing.T) {
 	// The natural key scopes per contributor: the same client ID under a
 	// different attribution never collides and never sees foreign intent.

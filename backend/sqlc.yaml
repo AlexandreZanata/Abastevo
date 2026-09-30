@@ -62,6 +62,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000010_evidence.sql
       - db/migrations/000011_evidence_retention.sql
+      - db/migrations/000029_evidence_received_at.sql
     gen:
       go:
         package: evidence

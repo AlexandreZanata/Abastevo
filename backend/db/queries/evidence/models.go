@@ -22,6 +22,7 @@ type EvidenceObject struct {
 	FinalDeletedAt          pgtype.Timestamptz `json:"final_deleted_at"`
 	RetentionExtendedUntil  pgtype.Timestamptz `json:"retention_extended_until"`
 	RetentionExtendedReason string             `json:"retention_extended_reason"`
+	ReceivedAt              pgtype.Timestamptz `json:"received_at"`
 }
 
 type EvidenceSession struct {
