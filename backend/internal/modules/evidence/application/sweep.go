@@ -8,17 +8,20 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 )
 
-// Retention bounds (policy, from SECURITY_PRIVACY and the P05-T05
-// outline): quarantine originals die with sanitization, rejection,
-// expiry or the 24 h hard cap; sanitized bytes live 14 days, a reviewed
-// case extends to 30 days absolute, and duplicate-signal hashes survive
-// 90 days. Sessions themselves stay as the reservation ledger; personal
-// erasure belongs to the rights workflow (P07).
+// Retention bounds (policy, B-BR-M01/M04 as of P15-T04): every
+// app-owned copy — quarantine originals and sanitized finals alike —
+// dies 24 h after first receipt. Reviewed case extensions no longer
+// extend photo bytes (their columns stay as audit history); the
+// duplicate-signal hashes survive 90 days under the separate
+// hash/privacy review, and sessions stay as the reservation ledger.
+// Personal erasure belongs to the rights workflow (P07).
 const (
-	SessionHardCap     = 24 * time.Hour
-	SanitizedRetention = 14 * 24 * time.Hour
-	CaseExtensionCap   = 30 * 24 * time.Hour
-	HashRetention      = 90 * 24 * time.Hour
+	SessionHardCap = 24 * time.Hour
+	// CopyRetention is the single deadline for every app-owned copy:
+	// first receipt + 24 h. Retries, processing, copying, disputes
+	// and downloads never extend it.
+	CopyRetention = 24 * time.Hour
+	HashRetention = 90 * 24 * time.Hour
 	// DefaultSweepBatch bounds one sweep category per run: retention work
 	// is steady-state and resumable, so small batches converge without
 	// long transactions.
@@ -35,6 +38,7 @@ type SweepStore interface {
 	MarkQuarantineDeleted(ctx context.Context, id string) error
 	QuarantineCandidates(ctx context.Context, oldCutoff time.Time, batch int) ([]domain.SessionRef, error)
 	StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error)
+	OverdueFinals(ctx context.Context, cutoff time.Time, batch int) ([]domain.ObjectRef, error)
 	MarkFinalDeleted(ctx context.Context, id string) error
 	PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error)
 }
@@ -75,21 +79,41 @@ type SweepReport struct {
 	StorageErrors      int
 }
 
-// FinalDue reports whether sanitized bytes must leave storage: past the
-// 14-day default, or past a reviewed extension clamped to the 30-day
-// absolute cap. Pure policy, unit-tested.
+// FinalDue reports whether sanitized bytes must leave storage: past
+// first receipt + 24 h. Reviewed extensions no longer move photo
+// bytes (M01); their columns stay as audit history only. Pure
+// policy, unit-tested.
 func FinalDue(obj domain.ObjectRef, now time.Time) bool {
-	deadline := obj.CreatedAt.Add(SanitizedRetention)
-	if obj.HasExtension && !obj.ExtendedUntil.IsZero() {
-		ext := obj.ExtendedUntil
-		if cap := obj.CreatedAt.Add(CaseExtensionCap); ext.After(cap) {
-			ext = cap
-		}
-		if ext.After(deadline) {
-			deadline = ext
-		}
+	return !now.Before(obj.ReceivedOrCreated().Add(CopyRetention))
+}
+
+// OverdueReport is the failing-policy signal (B-BR-M04): copies past
+// their deadline whose bytes may still be present. Any count above
+// zero fails the enforcement audit and trips the intake breaker.
+type OverdueReport struct {
+	Count  int
+	Oldest time.Time
+}
+
+// AuditOverdue lists the overdue signal bounded oldest-first: the
+// count plus the oldest first receipt, so alarms name the lag. Only
+// database errors fail; an empty ledger is a healthy zero.
+func AuditOverdue(ctx context.Context, store SweepStore, now time.Time, batch int) (OverdueReport, error) {
+	var rep OverdueReport
+	if batch < 1 {
+		return rep, errors.New("evidence: audit batch must be positive")
 	}
-	return !now.Before(deadline)
+	rows, err := store.OverdueFinals(ctx, now.Add(-CopyRetention), batch)
+	if err != nil {
+		return rep, err
+	}
+	for _, obj := range rows {
+		if rep.Count == 0 {
+			rep.Oldest = obj.ReceivedOrCreated()
+		}
+		rep.Count++
+	}
+	return rep, nil
 }
 
 // Sweep runs one retention pass in dependency order: idle expiry first
@@ -167,7 +191,7 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		rep.QuarantinesDeleted++
 	}
 
-	finals, err := deps.Store.StaleFinalCandidates(ctx, now.Add(-SanitizedRetention), deps.Batch)
+	finals, err := deps.Store.StaleFinalCandidates(ctx, now.Add(-CopyRetention), deps.Batch)
 	if err != nil {
 		return rep, err
 	}

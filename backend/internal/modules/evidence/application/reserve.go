@@ -18,12 +18,13 @@ type Caller struct {
 }
 
 var (
-	ErrUnauthorized       = errors.New("evidence: authentication required")
-	ErrQuotaDenied        = errors.New("evidence: quota exceeded")
-	ErrStorageUnavailable = errors.New("evidence: storage not configured")
-	ErrConflict           = errors.New("evidence: same key, different intent")
-	ErrSessionNotFound    = errors.New("evidence: unknown session")
-	ErrReservationFailed  = errors.New("evidence: reservation failed")
+	ErrUnauthorized         = errors.New("evidence: authentication required")
+	ErrQuotaDenied          = errors.New("evidence: quota exceeded")
+	ErrStorageUnavailable   = errors.New("evidence: storage not configured")
+	ErrConflict             = errors.New("evidence: same key, different intent")
+	ErrSessionNotFound      = errors.New("evidence: unknown session")
+	ErrReservationFailed    = errors.New("evidence: reservation failed")
+	ErrEnforcementUnhealthy = errors.New("evidence: retention enforcement unhealthy")
 )
 
 // MaxReservesPerDay bounds photo reservations per contributor per UTC day
@@ -45,14 +46,18 @@ func (e *QuotaDeniedError) Unwrap() error { return ErrQuotaDenied }
 // store port converges retries on the contributor-scoped natural key and
 // conflicts on divergent payloads; the presign port mints the short
 // direct-upload authorization (fresh on every call, including replays,
-// since URLs expire).
+// since URLs expire). Enforcement is the intake circuit breaker
+// (B-BR-M04): nil means healthy (preserves existing callers); a set
+// port refusing means overdue copies exist and intake stops until the
+// sweeper catches up.
 type Ports struct {
-	Clock      func() time.Time
-	NewID      func() (string, error)
-	NewKey     func() (string, error)
-	CheckQuota func(ctx context.Context, subject, operation string) (time.Duration, error)
-	Presign    func(ctx context.Context, key, mime string, maxBytes int64) (url string, headers map[string]string, expires time.Time, err error)
-	Store      Store
+	Clock       func() time.Time
+	NewID       func() (string, error)
+	NewKey      func() (string, error)
+	CheckQuota  func(ctx context.Context, subject, operation string) (time.Duration, error)
+	Presign     func(ctx context.Context, key, mime string, maxBytes int64) (url string, headers map[string]string, expires time.Time, err error)
+	Store       Store
+	Enforcement func(ctx context.Context) error
 }
 
 // Store is the owned persistence port for reservations: one atomic
@@ -95,6 +100,13 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 	}
 	if strings.TrimSpace(in.ClientSessionID) == "" {
 		return Result{}, domain.ErrInvalidSession
+	}
+	// Intake breaker before quota burn: overdue copies mean the
+	// enforcement loop is behind, so no new bytes enter storage.
+	if p.Enforcement != nil {
+		if err := p.Enforcement(ctx); err != nil {
+			return Result{}, err
+		}
 	}
 	if _, err := p.CheckQuota(ctx, caller.ContributorID, "write"); err != nil {
 		return Result{}, err

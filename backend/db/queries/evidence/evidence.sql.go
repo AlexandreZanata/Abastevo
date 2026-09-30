@@ -190,7 +190,7 @@ func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]Fin
 const getObject = `-- name: GetObject :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.final_deleted_at,
+    o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
     s.contributor_ref, s.status
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
@@ -208,6 +208,7 @@ type GetObjectRow struct {
 	Dhash              int64              `json:"dhash"`
 	BoundObservationID pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
 	FinalDeletedAt     pgtype.Timestamptz `json:"final_deleted_at"`
 	ContributorRef     string             `json:"contributor_ref"`
 	Status             string             `json:"status"`
@@ -227,6 +228,7 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 		&i.Dhash,
 		&i.BoundObservationID,
 		&i.CreatedAt,
+		&i.ReceivedAt,
 		&i.FinalDeletedAt,
 		&i.ContributorRef,
 		&i.Status,
@@ -379,9 +381,9 @@ func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNa
 const insertObject = `-- name: InsertObject :one
 INSERT INTO evidence_objects
     (id, session_id, final_key, source_sha256, sanitized_sha256,
-     width, height, dhash, created_at)
+     width, height, dhash, created_at, received_at)
 VALUES ($1, $2, $3, $4, $5,
-    $6, $7, $8, $9)
+    $6, $7, $8, $9, $10)
 RETURNING id
 `
 
@@ -395,6 +397,7 @@ type InsertObjectParams struct {
 	Height          int32              `json:"height"`
 	Dhash           int64              `json:"dhash"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt      pgtype.Timestamptz `json:"received_at"`
 }
 
 func (q *Queries) InsertObject(ctx context.Context, arg InsertObjectParams) (pgtype.UUID, error) {
@@ -408,6 +411,7 @@ func (q *Queries) InsertObject(ctx context.Context, arg InsertObjectParams) (pgt
 		arg.Height,
 		arg.Dhash,
 		arg.CreatedAt,
+		arg.ReceivedAt,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -712,6 +716,57 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 	return result.RowsAffected(), nil
 }
 
+const overdueFinals = `-- name: OverdueFinals :many
+
+SELECT id, final_key, created_at, received_at
+FROM evidence_objects
+WHERE final_deleted_at IS NULL
+    AND COALESCE(received_at, created_at) < $1
+ORDER BY COALESCE(received_at, created_at) ASC
+LIMIT $2
+`
+
+type OverdueFinalsParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+type OverdueFinalsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	FinalKey   string             `json:"final_key"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+// OverdueFinals lists copies past their 24 h deadline whose bytes may
+// still be present: the failing-policy signal for the intake circuit
+// breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+// deadline first is unnecessary; oldest first surfaces the worst lag.
+func (q *Queries) OverdueFinals(ctx context.Context, arg OverdueFinalsParams) ([]OverdueFinalsRow, error) {
+	rows, err := q.db.Query(ctx, overdueFinals, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OverdueFinalsRow
+	for rows.Next() {
+		var i OverdueFinalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FinalKey,
+			&i.CreatedAt,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const purgeObjectsBefore = `-- name: PurgeObjectsBefore :execrows
 DELETE FROM evidence_objects
 WHERE created_at < $1
@@ -771,10 +826,11 @@ func (q *Queries) QuarantineCandidates(ctx context.Context, arg QuarantineCandid
 }
 
 const staleFinalCandidates = `-- name: StaleFinalCandidates :many
-SELECT id, final_key, created_at, retention_extended_until
+SELECT id, final_key, created_at, received_at, retention_extended_until
 FROM evidence_objects
-WHERE final_deleted_at IS NULL AND created_at <= $1
-ORDER BY created_at ASC
+WHERE final_deleted_at IS NULL
+    AND COALESCE(received_at, created_at) <= $1
+ORDER BY COALESCE(received_at, created_at) ASC
 LIMIT $2
 `
 
@@ -787,6 +843,7 @@ type StaleFinalCandidatesRow struct {
 	ID                     pgtype.UUID        `json:"id"`
 	FinalKey               string             `json:"final_key"`
 	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt             pgtype.Timestamptz `json:"received_at"`
 	RetentionExtendedUntil pgtype.Timestamptz `json:"retention_extended_until"`
 }
 
@@ -803,6 +860,7 @@ func (q *Queries) StaleFinalCandidates(ctx context.Context, arg StaleFinalCandid
 			&i.ID,
 			&i.FinalKey,
 			&i.CreatedAt,
+			&i.ReceivedAt,
 			&i.RetentionExtendedUntil,
 		); err != nil {
 			return nil, err

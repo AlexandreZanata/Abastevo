@@ -55,15 +55,27 @@ type SessionRef struct {
 }
 
 // ObjectRef is the minimal object retention view: identity, final key,
-// age and case extension. Hashes stay in the store for duplicate
-// signals; the sweeper never needs them.
+// first-receipt stamp and case extension. Hashes stay in the store for
+// duplicate signals; the sweeper never needs them. ReceivedAt is the
+// T04 forward stamp (completion intent); it falls back to CreatedAt
+// for rows predating the migration, which the backfill already covers.
 type ObjectRef struct {
 	ID            string
 	SessionID     string
 	FinalKey      string
 	CreatedAt     time.Time
+	ReceivedAt    time.Time
 	ExtendedUntil time.Time
 	HasExtension  bool
+}
+
+// ReceivedOrCreated resolves the first-receipt instant for deadline
+// math: the forward stamp when present, CreatedAt otherwise.
+func (o ObjectRef) ReceivedOrCreated() time.Time {
+	if !o.ReceivedAt.IsZero() {
+		return o.ReceivedAt
+	}
+	return o.CreatedAt
 }
 
 // Params carries reservation intent plus server-resolved ownership. Every

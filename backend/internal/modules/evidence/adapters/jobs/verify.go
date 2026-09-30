@@ -79,6 +79,7 @@ func (v Verify) Handle(ctx context.Context, job jobs.Job) error {
 			ID: id, FinalKey: out.FinalKey, SourceSHA256: out.SourceSHA256,
 			SanitizedSHA256: out.SanitizedSHA256,
 			Width:           out.Width, Height: out.Height, DHash: out.DHash,
+			ReceivedAt: sess.UpdatedAt,
 		})
 		return err
 	default:

@@ -36,6 +36,9 @@ func NewStore(pool *pgxpool.Pool) *Store {
 }
 
 // ObjectData carries one verified snapshot for atomic persistence.
+// ReceivedAt is the first-receipt instant (the VERIFYING transition);
+// the store persists it as the immutable 24 h deadline anchor, and a
+// zero value falls back to the row creation time.
 type ObjectData struct {
 	ID              string
 	FinalKey        string
@@ -44,6 +47,7 @@ type ObjectData struct {
 	Width           int
 	Height          int
 	DHash           uint64
+	ReceivedAt      time.Time
 }
 
 func mustUUID(text string) (pgtype.UUID, error) {
@@ -225,6 +229,7 @@ func (s *Store) RecordVerified(ctx context.Context, sessionID string, obj Object
 		SourceSha256: obj.SourceSHA256, SanitizedSha256: obj.SanitizedSHA256,
 		Width: int32(obj.Width), Height: int32(obj.Height),
 		Dhash: int64(obj.DHash), CreatedAt: pgTime(time.Now()),
+		ReceivedAt: pgTime(obj.ReceivedAt),
 	}); err != nil {
 		return "", err
 	}
@@ -482,8 +487,10 @@ func (s *Store) QuarantineCandidates(ctx context.Context, oldCutoff time.Time, b
 	return out, nil
 }
 
-// StaleFinalCandidates lists sanitized objects past the default
-// retention for policy evaluation in Go (extension and absolute cap).
+// StaleFinalCandidates lists sanitized objects past the copy deadline
+// cutoff for policy evaluation in Go. The SQL preselects on first
+// receipt (received_at, falling back to created_at); the caller
+// passes now minus 24 h.
 func (s *Store) StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error) {
 	n, err := checkBatch(batch)
 	if err != nil {
@@ -500,12 +507,39 @@ func (s *Store) StaleFinalCandidates(ctx context.Context, youngCutoff time.Time,
 		obj := domain.ObjectRef{
 			ID: uuidString(row.ID), FinalKey: row.FinalKey,
 			CreatedAt:    row.CreatedAt.Time,
+			ReceivedAt:   row.ReceivedAt.Time,
 			HasExtension: row.RetentionExtendedUntil.Valid,
 		}
 		if obj.HasExtension {
 			obj.ExtendedUntil = row.RetentionExtendedUntil.Time
 		}
 		out = append(out, obj)
+	}
+	return out, nil
+}
+
+// OverdueFinals lists copies past their 24 h deadline whose bytes may
+// still be present: the failing-policy signal for the intake circuit
+// breaker and the overdue audit. Bounded oldest-first; the caller
+// passes now minus 24 h as the cutoff.
+func (s *Store) OverdueFinals(ctx context.Context, cutoff time.Time, batch int) ([]domain.ObjectRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).OverdueFinals(ctx, evidence.OverdueFinalsParams{
+		Cutoff: pgTime(cutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ObjectRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.ObjectRef{
+			ID: uuidString(row.ID), FinalKey: row.FinalKey,
+			CreatedAt:  row.CreatedAt.Time,
+			ReceivedAt: row.ReceivedAt.Time,
+		})
 	}
 	return out, nil
 }

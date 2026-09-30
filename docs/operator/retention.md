@@ -10,7 +10,7 @@ periods.
 
 | Schedule | Kind | Cadence | Covers |
 |---|---|---|---|
-| `evidence-sweep-hourly` | `evidence-sweep` | Hourly | Quarantine 24 h, sanitized 14 d (30 d case cap), orphan/stuck sessions, 90 d hash purge |
+| `evidence-sweep-hourly` | `evidence-sweep` | Hourly | Every app-owned copy 24 h from first receipt (P15-T04; case extensions no longer extend photo bytes), orphan/stuck sessions, 90 d hash purge |
 | `privacy-retention-daily` | `privacy-retention` | Daily | Challenges, idempotency windows, closed moderation cases (12 mo), expired export bytes, ledger horizon (35 d), observation-age metric |
 
 Both enqueue through the durable job queue with dedupe keys; poison

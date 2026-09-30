@@ -100,10 +100,24 @@ ORDER BY created_at ASC
 LIMIT @batch;
 
 -- name: StaleFinalCandidates :many
-SELECT id, final_key, created_at, retention_extended_until
+SELECT id, final_key, created_at, received_at, retention_extended_until
 FROM evidence_objects
-WHERE final_deleted_at IS NULL AND created_at <= @young_cutoff
-ORDER BY created_at ASC
+WHERE final_deleted_at IS NULL
+    AND COALESCE(received_at, created_at) <= @young_cutoff
+ORDER BY COALESCE(received_at, created_at) ASC
+LIMIT @batch;
+
+-- OverdueFinals lists copies past their 24 h deadline whose bytes may
+-- still be present: the failing-policy signal for the intake circuit
+-- breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+-- deadline first is unnecessary; oldest first surfaces the worst lag.
+
+-- name: OverdueFinals :many
+SELECT id, final_key, created_at, received_at
+FROM evidence_objects
+WHERE final_deleted_at IS NULL
+    AND COALESCE(received_at, created_at) < @cutoff
+ORDER BY COALESCE(received_at, created_at) ASC
 LIMIT @batch;
 
 -- name: MarkFinalDeleted :execrows
@@ -124,15 +138,15 @@ ORDER BY created_at ASC;
 -- name: InsertObject :one
 INSERT INTO evidence_objects
     (id, session_id, final_key, source_sha256, sanitized_sha256,
-     width, height, dhash, created_at)
+     width, height, dhash, created_at, received_at)
 VALUES (@id, @session_id, @final_key, @source_sha256, @sanitized_sha256,
-    @width, @height, @dhash, @created_at)
+    @width, @height, @dhash, @created_at, @received_at)
 RETURNING id;
 
 -- name: GetObject :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.final_deleted_at,
+    o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
     s.contributor_ref, s.status
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id

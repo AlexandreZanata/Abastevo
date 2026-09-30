@@ -97,6 +97,11 @@ func runEvidenceURL(args []string, getenv func(string) string) error {
 	if obj.FinalDeletedAt.Valid {
 		return errors.New("evidence unavailable: object deleted")
 	}
+	// At-deadline read denial (B-BR-M04): access expires at the copy
+	// deadline even when the sweeper has not yet removed the bytes.
+	if evidenceCopyExpired(obj.ReceivedAt, obj.CreatedAt, time.Now()) {
+		return errors.New("evidence unavailable: copy expired")
+	}
 	if cfg.R2 == nil {
 		return errors.New("evidence storage not configured")
 	}
@@ -115,6 +120,20 @@ func runEvidenceURL(args []string, getenv func(string) string) error {
 		operator, c.ID, strings.TrimSpace(parsed.evidenceID), time.Now().UTC().Format(time.RFC3339))
 	fmt.Fprintln(os.Stdout, pre.URL)
 	return nil
+}
+
+// evidenceCopyExpired reports whether a copy is past its immutable
+// 24 h deadline at now. Pure policy (unit-tested): the forward stamp
+// wins, creation time covers rows predating the migration backfill.
+func evidenceCopyExpired(receivedAt, createdAt pgtype.Timestamptz, now time.Time) bool {
+	first := createdAt.Time
+	if receivedAt.Valid && !receivedAt.Time.IsZero() {
+		first = receivedAt.Time
+	}
+	if first.IsZero() {
+		return false
+	}
+	return !now.Before(first.Add(24 * time.Hour))
 }
 
 // parseUUID parses canonical UUID text for query parameters.

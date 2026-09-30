@@ -511,6 +511,19 @@ func run() error {
 	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
 	evidencePorts := evidenceapp.Ports{
 		Clock: time.Now,
+		Enforcement: func(ctx context.Context) error {
+			// Intake circuit breaker (B-BR-M04): any copy past its
+			// 24 h deadline with bytes still present stops new
+			// intake until the hourly sweeper catches up.
+			overdue, err := evidenceStore.OverdueFinals(ctx, time.Now().Add(-evidenceapp.CopyRetention), 1)
+			if err != nil {
+				return err
+			}
+			if len(overdue) > 0 {
+				return evidenceapp.ErrEnforcementUnhealthy
+			}
+			return nil
+		},
 		NewID: newUUID,
 		NewKey: func() (string, error) {
 			id, err := newUUID()
