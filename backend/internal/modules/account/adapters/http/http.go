@@ -1,8 +1,11 @@
 // Package http exposes the FREE account contract through real request
-// binding (P13-T02C). Every account response is no-store; error envelopes
-// carry stable machine codes and static messages, never addresses, codes
-// or tokens. Code issuance answers 202 identically for unknown addresses,
-// cooldown hits and quota exhaustion, so no oracle leaks registration.
+// binding (P13-T02C, P13-T03C). Every account response is no-store; error
+// envelopes carry stable machine codes and static messages, never
+// addresses, codes, tokens or provider subjects. Code issuance answers
+// 202 identically for unknown addresses, cooldown hits and quota
+// exhaustion, so no oracle leaks registration. Provider link/unlink
+// derive the caller account server-side from a live session; client
+// account identifiers are never trusted.
 package http
 
 import (
@@ -28,11 +31,17 @@ type Service interface {
 	Refresh(ctx context.Context, familyID, refreshToken string) (application.Session, error)
 	ValidateAccess(ctx context.Context, familyID, accessToken string) (string, error)
 	RevokeAll(ctx context.Context, accountID string) error
+	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
+	UnlinkProvider(ctx context.Context, accountID, provider string) error
+	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 }
 
 // Handler serves the account routes with an injected service.
+// Audience is the frozen server-side OIDC audience ("anpfuel-backend");
+// client audience flags are untrusted and never read.
 type Handler struct {
-	Service Service
+	Service  Service
+	Audience string
 }
 
 // RegisterRoutes mounts the additive account paths.
@@ -41,6 +50,16 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/email/consume", h.consumeCode)
 	r.Post("/v1/accounts/sessions/refresh", h.refresh)
 	r.Post("/v1/accounts/sessions/revoke", h.revoke)
+	r.Post("/v1/accounts/providers/link", h.linkProvider)
+	r.Post("/v1/accounts/providers/unlink", h.unlinkProvider)
+	r.Post("/v1/accounts/providers/list", h.listProviders)
+}
+
+func (h Handler) audience() string {
+	if h.Audience != "" {
+		return h.Audience
+	}
+	return "anpfuel-backend"
 }
 
 func read(r *http.Request, dst any) error {
@@ -70,6 +89,28 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.session-revoked", "session revoked"
 	case "session-expired":
 		status, code, msg = http.StatusUnauthorized, "account.session-expired", "session expired"
+	case "oidc-unknown-issuer":
+		status, code, msg = http.StatusUnauthorized, "account.oidc-unknown-issuer", "provider proof rejected"
+	case "oidc-wrong-audience":
+		status, code, msg = http.StatusUnauthorized, "account.oidc-wrong-audience", "provider proof rejected"
+	case "oidc-expired":
+		status, code, msg = http.StatusUnauthorized, "account.oidc-expired", "provider proof expired"
+	case "oidc-nonce-reused":
+		status, code, msg = http.StatusUnauthorized, "account.oidc-nonce-reused", "provider proof already used"
+	case "oidc-nonce-mismatch":
+		status, code, msg = http.StatusUnauthorized, "account.oidc-nonce-mismatch", "provider proof rejected"
+	case "oidc-unavailable":
+		status, code, msg = http.StatusServiceUnavailable, "account.oidc-unavailable", "provider temporarily unavailable"
+	case "link-cross-account-refused":
+		status, code, msg = http.StatusForbidden, "account.link-cross-account-refused", "provider proof belongs to another account"
+	case "link-email-only-refused":
+		status, code, msg = http.StatusForbidden, "account.link-email-only-refused", "email match is not linking proof"
+	case "link-last-method-refused":
+		status, code, msg = http.StatusConflict, "account.link-last-method-refused", "last login method cannot be removed"
+	case "link-provider-not-linked":
+		status, code, msg = http.StatusNotFound, "account.link-provider-not-linked", "provider not linked"
+	case "account-unknown":
+		status, code, msg = http.StatusUnauthorized, "account.account-unknown", "valid account proof required"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	}
@@ -196,4 +237,106 @@ func (h Handler) revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+type providerLinkJSON struct {
+	Provider string `json:"provider"`
+	Subject  string `json:"subject"`
+	LinkedAt string `json:"linked_at"`
+}
+
+func providerLinkJSONOf(l domain.ProviderLink) providerLinkJSON {
+	return providerLinkJSON{
+		Provider: l.Provider,
+		Subject:  l.Subject,
+		LinkedAt: time.Unix(l.LinkedAt, 0).UTC().Format(time.RFC3339),
+	}
+}
+
+func validProvider(provider string) bool {
+	return provider == "google" || provider == "apple"
+}
+
+// linkProvider binds a verified provider subject to the session-owned
+// account. The account derives server-side from the live session; client
+// account identifiers are never trusted and the expected audience stays
+// server-side.
+func (h Handler) linkProvider(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID    string `json:"family_id"`
+		AccessToken string `json:"access_token"`
+		Provider    string `json:"provider"`
+		IDToken     string `json:"id_token"`
+		Nonce       string `json:"nonce"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" ||
+		!validProvider(dto.Provider) || dto.IDToken == "" || dto.Nonce == "" {
+		bad(w, r)
+		return
+	}
+	accountID, err := h.Service.ValidateAccess(r.Context(), dto.FamilyID, dto.AccessToken)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	link, err := h.Service.LinkProvider(r.Context(), accountID, dto.Provider, dto.IDToken, h.audience(), dto.Nonce)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"provider_link": providerLinkJSONOf(link)})
+}
+
+// unlinkProvider removes one provider binding from the session-owned
+// account, refusing the last login method.
+func (h Handler) unlinkProvider(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID    string `json:"family_id"`
+		AccessToken string `json:"access_token"`
+		Provider    string `json:"provider"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" ||
+		!validProvider(dto.Provider) {
+		bad(w, r)
+		return
+	}
+	accountID, err := h.Service.ValidateAccess(r.Context(), dto.FamilyID, dto.AccessToken)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if err := h.Service.UnlinkProvider(r.Context(), accountID, dto.Provider); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]string{"status": "unlinked"})
+}
+
+// listProviders returns the provider bindings of the session-owned
+// account. Session proof travels in the JSON body (never the URL) and
+// the response carries opaque subjects only.
+func (h Handler) listProviders(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID    string `json:"family_id"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" {
+		bad(w, r)
+		return
+	}
+	accountID, err := h.Service.ValidateAccess(r.Context(), dto.FamilyID, dto.AccessToken)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	links, err := h.Service.ListProviders(r.Context(), accountID)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	out := make([]providerLinkJSON, 0, len(links))
+	for _, l := range links {
+		out = append(out, providerLinkJSONOf(l))
+	}
+	write(w, r, http.StatusOK, map[string]any{"providers": out})
 }

@@ -26,6 +26,7 @@ import (
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
+	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
@@ -235,17 +236,34 @@ func run() error {
 	// The memory sink is an explicit preview: codes issue but deliver
 	// nowhere until SMTP lands with deployment configuration.
 	accountMail := accountmail.NewOutbox(unixClock{})
+	// FREE provider verification (P13-T03C). Production JWKS over HTTPS
+	// with the frozen 1h cache plus the DB-backed nonce ledger; stub
+	// issuers stay test-only. Audience stays server-side.
+	accountVerifier := &accountoidc.Verifier{
+		Clock:    time.Now,
+		Issuers:  map[string]string{"google": accountdomain.IssuerGoogle, "apple": accountdomain.IssuerApple},
+		Audience: "anpfuel-backend",
+		Keys: &accountoidc.CachedKeys{
+			Source: accountoidc.HTTPKeys{URLs: accountoidc.ProductionJWKS()},
+			TTL:    time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+			Now:    time.Now,
+		},
+		Nonces:   accountadapters.NewPGNonces(pool.Underlying()),
+		Skew:     time.Duration(accountdomain.OIDCClockSkewSeconds) * time.Second,
+		CacheTTL: time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+	}
 	accountService := &accountapp.Service{
 		Clock:    unixClock{},
 		Hasher:   accountdomain.SHA256Hasher{},
 		Mail:     accountMail,
 		Store:    accountadapters.NewPGStore(pool.Underlying()),
+		Verifier: accountVerifier,
 		CodeGen:  accountdomain.GenerateCode,
 		TokenGen: accountdomain.GenerateToken,
 		AliasGen: accountdomain.GenerateAlias,
 		IDGen:    newUUID,
 	}
-	accounthttp.Handler{Service: accountService}.RegisterRoutes(router)
+	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	communityPorts := communityapp.Ports{

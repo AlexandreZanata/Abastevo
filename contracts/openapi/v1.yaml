@@ -870,6 +870,167 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/providers/link:
+    post:
+      summary: Link a verified Google/Apple subject to the caller's account.
+      operationId: linkProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated OIDC bind (P13-T03, B-BR-A03). The caller
+        account derives server-side from the live session; client account
+        identifiers are never trusted and the expected audience stays
+        server-side. Equal email strings never merge without a verified
+        token; cross-account proofs refuse with 403.
+      requestBody:
+        required: true
+        description: Live session plus provider token and single-use nonce.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, provider, id_token, nonce]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                provider:
+                  type: string
+                  enum: [google, apple]
+                  example: google
+                id_token:
+                  type: string
+                  description: Provider-signed JWT; issuer, audience, expiry and nonce verified server-side.
+                  example: eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTAyMjkifQ.c2ln
+                nonce:
+                  type: string
+                  description: Single-use login nonce bound to this request.
+                  example: n-07
+      responses:
+        '200':
+          description: Verified provider binding for the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [provider_link]
+                properties:
+                  provider_link:
+                    $ref: '#/components/schemas/ProviderLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/accounts/providers/unlink:
+    post:
+      summary: Remove one provider binding from the caller's account.
+      operationId: unlinkProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated unbind. Refuses the last login method with
+        409 and unknown bindings with 404.
+      requestBody:
+        required: true
+        description: Live session plus the provider to remove.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, provider]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                provider:
+                  type: string
+                  enum: [google, apple]
+                  example: google
+      responses:
+        '200':
+          description: Provider binding removed.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [unlinked]
+                    example: unlinked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/accounts/providers/list:
+    post:
+      summary: List the caller's verified provider bindings.
+      operationId: listProviders
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated read. Session proof travels in the JSON
+        body, never the URL; the response carries opaque subjects only.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Provider bindings of the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers]
+                example:
+                  providers: []
+                properties:
+                  providers:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/ProviderLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 components:
   schemas:
     Money:
