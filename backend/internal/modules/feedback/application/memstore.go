@@ -365,6 +365,72 @@ func takeViews(out []domain.CommentView, limit int) []domain.CommentView {
 	return out
 }
 
+// ListRatingsByAccount returns every rating row of one account,
+// including tombstoned history, ordered for deterministic export.
+func (m *MemStore) ListRatingsByAccount(_ context.Context, accountID string) ([]domain.StoredRating, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []domain.StoredRating
+	for _, r := range m.ratings {
+		if r.AccountID == accountID {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StationID != out[j].StationID {
+			return out[i].StationID < out[j].StationID
+		}
+		if out[i].Product != out[j].Product {
+			return out[i].Product < out[j].Product
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
+}
+
+// ListCommentsByAccount returns every comment/reply row of one
+// account, including tombstoned history, ordered for export.
+func (m *MemStore) ListCommentsByAccount(_ context.Context, accountID string) ([]domain.StoredComment, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []domain.StoredComment
+	for _, c := range m.comments {
+		if c.AccountID == accountID {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt != out[j].CreatedAt {
+			return out[i].CreatedAt < out[j].CreatedAt
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
+}
+
+// ListVotesByAccount returns every vote row of one account,
+// including tombstoned history, ordered for export.
+func (m *MemStore) ListVotesByAccount(_ context.Context, accountID string) ([]domain.StoredVote, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []domain.StoredVote
+	for _, v := range m.votes {
+		if v.AccountID == accountID {
+			out = append(out, v)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CommentID != out[j].CommentID {
+			return out[i].CommentID < out[j].CommentID
+		}
+		if out[i].CommentRevision != out[j].CommentRevision {
+			return out[i].CommentRevision < out[j].CommentRevision
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
+}
+
 // FlagComment marks a reported comment flagged, once. Only visible
 // rows transition; hidden, flagged and tombstoned rows are untouched.
 func (m *MemStore) FlagComment(_ context.Context, id string) error {

@@ -24,6 +24,7 @@ type CommentStore interface {
 	ListReplies(ctx context.Context, parentID string, afterUnix int64, afterID string, limit int) ([]domain.CommentView, error)
 	FlagComment(ctx context.Context, id string) error
 	SetVisibility(ctx context.Context, id, visibility string) error
+	ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.StoredComment, error)
 }
 
 // CommentPage is one bounded keyset page. NextCursor is empty at the

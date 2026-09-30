@@ -17,6 +17,7 @@ type VoteStore interface {
 	RemoveVote(ctx context.Context, accountID, commentID string, revision int, nowUnix int64) (bool, error)
 	Tally(ctx context.Context, commentID string, revision int) (domain.VoteTally, bool, error)
 	RebuildTally(ctx context.Context, commentID string, revision int, nowUnix int64) (domain.VoteTally, error)
+	ListVotesByAccount(ctx context.Context, accountID string) ([]domain.StoredVote, error)
 }
 
 // VoteResult is the outcome of casting one validity vote.

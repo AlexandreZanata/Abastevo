@@ -28,3 +28,29 @@ func TestRunFeedbackDispatch(t *testing.T) {
 		t.Error("unknown feedback command must refuse")
 	}
 }
+
+func TestParseFeedbackExportEraseArgs(t *testing.T) {
+	got, err := parseFeedbackExportArgs([]string{"--account", "a1"})
+	if err != nil {
+		t.Fatalf("export parse: %v", err)
+	}
+	if got.account != "a1" {
+		t.Errorf("export account: %+v", got)
+	}
+	if _, err := parseFeedbackExportArgs([]string{}); err == nil {
+		t.Error("missing account must refuse export")
+	}
+	erase, err := parseFeedbackEraseArgs([]string{"--account", "a1", "--reason", "owner request"})
+	if err != nil {
+		t.Fatalf("erase parse: %v", err)
+	}
+	if erase.account != "a1" || erase.reason != "owner request" {
+		t.Errorf("erase args: %+v", erase)
+	}
+	if _, err := parseFeedbackEraseArgs([]string{"--account", "a1"}); err == nil {
+		t.Error("missing reason must refuse erase")
+	}
+	if _, err := parseFeedbackEraseArgs([]string{"--reason", "x"}); err == nil {
+		t.Error("missing account must refuse erase")
+	}
+}

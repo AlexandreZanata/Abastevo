@@ -18,6 +18,7 @@ type Store interface {
 	DeleteRating(ctx context.Context, accountID, stationID, product string, nowUnix int64) (bool, error)
 	Stats(ctx context.Context, stationID, product string) (domain.RatingStats, bool, error)
 	RebuildStats(ctx context.Context, stationID, product string, nowUnix int64) (domain.RatingStats, error)
+	ListRatingsByAccount(ctx context.Context, accountID string) ([]domain.StoredRating, error)
 }
 
 // AccountGate authorizes one account for social writes. It is REQUIRED

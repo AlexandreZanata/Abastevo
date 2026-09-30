@@ -119,6 +119,7 @@ sql:
       - db/migrations/000025_feedback_votes.sql
       - db/migrations/000027_feedback_visibility.sql
       - db/migrations/000026_moderation_comment_target.sql
+      - db/migrations/000028_feedback_account_idx.sql
     gen:
       go:
         package: feedback

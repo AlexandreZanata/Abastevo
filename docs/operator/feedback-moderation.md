@@ -1,9 +1,8 @@
-# Feedback moderation runbook (P14-T05A)
+# Feedback moderation runbook (P14-T05A/B)
 
 Scope: station/fuel ratings, comments, replies and votes. Reports,
-triage, visibility moves and abuse limits. Appeals and social
-export/erasure stay with the privacy flows; device evidence stays
-deferred to release.
+triage, visibility moves, abuse limits plus account-footprint
+export/erasure (P14-T05B). Device evidence stays deferred to release.
 
 ## Report → triage → action
 
@@ -51,9 +50,35 @@ deferred to release.
   NextStatus never reopens closed cases); reporters and authors
   re-report or contact support instead of editing history.
 
+## Account-footprint export and erasure (P14-T05B)
+
+Policy (frozen): suspension/deletion blocks new writes at the gate;
+past rows stay counted/readable until this explicit erasure runs.
+Erasure tombstones (history stays for audit, aggregates ignore it)
+and rebuilds every touched rating key and vote tally from live rows.
+Votes by the erased account vanish; votes by others on the erased
+comments stay; replies by others on erased comments stay readable.
+
+- Export: `ops feedback export --account <id> --operator <id>`
+  prints the deterministic `feedback-export-v1` JSON (only that
+  account's ratings/comments/votes, sorted; empty sections are `[]`).
+- Erase: `ops feedback erase --account <id> --reason <text>
+  --operator <id>` prints
+  `feedback-erase account=<id> ratings=N comments=N votes=N keys=N
+  tallies=N`. Re-running converges zero; after a restore, re-running
+  re-tombstones resurrected rows (restore replay uses the same
+  command, no separate ledger).
+- No public HTTP export/erase path: owner archives and erasures run
+  through the restricted operator tool with the reviewed reason.
+
 ## Verification
 
 - `cd backend && go test -tags=integration ./internal/modules/feedback/...`
-  (flag-on-report, hidden-leak, reporter-deletion suites).
+  (flag-on-report, hidden-leak, reporter-deletion plus export/erase
+  and G14-exit suites).
 - `ops feedback hide --comment <id> --case <id>` receipt prints
   `feedback <id> visibility=hidden case=<id>`.
+- `ops feedback export --account <id>` prints `feedback-export-v1`
+  with only that account's rows.
+- `ops feedback erase --account <id> --reason <text>` receipt prints
+  `feedback-erase account=<id> ratings=…`.
