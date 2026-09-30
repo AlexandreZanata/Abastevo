@@ -58,6 +58,39 @@ func (q *Queries) GetStats(ctx context.Context, arg GetStatsParams) (FeedbackRat
 	return i, err
 }
 
+const incrementStats = `-- name: IncrementStats :exec
+
+INSERT INTO feedback_rating_stats
+    (station_id, product, ratings_count, stars_sum, updated_at)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (station_id, product) DO UPDATE SET
+    ratings_count = feedback_rating_stats.ratings_count + EXCLUDED.ratings_count,
+    stars_sum = feedback_rating_stats.stars_sum + EXCLUDED.stars_sum,
+    updated_at = EXCLUDED.updated_at
+`
+
+type IncrementStatsParams struct {
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	CountDelta int64              `json:"count_delta"`
+	SumDelta   int64              `json:"sum_delta"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+// IncrementStats applies signed deltas atomically for the write path
+// (same lost-update rationale as IncrementTally). Full recomputation
+// stays in RebuildStats for reconciliation.
+func (q *Queries) IncrementStats(ctx context.Context, arg IncrementStatsParams) error {
+	_, err := q.db.Exec(ctx, incrementStats,
+		arg.StationID,
+		arg.Product,
+		arg.CountDelta,
+		arg.SumDelta,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const insertRating = `-- name: InsertRating :exec
 INSERT INTO feedback_ratings
     (id, account_id, station_id, product, stars, revision, created_at, deleted_at)

@@ -138,3 +138,21 @@ type FeedbackRatingStat struct {
 	StarsSum     int64              `json:"stars_sum"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
+
+type FeedbackTally struct {
+	CommentID    pgtype.UUID        `json:"comment_id"`
+	Revision     int32              `json:"revision"`
+	ValidCount   int64              `json:"valid_count"`
+	InvalidCount int64              `json:"invalid_count"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type FeedbackVote struct {
+	ID              pgtype.UUID        `json:"id"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	CommentID       pgtype.UUID        `json:"comment_id"`
+	CommentRevision int32              `json:"comment_revision"`
+	Choice          string             `json:"choice"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}

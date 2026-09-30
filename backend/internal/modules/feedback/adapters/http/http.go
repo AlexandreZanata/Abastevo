@@ -32,6 +32,9 @@ type Service interface {
 	ViewComment(ctx context.Context, id string) (domain.CommentView, error)
 	ListComments(ctx context.Context, stationID, product, cursor string, limit int) (application.CommentPage, error)
 	ListReplies(ctx context.Context, parentID, cursor string, limit int) (application.CommentPage, error)
+	Vote(ctx context.Context, accountID, commentID, choice string) (application.VoteResult, error)
+	RemoveVote(ctx context.Context, accountID, commentID string) error
+	Tally(ctx context.Context, commentID string) (domain.VoteTally, error)
 }
 
 // Handler serves the feedback routes with an injected service and a
@@ -51,6 +54,9 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/feedback/comments/{id}/remove", h.deleteComment)
 	r.Get("/v1/feedback/comments", h.listComments)
 	r.Get("/v1/feedback/comments/{id}/replies", h.listReplies)
+	r.Post("/v1/feedback/comments/{id}/votes", h.vote)
+	r.Post("/v1/feedback/comments/{id}/votes/remove", h.removeVote)
+	r.Get("/v1/feedback/comments/{id}/tally", h.tally)
 }
 
 func read(r *http.Request, dst any) error {
@@ -81,6 +87,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusNotFound, "feedback.comment-not-found", "comment not found"
 	case "stale-revision":
 		status, code, msg = http.StatusConflict, "feedback.stale-revision", "comment changed, reload and retry"
+	case "self-vote":
+		status, code, msg = http.StatusForbidden, "feedback.self-vote", "authors cannot vote on their comments"
+	case "vote-choice-invalid":
+		status, code, msg = http.StatusBadRequest, "feedback.vote-choice-invalid", "vote must be VALID or INVALID"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "feedback.unavailable", "feedback service unavailable"
 	}
@@ -272,6 +282,119 @@ func (h Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+type tallyJSON struct {
+	CommentID     string `json:"comment_id"`
+	Revision      int    `json:"revision"`
+	Valid         int64  `json:"valid"`
+	Invalid       int64  `json:"invalid"`
+	Total         int64  `json:"total"`
+	PercentageBps *int64 `json:"percentage_bps"`
+}
+
+func tallyJSONOf(tally domain.VoteTally) (tallyJSON, error) {
+	ag, err := tally.Agreement()
+	if err != nil {
+		return tallyJSON{}, err
+	}
+	out := tallyJSON{
+		CommentID: tally.CommentID,
+		Revision:  tally.Revision,
+		Valid:     tally.Valid,
+		Invalid:   tally.Invalid,
+		Total:     tally.Valid + tally.Invalid,
+	}
+	if ag.HasVotes {
+		out.PercentageBps = &ag.BasisPoints
+	}
+	return out, nil
+}
+
+func (h Handler) vote(w http.ResponseWriter, r *http.Request) {
+	var raw struct {
+		FamilyID  string `json:"family_id"`
+		AccessTok string `json:"access_token"`
+		Choice    string `json:"choice"`
+	}
+	if err := read(r, &raw); err != nil {
+		bad(w, r)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		bad(w, r)
+		return
+	}
+	accountID, ok := h.sessionAccount(w, r, sessionDTO{FamilyID: raw.FamilyID, AccessToken: raw.AccessTok})
+	if !ok {
+		return
+	}
+	res, err := h.Service.Vote(r.Context(), accountID, id, raw.Choice)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	tally, err := tallyJSONOf(res.Tally)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"tally": tally})
+}
+
+func (h Handler) removeVote(w http.ResponseWriter, r *http.Request) {
+	var raw struct {
+		FamilyID  string `json:"family_id"`
+		AccessTok string `json:"access_token"`
+	}
+	if err := read(r, &raw); err != nil {
+		bad(w, r)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		bad(w, r)
+		return
+	}
+	accountID, ok := h.sessionAccount(w, r, sessionDTO{FamilyID: raw.FamilyID, AccessToken: raw.AccessTok})
+	if !ok {
+		return
+	}
+	if err := h.Service.RemoveVote(r.Context(), accountID, id); err != nil {
+		fail(w, r, err)
+		return
+	}
+	tally, err := h.Service.Tally(r.Context(), id)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	view, err := tallyJSONOf(tally)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"tally": view})
+}
+
+func (h Handler) tally(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		bad(w, r)
+		return
+	}
+	tally, err := h.Service.Tally(r.Context(), id)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	view, err := tallyJSONOf(tally)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"tally": view})
 }
 
 func pageQuery(r *http.Request) (cursor string, limit int, ok bool) {

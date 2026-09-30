@@ -136,6 +136,54 @@ type Clock interface {
 	NowUnix() int64
 }
 
+// Vote choices for comment validity (F05). Authors never vote on
+// their own comments; one live vote binds each account, comment and
+// comment revision.
+const (
+	VoteValid   = "VALID"
+	VoteInvalid = "INVALID"
+)
+
+// ValidVote reports whether choice names a frozen vote value.
+// Matching is exact: clients send the wire constant verbatim.
+func ValidVote(choice string) bool {
+	return choice == VoteValid || choice == VoteInvalid
+}
+
+// StoredVote is one persisted validity vote bound to the comment
+// revision voted on. Changes rewrite Choice in place; removals
+// tombstone via DeletedAt. Old-revision votes stay restricted audit
+// history when edits open a new denominator.
+type StoredVote struct {
+	ID              string
+	AccountID       string
+	CommentID       string
+	CommentRevision int
+	Choice          string
+	CreatedAt       int64
+	DeletedAt       int64
+}
+
+// Live reports whether the vote counts toward its tally.
+func (v StoredVote) Live() bool {
+	return v.DeletedAt == 0
+}
+
+// VoteTally is one exact per-revision count snapshot. Percentages
+// derive through ComputeAgreement, keeping one math path for domain
+// and projections alike.
+type VoteTally struct {
+	CommentID string
+	Revision  int
+	Valid     int64
+	Invalid   int64
+}
+
+// Agreement folds the tally through the frozen basis-point math.
+func (t VoteTally) Agreement() (Agreement, error) {
+	return ComputeAgreement(t.Valid, t.Invalid)
+}
+
 // StoredComment is one persisted comment or reply revision. Depth 0
 // marks a top-level comment (no parent); depth 1 marks a reply to a
 // comment of the same station/fuel. Edits bump Revision in place with

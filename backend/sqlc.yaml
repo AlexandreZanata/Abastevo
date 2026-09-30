@@ -116,6 +116,7 @@ sql:
       - db/migrations/000022_account_bindings.sql
       - db/migrations/000023_feedback.sql
       - db/migrations/000024_feedback_comments.sql
+      - db/migrations/000025_feedback_votes.sql
     gen:
       go:
         package: feedback

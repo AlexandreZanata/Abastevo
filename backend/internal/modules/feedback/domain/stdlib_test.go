@@ -60,6 +60,8 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrParentInvalid:       "parent-invalid",
 		ErrAuthorForbidden:     "author-forbidden",
 		ErrSessionInvalid:      "session-invalid",
+		ErrSelfVote:            "self-vote",
+		ErrVoteChoiceInvalid:   "vote-choice-invalid",
 	}
 	for err, want := range cases {
 		if got := VerdictCode(err); got != want {

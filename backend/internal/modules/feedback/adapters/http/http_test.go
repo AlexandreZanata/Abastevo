@@ -122,6 +122,30 @@ func (s *testService) ListReplies(_ context.Context, parentID, cursor string, li
 	return s.nextPage, nil
 }
 
+func (s *testService) Vote(_ context.Context, accountID, commentID, choice string) (application.VoteResult, error) {
+	if s.err != nil {
+		return application.VoteResult{}, s.err
+	}
+	if choice != domain.VoteValid && choice != domain.VoteInvalid {
+		return application.VoteResult{}, domain.ErrVoteChoiceInvalid
+	}
+	return application.VoteResult{
+		Vote:  domain.StoredVote{AccountID: accountID, CommentID: commentID, Choice: choice},
+		Tally: domain.VoteTally{CommentID: commentID, Revision: 1, Valid: 1},
+	}, nil
+}
+
+func (s *testService) RemoveVote(_ context.Context, accountID, commentID string) error {
+	return s.err
+}
+
+func (s *testService) Tally(_ context.Context, commentID string) (domain.VoteTally, error) {
+	if s.err != nil {
+		return domain.VoteTally{}, s.err
+	}
+	return domain.VoteTally{CommentID: commentID, Revision: 1, Valid: 2, Invalid: 1}, nil
+}
+
 func testHandler() (*testService, Handler) {
 	svc := newTestService()
 	return svc, Handler{Service: svc, Sessions: svc.sessioned}
@@ -261,6 +285,85 @@ func TestPublicReadsAnonymous(t *testing.T) {
 	rec = call(t, h, "GET", "/v1/feedback/comments?product=P", "")
 	if rec.Code != 400 {
 		t.Errorf("missing station must be 400, got %d", rec.Code)
+	}
+}
+
+func TestVoteRemoveTallyFlow(t *testing.T) {
+	_, h := testHandler()
+
+	rec := call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`,"choice":"VALID"}`)
+	if rec.Code != 200 {
+		t.Fatalf("vote: %d (%s)", rec.Code, rec.Body.String())
+	}
+	var out struct {
+		Tally struct {
+			Valid         int64  `json:"valid"`
+			Invalid       int64  `json:"invalid"`
+			Total         int64  `json:"total"`
+			PercentageBps *int64 `json:"percentage_bps"`
+		} `json:"tally"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Tally.Valid != 1 || out.Tally.Total != 1 || out.Tally.PercentageBps == nil || *out.Tally.PercentageBps != 10000 {
+		t.Errorf("tally must be exact with floor math: %+v", out.Tally)
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Error("vote response must be no-store")
+	}
+
+	rec = call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`,"choice":"MAYBE"}`)
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "feedback.vote-choice-invalid") {
+		t.Errorf("bad choice must be 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = call(t, h, "POST", "/v1/feedback/comments/c1/votes/remove", authed+`}`)
+	if rec.Code != 200 {
+		t.Fatalf("remove: %d (%s)", rec.Code, rec.Body.String())
+	}
+	// The stub tally is 2/1: the shared golden denominator over HTTP.
+	rec = call(t, h, "GET", "/v1/feedback/comments/c1/tally", "")
+	if rec.Code != 200 {
+		t.Fatalf("tally: %d (%s)", rec.Code, rec.Body.String())
+	}
+	var tout struct {
+		Tally struct {
+			Valid         int64  `json:"valid"`
+			Invalid       int64  `json:"invalid"`
+			Total         int64  `json:"total"`
+			PercentageBps *int64 `json:"percentage_bps"`
+		} `json:"tally"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &tout); err != nil {
+		t.Fatal(err)
+	}
+	if tout.Tally.Valid != 2 || tout.Tally.Invalid != 1 || tout.Tally.Total != 3 ||
+		tout.Tally.PercentageBps == nil || *tout.Tally.PercentageBps != 6666 {
+		t.Errorf("tally must match the golden 2/1 vector: %+v", tout.Tally)
+	}
+}
+
+func TestVoteMapping(t *testing.T) {
+	svc, h := testHandler()
+
+	svc.err = domain.ErrSelfVote
+	rec := call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`,"choice":"VALID"}`)
+	if rec.Code != 403 || !strings.Contains(rec.Body.String(), "feedback.self-vote") {
+		t.Errorf("self-vote must be 403, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	svc.err = domain.ErrAuthorForbidden
+	rec = call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`,"choice":"VALID"}`)
+	if rec.Code != 403 {
+		t.Errorf("forbidden must be 403, got %d", rec.Code)
+	}
+	svc.err = domain.ErrCommentNotFound
+	rec = call(t, h, "GET", "/v1/feedback/comments/c9/tally", "")
+	if rec.Code != 404 {
+		t.Errorf("missing tally must be 404, got %d", rec.Code)
+	}
+	svc.err = nil
+	if rec := call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`} inadequate`); rec.Code != 400 {
+		t.Errorf("malformed must be 400, got %d", rec.Code)
 	}
 }
 

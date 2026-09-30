@@ -21,6 +21,8 @@ var (
 	ErrParentInvalid       = errors.New("feedback: invalid reply target")
 	ErrAuthorForbidden     = errors.New("feedback: author account not active")
 	ErrSessionInvalid      = errors.New("feedback: valid account session required")
+	ErrSelfVote            = errors.New("feedback: authors cannot vote on their comments")
+	ErrVoteChoiceInvalid   = errors.New("feedback: vote must be VALID or INVALID")
 )
 
 // VerdictOK is the shared success code.
@@ -61,6 +63,10 @@ func VerdictCode(err error) string {
 		return "author-forbidden"
 	case errors.Is(err, ErrSessionInvalid):
 		return "session-invalid"
+	case errors.Is(err, ErrSelfVote):
+		return "self-vote"
+	case errors.Is(err, ErrVoteChoiceInvalid):
+		return "vote-choice-invalid"
 	default:
 		return "invalid-value"
 	}

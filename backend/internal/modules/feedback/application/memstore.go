@@ -3,22 +3,25 @@ package application
 import (
 	"context"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
 )
 
 // MemStore is the mutex-guarded memory Store for unit tests. It honors
-// the exact atomicity contract Postgres implements: rating and comment
-// mutations complete under one lock with author checks, so the same
-// interleavings are covered here first. One struct implements both the
-// rating Store and the CommentStore ports.
+// the exact atomicity contract Postgres implements: rating, comment
+// and vote mutations complete under one lock with author checks, so
+// the same interleavings are covered here first. One struct implements
+// the rating Store, the CommentStore and the VoteStore ports.
 type MemStore struct {
 	mu       sync.Mutex
 	ratings  map[string]domain.StoredRating
 	stats    map[string]domain.RatingStats
 	comments map[string]domain.StoredComment
 	aliases  map[string]string
+	votes    map[string]domain.StoredVote
+	tallies  map[string]domain.VoteTally
 }
 
 // NewMemStore returns an empty memory store.
@@ -28,6 +31,8 @@ func NewMemStore() *MemStore {
 		stats:    map[string]domain.RatingStats{},
 		comments: map[string]domain.StoredComment{},
 		aliases:  map[string]string{},
+		votes:    map[string]domain.StoredVote{},
+		tallies:  map[string]domain.VoteTally{},
 	}
 }
 
@@ -48,7 +53,8 @@ func targetKey(stationID, product string) string {
 }
 
 // UpsertRating converges on equal stars, bumps the revision on change
-// and inserts otherwise, refreshing the key stats from live rows.
+// and inserts otherwise, applying signed stat deltas atomically like
+// the Postgres lane (full recomputation stays in RebuildStats).
 func (m *MemStore) UpsertRating(_ context.Context, rec domain.StoredRating) (domain.StoredRating, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -57,19 +63,19 @@ func (m *MemStore) UpsertRating(_ context.Context, rec domain.StoredRating) (dom
 		if existing.Stars == rec.Stars {
 			return existing, false, nil
 		}
+		m.bumpStatsLocked(rec.StationID, rec.Product, 0, int64(rec.Stars)-int64(existing.Stars))
 		existing.Stars = rec.Stars
 		existing.Revision++
 		m.ratings[key] = existing
-		m.refreshLocked(rec.StationID, rec.Product)
 		return existing, false, nil
 	}
 	rec.Revision = 1
 	m.ratings[key] = rec
-	m.refreshLocked(rec.StationID, rec.Product)
+	m.bumpStatsLocked(rec.StationID, rec.Product, 1, int64(rec.Stars))
 	return rec, true, nil
 }
 
-// DeleteRating tombstones the live row and refreshes the key stats.
+// DeleteRating tombstones the live row and backs its contribution out.
 func (m *MemStore) DeleteRating(_ context.Context, accountID, stationID, product string, nowUnix int64) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -80,8 +86,18 @@ func (m *MemStore) DeleteRating(_ context.Context, accountID, stationID, product
 	}
 	existing.DeletedAt = nowUnix
 	m.ratings[key] = existing
-	m.refreshLocked(stationID, product)
+	m.bumpStatsLocked(stationID, product, -1, -int64(existing.Stars))
 	return true, nil
+}
+
+func (m *MemStore) bumpStatsLocked(stationID, product string, countDelta, sumDelta int64) {
+	key := targetKey(stationID, product)
+	stats := m.stats[key]
+	stats.StationID = stationID
+	stats.Product = product
+	stats.Count += countDelta
+	stats.Sum += sumDelta
+	m.stats[key] = stats
 }
 
 // Stats returns the maintained aggregate for one key.
@@ -229,6 +245,106 @@ func (m *MemStore) viewLocked(rec domain.StoredComment) domain.CommentView {
 		Revision:  rec.Revision,
 		CreatedAt: rec.CreatedAt,
 		UpdatedAt: rec.UpdatedAt,
+	}
+}
+
+func voteKey(accountID, commentID string, revision int) string {
+	return accountID + "\x00" + commentID + "\x00" + strconv.Itoa(revision)
+}
+
+func tallyKey(commentID string, revision int) string {
+	return commentID + "\x00" + strconv.Itoa(revision)
+}
+
+func voteDeltas(choice string) (int64, int64) {
+	if choice == domain.VoteValid {
+		return 1, 0
+	}
+	return 0, 1
+}
+
+func (m *MemStore) bumpTallyLocked(commentID string, revision int, validDelta, invalidDelta int64) {
+	key := tallyKey(commentID, revision)
+	tally := m.tallies[key]
+	tally.CommentID = commentID
+	tally.Revision = revision
+	tally.Valid += validDelta
+	tally.Invalid += invalidDelta
+	m.tallies[key] = tally
+}
+
+// CastVote converges on equal choices, rewrites on change and inserts
+// otherwise, applying signed tally deltas like the Postgres lane.
+func (m *MemStore) CastVote(_ context.Context, rec domain.StoredVote) (domain.StoredVote, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := voteKey(rec.AccountID, rec.CommentID, rec.CommentRevision)
+	if existing, ok := m.votes[key]; ok && existing.Live() {
+		if existing.Choice == rec.Choice {
+			return existing, false, nil
+		}
+		oldValid, oldInvalid := voteDeltas(existing.Choice)
+		newValid, newInvalid := voteDeltas(rec.Choice)
+		m.bumpTallyLocked(rec.CommentID, rec.CommentRevision, newValid-oldValid, newInvalid-oldInvalid)
+		existing.Choice = rec.Choice
+		m.votes[key] = existing
+		return existing, false, nil
+	}
+	m.votes[key] = rec
+	newValid, newInvalid := voteDeltas(rec.Choice)
+	m.bumpTallyLocked(rec.CommentID, rec.CommentRevision, newValid, newInvalid)
+	return rec, true, nil
+}
+
+// RemoveVote tombstones the live vote and backs its contribution out;
+// absent votes converge no-op.
+func (m *MemStore) RemoveVote(_ context.Context, accountID, commentID string, revision int, nowUnix int64) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := voteKey(accountID, commentID, revision)
+	existing, ok := m.votes[key]
+	if !ok || !existing.Live() {
+		return false, nil
+	}
+	existing.DeletedAt = nowUnix
+	m.votes[key] = existing
+	oldValid, oldInvalid := voteDeltas(existing.Choice)
+	m.bumpTallyLocked(commentID, revision, -oldValid, -oldInvalid)
+	return true, nil
+}
+
+// Tally returns the maintained per-revision counts.
+func (m *MemStore) Tally(_ context.Context, commentID string, revision int) (domain.VoteTally, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	tally, ok := m.tallies[tallyKey(commentID, revision)]
+	return tally, ok, nil
+}
+
+// RebuildTally recomputes one revision tally from live rows.
+func (m *MemStore) RebuildTally(_ context.Context, commentID string, revision int, _ int64) (domain.VoteTally, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.retallyLocked(commentID, revision)
+	return m.tallies[tallyKey(commentID, revision)], nil
+}
+
+func (m *MemStore) retallyLocked(commentID string, revision int) {
+	var valid, invalid int64
+	for _, v := range m.votes {
+		if v.CommentID == commentID && v.CommentRevision == revision && v.Live() {
+			if v.Choice == domain.VoteValid {
+				valid++
+			} else {
+				invalid++
+			}
+		}
+	}
+	m.tallies[tallyKey(commentID, revision)] = domain.VoteTally{
+		CommentID: commentID,
+		Revision:  revision,
+		Valid:     valid,
+		Invalid:   invalid,
 	}
 }
 

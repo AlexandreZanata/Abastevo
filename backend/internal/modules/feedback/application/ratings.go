@@ -30,11 +30,12 @@ type AccountGate func(ctx context.Context, accountID string) error
 // (nil fails closed): ratings target existing stations only (F01).
 type StationExists func(ctx context.Context, stationID string) (bool, error)
 
-// Service wires frozen rating policy to the Store and gate ports.
+// Service wires frozen feedback policy to the Store and gate ports.
 type Service struct {
 	Clock         domain.Clock
 	Store         Store
 	Comments      CommentStore
+	Votes         VoteStore
 	CheckAccount  AccountGate
 	StationExists StationExists
 	IDGen         func() (string, error)

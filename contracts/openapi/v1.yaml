@@ -1497,6 +1497,167 @@ paths:
                 next_cursor: null
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/feedback/comments/{id}/votes:
+    post:
+      summary: Cast a validity vote on a comment.
+      operationId: voteComment
+      tags: [feedback]
+      security: []
+      description: >
+        One live vote per account/comment/revision (F05): equal
+        choices converge, changes rewrite, authors never vote on
+        their own comments. Returns the exact revision tally.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session plus the frozen vote choice.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, choice]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                choice:
+                  type: string
+                  enum: [VALID, INVALID]
+                  example: VALID
+      responses:
+        '200':
+          description: Vote stored with the exact tally.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tally]
+                properties:
+                  tally:
+                    $ref: '#/components/schemas/FeedbackTally'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/feedback/comments/{id}/votes/remove:
+    post:
+      summary: Remove my validity vote from a comment.
+      operationId: removeVote
+      tags: [feedback]
+      security: []
+      description: >
+        Tombstones the caller's live vote on the current revision;
+        absent votes converge as a no-op success.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session owning the vote.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Vote removed with the exact tally.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tally]
+                properties:
+                  tally:
+                    $ref: '#/components/schemas/FeedbackTally'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/feedback/comments/{id}/tally:
+    get:
+      summary: Read a comment's exact vote tally.
+      operationId: readTally
+      tags: [feedback]
+      security: []
+      description: >
+        Public anonymous read: exact valid/invalid counts plus floor
+        basis points; null percentage means no votes, never 0%.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      responses:
+        '200':
+          description: Exact tally with floor agreement.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tally]
+                example:
+                  tally:
+                    comment_id: bbd138ce-e442-4f57-a874-3c05d2e16f52
+                    revision: 1
+                    valid: 2
+                    invalid: 1
+                    total: 3
+                    percentage_bps: 6666
+                properties:
+                  tally:
+                    $ref: '#/components/schemas/FeedbackTally'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/feedback/comments/{id}/edit:
     post:
       summary: Edit an owned comment.
@@ -2388,6 +2549,37 @@ components:
           type: string
           format: date-time
           example: 2026-10-01T00:00:00Z
+    FeedbackTally:
+      description: >
+        Exact per-revision vote tally (P14-T04, B-BR-F05/F06): counts
+        plus floor basis points; null percentage means no votes.
+      type: object
+      required: [comment_id, revision, valid, invalid, total]
+      properties:
+        comment_id:
+          type: string
+          format: uuid
+          example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+        revision:
+          type: integer
+          minimum: 1
+          example: 1
+        valid:
+          type: integer
+          minimum: 0
+          example: 2
+        invalid:
+          type: integer
+          minimum: 0
+          example: 1
+        total:
+          type: integer
+          minimum: 0
+          example: 3
+        percentage_bps:
+          type: [integer, 'null']
+          description: Floor(10000*valid/total); null when total is zero.
+          example: 6666
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object

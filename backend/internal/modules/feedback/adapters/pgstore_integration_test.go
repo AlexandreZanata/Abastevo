@@ -189,6 +189,48 @@ func TestPGConcurrentRateConverges(t *testing.T) {
 	}
 }
 
+func TestPGConcurrentMultiAccountRatingsExact(t *testing.T) {
+	svc, pool := freshService(t)
+	ctx := context.Background()
+	station := testUUID(9001)
+
+	const raters = 8
+	accounts := make([]string, raters)
+	for i := range accounts {
+		accounts[i] = seedAccount(t, pool, 30+i, "active")
+	}
+	var wg sync.WaitGroup
+	errs := make([]error, raters)
+	for i := 0; i < raters; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, errs[i] = svc.Rate(ctx, accounts[i], station, "GASOLINE_REGULAR", 1+(i%5))
+		}(i)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent rate: %v", err)
+		}
+	}
+	stats, found, err := svc.Store.Stats(ctx, station, "GASOLINE_REGULAR")
+	if err != nil || !found {
+		t.Fatalf("stats must persist: %+v %v %v", stats, found, err)
+	}
+	// Stars cycle 1..5,1,2,3 over 8 raters: sum = 1+2+3+4+5+1+2+3.
+	if stats.Count != raters || stats.Sum != 21 {
+		t.Errorf("concurrent counts must not inflate or drop: %+v", stats)
+	}
+	rebuilt, err := svc.RebuildStats(ctx, station, "GASOLINE_REGULAR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt != stats {
+		t.Errorf("rebuild must match hot stats: %+v vs %+v", rebuilt, stats)
+	}
+}
+
 func TestPGEditDeleteAndRebuild(t *testing.T) {
 	svc, pool := freshService(t)
 	ctx := context.Background()
