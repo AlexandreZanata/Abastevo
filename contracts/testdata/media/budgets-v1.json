@@ -1,0 +1,23 @@
+{
+  "format": "media-budgets-v1",
+  "provenance": "P15-T01 frozen forward contract from docs/security/LOCAL_MEDIA_LOCATION_POLICY.md B-BR-M01…M06; hypotheses measured in P15-T02…T05, never silently reinterpreted here",
+  "wire_format": "image/jpeg",
+  "target_bytes": 153600,
+  "cap_bytes": 262144,
+  "max_edge_pixels": 1600,
+  "max_megapixels": 2,
+  "max_encoding_attempts": 3,
+  "working_memory_hypothesis_bytes": 33554432,
+  "deadline_hours": 24,
+  "cases": [
+    {"id": "target-exact", "bytes": 153600, "edge": 1600, "megapixels": "2.00", "verdict": "ok"},
+    {"id": "cap-exact", "bytes": 262144, "edge": 1600, "megapixels": "2.00", "verdict": "ok"},
+    {"id": "cap-plus-one", "bytes": 262145, "edge": 1600, "megapixels": "2.00", "verdict": "bytes-over-cap"},
+    {"id": "edge-plus-one", "bytes": 102400, "edge": 1601, "megapixels": "2.00", "verdict": "edge-over-limit"},
+    {"id": "mp-over", "bytes": 102400, "edge": 1600, "megapixels": "2.01", "verdict": "pixels-over-limit"},
+    {"id": "small-legible", "bytes": 81920, "edge": 1200, "megapixels": "1.44", "verdict": "ok"},
+    {"id": "empty", "bytes": 0, "edge": 0, "megapixels": "0.00", "verdict": "bytes-empty"},
+    {"id": "deadline-exact", "first_receipt": "2026-10-01T00:00:00Z", "expect_deadline": "2026-10-02T00:00:00Z", "verdict": "ok"},
+    {"id": "deadline-no-extension", "first_receipt": "2026-10-01T00:00:00Z", "retry_at": "2026-10-01T12:00:00Z", "expect_deadline": "2026-10-02T00:00:00Z", "verdict": "ok"}
+  ]
+}

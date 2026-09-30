@@ -1,6 +1,6 @@
 {
-  "base_sha": "6f4f04823f11e5195312532f65cf9fb4678b10c7",
-  "branch": "codex/phase-14-station-feedback",
+  "base_sha": "47bdffe9477107582603a41d7a52ee94d2f69fa1",
+  "branch": "codex/phase-15-lightweight-photos",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
@@ -14,12 +14,17 @@
     "P14-T02": 29,
     "P14-T03": 30,
     "P14-T04": 31,
-    "P14-T05": 32
+    "P14-T05": 32,
+    "P15-T01": 34,
+    "P15-T02": 35,
+    "P15-T03": 36,
+    "P15-T04": 37,
+    "P15-T05": 38
   },
-  "milestone": 5,
-  "milestone_title": "P14 — Station fuel feedback backend",
-  "phase": "14",
-  "pr": 33,
+  "milestone": 6,
+  "milestone_title": "P15 — Lightweight photos and 24-hour audit expiry",
+  "phase": "15",
+  "pr": null,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -28,6 +33,6 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_APP_FUNCTIONAL"
   },
-  "state": "AWAITING_PHASE_MERGE",
+  "state": "OPEN",
   "wiki": "PENDING_MERGED_SNAPSHOT"
 }
