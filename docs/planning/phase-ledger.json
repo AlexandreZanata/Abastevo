@@ -24,7 +24,7 @@
   "milestone": 6,
   "milestone_title": "P15 — Lightweight photos and 24-hour audit expiry",
   "phase": "15",
-  "pr": null,
+  "pr": 39,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
