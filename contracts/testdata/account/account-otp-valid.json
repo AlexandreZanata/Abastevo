@@ -1,0 +1,1 @@
+{"attack":"otp-valid-baseline","code":"ok","inputs":{"address":"case-01@example.invalid","age_seconds":120,"attempts_used":0,"code":"482916"},"note":"Control case: correct code inside TTL with attempts left must be the only accept.","provenance":"P13-T01 frozen account rules; synthetic vectors, no real addresses or secrets","version":1,"id":"account-otp-valid","verdict":"accept"}

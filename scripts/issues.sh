@@ -256,9 +256,13 @@ cmd_sync() {
             fi
             managed_body "$id" "$title" "$prio" "$milestone" > "$tmp/managed.md"
             { marker_line "$id"; cat "$tmp/managed.md"; } > "$tmp/body.md"
-            local num
-            num="$(gh issue create --title "$id — $title" --body-file "$tmp/body.md" --milestone "$milestone" --label "phase:P$nn" --label "type:task" --label "$want" --label "risk:standard" --json number --jq '.number')" \
+            local out num
+            out="$(gh issue create --title "$id — $title" --body-file "$tmp/body.md" --milestone "$milestone" --label "phase:P$nn" --label "type:task" --label "$want" --label "risk:standard")" \
                 || { echo "TASK=$id ACTION=create-failed-retryable" >&2; failed=1; break; }
+            # gh 2.45 `issue create` prints the issue URL (no --json support);
+            # fake harness prints a bare number or {"number": N}. Extract trailing number.
+            num="$(printf "%s\n" "$out" | grep -oE '[0-9]+' | tail -n 1)"
+            [[ -n "$num" ]] || { echo "TASK=$id ACTION=create-failed-retryable" >&2; failed=1; break; }
             echo "TASK=$id ACTION=created NUMBER=$num"
             python3 - "$ledger_new" "$id" "$num" <<'PY'
 import json, sys

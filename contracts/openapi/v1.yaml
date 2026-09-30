@@ -1207,6 +1207,109 @@ components:
           type: boolean
           description: True when replaying an already completed rotation.
           example: false
+    Account:
+      description: >
+        FREE account (P13-T01, B-BR-A01): email-code, Google or Apple signup
+        with no purchase prerequisite. Additive preview schemas only; no
+        account paths exist yet and implemented v1 paths are untouched.
+        Handlers land in P13-T02/T03.
+      type: object
+      required: [account_id, public_alias, status, created_at]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        public_alias:
+          type: string
+          description: Opaque display name; never email, provider subject or GPS.
+          example: adore-fox-42
+        status:
+          type: string
+          enum: [active, suspended, deleted]
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    ProviderLink:
+      description: Verified provider binding; email alone never links (A03).
+      type: object
+      required: [provider, subject, linked_at]
+      properties:
+        provider:
+          type: string
+          enum: [email, google, apple]
+          example: google
+        subject:
+          type: string
+          description: Provider-verified subject (sub claim), never client-supplied.
+          example: '110229484794030244762'
+        linked_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    EmailCodeRequest:
+      description: Six-digit code issuance; unknown addresses answer identically (no enumeration).
+      type: object
+      required: [email]
+      example:
+        email: case-01@example.invalid
+      properties:
+        email:
+          type: string
+          format: email
+          example: case-01@example.invalid
+    EmailCodeConsume:
+      description: Single-use code redemption inside the 600s TTL with five attempts.
+      type: object
+      required: [email, code]
+      example:
+        email: case-01@example.invalid
+        code: '482916'
+      properties:
+        email:
+          type: string
+          format: email
+          example: case-01@example.invalid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '482916'
+    OidcLinkRequest:
+      description: Provider token plus the consumed login nonce for link/unlink proof.
+      type: object
+      required: [provider, id_token, nonce]
+      properties:
+        provider:
+          type: string
+          enum: [google, apple]
+          example: google
+        id_token:
+          type: string
+          description: Provider-signed JWT; issuer, audience, expiry and nonce verified server-side.
+          example: eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTAyMjkifQ.c2ln
+        nonce:
+          type: string
+          description: Single-use login nonce bound to this request.
+          example: n-07
+    Session:
+      description: Short-lived access with a rotating refresh family (absolute 30-day ceiling).
+      type: object
+      required: [access_expires_at, refresh_family_id, absolute_expires_at]
+      properties:
+        access_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:15:00Z
+        refresh_family_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        absolute_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-31T00:00:00Z
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object
