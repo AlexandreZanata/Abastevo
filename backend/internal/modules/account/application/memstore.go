@@ -196,8 +196,12 @@ func (m *MemStore) LinkProvider(_ context.Context, link domain.ProviderLink) err
 	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" {
 		return domain.ErrOIDCWrongAudience
 	}
-	if _, ok := m.accountsByID[link.AccountID]; !ok {
+	acc, ok := m.accountsByID[link.AccountID]
+	if !ok {
 		return domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return err
 	}
 	key := subjectKey(link.Provider, link.Subject)
 	if owner, ok := m.bySubject[key]; ok && owner != link.AccountID {
@@ -223,8 +227,12 @@ func (m *MemStore) UnlinkProvider(_ context.Context, accountID, provider string)
 	if !domain.ValidProvider(provider) {
 		return domain.ErrOIDCUnknownIssuer
 	}
-	if _, ok := m.accountsByID[accountID]; !ok {
+	acc, ok := m.accountsByID[accountID]
+	if !ok {
 		return domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return err
 	}
 	set := m.links[accountID]
 	existing, ok := set[provider]
@@ -290,4 +298,89 @@ func (m *MemStore) TryConsumeNonce(_ context.Context, nonce string, _ int64) (bo
 	}
 	m.nonces[nonce] = true
 	return true, nil
+}
+
+// GetAccount resolves an account by ID, including suspended/deleted rows.
+func (m *MemStore) GetAccount(_ context.Context, accountID string) (domain.Account, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	acc, ok := m.accountsByID[accountID]
+	return acc, ok, nil
+}
+
+func (m *MemStore) setStatusLocked(accountID, status string) error {
+	acc, ok := m.accountsByID[accountID]
+	if !ok {
+		return domain.ErrAccountNotFound
+	}
+	acc.Status = status
+	m.accountsByID[accountID] = acc
+	for hash, a := range m.accounts {
+		if a.ID == accountID {
+			a.Status = status
+			m.accounts[hash] = a
+		}
+	}
+	return nil
+}
+
+func (m *MemStore) revokeAccountLocked(accountID string, nowUnix int64) {
+	for _, fam := range m.families {
+		if fam.AccountID == accountID {
+			fam.RevokedAt = nowUnix
+		}
+	}
+}
+
+// SuspendAccount marks the account suspended and revokes every session
+// family immediately. New and rotated sessions fail closed afterwards.
+func (m *MemStore) SuspendAccount(_ context.Context, accountID string, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.setStatusLocked(accountID, domain.StatusSuspended); err != nil {
+		return err
+	}
+	m.revokeAccountLocked(accountID, nowUnix)
+	return nil
+}
+
+// ReactivateAccount returns a suspended account to active. Revoked
+// sessions stay revoked; the owner logs in again for fresh families.
+func (m *MemStore) ReactivateAccount(_ context.Context, accountID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	acc, ok := m.accountsByID[accountID]
+	if !ok {
+		return domain.ErrAccountNotFound
+	}
+	if acc.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	return m.setStatusLocked(accountID, domain.StatusActive)
+}
+
+// DeleteAccount marks the account deleted, revokes every session family
+// and drops address and provider bindings. The account row stays as an
+// audit record; a later signup with the same address mints a new account
+// without reputation carryover.
+func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.setStatusLocked(accountID, domain.StatusDeleted); err != nil {
+		return err
+	}
+	m.revokeAccountLocked(accountID, nowUnix)
+	for hash, a := range m.accounts {
+		if a.ID == accountID {
+			delete(m.accounts, hash)
+		}
+	}
+	delete(m.accountIDs, accountID)
+	if set, ok := m.links[accountID]; ok {
+		for provider, l := range set {
+			delete(m.bySubject, subjectKey(provider, l.Subject))
+		}
+		delete(m.links, accountID)
+	}
+	return nil
 }

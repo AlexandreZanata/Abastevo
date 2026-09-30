@@ -65,6 +65,24 @@ func (q *Queries) CountCodesSince(ctx context.Context, arg CountCodesSinceParams
 	return column_1, err
 }
 
+const deleteAccountAddresses = `-- name: DeleteAccountAddresses :exec
+DELETE FROM account_addresses WHERE account_id = $1
+`
+
+func (q *Queries) DeleteAccountAddresses(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAccountAddresses, accountID)
+	return err
+}
+
+const deleteAccountProviders = `-- name: DeleteAccountProviders :exec
+DELETE FROM account_provider_links WHERE account_id = $1
+`
+
+func (q *Queries) DeleteAccountProviders(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAccountProviders, accountID)
+	return err
+}
+
 const deleteProviderLink = `-- name: DeleteProviderLink :exec
 DELETE FROM account_provider_links
 WHERE account_id = $1 AND provider = $2
@@ -542,6 +560,25 @@ func (q *Queries) RotateFamily(ctx context.Context, arg RotateFamilyParams) erro
 		arg.AccessExpires,
 		arg.ID,
 	)
+	return err
+}
+
+const setAccountStatus = `-- name: SetAccountStatus :exec
+
+UPDATE accounts SET status = $1 WHERE id = $2
+`
+
+type SetAccountStatusParams struct {
+	Status string      `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+// Account status lifecycle (P13-T04A). Suspension and deletion revoke
+// sessions via RevokeAccountFamilies in the same transaction; deletion
+// additionally drops address and provider bindings while the account
+// row stays as an audit record.
+func (q *Queries) SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) error {
+	_, err := q.db.Exec(ctx, setAccountStatus, arg.Status, arg.ID)
 	return err
 }
 

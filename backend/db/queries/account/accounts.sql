@@ -101,6 +101,20 @@ SELECT id, alias, status, created_at
 FROM accounts
 WHERE id = @id;
 
+-- Account status lifecycle (P13-T04A). Suspension and deletion revoke
+-- sessions via RevokeAccountFamilies in the same transaction; deletion
+-- additionally drops address and provider bindings while the account
+-- row stays as an audit record.
+
+-- name: SetAccountStatus :exec
+UPDATE accounts SET status = @status WHERE id = @id;
+
+-- name: DeleteAccountAddresses :exec
+DELETE FROM account_addresses WHERE account_id = @account_id;
+
+-- name: DeleteAccountProviders :exec
+DELETE FROM account_provider_links WHERE account_id = @account_id;
+
 -- name: FindProviderOwner :one
 SELECT account_id, provider, issuer, subject, email, linked_at
 FROM account_provider_links

@@ -23,6 +23,15 @@ type Account struct {
 	CreatedAt int64
 }
 
+// Active reports whether the account may authenticate. Suspended and
+// deleted accounts fail closed on every auth path (P13-T04A); deletion
+// additionally drops address and provider bindings so a later signup
+// with the same address mints a new account without reputation
+// carryover.
+func (a Account) Active() bool {
+	return a.Status == StatusActive
+}
+
 // EmailCode is one issued access code. Only Salt+Hash persist; the code
 // itself never touches storage, logs or errors.
 type EmailCode struct {

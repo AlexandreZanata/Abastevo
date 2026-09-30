@@ -26,6 +26,10 @@ type Store interface {
 	Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
 	RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error
 	RevokeAccount(ctx context.Context, accountID string, nowUnix int64) error
+	GetAccount(ctx context.Context, accountID string) (domain.Account, bool, error)
+	SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error
+	ReactivateAccount(ctx context.Context, accountID string) error
+	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error
 	LinkProvider(ctx context.Context, link domain.ProviderLink) error
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
@@ -71,6 +75,17 @@ type Service struct {
 func (s *Service) RequestCode(ctx context.Context, address string) error {
 	now := s.Clock.NowUnix()
 	hash := domain.AddressHash(address)
+	// Suspended and deleted accounts (deleted rows are unreachable by
+	// address, but the guard is explicit) receive no code and no mail.
+	// The answer stays nil, identical to quota/cooldown/unknown, so no
+	// oracle leaks status.
+	if acc, found, err := s.Store.FindAccount(ctx, hash); err != nil {
+		return err
+	} else if found {
+		if err := accountUsable(acc); err != nil {
+			return nil
+		}
+	}
 	count, err := s.Store.CountCodesSince(ctx, hash, now-3600)
 	if err != nil {
 		return err
@@ -119,6 +134,16 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 func (s *Service) ConsumeCode(ctx context.Context, address, code string) (AuthResult, error) {
 	now := s.Clock.NowUnix()
 	hash := domain.AddressHash(address)
+	if acc, found, err := s.Store.FindAccount(ctx, hash); err != nil {
+		return AuthResult{}, err
+	} else if found {
+		// Pre-check refuses suspended accounts without burning the
+		// presented code. Deleted addresses are already unlinked, so a
+		// later signup with the same address mints a new account.
+		if err := accountUsable(acc); err != nil {
+			return AuthResult{}, err
+		}
+	}
 	if _, err := s.Store.TryConsume(ctx, hash, code, s.Hasher, now); err != nil {
 		return AuthResult{}, err
 	}
@@ -155,6 +180,19 @@ func (s *Service) ConsumeCode(ctx context.Context, address, code string) (AuthRe
 	if err != nil {
 		return AuthResult{}, err
 	}
+	// Race guard: a suspension or deletion interleaved with issuance must
+	// not leave a live session behind. The fresh family is revoked before
+	// refusing, so the outcome is identical to a pre-issue suspension.
+	if live, found, err := s.Store.GetAccount(ctx, acc.ID); err != nil {
+		_ = s.Store.RevokeFamily(ctx, sess.FamilyID, now)
+		return AuthResult{}, err
+	} else if !found {
+		_ = s.Store.RevokeFamily(ctx, sess.FamilyID, now)
+		return AuthResult{}, domain.ErrAccountNotFound
+	} else if err := accountUsable(live); err != nil {
+		_ = s.Store.RevokeAccount(ctx, acc.ID, now)
+		return AuthResult{}, err
+	}
 	return AuthResult{Account: acc, Session: sess, Created: created}, nil
 }
 
@@ -169,6 +207,18 @@ func (s *Service) Refresh(ctx context.Context, familyID, refreshToken string) (S
 	if !found {
 		return Session{}, domain.ErrCodeUnknown
 	}
+	// Status leads: suspended and deleted accounts refuse before token
+	// checks, so moderation/erasure takes effect with stable verdicts.
+	acc, found, err := s.Store.GetAccount(ctx, fam.AccountID)
+	if err != nil {
+		return Session{}, err
+	}
+	if !found {
+		return Session{}, domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return Session{}, err
+	}
 	if fam.RevokedAt != 0 {
 		return Session{}, domain.ErrSessionRevoked
 	}
@@ -181,7 +231,24 @@ func (s *Service) Refresh(ctx context.Context, familyID, refreshToken string) (S
 		}
 		return Session{}, domain.ErrSessionReuse
 	}
-	return s.rotate(ctx, fam, now)
+	sess, err := s.rotate(ctx, fam, now)
+	if err != nil {
+		return Session{}, err
+	}
+	// Race guard: a suspension or deletion interleaved with rotation must
+	// not leave fresh tokens behind. The rotated family is revoked
+	// before refusing.
+	if live, found, err := s.Store.GetAccount(ctx, fam.AccountID); err != nil {
+		_ = s.Store.RevokeFamily(ctx, fam.ID, now)
+		return Session{}, err
+	} else if !found {
+		_ = s.Store.RevokeFamily(ctx, fam.ID, now)
+		return Session{}, domain.ErrAccountNotFound
+	} else if err := accountUsable(live); err != nil {
+		_ = s.Store.RevokeFamily(ctx, fam.ID, now)
+		return Session{}, err
+	}
+	return sess, nil
 }
 
 // ValidateAccess checks one access token for transport guards.
@@ -193,6 +260,18 @@ func (s *Service) ValidateAccess(ctx context.Context, familyID, accessToken stri
 	}
 	if !found {
 		return "", domain.ErrCodeUnknown
+	}
+	// Status leads here as well, covering every session-authenticated
+	// transport (revoke, link, unlink, list, delete) in one place.
+	acc, found, err := s.Store.GetAccount(ctx, fam.AccountID)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		return "", domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return "", err
 	}
 	if fam.RevokedAt != 0 {
 		return "", domain.ErrSessionRevoked

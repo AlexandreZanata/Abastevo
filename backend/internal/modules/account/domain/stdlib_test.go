@@ -61,6 +61,8 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrLastLoginMethod:       "link-last-method-refused",
 		ErrProviderNotLinked:     "link-provider-not-linked",
 		ErrAccountNotFound:       "account-unknown",
+		ErrAccountSuspended:      "account-suspended",
+		ErrAccountDeleted:        "account-deleted",
 		ErrAddressLinked:         "address-linked",
 		ErrSessionReuse:          "session-reuse-revoked",
 		ErrSessionRevoked:        "session-revoked",

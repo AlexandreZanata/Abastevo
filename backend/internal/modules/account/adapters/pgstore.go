@@ -383,11 +383,18 @@ func (s *PGStore) LinkProvider(ctx context.Context, link domain.ProviderLink) er
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := account.New(tx)
-	if _, err := q.GetAccountByID(ctx, accountID); err != nil {
+	row, err := q.GetAccountByID(ctx, accountID)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrAccountNotFound
 		}
 		return err
+	}
+	if row.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	if row.Status != domain.StatusActive {
+		return domain.ErrAccountSuspended
 	}
 	if owner, err := q.FindProviderOwner(ctx, account.FindProviderOwnerParams{
 		Provider: link.Provider,
@@ -464,11 +471,18 @@ func (s *PGStore) UnlinkProvider(ctx context.Context, accountID, provider string
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := account.New(tx)
-	if _, err := q.GetAccountByID(ctx, id); err != nil {
+	row, err := q.GetAccountByID(ctx, id)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrAccountNotFound
 		}
 		return err
+	}
+	if row.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	if row.Status != domain.StatusActive {
+		return domain.ErrAccountSuspended
 	}
 	if _, err := q.GetProviderLink(ctx, account.GetProviderLinkParams{
 		AccountID: id,
@@ -560,4 +574,126 @@ func (s *PGStore) TryConsumeNonce(ctx context.Context, nonce string, nowUnix int
 		return false, err
 	}
 	return true, nil
+}
+
+// GetAccount resolves an account by ID, including suspended/deleted rows.
+func (s *PGStore) GetAccount(ctx context.Context, accountID string) (domain.Account, bool, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.Account{}, false, nil
+	}
+	row, err := account.New(s.pool).GetAccountByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Account{}, false, nil
+		}
+		return domain.Account{}, false, err
+	}
+	return domain.Account{
+		ID:        uuidString(row.ID),
+		Alias:     row.Alias,
+		Status:    row.Status,
+		CreatedAt: unix(row.CreatedAt),
+	}, true, nil
+}
+
+// SuspendAccount marks the account suspended and revokes every session
+// family in one transaction, so no live session survives the status
+// change.
+func (s *PGStore) SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	if _, err := q.GetAccountByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if err := q.SetAccountStatus(ctx, account.SetAccountStatusParams{
+		Status: domain.StatusSuspended,
+		ID:     id,
+	}); err != nil {
+		return err
+	}
+	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
+		Now:       stamp(nowUnix),
+		AccountID: id,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ReactivateAccount returns a suspended account to active. Revoked
+// sessions stay revoked; the owner logs in again. Reactivating a
+// deleted account refuses: deletion is terminal, a new signup mints a
+// new account instead.
+func (s *PGStore) ReactivateAccount(ctx context.Context, accountID string) error {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	row, err := account.New(s.pool).GetAccountByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if row.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	return account.New(s.pool).SetAccountStatus(ctx, account.SetAccountStatusParams{
+		Status: domain.StatusActive,
+		ID:     id,
+	})
+}
+
+// DeleteAccount marks the account deleted, revokes every session family
+// and drops address and provider bindings atomically. The account row
+// stays as an audit record; later signups mint new accounts.
+func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	if _, err := q.GetAccountByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if err := q.SetAccountStatus(ctx, account.SetAccountStatusParams{
+		Status: domain.StatusDeleted,
+		ID:     id,
+	}); err != nil {
+		return err
+	}
+	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
+		Now:       stamp(nowUnix),
+		AccountID: id,
+	}); err != nil {
+		return err
+	}
+	if err := q.DeleteAccountAddresses(ctx, id); err != nil {
+		return err
+	}
+	if err := q.DeleteAccountProviders(ctx, id); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

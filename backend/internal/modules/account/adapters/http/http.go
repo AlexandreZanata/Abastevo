@@ -34,6 +34,7 @@ type Service interface {
 	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
+	DeleteAccount(ctx context.Context, accountID string) error
 }
 
 // Handler serves the account routes with an injected service.
@@ -53,6 +54,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/providers/link", h.linkProvider)
 	r.Post("/v1/accounts/providers/unlink", h.unlinkProvider)
 	r.Post("/v1/accounts/providers/list", h.listProviders)
+	r.Post("/v1/accounts/deletion", h.deleteAccount)
 }
 
 func (h Handler) audience() string {
@@ -111,6 +113,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusNotFound, "account.link-provider-not-linked", "provider not linked"
 	case "account-unknown":
 		status, code, msg = http.StatusUnauthorized, "account.account-unknown", "valid account proof required"
+	case "account-suspended":
+		status, code, msg = http.StatusForbidden, "account.account-suspended", "account suspended"
+	case "account-deleted":
+		status, code, msg = http.StatusGone, "account.account-deleted", "account deleted"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	}
@@ -310,6 +316,31 @@ func (h Handler) unlinkProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]string{"status": "unlinked"})
+}
+
+// deleteAccount erases the session-owned account (P13-T04A rights
+// deletion): status flips to deleted, every session family is revoked
+// and address plus provider bindings drop. The account row stays as an
+// audit record; later signups mint new accounts.
+func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID    string `json:"family_id"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" {
+		bad(w, r)
+		return
+	}
+	accountID, err := h.Service.ValidateAccess(r.Context(), dto.FamilyID, dto.AccessToken)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if err := h.Service.DeleteAccount(r.Context(), accountID); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // listProviders returns the provider bindings of the session-owned

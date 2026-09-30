@@ -23,6 +23,16 @@ func (s *Service) LinkProvider(ctx context.Context, accountID, provider, rawToke
 	if s.Verifier == nil {
 		return domain.ProviderLink{}, domain.ErrOIDCUnavailable
 	}
+	// Pre-check refuses dead accounts before burning the single-use
+	// nonce or fetching JWKS; the store re-checks atomically with the
+	// bind.
+	if acc, found, err := s.Store.GetAccount(ctx, accountID); err != nil {
+		return domain.ProviderLink{}, err
+	} else if !found {
+		return domain.ProviderLink{}, domain.ErrAccountNotFound
+	} else if err := accountUsable(acc); err != nil {
+		return domain.ProviderLink{}, err
+	}
 	subject, err := s.Verifier.Verify(ctx, provider, rawToken, audience, nonce)
 	if err != nil {
 		return domain.ProviderLink{}, err

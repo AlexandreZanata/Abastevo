@@ -29,6 +29,8 @@ var (
 	ErrLastLoginMethod       = errors.New("account: last login method cannot be removed")
 	ErrProviderNotLinked     = errors.New("account: provider not linked")
 	ErrAccountNotFound       = errors.New("account: unknown account")
+	ErrAccountSuspended      = errors.New("account: account suspended")
+	ErrAccountDeleted        = errors.New("account: account deleted")
 	ErrAddressLinked         = errors.New("account: address already linked")
 	ErrSessionReuse          = errors.New("account: refresh token reused")
 	ErrSessionRevoked        = errors.New("account: session family revoked")
@@ -111,6 +113,10 @@ func VerdictCode(err error) string {
 		return "link-provider-not-linked"
 	case errors.Is(err, ErrAccountNotFound):
 		return "account-unknown"
+	case errors.Is(err, ErrAccountSuspended):
+		return "account-suspended"
+	case errors.Is(err, ErrAccountDeleted):
+		return "account-deleted"
 	case errors.Is(err, ErrAddressLinked):
 		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):
