@@ -14,7 +14,7 @@
   "milestone": 3,
   "milestone_title": "P12 \u2014 Kotlin Multiplatform foundation",
   "phase": "12",
-  "pr": null,
+  "pr": 21,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",

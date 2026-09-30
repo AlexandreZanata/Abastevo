@@ -77,8 +77,11 @@ fi
 CHANGED_ALL="$(printf "%s\n%s" "$CHANGED_WORKTREE" "$CHANGED_DIFF" | sort -u | grep -v '^$' || true)"
 
 # Classify selection. Docs paths run the docs subset; backend/contract/infra/
-# gate paths run the full quick set; any other tracked path is unclassified
-# and fails so new areas cannot silently bypass selection.
+# gate/mobile paths run the full quick set; any other tracked path is
+# unclassified and fails so new areas cannot silently bypass selection.
+# Mobile areas (P12 KMP foundation: Gradle modules, build manifests and shared
+# fixtures) run the full set; Android behavioral evidence rides at task level
+# and phase exit until P12-T05 introduces bounded KMP/iOS check selection.
 SELECTION="full"
 if [[ -z "$CHANGED_ALL" ]]; then
     SELECTION="full"
@@ -88,7 +91,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum)
+            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
                 DOCS_ONLY=0
                 ;;
             *)
