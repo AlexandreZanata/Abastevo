@@ -49,6 +49,7 @@ fun SettingsScreen(
     onNavigateBack: (() -> Unit)? = null,
     onNavigateToOnboarding: () -> Unit,
     onNavigateToWeekPicker: () -> Unit,
+    onNavigateToAuth: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -82,6 +83,7 @@ fun SettingsScreen(
         onDismissClearAllDialog = viewModel::dismissClearAllDialog,
         onRetry = viewModel::load,
         onNavigateToWeekPicker = onNavigateToWeekPicker,
+        onNavigateToAuth = onNavigateToAuth,
         onOpenNotificationSettings = { viewModel.openNotificationSettings(context) },
         modifier = modifier,
     )
@@ -106,6 +108,7 @@ private fun SettingsContent(
     onDismissClearAllDialog: () -> Unit,
     onRetry: () -> Unit,
     onNavigateToWeekPicker: () -> Unit,
+    onNavigateToAuth: () -> Unit = {},
     onOpenNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -303,6 +306,12 @@ private fun SettingsContent(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(text = stringResource(R.string.settings_change_survey_week))
+                        }
+                        OutlinedButton(
+                            onClick = onNavigateToAuth,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.auth_account_row))
                         }
                         uiState.syncMessage?.let { messageKey ->
                             if (messageKey == SettingsViewModel.SYNC_COMPLETED_MESSAGE) {

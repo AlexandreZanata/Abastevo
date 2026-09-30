@@ -1,0 +1,1 @@
+{"id": "account-account-valid", "provenance": "P13-T02C additive account contracts; synthetic", "schema": "Account", "valid": true, "value": {"account_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26", "created_at": "2026-10-01T00:00:00Z", "status": "active", "public_alias": "adore-fox-42"}, "version": 1}

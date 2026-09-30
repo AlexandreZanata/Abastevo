@@ -1,0 +1,1 @@
+{"id":"account-session-valid","provenance":"P13-T02C additive account contracts; synthetic","schema":"Session","valid":true,"value":{"absolute_expires_at":"2026-10-31T00:00:00Z","access_expires_at":"2026-10-01T00:15:00Z","refresh_family_id":"aac027be-d331-40e4-8d63-52ec3b8d2f41"},"version":1}

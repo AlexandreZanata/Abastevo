@@ -1,0 +1,1 @@
+{"id":"account-oidc-link-valid","provenance":"P13-T02C additive account contracts; synthetic","schema":"OidcLinkRequest","valid":true,"value":{"id_token":"eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTAyMjkifQ.c2ln","nonce":"n-07","provider":"google"},"version":1}

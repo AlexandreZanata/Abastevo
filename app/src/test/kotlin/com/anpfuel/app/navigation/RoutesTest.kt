@@ -12,6 +12,11 @@ class RoutesTest {
     }
 
     @Test
+    fun authRouteIsRegisteredConstant() {
+        assertEquals("auth", Routes.AUTH)
+    }
+
+    @Test
     fun stationsRouteIncludesFuelProductName() {
         assertEquals(
             "stations/GASOLINE_REGULAR",

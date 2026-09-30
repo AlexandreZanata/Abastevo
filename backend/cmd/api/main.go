@@ -23,6 +23,13 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
+	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
+	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
+	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
+	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -51,6 +58,11 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
+
+// unixClock adapts wall time to the account domain Clock port.
+type unixClock struct{}
+
+func (unixClock) NowUnix() int64 { return time.Now().Unix() }
 
 // newUUID mints v4 identifiers for server-owned facts.
 func newUUID() (string, error) {
@@ -220,13 +232,80 @@ func run() error {
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
 	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
+	// FREE email accounts (P13-T02C). Narrow closure wiring like the other
+	// modules: Postgres store, memory mail sink, production generators.
+	// The memory sink is an explicit preview: codes issue but deliver
+	// nowhere until SMTP lands with deployment configuration.
+	accountMail := accountmail.NewOutbox(unixClock{})
+	// FREE provider verification (P13-T03C). Production JWKS over HTTPS
+	// with the frozen 1h cache plus the DB-backed nonce ledger; stub
+	// issuers stay test-only. Audience stays server-side.
+	accountVerifier := &accountoidc.Verifier{
+		Clock:    time.Now,
+		Issuers:  map[string]string{"google": accountdomain.IssuerGoogle, "apple": accountdomain.IssuerApple},
+		Audience: "anpfuel-backend",
+		Keys: &accountoidc.CachedKeys{
+			Source: accountoidc.HTTPKeys{URLs: accountoidc.ProductionJWKS()},
+			TTL:    time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+			Now:    time.Now,
+		},
+		Nonces:   accountadapters.NewPGNonces(pool.Underlying()),
+		Skew:     time.Duration(accountdomain.OIDCClockSkewSeconds) * time.Second,
+		CacheTTL: time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
+	}
+	// Contributor device-key proofs (P13-T04C) resolve through the
+	// identity-owned key source: one narrow closure, no cross-module
+	// table imports.
+	accountKeys := accountkeyprover.Prover{
+		Keys: func(ctx context.Context, fingerprint string) (string, string, string, bool, error) {
+			key, err := identityRegistrar.FindDeviceKey(ctx, fingerprint)
+			if err != nil {
+				return "", "", "", false, err
+			}
+			return key.ContributorID, key.JWKX, key.JWKY, key.Revoked, nil
+		},
+		Now: time.Now,
+	}
+	// The account store doubles as the social-write gate source
+	// (P13-T04D): one shared handle feeds the service and the
+	// community CheckAccount closures below.
+	accountStore := accountadapters.NewPGStore(pool.Underlying())
+	accountService := &accountapp.Service{
+		Clock:     unixClock{},
+		Hasher:    accountdomain.SHA256Hasher{},
+		Mail:      accountMail,
+		Store:     accountStore,
+		Verifier:  accountVerifier,
+		KeyProver: accountKeys,
+		CodeGen:   accountdomain.GenerateCode,
+		TokenGen:  accountdomain.GenerateToken,
+		AliasGen:  accountdomain.GenerateAlias,
+		IDGen:     newUUID,
+	}
+	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
+	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
+	// checkAccountGate refuses social writes from contributors bound
+	// to a suspended or deleted FREE account (P13-T04D). Unbound
+	// contributors keep the anonymous baseline; store failures
+	// propagate for a 500 instead of silently allowing writes.
+	checkAccountGate := func(ctx context.Context, contributorID string) error {
+		blocked, err := accountapp.BindingBlocked(ctx, accountStore, contributorID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return communityapp.ErrAccountBlocked
+		}
+		return nil
+	}
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,
 		NewID: newUUID,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
 			return identityRegistrar.AttributionToken(ctx, contributorID)
 		},
+		CheckAccount: checkAccountGate,
 		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
 			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
 			if err != nil {
@@ -276,6 +355,7 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
+		CheckAccount: checkAccountGate,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
 			return err

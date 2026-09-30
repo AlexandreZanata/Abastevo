@@ -115,6 +115,7 @@ func TestVotesMapDomainErrors(t *testing.T) {
 		code int
 	}{
 		{"self", domain.ErrSelfConfirmation, http.StatusForbidden},
+		{"blocked", application.ErrAccountBlocked, http.StatusForbidden},
 		{"ineligible", application.ErrIneligibleTarget, http.StatusConflict},
 		{"missing", application.ErrTargetNotFound, http.StatusNotFound},
 		{"conflict", application.ErrConflict, http.StatusConflict},

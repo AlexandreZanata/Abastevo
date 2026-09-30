@@ -41,8 +41,13 @@ type VotePorts struct {
 	Clock      func() time.Time
 	NewID      func() (string, error)
 	CheckQuota func(ctx context.Context, subject, operation string) (time.Duration, error)
-	EnqueueJob func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
-	Store      VoteStore
+	// CheckAccount refuses votes from contributors bound to a
+	// suspended or deleted FREE account (P13-T04D). Nil skips the
+	// check; the composition root maps refusals onto
+	// ErrAccountBlocked.
+	CheckAccount func(ctx context.Context, contributorID string) error
+	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
+	Store        VoteStore
 }
 
 // ConfirmDTO carries one support vote: target plus client operation
@@ -70,6 +75,11 @@ func Confirm(ctx context.Context, p VotePorts, caller Caller, dto ConfirmDTO) (C
 	}
 	if strings.TrimSpace(dto.ClientSubmissionID) == "" {
 		return ConfirmResult{}, domain.ErrInvalidConfirmation
+	}
+	if p.CheckAccount != nil {
+		if err := p.CheckAccount(ctx, caller.ContributorID); err != nil {
+			return ConfirmResult{}, err
+		}
 	}
 	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
 		return ConfirmResult{}, err
@@ -135,6 +145,11 @@ func Dispute(ctx context.Context, p VotePorts, caller Caller, dto DisputeDTO) (D
 	}
 	if strings.TrimSpace(dto.ClientSubmissionID) == "" {
 		return DisputeResult{}, domain.ErrInvalidDispute
+	}
+	if p.CheckAccount != nil {
+		if err := p.CheckAccount(ctx, caller.ContributorID); err != nil {
+			return DisputeResult{}, err
+		}
 	}
 	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
 		return DisputeResult{}, err

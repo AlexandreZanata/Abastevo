@@ -10,6 +10,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
+import com.anpfuel.app.ui.auth.AuthRoute
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.home.HomeScreen
 import com.anpfuel.app.ui.onboarding.OnboardingScreen
@@ -131,9 +133,33 @@ fun AnpNavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
+        composable(
+            route = "${Routes.AUTH}?provider={provider}&id_token={idToken}&nonce={nonce}&state={state}",
+            arguments = listOf(
+                navArgument("provider") { defaultValue = "" },
+                navArgument("idToken") { defaultValue = "" },
+                navArgument("nonce") { defaultValue = "" },
+                navArgument("state") { defaultValue = "" },
+            ),
+            deepLinks = listOf(
+                navDeepLink {
+                    uriPattern =
+                        "anpfuel://auth/callback?provider={provider}&id_token={idToken}&nonce={nonce}&state={state}"
+                },
+            ),
+        ) { entry ->
+            AuthRoute(
+                providerArg = entry.arguments?.getString("provider").orEmpty(),
+                idTokenArg = entry.arguments?.getString("idToken").orEmpty(),
+                nonceArg = entry.arguments?.getString("nonce").orEmpty(),
+                stateArg = entry.arguments?.getString("state").orEmpty(),
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToAuth = { navController.navigate(Routes.AUTH) },
                 onNavigateToOnboarding = {
                     navController.navigate(Routes.ONBOARDING) {
                         popUpTo(Routes.HOME) { inclusive = true }

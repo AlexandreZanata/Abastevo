@@ -34,6 +34,8 @@ tags:
     description: Signed private upload reservation and owner status.
   - name: identity
     description: Anonymous challenge and contributor registration.
+  - name: accounts
+    description: FREE email-code signup/login plus session rotation.
 paths:
   /health/live:
     get:
@@ -717,6 +719,549 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/accounts/email/codes:
+    post:
+      summary: Request a FREE email access code.
+      operationId: requestEmailCode
+      tags: [accounts]
+      security: []
+      description: >
+        Issues a six-digit code when quota and cooldown allow. Unknown
+        addresses, cooldown hits and quota exhaustion all answer 202 with
+        the same body, so no oracle leaks registration (P13-T01).
+      requestBody:
+        required: true
+        description: Email address for code issuance.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeRequest'
+      responses:
+        '202':
+          description: Accepted; a code was issued or silently skipped.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [sent]
+                    example: sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/accounts/email/consume:
+    post:
+      summary: Redeem an access code for an account session.
+      operationId: consumeEmailCode
+      tags: [accounts]
+      security: []
+      description: >
+        Single-use redeem creating the FREE account on first login.
+        Wrong codes and unknown addresses share the code-unknown refusal.
+      requestBody:
+        required: true
+        description: Address plus the six-digit code.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeConsume'
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/accounts/sessions/refresh:
+    post:
+      summary: Rotate a session family with a refresh token.
+      operationId: refreshSession
+      tags: [accounts]
+      security: []
+      description: >
+        Mint fresh tokens; presenting a superseded token revokes the
+        whole family before refusing.
+      requestBody:
+        required: true
+        description: Live family plus its current refresh token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, refresh_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                refresh_token:
+                  type: string
+                  example: tok-refresh
+      responses:
+        '200':
+          description: Rotated session with fresh bearer tokens.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    $ref: '#/components/schemas/SessionTokens'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/sessions/revoke:
+    post:
+      summary: Revoke every session of the caller's account.
+      operationId: revokeSessions
+      tags: [accounts]
+      security: []
+      description: Logout everywhere from one live access token.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: All account sessions revoked.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [revoked]
+                    example: revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/providers/link:
+    post:
+      summary: Link a verified Google/Apple subject to the caller's account.
+      operationId: linkProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated OIDC bind (P13-T03, B-BR-A03). The caller
+        account derives server-side from the live session; client account
+        identifiers are never trusted and the expected audience stays
+        server-side. Equal email strings never merge without a verified
+        token; cross-account proofs refuse with 403.
+      requestBody:
+        required: true
+        description: Live session plus provider token and single-use nonce.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, provider, id_token, nonce]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                provider:
+                  type: string
+                  enum: [google, apple]
+                  example: google
+                id_token:
+                  type: string
+                  description: Provider-signed JWT; issuer, audience, expiry and nonce verified server-side.
+                  example: eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTAyMjkifQ.c2ln
+                nonce:
+                  type: string
+                  description: Single-use login nonce bound to this request.
+                  example: n-07
+      responses:
+        '200':
+          description: Verified provider binding for the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [provider_link]
+                properties:
+                  provider_link:
+                    $ref: '#/components/schemas/ProviderLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/providers/unlink:
+    post:
+      summary: Remove one provider binding from the caller's account.
+      operationId: unlinkProvider
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated unbind. Refuses the last login method with
+        409 and unknown bindings with 404. Suspended accounts answer 403,
+        deleted sessions 410.
+      requestBody:
+        required: true
+        description: Live session plus the provider to remove.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, provider]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                provider:
+                  type: string
+                  enum: [google, apple]
+                  example: google
+      responses:
+        '200':
+          description: Provider binding removed.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [unlinked]
+                    example: unlinked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/providers/list:
+    post:
+      summary: List the caller's verified provider bindings.
+      operationId: listProviders
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated read. Session proof travels in the JSON
+        body, never the URL; the response carries opaque subjects only.
+        Suspended accounts answer 403, deleted sessions 410.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Provider bindings of the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers]
+                example:
+                  providers: []
+                properties:
+                  providers:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/ProviderLink'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/deletion:
+    post:
+      summary: Delete the caller's FREE account.
+      operationId: deleteAccount
+      tags: [accounts]
+      security: []
+      description: >
+        Rights deletion (P13-T04, BUC-A04). Session-authenticated
+        self-delete only: status flips to deleted, every session family
+        is revoked and address plus provider bindings drop. The account
+        row stays as an audit record; later signups mint new accounts
+        without reputation carryover. Suspended callers delete through
+        the operator path, not this route.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Account deleted; all sessions revoked.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [deleted]
+                    example: deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/bindings/bind:
+    post:
+      summary: Bind a device contributor to the caller's account.
+      operationId: bindContributor
+      tags: [accounts]
+      security: []
+      description: >
+        Dual-proof ceremony (P13-T04, B-BR-A04): the live account
+        session plus a device-key proof over the ceremony statement.
+        The account derives server-side; a contributor bound to another
+        account refuses with 403, so recovery never transfers
+        reputation.
+      requestBody:
+        required: true
+        description: Live session plus contributor and key proof.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, contributor_id, proof]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                contributor_id:
+                  type: string
+                  description: Anonymous contributor to bind.
+                  example: c0000000-0000-4000-8000-000000000001
+                proof:
+                  type: string
+                  description: Device-key proof over the ceremony statement.
+                  example: fp:9f2c4a1b3d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8.1798765432.c2ln
+      responses:
+        '200':
+          description: Contributor bound to the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [binding]
+                properties:
+                  binding:
+                    $ref: '#/components/schemas/ContributorBinding'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/bindings/unbind:
+    post:
+      summary: Remove one contributor binding from the caller's account.
+      operationId: unbindContributor
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated unbind. Unknown bindings answer 404;
+        unbinding never strands login methods.
+      requestBody:
+        required: true
+        description: Live session plus the contributor to remove.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, contributor_id]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                contributor_id:
+                  type: string
+                  example: c0000000-0000-4000-8000-000000000001
+      responses:
+        '200':
+          description: Contributor binding removed.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [unbound]
+                    example: unbound
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/bindings/list:
+    post:
+      summary: List the caller's contributor bindings.
+      operationId: listBindings
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated read. Session proof travels in the JSON
+        body, never the URL.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Contributor bindings of the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bindings]
+                example:
+                  bindings: []
+                properties:
+                  bindings:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/ContributorBinding'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
 components:
   schemas:
     Money:
@@ -1207,6 +1752,168 @@ components:
           type: boolean
           description: True when replaying an already completed rotation.
           example: false
+    Account:
+      description: >
+        FREE account (P13-T01, B-BR-A01): email-code, Google or Apple signup
+        with no purchase prerequisite. Additive preview schemas only;
+        implemented v1 paths are untouched. Handlers land in
+        P13-T02/T03/T04.
+      type: object
+      required: [account_id, public_alias, status, created_at]
+      properties:
+        account_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        public_alias:
+          type: string
+          description: Opaque display name; never email, provider subject or GPS.
+          example: adore-fox-42
+        status:
+          type: string
+          enum: [active, suspended, deleted]
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    ContributorBinding:
+      description: Device contributor bound to a FREE account with dual proof (A04).
+      type: object
+      required: [contributor_id, key_fingerprint, bound_at]
+      properties:
+        contributor_id:
+          type: string
+          description: Anonymous contributor bound by the ceremony, never client-asserted alone.
+          example: c0000000-0000-4000-8000-000000000001
+        key_fingerprint:
+          type: string
+          description: Proven device key at bind time.
+          example: 'fp:9f2c4a1b3d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8'
+        bound_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    ProviderLink:
+      description: Verified provider binding; email alone never links (A03).
+      type: object
+      required: [provider, subject, linked_at]
+      properties:
+        provider:
+          type: string
+          enum: [email, google, apple]
+          example: google
+        subject:
+          type: string
+          description: Provider-verified subject (sub claim), never client-supplied.
+          example: '110229484794030244762'
+        linked_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    EmailCodeRequest:
+      description: Six-digit code issuance; unknown addresses answer identically (no enumeration).
+      type: object
+      required: [email]
+      example:
+        email: case-01@example.invalid
+      properties:
+        email:
+          type: string
+          format: email
+          example: case-01@example.invalid
+    EmailCodeConsume:
+      description: Single-use code redemption inside the 600s TTL with five attempts.
+      type: object
+      required: [email, code]
+      example:
+        email: case-01@example.invalid
+        code: '482916'
+      properties:
+        email:
+          type: string
+          format: email
+          example: case-01@example.invalid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '482916'
+    OidcLinkRequest:
+      description: Provider token plus the consumed login nonce for link/unlink proof.
+      type: object
+      required: [provider, id_token, nonce]
+      properties:
+        provider:
+          type: string
+          enum: [google, apple]
+          example: google
+        id_token:
+          type: string
+          description: Provider-signed JWT; issuer, audience, expiry and nonce verified server-side.
+          example: eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMTAyMjkifQ.c2ln
+        nonce:
+          type: string
+          description: Single-use login nonce bound to this request.
+          example: n-07
+    Session:
+      description: Short-lived access with a rotating refresh family (absolute 30-day ceiling).
+      type: object
+      required: [access_expires_at, refresh_family_id, absolute_expires_at]
+      properties:
+        access_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:15:00Z
+        refresh_family_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        absolute_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-31T00:00:00Z
+    SessionTokens:
+      description: Issued login with opaque bearer tokens shown once at issuance.
+      type: object
+      required: [family_id, account_id, access_token, refresh_token, access_expires_at, absolute_expires_at]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        account_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        access_token:
+          type: string
+          description: Opaque short-lived bearer token, stored hashed server-side.
+          example: tok-access
+        refresh_token:
+          type: string
+          description: Opaque rotating token; reuse revokes the family.
+          example: tok-refresh
+        access_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:15:00Z
+        absolute_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-31T00:00:00Z
+    AuthResult:
+      description: Successful code consume with the account and one session.
+      type: object
+      required: [account, session, created]
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+        session:
+          $ref: '#/components/schemas/SessionTokens'
+        created:
+          type: boolean
+          description: True when this consume created the account.
+          example: true
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object
@@ -1548,6 +2255,12 @@ components:
             $ref: '#/components/schemas/ApiError'
     Conflict:
       description: Same key, different body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Gone:
+      description: The owning account was deleted; re-signup mints a new account.
       content:
         application/json:
           schema:

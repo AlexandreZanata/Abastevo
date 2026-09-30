@@ -23,9 +23,10 @@ type Caller struct {
 }
 
 var (
-	ErrUnauthorized = errors.New("community: authentication required")
-	ErrQuotaDenied  = errors.New("community: quota exceeded")
-	ErrConflict     = errors.New("community: same key, different body")
+	ErrUnauthorized   = errors.New("community: authentication required")
+	ErrQuotaDenied    = errors.New("community: quota exceeded")
+	ErrConflict       = errors.New("community: same key, different body")
+	ErrAccountBlocked = errors.New("community: account suspended or deleted")
 )
 
 // QuotaDeniedError carries the retry delay for 429 mapping.
@@ -62,10 +63,16 @@ type Ports struct {
 	NewID       func() (string, error)
 	Attribution func(ctx context.Context, contributorID string) (string, error)
 	CheckQuota  func(ctx context.Context, subject, operation string) (time.Duration, error)
-	Idempotent  func(ctx context.Context, key IdempotencyKey, body []byte, run func(ctx context.Context) (Outcome, error)) (Outcome, error)
-	EnqueueJob  func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
-	Resolve     func(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
-	Store       Store
+	// CheckAccount refuses writes from contributors bound to a
+	// suspended or deleted FREE account (P13-T04D). Unbound
+	// contributors keep the anonymous baseline. Nil skips the check
+	// (pre-account behavior); the composition root injects the
+	// account-owned gate and maps refusals onto ErrAccountBlocked.
+	CheckAccount func(ctx context.Context, contributorID string) error
+	Idempotent   func(ctx context.Context, key IdempotencyKey, body []byte, run func(ctx context.Context) (Outcome, error)) (Outcome, error)
+	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
+	Resolve      func(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
+	Store        Store
 }
 
 // Store is the owned persistence port.
@@ -108,6 +115,13 @@ func Submit(ctx context.Context, p Ports, caller Caller, method, route, key stri
 	}
 	if strings.TrimSpace(key) == "" {
 		return SubmitResult{}, fmt.Errorf("community: idempotency key required")
+	}
+	// The account gate runs before quota so dead accounts refuse
+	// without burning quota windows.
+	if p.CheckAccount != nil {
+		if err := p.CheckAccount(ctx, caller.ContributorID); err != nil {
+			return SubmitResult{}, err
+		}
 	}
 	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
 		return SubmitResult{}, err
