@@ -32,6 +32,33 @@ func (a Account) Active() bool {
 	return a.Status == StatusActive
 }
 
+// ContributorBinding links one anonymous device contributor to a FREE
+// account (P13-T04B, B-BR-A04). The contributor keeps its observations
+// and reputation; the account only scopes which key may write under
+// it. KeyFingerprint is the proven device key at bind time.
+type ContributorBinding struct {
+	AccountID      string
+	ContributorID  string
+	KeyFingerprint string
+	BoundAt        int64
+}
+
+// BindingAudit is one immutable bind/unbind record for the recovery
+// audit trail.
+type BindingAudit struct {
+	ID            string
+	AccountID     string
+	ContributorID string
+	Action        string
+	OccurredAt    int64
+}
+
+// Binding actions recorded in the audit ledger.
+const (
+	BindingActionBind   = "bind"
+	BindingActionUnbind = "unbind"
+)
+
 // EmailCode is one issued access code. Only Salt+Hash persist; the code
 // itself never touches storage, logs or errors.
 type EmailCode struct {

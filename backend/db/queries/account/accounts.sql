@@ -115,6 +115,54 @@ DELETE FROM account_addresses WHERE account_id = @account_id;
 -- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = @account_id;
 
+-- Contributor bindings and link audit (P13-T04B). One contributor binds
+-- at most one account; the application refuses stolen-ID binds and the
+-- UNIQUE guard closes the concurrent race.
+
+-- name: GetBinding :one
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = @account_id AND contributor_id = @contributor_id;
+
+-- name: ListBindings :many
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = @account_id
+ORDER BY contributor_id;
+
+-- name: FindBindingOwner :one
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE contributor_id = @contributor_id;
+
+-- name: InsertBinding :exec
+INSERT INTO account_contributor_bindings
+    (account_id, contributor_id, key_fingerprint, bound_at)
+VALUES (@account_id, @contributor_id, @key_fingerprint, @bound_at);
+
+-- name: UpdateBinding :exec
+UPDATE account_contributor_bindings
+SET key_fingerprint = @key_fingerprint, bound_at = @bound_at
+WHERE account_id = @account_id AND contributor_id = @contributor_id;
+
+-- name: DeleteBinding :exec
+DELETE FROM account_contributor_bindings
+WHERE account_id = @account_id AND contributor_id = @contributor_id;
+
+-- name: DeleteAccountBindings :exec
+DELETE FROM account_contributor_bindings WHERE account_id = @account_id;
+
+-- name: InsertBindingAudit :exec
+INSERT INTO account_binding_audit
+    (id, account_id, contributor_id, action, occurred_at)
+VALUES (@id, @account_id, @contributor_id, @action, @occurred_at);
+
+-- name: ListBindingAudit :many
+SELECT id, account_id, contributor_id, action, occurred_at
+FROM account_binding_audit
+WHERE account_id = @account_id
+ORDER BY occurred_at, id;
+
 -- name: FindProviderOwner :one
 SELECT account_id, provider, issuer, subject, email, linked_at
 FROM account_provider_links

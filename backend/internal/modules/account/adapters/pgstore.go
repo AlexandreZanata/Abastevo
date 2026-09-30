@@ -695,5 +695,213 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 	if err := q.DeleteAccountProviders(ctx, id); err != nil {
 		return err
 	}
+	if err := q.DeleteAccountBindings(ctx, id); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
+}
+
+func toBinding(row account.AccountContributorBinding) domain.ContributorBinding {
+	return domain.ContributorBinding{
+		AccountID:      uuidString(row.AccountID),
+		ContributorID:  row.ContributorID,
+		KeyFingerprint: row.KeyFingerprint,
+		BoundAt:        unix(row.BoundAt),
+	}
+}
+
+func toBindingAudit(row account.AccountBindingAudit) domain.BindingAudit {
+	return domain.BindingAudit{
+		ID:            uuidString(row.ID),
+		AccountID:     uuidString(row.AccountID),
+		ContributorID: row.ContributorID,
+		Action:        row.Action,
+		OccurredAt:    unix(row.OccurredAt),
+	}
+}
+
+// BindContributor records a verified contributor binding, refusing
+// stolen-ID binds. Same-account relinks converge; a lost unique race
+// reports cross-account, like the provider-link lane.
+func (s *PGStore) BindContributor(ctx context.Context, binding domain.ContributorBinding, auditID string) error {
+	if binding.AccountID == "" || binding.ContributorID == "" || binding.KeyFingerprint == "" {
+		return domain.ErrBindingInvalid
+	}
+	accountID, err := mustUUID(binding.AccountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	auditUUID, err := mustUUID(auditID)
+	if err != nil {
+		return domain.ErrBindingInvalid
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	row, err := q.GetAccountByID(ctx, accountID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if row.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	if row.Status != domain.StatusActive {
+		return domain.ErrAccountSuspended
+	}
+	if owner, err := q.FindBindingOwner(ctx, binding.ContributorID); err == nil {
+		if uuidString(owner.AccountID) != binding.AccountID {
+			return domain.ErrBindingCrossAccount
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	if _, err := q.GetBinding(ctx, account.GetBindingParams{
+		AccountID:     accountID,
+		ContributorID: binding.ContributorID,
+	}); err == nil {
+		if err := q.UpdateBinding(ctx, account.UpdateBindingParams{
+			AccountID:      accountID,
+			ContributorID:  binding.ContributorID,
+			KeyFingerprint: binding.KeyFingerprint,
+			BoundAt:        stamp(binding.BoundAt),
+		}); err != nil {
+			if isUniqueViolation(err) {
+				return domain.ErrBindingCrossAccount
+			}
+			return err
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	} else if err := q.InsertBinding(ctx, account.InsertBindingParams{
+		AccountID:      accountID,
+		ContributorID:  binding.ContributorID,
+		KeyFingerprint: binding.KeyFingerprint,
+		BoundAt:        stamp(binding.BoundAt),
+	}); err != nil {
+		if isUniqueViolation(err) {
+			return domain.ErrBindingCrossAccount
+		}
+		return err
+	}
+	if err := q.InsertBindingAudit(ctx, account.InsertBindingAuditParams{
+		ID:            auditUUID,
+		AccountID:     accountID,
+		ContributorID: binding.ContributorID,
+		Action:        domain.BindingActionBind,
+		OccurredAt:    stamp(binding.BoundAt),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// UnbindContributor removes one binding and audits the removal.
+func (s *PGStore) UnbindContributor(ctx context.Context, accountID, contributorID, auditID string, nowUnix int64) error {
+	if accountID == "" || contributorID == "" {
+		return domain.ErrBindingInvalid
+	}
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	auditUUID, err := mustUUID(auditID)
+	if err != nil {
+		return domain.ErrBindingInvalid
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	row, err := q.GetAccountByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if row.Status == domain.StatusDeleted {
+		return domain.ErrAccountDeleted
+	}
+	if row.Status != domain.StatusActive {
+		return domain.ErrAccountSuspended
+	}
+	if _, err := q.GetBinding(ctx, account.GetBindingParams{
+		AccountID:     id,
+		ContributorID: contributorID,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrBindingNotFound
+		}
+		return err
+	}
+	if err := q.DeleteBinding(ctx, account.DeleteBindingParams{
+		AccountID:     id,
+		ContributorID: contributorID,
+	}); err != nil {
+		return err
+	}
+	if err := q.InsertBindingAudit(ctx, account.InsertBindingAuditParams{
+		ID:            auditUUID,
+		AccountID:     id,
+		ContributorID: contributorID,
+		Action:        domain.BindingActionUnbind,
+		OccurredAt:    stamp(nowUnix),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ListBindings returns the contributor bindings of one account.
+func (s *PGStore) ListBindings(ctx context.Context, accountID string) ([]domain.ContributorBinding, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrAccountNotFound
+	}
+	rows, err := account.New(s.pool).ListBindings(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ContributorBinding, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toBinding(r))
+	}
+	return out, nil
+}
+
+// FindBindingOwner resolves the account owning a contributor binding.
+func (s *PGStore) FindBindingOwner(ctx context.Context, contributorID string) (string, bool, error) {
+	row, err := account.New(s.pool).FindBindingOwner(ctx, contributorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return uuidString(row.AccountID), true, nil
+}
+
+// ListBindingAudit returns the recovery audit trail of one account.
+func (s *PGStore) ListBindingAudit(ctx context.Context, accountID string) ([]domain.BindingAudit, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrAccountNotFound
+	}
+	rows, err := account.New(s.pool).ListBindingAudit(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.BindingAudit, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toBindingAudit(r))
+	}
+	return out, nil
 }

@@ -31,6 +31,10 @@ var (
 	ErrAccountNotFound       = errors.New("account: unknown account")
 	ErrAccountSuspended      = errors.New("account: account suspended")
 	ErrAccountDeleted        = errors.New("account: account deleted")
+	ErrBindingCrossAccount   = errors.New("account: contributor bound to another account")
+	ErrBindingNotFound       = errors.New("account: contributor binding not found")
+	ErrBindingInvalid        = errors.New("account: invalid binding request")
+	ErrKeyUnavailable        = errors.New("account: key verifier unavailable")
 	ErrAddressLinked         = errors.New("account: address already linked")
 	ErrSessionReuse          = errors.New("account: refresh token reused")
 	ErrSessionRevoked        = errors.New("account: session family revoked")
@@ -75,6 +79,15 @@ type ProviderVerifier interface {
 	Verify(ctx context.Context, provider, rawToken, audience, nonce string) (ProviderSubject, error)
 }
 
+// KeyProver checks a contributor device-key proof for the binding
+// ceremony (P13-T04B, B-BR-A04). The proof is opaque to the account
+// module; the production adapter verifies it against the contributor's
+// registered identity keys. Success returns the proven fingerprint.
+// Unknown contributors, wrong keys and replayed proofs fail closed.
+type KeyProver interface {
+	VerifyKeyProof(ctx context.Context, contributorID, proof string) (string, error)
+}
+
 // VerdictCode maps a domain error to the stable fixture/audit code so
 // nothing fails without an explainable reason.
 func VerdictCode(err error) string {
@@ -117,6 +130,14 @@ func VerdictCode(err error) string {
 		return "account-suspended"
 	case errors.Is(err, ErrAccountDeleted):
 		return "account-deleted"
+	case errors.Is(err, ErrBindingCrossAccount):
+		return "binding-cross-account-refused"
+	case errors.Is(err, ErrBindingNotFound):
+		return "binding-not-found"
+	case errors.Is(err, ErrBindingInvalid):
+		return "binding-invalid"
+	case errors.Is(err, ErrKeyUnavailable):
+		return "key-unavailable"
 	case errors.Is(err, ErrAddressLinked):
 		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):

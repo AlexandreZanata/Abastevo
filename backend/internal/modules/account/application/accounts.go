@@ -30,6 +30,11 @@ type Store interface {
 	SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error
 	ReactivateAccount(ctx context.Context, accountID string) error
 	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error
+	BindContributor(ctx context.Context, binding domain.ContributorBinding, auditID string) error
+	UnbindContributor(ctx context.Context, accountID, contributorID, auditID string, nowUnix int64) error
+	ListBindings(ctx context.Context, accountID string) ([]domain.ContributorBinding, error)
+	FindBindingOwner(ctx context.Context, contributorID string) (string, bool, error)
+	ListBindingAudit(ctx context.Context, accountID string) ([]domain.BindingAudit, error)
 	LinkProvider(ctx context.Context, link domain.ProviderLink) error
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
@@ -58,15 +63,16 @@ type AuthResult struct {
 
 // Service wires frozen policy to the Store and MailSender ports.
 type Service struct {
-	Clock    domain.Clock
-	Hasher   domain.CodeHasher
-	Mail     domain.MailSender
-	Store    Store
-	Verifier domain.ProviderVerifier
-	CodeGen  func() (string, error)
-	TokenGen func() (string, error)
-	AliasGen func() (string, error)
-	IDGen    func() (string, error)
+	Clock     domain.Clock
+	Hasher    domain.CodeHasher
+	Mail      domain.MailSender
+	Store     Store
+	Verifier  domain.ProviderVerifier
+	KeyProver domain.KeyProver
+	CodeGen   func() (string, error)
+	TokenGen  func() (string, error)
+	AliasGen  func() (string, error)
+	IDGen     func() (string, error)
 }
 
 // RequestCode issues a code when quota and cooldown allow. Unknown

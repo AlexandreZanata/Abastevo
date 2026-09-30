@@ -74,12 +74,36 @@ func (q *Queries) DeleteAccountAddresses(ctx context.Context, accountID pgtype.U
 	return err
 }
 
+const deleteAccountBindings = `-- name: DeleteAccountBindings :exec
+DELETE FROM account_contributor_bindings WHERE account_id = $1
+`
+
+func (q *Queries) DeleteAccountBindings(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAccountBindings, accountID)
+	return err
+}
+
 const deleteAccountProviders = `-- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = $1
 `
 
 func (q *Queries) DeleteAccountProviders(ctx context.Context, accountID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteAccountProviders, accountID)
+	return err
+}
+
+const deleteBinding = `-- name: DeleteBinding :exec
+DELETE FROM account_contributor_bindings
+WHERE account_id = $1 AND contributor_id = $2
+`
+
+type DeleteBindingParams struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	ContributorID string      `json:"contributor_id"`
+}
+
+func (q *Queries) DeleteBinding(ctx context.Context, arg DeleteBindingParams) error {
+	_, err := q.db.Exec(ctx, deleteBinding, arg.AccountID, arg.ContributorID)
 	return err
 }
 
@@ -113,6 +137,24 @@ func (q *Queries) FindAccountByAddress(ctx context.Context, addressHash string) 
 		&i.Alias,
 		&i.Status,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const findBindingOwner = `-- name: FindBindingOwner :one
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE contributor_id = $1
+`
+
+func (q *Queries) FindBindingOwner(ctx context.Context, contributorID string) (AccountContributorBinding, error) {
+	row := q.db.QueryRow(ctx, findBindingOwner, contributorID)
+	var i AccountContributorBinding
+	err := row.Scan(
+		&i.AccountID,
+		&i.ContributorID,
+		&i.KeyFingerprint,
+		&i.BoundAt,
 	)
 	return i, err
 }
@@ -159,6 +201,33 @@ func (q *Queries) GetAccountByID(ctx context.Context, id pgtype.UUID) (Account, 
 		&i.Alias,
 		&i.Status,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getBinding = `-- name: GetBinding :one
+
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = $1 AND contributor_id = $2
+`
+
+type GetBindingParams struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	ContributorID string      `json:"contributor_id"`
+}
+
+// Contributor bindings and link audit (P13-T04B). One contributor binds
+// at most one account; the application refuses stolen-ID binds and the
+// UNIQUE guard closes the concurrent race.
+func (q *Queries) GetBinding(ctx context.Context, arg GetBindingParams) (AccountContributorBinding, error) {
+	row := q.db.QueryRow(ctx, getBinding, arg.AccountID, arg.ContributorID)
+	var i AccountContributorBinding
+	err := row.Scan(
+		&i.AccountID,
+		&i.ContributorID,
+		&i.KeyFingerprint,
+		&i.BoundAt,
 	)
 	return i, err
 }
@@ -252,6 +321,54 @@ type InsertAddressParams struct {
 
 func (q *Queries) InsertAddress(ctx context.Context, arg InsertAddressParams) error {
 	_, err := q.db.Exec(ctx, insertAddress, arg.AddressHash, arg.AccountID, arg.LinkedAt)
+	return err
+}
+
+const insertBinding = `-- name: InsertBinding :exec
+INSERT INTO account_contributor_bindings
+    (account_id, contributor_id, key_fingerprint, bound_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertBindingParams struct {
+	AccountID      pgtype.UUID        `json:"account_id"`
+	ContributorID  string             `json:"contributor_id"`
+	KeyFingerprint string             `json:"key_fingerprint"`
+	BoundAt        pgtype.Timestamptz `json:"bound_at"`
+}
+
+func (q *Queries) InsertBinding(ctx context.Context, arg InsertBindingParams) error {
+	_, err := q.db.Exec(ctx, insertBinding,
+		arg.AccountID,
+		arg.ContributorID,
+		arg.KeyFingerprint,
+		arg.BoundAt,
+	)
+	return err
+}
+
+const insertBindingAudit = `-- name: InsertBindingAudit :exec
+INSERT INTO account_binding_audit
+    (id, account_id, contributor_id, action, occurred_at)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertBindingAuditParams struct {
+	ID            pgtype.UUID        `json:"id"`
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	Action        string             `json:"action"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+}
+
+func (q *Queries) InsertBindingAudit(ctx context.Context, arg InsertBindingAuditParams) error {
+	_, err := q.db.Exec(ctx, insertBindingAudit,
+		arg.ID,
+		arg.AccountID,
+		arg.ContributorID,
+		arg.Action,
+		arg.OccurredAt,
+	)
 	return err
 }
 
@@ -380,6 +497,71 @@ func (q *Queries) LatestCode(ctx context.Context, addressHash string) (AccountEm
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const listBindingAudit = `-- name: ListBindingAudit :many
+SELECT id, account_id, contributor_id, action, occurred_at
+FROM account_binding_audit
+WHERE account_id = $1
+ORDER BY occurred_at, id
+`
+
+func (q *Queries) ListBindingAudit(ctx context.Context, accountID pgtype.UUID) ([]AccountBindingAudit, error) {
+	rows, err := q.db.Query(ctx, listBindingAudit, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountBindingAudit
+	for rows.Next() {
+		var i AccountBindingAudit
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ContributorID,
+			&i.Action,
+			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBindings = `-- name: ListBindings :many
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = $1
+ORDER BY contributor_id
+`
+
+func (q *Queries) ListBindings(ctx context.Context, accountID pgtype.UUID) ([]AccountContributorBinding, error) {
+	rows, err := q.db.Query(ctx, listBindings, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountContributorBinding
+	for rows.Next() {
+		var i AccountContributorBinding
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.ContributorID,
+			&i.KeyFingerprint,
+			&i.BoundAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listProviderLinks = `-- name: ListProviderLinks :many
@@ -579,6 +761,29 @@ type SetAccountStatusParams struct {
 // row stays as an audit record.
 func (q *Queries) SetAccountStatus(ctx context.Context, arg SetAccountStatusParams) error {
 	_, err := q.db.Exec(ctx, setAccountStatus, arg.Status, arg.ID)
+	return err
+}
+
+const updateBinding = `-- name: UpdateBinding :exec
+UPDATE account_contributor_bindings
+SET key_fingerprint = $1, bound_at = $2
+WHERE account_id = $3 AND contributor_id = $4
+`
+
+type UpdateBindingParams struct {
+	KeyFingerprint string             `json:"key_fingerprint"`
+	BoundAt        pgtype.Timestamptz `json:"bound_at"`
+	AccountID      pgtype.UUID        `json:"account_id"`
+	ContributorID  string             `json:"contributor_id"`
+}
+
+func (q *Queries) UpdateBinding(ctx context.Context, arg UpdateBindingParams) error {
+	_, err := q.db.Exec(ctx, updateBinding,
+		arg.KeyFingerprint,
+		arg.BoundAt,
+		arg.AccountID,
+		arg.ContributorID,
+	)
 	return err
 }
 

@@ -21,6 +21,21 @@ type AccountAddress struct {
 	LinkedAt    pgtype.Timestamptz `json:"linked_at"`
 }
 
+type AccountBindingAudit struct {
+	ID            pgtype.UUID        `json:"id"`
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	Action        string             `json:"action"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+}
+
+type AccountContributorBinding struct {
+	AccountID      pgtype.UUID        `json:"account_id"`
+	ContributorID  string             `json:"contributor_id"`
+	KeyFingerprint string             `json:"key_fingerprint"`
+	BoundAt        pgtype.Timestamptz `json:"bound_at"`
+}
+
 type AccountEmailCode struct {
 	ID          pgtype.UUID        `json:"id"`
 	AddressHash string             `json:"address_hash"`

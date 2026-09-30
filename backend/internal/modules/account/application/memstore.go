@@ -12,29 +12,35 @@ import (
 // P13-T02B: TryConsume and Rotate complete under one lock so the same
 // interleavings are covered here first.
 type MemStore struct {
-	mu           sync.Mutex
-	codes        []domain.EmailCode
-	byAddr       map[string][]int
-	accounts     map[string]domain.Account
-	accountIDs   map[string]string
-	accountsByID map[string]domain.Account
-	families     map[string]*domain.SessionFamily
-	links        map[string]map[string]domain.ProviderLink
-	bySubject    map[string]string
-	nonces       map[string]bool
+	mu            sync.Mutex
+	codes         []domain.EmailCode
+	byAddr        map[string][]int
+	accounts      map[string]domain.Account
+	accountIDs    map[string]string
+	accountsByID  map[string]domain.Account
+	families      map[string]*domain.SessionFamily
+	links         map[string]map[string]domain.ProviderLink
+	bySubject     map[string]string
+	nonces        map[string]bool
+	bindings      map[string]map[string]domain.ContributorBinding
+	byContributor map[string]string
+	audit         map[string][]domain.BindingAudit
 }
 
 // NewMemStore returns an empty memory store.
 func NewMemStore() *MemStore {
 	return &MemStore{
-		byAddr:       map[string][]int{},
-		accounts:     map[string]domain.Account{},
-		accountIDs:   map[string]string{},
-		accountsByID: map[string]domain.Account{},
-		families:     map[string]*domain.SessionFamily{},
-		links:        map[string]map[string]domain.ProviderLink{},
-		bySubject:    map[string]string{},
-		nonces:       map[string]bool{},
+		byAddr:        map[string][]int{},
+		accounts:      map[string]domain.Account{},
+		accountIDs:    map[string]string{},
+		accountsByID:  map[string]domain.Account{},
+		families:      map[string]*domain.SessionFamily{},
+		links:         map[string]map[string]domain.ProviderLink{},
+		bySubject:     map[string]string{},
+		nonces:        map[string]bool{},
+		bindings:      map[string]map[string]domain.ContributorBinding{},
+		byContributor: map[string]string{},
+		audit:         map[string][]domain.BindingAudit{},
 	}
 }
 
@@ -382,5 +388,103 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		}
 		delete(m.links, accountID)
 	}
+	if set, ok := m.bindings[accountID]; ok {
+		for contributor := range set {
+			delete(m.byContributor, contributor)
+		}
+		delete(m.bindings, accountID)
+	}
 	return nil
+}
+
+// BindContributor records a verified contributor binding, refusing
+// stolen-ID binds. Same-account relinks converge idempotently; every
+// accepted bind appends an audit row.
+func (m *MemStore) BindContributor(_ context.Context, binding domain.ContributorBinding, auditID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if binding.AccountID == "" || binding.ContributorID == "" || binding.KeyFingerprint == "" {
+		return domain.ErrBindingInvalid
+	}
+	acc, ok := m.accountsByID[binding.AccountID]
+	if !ok {
+		return domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return err
+	}
+	if owner, ok := m.byContributor[binding.ContributorID]; ok && owner != binding.AccountID {
+		return domain.ErrBindingCrossAccount
+	}
+	if m.bindings[binding.AccountID] == nil {
+		m.bindings[binding.AccountID] = map[string]domain.ContributorBinding{}
+	}
+	m.bindings[binding.AccountID][binding.ContributorID] = binding
+	m.byContributor[binding.ContributorID] = binding.AccountID
+	m.audit[binding.AccountID] = append(m.audit[binding.AccountID], domain.BindingAudit{
+		ID:            auditID,
+		AccountID:     binding.AccountID,
+		ContributorID: binding.ContributorID,
+		Action:        domain.BindingActionBind,
+		OccurredAt:    binding.BoundAt,
+	})
+	return nil
+}
+
+// UnbindContributor removes one binding, auditing the removal.
+// Unknown bindings refuse without touching the ledger.
+func (m *MemStore) UnbindContributor(_ context.Context, accountID, contributorID, auditID string, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if accountID == "" || contributorID == "" {
+		return domain.ErrBindingInvalid
+	}
+	acc, ok := m.accountsByID[accountID]
+	if !ok {
+		return domain.ErrAccountNotFound
+	}
+	if err := accountUsable(acc); err != nil {
+		return err
+	}
+	set := m.bindings[accountID]
+	if _, ok := set[contributorID]; !ok {
+		return domain.ErrBindingNotFound
+	}
+	delete(set, contributorID)
+	delete(m.byContributor, contributorID)
+	m.audit[accountID] = append(m.audit[accountID], domain.BindingAudit{
+		ID:            auditID,
+		AccountID:     accountID,
+		ContributorID: contributorID,
+		Action:        domain.BindingActionUnbind,
+		OccurredAt:    nowUnix,
+	})
+	return nil
+}
+
+// ListBindings returns the contributor bindings of one account.
+func (m *MemStore) ListBindings(_ context.Context, accountID string) ([]domain.ContributorBinding, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	set := m.bindings[accountID]
+	out := make([]domain.ContributorBinding, 0, len(set))
+	for _, b := range set {
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+// FindBindingOwner resolves the account owning a contributor binding.
+func (m *MemStore) FindBindingOwner(_ context.Context, contributorID string) (string, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	owner, ok := m.byContributor[contributorID]
+	return owner, ok, nil
+}
+
+// ListBindingAudit returns the recovery audit trail of one account.
+func (m *MemStore) ListBindingAudit(_ context.Context, accountID string) ([]domain.BindingAudit, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]domain.BindingAudit(nil), m.audit[accountID]...), nil
 }
