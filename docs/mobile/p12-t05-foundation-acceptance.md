@@ -94,3 +94,18 @@ migration, no flag, no data at stake.
    verified head, guarded merge, branch deletion, wiki snapshot → P12
    INTEGRATED, issues #16–#20 closed by the merge, G12 GREEN.
 3. Then P13 free accounts (#P13-T01…). Issue #20 stays open until step 2.
+
+## Owner decision 2026-09-30: G12 accepted on basic compatibility
+
+Step 1 above is WAIVED by explicit owner decision recorded before
+merge: G12 is accepted with basic compatibility (pins frozen,
+Android parity 475+169 green, portable vectors green, static mobile
+gates green) and WITHOUT the macOS Swift build/run. The shipped
+`iosApp` shell + XCTest vectors remain implemented-unverified:
+full real-device confirmation (macOS build, simulator/device runs,
+supported-device matrix) is deferred to the release version, when
+Mac access exists. Nothing in this decision weakens CI, rewrites
+evidence, or certifies devices — it re-scopes G12 acceptance, and
+P13-T05/G13 device evidence stays outstanding to the same release
+horizon. This section, not a rewritten verdict table, is the audit
+trail: the PARTIAL table above is preserved as-run.
