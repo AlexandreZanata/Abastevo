@@ -59,6 +59,23 @@ func (f SessionFamily) Live(nowUnix int64) bool {
 	return f.RevokedAt == 0 && !RefreshExpired(f.IssuedAt, nowUnix)
 }
 
+// ProviderLink binds one verified external subject to a FREE account
+// (P13-T03B, B-BR-A03). Issuer plus subject is the only merge key; Email
+// is display/relay only and never authorizes a merge on its own.
+type ProviderLink struct {
+	AccountID string
+	Provider  string
+	Issuer    string
+	Subject   string
+	Email     string
+	LinkedAt  int64
+}
+
+// ValidProvider reports whether provider names a supported OIDC provider.
+func ValidProvider(provider string) bool {
+	return provider == "google" || provider == "apple"
+}
+
 // NormalizeAddress trims and lowercases for hashing and quota keys. Lookup
 // keys are always hashes of this form, never raw addresses.
 func NormalizeAddress(address string) string {

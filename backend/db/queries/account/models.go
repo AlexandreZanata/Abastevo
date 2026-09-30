@@ -31,6 +31,20 @@ type AccountEmailCode struct {
 	ConsumedAt  pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AccountOidcNonce struct {
+	Nonce      string             `json:"nonce"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+}
+
+type AccountProviderLink struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Provider  string             `json:"provider"`
+	Issuer    string             `json:"issuer"`
+	Subject   string             `json:"subject"`
+	Email     string             `json:"email"`
+	LinkedAt  pgtype.Timestamptz `json:"linked_at"`
+}
+
 type AccountSessionFamily struct {
 	ID            pgtype.UUID        `json:"id"`
 	AccountID     pgtype.UUID        `json:"account_id"`

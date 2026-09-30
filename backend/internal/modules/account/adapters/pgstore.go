@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -344,4 +345,219 @@ func (s *PGStore) RevokeAccount(ctx context.Context, accountID string, nowUnix i
 		Now:       stamp(nowUnix),
 		AccountID: id,
 	})
+}
+
+func toLink(row account.AccountProviderLink) domain.ProviderLink {
+	return domain.ProviderLink{
+		AccountID: uuidString(row.AccountID),
+		Provider:  row.Provider,
+		Issuer:    row.Issuer,
+		Subject:   row.Subject,
+		Email:     row.Email,
+		LinkedAt:  unix(row.LinkedAt),
+	}
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+	return false
+}
+
+// LinkProvider binds a verified subject, refusing cross-account binds.
+// Same-account relinks converge; provider rotation within one account
+// updates the stored subject. A lost unique race reports cross-account.
+func (s *PGStore) LinkProvider(ctx context.Context, link domain.ProviderLink) error {
+	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" {
+		return domain.ErrOIDCWrongAudience
+	}
+	accountID, err := mustUUID(link.AccountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	if _, err := q.GetAccountByID(ctx, accountID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if owner, err := q.FindProviderOwner(ctx, account.FindProviderOwnerParams{
+		Provider: link.Provider,
+		Subject:  link.Subject,
+	}); err == nil {
+		if uuidString(owner.AccountID) != link.AccountID {
+			return domain.ErrLinkCrossAccount
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	if existing, err := q.GetProviderLink(ctx, account.GetProviderLinkParams{
+		AccountID: accountID,
+		Provider:  link.Provider,
+	}); err == nil {
+		if existing.Subject == link.Subject && existing.Issuer == link.Issuer {
+			if err := q.UpdateProviderLink(ctx, account.UpdateProviderLinkParams{
+				AccountID: accountID,
+				Provider:  link.Provider,
+				Issuer:    link.Issuer,
+				Subject:   link.Subject,
+				Email:     link.Email,
+				LinkedAt:  stamp(link.LinkedAt),
+			}); err != nil {
+				return err
+			}
+			return tx.Commit(ctx)
+		}
+		if err := q.UpdateProviderLink(ctx, account.UpdateProviderLinkParams{
+			AccountID: accountID,
+			Provider:  link.Provider,
+			Issuer:    link.Issuer,
+			Subject:   link.Subject,
+			Email:     link.Email,
+			LinkedAt:  stamp(link.LinkedAt),
+		}); err != nil {
+			if isUniqueViolation(err) {
+				return domain.ErrLinkCrossAccount
+			}
+			return err
+		}
+		return tx.Commit(ctx)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	if err := q.InsertProviderLink(ctx, account.InsertProviderLinkParams{
+		AccountID: accountID,
+		Provider:  link.Provider,
+		Issuer:    link.Issuer,
+		Subject:   link.Subject,
+		Email:     link.Email,
+		LinkedAt:  stamp(link.LinkedAt),
+	}); err != nil {
+		if isUniqueViolation(err) {
+			return domain.ErrLinkCrossAccount
+		}
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// UnlinkProvider removes one binding, refusing the last login method.
+func (s *PGStore) UnlinkProvider(ctx context.Context, accountID, provider string) error {
+	if !domain.ValidProvider(provider) {
+		return domain.ErrOIDCUnknownIssuer
+	}
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrAccountNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	if _, err := q.GetAccountByID(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrAccountNotFound
+		}
+		return err
+	}
+	if _, err := q.GetProviderLink(ctx, account.GetProviderLinkParams{
+		AccountID: id,
+		Provider:  provider,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrProviderNotLinked
+		}
+		return err
+	}
+	links, err := q.ListProviderLinks(ctx, id)
+	if err != nil {
+		return err
+	}
+	nAddr, err := q.CountAddressesByAccount(ctx, id)
+	if err != nil {
+		return err
+	}
+	if int64(len(links))+nAddr <= 1 {
+		return domain.ErrLastLoginMethod
+	}
+	if err := q.DeleteProviderLink(ctx, account.DeleteProviderLinkParams{
+		AccountID: id,
+		Provider:  provider,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ListProviders returns the provider bindings of one account.
+func (s *PGStore) ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrAccountNotFound
+	}
+	rows, err := account.New(s.pool).ListProviderLinks(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ProviderLink, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toLink(r))
+	}
+	return out, nil
+}
+
+// FindProviderOwner resolves the account owning a provider subject.
+func (s *PGStore) FindProviderOwner(ctx context.Context, provider, subject string) (string, bool, error) {
+	row, err := account.New(s.pool).FindProviderOwner(ctx, account.FindProviderOwnerParams{
+		Provider: provider,
+		Subject:  subject,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return uuidString(row.AccountID), true, nil
+}
+
+// CountAddresses counts email bindings of one account.
+func (s *PGStore) CountAddresses(ctx context.Context, accountID string) (int, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return 0, domain.ErrAccountNotFound
+	}
+	n, err := account.New(s.pool).CountAddressesByAccount(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// TryConsumeNonce reserves a login nonce exactly once across processes.
+func (s *PGStore) TryConsumeNonce(ctx context.Context, nonce string, nowUnix int64) (bool, error) {
+	if nonce == "" {
+		return false, nil
+	}
+	_, err := account.New(s.pool).InsertNonce(ctx, account.InsertNonceParams{
+		Nonce:      nonce,
+		ConsumedAt: stamp(nowUnix),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

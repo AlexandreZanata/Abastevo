@@ -98,6 +98,7 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000020_accounts.sql
+      - db/migrations/000021_provider_links.sql
     gen:
       go:
         package: account

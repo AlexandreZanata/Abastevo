@@ -34,6 +34,19 @@ func (q *Queries) ConsumeCode(ctx context.Context, arg ConsumeCodeParams) error 
 	return err
 }
 
+const countAddressesByAccount = `-- name: CountAddressesByAccount :one
+SELECT count(*)::bigint
+FROM account_addresses
+WHERE account_id = $1
+`
+
+func (q *Queries) CountAddressesByAccount(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAddressesByAccount, accountID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countCodesSince = `-- name: CountCodesSince :one
 SELECT count(*)::bigint
 FROM account_email_codes
@@ -52,6 +65,21 @@ func (q *Queries) CountCodesSince(ctx context.Context, arg CountCodesSinceParams
 	return column_1, err
 }
 
+const deleteProviderLink = `-- name: DeleteProviderLink :exec
+DELETE FROM account_provider_links
+WHERE account_id = $1 AND provider = $2
+`
+
+type DeleteProviderLinkParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Provider  string      `json:"provider"`
+}
+
+func (q *Queries) DeleteProviderLink(ctx context.Context, arg DeleteProviderLinkParams) error {
+	_, err := q.db.Exec(ctx, deleteProviderLink, arg.AccountID, arg.Provider)
+	return err
+}
+
 const findAccountByAddress = `-- name: FindAccountByAddress :one
 SELECT a.id, a.alias, a.status, a.created_at
 FROM accounts a
@@ -61,6 +89,52 @@ WHERE l.address_hash = $1
 
 func (q *Queries) FindAccountByAddress(ctx context.Context, addressHash string) (Account, error) {
 	row := q.db.QueryRow(ctx, findAccountByAddress, addressHash)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Alias,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const findProviderOwner = `-- name: FindProviderOwner :one
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE provider = $1 AND subject = $2
+`
+
+type FindProviderOwnerParams struct {
+	Provider string `json:"provider"`
+	Subject  string `json:"subject"`
+}
+
+func (q *Queries) FindProviderOwner(ctx context.Context, arg FindProviderOwnerParams) (AccountProviderLink, error) {
+	row := q.db.QueryRow(ctx, findProviderOwner, arg.Provider, arg.Subject)
+	var i AccountProviderLink
+	err := row.Scan(
+		&i.AccountID,
+		&i.Provider,
+		&i.Issuer,
+		&i.Subject,
+		&i.Email,
+		&i.LinkedAt,
+	)
+	return i, err
+}
+
+const getAccountByID = `-- name: GetAccountByID :one
+
+SELECT id, alias, status, created_at
+FROM accounts
+WHERE id = $1
+`
+
+// Provider links and OIDC nonces (P13-T03B). Only salt-free opaque
+// subjects persist; email is display/relay only and never a merge key.
+func (q *Queries) GetAccountByID(ctx context.Context, id pgtype.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, getAccountByID, id)
 	var i Account
 	err := row.Scan(
 		&i.ID,
@@ -91,6 +165,31 @@ func (q *Queries) GetFamily(ctx context.Context, id pgtype.UUID) (AccountSession
 		&i.AccessExpires,
 		&i.IssuedAt,
 		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getProviderLink = `-- name: GetProviderLink :one
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE account_id = $1 AND provider = $2
+`
+
+type GetProviderLinkParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Provider  string      `json:"provider"`
+}
+
+func (q *Queries) GetProviderLink(ctx context.Context, arg GetProviderLinkParams) (AccountProviderLink, error) {
+	row := q.db.QueryRow(ctx, getProviderLink, arg.AccountID, arg.Provider)
+	var i AccountProviderLink
+	err := row.Scan(
+		&i.AccountID,
+		&i.Provider,
+		&i.Issuer,
+		&i.Subject,
+		&i.Email,
+		&i.LinkedAt,
 	)
 	return i, err
 }
@@ -196,6 +295,52 @@ func (q *Queries) InsertFamily(ctx context.Context, arg InsertFamilyParams) erro
 	return err
 }
 
+const insertNonce = `-- name: InsertNonce :one
+INSERT INTO account_oidc_nonces (nonce, consumed_at)
+VALUES ($1, $2)
+ON CONFLICT (nonce) DO NOTHING
+RETURNING nonce
+`
+
+type InsertNonceParams struct {
+	Nonce      string             `json:"nonce"`
+	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
+}
+
+func (q *Queries) InsertNonce(ctx context.Context, arg InsertNonceParams) (string, error) {
+	row := q.db.QueryRow(ctx, insertNonce, arg.Nonce, arg.ConsumedAt)
+	var nonce string
+	err := row.Scan(&nonce)
+	return nonce, err
+}
+
+const insertProviderLink = `-- name: InsertProviderLink :exec
+INSERT INTO account_provider_links
+    (account_id, provider, issuer, subject, email, linked_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertProviderLinkParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Provider  string             `json:"provider"`
+	Issuer    string             `json:"issuer"`
+	Subject   string             `json:"subject"`
+	Email     string             `json:"email"`
+	LinkedAt  pgtype.Timestamptz `json:"linked_at"`
+}
+
+func (q *Queries) InsertProviderLink(ctx context.Context, arg InsertProviderLinkParams) error {
+	_, err := q.db.Exec(ctx, insertProviderLink,
+		arg.AccountID,
+		arg.Provider,
+		arg.Issuer,
+		arg.Subject,
+		arg.Email,
+		arg.LinkedAt,
+	)
+	return err
+}
+
 const latestCode = `-- name: LatestCode :one
 SELECT id, address_hash, salt, hash, issued_at, attempts, consumed_at
 FROM account_email_codes
@@ -217,6 +362,40 @@ func (q *Queries) LatestCode(ctx context.Context, addressHash string) (AccountEm
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const listProviderLinks = `-- name: ListProviderLinks :many
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE account_id = $1
+ORDER BY provider
+`
+
+func (q *Queries) ListProviderLinks(ctx context.Context, accountID pgtype.UUID) ([]AccountProviderLink, error) {
+	rows, err := q.db.Query(ctx, listProviderLinks, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountProviderLink
+	for rows.Next() {
+		var i AccountProviderLink
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.Provider,
+			&i.Issuer,
+			&i.Subject,
+			&i.Email,
+			&i.LinkedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockAddressCodes = `-- name: LockAddressCodes :many
@@ -362,6 +541,34 @@ func (q *Queries) RotateFamily(ctx context.Context, arg RotateFamilyParams) erro
 		arg.AccessHash,
 		arg.AccessExpires,
 		arg.ID,
+	)
+	return err
+}
+
+const updateProviderLink = `-- name: UpdateProviderLink :exec
+UPDATE account_provider_links
+SET issuer = $1, subject = $2, email = $3,
+    linked_at = $4
+WHERE account_id = $5 AND provider = $6
+`
+
+type UpdateProviderLinkParams struct {
+	Issuer    string             `json:"issuer"`
+	Subject   string             `json:"subject"`
+	Email     string             `json:"email"`
+	LinkedAt  pgtype.Timestamptz `json:"linked_at"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	Provider  string             `json:"provider"`
+}
+
+func (q *Queries) UpdateProviderLink(ctx context.Context, arg UpdateProviderLinkParams) error {
+	_, err := q.db.Exec(ctx, updateProviderLink,
+		arg.Issuer,
+		arg.Subject,
+		arg.Email,
+		arg.LinkedAt,
+		arg.AccountID,
+		arg.Provider,
 	)
 	return err
 }

@@ -92,3 +92,53 @@ UPDATE account_session_families SET revoked_at = @now WHERE id = @id;
 -- name: RevokeAccountFamilies :exec
 UPDATE account_session_families SET revoked_at = @now
 WHERE account_id = @account_id AND revoked_at IS NULL;
+
+-- Provider links and OIDC nonces (P13-T03B). Only salt-free opaque
+-- subjects persist; email is display/relay only and never a merge key.
+
+-- name: GetAccountByID :one
+SELECT id, alias, status, created_at
+FROM accounts
+WHERE id = @id;
+
+-- name: FindProviderOwner :one
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE provider = @provider AND subject = @subject;
+
+-- name: GetProviderLink :one
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE account_id = @account_id AND provider = @provider;
+
+-- name: ListProviderLinks :many
+SELECT account_id, provider, issuer, subject, email, linked_at
+FROM account_provider_links
+WHERE account_id = @account_id
+ORDER BY provider;
+
+-- name: CountAddressesByAccount :one
+SELECT count(*)::bigint
+FROM account_addresses
+WHERE account_id = @account_id;
+
+-- name: InsertProviderLink :exec
+INSERT INTO account_provider_links
+    (account_id, provider, issuer, subject, email, linked_at)
+VALUES (@account_id, @provider, @issuer, @subject, @email, @linked_at);
+
+-- name: UpdateProviderLink :exec
+UPDATE account_provider_links
+SET issuer = @issuer, subject = @subject, email = @email,
+    linked_at = @linked_at
+WHERE account_id = @account_id AND provider = @provider;
+
+-- name: DeleteProviderLink :exec
+DELETE FROM account_provider_links
+WHERE account_id = @account_id AND provider = @provider;
+
+-- name: InsertNonce :one
+INSERT INTO account_oidc_nonces (nonce, consumed_at)
+VALUES (@nonce, @consumed_at)
+ON CONFLICT (nonce) DO NOTHING
+RETURNING nonce;

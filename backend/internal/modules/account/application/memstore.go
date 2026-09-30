@@ -12,21 +12,29 @@ import (
 // P13-T02B: TryConsume and Rotate complete under one lock so the same
 // interleavings are covered here first.
 type MemStore struct {
-	mu         sync.Mutex
-	codes      []domain.EmailCode
-	byAddr     map[string][]int
-	accounts   map[string]domain.Account
-	accountIDs map[string]string
-	families   map[string]*domain.SessionFamily
+	mu           sync.Mutex
+	codes        []domain.EmailCode
+	byAddr       map[string][]int
+	accounts     map[string]domain.Account
+	accountIDs   map[string]string
+	accountsByID map[string]domain.Account
+	families     map[string]*domain.SessionFamily
+	links        map[string]map[string]domain.ProviderLink
+	bySubject    map[string]string
+	nonces       map[string]bool
 }
 
 // NewMemStore returns an empty memory store.
 func NewMemStore() *MemStore {
 	return &MemStore{
-		byAddr:     map[string][]int{},
-		accounts:   map[string]domain.Account{},
-		accountIDs: map[string]string{},
-		families:   map[string]*domain.SessionFamily{},
+		byAddr:       map[string][]int{},
+		accounts:     map[string]domain.Account{},
+		accountIDs:   map[string]string{},
+		accountsByID: map[string]domain.Account{},
+		families:     map[string]*domain.SessionFamily{},
+		links:        map[string]map[string]domain.ProviderLink{},
+		bySubject:    map[string]string{},
+		nonces:       map[string]bool{},
 	}
 }
 
@@ -117,6 +125,7 @@ func (m *MemStore) CreateAccount(_ context.Context, acc domain.Account, addressH
 	}
 	m.accounts[addressHash] = acc
 	m.accountIDs[acc.ID] = addressHash
+	m.accountsByID[acc.ID] = acc
 	return nil
 }
 
@@ -172,4 +181,113 @@ func (m *MemStore) RevokeAccount(_ context.Context, accountID string, nowUnix in
 		}
 	}
 	return nil
+}
+
+func subjectKey(provider, subject string) string {
+	return provider + "\x00" + subject
+}
+
+// LinkProvider binds a verified subject, refusing cross-account binds.
+// Same-account relinks converge; same-account provider rotation updates
+// the stored subject.
+func (m *MemStore) LinkProvider(_ context.Context, link domain.ProviderLink) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !domain.ValidProvider(link.Provider) || link.Issuer == "" || link.Subject == "" {
+		return domain.ErrOIDCWrongAudience
+	}
+	if _, ok := m.accountsByID[link.AccountID]; !ok {
+		return domain.ErrAccountNotFound
+	}
+	key := subjectKey(link.Provider, link.Subject)
+	if owner, ok := m.bySubject[key]; ok && owner != link.AccountID {
+		return domain.ErrLinkCrossAccount
+	}
+	if m.links[link.AccountID] == nil {
+		m.links[link.AccountID] = map[string]domain.ProviderLink{}
+	}
+	if existing, ok := m.links[link.AccountID][link.Provider]; ok {
+		if existing.Subject != link.Subject {
+			delete(m.bySubject, subjectKey(link.Provider, existing.Subject))
+		}
+	}
+	m.links[link.AccountID][link.Provider] = link
+	m.bySubject[key] = link.AccountID
+	return nil
+}
+
+// UnlinkProvider removes one binding, refusing the last login method.
+func (m *MemStore) UnlinkProvider(_ context.Context, accountID, provider string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !domain.ValidProvider(provider) {
+		return domain.ErrOIDCUnknownIssuer
+	}
+	if _, ok := m.accountsByID[accountID]; !ok {
+		return domain.ErrAccountNotFound
+	}
+	set := m.links[accountID]
+	existing, ok := set[provider]
+	if !ok {
+		return domain.ErrProviderNotLinked
+	}
+	addresses := 0
+	for _, acc := range m.accounts {
+		if acc.ID == accountID {
+			addresses++
+		}
+	}
+	if len(set)+addresses <= 1 {
+		return domain.ErrLastLoginMethod
+	}
+	delete(set, provider)
+	delete(m.bySubject, subjectKey(provider, existing.Subject))
+	return nil
+}
+
+// ListProviders returns the provider bindings of one account.
+func (m *MemStore) ListProviders(_ context.Context, accountID string) ([]domain.ProviderLink, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	set := m.links[accountID]
+	out := make([]domain.ProviderLink, 0, len(set))
+	for _, l := range set {
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+// FindProviderOwner resolves the account owning a provider subject.
+func (m *MemStore) FindProviderOwner(_ context.Context, provider, subject string) (string, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	owner, ok := m.bySubject[subjectKey(provider, subject)]
+	return owner, ok, nil
+}
+
+// CountAddresses counts email bindings of one account.
+func (m *MemStore) CountAddresses(_ context.Context, accountID string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, acc := range m.accounts {
+		if acc.ID == accountID {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// TryConsumeNonce reserves a login nonce exactly once across callers.
+func (m *MemStore) TryConsumeNonce(_ context.Context, nonce string, _ int64) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if nonce == "" {
+		return false, nil
+	}
+	if m.nonces[nonce] {
+		return false, nil
+	}
+	m.nonces[nonce] = true
+	return true, nil
 }

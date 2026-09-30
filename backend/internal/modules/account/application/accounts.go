@@ -12,6 +12,8 @@ import (
 // a family's tokens in one step, so concurrent retries cannot double-spend
 // a code or fork a refresh chain. The memory implementation guards with a
 // mutex; the Postgres one uses single-statement conditional updates.
+// Provider links (P13-T03B) share the same contract: LinkProvider refuses
+// cross-account binds, UnlinkProvider refuses the last login method.
 type Store interface {
 	SaveCode(ctx context.Context, rec domain.EmailCode) error
 	CountCodesSince(ctx context.Context, addressHash string, sinceUnix int64) (int, error)
@@ -24,6 +26,12 @@ type Store interface {
 	Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
 	RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error
 	RevokeAccount(ctx context.Context, accountID string, nowUnix int64) error
+	LinkProvider(ctx context.Context, link domain.ProviderLink) error
+	UnlinkProvider(ctx context.Context, accountID, provider string) error
+	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
+	FindProviderOwner(ctx context.Context, provider, subject string) (string, bool, error)
+	CountAddresses(ctx context.Context, accountID string) (int, error)
+	TryConsumeNonce(ctx context.Context, nonce string, nowUnix int64) (bool, error)
 }
 
 // Session is one issued login: opaque bearer tokens plus their lifetimes.
@@ -50,6 +58,7 @@ type Service struct {
 	Hasher   domain.CodeHasher
 	Mail     domain.MailSender
 	Store    Store
+	Verifier domain.ProviderVerifier
 	CodeGen  func() (string, error)
 	TokenGen func() (string, error)
 	AliasGen func() (string, error)
