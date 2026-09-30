@@ -130,3 +130,48 @@ func (t Target) Validate() error {
 	}
 	return nil
 }
+
+// Clock is the only time source portable logic may use; tests inject a fake.
+type Clock interface {
+	NowUnix() int64
+}
+
+// StoredRating is one persisted rating revision. Exactly one live
+// (non-tombstoned) row exists per account/station/product; edits bump
+// Revision in place and deletes tombstone. History stays for audit;
+// aggregates read live rows only.
+type StoredRating struct {
+	ID        string
+	AccountID string
+	StationID string
+	Product   string
+	Stars     int
+	Revision  int
+	CreatedAt int64
+	DeletedAt int64
+}
+
+// Live reports whether the row counts toward aggregates.
+func (r StoredRating) Live() bool {
+	return r.DeletedAt == 0
+}
+
+// RatingStats is one rebuildable aggregate: exact count and star sum
+// per station/product. Means derive at read time; the snapshot is
+// recomputed from live rows, never accumulated across restarts.
+type RatingStats struct {
+	StationID string
+	Product   string
+	Count     int64
+	Sum       int64
+}
+
+// MeanMilli returns the truncated integer mean in thousandths of a
+// star (e.g. 4600 for 4.6), or false when no rating exists. Integer
+// math only; display formatting stays outside the domain.
+func (s RatingStats) MeanMilli() (int64, bool) {
+	if s.Count <= 0 {
+		return 0, false
+	}
+	return 1000 * s.Sum / s.Count, true
+}

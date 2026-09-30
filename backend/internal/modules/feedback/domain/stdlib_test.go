@@ -51,6 +51,9 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrRatingOutOfRange:    "rating-out-of-range",
 		ErrAgreementNegative:   "agreement-negative",
 		ErrTargetInvalid:       "target-invalid",
+		ErrGateRequired:        "gate-required",
+		ErrStatsMissing:        "stats-missing",
+		ErrRatingNotFound:      "rating-not-found",
 	}
 	for err, want := range cases {
 		if got := VerdictCode(err); got != want {

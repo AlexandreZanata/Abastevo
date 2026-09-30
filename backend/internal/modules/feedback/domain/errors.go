@@ -12,6 +12,9 @@ var (
 	ErrRatingOutOfRange    = errors.New("feedback: rating outside 1-5")
 	ErrAgreementNegative   = errors.New("feedback: negative vote count")
 	ErrTargetInvalid       = errors.New("feedback: blank station or product")
+	ErrGateRequired        = errors.New("feedback: account gate required")
+	ErrStatsMissing        = errors.New("feedback: aggregate missing after write")
+	ErrRatingNotFound      = errors.New("feedback: rating not found")
 )
 
 // VerdictOK is the shared success code.
@@ -34,6 +37,12 @@ func VerdictCode(err error) string {
 		return "agreement-negative"
 	case errors.Is(err, ErrTargetInvalid):
 		return "target-invalid"
+	case errors.Is(err, ErrGateRequired):
+		return "gate-required"
+	case errors.Is(err, ErrStatsMissing):
+		return "stats-missing"
+	case errors.Is(err, ErrRatingNotFound):
+		return "rating-not-found"
 	default:
 		return "invalid-value"
 	}
