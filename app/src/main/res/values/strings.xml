@@ -289,4 +289,26 @@
     <string name="a11y_screen_title">%1$s screen</string>
     <string name="a11y_week_picker_operational_note_expand">Expand operational notice</string>
     <string name="a11y_week_picker_operational_note_collapse">Collapse operational notice</string>
+    <string name="auth_title">Free account</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_continue">Continue</string>
+    <string name="auth_code_label">6-digit code</string>
+    <string name="auth_confirm">Sign in</string>
+    <string name="auth_google">Link Google</string>
+    <string name="auth_apple">Link Apple</string>
+    <string name="auth_logout">Sign out everywhere</string>
+    <string name="auth_pending_provider">Waiting for %1$s…</string>
+    <string name="auth_logged_in">Signed in</string>
+    <string name="auth_account_row">Account</string>
+    <string name="auth_error_input">Check the typed data</string>
+    <string name="auth_error_code">Wrong code, try again</string>
+    <string name="auth_error_expired">Code expired, request a new one</string>
+    <string name="auth_error_locked">Code locked, request a new one</string>
+    <string name="auth_error_session">Session ended, sign in again</string>
+    <string name="auth_error_suspended">Account suspended</string>
+    <string name="auth_error_deleted">Account deleted</string>
+    <string name="auth_error_offline">No connection, try again</string>
+    <string name="auth_error_provider">Provider check failed, try again</string>
+    <string name="auth_error_login_first">Sign in with email first</string>
+    <string name="auth_error_unknown">Something went wrong</string>
 </resources>

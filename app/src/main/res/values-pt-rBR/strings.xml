@@ -288,4 +288,26 @@
     <string name="a11y_screen_title">Tela %1$s</string>
     <string name="a11y_week_picker_operational_note_expand">Expandir aviso operacional</string>
     <string name="a11y_week_picker_operational_note_collapse">Recolher aviso operacional</string>
+    <string name="auth_title">Conta gratuita</string>
+    <string name="auth_email_label">Email</string>
+    <string name="auth_continue">Continuar</string>
+    <string name="auth_code_label">Código de 6 dígitos</string>
+    <string name="auth_confirm">Entrar</string>
+    <string name="auth_google">Vincular Google</string>
+    <string name="auth_apple">Vincular Apple</string>
+    <string name="auth_logout">Sair de todos os aparelhos</string>
+    <string name="auth_pending_provider">Aguardando %1$s…</string>
+    <string name="auth_logged_in">Conectado</string>
+    <string name="auth_account_row">Conta</string>
+    <string name="auth_error_input">Confira os dados digitados</string>
+    <string name="auth_error_code">Código errado, tente de novo</string>
+    <string name="auth_error_expired">Código expirado, peça outro</string>
+    <string name="auth_error_locked">Código bloqueado, peça outro</string>
+    <string name="auth_error_session">Sessão encerrada, entre de novo</string>
+    <string name="auth_error_suspended">Conta suspensa</string>
+    <string name="auth_error_deleted">Conta excluída</string>
+    <string name="auth_error_offline">Sem conexão, tente de novo</string>
+    <string name="auth_error_provider">Falha na verificação, tente de novo</string>
+    <string name="auth_error_login_first">Entre com email primeiro</string>
+    <string name="auth_error_unknown">Algo deu errado</string>
 </resources>
