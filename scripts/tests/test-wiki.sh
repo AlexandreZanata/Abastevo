@@ -220,6 +220,40 @@ else
 fi
 grep -q "WIKI_PENDING" /tmp/auth.log && ok "scope refusal is pending" || bad "scope marker"
 
+echo "== configured overview preserves unmanaged Home =="
+N="$(mktemp -d)"
+make_source "$N/src"
+mkdir -p "$N/src/docs/planning"
+printf '{"overview_page":"Project-Overview.md"}\n' > "$N/src/docs/planning/wiki-config.json"
+git -C "$N/src" add -A
+git -C "$N/src" commit -qm overview-config
+CONFIG_SHA="$(git -C "$N/src" rev-parse HEAD)"
+read NREMOTE NWORK <<< "$(make_wiki_remote "$N")"
+printf 'Manual home must stay.\n' > "$NWORK/Home.md"
+git -C "$NWORK" add -A
+git -C "$NWORK" commit -qm manual-home
+if WIKI_ROOT="$N/src" bash "$WIKI" publish --wiki "$NWORK" --allow-publish >/dev/null 2>&1; then
+    ok "configured overview publishes"
+else
+    bad "configured overview publication failed"
+fi
+[[ "$(cat "$NWORK/Home.md")" == 'Manual home must stay.' ]] && ok "manual Home preserved" || bad "manual Home overwritten"
+[[ -f "$NWORK/Project-Overview.md" ]] && ok "separate overview exists" || bad "separate overview missing"
+if [[ -f "$NWORK/docs-guide.md" ]] && grep -q '(Project-Overview.md)' "$NWORK/docs-guide.md"; then ok "overview links rewritten"; else bad "overview links stale"; fi
+if [[ -f "$NWORK/_Sidebar.md" ]] && grep -q '(Project-Overview.md)' "$NWORK/_Sidebar.md"; then ok "overview navigation rewritten"; else bad "overview navigation stale"; fi
+python3 - "$NWORK/wiki-manifest.json" <<'CHECK' && ok "manual Home not owned" || bad "manual Home adopted"
+import json,sys
+p=json.load(open(sys.argv[1]))['pages']
+assert 'Home.md' not in p
+assert p['Project-Overview.md']['source']=='README.md'
+CHECK
+printf '{"overview_page":"../escape.md"}\n' > "$N/src/docs/planning/wiki-config.json"
+git -C "$N/src" add -A
+git -C "$N/src" commit -qm invalid-config
+if WIKI_ROOT="$N/src" bash "$WIKI" preview >/dev/null 2>&1; then bad "overview traversal accepted"; else ok "overview traversal refused"; fi
+if WIKI_ROOT="$N/src" bash "$WIKI" preview --sha "$CONFIG_SHA" --out "$N/pinned" >/dev/null 2>&1 && [[ -f "$N/pinned/Project-Overview.md" ]]; then ok "configuration pinned to source SHA"; else bad "uncommitted/current configuration used"; fi
+rm -rf "$N"
+
 echo "== no blanket-deletion path by construction =="
 if grep -nE 'rm +-rf +"\$work"|rm +"\$work/"\*|git clean' "$REPO/scripts/wiki.sh" | grep -q .; then
     bad "blanket deletion present"

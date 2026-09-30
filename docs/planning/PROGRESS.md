@@ -8,6 +8,7 @@
 - User choices: 280-character comments/replies; FREE signup by email access code, Google and Apple. New targets owned by P12–P18, with existing P10/P11 IDs retained.
 - G09: RELEASE / DEFERRED_UNTIL_APP_FUNCTIONAL, tracker [#13](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/13). G09-LOCAL permits app work only after correction integration with current-head Quick verification; local tests are not production certification.
 - Targeted planning/guard evidence: [P09-T04 record](../release-evidence/p09-t04-functional-planning.md). Phase PR and tested final head/checks are recorded before publication; integration/wiki outcome belongs in PR metadata until the next authorized branch.
+- Wiki task P09-T05, [issue #15](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/15): preserve unmanaged Home/P01 report, generate Project-Overview from committed config; 39 scoped tests pass. Publication awaits merged source.
 - Next implementation after integration: P12-T01 toolchain/feature baseline. iOS acceptance requires macOS/Xcode/device evidence; not claimed from Linux.
 
 ## Preserved history

@@ -13,7 +13,7 @@ Issues #11/#12 cover this correction/planning batch; #13 is the deferred release
 - RED: new fixture/mutant campaign against the old G09 checker accepted the unsupported certified mutant, failing as intended. It exposed the old checker's ignored input path.
 - GREEN: `bash scripts/tests/test-g09.sh` accepts deferred release and refuses unsupported certification, missing app prerequisite, missing legal condition, missing integration prerequisite and missing record. Fixtures use mktemp/trap and never mutate canonical sign-off.
 - `bash -n scripts/check-g09.sh scripts/tests/test-g09.sh`: PASS.
-- Focused documentation check: 111 unique task IDs, complete P12–P18 field templates, existing task dependencies and relative links in all seven new canonical documents: PASS. Validator source and output are retained in /tmp/anpfuel-mobile-plan/ for this local session.
+- Focused documentation check: 111 unique task IDs at P09-T04 acceptance (P09-T05 later adds one publication task), complete P12–P18 field templates, existing task dependencies and relative links in all seven new canonical documents: PASS. Validator source and output are retained in /tmp/anpfuel-mobile-plan/ for this local session.
 - `bash scripts/tests/test-issues.sh`: 23 passed, 0 failed; reconciliation remains idempotent and does not close/reopen historical issues.
 - `bash scripts/scan-secrets.sh` and `git diff --check`: PASS. New documentation reviewed for secrets/PII/GPS/photo data; none added.
 - Local/remote Quick verification is the final integration gate on the eventual committed head, recorded in PR metadata. This document does not preclaim that result or its own commit SHA.

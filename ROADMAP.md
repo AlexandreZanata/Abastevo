@@ -1267,6 +1267,24 @@ Exit gates: **G09-LOCAL** integrates locally validated corrections with required
 - **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
 - **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
 
+<a id="p09-t05"></a>
+
+### P09-T05 — Wiki snapshot overview without manual-page overwrite
+
+- **ID / priority / status:** P09-T05 / MUST / LOCAL_DONE (issue #15; awaiting merge/wiki publication).
+- **Goal:** Publish the canonical merged snapshot while preserving the unmanaged wiki Home and P01 report.
+- **Why:** First mirror initialization currently refuses a Home.md collision.
+- **Inputs:** docs/planning/DELIVERY_WORKFLOW.md; committed docs/planning/wiki-config.json; existing wiki ownership manifest protocol.
+- **Files/areas expected:** scripts/wiki.sh; scripts/tests/test-wiki.sh; bounded snapshot configuration and phase evidence.
+- **Dependencies:** P09-T04; protected phase merge before actual wiki publication.
+- **Tests first:** Separate overview, preserved manual Home bytes/unowned manifest, rewritten links/sidebar, invalid path refusal and source-SHA-pinned config; existing dry-run/conflict/deletion/no-op tests.
+- **Implementation outline:** Read a validated overview-page name from the committed snapshot; generate Project-Overview.md, never adopt/overwrite unmanaged Home.md.
+- **Acceptance criteria:** Scoped harness passes; one separately verified merged-SHA publication preserves both manual pages; any conflict remains WIKI_PENDING.
+- **Validation commands:** `bash -n scripts/wiki.sh scripts/tests/test-wiki.sh; bash scripts/tests/test-wiki.sh`; committed snapshot dry-run, then authorized merged-SHA publish only once.
+- **Risks:** Ownership/path traversal or using working-tree configuration could overwrite manual pages.
+- **Rollback/Recovery:** Refuse unsafe export without wiki mutations; retain prior wiki commit and retry documentation only.
+- **Definition of done:** Scoped acceptance, required current-head/base CI and guarded phase merge; wiki outcome recorded separately in PR metadata.
+
 ## P10 — Functional app integration after G09-LOCAL
 
 Priority: **MUST**. Entry: G09-LOCAL and G12–G16 for affected consumers. P10-T09 alone additionally requires real G09 release.
