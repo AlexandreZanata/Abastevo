@@ -35,6 +35,9 @@ type Service interface {
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 	DeleteAccount(ctx context.Context, accountID string) error
+	BindContributor(ctx context.Context, familyID, accessToken, contributorID, proof string) (domain.ContributorBinding, error)
+	UnbindContributor(ctx context.Context, familyID, accessToken, contributorID string) error
+	ListBindings(ctx context.Context, familyID, accessToken string) ([]domain.ContributorBinding, error)
 }
 
 // Handler serves the account routes with an injected service.
@@ -55,6 +58,9 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/providers/unlink", h.unlinkProvider)
 	r.Post("/v1/accounts/providers/list", h.listProviders)
 	r.Post("/v1/accounts/deletion", h.deleteAccount)
+	r.Post("/v1/accounts/bindings/bind", h.bindContributor)
+	r.Post("/v1/accounts/bindings/unbind", h.unbindContributor)
+	r.Post("/v1/accounts/bindings/list", h.listBindings)
 }
 
 func (h Handler) audience() string {
@@ -117,6 +123,16 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusForbidden, "account.account-suspended", "account suspended"
 	case "account-deleted":
 		status, code, msg = http.StatusGone, "account.account-deleted", "account deleted"
+	case "binding-cross-account-refused":
+		status, code, msg = http.StatusForbidden, "account.binding-cross-account-refused", "contributor bound to another account"
+	case "binding-not-found":
+		status, code, msg = http.StatusNotFound, "account.binding-not-found", "contributor binding not found"
+	case "binding-invalid":
+		status, code, msg = http.StatusBadRequest, "account.binding-invalid", "malformed binding request"
+	case "key-unavailable":
+		status, code, msg = http.StatusServiceUnavailable, "account.key-unavailable", "key verifier unavailable"
+	case "key-proof-denied":
+		status, code, msg = http.StatusUnauthorized, "account.key-proof-denied", "key proof denied"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	}
@@ -316,6 +332,89 @@ func (h Handler) unlinkProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]string{"status": "unlinked"})
+}
+
+// bindContributor links one device contributor to the session-owned
+// account (P13-T04C). Both proofs travel in the JSON body: the live
+// account session and the contributor key proof over the ceremony
+// statement. The account derives server-side; caller-supplied account
+// IDs are never trusted.
+func (h Handler) bindContributor(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID      string `json:"family_id"`
+		AccessToken   string `json:"access_token"`
+		ContributorID string `json:"contributor_id"`
+		Proof         string `json:"proof"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" ||
+		strings.TrimSpace(dto.ContributorID) == "" || strings.TrimSpace(dto.Proof) == "" {
+		bad(w, r)
+		return
+	}
+	binding, err := h.Service.BindContributor(r.Context(), dto.FamilyID, dto.AccessToken, dto.ContributorID, dto.Proof)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"binding": bindingJSONOf(binding)})
+}
+
+// unbindContributor removes one contributor binding from the
+// session-owned account.
+func (h Handler) unbindContributor(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID      string `json:"family_id"`
+		AccessToken   string `json:"access_token"`
+		ContributorID string `json:"contributor_id"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" ||
+		strings.TrimSpace(dto.ContributorID) == "" {
+		bad(w, r)
+		return
+	}
+	if err := h.Service.UnbindContributor(r.Context(), dto.FamilyID, dto.AccessToken, dto.ContributorID); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]string{"status": "unbound"})
+}
+
+// listBindings returns the contributor bindings of the session-owned
+// account. Proofs and fingerprints in the response are public binding
+// identifiers, never secrets.
+func (h Handler) listBindings(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		FamilyID    string `json:"family_id"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := read(r, &dto); err != nil || dto.FamilyID == "" || dto.AccessToken == "" {
+		bad(w, r)
+		return
+	}
+	bindings, err := h.Service.ListBindings(r.Context(), dto.FamilyID, dto.AccessToken)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	out := make([]bindingJSON, 0, len(bindings))
+	for _, b := range bindings {
+		out = append(out, bindingJSONOf(b))
+	}
+	write(w, r, http.StatusOK, map[string]any{"bindings": out})
+}
+
+type bindingJSON struct {
+	ContributorID  string `json:"contributor_id"`
+	KeyFingerprint string `json:"key_fingerprint"`
+	BoundAt        string `json:"bound_at"`
+}
+
+func bindingJSONOf(b domain.ContributorBinding) bindingJSON {
+	return bindingJSON{
+		ContributorID:  b.ContributorID,
+		KeyFingerprint: b.KeyFingerprint,
+		BoundAt:        time.Unix(b.BoundAt, 0).UTC().Format(time.RFC3339),
+	}
 }
 
 // deleteAccount erases the session-owned account (P13-T04A rights

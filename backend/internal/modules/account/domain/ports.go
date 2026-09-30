@@ -35,6 +35,7 @@ var (
 	ErrBindingNotFound       = errors.New("account: contributor binding not found")
 	ErrBindingInvalid        = errors.New("account: invalid binding request")
 	ErrKeyUnavailable        = errors.New("account: key verifier unavailable")
+	ErrKeyProofDenied        = errors.New("account: key proof denied")
 	ErrAddressLinked         = errors.New("account: address already linked")
 	ErrSessionReuse          = errors.New("account: refresh token reused")
 	ErrSessionRevoked        = errors.New("account: session family revoked")
@@ -80,12 +81,16 @@ type ProviderVerifier interface {
 }
 
 // KeyProver checks a contributor device-key proof for the binding
-// ceremony (P13-T04B, B-BR-A04). The proof is opaque to the account
-// module; the production adapter verifies it against the contributor's
-// registered identity keys. Success returns the proven fingerprint.
-// Unknown contributors, wrong keys and replayed proofs fail closed.
+// ceremony (P13-T04B/C, B-BR-A04). The production proof is
+// "<fingerprint>.<expiry-unix>.<base64url-signature>" where the
+// signature covers "anpfuel-bind.v1\n<accountID>\n<contributorID>\n
+// <expiry>": binding the ceremony account keeps a proof minted for one
+// account from authorizing another, on top of the stolen-ID ownership
+// refusal. Success returns the proven fingerprint. Unknown keys,
+// contributor mismatch, revoked keys, expired windows and malformed
+// proofs fail closed with ErrKeyProofDenied (uniform, no oracle).
 type KeyProver interface {
-	VerifyKeyProof(ctx context.Context, contributorID, proof string) (string, error)
+	VerifyKeyProof(ctx context.Context, accountID, contributorID, proof string) (string, error)
 }
 
 // VerdictCode maps a domain error to the stable fixture/audit code so
@@ -138,6 +143,8 @@ func VerdictCode(err error) string {
 		return "binding-invalid"
 	case errors.Is(err, ErrKeyUnavailable):
 		return "key-unavailable"
+	case errors.Is(err, ErrKeyProofDenied):
+		return "key-proof-denied"
 	case errors.Is(err, ErrAddressLinked):
 		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):

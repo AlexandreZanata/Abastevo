@@ -28,7 +28,7 @@ func newStubKeyProver(ids ...string) *stubKeyProver {
 	return &stubKeyProver{known: known}
 }
 
-func (p *stubKeyProver) VerifyKeyProof(_ context.Context, contributorID, proof string) (string, error) {
+func (p *stubKeyProver) VerifyKeyProof(_ context.Context, _, contributorID, proof string) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if !p.known[contributorID] || proof != "proof-"+contributorID {

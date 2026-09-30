@@ -1098,6 +1098,170 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/bindings/bind:
+    post:
+      summary: Bind a device contributor to the caller's account.
+      operationId: bindContributor
+      tags: [accounts]
+      security: []
+      description: >
+        Dual-proof ceremony (P13-T04, B-BR-A04): the live account
+        session plus a device-key proof over the ceremony statement.
+        The account derives server-side; a contributor bound to another
+        account refuses with 403, so recovery never transfers
+        reputation.
+      requestBody:
+        required: true
+        description: Live session plus contributor and key proof.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, contributor_id, proof]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                contributor_id:
+                  type: string
+                  description: Anonymous contributor to bind.
+                  example: c0000000-0000-4000-8000-000000000001
+                proof:
+                  type: string
+                  description: Device-key proof over the ceremony statement.
+                  example: fp:9f2c4a1b3d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8.1798765432.c2ln
+      responses:
+        '200':
+          description: Contributor bound to the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [binding]
+                properties:
+                  binding:
+                    $ref: '#/components/schemas/ContributorBinding'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/bindings/unbind:
+    post:
+      summary: Remove one contributor binding from the caller's account.
+      operationId: unbindContributor
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated unbind. Unknown bindings answer 404;
+        unbinding never strands login methods.
+      requestBody:
+        required: true
+        description: Live session plus the contributor to remove.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, contributor_id]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                contributor_id:
+                  type: string
+                  example: c0000000-0000-4000-8000-000000000001
+      responses:
+        '200':
+          description: Contributor binding removed.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [unbound]
+                    example: unbound
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+  /v1/accounts/bindings/list:
+    post:
+      summary: List the caller's contributor bindings.
+      operationId: listBindings
+      tags: [accounts]
+      security: []
+      description: >
+        Session-authenticated read. Session proof travels in the JSON
+        body, never the URL.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Contributor bindings of the caller account.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bindings]
+                example:
+                  bindings: []
+                properties:
+                  bindings:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/ContributorBinding'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '410':
+          $ref: '#/components/responses/Gone'
 components:
   schemas:
     Money:
@@ -1610,6 +1774,23 @@ components:
           enum: [active, suspended, deleted]
           example: active
         created_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+    ContributorBinding:
+      description: Device contributor bound to a FREE account with dual proof (A04).
+      type: object
+      required: [contributor_id, key_fingerprint, bound_at]
+      properties:
+        contributor_id:
+          type: string
+          description: Anonymous contributor bound by the ceremony, never client-asserted alone.
+          example: c0000000-0000-4000-8000-000000000001
+        key_fingerprint:
+          type: string
+          description: Proven device key at bind time.
+          example: 'fp:9f2c4a1b3d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8'
+        bound_at:
           type: string
           format: date-time
           example: 2026-10-01T00:00:00Z

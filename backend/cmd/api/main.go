@@ -25,6 +25,7 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
+	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
 	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
 	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -252,16 +253,30 @@ func run() error {
 		Skew:     time.Duration(accountdomain.OIDCClockSkewSeconds) * time.Second,
 		CacheTTL: time.Duration(accountdomain.JWKSCacheTTLSeconds) * time.Second,
 	}
+	// Contributor device-key proofs (P13-T04C) resolve through the
+	// identity-owned key source: one narrow closure, no cross-module
+	// table imports.
+	accountKeys := accountkeyprover.Prover{
+		Keys: func(ctx context.Context, fingerprint string) (string, string, string, bool, error) {
+			key, err := identityRegistrar.FindDeviceKey(ctx, fingerprint)
+			if err != nil {
+				return "", "", "", false, err
+			}
+			return key.ContributorID, key.JWKX, key.JWKY, key.Revoked, nil
+		},
+		Now: time.Now,
+	}
 	accountService := &accountapp.Service{
-		Clock:    unixClock{},
-		Hasher:   accountdomain.SHA256Hasher{},
-		Mail:     accountMail,
-		Store:    accountadapters.NewPGStore(pool.Underlying()),
-		Verifier: accountVerifier,
-		CodeGen:  accountdomain.GenerateCode,
-		TokenGen: accountdomain.GenerateToken,
-		AliasGen: accountdomain.GenerateAlias,
-		IDGen:    newUUID,
+		Clock:     unixClock{},
+		Hasher:    accountdomain.SHA256Hasher{},
+		Mail:      accountMail,
+		Store:     accountadapters.NewPGStore(pool.Underlying()),
+		Verifier:  accountVerifier,
+		KeyProver: accountKeys,
+		CodeGen:   accountdomain.GenerateCode,
+		TokenGen:  accountdomain.GenerateToken,
+		AliasGen:  accountdomain.GenerateAlias,
+		IDGen:     newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")

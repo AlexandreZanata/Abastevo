@@ -67,6 +67,7 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrBindingNotFound:       "binding-not-found",
 		ErrBindingInvalid:        "binding-invalid",
 		ErrKeyUnavailable:        "key-unavailable",
+		ErrKeyProofDenied:        "key-proof-denied",
 		ErrAddressLinked:         "address-linked",
 		ErrSessionReuse:          "session-reuse-revoked",
 		ErrSessionRevoked:        "session-revoked",

@@ -26,7 +26,7 @@ func newStubProver(pairs ...string) *stubProver {
 	return &stubProver{known: known}
 }
 
-func (p *stubProver) VerifyKeyProof(_ context.Context, contributorID, proof string) (string, error) {
+func (p *stubProver) VerifyKeyProof(_ context.Context, _, contributorID, proof string) (string, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.calls++

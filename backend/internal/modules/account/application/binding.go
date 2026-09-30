@@ -38,7 +38,7 @@ func (s *Service) BindContributor(ctx context.Context, familyID, accessToken, co
 	} else if err := accountUsable(acc); err != nil {
 		return domain.ContributorBinding{}, err
 	}
-	fingerprint, err := s.KeyProver.VerifyKeyProof(ctx, contributorID, proof)
+	fingerprint, err := s.KeyProver.VerifyKeyProof(ctx, accountID, contributorID, proof)
 	if err != nil {
 		return domain.ContributorBinding{}, err
 	}
