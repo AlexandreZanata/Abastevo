@@ -54,6 +54,12 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrGateRequired:        "gate-required",
 		ErrStatsMissing:        "stats-missing",
 		ErrRatingNotFound:      "rating-not-found",
+		ErrCommentNotFound:     "comment-not-found",
+		ErrNotAuthor:           "not-author",
+		ErrStaleRevision:       "stale-revision",
+		ErrParentInvalid:       "parent-invalid",
+		ErrAuthorForbidden:     "author-forbidden",
+		ErrSessionInvalid:      "session-invalid",
 	}
 	for err, want := range cases {
 		if got := VerdictCode(err); got != want {

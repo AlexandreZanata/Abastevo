@@ -250,6 +250,277 @@ func (s *PGStore) DeleteRating(ctx context.Context, accountID, stationID, produc
 	return true, tx.Commit(ctx)
 }
 
+func toCommentView(
+	id, accountID, stationID pgtype.UUID,
+	alias, product string,
+	parentID pgtype.UUID,
+	depth int16,
+	text string,
+	revision int32,
+	created, updated pgtype.Timestamptz,
+) domain.CommentView {
+	parent := ""
+	if parentID.Valid {
+		parent = uuidString(parentID)
+	}
+	_ = accountID
+	return domain.CommentView{
+		ID:        uuidString(id),
+		Alias:     alias,
+		StationID: uuidString(stationID),
+		Product:   product,
+		ParentID:  parent,
+		Depth:     int(depth),
+		Text:      text,
+		Revision:  int(revision),
+		CreatedAt: unix(created),
+		UpdatedAt: unix(updated),
+	}
+}
+
+// InsertComment stores one validated comment or reply. Parent rules
+// (live, top-level, same target) are enforced by the caller holding
+// the parent row; the depth CHECK guards the schema invariant.
+func (s *PGStore) InsertComment(ctx context.Context, rec domain.StoredComment) error {
+	id, err := mustUUID(rec.ID)
+	if err != nil {
+		return err
+	}
+	accountID, err := mustUUID(rec.AccountID)
+	if err != nil {
+		return err
+	}
+	stationID, err := mustUUID(rec.StationID)
+	if err != nil {
+		return err
+	}
+	var parent pgtype.UUID
+	depth := int16(0)
+	if rec.ParentID != "" {
+		parent, err = mustUUID(rec.ParentID)
+		if err != nil {
+			return err
+		}
+		depth = 1
+	}
+	return feedback.New(s.pool).InsertComment(ctx, feedback.InsertCommentParams{
+		ID:        id,
+		AccountID: accountID,
+		StationID: stationID,
+		Product:   rec.Product,
+		ParentID:  parent,
+		Depth:     depth,
+		Text:      rec.Text,
+		Now:       stamp(rec.CreatedAt),
+	})
+}
+
+// GetComment resolves one comment by ID, including tombstoned rows.
+func (s *PGStore) GetComment(ctx context.Context, id string) (domain.StoredComment, bool, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.StoredComment{}, false, nil
+	}
+	row, err := feedback.New(s.pool).LockComment(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.StoredComment{}, false, nil
+		}
+		return domain.StoredComment{}, false, err
+	}
+	parent := ""
+	if row.ParentID.Valid {
+		parent = uuidString(row.ParentID)
+	}
+	return domain.StoredComment{
+		ID:        uuidString(row.ID),
+		AccountID: uuidString(row.AccountID),
+		StationID: uuidString(row.StationID),
+		Product:   row.Product,
+		ParentID:  parent,
+		Depth:     int(row.Depth),
+		Text:      row.Text,
+		Revision:  int(row.Revision),
+		CreatedAt: unix(row.CreatedAt),
+		UpdatedAt: unix(row.UpdatedAt),
+		DeletedAt: unix(row.DeletedAt),
+	}, true, nil
+}
+
+// EditComment compare-and-swaps the text of an owned live comment.
+func (s *PGStore) EditComment(ctx context.Context, id, accountID, text string, scalars, expectedRevision int, nowUnix int64) (domain.StoredComment, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.StoredComment{}, domain.ErrCommentNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return domain.StoredComment{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := feedback.New(tx)
+	row, err := q.LockComment(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.StoredComment{}, domain.ErrCommentNotFound
+		}
+		return domain.StoredComment{}, err
+	}
+	if row.DeletedAt.Valid {
+		return domain.StoredComment{}, domain.ErrCommentNotFound
+	}
+	if uuidString(row.AccountID) != accountID {
+		return domain.StoredComment{}, domain.ErrNotAuthor
+	}
+	n, err := q.UpdateCommentText(ctx, feedback.UpdateCommentTextParams{
+		Text:             text,
+		Now:              stamp(nowUnix),
+		ID:               uid,
+		ExpectedRevision: int32(expectedRevision),
+	})
+	if err != nil {
+		return domain.StoredComment{}, err
+	}
+	if n == 0 {
+		return domain.StoredComment{}, domain.ErrStaleRevision
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.StoredComment{}, err
+	}
+	updated, found, err := s.GetComment(ctx, id)
+	if err != nil || !found {
+		return domain.StoredComment{}, domain.ErrCommentNotFound
+	}
+	_ = scalars
+	return updated, nil
+}
+
+// DeleteComment tombstones an owned live comment.
+func (s *PGStore) DeleteComment(ctx context.Context, id, accountID string, nowUnix int64) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	acc, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := feedback.New(tx)
+	row, err := q.LockComment(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrCommentNotFound
+		}
+		return err
+	}
+	if row.DeletedAt.Valid {
+		return domain.ErrCommentNotFound
+	}
+	if uuidString(row.AccountID) != accountID {
+		return domain.ErrNotAuthor
+	}
+	if _, err := q.TombstoneComment(ctx, feedback.TombstoneCommentParams{
+		Now:       stamp(nowUnix),
+		ID:        uid,
+		AccountID: acc,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// ViewComment resolves one live comment with its author alias.
+func (s *PGStore) ViewComment(ctx context.Context, id string) (domain.CommentView, bool, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.CommentView{}, false, nil
+	}
+	row, err := feedback.New(s.pool).GetCommentView(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.CommentView{}, false, nil
+		}
+		return domain.CommentView{}, false, err
+	}
+	return toCommentView(
+		row.ID, row.AccountID, row.StationID, row.Alias, row.Product,
+		row.ParentID, row.Depth, row.Text, row.Revision,
+		row.CreatedAt, row.UpdatedAt,
+	), true, nil
+}
+
+// ListComments pages live top-level comments oldest-first.
+func (s *PGStore) ListComments(ctx context.Context, stationID, product string, afterUnix int64, afterID string, limit int) ([]domain.CommentView, error) {
+	station, err := mustUUID(stationID)
+	if err != nil {
+		return nil, nil
+	}
+	after := pgtype.UUID{}
+	if afterID != "" {
+		after, err = mustUUID(afterID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rows, err := feedback.New(s.pool).ListTopLevel(ctx, feedback.ListTopLevelParams{
+		StationID: station,
+		Product:   product,
+		AfterAt:   stamp(afterUnix),
+		AfterID:   after,
+		PageLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.CommentView, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toCommentView(
+			r.ID, r.AccountID, r.StationID, r.Alias, r.Product,
+			r.ParentID, r.Depth, r.Text, r.Revision,
+			r.CreatedAt, r.UpdatedAt,
+		))
+	}
+	return out, nil
+}
+
+// ListReplies pages live replies of one comment oldest-first.
+func (s *PGStore) ListReplies(ctx context.Context, parentID string, afterUnix int64, afterID string, limit int) ([]domain.CommentView, error) {
+	parent, err := mustUUID(parentID)
+	if err != nil {
+		return nil, nil
+	}
+	after := pgtype.UUID{}
+	if afterID != "" {
+		after, err = mustUUID(afterID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rows, err := feedback.New(s.pool).ListReplies(ctx, feedback.ListRepliesParams{
+		ParentID:  parent,
+		AfterAt:   stamp(afterUnix),
+		AfterID:   after,
+		PageLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.CommentView, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, toCommentView(
+			r.ID, r.AccountID, r.StationID, r.Alias, r.Product,
+			r.ParentID, r.Depth, r.Text, r.Revision,
+			r.CreatedAt, r.UpdatedAt,
+		))
+	}
+	return out, nil
+}
+
 // Stats returns the maintained aggregate for one key.
 func (s *PGStore) Stats(ctx context.Context, stationID, product string) (domain.RatingStats, bool, error) {
 	id, err := mustUUID(stationID)

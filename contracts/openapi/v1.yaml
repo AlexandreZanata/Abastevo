@@ -36,6 +36,8 @@ tags:
     description: Anonymous challenge and contributor registration.
   - name: accounts
     description: FREE email-code signup/login plus session rotation.
+  - name: feedback
+    description: Authenticated station/fuel ratings and comments plus anonymous reads.
 paths:
   /health/live:
     get:
@@ -1262,6 +1264,363 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '410':
           $ref: '#/components/responses/Gone'
+  /v1/feedback/comments:
+    post:
+      summary: Submit a station/fuel comment.
+      operationId: submitComment
+      tags: [feedback]
+      security: []
+      description: >
+        Session-authenticated write (P14-T03, B-BR-F01/F03): the author
+        derives server-side from the live session; only active accounts
+        write. Tombstoned rows and foreign keys share the 404 shape.
+      requestBody:
+        required: true
+        description: Live session plus target and plain text.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, station_id, product, text]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                station_id:
+                  type: string
+                  format: uuid
+                  example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                product:
+                  type: string
+                  example: GASOLINE_ADDITIVED
+                text:
+                  type: string
+                  example: Preço bom ⛽
+      responses:
+        '201':
+          description: Comment stored.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment]
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/FeedbackCommentView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    get:
+      summary: List station/fuel comments.
+      operationId: listComments
+      tags: [feedback]
+      security: []
+      description: >
+        Public anonymous read, oldest-first keyset pages. Tombstoned
+        rows never appear; author identity stays an opaque alias.
+      parameters:
+        - name: station_id
+          in: query
+          required: true
+          description: Directory station reviewed.
+          schema:
+            type: string
+            format: uuid
+            example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: product
+          in: query
+          required: true
+          description: Catalog fuel product wire name.
+          schema:
+            type: string
+            example: GASOLINE_ADDITIVED
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Page size, 1 to 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: One bounded page with an opaque cursor.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, next_cursor]
+                properties:
+                  comments:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/FeedbackCommentView'
+                  next_cursor:
+                    type: [string, 'null']
+                    example: null
+              example:
+                comments: []
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/feedback/comments/{id}/replies:
+    post:
+      summary: Reply to a station/fuel comment.
+      operationId: replyComment
+      tags: [feedback]
+      security: []
+      description: >
+        One-level replies only (F04): the parent fixes the target
+        server-side, so substitution across stations, fuels or depths
+        refuses. Tombstoned and missing parents share the 404 shape.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session plus the reply text.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, text]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                text:
+                  type: string
+                  example: Concordo
+      responses:
+        '201':
+          description: Reply stored.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment]
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/FeedbackCommentView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    get:
+      summary: List replies of a comment.
+      operationId: listReplies
+      tags: [feedback]
+      security: []
+      description: Public anonymous read, oldest-first keyset pages.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Page size, 1 to 100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: One bounded page with an opaque cursor.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, next_cursor]
+                properties:
+                  comments:
+                    type: array
+                    example: []
+                    items:
+                      $ref: '#/components/schemas/FeedbackCommentView'
+                  next_cursor:
+                    type: [string, 'null']
+                    example: null
+              example:
+                comments: []
+                next_cursor: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/feedback/comments/{id}/edit:
+    post:
+      summary: Edit an owned comment.
+      operationId: editComment
+      tags: [feedback]
+      security: []
+      description: >
+        Author-only revision bump with compare-and-swap: the expected
+        revision must still hold or the write refuses with 409.
+        Cross-author edits share the 404 shape with missing rows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session plus revised text and expected revision.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, text, expected_revision]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                text:
+                  type: string
+                  example: Preço ótimo ⛽
+                expected_revision:
+                  type: integer
+                  minimum: 1
+                  example: 1
+      responses:
+        '200':
+          description: Comment revised.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment]
+                properties:
+                  comment:
+                    $ref: '#/components/schemas/FeedbackCommentView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/feedback/comments/{id}/remove:
+    post:
+      summary: Delete an owned comment.
+      operationId: deleteComment
+      tags: [feedback]
+      security: []
+      description: >
+        Author-only tombstone: history stays for audit, reads drop
+        the row. Unknown and foreign keys share the 404 shape.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session owning the comment.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Comment deleted.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [deleted]
+                    example: deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   schemas:
     Money:
@@ -1984,6 +2343,51 @@ components:
           type: [integer, 'null']
           description: Floor(10000*valid/total); null when total is zero.
           example: 6666
+    FeedbackCommentView:
+      description: >
+        Public comment read shape (P14-T03, B-BR-F08): opaque author
+        alias only, never account identifiers, addresses or provider
+        subjects. Text travels verbatim; clients never render HTML.
+      type: object
+      required: [id, public_alias, station_id, product, depth, text, revision, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+        public_alias:
+          type: string
+          example: adore-fox-42
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        product:
+          type: string
+          example: GASOLINE_ADDITIVED
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment for replies; null for comments.
+        depth:
+          type: integer
+          enum: [0, 1]
+          example: 0
+        text:
+          type: string
+          example: Preço bom ⛽
+        revision:
+          type: integer
+          minimum: 1
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
+        updated_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:00:00Z
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object

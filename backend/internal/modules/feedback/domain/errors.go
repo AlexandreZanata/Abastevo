@@ -15,6 +15,12 @@ var (
 	ErrGateRequired        = errors.New("feedback: account gate required")
 	ErrStatsMissing        = errors.New("feedback: aggregate missing after write")
 	ErrRatingNotFound      = errors.New("feedback: rating not found")
+	ErrCommentNotFound     = errors.New("feedback: comment not found")
+	ErrNotAuthor           = errors.New("feedback: only the author edits")
+	ErrStaleRevision       = errors.New("feedback: stale revision")
+	ErrParentInvalid       = errors.New("feedback: invalid reply target")
+	ErrAuthorForbidden     = errors.New("feedback: author account not active")
+	ErrSessionInvalid      = errors.New("feedback: valid account session required")
 )
 
 // VerdictOK is the shared success code.
@@ -43,6 +49,18 @@ func VerdictCode(err error) string {
 		return "stats-missing"
 	case errors.Is(err, ErrRatingNotFound):
 		return "rating-not-found"
+	case errors.Is(err, ErrCommentNotFound):
+		return "comment-not-found"
+	case errors.Is(err, ErrNotAuthor):
+		return "not-author"
+	case errors.Is(err, ErrStaleRevision):
+		return "stale-revision"
+	case errors.Is(err, ErrParentInvalid):
+		return "parent-invalid"
+	case errors.Is(err, ErrAuthorForbidden):
+		return "author-forbidden"
+	case errors.Is(err, ErrSessionInvalid):
+		return "session-invalid"
 	default:
 		return "invalid-value"
 	}

@@ -136,6 +136,51 @@ type Clock interface {
 	NowUnix() int64
 }
 
+// StoredComment is one persisted comment or reply revision. Depth 0
+// marks a top-level comment (no parent); depth 1 marks a reply to a
+// comment of the same station/fuel. Edits bump Revision in place with
+// compare-and-swap; deletes tombstone via DeletedAt. History stays
+// for audit and moderation; reads ignore tombstoned rows.
+type StoredComment struct {
+	ID        string
+	AccountID string
+	StationID string
+	Product   string
+	ParentID  string
+	Depth     int
+	Text      string
+	Scalars   int
+	Revision  int
+	CreatedAt int64
+	UpdatedAt int64
+	DeletedAt int64
+}
+
+// Live reports whether the row is visible to reads.
+func (c StoredComment) Live() bool {
+	return c.DeletedAt == 0
+}
+
+// IsReply reports whether the row is a one-level reply.
+func (c StoredComment) IsReply() bool {
+	return c.ParentID != ""
+}
+
+// CommentView is the public read shape: opaque author alias, never
+// addresses, provider subjects or precise locations.
+type CommentView struct {
+	ID        string
+	Alias     string
+	StationID string
+	Product   string
+	ParentID  string
+	Depth     int
+	Text      string
+	Revision  int
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 // StoredRating is one persisted rating revision. Exactly one live
 // (non-tombstoned) row exists per account/station/product; edits bump
 // Revision in place and deletes tombstone. History stays for audit;

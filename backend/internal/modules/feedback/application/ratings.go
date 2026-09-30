@@ -34,6 +34,7 @@ type StationExists func(ctx context.Context, stationID string) (bool, error)
 type Service struct {
 	Clock         domain.Clock
 	Store         Store
+	Comments      CommentStore
 	CheckAccount  AccountGate
 	StationExists StationExists
 	IDGen         func() (string, error)

@@ -106,6 +106,20 @@ type DirectoryStation struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
+type FeedbackComment struct {
+	ID        pgtype.UUID        `json:"id"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	StationID pgtype.UUID        `json:"station_id"`
+	Product   string             `json:"product"`
+	ParentID  pgtype.UUID        `json:"parent_id"`
+	Depth     int16              `json:"depth"`
+	Text      string             `json:"text"`
+	Revision  int32              `json:"revision"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type FeedbackRating struct {
 	ID        pgtype.UUID        `json:"id"`
 	AccountID pgtype.UUID        `json:"account_id"`
