@@ -163,6 +163,23 @@ else
     bash scripts/check-backend-fast.sh
     echo "== vulnerability scan =="
     (cd backend && govulncheck ./...)
+    # Bounded KMP/iOS selection (P12-T05): mobile-area changes additionally
+    # run the hermetic mobile static guards (no JDK/Xcode needed). Full
+    # Gradle/Swift suites stay at task level and phase exit; Quick
+    # verification itself is never disabled or skipped by this selection.
+    MOBILE_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            domain/*|application/*|data/*|app/*|iosApp/*|shared/*|gradle/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
+                MOBILE_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$MOBILE_CHANGED" == "1" ]]; then
+        echo "== mobile static selection =="
+        bash scripts/check-mobile.sh --static-only
+    fi
 fi
 
 END_EPOCH="$(date +%s)"
