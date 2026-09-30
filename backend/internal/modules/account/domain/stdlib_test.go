@@ -54,6 +54,7 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrOIDCWrongAudience:     "oidc-wrong-audience",
 		ErrOIDCExpired:           "oidc-expired",
 		ErrOIDCNonceReused:       "oidc-nonce-reused",
+		ErrOIDCNonceMismatch:     "oidc-nonce-mismatch",
 		ErrOIDCUnavailable:       "oidc-unavailable",
 		ErrLinkCrossAccount:      "link-cross-account-refused",
 		ErrLinkEmailOnly:         "link-email-only-refused",

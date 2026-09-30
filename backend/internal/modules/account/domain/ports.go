@@ -22,6 +22,7 @@ var (
 	ErrOIDCWrongAudience     = errors.New("account: OIDC audience mismatch")
 	ErrOIDCExpired           = errors.New("account: OIDC token expired")
 	ErrOIDCNonceReused       = errors.New("account: OIDC nonce already consumed")
+	ErrOIDCNonceMismatch     = errors.New("account: OIDC nonce mismatch")
 	ErrOIDCUnavailable       = errors.New("account: provider unavailable")
 	ErrLinkCrossAccount      = errors.New("account: proof belongs to another account")
 	ErrLinkEmailOnly         = errors.New("account: email match is not linking proof")
@@ -93,6 +94,8 @@ func VerdictCode(err error) string {
 		return "oidc-expired"
 	case errors.Is(err, ErrOIDCNonceReused):
 		return "oidc-nonce-reused"
+	case errors.Is(err, ErrOIDCNonceMismatch):
+		return "oidc-nonce-mismatch"
 	case errors.Is(err, ErrOIDCUnavailable):
 		return "oidc-unavailable"
 	case errors.Is(err, ErrLinkCrossAccount):
