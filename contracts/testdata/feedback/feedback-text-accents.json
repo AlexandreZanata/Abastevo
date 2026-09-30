@@ -1,0 +1,1 @@
+{"id": "feedback-text-accents", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-accents", "verdict": "accept", "code": "ok", "inputs": {"text": "café ótimo, preço bom", "scalars": 21}, "note": "Precomposed accented scalars count one each."}

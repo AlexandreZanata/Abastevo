@@ -1,0 +1,1 @@
+{"id": "feedback-agreement-typical", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "agreement-typical", "verdict": "accept", "code": "ok", "inputs": {"valid": 2, "invalid": 1, "basis_points": 6666, "display": "66.6%"}, "note": "Floor step: 10000*2/3 = 6666, displayed truncated one-decimal."}

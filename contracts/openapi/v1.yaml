@@ -1914,6 +1914,76 @@ components:
           type: boolean
           description: True when this consume created the account.
           example: true
+    FeedbackRating:
+      description: >
+        Personal-experience stars (P14-T01, B-BR-F02): integer 1–5, one
+        current rating per account/target. Preview schema only; paths
+        land with handlers in P14-T02.
+      type: object
+      required: [station_id, product, stars]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        product:
+          type: string
+          description: Catalog fuel product wire name.
+          example: GASOLINE_ADDITIVED
+        stars:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+    FeedbackComment:
+      description: >
+        Plain-text comment or reply (P14-T01, B-BR-F03/F04): nonempty,
+        at most 280 Unicode scalars after trim + CRLF normalization.
+        Replies attach to a comment (depth one). Preview schema only;
+        paths land with handlers in P14-T03.
+      type: object
+      required: [station_id, product, text]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        product:
+          type: string
+          example: GASOLINE_ADDITIVED
+        text:
+          type: string
+          description: Comment text; the 280-scalar bound is enforced server-side.
+          example: Preço bom ⛽
+        reply_to:
+          type: string
+          format: uuid
+          description: Parent comment for one-level replies; absent for comments.
+          example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+    FeedbackAgreement:
+      description: >
+        Community agreement snapshot (P14-T01, B-BR-F06): exact counts
+        plus floor basis points; null percentage means no votes, never
+        0% certainty. Preview schema only; projections land in P14-T04.
+      type: object
+      required: [valid, invalid, total]
+      properties:
+        valid:
+          type: integer
+          minimum: 0
+          example: 2
+        invalid:
+          type: integer
+          minimum: 0
+          example: 1
+        total:
+          type: integer
+          minimum: 0
+          example: 3
+        percentage_bps:
+          type: [integer, 'null']
+          description: Floor(10000*valid/total); null when total is zero.
+          example: 6666
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object

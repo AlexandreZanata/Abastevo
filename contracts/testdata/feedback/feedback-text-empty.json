@@ -1,0 +1,1 @@
+{"id": "feedback-text-empty", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-empty", "verdict": "reject", "code": "text-empty", "inputs": {"text": "   ", "normalized": ""}, "note": "Blank input normalizes to empty and must fail."}

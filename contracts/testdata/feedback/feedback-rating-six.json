@@ -1,0 +1,1 @@
+{"id": "feedback-rating-six", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "rating-six", "verdict": "reject", "code": "rating-out-of-range", "inputs": {"stars": 6}, "note": "Six stars are outside the range."}
