@@ -1,6 +1,6 @@
 {
-  "base_sha": "47bdffe9477107582603a41d7a52ee94d2f69fa1",
-  "branch": "codex/phase-15-lightweight-photos",
+  "base_sha": "207936beb18ba322fe34467f3d63ff0e320ab2b0",
+  "branch": "codex/phase-16-location-integrity",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
@@ -19,12 +19,16 @@
     "P15-T02": 35,
     "P15-T03": 36,
     "P15-T04": 37,
-    "P15-T05": 38
+    "P15-T05": 38,
+    "P16-T01": 40,
+    "P16-T02": 41,
+    "P16-T03": 42,
+    "P16-T04": 43
   },
-  "milestone": 6,
-  "milestone_title": "P15 — Lightweight photos and 24-hour audit expiry",
-  "phase": "15",
-  "pr": 39,
+  "milestone": 7,
+  "milestone_title": "P16 — Location integrity across Android and iOS",
+  "phase": "16",
+  "pr": null,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
