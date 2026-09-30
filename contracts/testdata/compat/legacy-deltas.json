@@ -1,0 +1,41 @@
+{
+  "id": "legacy-deltas-v1",
+  "version": "v1",
+  "provenance": "CURRENT_STATE_AUDIT A01-A13 + BASELINE_VALIDATION 2026-09-28; frozen for P10 Android adapters, backend wire unchanged",
+  "fuel_vocabulary": {
+    "wire_enum": ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"],
+    "legacy_map": {
+      "GASOLINE_PREMIUM": "GASOLINE_ADDITIVED"
+    },
+    "rule": "GASOLINE_PREMIUM never appears on the wire (A05); P10 maps it only through a named Android adapter"
+  },
+  "units_precision": {
+    "rule": "milli-BRL integers 1..1000000, no floats (B-BR-002, A04)",
+    "units": {
+      "L": "per-litre fuels",
+      "M3": "CNG per cubic metre",
+      "KG_13": "LPG per 13 kg cylinder"
+    },
+    "legacy_delta": "Android PriceAmount uses 2-decimal BigDecimal and Room Double/REAL; backend preserves 3 decimals + raw ANP text, no local column migration now"
+  },
+  "cnpj": {
+    "rule": "numeric + alphanumeric, leading zeroes preserved, invalid quarantined (A06)",
+    "legacy_delta": "Android numeric-only 14-digit normalization stays; P10 adds separate mapping, no letter-to-digit coercion"
+  },
+  "search_schema": {
+    "fts": "Room FTS4 is the baseline (A01); no FTS replacement during backend work",
+    "room_schema": "version 4, seven entities, migrations 1->2->3->4 (A02); P10 tests upgrades from schema 4, never destructive recreation",
+    "anp_corrections": "backend uses revisioned publication; Android idempotent reimport keeps first record (A03); no silent semantic change before P10"
+  },
+  "parser_geocoder": {
+    "spreadsheet": "fixture-based layout detection, not prose row offsets (A07)",
+    "geocoding": "no bulk Nominatim default; server catalog needs a permitted provider + global quotas (A08)"
+  },
+  "policy_scope": {
+    "privacy_notice": "current policy describes the imported app only; backend pilot needs a separately reviewed notice (A09)",
+    "api_rules": "public reads, no tenants, real PostGIS tests per ADR-004 (A10); unit isolation stays",
+    "publishing_docs": "release v3.1.0, UC-001..015, no .local plan links (A11); no release/tag scripts for baseline",
+    "license": "MIT LICENSE verbatim retained (A12)",
+    "secret_scan": "tracked + changed-file scans in CI; untracked inspected separately (A13)"
+  }
+}
