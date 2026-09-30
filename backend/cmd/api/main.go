@@ -23,6 +23,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
+	accountmail "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail"
+	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -51,6 +56,11 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
+
+// unixClock adapts wall time to the account domain Clock port.
+type unixClock struct{}
+
+func (unixClock) NowUnix() int64 { return time.Now().Unix() }
 
 // newUUID mints v4 identifiers for server-owned facts.
 func newUUID() (string, error) {
@@ -220,6 +230,23 @@ func run() error {
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
 	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
+	// FREE email accounts (P13-T02C). Narrow closure wiring like the other
+	// modules: Postgres store, memory mail sink, production generators.
+	// The memory sink is an explicit preview: codes issue but deliver
+	// nowhere until SMTP lands with deployment configuration.
+	accountMail := accountmail.NewOutbox(unixClock{})
+	accountService := &accountapp.Service{
+		Clock:    unixClock{},
+		Hasher:   accountdomain.SHA256Hasher{},
+		Mail:     accountMail,
+		Store:    accountadapters.NewPGStore(pool.Underlying()),
+		CodeGen:  accountdomain.GenerateCode,
+		TokenGen: accountdomain.GenerateToken,
+		AliasGen: accountdomain.GenerateAlias,
+		IDGen:    newUUID,
+	}
+	accounthttp.Handler{Service: accountService}.RegisterRoutes(router)
+	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,

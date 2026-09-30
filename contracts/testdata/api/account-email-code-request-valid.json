@@ -1,0 +1,1 @@
+{"id":"account-email-code-request-valid","provenance":"P13-T02C additive account contracts; synthetic","schema":"EmailCodeRequest","valid":true,"value":{"email":"case-01@example.invalid"},"version":1}

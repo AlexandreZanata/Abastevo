@@ -169,24 +169,24 @@ func (s *PGStore) TryConsume(ctx context.Context, addressHash, code string, hash
 		rec.ConsumedAt = nowUnix
 		return rec, nil
 	}
-	target := toCode(rows[0])
-	if target.ConsumedAt != 0 {
-		return domain.EmailCode{}, domain.ErrCodeConsumed
-	}
-	if domain.CodeExpired(target.IssuedAt, nowUnix) {
-		return domain.EmailCode{}, domain.ErrCodeExpired
-	}
-	if !domain.AttemptAllowed(target.Attempts) {
-		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
-	}
-	if err := q.BumpCodeAttempts(ctx, rows[0].ID); err != nil {
-		return domain.EmailCode{}, err
-	}
-	if !domain.AttemptAllowed(target.Attempts + 1) {
-		if err := tx.Commit(ctx); err != nil {
+	// No match: wrong codes stay indistinguishable from unknown addresses.
+	// States surface only on hash match (proof of possession). Attempts burn
+	// on the newest live row when one exists.
+	for _, row := range rows {
+		rec := toCode(row)
+		if rec.ConsumedAt != 0 || domain.CodeExpired(rec.IssuedAt, nowUnix) || !domain.AttemptAllowed(rec.Attempts) {
+			continue
+		}
+		if err := q.BumpCodeAttempts(ctx, row.ID); err != nil {
 			return domain.EmailCode{}, err
 		}
-		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+		if !domain.AttemptAllowed(rec.Attempts + 1) {
+			if err := tx.Commit(ctx); err != nil {
+				return domain.EmailCode{}, err
+			}
+			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+		}
+		break
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return domain.EmailCode{}, err

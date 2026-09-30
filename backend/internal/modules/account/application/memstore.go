@@ -86,20 +86,18 @@ func (m *MemStore) TryConsume(_ context.Context, addressHash, code string, hashe
 		rec.ConsumedAt = nowUnix
 		return *rec, nil
 	}
-	// No match: the newest row decides the failure mode.
-	rec := &m.codes[idx[len(idx)-1]]
-	if rec.ConsumedAt != 0 {
-		return domain.EmailCode{}, domain.ErrCodeConsumed
-	}
-	if domain.CodeExpired(rec.IssuedAt, nowUnix) {
-		return domain.EmailCode{}, domain.ErrCodeExpired
-	}
-	if !domain.AttemptAllowed(rec.Attempts) {
-		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
-	}
-	rec.Attempts++
-	if !domain.AttemptAllowed(rec.Attempts) {
-		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+	// No match: wrong codes stay indistinguishable from unknown addresses.
+	// States surface only on hash match (proof of possession). Attempts burn
+	// on the newest live row when one exists.
+	for i := len(idx) - 1; i >= 0; i-- {
+		rec := &m.codes[idx[i]]
+		if rec.ConsumedAt == 0 && !domain.CodeExpired(rec.IssuedAt, nowUnix) && domain.AttemptAllowed(rec.Attempts) {
+			rec.Attempts++
+			if !domain.AttemptAllowed(rec.Attempts) {
+				return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+			}
+			break
+		}
 	}
 	return domain.EmailCode{}, domain.ErrCodeUnknown
 }

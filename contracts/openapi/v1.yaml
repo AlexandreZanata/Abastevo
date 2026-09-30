@@ -34,6 +34,8 @@ tags:
     description: Signed private upload reservation and owner status.
   - name: identity
     description: Anonymous challenge and contributor registration.
+  - name: accounts
+    description: FREE email-code signup/login plus session rotation.
 paths:
   /health/live:
     get:
@@ -717,6 +719,157 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/accounts/email/codes:
+    post:
+      summary: Request a FREE email access code.
+      operationId: requestEmailCode
+      tags: [accounts]
+      security: []
+      description: >
+        Issues a six-digit code when quota and cooldown allow. Unknown
+        addresses, cooldown hits and quota exhaustion all answer 202 with
+        the same body, so no oracle leaks registration (P13-T01).
+      requestBody:
+        required: true
+        description: Email address for code issuance.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeRequest'
+      responses:
+        '202':
+          description: Accepted; a code was issued or silently skipped.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [sent]
+                    example: sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/accounts/email/consume:
+    post:
+      summary: Redeem an access code for an account session.
+      operationId: consumeEmailCode
+      tags: [accounts]
+      security: []
+      description: >
+        Single-use redeem creating the FREE account on first login.
+        Wrong codes and unknown addresses share the code-unknown refusal.
+      requestBody:
+        required: true
+        description: Address plus the six-digit code.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeConsume'
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/sessions/refresh:
+    post:
+      summary: Rotate a session family with a refresh token.
+      operationId: refreshSession
+      tags: [accounts]
+      security: []
+      description: >
+        Mint fresh tokens; presenting a superseded token revokes the
+        whole family before refusing.
+      requestBody:
+        required: true
+        description: Live family plus its current refresh token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, refresh_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                refresh_token:
+                  type: string
+                  example: tok-refresh
+      responses:
+        '200':
+          description: Rotated session with fresh bearer tokens.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session]
+                properties:
+                  session:
+                    $ref: '#/components/schemas/SessionTokens'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/accounts/sessions/revoke:
+    post:
+      summary: Revoke every session of the caller's account.
+      operationId: revokeSessions
+      tags: [accounts]
+      security: []
+      description: Logout everywhere from one live access token.
+      requestBody:
+        required: true
+        description: Live family plus its current access token.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: All account sessions revoked.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [revoked]
+                    example: revoked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 components:
   schemas:
     Money:
@@ -1310,6 +1463,48 @@ components:
           type: string
           format: date-time
           example: 2026-10-31T00:00:00Z
+    SessionTokens:
+      description: Issued login with opaque bearer tokens shown once at issuance.
+      type: object
+      required: [family_id, account_id, access_token, refresh_token, access_expires_at, absolute_expires_at]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+        account_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        access_token:
+          type: string
+          description: Opaque short-lived bearer token, stored hashed server-side.
+          example: tok-access
+        refresh_token:
+          type: string
+          description: Opaque rotating token; reuse revokes the family.
+          example: tok-refresh
+        access_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-01T00:15:00Z
+        absolute_expires_at:
+          type: string
+          format: date-time
+          example: 2026-10-31T00:00:00Z
+    AuthResult:
+      description: Successful code consume with the account and one session.
+      type: object
+      required: [account, session, created]
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+        session:
+          $ref: '#/components/schemas/SessionTokens'
+        created:
+          type: boolean
+          description: True when this consume created the account.
+          example: true
     ObservationSubmit:
       description: Submission content; identity derives from proof, never the body.
       type: object

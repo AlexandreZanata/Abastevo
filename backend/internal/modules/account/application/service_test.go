@@ -150,7 +150,7 @@ func TestReplayExpiredAndAttempts(t *testing.T) {
 	if _, err := svc.ConsumeCode(ctx, "case-04@example.invalid", "000000"); !errors.Is(err, domain.ErrCodeAttemptsExhausted) {
 		t.Errorf("5th wrong guess must lock, got %v", err)
 	}
-	if _, err := svc.ConsumeCode(ctx, "case-04@example.invalid", "111111"); !errors.Is(err, domain.ErrCodeAttemptsExhausted) {
+	if _, err := svc.ConsumeCode(ctx, "case-04@example.invalid", "222222"); !errors.Is(err, domain.ErrCodeAttemptsExhausted) {
 		t.Errorf("right code after lock must still fail, got %v", err)
 	}
 }
