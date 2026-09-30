@@ -91,3 +91,30 @@ func (s *Service) ListBindings(ctx context.Context, familyID, accessToken string
 	}
 	return s.Store.ListBindings(ctx, accountID)
 }
+
+// BindingBlocked reports whether a contributor's social writes must
+// refuse for account reasons (P13-T04D). Unbound contributors keep the
+// anonymous baseline (false); bound contributors follow their owner's
+// status. Deleted accounts drop bindings at deletion, so their former
+// contributors read as unbound here — key revocation through the
+// privacy erasure flow is what finally retires those keys.
+func BindingBlocked(ctx context.Context, s Store, contributorID string) (bool, error) {
+	if strings.TrimSpace(contributorID) == "" {
+		return false, nil
+	}
+	owner, found, err := s.FindBindingOwner(ctx, contributorID)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+	acc, found, err := s.GetAccount(ctx, owner)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+	return !acc.Active(), nil
+}

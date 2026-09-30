@@ -208,6 +208,38 @@ func TestUnbindAndAuditTrail(t *testing.T) {
 	}
 }
 
+func TestBindingBlockedMatrix(t *testing.T) {
+	svc, _, _ := testBindingService(t, "contrib-g")
+	ctx := context.Background()
+
+	if blocked, err := BindingBlocked(ctx, svc.Store, ""); blocked || err != nil {
+		t.Errorf("empty contributor must not block, got %v %v", blocked, err)
+	}
+	if blocked, err := BindingBlocked(ctx, svc.Store, "ghost-1"); blocked || err != nil {
+		t.Errorf("unbound contributor keeps the baseline, got %v %v", blocked, err)
+	}
+	sess := bindSignup(t, svc, "bind-g@example.invalid", "482916")
+	accID := mustBindAccountID(t, svc, "bind-g@example.invalid")
+	if _, err := svc.BindContributor(ctx, sess.FamilyID, sess.AccessToken, "contrib-g", "proof-contrib-g"); err != nil {
+		t.Fatal(err)
+	}
+	if blocked, err := BindingBlocked(ctx, svc.Store, "contrib-g"); blocked || err != nil {
+		t.Errorf("bound-active must not block, got %v %v", blocked, err)
+	}
+	if err := svc.SuspendAccount(ctx, accID); err != nil {
+		t.Fatal(err)
+	}
+	if blocked, err := BindingBlocked(ctx, svc.Store, "contrib-g"); !blocked || err != nil {
+		t.Errorf("bound-suspended must block, got %v %v", blocked, err)
+	}
+	if err := svc.DeleteAccount(ctx, accID); err != nil {
+		t.Fatal(err)
+	}
+	if blocked, err := BindingBlocked(ctx, svc.Store, "contrib-g"); blocked || err != nil {
+		t.Errorf("deleted bindings read as unbound baseline, got %v %v", blocked, err)
+	}
+}
+
 func TestDeleteDropsBindings(t *testing.T) {
 	svc, _, _ := testBindingService(t, "contrib-6")
 	ctx := context.Background()

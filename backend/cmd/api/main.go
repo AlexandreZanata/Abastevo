@@ -266,11 +266,15 @@ func run() error {
 		},
 		Now: time.Now,
 	}
+	// The account store doubles as the social-write gate source
+	// (P13-T04D): one shared handle feeds the service and the
+	// community CheckAccount closures below.
+	accountStore := accountadapters.NewPGStore(pool.Underlying())
 	accountService := &accountapp.Service{
 		Clock:     unixClock{},
 		Hasher:    accountdomain.SHA256Hasher{},
 		Mail:      accountMail,
-		Store:     accountadapters.NewPGStore(pool.Underlying()),
+		Store:     accountStore,
 		Verifier:  accountVerifier,
 		KeyProver: accountKeys,
 		CodeGen:   accountdomain.GenerateCode,
@@ -281,12 +285,27 @@ func run() error {
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
+	// checkAccountGate refuses social writes from contributors bound
+	// to a suspended or deleted FREE account (P13-T04D). Unbound
+	// contributors keep the anonymous baseline; store failures
+	// propagate for a 500 instead of silently allowing writes.
+	checkAccountGate := func(ctx context.Context, contributorID string) error {
+		blocked, err := accountapp.BindingBlocked(ctx, accountStore, contributorID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return communityapp.ErrAccountBlocked
+		}
+		return nil
+	}
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,
 		NewID: newUUID,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
 			return identityRegistrar.AttributionToken(ctx, contributorID)
 		},
+		CheckAccount: checkAccountGate,
 		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
 			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
 			if err != nil {
@@ -336,6 +355,7 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
+		CheckAccount: checkAccountGate,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
 			return err

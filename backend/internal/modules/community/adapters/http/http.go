@@ -59,6 +59,8 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, application.ErrUnauthorized):
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "community.auth-required", "authentication required", nil)
+	case errors.Is(err, application.ErrAccountBlocked):
+		httpapi.WriteError(w, r, http.StatusForbidden, "community.account-blocked", "account suspended or deleted", nil)
 	case errors.Is(err, application.ErrTargetNotFound):
 		httpapi.WriteError(w, r, http.StatusNotFound, "community.not-found", "observation not found", nil)
 	case errors.Is(err, domain.ErrSelfConfirmation):
