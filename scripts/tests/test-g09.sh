@@ -1,34 +1,38 @@
 #!/usr/bin/env bash
-# P09-T03 harness: G09 gate records BLOCKED plus mutant refusals.
-# Docs-only. Usage: make test-g09.
+# Release-record policy tests; fixtures never mutate canonical evidence.
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
-
-echo "== g09 happy path (BLOCKED recorded) =="
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+cat > "$tmp/deferred.md" <<'RECORD'
+Classification: **RELEASE**
+Status: **DEFERRED_UNTIL_APP_FUNCTIONAL**
+Entry for mobile: **G09-LOCAL integration**, not production certification.
+Production prerequisite: **G18 functional Android/iOS acceptance**.
+Historical candidate: 4ce5aaf79aa3bf8d8cf31c05635dfa2b30714556
+Fresh certification
+Provisioned staging
+Legal review
+Wiki mirror
+RECORD
+bash scripts/check-g09.sh "$tmp/deferred.md"
+for mutation in certified missing-app missing-legal mobile-without-integration; do
+    cp "$tmp/deferred.md" "$tmp/mutant.md"
+    case "$mutation" in
+        certified) sed -i 's/DEFERRED_UNTIL_APP_FUNCTIONAL/RELEASE_CERTIFIED/' "$tmp/mutant.md" ;;
+        missing-app) sed -i '/Production prerequisite:/d' "$tmp/mutant.md" ;;
+        missing-legal) sed -i '/Legal review/d' "$tmp/mutant.md" ;;
+        mobile-without-integration) sed -i '/Entry for mobile:/d' "$tmp/mutant.md" ;;
+    esac
+    if bash scripts/check-g09.sh "$tmp/mutant.md" > "$tmp/result" 2>&1; then
+        echo "FAIL: accepted $mutation" >&2; exit 1
+    fi
+    grep -q 'REFUSED:' "$tmp/result"
+    echo "PASS: refused $mutation"
+done
+if bash scripts/check-g09.sh "$tmp/absent.md" >/dev/null 2>&1; then
+    echo 'FAIL: missing record accepted' >&2; exit 1
+fi
 bash scripts/check-g09.sh
-echo "PASS: g09 BLOCKED sign-off"
-
-echo "== mutant: COMPLETE claim refused =="
-cp docs/release-evidence/G09.md /tmp/g09-backup.md
-sed -i 's/^Status: \*\*G09 BLOCKED\*\*.*/Status: **G09 COMPLETE** — test mutant/' docs/release-evidence/G09.md
-if bash scripts/check-g09.sh >/dev/null 2>&1; then
-    cp /tmp/g09-backup.md docs/release-evidence/G09.md
-    echo "FAIL: COMPLETE claim accepted" >&2
-    exit 1
-fi
-cp /tmp/g09-backup.md docs/release-evidence/G09.md
-echo "PASS: COMPLETE claim refused"
-
-echo "== mutant: missing blocker refused =="
-python3 -c "t=open('docs/release-evidence/G09.md').read(); open('docs/release-evidence/G09.md','w').write(t.replace('Legal review','Removed-blocker'))"
-if bash scripts/check-g09.sh >/dev/null 2>&1; then
-    cp /tmp/g09-backup.md docs/release-evidence/G09.md
-    echo "FAIL: missing blocker accepted" >&2
-    exit 1
-fi
-cp /tmp/g09-backup.md docs/release-evidence/G09.md
-echo "PASS: missing blocker refused"
-
-echo "g09 campaign ok (BLOCKED honest; P10 stays blocked)"
+echo 'g09 record campaign ok: deferred release; no certification inferred'

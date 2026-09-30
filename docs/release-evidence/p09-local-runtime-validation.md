@@ -86,3 +86,7 @@ replay and adapter-based operator tests do not prove real R2/CDN/public TLS,
 off-host disaster recovery, production capacity or legal acceptance. G09 stays
 BLOCKED; no Android implementation, release tag, production deployment or wiki
 sync occurred in this local-only follow-up.
+
+## Later policy decision (2026-09-30)
+
+This record preserves the local test outcome and old release-order snapshot. ADR-014 now permits app development after G09-LOCAL protected integration and defers real-production G09 until functional G18. The source fingerprint and test limitations above remain unchanged. New accounts/social/media/location functionality is planned separately, not covered by these earlier runtime results.

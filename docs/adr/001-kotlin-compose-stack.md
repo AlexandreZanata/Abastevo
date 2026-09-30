@@ -78,3 +78,5 @@ This decision satisfies:
 - Agent core practices §12 (TDD with JUnit 5)
 - Project i18n rules (Android string resources)
 - User business logic (offline-first, no server)
+
+2026-09-30 target amendment: ADR-015 adds shared Kotlin Multiplatform domain/application logic and native Swift iPhone integration. Historical Android choices remain intact; migration is P12, not implemented by this amendment.

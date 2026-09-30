@@ -1,20 +1,25 @@
+<!-- Historical snapshot; relative links rebased to preserve the original root targets. -->
 # Backend-first implementation roadmap
 
-Planning revision: 2026-09-30. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.
+Planning baseline: 2026-09-28; delivery cadence revised on the same date. **P01-T01…T12 are implemented with prior local validation evidence**; remote acceptance remains to be verified. The Android baseline was subsequently successful, as recorded in [BASELINE_VALIDATION](../../../docs/planning/BASELINE_VALIDATION.md). Do not restart completed foundation work from the initial planning status.
 
 ## How to execute
 
-Read [AGENTS](AGENTS.md), [FAST_EXECUTION](docs/planning/FAST_EXECUTION.md), current [PROGRESS](docs/planning/PROGRESS.md) and the selected task. [DELIVERY_WORKFLOW](docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](docs/planning/CI_PLAN.md) govern one issue/atomic commit per task and one milestone/branch/draft PR per phase. Helpers and required Quick verification are active; protection was reverified on 2026-09-30. Historical task labels remain as original estimates where not individually reconciled; Git and linked evidence determine actual state.
+Start with **P01-T13** to activate the newly adopted delivery workflow, then resume P02. Read [AGENTS](../../../AGENTS.md), [FAST_EXECUTION](../../../docs/planning/FAST_EXECUTION.md), current [PROGRESS](../../../docs/planning/PROGRESS.md), and only the chosen task plus relevant inputs. [DELIVERY_WORKFLOW](../../../docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](../../../docs/planning/CI_PLAN.md) own execution cadence. Existing workflows remain binding until G01-FLOW; new commands are not available merely because the plan names them.
 
-[Functional multiplatform delivery](docs/planning/MOBILE_DELIVERY_PLAN.md) is the new plan. **G09 is a deferred real-production RELEASE after G18, not an app-entry blocker.** App work requires **G09-LOCAL**: the locally validated corrections integrated with current-head required CI. Free email-code/Google/Apple accounts and 280-character comments are user-confirmed; future functionality is NOT IMPLEMENTED merely by this plan. Existing Android regression remains allowed at any time.
+There are **78 tasks across 11 phases**. P01-T01…T12 are LOCAL_DONE based on preserved evidence; all new P01-T13…T17 and P02…P11 tasks are NOT STARTED. MUST is the bounded MVP, LATER is separately validated paid scope. Split an oversized task into letter-suffixed IDs before implementation. One task at a time does not mean one PR per task: one phase branch/draft PR contains its task commits. A requested phase can proceed sequentially without redundant per-task approval. No agent delegation is implied.
 
-Tests have three levels: immediate targeted task/risk checks; specialized phase exit plus one quick local/current-head remote gate; full immutable-candidate production certification only at actual G09. Critical auth/money/privacy/SQL/migration/job negative/concurrency/PostGIS checks never wait. DOD-1 is task acceptance, not release certification. No agent delegation is implied.
+Validation has three levels: targeted task/risk checks now; specialized phase exit plus quick local/remote checks for integration; full certification on an immutable release candidate after the required phase merges. Explicitly required DB/auth/restore/load acceptance tests remain immediate when their task is implemented. No known failure or critical test may be deferred. Detailed task commands state what must be proven; CI_PLAN prevents redundant whole-project reruns without weakening that proof.
+
+**Hard dependency:** P10 Android improvements start only after G09 RELEASE_CERTIFIED. Existing Android regression tests may run earlier. P01–P08 can integrate without claiming a release; P09 certifies the complete backend/infra. Accounts/billing/sync are outside backend MVP completeness.
+
+DOD-1 in [AI_ENGINEERING_CONTRACT](../../../docs/AI_ENGINEERING_CONTRACT.md) means local task acceptance; phase integration and release certification are separate. Publish one issue/task and milestone/branch/PR per phase within authorized delivery scope; close issues through the verified phase merge; mirror docs to wiki once per merged phase, recording any WIKI_PENDING retry separately. [Phase record template](../../../docs/planning/templates/PHASE_RECORD.md) keeps evidence reusable and current state short.
 
 ## Phase order
 
-Completed backend phase history remains P01–P08 → P09 local rehearsal/corrections. Next: **G09-LOCAL → P12 → P13 → P14 → P15 → P16 → P10 local integration → P17 → P18/G18 → P09/G09 real production release → P10-T09 public pilot → P11 optional paid benefits**. Preserve IDs; dependency order controls execution. P11-T02 account linking is superseded by free P13. No real production deployment or stable release is authorized by a merged plan.
+P00 import/audit/planning → P01 foundations + G01-FLOW delivery activation → P02 official catalog → P03 identity/jobs → P04 observations → P05 evidence → P06 trust/consensus → P07 moderation/privacy → P08 infrastructure/hardening → P09 backend release gate → P10 Android → P11 optional commercial services.
 
-Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
+Elapsed dates and total cost are deliberately not promised before prerequisite, parser/geocoder and load evidence. Sequence by dependencies, not invented calendar deadlines.
 
 ## P01 — Backend foundations
 
@@ -1170,17 +1175,17 @@ Exit gate: **G08: secured staging/prod topology and reproducible deployment, res
 - **Rollback/Recovery:** Block release until remediation verified; roll back insecure deployment.
 - **Definition of done:** DOD-1 plus this task's acceptance/validation evidence; update status/progress without claiming the next phase is complete.
 
-## P09 — Backend local integration and deferred real-production release
+## P09 — Backend release gate before Android
 
-Priority: **MUST**. Entry: G08 for local corrections; G18 for real-production certification.
+Priority: **MUST**. Entry: G08.
 
-Exit gates: **G09-LOCAL** integrates locally validated corrections with required CI and permits app work. **G09 RELEASE** remains DEFERRED_UNTIL_APP_FUNCTIONAL; after G18 it requires full real-production security/restore/privacy/load evidence. See ADR-014.
+Exit gate: **G09: backend MVP and infrastructure fully exercised, release evidence accepted, no blocker in security/restore/catalog/identity/community/privacy; only then P10 can start.**
 
 <a id="p09-t01"></a>
 
 ### P09-T01 — End-to-end backend release rehearsal
 
-- **ID / priority / status:** P09-T01 / MUST / LOCAL_REHEARSAL_DONE; production candidate rerun deferred until G18.
+- **ID / priority / status:** P09-T01 / MUST / NOT STARTED.
 - **Goal:** Exercise all MVP flows against deployed candidate.
 - **Why:** Prove modules work together beyond isolated tests.
 - **Inputs:** docs/product/PRODUCT_CONTRACT.md, docs/backend/TEST_STRATEGY.md; BUC-001…008; frozen OpenAPI.
@@ -1198,7 +1203,7 @@ Exit gates: **G09-LOCAL** integrates locally validated corrections with required
 
 ### P09-T02 — Compatibility and documentation closure
 
-- **ID / priority / status:** P09-T02 / MUST / PRIOR_COMPATIBILITY_RECORDED; final candidate reconciliation deferred until G18.
+- **ID / priority / status:** P09-T02 / MUST / NOT STARTED.
 - **Goal:** Reconcile contract, baseline and runbooks.
 - **Why:** Avoid passing the gate with unresolved inherited assumptions.
 - **Inputs:** docs/product/PRODUCT_CONTRACT.md, docs/backend/TEST_STRATEGY.md; CURRENT_STATE_AUDIT; BASELINE_VALIDATION; MIGRATION_PLAN.
@@ -1216,62 +1221,25 @@ Exit gates: **G09-LOCAL** integrates locally validated corrections with required
 
 ### P09-T03 — Backend readiness sign-off
 
-- **ID / priority / status:** P09-T03 / MUST / DEFERRED_UNTIL_APP_FUNCTIONAL (RELEASE).
-- **Goal:** Certify the immutable real-production candidate after functional Android/iOS acceptance.
+- **ID / priority / status:** P09-T03 / MUST / NOT STARTED.
+- **Goal:** Record the released bounded backend MVP and unblock P10.
 - **Why:** Enforce the user-requested ordering.
 - **Inputs:** docs/product/PRODUCT_CONTRACT.md, docs/backend/TEST_STRATEGY.md; G01…G08 evidence; D01…D12 decisions.
 - **Files/areas expected:** `docs/release-evidence/G09.md; docs/planning/PROGRESS.md; ROADMAP.md status only` (area list, not a literal combined path).
-- **Dependencies:** P09-T02, G18 and all integrated backend extension gates; ADR-014.
+- **Dependencies:** P09-T02; all earlier phase gates.
 - **Tests first:** Checklist rejects missing restore/security/privacy/load evidence or open launch blockers.
 - **Implementation outline:** Record commit/image/schema/policy/environment, operator readiness and rollback; mark gate only with proof.
-- **Acceptance criteria:** RELEASE_CERTIFIED only with complete actual production evidence after G18; otherwise deferred/blocked. This does not gate local app work after G09-LOCAL.
+- **Acceptance criteria:** G09 COMPLETE with links and next P10-T01; otherwise remains BLOCKED.
 - **Validation commands:** `Review all release evidence and smoke actual release endpoints`. Where prose names a gate, introduce/document the exact executable command in this task before claiming completion.
 - **Risks:** Checkbox-only completion or scope creep into paid products.
-- **Rollback/Recovery:** Withdraw production approval if material regression; preserve local app work and block public launch.
+- **Rollback/Recovery:** Withdraw gate if material regression; keep Android integration unstarted.
 - **Definition of done:** DOD-1 plus this task's acceptance/validation evidence; update status/progress without claiming the next phase is complete.
 
+## P10 — Android integration after G09
 
-<a id="p09-t01a"></a>
+Priority: **MUST**. Entry: G09 COMPLETE required before ANY task in this phase.
 
-### P09-T01A — Integrate local runtime corrections
-
-- **ID / priority / status:** P09-T01A / MUST / LOCAL_DONE (8c5e795; awaiting phase merge).
-- **Goal:** Integrate correction commit 8c5e795 and its local runtime evidence
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/release-evidence/p09-local-runtime-validation.md.
-- **Files/areas expected:** backend; infra; scripts; docs/release-evidence.
-- **Dependencies:** merged P09 rehearsal baseline c51fa03.
-- **Tests first:** Reuse recorded changed-source negative/concurrency/PostGIS/E2E evidence; current-head quick integration.
-- **Implementation outline:** Preserve implementation history; publish issue #11 and the phase PR.
-- **Acceptance criteria:** Protected merge includes all corrections; LOCAL_DONE becomes INTEGRATED; no production certification.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p09-t04"></a>
-
-### P09-T04 — Reclassify release and plan functional KMP delivery
-
-- **ID / priority / status:** P09-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Record user-confirmed next phases and deferred real-production gate
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/adr/014-functional-app-before-production-release.md; docs/mobile/KOTLIN_MULTIPLATFORM_AUDIT.md.
-- **Files/areas expected:** ROADMAP; AGENTS; planning/product/security/mobile docs; G09 record validator.
-- **Dependencies:** P09 local evidence and user decision 2026-09-30.
-- **Tests first:** Deferred record accepted; unsupported certification, missing app prerequisite/legal/integration refused; links/dependencies checked.
-- **Implementation outline:** Document B-BR/BUC, KMP version findings, free accounts and phased acceptance; reconcile old policy.
-- **Acceptance criteria:** 280-character comments/replies, three free signup methods, 24-hour photo target and Swift parity have owning tasks; no claimed implementation.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** docs plus executable release-record guard; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P10 — Functional app integration after G09-LOCAL
-
-Priority: **MUST**. Entry: G09-LOCAL and G12–G16 for affected consumers. P10-T09 alone additionally requires real G09 release.
-
-Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, contribution/OCR, source/freshness and offline/outage tests; existing app preserved. Public pilot P10-T09 waits for G18 and G09.**
+Exit gate: **G10: cross-language contracts, Room migration, identity, contribution/OCR, source/freshness UI, offline/outage tests and controlled pilot release; existing app preserved.**
 
 <a id="p10-t01"></a>
 
@@ -1280,9 +1248,9 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 - **ID / priority / status:** P10-T01 / MUST / NOT STARTED.
 - **Goal:** Consume shared fixtures in the existing architecture.
 - **Why:** Resolve legacy fuel/CNPJ/precision differences explicitly.
-- **Inputs:** docs/MIGRATION_PLAN.md, docs/user-business-logic.md; G09-LOCAL evidence; ANP_INGESTION fixture manifest.
+- **Inputs:** docs/MIGRATION_PLAN.md, docs/user-business-logic.md; G09 evidence; ANP_INGESTION fixture manifest.
 - **Files/areas expected:** `domain tests; data adapters/tests; contracts` (area list, not a literal combined path).
-- **Dependencies:** G09-LOCAL required before ANY task in this phase; all earlier phase gates.
+- **Dependencies:** G09 COMPLETE required before ANY task in this phase; all earlier phase gates.
 - **Tests first:** Legacy and target mapping fixtures, alpha CNPJ, exact decimal and unknown enums.
 - **Implementation outline:** Add Kotlin harness; bounded adapters only; no package moves.
 - **Acceptance criteria:** Go and Kotlin pass agreed fixtures; intended differences documented.
@@ -1426,7 +1394,7 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 - **Why:** Validate useful data before monetization.
 - **Inputs:** docs/MIGRATION_PLAN.md, docs/user-business-logic.md; G10 test evidence; product metrics plan.
 - **Files/areas expected:** `docs/product/pilot-results.md; runtime rollout configuration` (area list, not a literal combined path).
-- **Dependencies:** P10-T08, G18 and RELEASE_CERTIFIED real G09; all applicable phase gates.
+- **Dependencies:** P10-T08; all earlier phase gates.
 - **Tests first:** Rehearse flag off/rollback; verify aggregate metrics without tracking.
 - **Implementation outline:** Agree cohort/capacity/window, monitor freshness/disputes/cost and review outcomes.
 - **Acceptance criteria:** Pilot report states evidence, limits and next product decisions.
@@ -1439,7 +1407,7 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 
 Priority: **LATER**. Entry: Completed P10 pilot and explicit validated product scope.
 
-Exit gate: **G11: optional paid benefit/billing/sync specifications and implementations pass provider/ownership/conflict tests; no effect on free trust or existing local data. Each task is independently respecified before execution.**
+Exit gate: **G11: optional account/billing/sync specifications and implementations pass provider/ownership/conflict tests; no effect on free trust or existing local data. Each task is independently respecified before execution.**
 
 <a id="p11-t01"></a>
 
@@ -1461,14 +1429,14 @@ Exit gate: **G11: optional paid benefit/billing/sync specifications and implemen
 
 <a id="p11-t02"></a>
 
-### P11-T02 — Account linking moved to free P13
+### P11-T02 — Optional account linking
 
-- **ID / priority / status:** P11-T02 / MUST / SUPERSEDED by P13-T01…T05 (not implemented).
-- **Goal:** Preserve this historical ID; implement free recoverable account linking in P13, without payment. Do not create a duplicate P11 implementation issue.
+- **ID / priority / status:** P11-T02 / LATER / NOT STARTED.
+- **Goal:** Bind contributor ownership to a recoverable account.
 - **Why:** Offer device migration with proof.
 - **Inputs:** docs/product/OPEN_SOURCE_BUSINESS.md, docs/MIGRATION_PLAN.md; New account UC/security ADR required.
 - **Files/areas expected:** `identity/account module and adapters; contracts` (area list, not a literal combined path).
-- **Dependencies:** Superseded by P13; no P11 billing or paid offering prerequisite for free accounts.
+- **Dependencies:** P11-T01; all earlier phase gates.
 - **Tests first:** Account takeover, stolen contributor ID, fresh reauth and key linking cases.
 - **Implementation outline:** Use established identity provider; prove current key and account; specify recovery.
 - **Acceptance criteria:** No unauthorized trust transfer; anonymous use continues.
@@ -1486,7 +1454,7 @@ Exit gate: **G11: optional paid benefit/billing/sync specifications and implemen
 - **Why:** Never trust a premium boolean from client.
 - **Inputs:** docs/product/OPEN_SOURCE_BUSINESS.md, docs/MIGRATION_PLAN.md; New billing UC; current Play provider docs at execution.
 - **Files/areas expected:** `subscription module; billing adapter; contracts` (area list, not a literal combined path).
-- **Dependencies:** G13 and P11-T01; all applicable release gates.
+- **Dependencies:** P11-T02; all earlier phase gates.
 - **Tests first:** Purchase replay/refund/revocation/notification duplication and stale state.
 - **Implementation outline:** Verify server-side, reconcile provider events, persist entitlement version.
 - **Acceptance criteria:** Payment independent from trust in regression tests.
@@ -1531,607 +1499,6 @@ Exit gate: **G11: optional paid benefit/billing/sync specifications and implemen
 - **Rollback/Recovery:** Stop cloud writes; restore versioned user-selected snapshot.
 - **Definition of done:** DOD-1 plus this task's acceptance/validation evidence; update status/progress without claiming the next phase is complete.
 
-
-## P12 — Kotlin Multiplatform foundation
-
-Priority: **MUST**. Entry: G09-LOCAL.
-
-Exit gate: **G12: supported pins, Android regression parity, portable domain vectors and shared framework/Swift shell built on macOS.**
-
-<a id="p12-t01"></a>
-
-### P12-T01 — Toolchain and feature baseline
-
-- **ID / priority / status:** P12-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Freeze compatible Kotlin/AGP/Gradle/KSP/Compose/Xcode pins and supported devices
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** gradle; module build files; docs/mobile.
-- **Dependencies:** G09-LOCAL.
-- **Tests first:** Inherited feature/test matrix; trial upgrade/plugin compatibility and rollback builds.
-- **Implementation outline:** Audit official matrix/dependency need/license/security; establish startup/heap/photo baseline.
-- **Acceptance criteria:** Exact pins and environment results recorded; no unsupported iOS readiness claim.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p12-t02"></a>
-
-### P12-T02 — Portable domain and money contracts
-
-- **ID / priority / status:** P12-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Share pure domain logic without Java APIs or money drift
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** domain commonMain/jvm/android/ios adapters; shared fixtures.
-- **Dependencies:** P12-T01.
-- **Tests first:** Exact money/overflow/time/ID/Unicode golden parity; existing calculators.
-- **Implementation outline:** Introduce portable types/ports incrementally; preserve com.anpfuel and MIT.
-- **Acceptance criteria:** Common tests and Android consumers agree on all golden vectors.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p12-t03"></a>
-
-### P12-T03 — Application ports and offline state
-
-- **ID / priority / status:** P12-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Share use cases while keeping native persistence/background libraries at the boundary
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** application; data native adapters.
-- **Dependencies:** P12-T02.
-- **Tests first:** Cancellation, retry, outbox revisions, offline reads and migration compatibility.
-- **Implementation outline:** Explicit dependency injection and common use-case state; Room remains Android adapter.
-- **Acceptance criteria:** No Android dependency in pure common code; imported offline behavior retained.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p12-t04"></a>
-
-### P12-T04 — Swift framework and native shell
-
-- **ID / priority / status:** P12-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Produce a thin working iPhone host for shared use cases
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** shared umbrella framework; iosApp Swift/SwiftUI; build manifests.
-- **Dependencies:** P12-T03.
-- **Tests first:** macOS simulator/device build, errors/cancellation/lifecycle and interop types.
-- **Implementation outline:** Supported framework/Objective-C interop plus Swift wrappers; native ports wired explicitly.
-- **Acceptance criteria:** iosArm64/iosSimulatorArm64 compile and shell executes shared fixture use case.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p12-t05"></a>
-
-### P12-T05 — Foundation acceptance and gates
-
-- **ID / priority / status:** P12-T05 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Prove toolchain migration preserves existing functionality
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** docs/mobile; scoped platform CI; regression fixtures.
-- **Dependencies:** P12-T04.
-- **Tests first:** Android baseline and macOS native checks; dependency/security drift.
-- **Implementation outline:** Introduce bounded KMP/iOS phase check selection without disabling Quick verification.
-- **Acceptance criteria:** G12 evidence on actual artifacts and device matrix; no visual redesign.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P13 — Free accounts and recovery
-
-Priority: **MUST**. Entry: G12.
-
-Exit gate: **G13: free signup, secure provider/device binding, recovery, rights and native login evidence.**
-
-<a id="p13-t01"></a>
-
-### P13-T01 — Account rules and additive contracts
-
-- **ID / priority / status:** P13-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Freeze FREE account/session/provider/recovery semantics
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** contracts; identity/account ports; docs/security.
-- **Dependencies:** G12.
-- **Tests first:** OTP and OIDC attack fixtures; enumeration; account-link takeover cases.
-- **Implementation outline:** Document B-BR-A/BUC-A; OTP limits, auth scope, inventory/retention and compatible versioning.
-- **Acceptance criteria:** No purchase requirement; exact subject/session/device proof boundary.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p13-t02"></a>
-
-### P13-T02 — Email access-code backend
-
-- **ID / priority / status:** P13-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Implement free code enrollment and sessions
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend account domain/application/transport/mail adapter; append-only migrations.
-- **Dependencies:** P13-T01.
-- **Tests first:** Expired/replayed/concurrent code consume, resend quotas, enumeration, refresh reuse; real DB.
-- **Implementation outline:** Domain RED/GREEN; hash codes, bounded attempts and revocable session families.
-- **Acceptance criteria:** No plaintext code/log leak; FREE flow independent from billing.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p13-t03"></a>
-
-### P13-T03 — Google and Apple verification
-
-- **ID / priority / status:** P13-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Verify external identity and secure link/unlink
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend OIDC adapters; contracts; provider sandbox evidence.
-- **Dependencies:** P13-T02.
-- **Tests first:** Wrong issuer/audience/nonce/key, replay/JWKS rotation, Apple relay and provider outage.
-- **Implementation outline:** Use reviewed provider protocol adapter and verified subject binding, never email-only merge.
-- **Acceptance criteria:** Both providers work in sandbox; compromised token cannot link another account.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p13-t04"></a>
-
-### P13-T04 — Recovery revocation and privacy
-
-- **ID / priority / status:** P13-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Preserve contributor ownership through account/device changes
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend identity/privacy; native secure-storage ports.
-- **Dependencies:** P13-T03.
-- **Tests first:** Stolen contributor ID, fresh reauth, old-key/session revoke race and deletion/restore.
-- **Implementation outline:** Bind current key plus account proof; recovery audits; minimized data inventory.
-- **Acceptance criteria:** Recovery cannot steal reputation; suspension/erasure immediately blocks social writes.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p13-t05"></a>
-
-### P13-T05 — Shared and native login integration
-
-- **ID / priority / status:** P13-T05 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Make all three free signup methods functional on Android and iPhone
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** application auth use cases; app/iosApp; Keystore/Keychain adapters.
-- **Dependencies:** P13-T04, G12.
-- **Tests first:** Callback cancel/replay, deep-link substitution, process death, expired sessions and secure storage.
-- **Implementation outline:** Native supported provider/browser flows plus shared auth state; minimal current-style screens.
-- **Acceptance criteria:** G13 device evidence; signup has no payment wall; free browsing works logged out.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P14 — Station fuel feedback backend
-
-Priority: **MUST**. Entry: G13.
-
-Exit gate: **G14: secure versioned ratings/comments/replies/votes/moderation with reproducible projections.**
-
-<a id="p14-t01"></a>
-
-### P14-T01 — Feedback domain and contracts
-
-- **ID / priority / status:** P14-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Freeze station/fuel target, 280-character text and percentage semantics
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** contracts; feedback domain spec and fixtures.
-- **Dependencies:** G13.
-- **Tests first:** 280/281 codepoints across Go/Kotlin/Swift; 1–5 range; zero-vote and revision vectors.
-- **Implementation outline:** Document B-BR-F/BUC-F; freeze proposed reply depth and aggregate/erasure rules.
-- **Acceptance criteria:** Stars, comment agreement and price confidence never share a score.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p14-t02"></a>
-
-### P14-T02 — Rating transactions and aggregates
-
-- **ID / priority / status:** P14-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Implement one current rating per account/station/fuel
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend feedback domain/application; parametrized SQL; append-only migrations.
-- **Dependencies:** P14-T01.
-- **Tests first:** Duplicate/parallel rating/edit/delete, suspended session, wrong target, exact aggregate rebuild.
-- **Implementation outline:** Unique constraints, idempotency and revisioned domain events; pure calculation.
-- **Acceptance criteria:** Concurrent requests cannot inflate counts; public read exposes no private identity.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p14-t03"></a>
-
-### P14-T03 — Comments replies and ownership
-
-- **ID / priority / status:** P14-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Implement bounded plain-text comments and replies
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend feedback transport/domain/storage.
-- **Dependencies:** P14-T02.
-- **Tests first:** Empty/281/invalid Unicode, cross-author edit/delete, stale revision, unsafe rendering and paging limits.
-- **Implementation outline:** Normalized scalar-count fixtures; stable revision and reply target; signed authenticated writes.
-- **Acceptance criteria:** Only active accounts write; no silent truncation; same 280 limit for replies.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p14-t04"></a>
-
-### P14-T04 — Validity votes and percentages
-
-- **ID / priority / status:** P14-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Implement changeable one-account-one-revision votes
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend feedback vote/projection jobs; contracts.
-- **Dependencies:** P14-T03.
-- **Tests first:** Self-vote, duplicate/concurrent changes, revision edit, delete/suspension and job replay.
-- **Implementation outline:** Use integer basis points, rebuildable V/I counts and idempotent unique transactions.
-- **Acceptance criteria:** Zero votes is null; displayed denominator/percentage match shared fixtures.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p14-t05"></a>
-
-### P14-T05 — Moderation privacy and backend exit
-
-- **ID / priority / status:** P14-T05 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Complete reports/blocking/moderation and social rights
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend feedback/moderation/privacy; operator runbook.
-- **Dependencies:** P14-T04.
-- **Tests first:** Role escalation, reporter deletion attempt, hidden text leak, export/erase/restore and abuse limits.
-- **Implementation outline:** Audited moderation states, minimal public reasons and projection reconciliation.
-- **Acceptance criteria:** G14 real-DB/race/E2E evidence; account requirement enforced server-side.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P15 — Lightweight photos and 24-hour audit expiry
-
-Priority: **MUST**. Entry: G14.
-
-Exit gate: **G15: legible KiB photos, bounded memory and every app-owned media copy expires/deletes within policy.**
-
-<a id="p15-t01"></a>
-
-### P15-T01 — Media budgets and forward contract
-
-- **ID / priority / status:** P15-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Freeze measured format/size/pixel/memory deadlines
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** contracts; media policy; benchmark fixtures.
-- **Dependencies:** G12, G14.
-- **Tests first:** Realistic low-resource camera/HEIF/PNG/JPEG legibility and decode-memory measurements.
-- **Implementation outline:** Freeze ≤150 KiB target/≤256 KiB cap/1600 edge/2 MP hypotheses or evidence-backed limits; single deadline.
-- **Acceptance criteria:** Protocol and notice target 24 h for all copies; migration and rollout compatibility documented.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p15-t02"></a>
-
-### P15-T02 — Native lightweight photo pipeline
-
-- **ID / priority / status:** P15-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Optimize supported input formats locally without full-resolution allocation
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** Android camera/decoder; Swift ImageIO/camera; shared processing ports.
-- **Dependencies:** P15-T01.
-- **Tests first:** Large/corrupt/rotated/alpha inputs, bounded attempts, UI responsiveness, cache expiry and interrupted capture.
-- **Implementation outline:** Native sample-decode/off-main encode, strip metadata; encrypted transient cache; no Gallery copy.
-- **Acceptance criteria:** Legible result within frozen KiB/memory budget on baseline devices; safe unsupported-format errors.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p15-t03"></a>
-
-### P15-T03 — Bounded backend media processing
-
-- **ID / priority / status:** P15-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Revalidate and sanitize with controlled RSS/concurrency
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend media/storage/worker; append-only migration.
-- **Dependencies:** P15-T02.
-- **Tests first:** Forged MIME/dimensions, decompression bombs, interrupted upload, expired finalize/retry and memory pressure.
-- **Implementation outline:** Bounded streaming, header pixel limits, safe decode/reencode; one immutable expiry from first receipt.
-- **Acceptance criteria:** No client-trusted budget/deadline; private media and measured worker memory bounds.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p15-t04"></a>
-
-### P15-T04 — Expiry deletion and restore enforcement
-
-- **ID / priority / status:** P15-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Replace old 14/30-day retention with all-copy 24-hour enforcement
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend sweep/read auth; private storage adapters; backup/restore; app cache.
-- **Dependencies:** P15-T03.
-- **Tests first:** At-deadline read denial, delayed worker/delete failure, versioned copies, stale cache and restore replay.
-- **Implementation outline:** Append-only timestamp migration; purge old media; provider policy checks, retries/alarms/intake circuit breaker.
-- **Acceptance criteria:** Expiry never extends; physical overdue object is a failing policy result; no photo bytes in backups.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p15-t05"></a>
-
-### P15-T05 — Media privacy and device acceptance
-
-- **ID / priority / status:** P15-T05 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Prove the complete low-memory audit path
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** media E2E fixtures; Android/iOS device evidence; privacy notice.
-- **Dependencies:** P15-T04.
-- **Tests first:** Full capture/upload/sanitize/read/expiry, app restart/offline and log redaction.
-- **Implementation outline:** Reconcile deleted photo versus retained fact explanations; freeze policy limitation for powered-off devices.
-- **Acceptance criteria:** G15 evidence separates logical access expiry and actual deletion; target not claimed from emulator alone.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P16 — Location integrity across Android and iOS
-
-Priority: **MUST**. Entry: G15.
-
-Exit gate: **G16: simulated GPS blocks location-dependent claims; UNKNOWN is honest; backend distrust and native tests pass.**
-
-<a id="p16-t01"></a>
-
-### P16-T01 — Location risk contract
-
-- **ID / priority / status:** P16-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Specify permitted denied/unknown/manual paths
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** contracts; location domain/ports; privacy fixtures.
-- **Dependencies:** G15.
-- **Tests first:** Mock/unknown/stale/coarse/clock/replay and fake client flag cases.
-- **Implementation outline:** B-BR-L/BUC-L, risk bands/freshness and disclosure; no universal spoof-proof promise.
-- **Acceptance criteria:** Unknown cannot become verified proximity; browse/offline preserved.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p16-t02"></a>
-
-### P16-T02 — Native mock and simulation adapters
-
-- **ID / priority / status:** P16-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Detect platform simulation with lightweight native ports
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** Android LocationCompat; Swift Core Location; common risk use case.
-- **Dependencies:** P16-T01.
-- **Tests first:** Android mock provider, iOS software simulation/missing source info; release-debug exclusion.
-- **Implementation outline:** OS-provided source signals; no app blacklists, busy polling or developer-option blanket denial.
-- **Acceptance criteria:** Known simulation blocks location-sensitive actions on both platforms.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p16-t03"></a>
-
-### P16-T03 — Backend risk and proximity checks
-
-- **ID / priority / status:** P16-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Treat device risk claims as untrusted inputs
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** backend validation/auth/privacy; additive API vectors.
-- **Dependencies:** P16-T02.
-- **Tests first:** Forged isMock=false, teleport/stale fixes, replay, time skew, exact-GPS/log leaks; real PostGIS.
-- **Implementation outline:** Independently validate bounded proximity/freshness; persist allowed bands; optional attestation deferred decision.
-- **Acceptance criteria:** Client flag alone cannot grant HIGH; no long-lived precise GPS.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p16-t04"></a>
-
-### P16-T04 — Location device and recovery acceptance
-
-- **ID / priority / status:** P16-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Verify denial/degraded flows without blocking free use
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** app/iosApp location flow; release artifact assertions.
-- **Dependencies:** P16-T03.
-- **Tests first:** Permission revocation/coarse/offline resume/cancel plus energy/latency baseline.
-- **Implementation outline:** Minimal current-style explanations and recovery; local/simulator tests plus actual supported devices.
-- **Acceptance criteria:** G16 documented capabilities/limits; no unauthorized background tracking.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P17 — Social app functionality and iPhone parity
-
-Priority: **MUST**. Entry: G10-LOCAL, G13–G16.
-
-Exit gate: **G17: every required feature works on Android and Swift/iOS with shared fixtures and native lifecycle evidence.**
-
-<a id="p17-t01"></a>
-
-### P17-T01 — Shared feedback feature use cases
-
-- **ID / priority / status:** P17-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Consume ratings/comments/replies/votes/moderation contracts
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** application feedback state; native data/cache adapters.
-- **Dependencies:** G14, G10-LOCAL.
-- **Tests first:** Contract errors, login requirement, optimistic rollback, paging, offline edits and stale revision.
-- **Implementation outline:** DDD use cases and ports; bounded outbox retries with server auth/idempotency.
-- **Acceptance criteria:** State and counts match backend; paid plan never blocks feedback.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p17-t02"></a>
-
-### P17-T02 — Android functional social flows
-
-- **ID / priority / status:** P17-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Expose rating/comment/reply/vote/report functionality
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** app current-pattern screens/viewmodels; Android tests.
-- **Dependencies:** P17-T01.
-- **Tests first:** 280 limit, no-login action, revision edit, denied moderation, outage/retry.
-- **Implementation outline:** Minimal existing design, source/percentage sample explanations and safe text rendering.
-- **Acceptance criteria:** Each social action works end to end; no redesign or fake success states.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p17-t03"></a>
-
-### P17-T03 — Swift iPhone full feature integration
-
-- **ID / priority / status:** P17-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Complete iOS ports and imported/new feature parity
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** iosApp Swift/SwiftUI; native persistence/location/camera/Keychain.
-- **Dependencies:** P17-T02, G12–G16.
-- **Tests first:** macOS build/simulator/device: login/camera/signature/offline/outbox/navigation/alerts; process death.
-- **Implementation outline:** Thin Swift UI around shared use cases; actual native callbacks/storage/background limitations.
-- **Acceptance criteria:** Feature checklist matches Android or explicit approved platform limitation; no stub marked ready.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p17-t04"></a>
-
-### P17-T04 — Cross-platform lifecycle and privacy exit
-
-- **ID / priority / status:** P17-T04 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Prove account/social/media/location flows through native boundaries
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** shared and native integration tests; docs/mobile evidence.
-- **Dependencies:** P17-T03.
-- **Tests first:** Same fixtures, account revocation across devices, erasure, media expiry and fake location denial.
-- **Implementation outline:** Run scoped integrated local flows with synthetic server; review native dependency/licenses.
-- **Acceptance criteria:** G17 supported Android/iPhone results; no email/GPS/photos in diagnostics.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-## P18 — Functional app acceptance and performance
-
-Priority: **MUST**. Entry: G17.
-
-Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; real G09 release may now begin.**
-
-<a id="p18-t01"></a>
-
-### P18-T01 — Feature matrix and final local acceptance
-
-- **ID / priority / status:** P18-T01 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Verify every imported and new requirement with actual result manifest
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** docs/mobile acceptance; local backend fixtures; device E2E.
-- **Dependencies:** G17, G10-LOCAL.
-- **Tests first:** All baseline feature mappings and failure/offline/recovery scenarios; no silent skips.
-- **Implementation outline:** Freeze expected Android/iOS/account/feedback/photo/location matrix and candidate artifacts.
-- **Acceptance criteria:** Every required feature has actual device/local-service proof; any missing result blocks G18.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p18-t02"></a>
-
-### P18-T02 — Performance and memory tuning
-
-- **ID / priority / status:** P18-T02 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Meet frozen budgets with bounded algorithms and native processing
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** changed hot-path domain/adapters; benchmark reports.
-- **Dependencies:** P18-T01.
-- **Tests first:** Baseline low-resource cold start/frame/heap/photo/outbox/battery and concurrent backend workloads.
-- **Implementation outline:** Profile before optimization; targeted RED/GREEN regression; avoid unrelated refactors.
-- **Acceptance criteria:** No main-thread decode/ANR/leak; legibility/KiB/RSS/latency meet measured frozen device budgets.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
-<a id="p18-t03"></a>
-
-### P18-T03 — Security compatibility and functional sign-off
-
-- **ID / priority / status:** P18-T03 / MUST / PLANNED (NOT IMPLEMENTED).
-- **Goal:** Hand off a functional app candidate to deferred production release
-- **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
-- **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
-- **Files/areas expected:** docs/release-evidence; support matrix; scoped native/security gates.
-- **Dependencies:** P18-T02.
-- **Tests first:** Auth/recovery/abuse/Unicode/expiry/GPS adversarial cases, upgrades and old-client compatibility.
-- **Implementation outline:** Reconcile exact candidate, dependencies, platform limitations and critical findings; no cloud deploy.
-- **Acceptance criteria:** G18 accepted only with real Android/iOS evidence; G09 remains uncertified until its separate production matrix.
-- **Validation commands:** Run the scoped domain/consumer, native compilation/device or real-PostGIS/race suites named by this task; document the exact executable commands and required result manifest before implementation acceptance. For existing Android baseline use `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:assembleDebug --no-daemon`; backend package commands follow backend/README.md and docs/backend/TEST_STRATEGY.md. No invented script is claimed available.
-- **Risks:** critical; missing native/provider evidence or unsafe fallback blocks acceptance.
-- **Rollback/Recovery:** Disable the new feature with a tested flag, preserve existing free/offline behavior and compatible API; append-only migrations, no destructive history rewrite.
-- **Definition of done:** DOD-1, actual scoped evidence and updated PROGRESS; phase integration requires specialized exit plus current-head/base Quick verification; no release claim from a plan.
-
 ## Release-gate checklist G09
 
 - [ ] P01–P08 required phase PRs/fixes are integrated; G01…G08 and G01-FLOW evidence is linked to actual checks/commits/images/schema/config. Historical P01 direct commits are recorded without inventing retroactive PRs.
@@ -2145,5 +1512,5 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 - [ ] Runtime retention/export/erasure and user notice/legal review are complete.
 - [ ] Load/fault/cache tests meet accepted capacity and freshness budgets.
 - [ ] Operator can deploy, monitor, moderate, revoke, rollback and restore using tested runbooks.
-- [ ] G18 functional Android/iOS acceptance is integrated; release evidence signed off; public P10-T09 pilot may start.
+- [ ] Release evidence signed off; P10-T01 is explicitly unblocked.
 

@@ -1,19 +1,19 @@
 # Product contract: backend first
 
-Status: planning baseline, 2026-09-28. Product name “Postô” is provisional.
+Status: target planning revised 2026-09-30; new functionality NOT IMPLEMENTED. Product name “Postô” is provisional.
 
 ## Objective and release order
 
-Build a reliable network of recent community fuel-price observations alongside the official ANP reference. Complete the backend and its production infrastructure, including operational acceptance, before changing or improving the Android app. “Complete” means the bounded MVP release gate G09, not implementing every possible future commercial feature.
+Build a reliable network of recent community fuel-price observations alongside the official ANP reference. Integrate and locally validate the backend/infrastructure first (G09-LOCAL), then deliver the functional Kotlin Multiplatform app with native Android/Swift adapters. G09 is classified real-production RELEASE and deferred until functional Android/iOS acceptance G18, per ADR-014.
 
 1. Import and audit the existing Android application; plan the work.
 2. Build the modular monolith, official station catalog and anonymous identity.
 3. Deliver community observations, private evidence, validation, consensus and moderation.
-4. Complete deployment, backups/restoration, privacy, monitoring, compatibility and load gates.
-5. Only then integrate Android and improve contribution/offline experiences.
-6. Validate the community pilot before optional accounts, paid sync and billing.
+4. Integrate local infrastructure/security/recovery checks, then P12–P16 KMP/free accounts/feedback/media/location extensions.
+5. Complete P10/P17/P18 functional Android/iOS acceptance, preserving offline features and current design.
+6. Only then certify real production G09 and public pilot; paid benefits remain later P11.
 
-Existing Android builds and tests may run before G09. Production source changes, new screens, CameraX/ML Kit, backend client integration and local schema upgrades begin in P10. Backend tests use synthetic protocol clients until then.
+Existing Android regression may run anytime. New app work requires G09-LOCAL integration; native KMP/Swift work starts P12 and affected backend extensions precede consumers. Local synthetic services are used until actual real-production release.
 
 ## MUST: free community MVP
 
@@ -24,10 +24,12 @@ Existing Android builds and tests may run before G09. Production source changes,
 - Official history and community history remain separate; community observations never overwrite ANP.
 - Anti-abuse controls, moderation, retention, export/deletion handling and recoverable operations.
 - Preserve existing offline features, local vehicle allowance, alerts and navigation after integration.
+- Free account registration by email access code, Google and Apple; account-authenticated station/fuel stars, 280-character comments/replies, validity votes, moderation and transparent community agreement percentage.
+- Lightweight native photo encoding and backend revalidation, all app-owned photo copies at most 24 hours; simulated-location denial with honest UNKNOWN handling. See owning security/feedback target contracts.
 
 ## SHOULD and LATER
 
-SHOULD after pilot: refine consensus from labelled review outcomes, improve geocoding coverage, optional integrity signals, richer operational summaries and additional localization. LATER: optional accounts, hosted backup/migration, cross-device sync, advanced alerts/statistics, Postô+, API commercial plans and fleets. No subscription machinery, multi-tenancy or enterprise services in the community MVP.
+SHOULD after pilot: refine consensus from labelled review outcomes, improve geocoding coverage, optional integrity signals, richer operational summaries and additional localization. LATER: optional paid hosted backup/migration, cross-device sync, advanced alerts/statistics, Postô+, API commercial plans and fleets. No subscription machinery, multi-tenancy or enterprise services in the community MVP.
 
 Payment buys hosted convenience; it never increases confidence or reputation. Do not move currently free features behind a paywall as part of integration. Selling “multiple vehicles” needs a product decision that preserves the existing free allowance of three.
 

@@ -1,11 +1,11 @@
 # Documentation index
 
-This repository contains the existing Android release, implemented P01 backend foundations and the remaining backend-first plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next task: [P01-T13](../ROADMAP.md#p01-t13), beginning G01-FLOW delivery activation before P02.
+This repository contains the preserved Android app, integrated backend phase history and the next functional multiplatform plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next implementation: [P12-T01](../ROADMAP.md#p12-t01) after G09-LOCAL correction integration; real-production G09 waits until G18.
 
 ## Canonical planning documents
 
 - [CURRENT_STATE_AUDIT](CURRENT_STATE_AUDIT.md) — source provenance, real implementation, reuse and inconsistencies.
-- [PRODUCT_CONTRACT](product/PRODUCT_CONTRACT.md) — free/community scope and backend-before-Android ordering.
+- [PRODUCT_CONTRACT](product/PRODUCT_CONTRACT.md) — free/community scope and revised local-backend → functional-app → real-production ordering.
 - [TARGET_ARCHITECTURE](backend/TARGET_ARCHITECTURE.md) — C4 views, modules, ownership, flows, jobs and scale.
 - [DOMAIN_MODEL](backend/DOMAIN_MODEL.md) — vocabulary, B-BR invariants, aggregates/events/states.
 - [COMMUNITY_PRICING_SPEC](backend/COMMUNITY_PRICING_SPEC.md) — admissibility, conditions, consensus, trust and freshness.
@@ -42,3 +42,12 @@ Technical/legal/provider facts were checked on 2026-09-28; recheck at implementa
 - [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) — provider restrictions; no national bulk assumption.
 - [Receita Federal CNPJ program](https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/cnpj-alfanumerico) — alphanumeric identifier compatibility.
 - [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) and [MIT license text](https://opensource.org/license/mit) — review references, not a claim that the project is legally certified.
+
+## Functional multiplatform extension
+
+- [MOBILE_DELIVERY_PLAN](planning/MOBILE_DELIVERY_PLAN.md) — explicit phase sequence and functionality-first acceptance.
+- [KOTLIN_MULTIPLATFORM_AUDIT](mobile/KOTLIN_MULTIPLATFORM_AUDIT.md) — actual versions, portability gaps and official compatibility sources.
+- [STATION_FUEL_FEEDBACK](product/STATION_FUEL_FEEDBACK.md) — stars, 280-character text, votes and moderation.
+- [FREE_ACCOUNT_ACCESS](security/FREE_ACCOUNT_ACCESS.md) — free email-code/Google/Apple signup and secure recovery.
+- [LOCAL_MEDIA_LOCATION_POLICY](security/LOCAL_MEDIA_LOCATION_POLICY.md) — low-memory encoding, all-copy 24-hour expiry and simulated-location controls.
+- [ADR-014](adr/014-functional-app-before-production-release.md), [ADR-015](adr/015-kotlin-multiplatform-shared-domain.md) — release order and Kotlin/Swift boundaries.

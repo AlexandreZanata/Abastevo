@@ -21,3 +21,5 @@ Reduced future replay/forensic ability is intentional; disclose limits. Legal re
 ## Validation and follow-up
 
 Use the owning tasks in [ROADMAP](../../ROADMAP.md), specifications in [docs index](../README.md) and [decision log](../planning/DECISIONS.md). Record tested policy/tool versions before marking a release gate complete.
+
+2026-09-30 target amendment: the user requires **all app-owned photo copies at most 24 hours**, with no 14/30-day extension. docs/security/LOCAL_MEDIA_LOCATION_POLICY.md and P15 own forward enforcement; current v1 retention is not yet changed. Account/social data inventory is P13/P14; notices need release review.

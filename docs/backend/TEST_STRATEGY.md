@@ -2,7 +2,7 @@
 
 P01 platform and API-contract tests now exist; prior local runs are recorded in the [P01 evidence archive](../planning/history/P01_FOUNDATION_EVIDENCE.md) and [baseline validation](../planning/BASELINE_VALIDATION.md). Business, end-to-end and deployed-infrastructure coverage below remains planned where its feature does not exist. Never infer a new successful run from historical evidence.
 
-[CI_PLAN](../planning/CI_PLAN.md) owns cadence: focused local checks per task, specialized exit checks plus short CI per phase integration, and the complete matrix on the P09/G09 candidate. G01-FLOW activation is pending; existing workflows still apply. Targeted critical checks are never deferred to the end of the project.
+[CI_PLAN](../planning/CI_PLAN.md) owns cadence: focused local checks per task, specialized exit checks plus short CI per phase integration, and the complete matrix on the P09/G09 candidate. G01-FLOW and required Quick verification are active; G09-LOCAL permits app development and real G09 certification waits until G18. Targeted critical checks are never deferred to the end of the project.
 
 ## Risk-based checks
 
@@ -14,7 +14,7 @@ P01 platform and API-contract tests now exist; prior local runs are recorded in 
 - Evidence: malformed/oversize/decompression inputs, MIME spoof, overwrite-after-HEAD race, orphan lifecycle, repeated finalize, owner mismatch, EXIF removal and deletion. Local S3-compatible tests plus one staging R2 suite, because emulator compatibility is insufficient evidence.
 - ANP/golden: immutable public samples, source checksums, exact money/units, all labels/dates/CNPJ forms, header change/quarantine, correction revisions and Kotlin legacy compatibility cases. Live source discovery is a scheduled/manual smoke, not a flaky prerequisite for every unit test.
 - Migration: apply all from empty, upgrade previous released schema with representative rows, migration checksum drift, concurrent migrator lock, incompatible binary refusal, expand/contract behavior and failed-migration recovery. A destructive down migration is not the default rollback.
-- E2E: register → upload → finalize → observe → validate → independent confirm → read source-separated projection; dispute/moderate; rights deletion/restore. Synthetic protocol clients until G09; no Android feature implementation to drive backend tests.
+- E2E: register → upload → finalize → observe → validate → independent confirm → read source-separated projection; dispute/moderate; rights deletion/restore. Synthetic protocol clients remain local backend fixtures; after G09-LOCAL, shared/native clients add Android/iOS contract/device evidence.
 - Load/recovery: INFRASTRUCTURE_PLAN workload and latency budgets, full restore into new environment, DB/storage outage and worker crash. Store hardware/data/config/commit with results so runs can be compared.
 
 ## Reproducible command contract
@@ -49,7 +49,7 @@ Use `gofmt -l` with an explicit fail-if-output check (gofmt listing alone can ex
 
 Target quick gate: format/build/vet, actual short critical/platform suites, reference/secret checks and applicable contract-generation checks, within a measured budget. A compile-only test command is not behavioral evidence. Migration/SQL/security changes require their relevant real DB/adversarial tests locally and at specialized phase exit; dependency changes require relevant vulnerability checks immediately. Do not turn the quick job into the whole release matrix.
 
-Full gate before backend release: all unit/static/coverage/race tests, real PostGIS, empty/upgrade migrations, end-to-end/auth/evidence, dependency/image/security scans, deploy/restore/load evidence, existing Android regression baseline and frozen cross-language fixture expectations. Select the immutable candidate after phase integration and record the complete expected-result manifest. Reuse expensive evidence only for demonstrably matching artifacts/config/inputs under CI_PLAN. Full Kotlin↔Go harness is P10 because app work is gated.
+Full gate before backend release: all unit/static/coverage/race tests, real PostGIS, empty/upgrade migrations, end-to-end/auth/evidence, dependency/image/security scans, deploy/restore/load evidence, existing Android regression baseline and frozen cross-language fixture expectations. Select the immutable candidate after phase integration and record the complete expected-result manifest. Reuse expensive evidence only for demonstrably matching artifacts/config/inputs under CI_PLAN. Full Kotlin↔Go↔Swift parity starts P12/P10 after G09-LOCAL; native/macOS evidence is mandatory where applicable.
 
 ## Fixture boundaries and anti-flakiness
 
