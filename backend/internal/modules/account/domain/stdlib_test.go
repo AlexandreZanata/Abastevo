@@ -57,6 +57,9 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrOIDCUnavailable:       "oidc-unavailable",
 		ErrLinkCrossAccount:      "link-cross-account-refused",
 		ErrLinkEmailOnly:         "link-email-only-refused",
+		ErrSessionReuse:          "session-reuse-revoked",
+		ErrSessionRevoked:        "session-revoked",
+		ErrSessionExpired:        "session-expired",
 	}
 	for err, want := range cases {
 		if got := VerdictCode(err); got != want {

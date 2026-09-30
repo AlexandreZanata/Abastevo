@@ -25,6 +25,9 @@ var (
 	ErrOIDCUnavailable       = errors.New("account: provider unavailable")
 	ErrLinkCrossAccount      = errors.New("account: proof belongs to another account")
 	ErrLinkEmailOnly         = errors.New("account: email match is not linking proof")
+	ErrSessionReuse          = errors.New("account: refresh token reused")
+	ErrSessionRevoked        = errors.New("account: session family revoked")
+	ErrSessionExpired        = errors.New("account: session expired")
 )
 
 // Clock is the only time source portable logic may use; tests inject a fake.
@@ -95,6 +98,12 @@ func VerdictCode(err error) string {
 		return "link-cross-account-refused"
 	case errors.Is(err, ErrLinkEmailOnly):
 		return "link-email-only-refused"
+	case errors.Is(err, ErrSessionReuse):
+		return "session-reuse-revoked"
+	case errors.Is(err, ErrSessionRevoked):
+		return "session-revoked"
+	case errors.Is(err, ErrSessionExpired):
+		return "session-expired"
 	default:
 		return "invalid-value"
 	}
