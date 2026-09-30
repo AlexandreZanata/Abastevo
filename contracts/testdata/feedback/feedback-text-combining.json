@@ -1,0 +1,1 @@
+{"id": "feedback-text-combining", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-combining", "verdict": "accept", "code": "ok", "inputs": {"text": "éxito", "scalars": 6}, "note": "Combining acute (e + U+0301) counts base plus mark, like Go/Kotlin/Swift."}

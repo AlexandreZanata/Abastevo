@@ -1,0 +1,1 @@
+{"id": "feedback-text-crlf", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-crlf", "verdict": "accept", "code": "ok", "inputs": {"text": "a\r\nb", "normalized": "a\nb", "scalars": 3}, "note": "CRLF normalizes to LF before counting."}

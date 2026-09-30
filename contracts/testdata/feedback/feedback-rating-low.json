@@ -1,0 +1,1 @@
+{"id": "feedback-rating-low", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "rating-range-low", "verdict": "accept", "code": "ok", "inputs": {"stars": 1}, "note": "Bottom of the 1-5 range."}

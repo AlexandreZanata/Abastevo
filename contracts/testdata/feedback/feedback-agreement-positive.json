@@ -1,0 +1,1 @@
+{"id": "feedback-agreement-positive", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "agreement-unanimous-positive", "verdict": "accept", "code": "ok", "inputs": {"valid": 3, "invalid": 0, "basis_points": 10000, "display": "100%"}, "note": "Unanimous VALID is 100%."}

@@ -1,0 +1,1 @@
+{"id": "feedback-text-valid", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-valid-baseline", "verdict": "accept", "code": "ok", "inputs": {"text": "Preço bom ⛽", "normalized": "Preço bom ⛽", "scalars": 11}, "note": "Control case: short comment with accent and emoji is accepted."}

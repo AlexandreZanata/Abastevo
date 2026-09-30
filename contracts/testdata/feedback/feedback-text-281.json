@@ -1,0 +1,1 @@
+{"id": "feedback-text-281", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "text-281-overflow", "verdict": "reject", "code": "text-too-long", "inputs": {"scalars": 281}, "note": "One scalar past the bound must fail; no silent truncation."}

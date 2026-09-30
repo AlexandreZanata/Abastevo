@@ -66,11 +66,17 @@ func TestAllowedForTarget(t *testing.T) {
 		t.Error("block observation allowed")
 	}
 	for _, a := range []string{ActionReview, ActionResolve, ActionDismiss} {
-		for _, target := range []string{TargetObservation, TargetDispute, TargetContributor, TargetEvidence} {
+		for _, target := range []string{TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment} {
 			if !AllowedForTarget(a, target) {
 				t.Errorf("%s on %s refused", a, target)
 			}
 		}
+	}
+	if !AllowedForTarget(ActionInvalidate, TargetComment) {
+		t.Error("invalidate comment refused")
+	}
+	if AllowedForTarget(ActionBlock, TargetComment) {
+		t.Error("block comment allowed")
 	}
 	if AllowedForTarget("BAN", TargetObservation) {
 		t.Error("unknown action allowed")

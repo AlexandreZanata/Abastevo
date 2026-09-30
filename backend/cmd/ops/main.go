@@ -32,6 +32,8 @@ func run(args []string, getenv func(string) string) error {
 		return errors.New(usage)
 	}
 	switch args[0] {
+	case "feedback":
+		return runFeedback(args[1:], getenv)
 	case "moderation":
 		return runModeration(args[1:], getenv)
 	case "privacy":
@@ -48,6 +50,9 @@ func run(args []string, getenv func(string) string) error {
 }
 
 const usage = `usage:
+  ops feedback hide|show --comment <id> --case <id> [--operator <id>]
+  ops feedback export --account <id> [--operator <id>]
+  ops feedback erase --account <id> --reason <text> [--operator <id>]
   ops moderation act --case <id> --action REVIEW|INVALIDATE|BLOCK|RESOLVE|DISMISS --reason <text> [--operator <id>]
   ops moderation invalidate --case <id> --reason <text> [--operator <id>]
   ops moderation block --case <id> --reason <text> [--operator <id>]

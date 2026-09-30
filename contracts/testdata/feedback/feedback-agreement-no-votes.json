@@ -1,0 +1,1 @@
+{"id": "feedback-agreement-no-votes", "version": 1, "provenance": "P14-T01 frozen feedback rules; synthetic vectors, no real addresses or secrets", "attack": "agreement-no-votes", "verdict": "accept", "code": "ok", "inputs": {"valid": 0, "invalid": 0, "basis_points": null}, "note": "Zero votes is null (No votes), never 0% certainty."}

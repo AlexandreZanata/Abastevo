@@ -42,11 +42,18 @@ import (
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
+	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
+	feedbackhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http"
+	feedbackapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
+	feedbackdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
+	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -283,6 +290,83 @@ func run() error {
 		IDGen:     newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
+	// Station/fuel feedback (P14-T03). Same closure rule: session
+	// ownership, account liveness and station existence arrive as
+	// narrow functions; only active accounts write, reads stay
+	// public. Session failures split into forbidden (dead account)
+	// versus invalid (bad/expired proof) without importing the
+	// account domain into the feedback handler.
+	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	moderationStore := moderationadapters.NewStore(pool.Underlying())
+	feedbackService := &feedbackapp.Service{
+		Clock:    unixClock{},
+		Store:    feedbackStore,
+		Comments: feedbackStore,
+		Votes:    feedbackStore,
+		CheckAccount: func(ctx context.Context, accountID string) error {
+			acc, found, err := accountStore.GetAccount(ctx, accountID)
+			if err != nil {
+				return err
+			}
+			if !found || !acc.Active() {
+				return feedbackdomain.ErrAuthorForbidden
+			}
+			return nil
+		},
+		StationExists: func(ctx context.Context, stationID string) (bool, error) {
+			_, err := stations.Detail(ctx, stationID)
+			if err == nil {
+				return true, nil
+			}
+			if errors.Is(err, directoryapp.ErrUnknownStation) {
+				return false, nil
+			}
+			return false, err
+		},
+		ReportQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &feedbackdomain.QuotaDeniedError{RetryAfterSeconds: int64(denied.RetryAfter / time.Second)}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
+		OpenCase: func(ctx context.Context, reporterAccountID, commentID, reason string) (string, error) {
+			res, err := moderationapp.Open(ctx, moderationapp.Ports{
+				Clock: time.Now,
+				NewID: newUUID,
+				Store: moderationStore,
+			}, moderationapp.OpenDTO{
+				TargetType: moderationdomain.TargetComment,
+				TargetID:   commentID,
+				Reason:     reason,
+				Detail:     "reported via feedback API",
+			})
+			if err != nil {
+				return "", err
+			}
+			return res.CaseID, nil
+		},
+		IDGen: newUUID,
+	}
+	feedbackhttp.Handler{
+		Service: feedbackService,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, familyID, accessToken)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "account-suspended", "account-deleted":
+					return "", feedbackdomain.ErrAuthorForbidden
+				default:
+					return "", feedbackdomain.ErrSessionInvalid
+				}
+			}
+			return id, nil
+		},
+	}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// checkAccountGate refuses social writes from contributors bound

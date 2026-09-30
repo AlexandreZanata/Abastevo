@@ -107,11 +107,32 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
   - engine: postgresql
+    queries: db/queries/feedback
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000021_provider_links.sql
+      - db/migrations/000022_account_bindings.sql
+      - db/migrations/000023_feedback.sql
+      - db/migrations/000024_feedback_comments.sql
+      - db/migrations/000025_feedback_votes.sql
+      - db/migrations/000027_feedback_visibility.sql
+      - db/migrations/000026_moderation_comment_target.sql
+      - db/migrations/000028_feedback_account_idx.sql
+    gen:
+      go:
+        package: feedback
+        out: db/queries/feedback
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
     queries: db/queries/moderation
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000016_moderation.sql
       - db/migrations/000017_moderation_actions.sql
+      - db/migrations/000026_moderation_comment_target.sql
     gen:
       go:
         package: moderation

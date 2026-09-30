@@ -102,18 +102,19 @@ func NewAction(p ActionParams) (Action, ModerationActionRecorded, error) {
 }
 
 // AllowedForTarget gates eligibility-changing actions by target type:
-// invalidation applies to facts and evidence, blocking to contributors,
-// triage and closure to any target (BUC-006, B-BR-012).
+// invalidation applies to facts, comments and evidence, blocking to
+// contributors, triage and closure to any target (BUC-006, B-BR-012).
 func AllowedForTarget(action, targetType string) bool {
 	switch action {
 	case ActionInvalidate:
 		return targetType == TargetObservation || targetType == TargetDispute ||
-			targetType == TargetEvidence
+			targetType == TargetEvidence || targetType == TargetComment
 	case ActionBlock:
 		return targetType == TargetContributor
 	case ActionReview, ActionResolve, ActionDismiss:
 		return targetType == TargetObservation || targetType == TargetDispute ||
-			targetType == TargetContributor || targetType == TargetEvidence
+			targetType == TargetContributor || targetType == TargetEvidence ||
+			targetType == TargetComment
 	default:
 		return false
 	}
