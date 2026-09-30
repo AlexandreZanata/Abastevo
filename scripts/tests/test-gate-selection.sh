@@ -90,6 +90,58 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+echo "== bounded mobile selection (P12-T05) =="
+if MOBILE_ROOT="$ROOT" bash "$ROOT/scripts/check-mobile.sh" --static-only >/dev/null 2>&1; then
+    echo "PASS: mobile static-only green on repo tree"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: mobile static-only red on repo tree" >&2
+    FAIL=$((FAIL + 1))
+fi
+EMPTY_ROOT="$(mktemp -d)"
+if MOBILE_ROOT="$EMPTY_ROOT" bash "$ROOT/scripts/check-mobile.sh" --static-only >/dev/null 2>&1; then
+    echo "FAIL: mobile static-only accepted empty tree" >&2
+    FAIL=$((FAIL + 1))
+else
+    echo "PASS: mobile static-only refuses missing portable areas"
+    PASS=$((PASS + 1))
+fi
+rm -rf "$EMPTY_ROOT"
+# Planted banned import must fail naming the file (minimal valid skeleton).
+SKELETON="$(mktemp -d)"
+mkdir -p "$SKELETON/domain/src/main/kotlin/com/anpfuel/domain/portable" \
+    "$SKELETON/application/src/main/kotlin/com/anpfuel/application/portable" \
+    "$SKELETON/contracts/testdata/compat" \
+    "$SKELETON/iosApp/Sources/AnpFuelCore" \
+    "$SKELETON/iosApp/Sources/AnpFuelShell" \
+    "$SKELETON/iosApp/Tests/AnpFuelCoreTests"
+printf 'package bad\n\nimport java.time.Instant\n' > "$SKELETON/domain/src/main/kotlin/com/anpfuel/domain/portable/Bad.kt"
+printf 'package ok\n' > "$SKELETON/application/src/main/kotlin/com/anpfuel/application/portable/Ok.kt"
+python3 - "$SKELETON/contracts/testdata/compat/money-portable-v1.json" <<'PY'
+import json, sys
+doc = {"id": "money-portable-v1", "min_milli_brl": 1, "max_milli_brl": 1000000}
+body = ('"text": "5,999" "milli": 5999 "text": "5,9999" "code": "over-precision" '
+        '"total_milli": 274950 "text_max_scalars": 280 123e4567-e89b-12d3-a456-426614174000')
+open(sys.argv[1], "w").write(json.dumps(doc) + "\n" + body + "\n")
+PY
+for f in PortableMoney.swift PortableText.swift PortableIdTime.swift TankFillUseCase.swift; do
+    printf '// skeleton\n' > "$SKELETON/iosApp/Sources/AnpFuelCore/$f"
+done
+printf '// skeleton\n' > "$SKELETON/iosApp/Sources/AnpFuelShell/AnpFuelApp.swift"
+printf '// swift-tools-version: 5.9\n' > "$SKELETON/iosApp/Package.swift"
+for f in PortableMoneyTests.swift PortableTextTests.swift PortableIdTimeTests.swift TankFillUseCaseTests.swift; do
+    printf '// skeleton\n' > "$SKELETON/iosApp/Tests/AnpFuelCoreTests/$f"
+done
+OUT="$(MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only 2>&1 || true)"
+if echo "$OUT" | grep -q "Bad.kt imports banned platform API"; then
+    echo "PASS: planted platform import fails naming the file"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: planted platform import not detected: $OUT" >&2
+    FAIL=$((FAIL + 1))
+fi
+rm -rf "$SKELETON"
+
 echo "== summary: $PASS passed, $FAIL failed =="
 if [[ "$FAIL" -gt 0 ]]; then
     exit 1

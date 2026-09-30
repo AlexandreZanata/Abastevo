@@ -1,0 +1,221 @@
+{
+ "id": "money-portable-v1",
+ "intent": "Canonical golden vectors shared by Go kernel, Kotlin portable domain and future Swift wrapper. Exact integer milli-BRL, Unicode scalar counting, lowercase UUID strings and UTC instants. No floats, no locale-dependent parsing.",
+ "max_milli_brl": 1000000,
+ "min_milli_brl": 1,
+ "money_invalid": [
+  {
+   "code": "invalid-price",
+   "text": "+5,00"
+  },
+  {
+   "code": "invalid-price",
+   "text": ",5"
+  },
+  {
+   "code": "invalid-price",
+   "text": "1.099,90"
+  },
+  {
+   "code": "invalid-price",
+   "text": "5,"
+  },
+  {
+   "code": "invalid-price",
+   "text": "5.999"
+  },
+  {
+   "code": "invalid-price",
+   "text": "cinco"
+  },
+  {
+   "code": "missing-price",
+   "text": ""
+  },
+  {
+   "code": "missing-price",
+   "text": "   "
+  },
+  {
+   "code": "negative-price",
+   "text": "-0,00"
+  },
+  {
+   "code": "negative-price",
+   "text": "-1,00"
+  },
+  {
+   "code": "over-precision",
+   "text": "5,9999"
+  },
+  {
+   "code": "over-range",
+   "text": "1000,01"
+  },
+  {
+   "code": "zero-price",
+   "text": "0,00"
+  }
+ ],
+ "money_valid": [
+  {
+   "milli": 4599,
+   "text": "4,599"
+  },
+  {
+   "milli": 1,
+   "text": "0,001"
+  },
+  {
+   "milli": 5999,
+   "text": "5,999"
+  },
+  {
+   "milli": 5999,
+   "text": "  5,999  "
+  },
+  {
+   "milli": 5999,
+   "text": "5,9990"
+  },
+  {
+   "milli": 5990,
+   "text": "5,99"
+  },
+  {
+   "milli": 6000,
+   "text": "6"
+  },
+  {
+   "milli": 1000000,
+   "text": "1000,00"
+  },
+  {
+   "milli": 1000000,
+   "text": "1000,000"
+  },
+  {
+   "milli": 109900,
+   "text": "109,90"
+  }
+ ],
+ "provenance": "backend/internal/modules/kernel/price.go and kernel_test.go at main 6f4f048; B-BR-002; docs/product/STATION_FUEL_FEEDBACK.md F03; P12-T02",
+ "tank_fill": [
+  {
+   "capacity_ml": 50000,
+   "total_milli": 274950,
+   "unit_milli": 5499
+  },
+  {
+   "capacity_ml": 50000,
+   "total_milli": 299500,
+   "unit_milli": 5990
+  },
+  {
+   "capacity_ml": 500,
+   "note": "0.5 L boundary, half-up rounds 500.5 up",
+   "total_milli": 501,
+   "unit_milli": 1001
+  },
+  {
+   "capacity_ml": 40000,
+   "total_milli": 124000,
+   "unit_milli": 3100
+  }
+ ],
+ "text_cases": [
+  {
+   "note": "max length",
+   "scalars": 280,
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "note": "one over the limit",
+   "scalars": 281,
+   "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "note": "accented precomposed",
+   "scalars": 4,
+   "text": "café",
+   "valid": true
+  },
+  {
+   "note": "BMP symbol",
+   "scalars": 1,
+   "text": "⛽",
+   "valid": true
+  },
+  {
+   "note": "astral-plane emoji counts one scalar, two UTF-16 units",
+   "scalars": 1,
+   "text": "🚗",
+   "valid": true
+  },
+  {
+   "note": "combining sequence counts base plus combining mark",
+   "scalars": 2,
+   "text": "é",
+   "valid": true
+  },
+  {
+   "note": "CRLF normalizes to LF before counting",
+   "scalars": 3,
+   "text": "a\r\nb",
+   "valid": true
+  },
+  {
+   "note": "blank is empty after trim",
+   "scalars": 0,
+   "text": "   ",
+   "valid": false
+  }
+ ],
+ "text_max_scalars": 280,
+ "time_cases": [
+  {
+   "instant": "2026-06-07T00:00:00Z",
+   "valid": true
+  },
+  {
+   "instant": "2024-02-29T12:00:00Z",
+   "note": "leap day",
+   "valid": true
+  },
+  {
+   "instant": "2025-02-29T00:00:00Z",
+   "note": "not a leap year",
+   "valid": false
+  },
+  {
+   "instant": "2026-13-01T00:00:00Z",
+   "note": "month out of range",
+   "valid": false
+  },
+  {
+   "instant": "2026-06-07T00:00:00",
+   "note": "missing designator",
+   "valid": false
+  }
+ ],
+ "uuid_cases": [
+  {
+   "note": "backend kernel vector",
+   "uuid": "123e4567-e89b-12d3-a456-426614174000",
+   "valid": true
+  },
+  {
+   "note": "canonical form is lowercase",
+   "uuid": "123E4567-E89B-12D3-A456-426614174000",
+   "valid": false
+  },
+  {
+   "note": "not hex",
+   "uuid": "xyz",
+   "valid": false
+  }
+ ],
+ "version": 1
+}
