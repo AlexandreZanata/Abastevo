@@ -201,9 +201,14 @@ func verifySignature(key JSONWebKey, alg string, signed, sig []byte) error {
 		if len(sig) != 64 {
 			return errors.New("oidc: malformed ES256 signature")
 		}
+		raw := append([]byte{4}, append(pad32(x.Bytes()), pad32(y.Bytes())...)...)
+		pub, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), raw)
+		if err != nil {
+			return err
+		}
 		r := new(big.Int).SetBytes(sig[:32])
 		s := new(big.Int).SetBytes(sig[32:])
-		if !ecdsa.Verify(&ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}, digest[:], r, s) {
+		if !ecdsa.Verify(pub, digest[:], r, s) {
 			return errors.New("oidc: ES256 verification failed")
 		}
 		return nil
