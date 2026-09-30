@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 )
@@ -15,12 +16,12 @@ type Store interface {
 	SaveCode(ctx context.Context, rec domain.EmailCode) error
 	CountCodesSince(ctx context.Context, addressHash string, sinceUnix int64) (int, error)
 	LatestCode(ctx context.Context, addressHash string) (domain.EmailCode, bool, error)
-	TryConsume(ctx context.Context, addressHash, candidateHash string, nowUnix int64) (domain.EmailCode, error)
+	TryConsume(ctx context.Context, addressHash, code string, hasher domain.CodeHasher, nowUnix int64) (domain.EmailCode, error)
 	FindAccount(ctx context.Context, addressHash string) (domain.Account, bool, error)
 	CreateAccount(ctx context.Context, acc domain.Account, addressHash string) error
 	CreateFamily(ctx context.Context, fam domain.SessionFamily) error
 	Family(ctx context.Context, familyID string) (domain.SessionFamily, bool, error)
-	Rotate(ctx context.Context, familyID, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
+	Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
 	RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error
 	RevokeAccount(ctx context.Context, accountID string, nowUnix int64) error
 }
@@ -103,19 +104,13 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 }
 
 // ConsumeCode redeems one code for a session, creating the FREE account on
-// first login. Wrong codes and unknown addresses share ErrCodeUnknown.
+// first login. The store matches by hash across the address rows, so same-
+// second issuance never misattributes a guess; wrong codes and unknown
+// addresses share ErrCodeUnknown.
 func (s *Service) ConsumeCode(ctx context.Context, address, code string) (AuthResult, error) {
 	now := s.Clock.NowUnix()
 	hash := domain.AddressHash(address)
-	latest, found, err := s.Store.LatestCode(ctx, hash)
-	if err != nil {
-		return AuthResult{}, err
-	}
-	var candidateHash string
-	if found {
-		candidateHash = s.Hasher.Hash(latest.Salt, code)
-	}
-	if _, err := s.Store.TryConsume(ctx, hash, candidateHash, now); err != nil {
+	if _, err := s.Store.TryConsume(ctx, hash, code, s.Hasher, now); err != nil {
 		return AuthResult{}, err
 	}
 	acc, found, err := s.Store.FindAccount(ctx, hash)
@@ -134,9 +129,18 @@ func (s *Service) ConsumeCode(ctx context.Context, address, code string) (AuthRe
 		}
 		acc = domain.Account{ID: id, Alias: alias, Status: domain.StatusActive, CreatedAt: now}
 		if err := s.Store.CreateAccount(ctx, acc, hash); err != nil {
-			return AuthResult{}, err
+			if errors.Is(err, domain.ErrAddressLinked) {
+				// Lost race with a parallel signup: log into the winner.
+				acc, found, err = s.Store.FindAccount(ctx, hash)
+				if err != nil || !found {
+					return AuthResult{}, domain.ErrAddressLinked
+				}
+			} else {
+				return AuthResult{}, err
+			}
+		} else {
+			created = true
 		}
-		created = true
 	}
 	sess, err := s.newSession(ctx, acc.ID, now)
 	if err != nil {
@@ -213,8 +217,14 @@ func (s *Service) rotate(ctx context.Context, fam domain.SessionFamily, now int6
 		return Session{}, err
 	}
 	accessExpires := now + domain.SessionAccessTTLSeconds
-	if err := s.Store.Rotate(ctx, fam.ID, refreshSalt, s.Hasher.Hash(refreshSalt, refresh),
+	if err := s.Store.Rotate(ctx, fam.ID, fam.RefreshHash, refreshSalt, s.Hasher.Hash(refreshSalt, refresh),
 		accessSalt, s.Hasher.Hash(accessSalt, access), accessExpires, now); err != nil {
+		if errors.Is(err, domain.ErrSessionReuse) {
+			// Lost a rotation race after the check: fail closed.
+			if rerr := s.Store.RevokeFamily(ctx, fam.ID, now); rerr != nil {
+				return Session{}, rerr
+			}
+		}
 		return Session{}, err
 	}
 	return Session{

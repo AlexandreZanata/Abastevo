@@ -57,6 +57,7 @@ func TestVerdictCodesAreStable(t *testing.T) {
 		ErrOIDCUnavailable:       "oidc-unavailable",
 		ErrLinkCrossAccount:      "link-cross-account-refused",
 		ErrLinkEmailOnly:         "link-email-only-refused",
+		ErrAddressLinked:         "address-linked",
 		ErrSessionReuse:          "session-reuse-revoked",
 		ErrSessionRevoked:        "session-revoked",
 		ErrSessionExpired:        "session-expired",

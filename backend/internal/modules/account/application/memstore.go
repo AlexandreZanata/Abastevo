@@ -2,8 +2,6 @@ package application
 
 import (
 	"context"
-	"crypto/subtle"
-	"encoding/hex"
 	"sync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
@@ -62,13 +60,33 @@ func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.Ema
 	return m.codes[idx[len(idx)-1]], true, nil
 }
 
-func (m *MemStore) TryConsume(_ context.Context, addressHash, candidateHash string, nowUnix int64) (domain.EmailCode, error) {
+func (m *MemStore) TryConsume(_ context.Context, addressHash, code string, hasher domain.CodeHasher, nowUnix int64) (domain.EmailCode, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	idx := m.byAddr[addressHash]
 	if len(idx) == 0 {
 		return domain.EmailCode{}, domain.ErrCodeUnknown
 	}
+	// Match-first: a presented code decides its own row, so same-second
+	// issuance never burns attempts on a sibling row.
+	for _, i := range idx {
+		rec := &m.codes[i]
+		if !hasher.Equal(rec.Hash, rec.Salt, code) {
+			continue
+		}
+		if rec.ConsumedAt != 0 {
+			return domain.EmailCode{}, domain.ErrCodeConsumed
+		}
+		if domain.CodeExpired(rec.IssuedAt, nowUnix) {
+			return domain.EmailCode{}, domain.ErrCodeExpired
+		}
+		if !domain.AttemptAllowed(rec.Attempts) {
+			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
+		}
+		rec.ConsumedAt = nowUnix
+		return *rec, nil
+	}
+	// No match: the newest row decides the failure mode.
 	rec := &m.codes[idx[len(idx)-1]]
 	if rec.ConsumedAt != 0 {
 		return domain.EmailCode{}, domain.ErrCodeConsumed
@@ -79,25 +97,11 @@ func (m *MemStore) TryConsume(_ context.Context, addressHash, candidateHash stri
 	if !domain.AttemptAllowed(rec.Attempts) {
 		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
 	}
-	if !equalHash(rec.Hash, candidateHash) {
-		rec.Attempts++
-		if !domain.AttemptAllowed(rec.Attempts) {
-			return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
-		}
-		return domain.EmailCode{}, domain.ErrCodeUnknown
+	rec.Attempts++
+	if !domain.AttemptAllowed(rec.Attempts) {
+		return domain.EmailCode{}, domain.ErrCodeAttemptsExhausted
 	}
-	rec.ConsumedAt = nowUnix
-	return *rec, nil
-}
-
-// equalHash compares stored verifiers without byte-prefix timing oracles.
-func equalHash(a, b string) bool {
-	ra, err1 := hex.DecodeString(a)
-	rb, err2 := hex.DecodeString(b)
-	if err1 != nil || err2 != nil || len(ra) != len(rb) {
-		return false
-	}
-	return subtle.ConstantTimeCompare(ra, rb) == 1
+	return domain.EmailCode{}, domain.ErrCodeUnknown
 }
 
 func (m *MemStore) FindAccount(_ context.Context, addressHash string) (domain.Account, bool, error) {
@@ -110,6 +114,9 @@ func (m *MemStore) FindAccount(_ context.Context, addressHash string) (domain.Ac
 func (m *MemStore) CreateAccount(_ context.Context, acc domain.Account, addressHash string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if existing, ok := m.accounts[addressHash]; ok && existing.ID != acc.ID {
+		return domain.ErrAddressLinked
+	}
 	m.accounts[addressHash] = acc
 	m.accountIDs[acc.ID] = addressHash
 	return nil
@@ -133,12 +140,15 @@ func (m *MemStore) Family(_ context.Context, familyID string) (domain.SessionFam
 	return *fam, true, nil
 }
 
-func (m *MemStore) Rotate(_ context.Context, familyID, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, _ int64) error {
+func (m *MemStore) Rotate(_ context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, _ int64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	fam, ok := m.families[familyID]
 	if !ok {
 		return domain.ErrCodeUnknown
+	}
+	if !domain.EqualHash(fam.RefreshHash, expectedRefreshHash) {
+		return domain.ErrSessionReuse
 	}
 	fam.RefreshSalt, fam.RefreshHash = refreshSalt, refreshHash
 	fam.AccessSalt, fam.AccessHash = accessSalt, accessHash

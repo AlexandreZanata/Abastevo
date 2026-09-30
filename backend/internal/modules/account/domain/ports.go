@@ -25,6 +25,7 @@ var (
 	ErrOIDCUnavailable       = errors.New("account: provider unavailable")
 	ErrLinkCrossAccount      = errors.New("account: proof belongs to another account")
 	ErrLinkEmailOnly         = errors.New("account: email match is not linking proof")
+	ErrAddressLinked         = errors.New("account: address already linked")
 	ErrSessionReuse          = errors.New("account: refresh token reused")
 	ErrSessionRevoked        = errors.New("account: session family revoked")
 	ErrSessionExpired        = errors.New("account: session expired")
@@ -98,6 +99,8 @@ func VerdictCode(err error) string {
 		return "link-cross-account-refused"
 	case errors.Is(err, ErrLinkEmailOnly):
 		return "link-email-only-refused"
+	case errors.Is(err, ErrAddressLinked):
+		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):
 		return "session-reuse-revoked"
 	case errors.Is(err, ErrSessionRevoked):

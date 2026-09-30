@@ -327,3 +327,20 @@ func TestConcurrentConsumeAdmitsExactlyOne(t *testing.T) {
 		t.Errorf("concurrent consume: %d ok, %d consumed, %d other (want 1/%d/0)", ok, consumed, other, racers-1)
 	}
 }
+
+func TestReplaySupersededCodeIsConsumed(t *testing.T) {
+	svc, clock, _ := testService()
+	ctx := context.Background()
+	request(t, svc, "sup@example.invalid")
+	if _, err := svc.ConsumeCode(ctx, "sup@example.invalid", "482916"); err != nil {
+		t.Fatalf("first consume: %v", err)
+	}
+	clock.advance(61 * time.Second)
+	request(t, svc, "sup@example.invalid")
+	if _, err := svc.ConsumeCode(ctx, "sup@example.invalid", "482916"); !errors.Is(err, domain.ErrCodeConsumed) {
+		t.Errorf("replayed first code must be code-consumed, got %v", err)
+	}
+	if _, err := svc.ConsumeCode(ctx, "sup@example.invalid", "111111"); err != nil {
+		t.Errorf("live second code must consume, got %v", err)
+	}
+}

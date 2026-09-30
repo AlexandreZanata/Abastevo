@@ -41,6 +41,18 @@ func (SHA256Hasher) Equal(storedHash, salt, code string) bool {
 	return subtle.ConstantTimeCompare(want, got) == 1
 }
 
+// EqualHash compares stored hex verifiers without byte-prefix timing
+// oracles. Both stores share it so memory and SQL paths leak identically
+// nothing.
+func EqualHash(a, b string) bool {
+	ra, err1 := hex.DecodeString(a)
+	rb, err2 := hex.DecodeString(b)
+	if err1 != nil || err2 != nil || len(ra) != len(rb) {
+		return false
+	}
+	return subtle.ConstantTimeCompare(ra, rb) == 1
+}
+
 // GenerateCode mints a uniform zero-padded CodeDigits number from crypto/rand.
 func GenerateCode() (string, error) {
 	top := big.NewInt(1000000)
