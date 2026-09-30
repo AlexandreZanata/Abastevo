@@ -1,15 +1,13 @@
 # Current execution state
 
-- Updated: 2026-09-30. User explicitly authorized GitHub publication and deferred real-production G09 until the app is functional; ADR-014 governs the changed order.
-- Baseline: merged P09 PR #10, main c51fa03. Correction task P09-T01A: commit 8c5e795, issue [#11](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/11), LOCAL_DONE awaiting protected phase merge.
-- Current task: P09-T04, issue [#12](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/12), isolated branch codex/phase-09-production-validation; draft [PR #14](https://github.com/AlexandreZanata/brazil-fuel-prices/pull/14); planning/policy/record-guard changes only. No new app/account/feedback implementation.
-- Publication scope: authorized phase issues/milestones, branch push, draft PR, verified guarded merge and owned-page wiki mirror. No real production deploy, stable tag or GitHub Release.
-- Evidence: [local runtime corrections](../release-evidence/p09-local-runtime-validation.md), code fingerprint 48dc47514dba28cb4862c63611d75dd1bf6367e154036ec9c2a182070cfd2e8c. Prior runtime/infra/recovery/security checks are not rerun for planning-only input changes.
-- User choices: 280-character comments/replies; FREE signup by email access code, Google and Apple. New targets owned by P12–P18, with existing P10/P11 IDs retained.
-- G09: RELEASE / DEFERRED_UNTIL_APP_FUNCTIONAL, tracker [#13](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/13). G09-LOCAL permits app work only after correction integration with current-head Quick verification; local tests are not production certification.
-- Targeted planning/guard evidence: [P09-T04 record](../release-evidence/p09-t04-functional-planning.md). Phase PR and tested final head/checks are recorded before publication; integration/wiki outcome belongs in PR metadata until the next authorized branch.
-- Wiki task P09-T05, [issue #15](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/15): preserve unmanaged Home/P01 report, generate Project-Overview from committed config; 39 scoped tests pass. Publication awaits merged source.
-- Next implementation after integration: P12-T01 toolchain/feature baseline. iOS acceptance requires macOS/Xcode/device evidence; not claimed from Linux.
+- Updated: 2026-09-30. User authorized phase publication/push; ADR-014 defers real G09 until functional app G18.
+- Baseline: P09 INTEGRATED via merged PR #14 (`6f4f048` from `c51fa03` + `8c5e795` + planning/wiki guard). Issues #11/#12/#15 closed; Quick verification + fast/integration/test SUCCESS on `2b1a55a`; wiki `136c6f9` (112 owned pages).
+- G09: RELEASE / DEFERRED_UNTIL_APP_FUNCTIONAL, tracker [#13](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/13). G09-LOCAL INTEGRATED: corrections + required current-head CI permit P12 app work; not production certification.
+- Current phase: P12 KMP foundation, branch `codex/phase-12-kmp-foundation` from `origin/main 6f4f048`; milestone 3; issues #16–#20; draft PR pending first push. Scope: authorized issues/push/draft PR/guarded merge/wiki; no deploy/tag/Release.
+- Current task: P12-T01 toolchain/feature baseline, issue [#16](https://github.com/AlexandreZanata/brazil-fuel-prices/issues/16), LOCAL_DONE. Pins frozen (Kotlin 2.0.21/AGP 8.7.3/Gradle 8.10.2/KSP 2.0.21-1.0.28/min 26/target 35); Android baseline 597 tests pass (430 domain/app + 167 data/app, 1 skipped), `assembleDebug` SUCCESS. Evidence: [P12-T01 baseline](../mobile/p12-t01-toolchain-baseline.md). iOS needs macOS/Xcode 26.4; not claimed from Linux.
+- Publication/tooling: `scripts/issues.sh` gh-2.45 create fix (23/23 harness); created labels `phase:P12`/`type:task`/`priority:must`/`risk:standard`.
+- User choices: 280-char comments/replies; FREE email-code/Google/Apple. Next: P12-T02 portable domain/money contracts.
+- Evidence pointers: [local runtime](../release-evidence/p09-local-runtime-validation.md), [P09-T04](../release-evidence/p09-t04-functional-planning.md).
 
 ## Preserved history
 

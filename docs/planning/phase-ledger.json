@@ -1,20 +1,26 @@
 {
-  "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
-  "phase": "P09 follow-up",
-  "branch": "codex/phase-09-production-validation",
-  "base_sha": "c51fa03f57b0c9f0a429e41c51bbd21ff2dcbb9c",
+  "base_sha": "6f4f04823f11e5195312532f65cf9fb4678b10c7",
+  "branch": "codex/phase-12-kmp-foundation",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
-    "P09-T05": 15
+    "P09-T05": 15,
+    "P12-T01": 16,
+    "P12-T02": 17,
+    "P12-T03": 18,
+    "P12-T04": 19,
+    "P12-T05": 20
   },
-  "milestone": 1,
-  "pr": 14,
+  "milestone": 3,
+  "milestone_title": "P12 \u2014 Kotlin Multiplatform foundation",
+  "phase": "12",
+  "pr": null,
+  "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
+    "classification": "RELEASE",
     "gate": "G09",
     "issue": 13,
     "milestone": 2,
-    "classification": "RELEASE",
     "status": "DEFERRED_UNTIL_APP_FUNCTIONAL"
   },
   "state": "AWAITING_PHASE_MERGE",
