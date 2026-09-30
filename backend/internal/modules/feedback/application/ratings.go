@@ -38,6 +38,8 @@ type Service struct {
 	Votes         VoteStore
 	CheckAccount  AccountGate
 	StationExists StationExists
+	ReportQuota   ReportQuota
+	OpenCase      OpenCase
 	IDGen         func() (string, error)
 }
 

@@ -184,24 +184,40 @@ func (t VoteTally) Agreement() (Agreement, error) {
 	return ComputeAgreement(t.Valid, t.Invalid)
 }
 
+// Visibility states for moderator-driven display (F07, P14-T05A).
+// Visible rows read normally; flagged rows read normally while under
+// review; hidden rows vanish from public reads but stay for audit.
+// Author deletion keeps using the tombstone, never these states.
+const (
+	VisibilityVisible = "visible"
+	VisibilityFlagged = "flagged"
+	VisibilityHidden  = "hidden"
+)
+
 // StoredComment is one persisted comment or reply revision. Depth 0
 // marks a top-level comment (no parent); depth 1 marks a reply to a
 // comment of the same station/fuel. Edits bump Revision in place with
 // compare-and-swap; deletes tombstone via DeletedAt. History stays
-// for audit and moderation; reads ignore tombstoned rows.
+// for audit and moderation; reads ignore tombstoned and hidden rows.
 type StoredComment struct {
-	ID        string
-	AccountID string
-	StationID string
-	Product   string
-	ParentID  string
-	Depth     int
-	Text      string
-	Scalars   int
-	Revision  int
-	CreatedAt int64
-	UpdatedAt int64
-	DeletedAt int64
+	ID         string
+	AccountID  string
+	StationID  string
+	Product    string
+	ParentID   string
+	Depth      int
+	Text       string
+	Scalars    int
+	Revision   int
+	CreatedAt  int64
+	UpdatedAt  int64
+	DeletedAt  int64
+	Visibility string
+}
+
+// VisibleToPublic reports whether public reads may serve the row.
+func (c StoredComment) VisibleToPublic() bool {
+	return c.Live() && c.Visibility != VisibilityHidden
 }
 
 // Live reports whether the row is visible to reads.

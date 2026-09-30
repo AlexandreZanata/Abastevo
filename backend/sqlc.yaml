@@ -117,6 +117,8 @@ sql:
       - db/migrations/000023_feedback.sql
       - db/migrations/000024_feedback_comments.sql
       - db/migrations/000025_feedback_votes.sql
+      - db/migrations/000027_feedback_visibility.sql
+      - db/migrations/000026_moderation_comment_target.sql
     gen:
       go:
         package: feedback
@@ -129,6 +131,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000016_moderation.sql
       - db/migrations/000017_moderation_actions.sql
+      - db/migrations/000026_moderation_comment_target.sql
     gen:
       go:
         package: moderation

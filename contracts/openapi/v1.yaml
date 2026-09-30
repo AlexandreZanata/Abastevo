@@ -1658,6 +1658,73 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/feedback/comments/{id}/report:
+    post:
+      summary: Report a comment for moderation.
+      operationId: reportComment
+      tags: [feedback]
+      security: []
+      description: >
+        Files a moderation case (COMMENT target) and flags the comment
+        for triage. Reports never grant moderation power, carry no
+        reporter identity into the case, and converge on already-open
+        targets instead of flooding the queue. Report volume is quota
+        bounded.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Comment identifier from a prior response.
+          schema:
+            type: string
+            format: uuid
+            example: bbd138ce-e442-4f57-a874-3c05d2e16f52
+      requestBody:
+        required: true
+        description: Live session plus the short review reason.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, reason]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                reason:
+                  type: string
+                  description: Short review reason, at most 200 characters.
+                  example: spam
+      responses:
+        '202':
+          description: Report filed for triage.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [reported]
+                    example: reported
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/feedback/comments/{id}/edit:
     post:
       summary: Edit an owned comment.

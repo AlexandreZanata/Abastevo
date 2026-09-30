@@ -347,18 +347,45 @@ func (s *PGStore) GetComment(ctx context.Context, id string) (domain.StoredComme
 		parent = uuidString(row.ParentID)
 	}
 	return domain.StoredComment{
-		ID:        uuidString(row.ID),
-		AccountID: uuidString(row.AccountID),
-		StationID: uuidString(row.StationID),
-		Product:   row.Product,
-		ParentID:  parent,
-		Depth:     int(row.Depth),
-		Text:      row.Text,
-		Revision:  int(row.Revision),
-		CreatedAt: unix(row.CreatedAt),
-		UpdatedAt: unix(row.UpdatedAt),
-		DeletedAt: unix(row.DeletedAt),
+		ID:         uuidString(row.ID),
+		AccountID:  uuidString(row.AccountID),
+		StationID:  uuidString(row.StationID),
+		Product:    row.Product,
+		ParentID:   parent,
+		Depth:      int(row.Depth),
+		Text:       row.Text,
+		Revision:   int(row.Revision),
+		CreatedAt:  unix(row.CreatedAt),
+		UpdatedAt:  unix(row.UpdatedAt),
+		DeletedAt:  unix(row.DeletedAt),
+		Visibility: row.Visibility,
 	}, true, nil
+}
+
+// FlagComment marks a reported comment flagged, once.
+func (s *PGStore) FlagComment(ctx context.Context, id string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	_, err = feedback.New(s.pool).FlagComment(ctx, uid)
+	return err
+}
+
+// SetVisibility moves one live comment along the moderator lane.
+func (s *PGStore) SetVisibility(ctx context.Context, id, visibility string) error {
+	if visibility != domain.VisibilityVisible && visibility != domain.VisibilityFlagged &&
+		visibility != domain.VisibilityHidden {
+		return domain.ErrVisibilityInvalid
+	}
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	return feedback.New(s.pool).SetVisibility(ctx, feedback.SetVisibilityParams{
+		Visibility: visibility,
+		ID:         uid,
+	})
 }
 
 // EditComment compare-and-swaps the text of an owned live comment.

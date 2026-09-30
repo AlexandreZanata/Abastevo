@@ -23,6 +23,9 @@ var (
 	ErrSessionInvalid      = errors.New("feedback: valid account session required")
 	ErrSelfVote            = errors.New("feedback: authors cannot vote on their comments")
 	ErrVoteChoiceInvalid   = errors.New("feedback: vote must be VALID or INVALID")
+	ErrReportInvalid       = errors.New("feedback: report reason required")
+	ErrVisibilityInvalid   = errors.New("feedback: unknown visibility")
+	ErrQuotaExceeded       = errors.New("feedback: report quota exceeded")
 )
 
 // VerdictOK is the shared success code.
@@ -67,7 +70,24 @@ func VerdictCode(err error) string {
 		return "self-vote"
 	case errors.Is(err, ErrVoteChoiceInvalid):
 		return "vote-choice-invalid"
+	case errors.Is(err, ErrReportInvalid):
+		return "report-invalid"
+	case errors.Is(err, ErrVisibilityInvalid):
+		return "visibility-invalid"
+	case errors.Is(err, ErrQuotaExceeded):
+		return "quota-exceeded"
 	default:
 		return "invalid-value"
 	}
 }
+
+// QuotaDeniedError carries the retry delay for 429 mapping, mirroring
+// the community quota shape without importing it.
+type QuotaDeniedError struct {
+	RetryAfterSeconds int64
+}
+
+func (e *QuotaDeniedError) Error() string { return ErrQuotaExceeded.Error() }
+
+// Unwrap matches ErrQuotaExceeded so handlers map by errors.Is.
+func (e *QuotaDeniedError) Unwrap() error { return ErrQuotaExceeded }

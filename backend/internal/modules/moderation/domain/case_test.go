@@ -72,12 +72,15 @@ func TestNewCaseValid(t *testing.T) {
 }
 
 func TestNewCaseTargets(t *testing.T) {
-	for _, target := range []string{TargetObservation, TargetDispute, TargetEvidence} {
+	for _, target := range []string{TargetObservation, TargetDispute, TargetEvidence, TargetComment} {
 		p := validParams()
 		p.TargetType = target
 		if _, _, err := NewCase(p); err != nil {
 			t.Errorf("%s rejected: %v", target, err)
 		}
+	}
+	if DefaultPriority(TargetComment) != PriorityP2 {
+		t.Errorf("comment default = %q, want P2 like facts", DefaultPriority(TargetComment))
 	}
 	// Contributor targets accept opaque attribution tokens, not UUIDs.
 	p := validParams()

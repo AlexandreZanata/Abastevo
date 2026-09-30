@@ -139,6 +139,10 @@ func (s *testService) RemoveVote(_ context.Context, accountID, commentID string)
 	return s.err
 }
 
+func (s *testService) ReportComment(_ context.Context, accountID, commentID, reason string) error {
+	return s.err
+}
+
 func (s *testService) Tally(_ context.Context, commentID string) (domain.VoteTally, error) {
 	if s.err != nil {
 		return domain.VoteTally{}, s.err
@@ -363,6 +367,37 @@ func TestVoteMapping(t *testing.T) {
 	}
 	svc.err = nil
 	if rec := call(t, h, "POST", "/v1/feedback/comments/c1/votes", authed+`} inadequate`); rec.Code != 400 {
+		t.Errorf("malformed must be 400, got %d", rec.Code)
+	}
+}
+
+func TestReportFlow(t *testing.T) {
+	svc, h := testHandler()
+
+	rec := call(t, h, "POST", "/v1/feedback/comments/c1/report", authed+`,"reason":"spam"}`)
+	if rec.Code != 202 || !strings.Contains(rec.Body.String(), "reported") {
+		t.Fatalf("report: %d (%s)", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Error("report response must be no-store")
+	}
+	svc.err = domain.ErrReportInvalid
+	rec = call(t, h, "POST", "/v1/feedback/comments/c1/report", authed+`,"reason":""}`)
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "feedback.report-invalid") {
+		t.Errorf("bad reason must be 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	svc.err = &domain.QuotaDeniedError{RetryAfterSeconds: 30}
+	rec = call(t, h, "POST", "/v1/feedback/comments/c1/report", authed+`,"reason":"spam"}`)
+	if rec.Code != 429 || !strings.Contains(rec.Body.String(), "feedback.quota-exceeded") {
+		t.Errorf("quota must be 429, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	svc.err = domain.ErrCommentNotFound
+	rec = call(t, h, "POST", "/v1/feedback/comments/c9/report", authed+`,"reason":"spam"}`)
+	if rec.Code != 404 {
+		t.Errorf("missing target must be 404, got %d", rec.Code)
+	}
+	svc.err = nil
+	if rec := call(t, h, "POST", "/v1/feedback/comments/c1/report", authed+`} inadequate`); rec.Code != 400 {
 		t.Errorf("malformed must be 400, got %d", rec.Code)
 	}
 }

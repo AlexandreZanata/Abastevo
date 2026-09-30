@@ -51,6 +51,9 @@ import (
 	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
+	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -294,10 +297,12 @@ func run() error {
 	// versus invalid (bad/expired proof) without importing the
 	// account domain into the feedback handler.
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	moderationStore := moderationadapters.NewStore(pool.Underlying())
 	feedbackService := &feedbackapp.Service{
 		Clock:    unixClock{},
 		Store:    feedbackStore,
 		Comments: feedbackStore,
+		Votes:    feedbackStore,
 		CheckAccount: func(ctx context.Context, accountID string) error {
 			acc, found, err := accountStore.GetAccount(ctx, accountID)
 			if err != nil {
@@ -317,6 +322,33 @@ func run() error {
 				return false, nil
 			}
 			return false, err
+		},
+		ReportQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &feedbackdomain.QuotaDeniedError{RetryAfterSeconds: int64(denied.RetryAfter / time.Second)}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
+		OpenCase: func(ctx context.Context, reporterAccountID, commentID, reason string) (string, error) {
+			res, err := moderationapp.Open(ctx, moderationapp.Ports{
+				Clock: time.Now,
+				NewID: newUUID,
+				Store: moderationStore,
+			}, moderationapp.OpenDTO{
+				TargetType: moderationdomain.TargetComment,
+				TargetID:   commentID,
+				Reason:     reason,
+				Detail:     "reported via feedback API",
+			})
+			if err != nil {
+				return "", err
+			}
+			return res.CaseID, nil
 		},
 		IDGen: newUUID,
 	}

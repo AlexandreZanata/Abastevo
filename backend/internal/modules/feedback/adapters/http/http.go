@@ -35,6 +35,7 @@ type Service interface {
 	Vote(ctx context.Context, accountID, commentID, choice string) (application.VoteResult, error)
 	RemoveVote(ctx context.Context, accountID, commentID string) error
 	Tally(ctx context.Context, commentID string) (domain.VoteTally, error)
+	ReportComment(ctx context.Context, accountID, commentID, reason string) error
 }
 
 // Handler serves the feedback routes with an injected service and a
@@ -57,6 +58,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/feedback/comments/{id}/votes", h.vote)
 	r.Post("/v1/feedback/comments/{id}/votes/remove", h.removeVote)
 	r.Get("/v1/feedback/comments/{id}/tally", h.tally)
+	r.Post("/v1/feedback/comments/{id}/report", h.report)
 }
 
 func read(r *http.Request, dst any) error {
@@ -72,6 +74,11 @@ func read(r *http.Request, dst any) error {
 }
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
+	var denied *domain.QuotaDeniedError
+	if errors.As(err, &denied) {
+		httpapi.WriteError(w, r, http.StatusTooManyRequests, "feedback.quota-exceeded", "report quota exhausted, retry later", nil)
+		return
+	}
 	status, code, msg := http.StatusInternalServerError, "feedback.unavailable", "feedback service unavailable"
 	switch domain.VerdictCode(err) {
 	case "text-empty", "text-too-long", "text-invalid-encoding", "target-invalid", "parent-invalid":
@@ -91,6 +98,8 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusForbidden, "feedback.self-vote", "authors cannot vote on their comments"
 	case "vote-choice-invalid":
 		status, code, msg = http.StatusBadRequest, "feedback.vote-choice-invalid", "vote must be VALID or INVALID"
+	case "report-invalid":
+		status, code, msg = http.StatusBadRequest, "feedback.report-invalid", "report reason required"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "feedback.unavailable", "feedback service unavailable"
 	}
@@ -395,6 +404,32 @@ func (h Handler) tally(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	write(w, r, http.StatusOK, map[string]any{"tally": view})
+}
+
+func (h Handler) report(w http.ResponseWriter, r *http.Request) {
+	var raw struct {
+		FamilyID  string `json:"family_id"`
+		AccessTok string `json:"access_token"`
+		Reason    string `json:"reason"`
+	}
+	if err := read(r, &raw); err != nil {
+		bad(w, r)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		bad(w, r)
+		return
+	}
+	accountID, ok := h.sessionAccount(w, r, sessionDTO{FamilyID: raw.FamilyID, AccessToken: raw.AccessTok})
+	if !ok {
+		return
+	}
+	if err := h.Service.ReportComment(r.Context(), accountID, id, raw.Reason); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusAccepted, map[string]string{"status": "reported"})
 }
 
 func pageQuery(r *http.Request) (cursor string, limit int, ok bool) {

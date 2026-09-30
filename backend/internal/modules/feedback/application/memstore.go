@@ -191,11 +191,15 @@ func (m *MemStore) DeleteComment(_ context.Context, id, accountID string, nowUni
 }
 
 // ViewComment resolves one live comment with its author alias.
+func hiddenLocked(rec domain.StoredComment) bool {
+	return rec.Visibility == domain.VisibilityHidden
+}
+
 func (m *MemStore) ViewComment(_ context.Context, id string) (domain.CommentView, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	rec, ok := m.comments[id]
-	if !ok || !rec.Live() {
+	if !ok || !rec.Live() || hiddenLocked(rec) {
 		return domain.CommentView{}, false, nil
 	}
 	return m.viewLocked(rec), true, nil
@@ -207,7 +211,7 @@ func (m *MemStore) ListComments(_ context.Context, stationID, product string, af
 	defer m.mu.Unlock()
 	var out []domain.CommentView
 	for _, rec := range m.comments {
-		if rec.Live() && rec.ParentID == "" && rec.StationID == stationID && rec.Product == product &&
+		if rec.Live() && !hiddenLocked(rec) && rec.ParentID == "" && rec.StationID == stationID && rec.Product == product &&
 			(rec.CreatedAt > afterUnix || (rec.CreatedAt == afterUnix && rec.ID > afterID)) {
 			out = append(out, m.viewLocked(rec))
 		}
@@ -221,7 +225,7 @@ func (m *MemStore) ListReplies(_ context.Context, parentID string, afterUnix int
 	defer m.mu.Unlock()
 	var out []domain.CommentView
 	for _, rec := range m.comments {
-		if rec.Live() && rec.ParentID == parentID &&
+		if rec.Live() && !hiddenLocked(rec) && rec.ParentID == parentID &&
 			(rec.CreatedAt > afterUnix || (rec.CreatedAt == afterUnix && rec.ID > afterID)) {
 			out = append(out, m.viewLocked(rec))
 		}
@@ -359,4 +363,40 @@ func takeViews(out []domain.CommentView, limit int) []domain.CommentView {
 		return out[:limit]
 	}
 	return out
+}
+
+// FlagComment marks a reported comment flagged, once. Only visible
+// rows transition; hidden, flagged and tombstoned rows are untouched.
+func (m *MemStore) FlagComment(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.comments[id]
+	if !ok {
+		return domain.ErrCommentNotFound
+	}
+	if rec.Visibility == "" {
+		rec.Visibility = domain.VisibilityVisible
+	}
+	if rec.Visibility == domain.VisibilityVisible {
+		rec.Visibility = domain.VisibilityFlagged
+		m.comments[id] = rec
+	}
+	return nil
+}
+
+// SetVisibility moves one live comment along the moderator lane.
+func (m *MemStore) SetVisibility(_ context.Context, id, visibility string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if visibility != domain.VisibilityVisible && visibility != domain.VisibilityFlagged &&
+		visibility != domain.VisibilityHidden {
+		return domain.ErrVisibilityInvalid
+	}
+	rec, ok := m.comments[id]
+	if !ok || !rec.Live() {
+		return domain.ErrCommentNotFound
+	}
+	rec.Visibility = visibility
+	m.comments[id] = rec
+	return nil
 }

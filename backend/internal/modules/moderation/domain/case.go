@@ -14,12 +14,15 @@ const PolicyV1 = "moderation-v1"
 // Review targets. OBSERVATION and DISPUTE name community facts by UUID;
 // EVIDENCE names an upload/object by UUID; CONTRIBUTOR names an
 // attribution token (not a UUID) so abuse cases stay actionable without
-// a fact row.
+// a fact row. COMMENT names a station/fuel feedback comment by UUID
+// (P14-T05): reports on social text triage like facts, never like
+// contributors.
 const (
 	TargetObservation = "OBSERVATION"
 	TargetDispute     = "DISPUTE"
 	TargetContributor = "CONTRIBUTOR"
 	TargetEvidence    = "EVIDENCE"
+	TargetComment     = "COMMENT"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -103,7 +106,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}

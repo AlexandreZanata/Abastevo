@@ -11,26 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const flagComment = `-- name: FlagComment :execrows
+UPDATE feedback_comments SET visibility = 'flagged'
+WHERE id = $1 AND visibility = 'visible' AND deleted_at IS NULL
+`
+
+func (q *Queries) FlagComment(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, flagComment, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getCommentView = `-- name: GetCommentView :one
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
-    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at
+    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
+    c.visibility
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
-WHERE c.id = $1 AND c.deleted_at IS NULL
+WHERE c.id = $1 AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
 `
 
 type GetCommentViewRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	AccountID pgtype.UUID        `json:"account_id"`
-	Alias     string             `json:"alias"`
-	StationID pgtype.UUID        `json:"station_id"`
-	Product   string             `json:"product"`
-	ParentID  pgtype.UUID        `json:"parent_id"`
-	Depth     int16              `json:"depth"`
-	Text      string             `json:"text"`
-	Revision  int32              `json:"revision"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	Alias      string             `json:"alias"`
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	Depth      int16              `json:"depth"`
+	Text       string             `json:"text"`
+	Revision   int32              `json:"revision"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Visibility string             `json:"visibility"`
 }
 
 func (q *Queries) GetCommentView(ctx context.Context, id pgtype.UUID) (GetCommentViewRow, error) {
@@ -48,6 +63,7 @@ func (q *Queries) GetCommentView(ctx context.Context, id pgtype.UUID) (GetCommen
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Visibility,
 	)
 	return i, err
 }
@@ -87,10 +103,11 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) er
 
 const listReplies = `-- name: ListReplies :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
-    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at
+    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
+    c.visibility
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
-WHERE c.parent_id = $1 AND c.deleted_at IS NULL
+WHERE c.parent_id = $1 AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
     AND (c.created_at, c.id) > ($2, $3::uuid)
 ORDER BY c.created_at, c.id
 LIMIT $4
@@ -104,17 +121,18 @@ type ListRepliesParams struct {
 }
 
 type ListRepliesRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	AccountID pgtype.UUID        `json:"account_id"`
-	Alias     string             `json:"alias"`
-	StationID pgtype.UUID        `json:"station_id"`
-	Product   string             `json:"product"`
-	ParentID  pgtype.UUID        `json:"parent_id"`
-	Depth     int16              `json:"depth"`
-	Text      string             `json:"text"`
-	Revision  int32              `json:"revision"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	Alias      string             `json:"alias"`
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	Depth      int16              `json:"depth"`
+	Text       string             `json:"text"`
+	Revision   int32              `json:"revision"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Visibility string             `json:"visibility"`
 }
 
 func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]ListRepliesRow, error) {
@@ -143,6 +161,7 @@ func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]Lis
 			&i.Revision,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Visibility,
 		); err != nil {
 			return nil, err
 		}
@@ -156,11 +175,12 @@ func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]Lis
 
 const listTopLevel = `-- name: ListTopLevel :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
-    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at
+    c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
+    c.visibility
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.station_id = $1 AND c.product = $2
-    AND c.parent_id IS NULL AND c.deleted_at IS NULL
+    AND c.parent_id IS NULL AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
     AND (c.created_at, c.id) > ($3, $4::uuid)
 ORDER BY c.created_at, c.id
 LIMIT $5
@@ -175,17 +195,18 @@ type ListTopLevelParams struct {
 }
 
 type ListTopLevelRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	AccountID pgtype.UUID        `json:"account_id"`
-	Alias     string             `json:"alias"`
-	StationID pgtype.UUID        `json:"station_id"`
-	Product   string             `json:"product"`
-	ParentID  pgtype.UUID        `json:"parent_id"`
-	Depth     int16              `json:"depth"`
-	Text      string             `json:"text"`
-	Revision  int32              `json:"revision"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	Alias      string             `json:"alias"`
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	Depth      int16              `json:"depth"`
+	Text       string             `json:"text"`
+	Revision   int32              `json:"revision"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Visibility string             `json:"visibility"`
 }
 
 func (q *Queries) ListTopLevel(ctx context.Context, arg ListTopLevelParams) ([]ListTopLevelRow, error) {
@@ -215,6 +236,7 @@ func (q *Queries) ListTopLevel(ctx context.Context, arg ListTopLevelParams) ([]L
 			&i.Revision,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Visibility,
 		); err != nil {
 			return nil, err
 		}
@@ -229,7 +251,7 @@ func (q *Queries) ListTopLevel(ctx context.Context, arg ListTopLevelParams) ([]L
 const lockComment = `-- name: LockComment :one
 
 SELECT id, account_id, station_id, product, parent_id, depth, text,
-    revision, created_at, updated_at, deleted_at
+    revision, created_at, updated_at, deleted_at, visibility
 FROM feedback_comments
 WHERE id = $1
 FOR UPDATE
@@ -254,8 +276,23 @@ func (q *Queries) LockComment(ctx context.Context, id pgtype.UUID) (FeedbackComm
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.Visibility,
 	)
 	return i, err
+}
+
+const setVisibility = `-- name: SetVisibility :exec
+UPDATE feedback_comments SET visibility = $1 WHERE id = $2
+`
+
+type SetVisibilityParams struct {
+	Visibility string      `json:"visibility"`
+	ID         pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetVisibility(ctx context.Context, arg SetVisibilityParams) error {
+	_, err := q.db.Exec(ctx, setVisibility, arg.Visibility, arg.ID)
+	return err
 }
 
 const tombstoneComment = `-- name: TombstoneComment :execrows
