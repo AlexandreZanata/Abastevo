@@ -212,7 +212,7 @@ interface AuthSessionStore {
 }
 
 /** Wall-clock seconds for expiry math (monotonic tick stays in PortableClock). */
-interface AuthWallClock {
+fun interface AuthWallClock {
     fun nowEpochSeconds(): Long
 }
 

@@ -78,6 +78,13 @@ object PortableAuth {
         val state: String,
     )
 
+    /**
+     * Client-transport condition (no connectivity, timeout, unparsable
+     * server reply). Never a backend verdict; the UI retries these while
+     * auth refusals surface their own message (P13-T05B).
+     */
+    const val UNAVAILABLE: String = "unavailable"
+
     /** Stable backend verdicts surfaced for UI mapping (never parsed). */
     object Verdict {
         const val OK: String = "ok"

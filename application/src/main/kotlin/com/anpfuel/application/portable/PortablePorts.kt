@@ -15,7 +15,7 @@ interface PortableClock {
     fun tickMillis(): Long
 }
 
-interface PortableNonceSource {
+fun interface PortableNonceSource {
 
     /** Fresh opaque single-use value per dispatch attempt (never reused). */
     fun nextNonce(): String
