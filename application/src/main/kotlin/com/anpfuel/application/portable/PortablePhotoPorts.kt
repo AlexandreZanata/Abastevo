@@ -13,7 +13,7 @@ import com.anpfuel.application.portable.PhotoFlow.EncodeRequest
  * cache. Tests inject deterministic fakes; no real codec, clock,
  * randomness or I/O ever lives in [PhotoFlow].
  */
-interface PhotoDecoder {
+fun interface PhotoDecoder {
 
     /**
      * Header probe: real dimensions or null when the bytes are corrupt,
@@ -24,7 +24,7 @@ interface PhotoDecoder {
     fun probeDims(bytes: ByteArray): Dims?
 }
 
-interface PhotoEncoder {
+fun interface PhotoEncoder {
 
     /**
      * One bounded encode attempt at the planned sample size: stripped,
@@ -49,7 +49,7 @@ interface PhotoCache {
     fun sweepExpired(nowMillis: Long): Int
 }
 
-interface PhotoClock {
+fun interface PhotoClock {
 
     /** Wall millis for capture stamps and expiry math (device clock). */
     fun nowMillis(): Long
