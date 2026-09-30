@@ -85,3 +85,10 @@ help:
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
 	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"
 	@echo "  test-g09        G09 gate failure-behavior harness (P09-T03)"
+
+.PHONY: test-local-backend test-local-edge
+test-local-backend:
+	bash scripts/tests/test-local-backend.sh
+
+test-local-edge:
+	bash scripts/tests/test-local-edge.sh

@@ -110,11 +110,14 @@ func verifyWith(jwkX, jwkY string, lines []string, signature string, now time.Ti
 	if err != nil {
 		return fmt.Errorf("profile: bad expires")
 	}
-	if expires-created > 300 || expires-created <= 0 {
+	if created < 0 || expires <= created || expires-created > 300 {
 		return fmt.Errorf("profile: window exceeds 5 minutes")
 	}
-	if now.Unix() > expires {
+	if now.Unix() >= expires {
 		return fmt.Errorf("profile: expired")
+	}
+	if created > now.Unix()+300 {
+		return fmt.Errorf("profile: created too far in future")
 	}
 	pub, err := publicKey(jwkX, jwkY)
 	if err != nil {

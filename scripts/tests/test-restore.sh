@@ -28,12 +28,13 @@ WORK="$(mktemp -d)"
 # shellcheck disable=SC2064
 trap "rm -rf '$OUTBOX' '$WORK'" EXIT
 
-COMPOSE=infra/compose.dev.yml
+COMPOSE="${ANPFUEL_TEST_COMPOSE_FILE:-infra/compose.dev.yml}"
 DRILL="anpfuel_drill_$(date -u +%Y%m%dT%H%M%SZ)"
 PASSPHRASE="drill-passphrase-value"
 
 drill_env() {
     env -i PATH="/usr/bin:/bin" HOME="$HOME" \
+        ANPFUEL_VALIDATION_PROJECT="${ANPFUEL_VALIDATION_PROJECT:-}" \
         ANPFUEL_BACKUP_COMPOSE_FILE="$COMPOSE" \
         ANPFUEL_BACKUP_DB_USER=anpfuel \
         ANPFUEL_BACKUP_DB_NAME=anpfuel \
@@ -133,7 +134,8 @@ fi
     GOTOOLCHAIN=go1.27.1 go build -o "$WORK/ops" ./cmd/ops
 )
 capture env -i PATH="/usr/bin:/bin" HOME="$HOME" \
-    ANPFUEL_DATABASE_URL="postgres://anpfuel:anpfuel@127.0.0.1:5434/$DRILL?sslmode=disable" \
+        ANPFUEL_VALIDATION_PROJECT="${ANPFUEL_VALIDATION_PROJECT:-}" \
+    ANPFUEL_DATABASE_URL="${ANPFUEL_TEST_DRILL_DSN_PREFIX:-postgres://anpfuel:anpfuel@127.0.0.1:5434}/$DRILL?sslmode=disable" \
     ANPFUEL_OPERATOR_ID=drill-op \
     "$WORK/ops" privacy replay --contributor c9999999-0000-4000-8000-000000000001
 if [[ "$CAP_CODE" -eq 0 ]]; then

@@ -2,9 +2,9 @@
 
 This repository starts from [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. The existing Android app is preserved. “Postô” is a provisional product name.
 
-**Current status:** P01 backend foundations and existing CI are implemented, with prior local acceptance recorded. Android baseline re-validation succeeded after prerequisite setup; see [current state](docs/planning/PROGRESS.md) and [baseline evidence](docs/planning/BASELINE_VALIDATION.md). Backend business features and production infrastructure are not release-certified. The fast phase workflow is now planned; its automation and CI/protection migration remain pending G01-FLOW.
+**Current status:** Backend P01–P09 phase history and local correction evidence are recorded; real production is not release-certified. G01-FLOW helpers and required Quick verification are active. New accounts, feedback, 24-hour all-copy media and Kotlin/Swift functionality remain planned; see [current state](docs/planning/PROGRESS.md).
 
-**Execution order:** backend and infrastructure → operational acceptance G09 → Android integration/improvements → optional hosted commercial services. Next task: [P01-T13](ROADMAP.md#p01-t13) to activate delivery helpers before P02. Focused tests run per task, short CI gates each phase integration, and P09/G09 certifies the full backend/infra candidate.
+**Execution order:** integrated local backend (G09-LOCAL) → modular Kotlin Multiplatform and native Swift app (P12–P18/P10) → real-production release G09 → public pilot and optional paid benefits. Next implementation task after correction integration: [P12-T01](ROADMAP.md#p12-t01). [Functional delivery plan](docs/planning/MOBILE_DELIVERY_PLAN.md) includes free email-code/Google/Apple accounts, 280-character station/fuel feedback, 24-hour lightweight photos and location-integrity controls. These new features are planned, not implemented. Focused TDD/risk checks run per task; quick CI gates each phase; actual G09 production certification waits until functional G18.
 
 - [Roadmap with executable microtasks](ROADMAP.md)
 - [Fast phase delivery: branches, PRs, issues and wiki](docs/planning/DELIVERY_WORKFLOW.md), [execution card](docs/planning/FAST_EXECUTION.md) and [CI cadence](docs/planning/CI_PLAN.md)

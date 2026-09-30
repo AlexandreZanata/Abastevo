@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 var (
@@ -17,7 +16,7 @@ var (
 )
 
 // StatusError reports a non-2xx object response with a truncated body
-// hint. Bodies stay small and carry no credentials by construction.
+// hint field retained for compatibility. Remote error bodies are not retained.
 type StatusError struct {
 	Status int
 	Hint   string
@@ -38,9 +37,9 @@ func Get(ctx context.Context, client *http.Client, rawURL string, limit int64) (
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Do(req)
+	resp, err := privateClient(client).Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("storage: transport unavailable")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
@@ -68,12 +67,12 @@ func Put(ctx context.Context, client *http.Client, rawURL, contentType string, b
 	// Fixed length avoids chunked encoding, which unsigned-payload query
 	// auth does not cover on strict S3 implementations.
 	req.ContentLength = int64(len(body))
-	resp, err := client.Do(req)
+	resp, err := privateClient(client).Do(req)
 	if err != nil {
-		return err
+		return errors.New("storage: transport unavailable")
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 32<<10))
 	if resp.StatusCode/100 != 2 {
 		return statusError(resp)
 	}
@@ -88,12 +87,12 @@ func Delete(ctx context.Context, client *http.Client, rawURL string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(req)
+	resp, err := privateClient(client).Do(req)
 	if err != nil {
-		return err
+		return errors.New("storage: transport unavailable")
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 32<<10))
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
@@ -104,6 +103,16 @@ func Delete(ctx context.Context, client *http.Client, rawURL string) error {
 }
 
 func statusError(resp *http.Response) error {
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 128))
-	return &StatusError{Status: resp.StatusCode, Hint: strings.TrimSpace(string(raw))}
+	return &StatusError{Status: resp.StatusCode}
+}
+
+// Object storage is a fixed configured origin. Never follow redirects to
+// another service or expose credential-bearing URL errors to job logs.
+func privateClient(client *http.Client) *http.Client {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	clone := *client
+	clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &clone
 }

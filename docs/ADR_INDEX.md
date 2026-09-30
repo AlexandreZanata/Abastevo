@@ -29,3 +29,6 @@ Existing Android decisions remain applicable to the imported release. New status
 - Account recovery, billing and sync conflict strategy (P11).
 - Any licensing change, new public brand/application ID, public API major version or dependency outside the accepted stack.
 - Dedicated DB, partitions, replicas, new cache/broker or orchestration only after measured bottleneck/cost evidence.
+
+- [ADR-014 — Functional app before real production release](adr/014-functional-app-before-production-release.md): G09-LOCAL app entry; real G09 deferred until G18.
+- [ADR-015 — Shared KMP domain and native Swift adapters](adr/015-kotlin-multiplatform-shared-domain.md): toolchain audit and platform evidence before readiness.

@@ -7,13 +7,25 @@
 # API serves no /metrics path, and the Caddy admin endpoint stays off.
 {
 	admin off
+	# Handler failures use the runtime logger, so apply the same privacy
+	# filter there as on successful access records.
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request delete
+				resp_headers delete
+			}
+		}
+	}
 	email {$CADDY_TLS_EMAIL}
 
 	servers {
 		# Only private/proxy ranges may set forwarding headers; public
 		# clients cannot spoof origin identity. Any broader
 		# trusted_proxies value fails the infra gate.
-		trusted_proxies private_ranges
+		trusted_proxies static private_ranges
 	}
 }
 
@@ -24,12 +36,18 @@
 
 	encode gzip
 
-	# JSON access log to stdout (no bodies, tokens or signed URLs: the
-	# API never emits them and Caddy never logs request/response
-	# bodies). Retain per the 7-day security-investigation bound.
+	# Aggregate access metadata only. Remove the entire request/headers so
+	# contributor IPs, precise nearby queries and custom signature headers
+	# never enter logs. Retain per the 7-day investigation bound.
 	log {
 		output stdout
-		format json
+		format filter {
+			wrap json
+			fields {
+				request delete
+				resp_headers delete
+			}
+		}
 	}
 
 	# Shared-cacheable reads ignore identity by contract (proven by the

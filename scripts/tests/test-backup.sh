@@ -28,7 +28,8 @@ trap 'rm -rf "$OUTBOX"' EXIT
 
 backup_env() {
     env -i PATH="/usr/bin:/bin" HOME="$HOME" \
-        ANPFUEL_BACKUP_COMPOSE_FILE=infra/compose.dev.yml \
+        ANPFUEL_VALIDATION_PROJECT="${ANPFUEL_VALIDATION_PROJECT:-}" \
+        ANPFUEL_BACKUP_COMPOSE_FILE="${ANPFUEL_TEST_COMPOSE_FILE:-infra/compose.dev.yml}" \
         ANPFUEL_BACKUP_DB_USER="${BACKUP_DB_USER-anpfuel}" \
         ANPFUEL_BACKUP_DB_NAME=anpfuel \
         ANPFUEL_BACKUP_DB_PASSWORD="${BACKUP_DB_PASSWORD-anpfuel}" \

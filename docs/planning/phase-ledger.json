@@ -1,0 +1,22 @@
+{
+  "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
+  "phase": "P09 follow-up",
+  "branch": "codex/phase-09-production-validation",
+  "base_sha": "c51fa03f57b0c9f0a429e41c51bbd21ff2dcbb9c",
+  "issues": {
+    "P09-T01A": 11,
+    "P09-T04": 12,
+    "P09-T05": 15
+  },
+  "milestone": 1,
+  "pr": 14,
+  "release_tracker": {
+    "gate": "G09",
+    "issue": 13,
+    "milestone": 2,
+    "classification": "RELEASE",
+    "status": "DEFERRED_UNTIL_APP_FUNCTIONAL"
+  },
+  "state": "AWAITING_PHASE_MERGE",
+  "wiki": "PENDING_MERGED_SNAPSHOT"
+}

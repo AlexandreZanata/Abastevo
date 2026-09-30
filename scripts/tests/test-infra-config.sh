@@ -81,7 +81,7 @@ assert_fail "floating image refused" bash scripts/check-infra-config.sh staging 
 # 4. Untrusted forwarded headers: open trusted_proxies must fail.
 M4="$(mktemp -d)"
 mutant_root "$M4"
-sed -i 's/trusted_proxies private_ranges/trusted_proxies 0.0.0.0\/0/' "$M4/infra/caddy/Caddyfile"
+sed -i 's/trusted_proxies static private_ranges/trusted_proxies 0.0.0.0\/0/' "$M4/infra/caddy/Caddyfile"
 assert_fail "open trusted_proxies refused" bash scripts/check-infra-config.sh staging \
     "$M4/infra/compose.staging.yml" "$M4/infra/caddy/Caddyfile" "$M4/infra/env.staging.example"
 

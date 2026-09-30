@@ -34,6 +34,7 @@ backend/internal/modules/identity/profile
 backend/internal/modules/identity/domain
 backend/internal/modules/identity/adapters
 backend/internal/modules/identity/adapters/auth
+backend/internal/modules/identity/adapters/http
 backend/internal/modules/identity/application
 backend/internal/modules/official/adapters/jobs
 backend/internal/modules/directory/adapters/jobs

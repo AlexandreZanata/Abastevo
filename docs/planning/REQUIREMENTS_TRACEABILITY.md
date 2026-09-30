@@ -72,3 +72,13 @@ Deferred: optional account, entitlement/billing, cloud sync and commercial produ
 ## Deliberate implementation boundaries
 
 At P00, OpenAPI syntax, fixtures, Go module, migrations, Compose, CI and operational scripts were subsequent roadmap outputs. P01 has since introduced their foundation subset, evidenced separately; backend business behavior and full infrastructure remain unfinished. The new phase/issue/wiki/quick-full helpers are still planned, not fabricated placeholders claimed as complete. Runtime privacy/legal review, hosting credentials/provider selection, restore/load results and device interoperability remain real execution gates. A “complete plan” describes those tasks and acceptance evidence; it does not imply the backend is already running.
+
+## User extension 2026-09-30 (target; not implemented)
+
+- Deferred real-production release: ADR-014, G09 record, P09-T04/P18-T03/P09-T03.
+- Kotlin version/Java portability and Swift readiness: ADR-015, KMP audit, P12-T01…T05/P17-T03.
+- Free email-code/Google/Apple accounts and recovery: B-BR-A01…A05, BUC-A01…A04, P13-T01…T05.
+- Station/fuel ratings, 280-character comments/replies, validity percentage and moderation: B-BR-F01…F08, BUC-F01…F05, P14-T01…T05/P17-T01…T04.
+- All app-owned photos within 24 h, lightweight local processing plus bounded backend: B-BR-M01…M06, BUC-M01…M04, P15-T01…T05.
+- Simulated GPS controls, unknown/risk handling and native evidence: B-BR-L01…L04, BUC-L01…L03, P16-T01…T04.
+- Preserve all imported free/offline features and current design: migration matrix, P12-T01/P10-T01…T08/P17/P18; public pilot P10-T09 waits for certified G09.

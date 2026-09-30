@@ -1,11 +1,9 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -82,9 +80,7 @@ type reserveDTO struct {
 
 func parseReserveBody(raw []byte) (application.Intent, error) {
 	var in reserveDTO
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := httpapi.DecodeJSON(raw, &in); err != nil {
 		return application.Intent{}, err
 	}
 	amountStr := in.SizeBytes.String()
@@ -116,7 +112,7 @@ func (h Handler) reserve(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	raw, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	raw, err := httpapi.ReadBody(r, 64<<10)
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "evidence.bad-body", "unreadable body",
 			[]httpapi.Detail{{Field: "body", Code: "unreadable"}})

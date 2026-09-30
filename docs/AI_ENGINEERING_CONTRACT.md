@@ -6,7 +6,7 @@ Scope/authorization comes from the active user request. Start at AGENTS and the 
 
 Product owns behavior; DOMAIN_MODEL/COMMUNITY_PRICING_SPEC own backend rules; BUC specs own orchestration; ADRs own durable decisions; OpenAPI owns wire syntax; migrations own schema; tests demonstrate contracts. Current Git/PR/check evidence owns delivery state. ROADMAP defines tasks, PROGRESS indexes current state, phase records preserve evidence, and wiki mirrors committed docs rather than creating a second technical authority.
 
-Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-013 and DELIVERY_WORKFLOW supersede the old one-PR-per-task / repeated-full-check interpretation. A process plan is not proof that workflows/protection or remote publication are active.
+Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-014 supersedes the production-before-mobile restriction; ADR-015 defines KMP/native boundaries. ADR-013 and DELIVERY_WORKFLOW supersede the old one-PR-per-task / repeated-full-check interpretation. A process plan is not proof that workflows/protection or remote publication are active.
 
 ## Per-task workflow
 
@@ -18,7 +18,7 @@ Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-013 and DELIVERY_WORKF
 
 ## Safety boundaries
 
-- Backend/infra before Android improvements; G09 is release certification, not just a phase PR. Preserve Android modules/packages, offline data and license.
+- Backend/infra integration before app improvements through G09-LOCAL; actual G09 production release is deferred until G18. Functional gates and production certification are distinct. Preserve Android modules/packages, offline data and license.
 - No invented API/field, silent money rounding, swallowed error, false source/price fallback or dropped unknown ANP data.
 - Pure deterministic domain tests; real PostGIS for changed transactional/geo/schema behavior. Auth/ownership, replay, idempotency, concurrency, media/privacy and money invariants are immediate risk checks.
 - No test deletion/skip/useless mock, reduced threshold or ignored failure to make CI green. Regression fixes include tests; expensive checks can be scheduled but relevant known failures cannot be deferred.
@@ -34,7 +34,7 @@ Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-013 and DELIVERY_WORKF
 
 **Phase INTEGRATED:** all included task acceptance and specialized phase checks pass, local quick and required remote checks/reviews verify the current expected PR head/base, guarded merge succeeds and linked issues close. Wiki synchronization has its own explicit pending/synced status. No duplicate full suite for each microtask or phase.
 
-**Release RELEASE_CERTIFIED:** full required matrix and external operational evidence validate the immutable merged release candidate at the designated release checkpoint (backend P09/G09, then P10/P11 as applicable). A new relevant code/config change invalidates affected evidence. No stable tag/deploy based only on quick CI.
+**Release RELEASE_CERTIFIED:** full required matrix and external operational evidence validate the immutable merged release candidate at the designated release checkpoint (functional G18 first, real-production P09/G09 afterward, then public P10 pilot/P11 as applicable). A new relevant code/config change invalidates affected evidence. No stable tag/deploy based only on quick CI.
 
 ## Publication scope
 

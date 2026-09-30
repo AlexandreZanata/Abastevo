@@ -72,7 +72,8 @@ type Config struct {
 	CursorSecret    []byte
 	CanonicalHost   string
 	// MetricsAddr is the private metrics listener; empty disables it.
-	MetricsAddr string
+	MetricsAddr         string
+	ANPDiscoveryEnabled bool
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2 *R2Config
@@ -99,6 +100,14 @@ func Load() (Config, error) {
 
 func load(getenv func(string) (string, bool)) (Config, error) {
 	var cfg Config
+	cfg.ANPDiscoveryEnabled = true
+	if raw, present := getenv("ANPFUEL_ANP_DISCOVERY_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ANP_DISCOVERY_ENABLED must be boolean")
+		}
+		cfg.ANPDiscoveryEnabled = enabled
+	}
 
 	env, _ := getenv(keyEnv)
 	if env == "" {
@@ -171,6 +180,9 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 
 	secret, secretSet := getenv(keyCursorSecret)
 	if !secretSet || secret == "" {
+		if cfg.Env == EnvProduction {
+			return Config{}, fmt.Errorf("%s is required in production", keyCursorSecret)
+		}
 		ephemeral := make([]byte, 32)
 		if _, err := rand.Read(ephemeral); err != nil {
 			return Config{}, fmt.Errorf("%s fallback key generation failed", keyCursorSecret)
@@ -185,9 +197,12 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 
 	host, _ := getenv(keyCanonicalHost)
 	if host == "" {
+		if cfg.Env == EnvProduction {
+			return Config{}, fmt.Errorf("%s is required in production", keyCanonicalHost)
+		}
 		host = "api.example.invalid"
 	}
-	if strings.ContainsAny(host, " /:?#@") {
+	if !validHostname(host) || (cfg.Env == EnvProduction && strings.HasSuffix(strings.ToLower(host), ".invalid")) {
 		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
@@ -211,4 +226,23 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.R2 = r2
 
 	return cfg, nil
+}
+
+// validHostname rejects controls, URL syntax and invalid DNS labels before
+// the configured authority becomes part of a cryptographic signature base.
+func validHostname(host string) bool {
+	if len(host) == 0 || len(host) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(host, ".") {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, c := range label {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-') {
+				return false
+			}
+		}
+	}
+	return true
 }

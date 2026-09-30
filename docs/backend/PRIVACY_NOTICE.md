@@ -57,3 +57,7 @@ account, email, billing, sync and analytics are not collected in MVP
 - Every sweep purges bounded oldest-first and reports purged counts
   with the oldest overdue instant; a stuck category fails its job
   loudly for retry instead of hiding backlog.
+
+## Target revision pending P13/P14/P15
+
+This remains an unapproved draft and the table above reflects v1 implementation. The new target requires free email-code/Google/Apple account data, authenticated social revisions/votes and **all photo copies expiring within 24 hours, with no 14/30-day exception**. [Account](../security/FREE_ACCOUNT_ACCESS.md) and [media/location](../security/LOCAL_MEDIA_LOCATION_POLICY.md) contracts own the changes. Revise the full inventory/table and verify enforcement before public G09/P10-T09 launch; this note is not a claim that current jobs meet the target.

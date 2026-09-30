@@ -161,9 +161,11 @@ func newRequestID() string {
 func requestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get(requestIDHeader)
-		if id == "" {
+		if !safeRequestID(id) {
 			id = newRequestID()
 		}
+		r.Header.Set(requestIDHeader, id)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set(requestIDHeader, id)
 		next.ServeHTTP(w, r.WithContext(telemetry.ContextWithRequest(r.Context(), id)))
 	})
@@ -217,4 +219,16 @@ func recoverer(logger *telemetry.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func safeRequestID(id string) bool {
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+			return false
+		}
+	}
+	return true
 }

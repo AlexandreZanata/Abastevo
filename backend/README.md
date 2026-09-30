@@ -69,3 +69,28 @@ contract, infra and gate-script changes; the Android workflow keeps running
 Continue with [P01-T13](../ROADMAP.md#p01-t13); read [architecture](../docs/backend/TARGET_ARCHITECTURE.md) and [test strategy](../docs/backend/TEST_STRATEGY.md) as the selected task requires. P02 starts after G01 and G01-FLOW; subsequent phases add owned business modules and explicit SQL incrementally.
 
 The Android source remains in its original root modules. Do not move it under a new mobile directory.
+
+## Complete local backend validation
+
+From the repository root, `bash scripts/tests/test-local-backend.sh` creates a
+unique disposable Compose project with tmpfs PostGIS and a private S3 emulator.
+It runs all unit/integration suites under the race detector, actual API + worker
+HTTP/media flows, static/vulnerability checks, infrastructure/deploy harnesses,
+encrypted backup, restored deletion-ledger replay, bounded load and DB outage.
+It clears inherited runtime DSN/storage settings and never selects the shared
+`infra/compose.dev.yml` database. Only its own project is removed on exit.
+Reports remain in a printed `/tmp` directory; set `ANPFUEL_LOCAL_REPORT_DIR` to
+choose a local output path. The container credentials are synthetic test values.
+These tmpfs services lose all data on removal; they are not production storage.
+
+For an already running synthetic API on a local/private literal IP, run:
+
+```sh
+ANPFUEL_LOCAL_API_URL=http://172.19.2.11:18093 bash scripts/tests/test-local-edge.sh
+```
+
+This starts the pinned production Caddy image with an ephemeral internal CA,
+validates TLS 1.2/1.3, health and route isolation, and checks synthetic location/
+signature/cookie markers are absent from logs. It does not modify system trust
+or obtain public certificates. The test edge and its keys are removed on exit.
+Local test success is distinct from G09 certification and public deployment.

@@ -92,3 +92,7 @@ DB failure: no accepted writes, readiness false; liveness remains process-only. 
 Stage 1: one VPS, persistent DB disk, external object storage/backups, API stateless. Stage 2: dedicated database only after sustained measured resource/latency pressure. Stage 3: multiple API replicas and measured worker scaling; authoritative writes/nonces/limits remain in PostgreSQL. Replicas need explicit consistency policies. No Redis, Kafka, Kubernetes, NATS, RabbitMQ, Elasticsearch, MongoDB or service mesh without an ADR linked to measured bottlenecks.
 
 The use of SKIP LOCKED for queue consumers follows [PostgreSQL SELECT documentation](https://www.postgresql.org/docs/current/sql-select.html); it is not a general-purpose consistency mechanism.
+
+## Planned extension contexts (2026-09-30)
+
+P13 account access binds private provider subjects/session families to existing contributor keys through proof ports; P14 station/fuel feedback owns stars, text revisions, replies, validity votes and rebuildable aggregates separately from price consensus. P15 native media ports feed bounded backend sanitization and all-copy 24-hour expiry; P16 location risk ports feed independent proximity validation. Existing Go modular monolith/PostGIS/jobs remain; no speculative service split. Shared Kotlin domain/application and Android/Swift adapters follow ADR-015. Each extension freezes additive wire/schema contracts and failure tests before implementation; none exists merely because this map names it.

@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-export LOAD_COMPOSE_FILE=infra/compose.dev.yml
+export LOAD_COMPOSE_FILE="${ANPFUEL_TEST_COMPOSE_FILE:-infra/compose.dev.yml}"
 export LOAD_DB_USER=anpfuel
 export LOAD_DB_NAME=anpfuel
 export LOAD_DB_PASSWORD=anpfuel

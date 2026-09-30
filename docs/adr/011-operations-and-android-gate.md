@@ -21,3 +21,5 @@ Single host failure accepted within tested recovery objectives; hosting/domain/p
 ## Validation and follow-up
 
 Use the owning tasks in [ROADMAP](../../ROADMAP.md), specifications in [docs index](../README.md) and [decision log](../planning/DECISIONS.md). Record tested policy/tool versions before marking a release gate complete.
+
+2026-09-30 amendment: ADR-014 supersedes only the production-before-mobile ordering. G09-LOCAL integrated local backend opens app work; real G09 waits for functional G18. Operational release safeguards remain.

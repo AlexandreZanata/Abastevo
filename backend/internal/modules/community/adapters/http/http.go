@@ -1,11 +1,9 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -104,9 +102,7 @@ type submitDTO struct {
 
 func parseSubmitBody(raw []byte) (application.SubmitDTO, error) {
 	var in submitDTO
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := httpapi.DecodeJSON(raw, &in); err != nil {
 		return application.SubmitDTO{}, err
 	}
 	amountStr := in.Price.Amount.String()
@@ -157,7 +153,7 @@ func (h Handler) submit(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	raw, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	raw, err := httpapi.ReadBody(r, 64<<10)
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "community.bad-body", "unreadable body",
 			[]httpapi.Detail{{Field: "body", Code: "unreadable"}})
@@ -204,9 +200,7 @@ type disputeDTO struct {
 
 func parseConfirmBody(raw []byte) (application.ConfirmDTO, error) {
 	var in confirmDTO
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := httpapi.DecodeJSON(raw, &in); err != nil {
 		return application.ConfirmDTO{}, err
 	}
 	if strings.TrimSpace(in.ClientSubmissionID) == "" {
@@ -217,9 +211,7 @@ func parseConfirmBody(raw []byte) (application.ConfirmDTO, error) {
 
 func parseDisputeBody(raw []byte) (application.DisputeDTO, error) {
 	var in disputeDTO
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := httpapi.DecodeJSON(raw, &in); err != nil {
 		return application.DisputeDTO{}, err
 	}
 	if strings.TrimSpace(in.ClientSubmissionID) == "" || strings.TrimSpace(in.Reason) == "" {
@@ -237,7 +229,7 @@ func parseDisputeBody(raw []byte) (application.DisputeDTO, error) {
 }
 
 func readVoteBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	raw, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	raw, err := httpapi.ReadBody(r, 64<<10)
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "community.bad-body", "unreadable body",
 			[]httpapi.Detail{{Field: "body", Code: "unreadable"}})

@@ -1,16 +1,16 @@
 # Phase delivery: branches, issues, pull requests and wiki
 
-Status: adopted planning policy; automation activation is **P01-T13…T17 / G01-FLOW**. Existing workflows are unchanged by this planning edit. Until activation, their required checks remain binding. [CI_PLAN](CI_PLAN.md) defines the target check cadence; [FAST_EXECUTION](FAST_EXECUTION.md) is the short daily card.
+Status: ACTIVE since G01-FLOW; helpers are present and remote protection was verified on 2026-09-30 with required **Quick verification**, strict up-to-date base and enforced admin protection. [CI_PLAN](CI_PLAN.md) defines the target check cadence; [FAST_EXECUTION](FAST_EXECUTION.md) is the short daily card.
 
 ## Reference and adaptation
 
 Reviewed Goyim-Arena at local HEAD `33a458f52016338ac86cd68c34e476491b47307c`: `AGENTS.md`, `.local/GIT_FLOW.md`, `.local/FAST_EXECUTION.md`, `.local/git-flow.sh`, `docs/CI.md`, `Makefile`, `.github/workflows/quick.yml`, `verify.yml` and the PR template. Its operating model is targeted local tests → quick integration check → complete release certification. Its remote quick check still runs on draft PR updates; “full CI at the end” does not mean accepting untested microtasks or red checks.
 
-Adapt the process, not that product's stack, financial rules, repository credentials, labels or P45 numbering. Here the complete backend certification is G09, before Android work. Shared scripts, manifests and process instructions belong in versioned `scripts/` and `docs/planning/`, not ignored `.local/`. Local logs/cache may remain ignored. The reference repository's publication authorization does not grant permission for mutations in this repository.
+Adapt the process, not that product's stack, financial rules, repository credentials, labels or P45 numbering. Here G09-LOCAL backend integration permits app work; complete real-production certification G09 is deferred until functional app G18, per ADR-014. Shared scripts, manifests and process instructions belong in versioned `scripts/` and `docs/planning/`, not ignored `.local/`. Local logs/cache may remain ignored. The reference repository's publication authorization does not grant permission for mutations in this repository.
 
 ## Units of work and ownership
 
-- One bounded **phase** is an integration batch with one milestone, branch and PR; existing P01…P11 IDs stay stable. If a phase is too large, define a coherent subphase with explicit task ranges and exit criteria before starting. Do not create one branch/PR per microtask by default or a single branch for the entire backend.
+- One bounded **phase** is an integration batch with one milestone, branch and PR; existing P01…P11 IDs stay stable; new P12…P18 follow the explicit dependency graph. If a phase is too large, define a coherent subphase with explicit task ranges and exit criteria before starting. Do not create one branch/PR per microtask by default or a single branch for the entire backend.
 - One **microtask** is one behavior/change, one issue and one atomic implementation commit after its local acceptance tests. Corrections to already published commits use additional explicit fix commits; never rewrite history to manufacture one-commit purity.
 - Issues describe task scope and evidence; Git/PRs record actual integration; ROADMAP owns task definitions; PROGRESS is a small current-state index; docs own technical truth; wiki is a generated public reading surface. Avoid maintaining independent copies of the same acceptance rules by hand.
 - Phase implementation is complete locally before integration; integration is complete after verified PR merge; release certification is a separate state. A merged phase on `main` is not permission to deploy the backend.
@@ -42,7 +42,7 @@ Commit prepared task/phase evidence before final verification; identify the test
 
 ## Phase closure — integration gate
 
-After the final task, run the phase-specific exit checks once on the final tree, then use the planned `scripts/git-flow.sh finish` interface to:
+After the final task, run the phase-specific exit checks once on the final tree, then use the `scripts/git-flow.sh finish --required "Quick verification"` interface to:
 
 1. Reject a dirty/unowned tree, main branch, wrong repository, unresolved scope, missing exit evidence or base divergence.
 2. Run the local quick gate once; do not wrap it in a second aggregate quick/full run. Evidence is reusable only when command, environment and all relevant inputs/tree are unchanged.
@@ -74,6 +74,8 @@ Use a manifest of **owned generated pages**, source SHA and content hashes. Pres
 
 ## Release checkpoints
 
-P01–P08: integrate phases through targeted tests, specialized phase checks and short CI. P09: after those phases and all fixes are merged, select one immutable candidate SHA and run the complete backend matrix plus real infrastructure/security/privacy/restore/load evidence. A failed candidate prevents certification/deploy and requires a new candidate after fixes; never move a published tag. Only G09 COMPLETE releases Android P10. P10 has its own full mobile integration/release gate after its slices; P11 commercial releases have their own certification.
+P01–P08 and follow-up backend/app phases integrate through targeted tests, specialized phase checks and short CI. G09-LOCAL opens functional app work. P18/G18 proves integrated Android/iOS functionality locally. Only afterward P09/G09 selects one immutable real-production candidate and runs the complete backend/account/social/media/location plus real infrastructure/security/privacy/restore/load matrix. A failed candidate prevents certification/deploy and requires a new candidate after fixes; never move a published tag. Public P10-T09 pilot requires G09 RELEASE_CERTIFIED. P11 commercial releases have separate certification.
 
-See [G01-FLOW tasks in ROADMAP](../../ROADMAP.md#delivery-flow-transition) for the implementation work. No `make quick-verify`, `git-flow.sh`, issue synchronization or wiki publishing command is claimed to exist until those tasks implement and validate it.
+See [G01-FLOW tasks in ROADMAP](../../ROADMAP.md#delivery-flow-transition) for the implementation work. Those helpers now exist; use their verified interfaces. Planning future phases does not execute their implementation or create every future issue.
+
+The source-snapshot `docs/planning/wiki-config.json` selects `Project-Overview.md` for the root README so the existing unmanaged `Home.md` remains unchanged. Names are validated, navigation/internal links use the selected page, and configuration comes from the same committed SHA as the docs. No unmanaged page is adopted or overwritten.

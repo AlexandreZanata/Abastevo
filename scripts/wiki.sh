@@ -73,9 +73,25 @@ sources = sorted(set(sources))
 if not sources:
     sys.exit('EMPTY_EXPORT: allowlist matched nothing; refusing instead of blanking the wiki')
 
+# Configuration belongs to the same immutable snapshot as the docs, never
+# the working tree or mutable environment. Preserve default for other sources.
+overview_page = 'Home.md'
+config_path = 'docs/planning/wiki-config.json'
+if subprocess.run(['git', '-C', root, 'cat-file', '-e', f'{sha}:{config_path}'],
+                  capture_output=True).returncode == 0:
+    config = json.loads(git('show', f'{sha}:{config_path}'))
+    if not isinstance(config, dict) or set(config) != {'overview_page'}:
+        sys.exit('BAD_WIKI_CONFIG: expected only overview_page')
+    overview_page = config['overview_page']
+    if not isinstance(overview_page, str) or not re.fullmatch(
+            r'[A-Za-z0-9][A-Za-z0-9-]*\.md', overview_page):
+        sys.exit('BAD_WIKI_CONFIG: overview must be a bounded page filename')
+    if len(overview_page) > 80:
+        sys.exit('BAD_WIKI_CONFIG: overview name too long')
+
 def wiki_name(src):
     if src == 'README.md':
-        return 'Home.md'
+        return overview_page
     if src == 'ROADMAP.md':
         return 'Roadmap.md'
     if src == 'TRADEMARKS.md':
@@ -129,8 +145,8 @@ for src in sources:
         sys.exit(f'SECRET_IN_SOURCE: {src} matches a high-confidence secret pattern')
     pages[mapping[src]] = {'source': src, 'text': rewrite(src, text)}
 
-nav = ['Home.md', 'Roadmap.md'] + sorted(
-    w for w in pages if w not in ('Home.md', 'Roadmap.md', 'Trademarks.md'))
+nav = [overview_page, 'Roadmap.md'] + sorted(
+    w for w in pages if w not in (overview_page, 'Roadmap.md', 'Trademarks.md'))
 lines = ['### Fuel prices wiki', '']
 for w in nav:
     if w in pages:
