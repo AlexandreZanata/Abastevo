@@ -65,8 +65,30 @@ func DeriveSignals(ctx context.Context, p SignalPorts, observationID string) (Ba
 		HasPhoto: present, DuplicateCount: dups,
 		AmountMilli: obs.AmountMilli, RegionalMeanMilli: mean,
 	}, now)
+	mergeStoredLocation(&bands, site, obs)
 	if err := p.Store.UpsertSignals(ctx, obs.ID, bands, now); err != nil {
 		return Bands{}, err
 	}
 	return bands, nil
+}
+
+// mergeStoredLocation folds submit-time verified bands into the
+// derived projection. A stored VERIFIED verdict with a precise
+// station carries its submit-time proximity band (PostGIS-derived
+// when the fix was transient); anything else keeps the honest
+// nil-claim path above. Teleport suspicion routes to review without
+// touching proximity.
+func mergeStoredLocation(bands *Bands, site StationSite, obs domain.Observation) {
+	if obs.LocationVerdict == FixVerified && site == SitePrecise && obs.LocationProximity != "" {
+		bands.Proximity = obs.LocationProximity
+	}
+	if obs.LocationReason == RiskTeleportSuspect {
+		for _, r := range bands.RiskCodes {
+			if r == RiskTeleportSuspect {
+				return
+			}
+		}
+		bands.RiskCodes = append(bands.RiskCodes, RiskTeleportSuspect)
+		bands.NeedsReview = true
+	}
 }

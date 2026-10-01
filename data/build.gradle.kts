@@ -28,6 +28,12 @@ android {
         jvmTarget = "17"
     }
 
+    // BuildConfig.DEBUG feeds the location release guard (P16-T02):
+    // debug injection exists only in debuggable builds.
+    buildFeatures {
+        buildConfig = true
+    }
+
     sourceSets {
         getByName("androidTest") {
             assets.srcDir("$projectDir/schemas")

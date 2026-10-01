@@ -1,0 +1,87 @@
+{
+  "id": "location-intake-v1",
+  "provenance": "P16-T03A server-side verification vectors: claimed device metadata replayed against server receipt time; forged/stale/replayed/skewed claims refuse, honest states pass through without granting claims",
+  "policy_version": "location-v1",
+  "cases": [
+    {
+      "id": "fresh-verified-match",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T12:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "VERIFIED", "allows_claim": true
+    },
+    {
+      "id": "forged-verdict-mismatch",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 500.0, "captured_at": "2026-09-30T12:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "forged-flag-without-source",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": false, "simulated": false, "accuracy_m": 10.0, "captured_at": "2026-09-30T12:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "stale-at-receipt",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T11:57:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "replayed-old-fix",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T11:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "future-capture-clock-anomaly",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T12:05:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "skew-over-bound",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T11:54:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "missing-captured-at",
+      "claimed": {"verdict": "VERIFIED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": null},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    },
+    {
+      "id": "honest-simulated-passes-through",
+      "claimed": {"verdict": "SIMULATED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": true, "accuracy_m": 10.0, "captured_at": "2026-09-30T12:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "SIMULATED", "allows_claim": false
+    },
+    {
+      "id": "honest-manual-passes-through",
+      "claimed": {"verdict": "MANUAL", "permission_granted": false, "has_fix": false, "source_info_present": false, "simulated": false, "accuracy_m": null, "captured_at": null, "manual": true},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "MANUAL", "allows_claim": false
+    },
+    {
+      "id": "honest-denied-passes-through",
+      "claimed": {"verdict": "DENIED", "permission_granted": false, "has_fix": false, "source_info_present": false, "simulated": false, "accuracy_m": null, "captured_at": null},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "DENIED", "allows_claim": false
+    },
+    {
+      "id": "garbage-verdict-refused",
+      "claimed": {"verdict": "TRUSTED", "permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "captured_at": "2026-09-30T12:00:00Z"},
+      "receipt_at": "2026-09-30T12:00:30Z",
+      "verdict": "", "allows_claim": false, "refusal": "forged-location-claim"
+    }
+  ],
+  "teleport": [
+    {"id": "same-station", "distance_m": 0.0, "elapsed_seconds": 60, "teleport": false},
+    {"id": "walkable", "distance_m": 500.0, "elapsed_seconds": 600, "teleport": false},
+    {"id": "driving", "distance_m": 20000.0, "elapsed_seconds": 1800, "teleport": false},
+    {"id": "impossible-flight", "distance_m": 50000.0, "elapsed_seconds": 60, "teleport": true},
+    {"id": "zero-time-move", "distance_m": 100.0, "elapsed_seconds": 0, "teleport": true},
+    {"id": "zero-time-stay", "distance_m": 0.0, "elapsed_seconds": 0, "teleport": false}
+  ]
+}

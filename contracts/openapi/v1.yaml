@@ -2700,6 +2700,53 @@ components:
           type: [string, "null"]
           format: uuid
           example: null
+        location:
+          $ref: '#/components/schemas/LocationEvidence'
+    LocationEvidence:
+      description: Optional device location claim (P16-T03B). Every field is untrusted input — the server recomputes the verdict, bounds freshness on its own clock, and persists bands only. Coordinates never persist and never log.
+      type: [object, "null"]
+      properties:
+        verdict:
+          type: string
+          enum: [VERIFIED, DEGRADED, MANUAL, DENIED, SIMULATED, UNKNOWN]
+          example: VERIFIED
+        permission_granted:
+          type: boolean
+          example: true
+        has_fix:
+          type: boolean
+          example: true
+        source_info_present:
+          type: boolean
+          description: OS provided the mock/simulated source flag.
+          example: true
+        simulated:
+          type: boolean
+          example: false
+        accuracy_m:
+          type: [number, "null"]
+          minimum: 0
+          example: 25.0
+        clock_skew_s:
+          type: [integer, "null"]
+          example: 10
+        manual:
+          type: boolean
+          example: false
+        captured_at:
+          type: [string, "null"]
+          format: date-time
+          example: '2026-09-30T12:00:00Z'
+        lat:
+          type: [number, "null"]
+          minimum: -90
+          maximum: 90
+          example: -23.55052
+        lon:
+          type: [number, "null"]
+          minimum: -180
+          maximum: 180
+          example: -46.633309
     ObservationReceipt:
       description: Safe acknowledgment; RECEIVED never claims publication.
       type: object

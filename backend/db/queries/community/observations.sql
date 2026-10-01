@@ -6,27 +6,41 @@
 INSERT INTO community_observations
     (id, contributor_ref, client_submission_id, station_id, fuel_product,
      unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version)
+     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+     location_verdict, location_proximity, location_reason)
 VALUES (@id, @contributor_ref, @client_submission_id, @station_id,
     @fuel_product, @unit, @amount_milli_brl, @raw_price_text,
     @condition_kind, @qualifier_key, @evidence_id, @received_at,
-    @claimed_captured_at, @supersedes_id, @policy_version)
+    @claimed_captured_at, @supersedes_id, @policy_version,
+    @location_verdict, @location_proximity, @location_reason)
 ON CONFLICT (contributor_ref, client_submission_id) DO NOTHING
 RETURNING id;
 
 -- name: GetObservationByNaturalKey :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE contributor_ref = @contributor_ref AND client_submission_id = @client_submission_id;
 
 -- name: GetObservation :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE id = @id;
+
+-- Last site for teleport review (P16-T03B): the contributor's most
+-- recent observation station and receipt time. Absence means no
+-- baseline: first observations never teleport.
+-- name: LastObservationSite :one
+SELECT station_id, received_at
+FROM community_observations
+WHERE contributor_ref = @contributor_ref
+ORDER BY received_at DESC, id::text DESC
+LIMIT 1;
 
 -- name: AppendDecision :one
 INSERT INTO community_observation_decisions
@@ -46,7 +60,8 @@ ORDER BY sequence ASC;
 -- name: ListByContributor :many
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE contributor_ref = @contributor_ref
     AND (@has_cursor::boolean = FALSE OR

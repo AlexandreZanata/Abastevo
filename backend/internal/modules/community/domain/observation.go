@@ -95,7 +95,10 @@ type Params struct {
 	PolicyVersion      string
 }
 
-// Observation is one immutable price fact.
+// Observation is one immutable price fact. LocationVerdict,
+// LocationProximity and LocationReason carry the submit-time verified
+// bands (P16-T03B); empty means no location evidence was supplied.
+// Coordinates never live here: only bands persist.
 type Observation struct {
 	ID                 string
 	ContributorRef     string
@@ -113,6 +116,9 @@ type Observation struct {
 	ReceivedAt         time.Time
 	PolicyVersion      string
 	Freshness          Freshness
+	LocationVerdict    string
+	LocationProximity  string
+	LocationReason     string
 }
 
 // PriceObserved is the domain event recorded at construction.

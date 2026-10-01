@@ -123,7 +123,25 @@ type EligibleAnchorsParams struct {
 	Cutoff        pgtype.Timestamptz `json:"cutoff"`
 }
 
-func (q *Queries) EligibleAnchors(ctx context.Context, arg EligibleAnchorsParams) ([]CommunityObservation, error) {
+type EligibleAnchorsRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	FuelProduct        string             `json:"fuel_product"`
+	Unit               string             `json:"unit"`
+	AmountMilliBrl     int64              `json:"amount_milli_brl"`
+	RawPriceText       string             `json:"raw_price_text"`
+	ConditionKind      string             `json:"condition_kind"`
+	QualifierKey       string             `json:"qualifier_key"`
+	EvidenceID         pgtype.UUID        `json:"evidence_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
+	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
+	PolicyVersion      string             `json:"policy_version"`
+}
+
+func (q *Queries) EligibleAnchors(ctx context.Context, arg EligibleAnchorsParams) ([]EligibleAnchorsRow, error) {
 	rows, err := q.db.Query(ctx, eligibleAnchors,
 		arg.StationID,
 		arg.FuelProduct,
@@ -136,9 +154,9 @@ func (q *Queries) EligibleAnchors(ctx context.Context, arg EligibleAnchorsParams
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CommunityObservation
+	var items []EligibleAnchorsRow
 	for rows.Next() {
-		var i CommunityObservation
+		var i EligibleAnchorsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContributorRef,

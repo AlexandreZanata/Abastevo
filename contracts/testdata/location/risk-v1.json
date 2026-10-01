@@ -1,0 +1,112 @@
+{
+  "id": "location-risk-v1",
+  "provenance": "P16-T01 frozen location risk contract from docs/security/LOCAL_MEDIA_LOCATION_POLICY.md B-BR-L01…L04; replay vectors shared by Go/Kotlin/Swift, never silently reinterpreted",
+  "policy_version": "location-v1",
+  "bounds": {
+    "max_fix_age_seconds": 120,
+    "max_clock_skew_seconds": 300,
+    "max_claim_accuracy_m": 100.0
+  },
+  "cases": [
+    {
+      "id": "verified-fresh-accurate",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": 30, "clock_skew_seconds": 10},
+      "verdict": "VERIFIED", "reason": "", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": true
+    },
+    {
+      "id": "verified-boundary-age",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 40.0, "fix_age_seconds": 120, "clock_skew_seconds": 0},
+      "verdict": "VERIFIED", "reason": "", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": true
+    },
+    {
+      "id": "verified-boundary-accuracy",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 100.0, "fix_age_seconds": 10, "clock_skew_seconds": 0},
+      "verdict": "VERIFIED", "reason": "", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": true
+    },
+    {
+      "id": "verified-boundary-skew",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 30.0, "fix_age_seconds": 5, "clock_skew_seconds": -300},
+      "verdict": "VERIFIED", "reason": "", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": true
+    },
+    {
+      "id": "simulated-source",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": true, "accuracy_m": 10.0, "fix_age_seconds": 5, "clock_skew_seconds": 0},
+      "verdict": "SIMULATED", "reason": "simulated-source", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "permission-denied",
+      "input": {"permission_granted": false, "has_fix": false, "source_info_present": false, "simulated": false, "accuracy_m": null, "fix_age_seconds": null, "clock_skew_seconds": null},
+      "verdict": "DENIED", "reason": "permission-denied", "freshness": "UNKNOWN", "accuracy": "UNKNOWN", "allows_claim": false
+    },
+    {
+      "id": "no-fix",
+      "input": {"permission_granted": true, "has_fix": false, "source_info_present": false, "simulated": false, "accuracy_m": null, "fix_age_seconds": null, "clock_skew_seconds": null},
+      "verdict": "UNKNOWN", "reason": "no-fix", "freshness": "UNKNOWN", "accuracy": "UNKNOWN", "allows_claim": false
+    },
+    {
+      "id": "accuracy-missing",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": null, "fix_age_seconds": 5, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "no-fix", "freshness": "FRESH", "accuracy": "UNKNOWN", "allows_claim": false
+    },
+    {
+      "id": "fix-time-missing",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": null, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "no-fix", "freshness": "UNKNOWN", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "forged-client-flag-ignored",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": false, "simulated": false, "accuracy_m": 10.0, "fix_age_seconds": 5, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "source-info-missing", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "stale-fix",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": 121, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "stale-fix", "freshness": "STALE", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "replayed-fix-stale",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": 300, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "stale-fix", "freshness": "STALE", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "future-fix-clock-anomaly",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": -5, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "clock-anomaly", "freshness": "UNKNOWN", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "clock-skew-over",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": 10, "clock_skew_seconds": 301},
+      "verdict": "UNKNOWN", "reason": "clock-anomaly", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "coarse-accuracy",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 250.0, "fix_age_seconds": 10, "clock_skew_seconds": 0},
+      "verdict": "DEGRADED", "reason": "coarse-accuracy", "freshness": "FRESH", "accuracy": "COARSE", "allows_claim": false
+    },
+    {
+      "id": "manual-entry",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 10.0, "fix_age_seconds": 5, "clock_skew_seconds": 0, "manual": true},
+      "verdict": "MANUAL", "reason": "manual-entry", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "manual-without-permission",
+      "input": {"permission_granted": false, "has_fix": false, "source_info_present": false, "simulated": false, "accuracy_m": null, "fix_age_seconds": null, "clock_skew_seconds": null, "manual": true},
+      "verdict": "MANUAL", "reason": "manual-entry", "freshness": "UNKNOWN", "accuracy": "UNKNOWN", "allows_claim": false
+    },
+    {
+      "id": "simulated-beats-coarse",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": true, "simulated": true, "accuracy_m": 500.0, "fix_age_seconds": 5, "clock_skew_seconds": 0},
+      "verdict": "SIMULATED", "reason": "simulated-source", "freshness": "FRESH", "accuracy": "COARSE", "allows_claim": false
+    },
+    {
+      "id": "denied-beats-stale",
+      "input": {"permission_granted": false, "has_fix": true, "source_info_present": true, "simulated": false, "accuracy_m": 25.0, "fix_age_seconds": 600, "clock_skew_seconds": 0},
+      "verdict": "DENIED", "reason": "permission-denied", "freshness": "STALE", "accuracy": "ACCURATE", "allows_claim": false
+    },
+    {
+      "id": "source-missing-beats-simulated",
+      "input": {"permission_granted": true, "has_fix": true, "source_info_present": false, "simulated": true, "accuracy_m": 10.0, "fix_age_seconds": 5, "clock_skew_seconds": 0},
+      "verdict": "UNKNOWN", "reason": "source-info-missing", "freshness": "FRESH", "accuracy": "ACCURATE", "allows_claim": false
+    }
+  ]
+}

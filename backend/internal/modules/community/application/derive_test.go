@@ -94,6 +94,74 @@ func TestDeriveSignalsPersistsBands(t *testing.T) {
 	}
 }
 
+func TestDeriveSignalsMergesStoredVerifiedProximity(t *testing.T) {
+	// A submit-time verified NEAR band flows into the projection;
+	// recomputation converges on the same stored band.
+	store := newFakeSignalStore()
+	obs := deriveObs()
+	obs.LocationVerdict = FixVerified
+	obs.LocationProximity = ProximityNear
+	store.obs[obs.ID] = obs
+	bands, err := DeriveSignals(context.Background(), derivePorts(store), obs.ID)
+	if err != nil {
+		t.Fatalf("derive = %v", err)
+	}
+	if bands.Proximity != ProximityNear {
+		t.Errorf("proximity = %q, want stored NEAR", bands.Proximity)
+	}
+	for _, r := range bands.RiskCodes {
+		if r == RiskTeleportSuspect {
+			t.Errorf("clean verify must not route teleport: %+v", bands)
+		}
+	}
+}
+
+func TestDeriveSignalsIgnoresStoredBandOffPreciseSite(t *testing.T) {
+	// The stored band only counts on a precise station: a centroid
+	// site keeps the honest nil-claim path even for VERIFIED rows.
+	store := newFakeSignalStore()
+	obs := deriveObs()
+	obs.LocationVerdict = FixVerified
+	obs.LocationProximity = ProximityNear
+	store.obs[obs.ID] = obs
+	ports := derivePorts(store)
+	ports.Station = func(context.Context, string) (StationSite, error) {
+		return SiteCentroid, nil
+	}
+	bands, err := DeriveSignals(context.Background(), ports, obs.ID)
+	if err != nil {
+		t.Fatalf("derive = %v", err)
+	}
+	if bands.Proximity != ProximityUnknown {
+		t.Errorf("proximity = %q, want UNKNOWN off precise site", bands.Proximity)
+	}
+}
+
+func TestDeriveSignalsRoutesTeleportToReview(t *testing.T) {
+	store := newFakeSignalStore()
+	obs := deriveObs()
+	obs.LocationVerdict = FixVerified
+	obs.LocationProximity = ProximityNear
+	obs.LocationReason = RiskTeleportSuspect
+	store.obs[obs.ID] = obs
+	bands, err := DeriveSignals(context.Background(), derivePorts(store), obs.ID)
+	if err != nil {
+		t.Fatalf("derive = %v", err)
+	}
+	if bands.Proximity != ProximityNear {
+		t.Errorf("teleport keeps bands, only routes: %+v", bands)
+	}
+	found := false
+	for _, r := range bands.RiskCodes {
+		if r == RiskTeleportSuspect {
+			found = true
+		}
+	}
+	if !found || !bands.NeedsReview {
+		t.Errorf("teleport must route to review: %+v", bands)
+	}
+}
+
 func TestDeriveSignalsHonestUnknowns(t *testing.T) {
 	// No station point, no photo, no benchmark: every band abstains and
 	// the fact routes to review instead of certifying anything.

@@ -92,6 +92,34 @@ print("no force-unwrap in AnpFuelCore")
 PY
 pass "no force-unwrap in AnpFuelCore"
 
+# 4. Release artifact assertion (P16-T02): no test-injection hook in
+# production sources. Debug injection lives only behind the
+# LocationEnvironment port (BuildConfig.DEBUG) and in test fakes;
+# setting testInjected=true in shipped code would smuggle an
+# always-simulated path into release. Static only; device run still
+# proves the provider wiring on hardware.
+if grep -rn "testInjected *= *true" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null; then
+    fail "test-injection hook found in production sources"
+fi
+pass "no test-injection hooks in release sources"
+
+# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04): the
+# location-integrity path is one-shot only. Continuous-update APIs,
+# background location permission and background-update flags must not
+# appear in shipped location sources; freshness is enforced by the
+# frozen contract, not by polling. Static only; energy/latency device
+# matrices stay release-horizon and are never claimed here.
+if grep -rn "ACCESS_BACKGROUND_LOCATION" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
+    fail "background location permission found in shipped sources"
+fi
+if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null; then
+    fail "continuous location polling found in shipped sources (one-shot only)"
+fi
+if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosApp/Sources" 2>/dev/null; then
+    fail "background location tracking found in shipped iOS sources (one-shot only)"
+fi
+pass "no background location tracking in shipped sources"
+
 if [[ "$MODE" == "static" ]]; then
     echo "check-mobile: static-only ok"
     exit 0

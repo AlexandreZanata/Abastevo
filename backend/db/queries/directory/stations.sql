@@ -93,6 +93,24 @@ LIMIT @limit_plus_one::int;
 SELECT normalized_value FROM directory_identifiers
 WHERE station_id = @station_id AND kind = 'CNPJ' AND valid_to IS NULL;
 
+-- Server-side distances for location intake (P16-T03B): exact fixes
+-- never persist, so proximity derives in PostGIS at submit time and
+-- only bands survive. NULL point or unknown station yields no row.
+
+-- name: FixDistanceM :one
+SELECT ST_Distance(current_point,
+    ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) AS distance_m,
+    current_quality
+FROM directory_stations
+WHERE id = @station_id AND current_point IS NOT NULL;
+
+-- name: StationPairDistanceM :one
+SELECT ST_Distance(a.current_point, b.current_point) AS distance_m
+FROM directory_stations AS a
+JOIN directory_stations AS b ON b.id = @other_id
+WHERE a.id = @station_id
+    AND a.current_point IS NOT NULL AND b.current_point IS NOT NULL;
+
 -- name: StationsMissingProjection :many
 SELECT s.id, s.display_name, s.address, s.municipality_code, s.state
 FROM directory_stations AS s

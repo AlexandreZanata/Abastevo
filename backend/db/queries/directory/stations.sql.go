@@ -164,6 +164,36 @@ func (q *Queries) CreateStation(ctx context.Context, arg CreateStationParams) (C
 	return i, err
 }
 
+const fixDistanceM = `-- name: FixDistanceM :one
+
+SELECT ST_Distance(current_point,
+    ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography) AS distance_m,
+    current_quality
+FROM directory_stations
+WHERE id = $3 AND current_point IS NOT NULL
+`
+
+type FixDistanceMParams struct {
+	Lon       float64     `json:"lon"`
+	Lat       float64     `json:"lat"`
+	StationID pgtype.UUID `json:"station_id"`
+}
+
+type FixDistanceMRow struct {
+	DistanceM      interface{} `json:"distance_m"`
+	CurrentQuality pgtype.Text `json:"current_quality"`
+}
+
+// Server-side distances for location intake (P16-T03B): exact fixes
+// never persist, so proximity derives in PostGIS at submit time and
+// only bands survive. NULL point or unknown station yields no row.
+func (q *Queries) FixDistanceM(ctx context.Context, arg FixDistanceMParams) (FixDistanceMRow, error) {
+	row := q.db.QueryRow(ctx, fixDistanceM, arg.Lon, arg.Lat, arg.StationID)
+	var i FixDistanceMRow
+	err := row.Scan(&i.DistanceM, &i.CurrentQuality)
+	return i, err
+}
+
 const getStation = `-- name: GetStation :one
 SELECT id, display_name, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
@@ -473,6 +503,26 @@ func (q *Queries) StationCNPJ(ctx context.Context, stationID pgtype.UUID) (strin
 	var normalized_value string
 	err := row.Scan(&normalized_value)
 	return normalized_value, err
+}
+
+const stationPairDistanceM = `-- name: StationPairDistanceM :one
+SELECT ST_Distance(a.current_point, b.current_point) AS distance_m
+FROM directory_stations AS a
+JOIN directory_stations AS b ON b.id = $1
+WHERE a.id = $2
+    AND a.current_point IS NOT NULL AND b.current_point IS NOT NULL
+`
+
+type StationPairDistanceMParams struct {
+	OtherID   pgtype.UUID `json:"other_id"`
+	StationID pgtype.UUID `json:"station_id"`
+}
+
+func (q *Queries) StationPairDistanceM(ctx context.Context, arg StationPairDistanceMParams) (interface{}, error) {
+	row := q.db.QueryRow(ctx, stationPairDistanceM, arg.OtherID, arg.StationID)
+	var distance_m interface{}
+	err := row.Scan(&distance_m)
+	return distance_m, err
 }
 
 const stationsMissingProjection = `-- name: StationsMissingProjection :many

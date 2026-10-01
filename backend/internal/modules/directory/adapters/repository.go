@@ -192,6 +192,64 @@ func (r *Repository) Station(ctx context.Context, id string) (domain.Station, er
 	}, nil
 }
 
+// FixDistance measures PostGIS metres from a station's precise point
+// to a transient fix for submit-time proximity (P16-T03B). The fix
+// never persists: only the returned distance (reduced to a band by
+// the caller) survives the call. Unknown stations and missing points
+// yield ErrUnknownStation, failing the proximity path closed.
+func (r *Repository) FixDistance(ctx context.Context, stationID string, lon, lat float64) (float64, error) {
+	uid, err := mustUUID(stationID)
+	if err != nil {
+		return 0, domain.ErrUnknownStation
+	}
+	row, err := directory.New(r.pool).FixDistanceM(ctx, directory.FixDistanceMParams{
+		StationID: uid,
+		Lon:       lon,
+		Lat:       lat,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, domain.ErrUnknownStation
+		}
+		return 0, err
+	}
+	distance, ok := row.DistanceM.(float64)
+	if !ok {
+		return 0, errors.New("adapters: bad fix distance")
+	}
+	return distance, nil
+}
+
+// StationPairDistanceM measures PostGIS metres between two precise
+// station points for teleport review (P16-T03B). Missing points on
+// either side yield ErrUnknownStation: no baseline, no teleport.
+func (r *Repository) StationPairDistanceM(ctx context.Context, a, b string) (float64, error) {
+	uidA, err := mustUUID(a)
+	if err != nil {
+		return 0, domain.ErrUnknownStation
+	}
+	uidB, err := mustUUID(b)
+	if err != nil {
+		return 0, domain.ErrUnknownStation
+	}
+	distanceM, err := directory.New(r.pool).StationPairDistanceM(ctx, directory.StationPairDistanceMParams{
+		StationID: uidA,
+		OtherID:   uidB,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, domain.ErrUnknownStation
+		}
+		return 0, err
+	}
+	// Single-column PostGIS distance decodes as an untyped numeric.
+	distance, ok := distanceM.(float64)
+	if !ok {
+		return 0, errors.New("adapters: bad station distance")
+	}
+	return distance, nil
+}
+
 // RecordLocation appends one location revision. A missing point stays NULL
 // in storage; quality records why (unknown, city-centroid, reviewed).
 func (r *Repository) RecordLocation(ctx context.Context, rev domain.LocationRevision) (domain.LocationRevision, error) {
