@@ -310,4 +310,15 @@
     <string name="auth_error_provider">Falha na verificação, tente de novo</string>
     <string name="auth_error_login_first">Entre com email primeiro</string>
     <string name="auth_error_unknown">Algo deu errado</string>
+
+    <!-- Preços da comunidade (P10-T06, beta, atrás de flag) -->
+    <string name="community_section_title">Preços da comunidade (beta)</string>
+    <string name="community_source_version">Fonte: %1$s · Contrato %2$s</string>
+    <string name="community_stale_label">Dados em cache podem estar desatualizados. Exibidos como defasados, não atuais.</string>
+    <string name="community_pending_p04">Sem preços da comunidade ainda. Comunidade permanece UNKNOWN até revisão (P04).</string>
+    <string name="community_confidence_note">Apoio da comunidade, não garantia. ANP é pesquisa oficial, não preço vivo na bomba.</string>
+    <string name="community_unavailable_retry">Preços da comunidade indisponíveis. A navegação oficial ANP continua funcionando.</string>
+    <string name="community_official_empty">Preço oficial indisponível (UNKNOWN)</string>
+    <string name="community_official_detail">Oficial: %1$s · %2$s · Coletado %3$s</string>
+    <string name="community_availability_detail">Comunidade: %1$s · %2$s</string>
 </resources>
