@@ -1,9 +1,12 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.application.port.AnonymousContributionFlagProvider
+import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
+import com.anpfuel.application.usecase.identity.AnonymousDeviceFlow
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.application.usecase.location.SearchMunicipalityUseCase
@@ -443,5 +446,15 @@ object UseCaseModule {
         flagProvider = flagProvider,
         httpGateway = httpGateway,
         cache = cache,
+    )
+
+    @Provides
+    @Singleton
+    fun provideAnonymousDeviceFlow(
+        flagProvider: AnonymousContributionFlagProvider,
+        keys: AnonymousDeviceKeyPort,
+    ): AnonymousDeviceFlow = AnonymousDeviceFlow(
+        flagProvider = flagProvider,
+        keys = keys,
     )
 }
