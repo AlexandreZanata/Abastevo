@@ -37,7 +37,7 @@
   "milestone": 8,
   "milestone_title": "P10 \u2014 Functional app integration after G09-LOCAL",
   "phase": "10",
-  "pr": null,
+  "pr": 54,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
