@@ -2,19 +2,26 @@ package com.anpfuel.app.ui.stations
 
 import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.usecase.location.PreferredLocation
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
+import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.application.usecase.station.BuildStationNavigationQueryUseCase
 import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCase
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
 import com.anpfuel.domain.model.RetailStation
+import com.anpfuel.domain.model.StationPrice
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.DeviceLocation
+import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.valueobject.PriceAmount
+import com.anpfuel.domain.valueobject.SurveyWeek
+import java.time.LocalDate
+import java.util.Locale
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -31,6 +38,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -158,6 +166,147 @@ class StationsViewModelTest {
         )
         assertFalse(viewModel.uiState.value.isFindingNearest)
     }
+
+    @Test
+    fun failedRefreshKeepsCachedStations() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+        )
+        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
+            surveyWeek = week,
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+            fuelProduct = FuelProduct.ETHANOL,
+            stations = listOf(
+                stationPrice("POSTO CENTRO", "5.19", week),
+                stationPrice("POSTO LESTE", "5.29", week),
+            ),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.stations.size)
+
+        coEvery { getStationPricesUseCase(fuelProduct = any()) } throws RuntimeException("boom")
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.stations.size)
+        assertEquals(false, viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun searchQueryFiltersVisibleStationsLocally() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+        )
+        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
+            surveyWeek = week,
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+            fuelProduct = FuelProduct.ETHANOL,
+            stations = listOf(
+                stationPrice("POSTO CENTRO", "5.19", week),
+                stationPrice("POSTO LESTE", "5.29", week),
+            ),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        viewModel.onSearchQueryChanged("leste", Locale.US)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.stations.size)
+        assertEquals("POSTO LESTE", viewModel.uiState.value.stations.first().displayName)
+        assertEquals(null, viewModel.uiState.value.searchNoMatch)
+
+        viewModel.onSearchQueryChanged("inexistente", Locale.US)
+        advanceUntilIdle()
+        assertEquals(0, viewModel.uiState.value.stations.size)
+        assertEquals("inexistente", viewModel.uiState.value.searchNoMatch)
+
+        viewModel.onSearchQueryChanged("", Locale.US)
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.stations.size)
+        assertEquals(null, viewModel.uiState.value.searchNoMatch)
+    }
+
+    @Test
+    fun selectingStationBuildsDetailFromCache() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+        )
+        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
+            surveyWeek = week,
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+            fuelProduct = FuelProduct.ETHANOL,
+            stations = listOf(
+                stationPrice("POSTO CENTRO", "5.19", week),
+                stationPrice("POSTO LESTE", "5.29", week),
+            ),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        viewModel.onStationSelected("61602199002409")
+        val detail = viewModel.uiState.value.selectedDetail
+        assertNotNull(detail)
+        assertEquals("POSTO CENTRO", detail?.station?.displayName)
+        assertEquals(false, detail?.dateUnknown)
+        assertEquals(false, detail?.communityDisputed)
+        assertNotNull(detail?.surveyWeekLabel)
+
+        viewModel.onDetailDismissed()
+        assertEquals(null, viewModel.uiState.value.selectedDetail)
+    }
+
+    @Test
+    fun selectingUnknownStationYieldsNoDetail() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+        )
+        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
+            surveyWeek = week,
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+            fuelProduct = FuelProduct.ETHANOL,
+            stations = listOf(stationPrice("POSTO CENTRO", "5.19", week)),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        viewModel.onStationSelected("00000000000000")
+        assertEquals(null, viewModel.uiState.value.selectedDetail)
+    }
+
+    private fun stationPrice(tradeName: String, price: String, week: SurveyWeek): StationPrice =
+        StationPrice.create(
+            priceSurveyId = DomainId.forSurveyWeek(week),
+            surveyWeek = week,
+            station = RetailStation.create(
+                cnpj = Cnpj.parse(if (tradeName.contains("LESTE")) "11111111111111" else "61602199002409"),
+                legalName = "RAZAO $tradeName",
+                tradeName = tradeName,
+                address = "RUA XV DE NOVEMBRO, 1000",
+                municipality = "Curitiba",
+                state = BrazilianState.PARANA,
+                brand = "BR",
+            ),
+            fuelProduct = FuelProduct.ETHANOL,
+            price = PriceAmount.of(price),
+            collectedAt = LocalDate.of(2026, 6, 10),
+        )
 
     @Test
     fun emitsFailedMessageWhenGeocodingFails() = runTest(dispatcher) {

@@ -14,7 +14,12 @@ import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCas
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
 import com.anpfuel.app.mapper.StationPriceUiMapper
+import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.model.StationDetailUiModel
 import com.anpfuel.app.ui.model.StationPriceUiModel
+import com.anpfuel.domain.discovery.StationDetailRule
+import com.anpfuel.domain.discovery.StationDetailState
+import com.anpfuel.domain.discovery.StationRowFreshness
 import com.anpfuel.domain.event.SyncJobOutcome
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.model.RetailStation
@@ -22,6 +27,7 @@ import com.anpfuel.domain.valueobject.DeviceLocation
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.valueobject.SurveyWeek
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
 import androidx.lifecycle.SavedStateHandle
@@ -44,6 +50,9 @@ data class StationsUiState(
     val state: BrazilianState? = null,
     val surveyWeek: SurveyWeek? = null,
     val stations: List<StationPriceUiModel> = emptyList(),
+    val searchQuery: String = "",
+    val searchNoMatch: String? = null,
+    val selectedDetail: StationDetailUiModel? = null,
     val showDownloadPrompt: Boolean = false,
     val showEmpty: Boolean = false,
     val showNoLocation: Boolean = false,
@@ -76,11 +85,14 @@ class StationsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
+    private val savedStateHandleRef: SavedStateHandle = savedStateHandle
+
     private val _uiState = MutableStateFlow(
         StationsUiState(
             selectedFuelProduct = savedStateHandle.get<String>(ARG_FUEL_PRODUCT)
                 ?.let { runCatching { FuelProduct.valueOf(it) }.getOrNull() }
                 ?: FuelProduct.GASOLINE_REGULAR,
+            searchQuery = savedStateHandle.get<String>(ARG_SEARCH_QUERY).orEmpty(),
         ),
     )
     val uiState: StateFlow<StationsUiState> = _uiState.asStateFlow()
@@ -95,6 +107,13 @@ class StationsViewModel @Inject constructor(
     val locationPermissionRequest: SharedFlow<Unit> = _locationPermissionRequest.asSharedFlow()
 
     private val stationByCnpj = mutableMapOf<String, RetailStation>()
+
+    /**
+     * P20-T02 — last good domain list for local search and failed-refresh
+     * cache recovery. Never cleared on load start; replaced only on success.
+     */
+    private var lastStations: List<com.anpfuel.domain.model.StationPrice> = emptyList()
+    private var lastLocale: Locale? = null
 
     init {
         viewModelScope.launch {
@@ -112,8 +131,28 @@ class StationsViewModel @Inject constructor(
         if (_uiState.value.selectedFuelProduct == fuelProduct) {
             return
         }
-        _uiState.update { it.copy(selectedFuelProduct = fuelProduct) }
+        // Explicit filter change: drop the previous fuel's cache so stale
+        // prices are never shown under the new fuel chip.
+        lastStations = emptyList()
+        _uiState.update {
+            it.copy(
+                selectedFuelProduct = fuelProduct,
+                stations = emptyList(),
+                searchNoMatch = null,
+                selectedDetail = null,
+            )
+        }
         loadForFuel(fuelProduct, locale)
+    }
+
+    /**
+     * P20-T02 — local station-name search over the cached domain list.
+     * No reload: filter state survives rotation via [SavedStateHandle].
+     */
+    fun onSearchQueryChanged(query: String, locale: Locale) {
+        lastLocale = locale
+        savedStateHandleRef[ARG_SEARCH_QUERY] = query
+        renderStations(query)
     }
 
     /**
@@ -192,6 +231,54 @@ class StationsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * P20-T03 — opens the station detail sheet from the cached domain list.
+     * Unknown CNPJ (or no survey week yet) yields no detail, never an
+     * invented card.
+     */
+    fun onStationSelected(cnpjDigits: String) {
+        val locale = lastLocale ?: return
+        val state = _uiState.value
+        val domain = lastStations.firstOrNull { it.station.cnpj.digits == cnpjDigits }
+        val week = state.surveyWeek
+        if (domain == null || week == null) {
+            _uiState.update { it.copy(selectedDetail = null) }
+            return
+        }
+        when (val detail = StationDetailRule.resolve(
+            rows = listOf(domain),
+            surveyWeek = week,
+            today = LocalDate.now(),
+            staleCache = false,
+        )) {
+            is StationDetailState.NoCoverage ->
+                _uiState.update { it.copy(selectedDetail = null) }
+            is StationDetailState.AnpReference -> {
+                val row = detail.rows.first()
+                _uiState.update {
+                    it.copy(
+                        selectedDetail = StationDetailUiModel(
+                            station = StationPriceUiMapper.toUiModel(
+                                stationPrice = domain,
+                                locale = locale,
+                                preferredState = state.state,
+                                preferredMunicipality = state.municipality,
+                            ),
+                            surveyWeekLabel = SurveyWeekFormatter.formatRange(week, locale),
+                            isStale = row.freshness == StationRowFreshness.STALE,
+                            dateUnknown = row.freshness == StationRowFreshness.UNKNOWN,
+                            communityDisputed = detail.communityDisputed,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun onDetailDismissed() {
+        _uiState.update { it.copy(selectedDetail = null) }
+    }
+
     fun onNavigateToStation(cnpjDigits: String) {
         val station = stationByCnpj[cnpjDigits] ?: return
 
@@ -252,6 +339,9 @@ class StationsViewModel @Inject constructor(
 
     private fun loadForFuel(fuelProduct: FuelProduct, locale: Locale) {
         viewModelScope.launch {
+            lastLocale = locale
+            // P20-T02: keep the last good list visible while reloading so a
+            // failed refresh still shows cached data instead of an empty error.
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -260,7 +350,6 @@ class StationsViewModel @Inject constructor(
                     showDownloadPrompt = false,
                     showEmpty = false,
                     showNoLocation = false,
-                    stations = emptyList(),
                 )
             }
 
@@ -294,6 +383,7 @@ class StationsViewModel @Inject constructor(
                         outcome.stations.forEach { stationPrice ->
                             stationByCnpj[stationPrice.station.cnpj.digits] = stationPrice.station
                         }
+                        lastStations = outcome.stations
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -301,18 +391,15 @@ class StationsViewModel @Inject constructor(
                                 state = outcome.state,
                                 surveyWeek = outcome.surveyWeek,
                                 selectedFuelProduct = outcome.fuelProduct,
-                                stations = StationPriceUiMapper.toUiModels(
-                                    stations = outcome.stations,
-                                    locale = locale,
-                                    preferredState = outcome.state,
-                                    preferredMunicipality = outcome.municipality,
-                                ),
                                 showEmpty = outcome.isEmpty,
                             )
                         }
+                        renderStations(_uiState.value.searchQuery)
                     }
                 }
             }.onFailure { error ->
+                // P20-T02: failed refresh keeps cached stations; the error is
+                // shown above the list instead of replacing it.
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -324,7 +411,34 @@ class StationsViewModel @Inject constructor(
         }
     }
 
+    private fun renderStations(query: String) {
+        val locale = lastLocale ?: return
+        val state = _uiState.value
+        val filtered = com.anpfuel.domain.discovery.DiscoveryStationsRule.filterAndSort(
+            stations = lastStations,
+            search = query,
+            sort = com.anpfuel.domain.discovery.DiscoverySort.PRICE_ASC,
+        )
+        val trimmed = query.trim()
+        val noMatch = trimmed.length >=
+            com.anpfuel.domain.rule.MinimumSearchLengthRule.MIN_LENGTH &&
+            filtered.isEmpty()
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                searchNoMatch = if (noMatch) trimmed else null,
+                stations = StationPriceUiMapper.toUiModels(
+                    stations = filtered,
+                    locale = locale,
+                    preferredState = state.state,
+                    preferredMunicipality = state.municipality,
+                ),
+            )
+        }
+    }
+
     companion object {
         private const val ARG_FUEL_PRODUCT = "fuelProduct"
+        private const val ARG_SEARCH_QUERY = "discoverySearch"
     }
 }

@@ -1,6 +1,6 @@
 {
-  "base_sha": "bad31b79d6b83bf0fede7b456321f05846c2e06a",
-  "branch": "codex/phase-19-product-identity-foundation",
+  "base_sha": "b5ae5d7c1a5f77d83285b7d891ac5ebce92bceca",
+  "branch": "codex/phase-20-community-discovery",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -45,13 +45,17 @@
     "P19-T01": 71,
     "P19-T02": 72,
     "P19-T03": 73,
-    "P19-T04": 74
+    "P19-T04": 74,
+    "P20-T01": 76,
+    "P20-T02": 77,
+    "P20-T03": 78,
+    "P20-T04": 79
   },
   "issues_close_on_merge": false,
-  "milestone": 13,
-  "milestone_title": "P19 — Product and identity foundation",
-  "phase": "19",
-  "pr": 75,
+  "milestone": 14,
+  "milestone_title": "P20 \u2014 Community-first price discovery",
+  "phase": "20",
+  "pr": 80,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -60,5 +64,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P19-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "P20-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
 }

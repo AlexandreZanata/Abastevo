@@ -173,7 +173,10 @@ fun AnpNavGraph(
             HistoryScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Routes.STATIONS) {
-            StationsScreen(onNavigateBack = { navController.popBackStack() })
+            StationsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
+            )
         }
         composable(
             route = Routes.STATIONS_WITH_FUEL,
@@ -181,7 +184,10 @@ fun AnpNavGraph(
                 navArgument("fuelProduct") { type = NavType.StringType },
             ),
         ) {
-            StationsScreen(onNavigateBack = { navController.popBackStack() })
+            StationsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
+            )
         }
         composable(Routes.VEHICLES) {
             VehicleScreen(

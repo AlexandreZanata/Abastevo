@@ -206,7 +206,12 @@
     <!-- UC-007 Stations -->
     <string name="stations_title">Postos</string>
     <string name="stations_sort_by_price">Menor preço primeiro</string>
-    <string name="stations_tap_to_navigate_hint">Toque em um posto para abrir no Google Maps.</string>
+    <string name="stations_tap_to_navigate_hint">Toque em um posto para ver detalhes, preços e opções de rota.</string>
+    <string name="station_detail_anp_title">Preço de referência ANP</string>
+    <string name="station_detail_survey_week">Semana de pesquisa: %1$s</string>
+    <string name="station_detail_stale_badge">Pesquisa desatualizada — confira o preço na bomba.</string>
+    <string name="station_detail_unknown_date">Data de coleta desconhecida.</string>
+    <string name="station_detail_disputed">Em disputa na comunidade — trate com cautela.</string>
     <string name="stations_download_prompt">Os preços por posto ainda não estão neste dispositivo. Baixe o arquivo de postos da ANP desta semana para comparar preços por estabelecimento.</string>
     <string name="stations_download_action">Baixar preços por posto</string>
     <string name="stations_empty">Nenhum posto informou este combustível na cidade selecionada nesta semana.</string>
@@ -218,6 +223,8 @@
     <string name="stations_nearest_needs_location">Ative a localização para encontrar o posto mais próximo.</string>
     <string name="stations_nearest_no_fix">Sem sinal de GPS agora. Ative a localização e tente novamente.</string>
     <string name="stations_nearest_failed">Não foi possível encontrar um posto próximo. Verifique sua conexão e tente de novo.</string>
+    <string name="stations_search_placeholder">Buscar por nome do posto</string>
+    <string name="stations_search_no_match">Nenhum posto corresponde a \"%1$s\".</string>
     <string name="a11y_station_navigate">Ir para %1$s</string>
     <string name="prices_view_stations">Ver preços por posto</string>
 
