@@ -1,6 +1,6 @@
 # P18-T01 — Frozen functional acceptance matrix
 
-Status: LOCAL_DONE on `codex/phase-18-functional-acceptance` (first
+Status: LOCAL_VALIDATION_IMPLEMENTED / G18_ACCEPTANCE_BLOCKED on `codex/phase-18-functional-acceptance` (first
 task; no PR yet). Issue: #60. Entry: G17 + G10-LOCAL. One
 test-harness fix (no production change, below); otherwise docs only.
 
@@ -25,7 +25,7 @@ a silent skip, never green by mock.
 | Account/social/media/location portable exits | GREEN JVM-side | P13–P17 exit suites green; matching XCTest vectors ship Mac-gated (P17 record) |
 | Full `test-local-backend.sh` (S3 emulator, backup/restore/load/edge) | BLOCKED (environment) | `minio/minio` digest pull denied by registry (`pull access denied`) on this host; PostGIS leg ran standalone instead. Capacity blocker, not product verdict |
 | iPhone `swift build/test`, simulator/device, lifecycle | BLOCKED | No Xcode/macOS on this host (standing precedent since P12-T04) |
-| Performance budgets (P18-T02) / security sign-off (P18-T03) | NOT STARTED | Owned by the next tasks, not claimed here |
+| Backend/photo baselines and security/compatibility review | GREEN within recorded local scope | P18-T02 and P18-T03 records; device performance and native sign-off remain unproven |
 
 ## Candidate artifacts (frozen, NOT a release)
 
@@ -41,4 +41,9 @@ a silent skip, never green by mock.
 1. S3-emulator leg of the local matrix (registry access or vendored
    image decision with license/provenance review).
 2. macOS build/test/simulator/device run with synthetic server.
-3. P18-T02 performance budgets and P18-T03 security sign-off.
+3. Actual Android/iOS device performance and integrated functional acceptance. Backend/photo baselines and security/compatibility review are implemented; they do not satisfy missing device rows.
+
+
+## Publication reconciliation (2026-10-01)
+
+The maintainer confirmed no Mac is available. A physical Android was detected, the first startup/community device attempt was INSTALL_FAILED_USER_RESTRICTED. After maintainer authorization/releasing installation, the same command passed 2/2 with no failures/errors/skips; startup test recorded 382 ms vs its 2000 ms limit. This proves only the two existing test cases, not the full device matrix. The corrected account-bind race test passed five times with real disposable PostGIS and `-race` on the reconciled branch; mobile static/compatibility checks passed. [Local integration exit](../release-evidence/p18-local-integration-exit.md) records the exact scope. P18 local work may integrate, while G18 acceptance, issues #60–#62 and their milestone remain open until actual required proof exists.

@@ -1,7 +1,7 @@
 # P18-T01 — Feature matrix and final local acceptance
 
-Status: LOCAL_DONE on `codex/phase-18-functional-acceptance` (first
-task; no PR yet). Issue: #60. No production change; one
+Status: LOCAL_VALIDATION_IMPLEMENTED / FULL_ACCEPTANCE_BLOCKED on `codex/phase-18-functional-acceptance` (first
+task; PR #67). Issue: #60. No production change; one
 integration-test harness fix; otherwise docs only.
 
 ## Slice acceptance (frozen before coding)
@@ -67,3 +67,6 @@ leg executed standalone instead (recorded, never substituted).
   run and P18-T02/T03. No candidate selected, no release claim.
 - Disposable validation DB removed (`down --volumes`); tmpfs
   data never persisted.
+
+
+Publication reconciliation: PR #67 integrates the validated local slice only. The original task acceptance remains unmet; see [current exit and blockers](p18-local-integration-exit.md). Historical command results above are retained and are not relabeled device proof.

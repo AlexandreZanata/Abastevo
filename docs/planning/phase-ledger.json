@@ -1,6 +1,7 @@
 {
-  "base_sha": "047a347ab9bdf85b15817e8c039ead52bf5b9109",
+  "base_sha": "fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9",
   "branch": "codex/phase-18-functional-acceptance",
+  "functional_gate": "G18_NOT_ACCEPTED",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
@@ -41,10 +42,11 @@
     "P18-T02": 61,
     "P18-T03": 62
   },
+  "issues_close_on_merge": false,
   "milestone": 10,
   "milestone_title": "P18 \u2014 Functional app acceptance and performance",
   "phase": "18",
-  "pr": null,
+  "pr": 67,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -53,6 +55,6 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_APP_FUNCTIONAL"
   },
-  "state": "OPEN",
+  "state": "LOCAL_VALIDATION_READY_FOR_INTEGRATION / G18_BLOCKED",
   "wiki": "PENDING_MERGED_SNAPSHOT"
 }

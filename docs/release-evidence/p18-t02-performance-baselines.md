@@ -1,7 +1,7 @@
 # P18-T02 — Performance and memory baselines
 
-Status: LOCAL_DONE on `codex/phase-18-functional-acceptance` (second
-task; no PR yet). Issue: #61. Docs only: every measured budget met,
+Status: LOCAL_VALIDATION_IMPLEMENTED / FULL_ACCEPTANCE_BLOCKED on `codex/phase-18-functional-acceptance` (second
+task; PR #67). Issue: #61. Docs only: every measured budget met,
 so per "profile before optimization" no hot path was touched.
 
 ## Baselines (this host, 2026-10-01)
@@ -41,8 +41,10 @@ topology, no seed residue outside `b000…` rows it already owns).
 
 ## Limits (not claimed)
 
-- Device cold-start/frame/heap/battery: BLOCKED — no AVDs on
-  this host (`emulator -list-avds` empty), no macOS/iOS device.
+- Physical Android follow-up: existing cached-home readiness test passed at 382 ms vs 2000 ms budget (P18 local exit). Complete cold-process/frame/heap/battery and iOS device matrix remains unproven; no macOS/iOS device.
 - 30-minute staging matrix (100 k stations, 1 M rows): runs on
   provisioned staging per harness design, never here.
 - No release claim by these baselines.
+
+
+Publication reconciliation: PR #67 integrates the validated local slice only. The original task acceptance remains unmet; see [current exit and blockers](p18-local-integration-exit.md). Historical command results above are retained and are not relabeled device proof.

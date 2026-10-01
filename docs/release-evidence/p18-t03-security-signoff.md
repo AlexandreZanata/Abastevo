@@ -1,7 +1,7 @@
 # P18-T03 — Security compatibility and functional sign-off
 
-Status: LOCAL_DONE on `codex/phase-18-functional-acceptance` (exit
-task; no PR yet). Issue: #62. Docs only; no production change.
+Status: LOCAL_VALIDATION_IMPLEMENTED / FULL_ACCEPTANCE_BLOCKED on `codex/phase-18-functional-acceptance` (exit
+task; PR #67). Issue: #62. Docs only; no production change.
 
 ## Candidate reconciliation (exact)
 
@@ -74,3 +74,6 @@ go test -race -count=1 -p 2 -timeout 10m -tags=integration ./internal/modules/ac
 ./gradlew :app:testDebugUnitTest --tests "com.anpfuel.app.community.*" --no-daemon
 git diff --check
 ```
+
+
+Publication reconciliation: PR #67 integrates the validated local slice only. The original task acceptance remains unmet; see [current exit and blockers](p18-local-integration-exit.md). Historical command results above are retained and are not relabeled device proof.
