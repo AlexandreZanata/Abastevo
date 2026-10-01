@@ -41,6 +41,7 @@
   "milestone": 9,
   "milestone_title": "P17 \u2014 Social app functionality and iPhone parity",
   "phase": "17",
+  "pr": 59,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
