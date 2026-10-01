@@ -1,6 +1,6 @@
 {
-  "base_sha": "cb131b0e0e03de9c38eae7e9a16fca6d9c6c7255",
-  "branch": "codex/phase-10-functional-integration",
+  "base_sha": "be680d1b3b6ec0a0bfd62a9945159ade8d920960",
+  "branch": "codex/phase-17-social-iphone-parity",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
@@ -32,12 +32,15 @@
     "P16-T01": 40,
     "P16-T02": 41,
     "P16-T03": 42,
-    "P16-T04": 43
+    "P16-T04": 43,
+    "P17-T01": 55,
+    "P17-T02": 56,
+    "P17-T03": 57,
+    "P17-T04": 58
   },
-  "milestone": 8,
-  "milestone_title": "P10 \u2014 Functional app integration after G09-LOCAL",
-  "phase": "10",
-  "pr": 54,
+  "milestone": 9,
+  "milestone_title": "P17 \u2014 Social app functionality and iPhone parity",
+  "phase": "17",
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
