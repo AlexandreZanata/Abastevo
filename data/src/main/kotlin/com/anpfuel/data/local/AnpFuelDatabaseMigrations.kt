@@ -170,4 +170,28 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `backend_price_cache` (
+                    `key` TEXT NOT NULL,
+                    `station_id` TEXT NOT NULL,
+                    `fuel_filter` TEXT NOT NULL,
+                    `payload_json` TEXT NOT NULL,
+                    `source` TEXT NOT NULL,
+                    `version` TEXT NOT NULL,
+                    `fetched_at_millis` INTEGER NOT NULL,
+                    `expires_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`key`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_backend_price_cache_station_id` " +
+                    "ON `backend_price_cache` (`station_id`)",
+            )
+        }
+    }
 }

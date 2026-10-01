@@ -17,8 +17,12 @@ import com.anpfuel.data.local.preferences.GeocodeCacheDataStore
 import com.anpfuel.data.local.preferences.GeocodeCacheStore
 import com.anpfuel.data.local.preferences.DataStorePriceTableMetadataStore
 import com.anpfuel.data.local.preferences.PriceTableMetadataStore
+import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
 import com.anpfuel.data.repository.AddressGeocodeRepositoryImpl
 import com.anpfuel.data.repository.AveragePriceRepositoryImpl
+import com.anpfuel.data.repository.BackendPriceCacheRepositoryImpl
+import com.anpfuel.data.repository.BackendPriceHttpGatewayImpl
 import com.anpfuel.data.repository.CacheRepositoryImpl
 import com.anpfuel.data.repository.MunicipalityCatalogRepositoryImpl
 import com.anpfuel.data.repository.MunicipalitySearchRepositoryImpl
@@ -32,6 +36,8 @@ import com.anpfuel.data.repository.SyncJobRepositoryImpl
 import com.anpfuel.data.repository.UserPreferencesRepositoryImpl
 import com.anpfuel.data.repository.ReverseGeocodeRepositoryImpl
 import com.anpfuel.data.repository.VehicleRepositoryImpl
+import com.anpfuel.domain.repository.BackendPriceCacheRepository
+import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.data.notification.PriceDropNotificationRepositoryImpl
 import com.anpfuel.domain.repository.AddressGeocodeRepository
 import com.anpfuel.domain.repository.ReverseGeocodeRepository
@@ -173,6 +179,24 @@ abstract class RepositoryModule {
     abstract fun bindPriceTableMetadataStore(
         impl: DataStorePriceTableMetadataStore,
     ): PriceTableMetadataStore
+
+    @Binds
+    @Singleton
+    abstract fun bindBackendPriceHttpGateway(
+        impl: BackendPriceHttpGatewayImpl,
+    ): BackendPriceHttpGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindBackendPriceCacheRepository(
+        impl: BackendPriceCacheRepositoryImpl,
+    ): BackendPriceCacheRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunityReadsFlagProvider(
+        impl: CommunityReadsFlagStore,
+    ): CommunityReadsFlagProvider
 
     companion object {
         @Provides

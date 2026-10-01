@@ -1,7 +1,11 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
+import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
+import com.anpfuel.domain.repository.BackendPriceCacheRepository
+import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.application.usecase.location.SearchMunicipalityUseCase
 import com.anpfuel.application.usecase.location.ResolveDeviceLocationUseCase
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
@@ -427,5 +431,17 @@ object UseCaseModule {
         priceDropNotificationRepository: PriceDropNotificationRepository,
     ): ConfigurePriceDropAlertUseCase = ConfigurePriceDropAlertUseCase(
         priceDropNotificationRepository = priceDropNotificationRepository,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetCommunityPriceGroupsUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        httpGateway: BackendPriceHttpGateway,
+        cache: BackendPriceCacheRepository,
+    ): GetCommunityPriceGroupsUseCase = GetCommunityPriceGroupsUseCase(
+        flagProvider = flagProvider,
+        httpGateway = httpGateway,
+        cache = cache,
     )
 }
