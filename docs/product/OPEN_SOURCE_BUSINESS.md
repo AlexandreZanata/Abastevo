@@ -1,6 +1,6 @@
 # Open source and business boundaries
 
-Status: planning. Preserve the existing MIT license and attribution. Product/brand “Postô” is provisional; do not rename packages, publish a new app identity or register marks/domains in this task.
+Status: planning. Preserve the existing MIT license and attribution. The project name is **abastevo**, selected on 2026-10-01; the maintainer supplied its logo. The README composition is pending visual approval. This documentation task does not rename packages, publish a new mobile app identity or register marks/domains.
 
 ## Free product and hosted value
 
@@ -30,4 +30,4 @@ Keep private: production database, personal data, evidence photos, signing keys,
 
 Play Billing integration is LATER; backend verifies purchase state against the provider and translates it to Entitlement. Never accept a client `isPremium` flag as authorization. Handle renewals, revocations, replay and reconciliation before selling hosted access. Account linking preserves contributor identity only after proofs; a paid account does not inherit unrelated reputation.
 
-Brand/trademark is separate from software license. [TRADEMARKS.md](../../TRADEMARKS.md) records provisional status without claiming an unverified registration. Revenue experiments must cover measured hosting/operation costs and maintain a credible free product. No prices or revenue forecasts are invented in this plan.
+Brand/trademark is separate from software license. [TRADEMARKS.md](../../TRADEMARKS.md) records the selected project identity without claiming an unverified registration. Revenue experiments must cover measured hosting/operation costs and maintain a credible free product. No prices or revenue forecasts are invented in this plan.

@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-01",
+  "task": "P00-T02",
+  "state": "LOCAL_DONE",
+  "method": "Native spline silhouettes traced from the original; manually reconstructed clipped cubic fold boundaries; source-fitted 11-stop linear gradients. No generative image tool and no embedded PNG.",
+  "tools": {
+    "outline_tracer": "VTracer 0.6.12",
+    "exporter": "Inkscape 1.2.2",
+    "gradient_fitting": "NumPy least squares; independent linear axis per visible face"
+  },
+  "fidelity_limit": "PNG does not contain original vector geometry. Curves and gradients are reconstructed, not a mathematically lossless recovery of the raster. Smooth vector fills intentionally omit raster noise and faint stray alpha pixels.",
+  "checks": {
+    "source_bytes_preserved": true,
+    "svg_native_no_raster_external_or_active_content": true,
+    "svg_android_geometry_and_gradient_parity": true,
+    "silhouette_iou_at_1254px_alpha_gt_128": 0.994204,
+    "svg_render_sizes_px": [
+      32,
+      64,
+      256,
+      1254,
+      4096
+    ],
+    "android_aapt2_compile_and_link": "PASS: build-tools 35.0.0, platform android-35, isolated minSdk 26 fixture",
+    "ios_pdf_embedded_raster_images": 0,
+    "device_runtime_tests": "NOT RUN; assets are not wired into the app"
+  },
+  "assets": {
+    "abastevo-logo-source.png": {
+      "bytes": 500614,
+      "sha256": "dc6daf86d19ddb6d0590ac71e11529b72b29cf40d0dc0b3fd88e72167ccd0760"
+    },
+    "abastevo-logo.svg": {
+      "bytes": 22799,
+      "sha256": "706fc79d36df750838256dab85f05791eeb8476dc031717dd6c3559c6d57fe0d"
+    },
+    "abastevo_logo_android.xml": {
+      "bytes": 38597,
+      "sha256": "bc4a98c849c6cf8a2f55cb7904a968e506f15568b00de576220c923ecb3de86d"
+    },
+    "abastevo-logo-ios.pdf": {
+      "bytes": 28886,
+      "sha256": "787346f326189dc566f503cc3af638808f3d22b2399551263fe1cbc635d15607"
+    },
+    "abastevo-logo-preview.png": {
+      "bytes": 17877,
+      "sha256": "67c70e18def96060dbb836f113aa9ee6248731e24db447479a9129ff3145aa94"
+    }
+  }
+}

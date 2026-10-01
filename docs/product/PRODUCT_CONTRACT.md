@@ -1,6 +1,6 @@
 # Product contract: backend first
 
-Status: target planning revised 2026-09-30; new functionality NOT IMPLEMENTED. Product name “Postô” is provisional.
+Status: target planning revised 2026-09-30; new functionality NOT IMPLEMENTED. Project name **abastevo** was selected by the maintainer on 2026-10-01; [brand identity](../brand/IDENTITY.md) owns the logo and README artwork status.
 
 ## Objective and release order
 
@@ -29,7 +29,7 @@ Existing Android regression may run anytime. New app work requires G09-LOCAL int
 
 ## SHOULD and LATER
 
-SHOULD after pilot: refine consensus from labelled review outcomes, improve geocoding coverage, optional integrity signals, richer operational summaries and additional localization. LATER: optional paid hosted backup/migration, cross-device sync, advanced alerts/statistics, Postô+, API commercial plans and fleets. No subscription machinery, multi-tenancy or enterprise services in the community MVP.
+SHOULD after pilot: refine consensus from labelled review outcomes, improve geocoding coverage, optional integrity signals, richer operational summaries and additional localization. LATER: optional paid hosted backup/migration, cross-device sync, advanced alerts/statistics, optional hosted benefits, API commercial plans and fleets. No subscription machinery, multi-tenancy or enterprise services in the community MVP.
 
 Payment buys hosted convenience; it never increases confidence or reputation. Do not move currently free features behind a paywall as part of integration. Selling “multiple vehicles” needs a product decision that preserves the existing free allowance of three.
 

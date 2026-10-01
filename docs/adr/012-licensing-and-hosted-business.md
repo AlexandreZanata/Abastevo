@@ -21,3 +21,5 @@ No removal of rights from historical MIT versions. DCO recommended for new contr
 ## Validation and follow-up
 
 Use the owning tasks in [ROADMAP](../../ROADMAP.md), specifications in [docs index](../README.md) and [decision log](../planning/DECISIONS.md). Record tested policy/tool versions before marking a release gate complete.
+
+2026-10-01 naming amendment: the maintainer selected **abastevo** and supplied the project logo. The earlier provisional naming decision is superseded by docs/brand/IDENTITY.md; software licensing and optional-hosted-service boundaries remain unchanged. README artwork still requires visual approval.

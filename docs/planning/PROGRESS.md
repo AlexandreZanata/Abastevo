@@ -18,3 +18,9 @@
 
 - [P01–P09 history](history/P01_P09_PROGRESS_20260930.md), [P14 task detail](history/P14_PROGRESS_20260930.md), [P15 task detail](history/P15_PROGRESS_20260930.md), [P09 local-only state](history/P09_LOCAL_PROGRESS_20260930.md), [original roadmap snapshot](history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md).
 - [Delivery workflow](DELIVERY_WORKFLOW.md), [CI cadence](CI_PLAN.md), [fast execution](FAST_EXECUTION.md), [functional plan](MOBILE_DELIVERY_PLAN.md).
+
+## P00 approved brand publication (2026-10-01)
+
+- P00-T01–T03 LOCAL_DONE / AWAITING_PHASE_MERGE; publication of approved V2 artwork, README and identity/vector assets authorized. Branch codex/phase-00-abastevo-brand-preview; base origin/main 047a347 merged normally; milestone 11; issues #63–#65; PR #66.
+- Task commits b3b7de6 / 9903f70 / 9dd10f4; evidence: [P00 publication record](../release-evidence/p00-brand-publication.md) and docs/brand/IDENTITY.md. Native SVGs, Android compile/link, zero-raster iOS PDF, hashes/links/visual/secret/whitespace checks PASS; no runtime changes.
+- Next: one local quick gate through finish + current-head/base required Quick verification → guarded merge → owned wiki mirror. Functional phase work stays separate; no tag/deploy.
