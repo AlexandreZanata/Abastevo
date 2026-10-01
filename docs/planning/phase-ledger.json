@@ -1,6 +1,6 @@
 {
-  "base_sha": "be680d1b3b6ec0a0bfd62a9945159ade8d920960",
-  "branch": "codex/phase-17-social-iphone-parity",
+  "base_sha": "047a347ab9bdf85b15817e8c039ead52bf5b9109",
+  "branch": "codex/phase-18-functional-acceptance",
   "issues": {
     "P09-T01A": 11,
     "P09-T04": 12,
@@ -36,12 +36,15 @@
     "P17-T01": 55,
     "P17-T02": 56,
     "P17-T03": 57,
-    "P17-T04": 58
+    "P17-T04": 58,
+    "P18-T01": 60,
+    "P18-T02": 61,
+    "P18-T03": 62
   },
-  "milestone": 9,
-  "milestone_title": "P17 \u2014 Social app functionality and iPhone parity",
-  "phase": "17",
-  "pr": 59,
+  "milestone": 10,
+  "milestone_title": "P18 \u2014 Functional app acceptance and performance",
+  "phase": "18",
+  "pr": null,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
