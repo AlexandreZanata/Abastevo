@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ANP Fuel Prices</string>
+    <string name="app_name">abastevo</string>
+
+    <!-- Price source badge (P19-T03): text plus icon, never color alone -->
+    <string name="source_badge_community">Comunidade</string>
+    <string name="source_badge_anp_dated">ANP • %1$s</string>
+    <string name="source_badge_unknown">Sem informação</string>
+    <string name="a11y_source_badge_community">Preço da comunidade. %1$s</string>
+    <string name="a11y_source_badge_anp_dated">Referência ANP datada. %1$s</string>
+    <string name="a11y_source_badge_unknown">Sem informação de preço. %1$s</string>
 
     <!-- Navigation -->
     <string name="nav_onboarding">Onboarding</string>

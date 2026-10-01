@@ -14,7 +14,8 @@
 - Required protection: Quick verification, current head/base and guarded merge; immediate critical risk tests, phase exit once, local quick through finish once, merged-SHA wiki once. No release evidence is inferred from plans.
 - User choices: comments/replies 280 Unicode scalar characters; free email-code/Google/Apple accounts; ANP is dated reference, community current projection primary; private audit photos all-copy maximum 24h; payment never changes trust/free social participation.
 - P19-T01 LOCAL_DONE (issue #71, commit `da637cb`, draft PR #75): inherited screen/contract inventory, toolchain pins, P18 gaps carried forward; `docs/mobile/p19-t01-baseline.md`. Validation: `git diff --check` PASS, secret scan PASS, `:app:assembleDebug` PASS.
-- P19-T02 LOCAL_DONE (issue #72): frozen Explorar/Comunidade/Perfil + Atualizar-preço IA, source/condition hierarchy grounded in `BackendPriceGroup`, state matrix; novice testing explicitly PENDING (protocol defined, no sessions run). Evidence: `docs/mobile/p19-t02-information-architecture.md`. Validation: `git diff --check` PASS, secret scan PASS, `:domain:test --rerun-tasks` 378/0-fail. Next: P19-T03.
+- P19-T02 LOCAL_DONE (issue #72, commit `93487bb`): frozen Explorar/Comunidade/Perfil + Atualizar-preço IA, source/condition hierarchy grounded in `BackendPriceGroup`, state matrix; novice testing explicitly PENDING. Evidence: `docs/mobile/p19-t02-information-architecture.md`. Validation: `git diff --check` PASS, secret scan PASS, `:domain:test --rerun-tasks` 378/0-fail.
+- P19-T03 LOCAL_DONE (issue #73): abastevo brand token aliases (no new hex), accessible `SourceTimeBadge` (text+icon+screen-reader, no domain rules), `app_name` → abastevo. Validation: RED→GREEN `SourceTimeBadgeTest` 3/0-fail, `:app:testDebugUnitTest` 115/0-fail, `:app:assembleDebug` PASS. Next: P19-T04.
 
 ## Preserved history
 
