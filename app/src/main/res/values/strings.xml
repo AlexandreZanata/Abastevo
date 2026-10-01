@@ -218,6 +218,8 @@
     <string name="stations_nearest_needs_location">Turn on location to find the nearest station.</string>
     <string name="stations_nearest_no_fix">No GPS signal right now. Turn on location and try again.</string>
     <string name="stations_nearest_failed">Could not find a nearby station. Check your connection and try again.</string>
+    <string name="stations_search_placeholder">Search by station name</string>
+    <string name="stations_search_no_match">No stations match \"%1$s\".</string>
     <string name="a11y_station_navigate">Navigate to %1$s</string>
     <string name="prices_view_stations">View station prices</string>
 

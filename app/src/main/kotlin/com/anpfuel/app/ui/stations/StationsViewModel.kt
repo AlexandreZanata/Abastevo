@@ -44,6 +44,8 @@ data class StationsUiState(
     val state: BrazilianState? = null,
     val surveyWeek: SurveyWeek? = null,
     val stations: List<StationPriceUiModel> = emptyList(),
+    val searchQuery: String = "",
+    val searchNoMatch: String? = null,
     val showDownloadPrompt: Boolean = false,
     val showEmpty: Boolean = false,
     val showNoLocation: Boolean = false,
@@ -76,11 +78,14 @@ class StationsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
+    private val savedStateHandleRef: SavedStateHandle = savedStateHandle
+
     private val _uiState = MutableStateFlow(
         StationsUiState(
             selectedFuelProduct = savedStateHandle.get<String>(ARG_FUEL_PRODUCT)
                 ?.let { runCatching { FuelProduct.valueOf(it) }.getOrNull() }
                 ?: FuelProduct.GASOLINE_REGULAR,
+            searchQuery = savedStateHandle.get<String>(ARG_SEARCH_QUERY).orEmpty(),
         ),
     )
     val uiState: StateFlow<StationsUiState> = _uiState.asStateFlow()
@@ -95,6 +100,13 @@ class StationsViewModel @Inject constructor(
     val locationPermissionRequest: SharedFlow<Unit> = _locationPermissionRequest.asSharedFlow()
 
     private val stationByCnpj = mutableMapOf<String, RetailStation>()
+
+    /**
+     * P20-T02 — last good domain list for local search and failed-refresh
+     * cache recovery. Never cleared on load start; replaced only on success.
+     */
+    private var lastStations: List<com.anpfuel.domain.model.StationPrice> = emptyList()
+    private var lastLocale: Locale? = null
 
     init {
         viewModelScope.launch {
@@ -112,8 +124,27 @@ class StationsViewModel @Inject constructor(
         if (_uiState.value.selectedFuelProduct == fuelProduct) {
             return
         }
-        _uiState.update { it.copy(selectedFuelProduct = fuelProduct) }
+        // Explicit filter change: drop the previous fuel's cache so stale
+        // prices are never shown under the new fuel chip.
+        lastStations = emptyList()
+        _uiState.update {
+            it.copy(
+                selectedFuelProduct = fuelProduct,
+                stations = emptyList(),
+                searchNoMatch = null,
+            )
+        }
         loadForFuel(fuelProduct, locale)
+    }
+
+    /**
+     * P20-T02 — local station-name search over the cached domain list.
+     * No reload: filter state survives rotation via [SavedStateHandle].
+     */
+    fun onSearchQueryChanged(query: String, locale: Locale) {
+        lastLocale = locale
+        savedStateHandleRef[ARG_SEARCH_QUERY] = query
+        renderStations(query)
     }
 
     /**
@@ -252,6 +283,9 @@ class StationsViewModel @Inject constructor(
 
     private fun loadForFuel(fuelProduct: FuelProduct, locale: Locale) {
         viewModelScope.launch {
+            lastLocale = locale
+            // P20-T02: keep the last good list visible while reloading so a
+            // failed refresh still shows cached data instead of an empty error.
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -260,7 +294,6 @@ class StationsViewModel @Inject constructor(
                     showDownloadPrompt = false,
                     showEmpty = false,
                     showNoLocation = false,
-                    stations = emptyList(),
                 )
             }
 
@@ -294,6 +327,7 @@ class StationsViewModel @Inject constructor(
                         outcome.stations.forEach { stationPrice ->
                             stationByCnpj[stationPrice.station.cnpj.digits] = stationPrice.station
                         }
+                        lastStations = outcome.stations
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -301,18 +335,15 @@ class StationsViewModel @Inject constructor(
                                 state = outcome.state,
                                 surveyWeek = outcome.surveyWeek,
                                 selectedFuelProduct = outcome.fuelProduct,
-                                stations = StationPriceUiMapper.toUiModels(
-                                    stations = outcome.stations,
-                                    locale = locale,
-                                    preferredState = outcome.state,
-                                    preferredMunicipality = outcome.municipality,
-                                ),
                                 showEmpty = outcome.isEmpty,
                             )
                         }
+                        renderStations(_uiState.value.searchQuery)
                     }
                 }
             }.onFailure { error ->
+                // P20-T02: failed refresh keeps cached stations; the error is
+                // shown above the list instead of replacing it.
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -324,7 +355,34 @@ class StationsViewModel @Inject constructor(
         }
     }
 
+    private fun renderStations(query: String) {
+        val locale = lastLocale ?: return
+        val state = _uiState.value
+        val filtered = com.anpfuel.domain.discovery.DiscoveryStationsRule.filterAndSort(
+            stations = lastStations,
+            search = query,
+            sort = com.anpfuel.domain.discovery.DiscoverySort.PRICE_ASC,
+        )
+        val trimmed = query.trim()
+        val noMatch = trimmed.length >=
+            com.anpfuel.domain.rule.MinimumSearchLengthRule.MIN_LENGTH &&
+            filtered.isEmpty()
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                searchNoMatch = if (noMatch) trimmed else null,
+                stations = StationPriceUiMapper.toUiModels(
+                    stations = filtered,
+                    locale = locale,
+                    preferredState = state.state,
+                    preferredMunicipality = state.municipality,
+                ),
+            )
+        }
+    }
+
     companion object {
         private const val ARG_FUEL_PRODUCT = "fuelProduct"
+        private const val ARG_SEARCH_QUERY = "discoverySearch"
     }
 }

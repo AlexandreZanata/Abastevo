@@ -19,6 +19,7 @@
 - P19-T03 LOCAL_DONE (issue #73, commit `771d5b1`): abastevo brand token aliases (no new hex), accessible `SourceTimeBadge` (text+icon+screen-reader, no domain rules), `app_name` → abastevo. Validation: RED→GREEN `SourceTimeBadgeTest` 3/0-fail, `:app:testDebugUnitTest` 115/0-fail, `:app:assembleDebug` PASS.
 - P19-T04 INTEGRATED (issue #74, PR #75 `b5ae5d7`): migrated navigation shell with frozen 3 tabs (Explorar/Comunidade/Perfil) + persistent primary action ("Atualizar preço" FAB), preserved legacy expert tools and deep link support.
 - P20-T01 LOCAL_DONE (issue #76): bounded `DiscoveryQuery` (city+fuel, search/sort/page 1..100, no GPS/account/photo fields) reusing `BackendPriceGroup` money/condition/dated-ANP semantics; no new backend index. Evidence: `docs/mobile/p20-t01-discovery-contract.md`. Validation: `DiscoveryQueryTest` 6/0-fail, `:domain:test` 384/0-fail, `git diff --check` PASS, secret scan PASS.
+- P20-T02 LOCAL_DONE (issue #77): list-first Explore (manual city + fuel chips + station-name search + price sort, no map) with failed-refresh cache recovery. Evidence: `docs/mobile/p20-t02-explore-journey.md`. Validation: `DiscoveryStationsRuleTest` 7/0-fail (RED→GREEN), `StationsViewModelTest` 7/0-fail, `:domain:test` 391/0-fail, `:app:testDebugUnitTest` 126/0-fail, `:app:assembleDebug` PASS, `git diff --check` PASS, secret scan PASS.
 
 ## Preserved history
 

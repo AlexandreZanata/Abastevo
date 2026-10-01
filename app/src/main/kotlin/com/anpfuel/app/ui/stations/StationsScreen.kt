@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -129,6 +130,7 @@ fun StationsScreen(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
         onFuelProductSelected = { fuelProduct -> viewModel.onFuelProductSelected(fuelProduct, locale) },
+        onSearchQueryChanged = { query -> viewModel.onSearchQueryChanged(query, locale) },
         onFindNearestStation = viewModel::onFindNearestStation,
         onDownloadStationDetail = { viewModel.downloadStationDetail(locale) },
         onRetry = { viewModel.load(locale) },
@@ -144,6 +146,7 @@ private fun StationsContent(
     uiState: StationsUiState,
     onNavigateBack: (() -> Unit)? = null,
     onFuelProductSelected: (FuelProduct) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
     onFindNearestStation: () -> Unit,
     onDownloadStationDetail: () -> Unit,
     onRetry: () -> Unit,
@@ -211,14 +214,32 @@ private fun StationsContent(
                 }
             }
 
+            if (!uiState.showNoLocation && !uiState.showDownloadPrompt) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = onSearchQueryChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(text = stringResource(R.string.stations_search_placeholder)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                        )
+                    },
+                    singleLine = true,
+                )
+            }
+
             when {
-                uiState.isLoading || uiState.isDownloading -> {
+                // P20-T02: a failed refresh keeps cached stations, so loading
+                // and error replace the list only when there is nothing cached.
+                (uiState.isLoading || uiState.isDownloading) && uiState.stations.isEmpty() -> {
                     LoadingState(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
-                uiState.error != null -> {
+                uiState.error != null && uiState.stations.isEmpty() -> {
                     ErrorState(
                         message = stringResource(AppErrorMapper.toStringRes(uiState.error)),
                         modifier = Modifier.fillMaxWidth(),
@@ -226,7 +247,7 @@ private fun StationsContent(
                     )
                 }
 
-                uiState.errorMessage != null -> {
+                uiState.errorMessage != null && uiState.stations.isEmpty() -> {
                     ErrorState(
                         message = uiState.errorMessage,
                         modifier = Modifier.fillMaxWidth(),
@@ -267,6 +288,16 @@ private fun StationsContent(
                     }
                 }
 
+                uiState.searchNoMatch != null -> {
+                    EmptyState(
+                        message = stringResource(
+                            R.string.stations_search_no_match,
+                            uiState.searchNoMatch,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
                 uiState.showEmpty -> {
                     EmptyState(
                         message = stringResource(R.string.stations_empty),
@@ -275,6 +306,19 @@ private fun StationsContent(
                 }
 
                 uiState.stations.isNotEmpty() -> {
+                    if (uiState.error != null) {
+                        ErrorState(
+                            message = stringResource(AppErrorMapper.toStringRes(uiState.error)),
+                            modifier = Modifier.fillMaxWidth(),
+                            onRetry = onRetry,
+                        )
+                    } else if (uiState.errorMessage != null) {
+                        ErrorState(
+                            message = uiState.errorMessage,
+                            modifier = Modifier.fillMaxWidth(),
+                            onRetry = onRetry,
+                        )
+                    }
                     if (uiState.municipality != null && uiState.state != null) {
                         Text(
                             text = stringResource(
@@ -377,6 +421,7 @@ private fun StationsScreenPreview() {
             ),
             onNavigateBack = {},
             onFuelProductSelected = {},
+            onSearchQueryChanged = {},
             onFindNearestStation = {},
             onDownloadStationDetail = {},
             onRetry = {},

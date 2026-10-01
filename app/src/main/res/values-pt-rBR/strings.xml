@@ -218,6 +218,8 @@
     <string name="stations_nearest_needs_location">Ative a localização para encontrar o posto mais próximo.</string>
     <string name="stations_nearest_no_fix">Sem sinal de GPS agora. Ative a localização e tente novamente.</string>
     <string name="stations_nearest_failed">Não foi possível encontrar um posto próximo. Verifique sua conexão e tente de novo.</string>
+    <string name="stations_search_placeholder">Buscar por nome do posto</string>
+    <string name="stations_search_no_match">Nenhum posto corresponde a \"%1$s\".</string>
     <string name="a11y_station_navigate">Ir para %1$s</string>
     <string name="prices_view_stations">Ver preços por posto</string>
 
