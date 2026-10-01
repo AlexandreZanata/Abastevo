@@ -23,19 +23,24 @@ import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.port.CommunityVoteFlagProvider
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
+import com.anpfuel.application.port.FeedbackFlagProvider
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.preferences.AnonymousContributionFlagStore
 import com.anpfuel.data.local.preferences.CaptureOcrFlagStore
 import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
 import com.anpfuel.data.local.preferences.CommunityVoteFlagStore
 import com.anpfuel.data.local.preferences.ContributionOutboxFlagStore
+import com.anpfuel.data.local.preferences.FeedbackFlagStore
 import com.anpfuel.data.remote.CommunityVoteHttpClient
 import com.anpfuel.data.remote.ContributionUploadHttpClient
+import com.anpfuel.data.remote.FeedbackHttpClient
 import com.anpfuel.data.repository.AddressGeocodeRepositoryImpl
 import com.anpfuel.data.repository.AveragePriceRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceCacheRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceHttpGatewayImpl
 import com.anpfuel.data.repository.CacheRepositoryImpl
+import com.anpfuel.data.repository.FeedbackCacheMemory
+import com.anpfuel.data.repository.FeedbackOutboxMemory
 import com.anpfuel.data.repository.RoomContributionOutboxRepository
 import com.anpfuel.data.repository.MunicipalityCatalogRepositoryImpl
 import com.anpfuel.data.repository.MunicipalitySearchRepositoryImpl
@@ -54,6 +59,9 @@ import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
+import com.anpfuel.domain.repository.FeedbackCacheRepository
+import com.anpfuel.domain.repository.FeedbackGateway
+import com.anpfuel.domain.repository.FeedbackOutboxPort
 import com.anpfuel.data.notification.PriceDropNotificationRepositoryImpl
 import com.anpfuel.domain.repository.AddressGeocodeRepository
 import com.anpfuel.domain.repository.ReverseGeocodeRepository
@@ -225,6 +233,30 @@ abstract class RepositoryModule {
     abstract fun bindCommunityVoteGateway(
         impl: CommunityVoteHttpClient,
     ): CommunityVoteGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindFeedbackFlagProvider(
+        impl: FeedbackFlagStore,
+    ): FeedbackFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindFeedbackGateway(
+        impl: FeedbackHttpClient,
+    ): FeedbackGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindFeedbackCacheRepository(
+        impl: FeedbackCacheMemory,
+    ): FeedbackCacheRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFeedbackOutboxPort(
+        impl: FeedbackOutboxMemory,
+    ): FeedbackOutboxPort
 
     @Binds
     @Singleton
