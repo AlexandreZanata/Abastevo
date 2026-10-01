@@ -6,5 +6,16 @@
   },
   "milestone": 11,
   "milestone_title": "P00 \u2014 Project identity documentation and visual preview",
-  "phase": "00"
+  "phase": "00",
+  "branch": "codex/phase-00-abastevo-brand-preview",
+  "base_sha": "047a347",
+  "pr": 66,
+  "publication_scope": [
+    "issues",
+    "phase_branch",
+    "pull_request",
+    "guarded_merge",
+    "wiki"
+  ],
+  "state": "LOCAL_DONE / AWAITING_PHASE_MERGE"
 }
