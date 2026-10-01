@@ -19,9 +19,11 @@ import com.anpfuel.data.local.preferences.DataStorePriceTableMetadataStore
 import com.anpfuel.data.local.preferences.PriceTableMetadataStore
 import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
+import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.preferences.AnonymousContributionFlagStore
+import com.anpfuel.data.local.preferences.CaptureOcrFlagStore
 import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
 import com.anpfuel.data.repository.AddressGeocodeRepositoryImpl
 import com.anpfuel.data.repository.AveragePriceRepositoryImpl
@@ -213,6 +215,12 @@ abstract class RepositoryModule {
     abstract fun bindAnonymousDeviceKeyPort(
         impl: AndroidAnonymousDeviceKeys,
     ): AnonymousDeviceKeyPort
+
+    @Binds
+    @Singleton
+    abstract fun bindCaptureOcrFlagProvider(
+        impl: CaptureOcrFlagStore,
+    ): CaptureOcrFlagProvider
 
     companion object {
         @Provides

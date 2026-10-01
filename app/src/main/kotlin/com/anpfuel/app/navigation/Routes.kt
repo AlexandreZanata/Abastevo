@@ -15,6 +15,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val VEHICLES = "vehicles"
     const val WEEK_PICKER = "week_picker"
+    const val CAPTURE = "capture"
 
     fun stations(fuelProduct: FuelProduct): String = "stations/${fuelProduct.name}"
 }

@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.anpfuel.app.capture.CaptureScreen
 import com.anpfuel.app.ui.auth.AuthRoute
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.home.HomeScreen
@@ -169,6 +170,9 @@ fun AnpNavGraph(
                     navController.navigate(Routes.WEEK_PICKER)
                 },
             )
+        }
+        composable(Routes.CAPTURE) {
+            CaptureScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Routes.WEEK_PICKER) {
             val canNavigateBack = navController.previousBackStackEntry != null
