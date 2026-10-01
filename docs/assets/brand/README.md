@@ -18,3 +18,8 @@ No runtime resources or app icons have been replaced. Platform optical tests and
 Inkscape 1.2.2 rendered the SVG at 32, 64, 256, 1254 and 4096 px. Visual inspection covered the original comparison, internal folds, transparent gaps and light/dark backgrounds. At 1254 px and alpha > 128, silhouette intersection-over-union is 0.994204; this measures outline overlap, not color fidelity. SVG safety, exact SVG/Android visible-path and gradient-stop parity, Android resource compile/link, PDF raster inventory and byte-for-byte original preservation passed. No iOS/Android device runtime test was run for these unused assets.
 
 [vector-provenance.json](vector-provenance.json) records method, tool versions, checks, sizes and SHA-256 hashes. README composition provenance and prompt remain separate. Refer to [identity documentation](../../brand/IDENTITY.md) and the repository's rights notices before redistribution.
+
+
+## Reference lettering / README V2 (P00-T03)
+
+[abastevo-wordmark.svg](abastevo-wordmark.svg) traces only the supplied ABASTEVO text into native paths with transparent background and navy fill; the reference logo is excluded. [abastevo-readme-banner-v2.svg](abastevo-readme-banner-v2.svg) combines that text with the unchanged original-logo SVG in the existing white horizontal banner. [PNG preview](abastevo-readme-banner-v2.png) is a render, not the editable master. [Wordmark provenance](wordmark-provenance.json) records source identity and validation. Uppercase is specific to this artwork; the project name in prose remains lowercase. V2 is approved for publication; V1 remains preserved as historical composition evidence.

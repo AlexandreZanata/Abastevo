@@ -1,3 +1,5 @@
+![ABASTEVO — blue and green logo with reference lettering](docs/assets/brand/abastevo-readme-banner-v2.svg)
+
 # abastevo
 
 This repository starts from [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. The existing Android app is preserved. The project name is **abastevo**, selected by the maintainer on 2026-10-01. See the [brand identity and README artwork proposal](docs/brand/IDENTITY.md).

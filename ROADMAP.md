@@ -56,6 +56,19 @@ Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved id
 - **Rollback/Recovery:** Keep original PNG and use versioned generated filenames; do not replace active launcher assets.
 - **Definition of done:** Assets validated and saved locally with provenance; runtime adoption and remote publication remain separate.
 
+<a id="p00-t03"></a>
+
+### P00-T03 — Reference lettering and native-vector README composition
+
+- **ID / priority / status:** P00-T03 / MUST / LOCAL_DONE — APPROVED_FOR_PUBLICATION.
+- **Goal:** Publish reference lettering and the combined native-vector README composition.
+- **Dependencies:** P00-T02; maintainer publication approval 2026-10-01.
+- **Acceptance criteria:** Eight faithful uppercase glyphs, native paths, unchanged logo geometry, approved V2 SVG embedded in README.
+- **Validation commands:** SVG safety/geometry/hash checks; Inkscape renders; local links and git diff --check; phase quick gate through finish.
+- **Scope:** Trace only the reference ABASTEVO text; combine it with the unchanged P00-T02 SVG logo in the existing horizontal README layout. No source/runtime changes or remote publication.
+- **Acceptance/checks:** Preserve eight uppercase glyphs/counters, native paths without raster/font/external content, unchanged logo hash, render/visual comparison, local links, whitespace and scoped secret review. Present the revised preview for visual approval.
+- **Evidence:** docs/brand/IDENTITY.md and docs/assets/brand wordmark provenance; no backend/mobile aggregate tests for artwork.
+
 ## P01 — Backend foundations
 
 Priority: **MUST**. Entry: No earlier implementation gate; planning baseline exists..

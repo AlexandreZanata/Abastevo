@@ -28,3 +28,5 @@
 
 - P00-T02 LOCAL_DONE on the same isolated branch/base (uncommitted): native SVG (~23 KB), Android XML and iOS vector PDF saved under docs/assets/brand; original PNG preserved. Evidence/imports: docs/assets/brand/README.md and vector-provenance.json.
 - Vector checks: 32–4096 px render/visual inspection, SVG safety, SVG/Android path-gradient parity, Android aapt2 compile/link and PDF zero-raster inventory PASS; no device/runtime integration. Next: review brand preview, then authorized publication separately; banner approval remains pending.
+
+- P00-T03 LOCAL_PREVIEW_DONE / AWAITING_VISUAL_APPROVAL (same isolated branch; uncommitted): reference uppercase text traced as independent SVG; V2 README combines both native SVG assets. Original-logo bytes/geometry unchanged; SVG safety, renders and glyph IoU 0.990820 PASS. Evidence: docs/brand/IDENTITY.md / wordmark-provenance.json. No remote publication or runtime change.
