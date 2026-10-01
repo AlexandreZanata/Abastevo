@@ -17,5 +17,14 @@
     "guarded_merge",
     "wiki"
   ],
-  "state": "LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "INTEGRATED / WIKI_SYNCED",
+  "merged_sha": "fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9",
+  "tested_head": "044af08825510138c5daecb82ef0d16cb2e2cde0",
+  "tested_base": "047a347ab9bdf85b15817e8c039ead52bf5b9109",
+  "required_check": "Quick verification SUCCESS",
+  "check_run": "https://github.com/AlexandreZanata/brazil-fuel-prices/actions/runs/36892213676",
+  "local_quick": "PASS (docs-only, run once by finish)",
+  "wiki_commit": "0cf4dce",
+  "cleanup": "phase branch deleted locally/remotely; worktree retained detached",
+  "post_merge_record": "Recorded on next authorized P18 branch"
 }

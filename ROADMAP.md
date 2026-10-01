@@ -2147,13 +2147,13 @@ Exit gate: **G17: every required feature works on Android and Swift/iOS with sha
 
 Priority: **MUST**. Entry: G17.
 
-Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; real G09 release may now begin.**
+Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; real G09 release may now begin.** Current state 2026-10-01: local validation slice prepared for integration in PR #67; G18 NOT_ACCEPTED (missing native/device proof).
 
 <a id="p18-t01"></a>
 
 ### P18-T01 — Feature matrix and final local acceptance
 
-- **ID / priority / status:** P18-T01 / MUST / PLANNED (NOT IMPLEMENTED).
+- **ID / priority / status:** P18-T01 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
 - **Goal:** Verify every imported and new requirement with actual result manifest
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
@@ -2171,7 +2171,7 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 
 ### P18-T02 — Performance and memory tuning
 
-- **ID / priority / status:** P18-T02 / MUST / PLANNED (NOT IMPLEMENTED).
+- **ID / priority / status:** P18-T02 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
 - **Goal:** Meet frozen budgets with bounded algorithms and native processing
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
@@ -2189,7 +2189,7 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 
 ### P18-T03 — Security compatibility and functional sign-off
 
-- **ID / priority / status:** P18-T03 / MUST / PLANNED (NOT IMPLEMENTED).
+- **ID / priority / status:** P18-T03 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
 - **Goal:** Hand off a functional app candidate to deferred production release
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
