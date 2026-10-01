@@ -194,4 +194,24 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `contribution_outbox` (
+                    `command_id` TEXT NOT NULL,
+                    `kind` TEXT NOT NULL,
+                    `payload` TEXT NOT NULL,
+                    `revision` INTEGER NOT NULL,
+                    `state` TEXT NOT NULL,
+                    `attempts` INTEGER NOT NULL,
+                    `next_eligible_tick` INTEGER NOT NULL,
+                    `nonce` TEXT NOT NULL,
+                    PRIMARY KEY(`command_id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

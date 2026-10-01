@@ -21,15 +21,19 @@ import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.preferences.AnonymousContributionFlagStore
 import com.anpfuel.data.local.preferences.CaptureOcrFlagStore
 import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
+import com.anpfuel.data.local.preferences.ContributionOutboxFlagStore
+import com.anpfuel.data.remote.ContributionUploadHttpClient
 import com.anpfuel.data.repository.AddressGeocodeRepositoryImpl
 import com.anpfuel.data.repository.AveragePriceRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceCacheRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceHttpGatewayImpl
 import com.anpfuel.data.repository.CacheRepositoryImpl
+import com.anpfuel.data.repository.RoomContributionOutboxRepository
 import com.anpfuel.data.repository.MunicipalityCatalogRepositoryImpl
 import com.anpfuel.data.repository.MunicipalitySearchRepositoryImpl
 import com.anpfuel.data.repository.NetworkConnectivityRepositoryImpl
@@ -44,6 +48,8 @@ import com.anpfuel.data.repository.ReverseGeocodeRepositoryImpl
 import com.anpfuel.data.repository.VehicleRepositoryImpl
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.ContributionOutboxRepository
+import com.anpfuel.domain.repository.ContributionSubmissionGateway
 import com.anpfuel.data.notification.PriceDropNotificationRepositoryImpl
 import com.anpfuel.domain.repository.AddressGeocodeRepository
 import com.anpfuel.domain.repository.ReverseGeocodeRepository
@@ -221,6 +227,24 @@ abstract class RepositoryModule {
     abstract fun bindCaptureOcrFlagProvider(
         impl: CaptureOcrFlagStore,
     ): CaptureOcrFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindContributionOutboxFlagProvider(
+        impl: ContributionOutboxFlagStore,
+    ): ContributionOutboxFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindContributionOutboxRepository(
+        impl: RoomContributionOutboxRepository,
+    ): ContributionOutboxRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindContributionSubmissionGateway(
+        impl: ContributionUploadHttpClient,
+    ): ContributionSubmissionGateway
 
     companion object {
         @Provides

@@ -4,14 +4,17 @@ import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.application.port.OcrPort
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
+import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
 import com.anpfuel.application.usecase.identity.AnonymousDeviceFlow
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.application.usecase.location.SearchMunicipalityUseCase
 import com.anpfuel.application.usecase.location.ResolveDeviceLocationUseCase
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
@@ -469,5 +472,15 @@ object UseCaseModule {
     ): ConfirmPriceCaptureUseCase = ConfirmPriceCaptureUseCase(
         flagProvider = flagProvider,
         ocr = ocr,
+    )
+
+    @Provides
+    @Singleton
+    fun provideEnqueueContributionUseCase(
+        flagProvider: ContributionOutboxFlagProvider,
+        outbox: ContributionOutboxRepository,
+    ): EnqueueContributionUseCase = EnqueueContributionUseCase(
+        flagProvider = flagProvider,
+        outbox = outbox,
     )
 }
