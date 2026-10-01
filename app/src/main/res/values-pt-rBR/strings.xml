@@ -34,6 +34,9 @@
     <string name="community_action_contribute">Colaborar com preço</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
+    <string name="community_moderation_title">Denúncias e moderação</string>
+    <string name="community_moderation_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas — moderadores restritos revisam cada caso com motivos registrados.</string>
+    <string name="community_moderation_appeal">Discorda de uma decisão? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado, o histórico nunca é editado.</string>
 
     <!-- Profile screen (P19-T04) -->
     <string name="profile_screen_title">Perfil</string>

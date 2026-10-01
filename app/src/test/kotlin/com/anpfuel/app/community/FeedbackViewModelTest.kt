@@ -30,14 +30,17 @@ import org.junit.jupiter.api.Test
 
 /**
  * P17-T02 RED: Android social flows through the shared use cases;
- * P22-T02 wires the 1–5 personal stars the same way.
+ * P22-T02 wires the 1–5 personal stars the same way; P22-T03 locks
+ * the report journey (received without touching content, quota
+ * retry, blank-reason guard).
  *
  * Flag OFF performs no IO; blank sessions surface sign-in without
- * IO; over-280 text and out-of-range stars are rejected locally
- * without IO; stale revisions and denied self-votes surface typed
- * rejections for rollback; outages queue with the same op id on
- * retry (no fake success, no amplification). Rating aggregates land
- * as exact counts through the public read, which needs no login.
+ * IO; over-280 text, out-of-range stars and blank report reasons are
+ * rejected locally without IO; stale revisions and denied self-votes
+ * surface typed rejections for rollback; outages queue with the same
+ * op id on retry (no fake success, no amplification). Rating
+ * aggregates land as exact counts through the public read, which
+ * needs no login.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedbackViewModelTest {
@@ -269,8 +272,7 @@ class FeedbackViewModelTest {
     }
 
     @Test
-    fun `disabled flag performs no rating io`() = runTest {
-        enabled = false
+    fun `disabled flag performs no rating io`() = runTest {        enabled = false
         val vm = FeedbackViewModel(writes, reads, flags)
 
         vm.prepare(stationId = "s-1", product = "GASOLINE", accountId = "acc-1")
@@ -283,5 +285,49 @@ class FeedbackViewModelTest {
         coVerify(exactly = 0) { writes.rate(any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { writes.deleteRating(any(), any(), any(), any()) }
         coVerify(exactly = 0) { reads.stats(any(), any()) }
+    }
+
+    @Test
+    fun `report success lands reported without touching content`() = runTest {
+        enabled = true
+        coEvery { writes.report(any(), any(), any(), any()) } returns
+            FeedbackWriteOutcome.Reported
+        val vm = preparedVm()
+
+        vm.report("c-1", "spam")
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value is FeedbackUiState.Reported)
+        coVerify(exactly = 0) { writes.deleteComment(any(), any(), any()) }
+        coVerify(exactly = 0) { writes.deleteRating(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `report quota surfaces retryable rejection`() = runTest {
+        enabled = true
+        coEvery { writes.report(any(), any(), any(), any()) } returns
+            FeedbackWriteOutcome.Rejected(FeedbackRejectKind.QUOTA_EXCEEDED, "slow down")
+        val vm = preparedVm()
+
+        vm.report("c-1", "spam")
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertTrue(state is FeedbackUiState.Rejected)
+        assertEquals("QUOTA", (state as FeedbackUiState.Rejected).kindLabel)
+    }
+
+    @Test
+    fun `blank report reason rejected locally without io`() = runTest {
+        enabled = true
+        val vm = preparedVm()
+
+        vm.report("c-1", "   ")
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertTrue(state is FeedbackUiState.Rejected)
+        assertEquals("INVALID", (state as FeedbackUiState.Rejected).kindLabel)
+        coVerify(exactly = 0) { writes.report(any(), any(), any(), any()) }
     }
 }

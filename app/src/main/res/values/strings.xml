@@ -34,6 +34,9 @@
     <string name="community_action_contribute">Contribute price</string>
     <string name="community_rules_title">Community verification rules</string>
     <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
+    <string name="community_moderation_title">Reporting and moderation</string>
+    <string name="community_moderation_body">Any active account can report abuse. Reports never delete content by themselves — restricted moderators review every case with recorded reasons.</string>
+    <string name="community_moderation_appeal">Disagree with a decision? Report again with the new reason — appeals reopen as a new reviewed case, history is never edited.</string>
 
     <!-- Profile screen (P19-T04) -->
     <string name="profile_screen_title">Profile</string>
