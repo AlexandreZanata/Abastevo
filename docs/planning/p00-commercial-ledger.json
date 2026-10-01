@@ -1,0 +1,21 @@
+{
+  "phase": "00",
+  "branch": "codex/phase-00-app-icons",
+  "base_sha": "9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96",
+  "milestone": 12,
+  "issues": {
+    "P00-T04": 68,
+    "P00-T05": 69
+  },
+  "publication_scope": [
+    "current_issues",
+    "phase_branch",
+    "draft_pr",
+    "guarded_merge",
+    "wiki_home_explicit_adoption"
+  ],
+  "state": "LOCAL_DONE_AWAITING_PHASE_INTEGRATION",
+  "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
+  "release": "G09_NOT_CERTIFIED",
+  "evidence": "docs/release-evidence/p00-app-icons-commercial-plan.md"
+}

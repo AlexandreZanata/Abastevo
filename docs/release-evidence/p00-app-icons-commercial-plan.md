@@ -14,7 +14,14 @@ Scope authorized on 2026-10-01: finish the approved A launcher icon, plan the co
 
 ## P00-T05 — planning and wiki Home
 
-Pending planning task: commercial community UX, phased backend/app contracts, Android release prerequisites, preserved iOS backlog and explicit Home adoption. This task does not implement the planned redesigned experience or certify production.
+Issue #69, LOCAL_DONE (planning only). Commercial experience contract B-BR-C01–C06 / BUC-C01–C05, P19–P24 with 24 bounded tasks, ADR-016, explicit iOS archive, current P18 merge reconciliation, README and source-selected wiki Home alignment.
+
+- Changed Markdown local destinations, unique task IDs/anchors/dependency order, ledger JSON and preservation of imported README section PASS.
+- `bash scripts/tests/test-wiki.sh`: 39 passed, 0 failed; source-SHA-selected overview, guarded owned pages and manual-page safety preserved.
+- Previous manual Home exact bytes/hash match the archived source copy; one-time adoption authorized explicitly, unrelated manual pages excluded.
+- Whitespace and scoped secret-surface review PASS. No backend behavior change in this task and no future phase issues created.
+- Historical full G18 remains unaccepted; Android/backend real G09 deferred until actual G24 and full production evidence. iOS native work is deferred until a new explicit request; prepared assets preserved.
+- This task does not implement the planned redesigned experience or certify production.
 
 ## Integration
 

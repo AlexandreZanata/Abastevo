@@ -1,5 +1,7 @@
 # Functional multiplatform delivery plan
 
+Current scope update (2026-10-01): [ADR-016](../adr/016-android-commercial-community-ios-deferred.md) supersedes the both-platform release dependency and old-design restriction. P19–P24 plan Android commercial delivery; iOS is archived with explicit resumption only. Historical G18 remains unaccepted. Full G09 evidence is retained. See [commercial plan](../planning/COMMERCIAL_COMMUNITY_PLAN.md).
+
 Status: PLANNED, 2026-09-30. This delivery defines functionality and testable boundaries; it does not implement new app/account/feedback/media behavior. [ADR-014](../adr/014-functional-app-before-production-release.md) changes the release order; [ADR-015](../adr/015-kotlin-multiplatform-shared-domain.md) defines Kotlin/Swift boundaries. Authoritative microtasks and acceptance are in [ROADMAP](../../ROADMAP.md).
 
 ## Entry and sequence

@@ -1,18 +1,18 @@
-# Backend-first implementation roadmap
+# abastevo implementation roadmap
 
-Planning revision: 2026-09-30. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.
+Planning revision: 2026-10-01; [commercial community plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and ADR-016 own current direction. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.
 
 ## How to execute
 
 Read [AGENTS](AGENTS.md), [FAST_EXECUTION](docs/planning/FAST_EXECUTION.md), current [PROGRESS](docs/planning/PROGRESS.md) and the selected task. [DELIVERY_WORKFLOW](docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](docs/planning/CI_PLAN.md) govern one issue/atomic commit per task and one milestone/branch/draft PR per phase. Helpers and required Quick verification are active; protection was reverified on 2026-09-30. Historical task labels remain as original estimates where not individually reconciled; Git and linked evidence determine actual state.
 
-[Functional multiplatform delivery](docs/planning/MOBILE_DELIVERY_PLAN.md) is the new plan. **G09 is a deferred real-production RELEASE after G18, not an app-entry blocker.** App work requires **G09-LOCAL**: the locally validated corrections integrated with current-head required CI. Free email-code/Google/Apple accounts and 280-character comments are user-confirmed; future functionality is NOT IMPLEMENTED merely by this plan. Existing Android regression remains allowed at any time.
+[Functional multiplatform delivery](docs/planning/MOBILE_DELIVERY_PLAN.md) is the new plan. **G09 is a deferred real-production RELEASE after G24-ANDROID-COMMERCIAL for Android/backend scope, not an app-entry blocker (ADR-016).** Historical full G18 remains unaccepted; iOS is archived until a new explicit user request. App work requires **G09-LOCAL**: the locally validated corrections integrated with current-head required CI. Free email-code/Google/Apple accounts and 280-character comments are user-confirmed; future functionality is NOT IMPLEMENTED merely by this plan. Existing Android regression remains allowed at any time.
 
 Tests have three levels: immediate targeted task/risk checks; specialized phase exit plus one quick local/current-head remote gate; full immutable-candidate production certification only at actual G09. Critical auth/money/privacy/SQL/migration/job negative/concurrency/PostGIS checks never wait. DOD-1 is task acceptance, not release certification. No agent delegation is implied.
 
 ## Phase order
 
-Completed backend phase history remains P01–P08 → P09 local rehearsal/corrections. Next: **G09-LOCAL → P12 → P13 → P14 → P15 → P16 → P10 local integration → P17 → P18/G18 → P09/G09 real production release → P10-T09 public pilot → P11 optional paid benefits**. Preserve IDs; dependency order controls execution. P11-T02 account linking is superseded by free P13. No real production deployment or stable release is authorized by a merged plan.
+Completed backend phase history remains P01–P08 → P09 local rehearsal/corrections. Next: **G09-LOCAL → P12 → P13 → P14 → P15 → P16 → P10 local integration → P17 → P18 local integration (full G18 unaccepted; iOS deferred) → P19 → P20 → P21 → P22 → P23 → P24/G24-ANDROID-COMMERCIAL → P09/G09 scoped real production release → P10-T09 public pilot → P11 optional paid benefits**. Preserve IDs; dependency order controls execution. P11-T02 account linking is superseded by free P13. No real production deployment or stable release is authorized by a merged plan.
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
 
@@ -80,6 +80,18 @@ Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved id
 - **Acceptance criteria:** Master bytes/shape/gradients preserved; adaptive safe-zone masks do not clip the A; Android compiles/links; iOS entries have exact dimensions and no alpha; native iOS build remains explicitly unverified.
 - **Validation commands:** Deterministic vector export + structural/raster dimension/crop checks; :app:assembleDebug and affected resource lint; git diff --check/secret review. No backend suite for icon assets.
 - **Evidence:** docs/brand/APP_ICONS.md; runtime scope excludes permissions/data/identifiers.
+
+<a id="p00-t05"></a>
+
+### P00-T05 — Commercial community plan, explicit iOS archive and wiki Home
+
+- **ID / priority / status:** P00-T05 / MUST / LOCAL_DONE — PLANNING_ONLY.
+- **Goal:** Document Android-first commercial community experience, new bounded phases and explicit iOS resumption policy; align wiki Home with README.
+- **Scope:** Product/ADR/ROADMAP/current progress/release dependency and approved one-time Home adoption. No future social UX implementation, deployment or acceptance claim.
+- **Dependencies:** Integrated P18 local slice PR #67, P00-T04; explicit user request 2026-10-01.
+- **Acceptance criteria:** Community primary/ANP reference, temporary private photos, free social rules and preserved tools explicit; P19–P24 tasks/gates; iOS archived until explicit request; historical G18 not falsely accepted; README/Home share banner/organization and preserve manual wiki pages.
+- **Validation commands:** Local links/task/dependency/state consistency; scripts/tests/test-wiki.sh for selected overview; git diff --check and scoped secret review; required phase quick/current-head CI through finish; merged-SHA Home verification.
+- **Evidence:** docs/planning/COMMERCIAL_COMMUNITY_PLAN.md, docs/planning/archive/IOS_DEFERRED.md, docs/planning/WIKI_HOME_ADOPTION.md and current batch evidence.
 
 ## P01 — Backend foundations
 
@@ -1509,7 +1521,7 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 - **Why:** Validate useful data before monetization.
 - **Inputs:** docs/MIGRATION_PLAN.md, docs/user-business-logic.md; G10 test evidence; product metrics plan.
 - **Files/areas expected:** `docs/product/pilot-results.md; runtime rollout configuration` (area list, not a literal combined path).
-- **Dependencies:** P10-T08, G18 and RELEASE_CERTIFIED real G09; all applicable phase gates.
+- **Dependencies:** P10-T08, G24-ANDROID-COMMERCIAL and RELEASE_CERTIFIED scoped real G09; all applicable phase gates.
 - **Tests first:** Rehearse flag off/rollback; verify aggregate metrics without tracking.
 - **Implementation outline:** Agree cohort/capacity/window, monitor freshness/disputes/cost and review outcomes.
 - **Acceptance criteria:** Pilot report states evidence, limits and next product decisions.
@@ -2159,13 +2171,13 @@ Exit gate: **G17: every required feature works on Android and Swift/iOS with sha
 
 Priority: **MUST**. Entry: G17.
 
-Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; real G09 release may now begin.** Current state 2026-10-01: local validation slice prepared for integration in PR #67; G18 NOT_ACCEPTED (missing native/device proof).
+Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; real G09 release may now begin.** Historical full G18 remains NOT_ACCEPTED. Current state 2026-10-01: local validation slice INTEGRATED via PR #67 (`9c090c6`); native iOS is archived until explicit resumption. Outstanding Android/backend proof carries into P21/P24, not waived. ADR-016 replaces the both-platform prerequisite for the scoped Android commercial release only.
 
 <a id="p18-t01"></a>
 
 ### P18-T01 — Feature matrix and final local acceptance
 
-- **ID / priority / status:** P18-T01 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
+- **ID / priority / status:** P18-T01 / MUST / LOCAL_VALIDATION_IMPLEMENTED — LOCAL_SLICE_INTEGRATED / FULL_G18_NOT_ACCEPTED (PR #67; iOS deferred).
 - **Goal:** Verify every imported and new requirement with actual result manifest
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
@@ -2183,7 +2195,7 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 
 ### P18-T02 — Performance and memory tuning
 
-- **ID / priority / status:** P18-T02 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
+- **ID / priority / status:** P18-T02 / MUST / LOCAL_VALIDATION_IMPLEMENTED — LOCAL_SLICE_INTEGRATED / FULL_G18_NOT_ACCEPTED (PR #67; iOS deferred).
 - **Goal:** Meet frozen budgets with bounded algorithms and native processing
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
@@ -2201,7 +2213,7 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 
 ### P18-T03 — Security compatibility and functional sign-off
 
-- **ID / priority / status:** P18-T03 / MUST / LOCAL_VALIDATION_IMPLEMENTED — FULL_ACCEPTANCE_BLOCKED (device/native evidence; PR #67).
+- **ID / priority / status:** P18-T03 / MUST / LOCAL_VALIDATION_IMPLEMENTED — LOCAL_SLICE_INTEGRATED / FULL_G18_NOT_ACCEPTED (PR #67; iOS deferred).
 - **Goal:** Hand off a functional app candidate to deferred production release
 - **Why:** Deliver the bounded functional requirement with explicit domain and native boundaries.
 - **Inputs:** docs/planning/MOBILE_DELIVERY_PLAN.md; ADR-014/ADR-015; docs/product/STATION_FUEL_FEEDBACK.md; docs/security/FREE_ACCOUNT_ACCESS.md; docs/security/LOCAL_MEDIA_LOCATION_POLICY.md.
@@ -2228,4 +2240,392 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 - [ ] Runtime retention/export/erasure and user notice/legal review are complete.
 - [ ] Load/fault/cache tests meet accepted capacity and freshness budgets.
 - [ ] Operator can deploy, monitor, moderate, revoke, rollback and restore using tested runbooks.
-- [ ] G18 functional Android/iOS acceptance is integrated; release evidence signed off; public P10-T09 pilot may start.
+- [ ] G24-ANDROID-COMMERCIAL functional Android acceptance is integrated; all required scoped G09 production evidence signed off before P10-T09 pilot. Historical G18 remains unaccepted; iOS deferred explicitly (ADR-016).
+
+## Commercial Android phases — PLANNED
+
+[ADR-016](docs/adr/016-android-commercial-community-ios-deferred.md) governs explicit iOS deferral. Detailed tasks/protocols/risks are in [COMMERCIAL_COMMUNITY_PLAN](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md); none is runtime-complete merely because this plan was merged. Open only one current phase after authorization.
+
+## P19 — Product and identity foundation
+
+Priority: **MUST**. Entry: integrated Android/local backend, approved brand. Exit: **G19: commercial journey/theme/navigation foundation accepted**. State: PLANNED.
+
+<a id="p19-t01"></a>
+
+### P19-T01 — Inherited feature and toolchain baseline
+
+- **ID / priority / status:** P19-T01 / MUST / PLANNED.
+- **Goal:** Inventory actual implemented screens/contracts, preserve free/offline tools, audit supported toolchains and reconcile P18 Android gaps.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** integrated Android/local backend, approved brand; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p19-t02"></a>
+
+### P19-T02 — Community information architecture and usability prototype
+
+- **ID / priority / status:** P19-T02 / MUST / PLANNED.
+- **Goal:** Freeze B-BR-C01–C06/BUC-C01–C05 and validate guest discovery, progressive permissions, source/condition hierarchy and proposed navigation with novice drivers.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P19-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p19-t03"></a>
+
+### P19-T03 — Android brand and accessible component foundation
+
+- **ID / priority / status:** P19-T03 / MUST / PLANNED.
+- **Goal:** Apply approved identity/theme/display name and accessible reusable UI states without business rules in presentation.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P19-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p19-t04"></a>
+
+### P19-T04 — Navigation shell and preserved expert tools
+
+- **ID / priority / status:** P19-T04 / MUST / PLANNED.
+- **Goal:** Implement proposed shell, contribution entry point and secondary legacy tools, preserving deep-link/back/offline/auth state.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P19-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+## P20 — Community-first price discovery
+
+Priority: **MUST**. Entry: G19. Exit: **G20: community discovery and station detail integrated with honest price/source states**. State: PLANNED.
+
+<a id="p20-t01"></a>
+
+### P20-T01 — Bounded discovery contract and read model
+
+- **ID / priority / status:** P20-T01 / MUST / PLANNED.
+- **Goal:** Reuse current projection; add only required paginated/indexed reads with exact-money/condition/source semantics and private-field protection.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** G19; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p20-t02"></a>
+
+### P20-T02 — Explore city and fuel journey
+
+- **ID / priority / status:** P20-T02 / MUST / PLANNED.
+- **Goal:** Implement simple list-first city/fuel/search/filter/sort with optional audited map, manual-city and offline-cache recovery.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P20-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p20-t03"></a>
+
+### P20-T03 — Station detail and dated ANP reference
+
+- **ID / priority / status:** P20-T03 / MUST / PLANNED.
+- **Goal:** Prioritize supported community cards/actions; show ANP dated secondary reference and explicit missing/stale/disputed states.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P20-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p20-t04"></a>
+
+### P20-T04 — Discovery acceptance and legacy regression
+
+- **ID / priority / status:** P20-T04 / MUST / PLANNED.
+- **Goal:** Prove local-service discovery, conditional-price comprehension, accessibility and retained expert/offline tools.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P20-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+## P21 — Photo-led contribution journey
+
+Priority: **MUST**. Entry: G20. Exit: **G21: Android capture/review/submit/status and local private-photo expiry proven**. State: PLANNED.
+
+<a id="p21-t01"></a>
+
+### P21-T01 — Contribution state and evidence contract
+
+- **ID / priority / status:** P21-T01 / MUST / PLANNED.
+- **Goal:** Freeze photo-led UX states while preserving optional-evidence signed API compatibility, server timestamps and authoritative consensus.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** G20; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p21-t02"></a>
+
+### P21-T02 — Lightweight camera and editable price review
+
+- **ID / priority / status:** P21-T02 / MUST / PLANNED.
+- **Goal:** Integrate camera/encoder/OCR review and backend sanitizer, measuring low-end-device size/time/heap against existing P15 budgets.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P21-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p21-t03"></a>
+
+### P21-T03 — Outbox replay and contributor status
+
+- **ID / priority / status:** P21-T03 / MUST / PLANNED.
+- **Goal:** Integrate stable-ID submission, retries/cancellation/private owner status and honest location integrity with failure/concurrency tests.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P21-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p21-t04"></a>
+
+### P21-T04 — Local storage and all-copy expiry evidence
+
+- **ID / priority / status:** P21-T04 / MUST / PLANNED.
+- **Goal:** Resolve P18 local S3-compatible environment gap and prove object/cache/temp/retry/restore/access expiry and failure retry within 24h.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P21-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+## P22 — Social experience and moderation
+
+Priority: **MUST**. Entry: G21 and integrated P14/P17 contracts. Exit: **G22: safe free-account station/fuel participation and operator moderation**. State: PLANNED.
+
+<a id="p22-t01"></a>
+
+### P22-T01 — Progressive free account journey
+
+- **ID / priority / status:** P22-T01 / MUST / PLANNED.
+- **Goal:** Integrate email-code/Google/Apple supported Android provider flows, recovery/rights and secure sessions with real provider proof.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** G21 and integrated P14/P17 contracts; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p22-t02"></a>
+
+### P22-T02 — Ratings comments replies and validity votes
+
+- **ID / priority / status:** P22-T02 / MUST / PLANNED.
+- **Goal:** Integrate stars/280 Unicode scalar comments/one-level replies/revision-bound votes; separate community agreement from price confidence.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P22-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p22-t03"></a>
+
+### P22-T03 — Reports moderation and support
+
+- **ID / priority / status:** P22-T03 / MUST / PLANNED.
+- **Goal:** Integrate authorized report/review/status/support/appeal workflow, auditable outcomes and staffing; define any blocking/muting contract before code.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P22-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p22-t04"></a>
+
+### P22-T04 — Social abuse and lifecycle acceptance
+
+- **ID / priority / status:** P22-T04 / MUST / PLANNED.
+- **Goal:** Prove ownership/rate-limit/revision/offline/erasure/concurrency/moderation and no private-field disclosure against local services.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P22-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+## P23 — Community operations and sustainable participation
+
+Priority: **MUST**. Entry: G22. Exit: **G23: bounded-city operations, optional return journeys and minimized metrics ready locally**. State: PLANNED.
+
+<a id="p23-t01"></a>
+
+### P23-T01 — Favorites and justified opt-in return flows
+
+- **ID / priority / status:** P23-T01 / MUST / PLANNED.
+- **Goal:** Preserve favorites; implement follows/subscriptions only after measured need and ownership/unsubscribe/erase/notification contracts.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** G22; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p23-t02"></a>
+
+### P23-T02 — Contributor onboarding and community rules
+
+- **ID / priority / status:** P23-T02 / MUST / PLANNED.
+- **Goal:** Create plain-language contributor guidance/report/help policy; optional safe invite flow only where needed, no fake members/activity.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P23-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p23-t03"></a>
+
+### P23-T03 — Aggregate metrics and pilot operating model
+
+- **ID / priority / status:** P23-T03 / MUST / PLANNED.
+- **Goal:** Define purpose/denominators/windows/retention/minimization plus moderation staffing/capacity/cost baselines and low-coverage policy.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P23-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p23-t04"></a>
+
+### P23-T04 — Local community rehearsal and business hypotheses
+
+- **ID / priority / status:** P23-T04 / MUST / PLANNED.
+- **Goal:** Rehearse synthetic city lifecycle/rights/support locally; record pilot stop/rollback risks and optional P11 value hypotheses without launching.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P23-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+## P24 — Android commercial acceptance
+
+Priority: **MUST**. Entry: G19–G23 integrated and required P18 Android/backend gaps resolved. Exit: **G24-ANDROID-COMMERCIAL: pinned commercial Android candidate accepted; G09 still uncertified**. State: PLANNED.
+
+<a id="p24-t01"></a>
+
+### P24-T01 — Android candidate and complete device matrix
+
+- **ID / priority / status:** P24-T01 / MUST / PLANNED.
+- **Goal:** Freeze actual support/candidate and prove every old/new functional/offline/provider/privacy/media/location/source row on required devices/services.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** G19–G23 integrated and required P18 Android/backend gaps resolved; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p24-t02"></a>
+
+### P24-T02 — Novice usability and accessibility acceptance
+
+- **ID / priority / status:** P24-T02 / MUST / PLANNED.
+- **Goal:** Run baseline-derived predeclared novice tasks and screen-reader/font-scale checks; remediate source/condition/contribution comprehension failures.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P24-T01; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p24-t03"></a>
+
+### P24-T03 — Real-device performance and memory acceptance
+
+- **ID / priority / status:** P24-T03 / MUST / PLANNED.
+- **Goal:** Measure genuine cold-process start, scrolling/encoding/OCR/peak heap/background/battery on the frozen support matrix; optimize against predeclared budgets.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P24-T02; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="p24-t04"></a>
+
+### P24-T04 — Security compatibility and Android sign-off
+
+- **ID / priority / status:** P24-T04 / MUST / PLANNED.
+- **Goal:** Resolve all required adversarial/compatibility/privacy proofs and produce Android-only manifest; phase integration never certifies real production.
+- **Inputs:** docs/product/COMMUNITY_EXPERIENCE.md B-BR-C01–C06 and BUC-C01–C05; owning section of docs/planning/COMMERCIAL_COMMUNITY_PLAN.md; existing module/security/feedback contracts.
+- **Dependencies:** P24-T03; affected backend extension integrated before its consumer.
+- **Files/areas expected:** Existing domain/application/data/app or bounded backend adapters/read models as required; specify exact paths at task opening. iOS native work excluded.
+- **Tests first:** Freeze positive/negative state fixtures; pure domain RED → GREEN → REFACTOR. Auth/money/privacy/SQL/jobs require immediate failure/concurrency/real-PostGIS proof if affected; native behavior needs supported-device evidence.
+- **Acceptance criteria:** Owning commercial-plan task outcome demonstrated with actual evidence, preserved free/offline features and truthful source/privacy states. Missing required device/provider/storage proof remains incomplete.
+- **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
+- **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
+- **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.

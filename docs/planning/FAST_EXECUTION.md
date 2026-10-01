@@ -12,4 +12,4 @@ Read AGENTS, this card, only the current state in [PROGRESS](PROGRESS.md), and t
 
 Rerun checks when their inputs, environment, base merge or related behavior change, or a prior failure remains unresolved. Do not add repeated checks merely to grow an evidence list. Record runtime/capacity honestly: a targeted pass and an integrated phase are not a certified release.
 
-Current activation status and next task are in PROGRESS. G01-FLOW is active with required Quick verification; ADR-014 sets G09-LOCAL app entry and defers real G09 until G18. This card never disables required CI.
+Current activation status and next task are in PROGRESS. G01-FLOW is active with required Quick verification; ADR-014 sets G09-LOCAL app entry and defers real G09 until Android commercial G24 under ADR-016; historical full G18 remains unaccepted and iOS is explicitly deferred. This card never disables required CI.

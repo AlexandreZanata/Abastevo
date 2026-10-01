@@ -2,20 +2,34 @@
 
 # abastevo
 
-This repository starts from [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. The existing Android app is preserved. The project name is **abastevo**, selected by the maintainer on 2026-10-01. See the [brand identity and README artwork proposal](docs/brand/IDENTITY.md).
+An open-source community for recent fuel prices at Brazilian stations. The commercial experience being planned helps people **find a price, contribute a photo and keep station information current together**. Community current-price projections lead the experience; ANP surveys are clearly dated reference data.
 
-**Current status:** Backend P01–P09 phase history and local correction evidence are recorded; real production is not release-certified. G01-FLOW helpers and required Quick verification are active. New accounts, feedback, 24-hour all-copy media and Kotlin/Swift functionality remain planned; see [current state](docs/planning/PROGRESS.md).
+## Product direction
 
-**Execution order:** integrated local backend (G09-LOCAL) → modular Kotlin Multiplatform and native Swift app (P12–P18/P10) → real-production release G09 → public pilot and optional paid benefits. Next implementation task after correction integration: [P12-T01](ROADMAP.md#p12-t01). [Functional delivery plan](docs/planning/MOBILE_DELIVERY_PLAN.md) includes free email-code/Google/Apple accounts, 280-character station/fuel feedback, 24-hour lightweight photos and location-integrity controls. These new features are planned, not implemented. Focused TDD/risk checks run per task; quick CI gates each phase; actual G09 production certification waits until functional G18.
+- **Explore:** simple city/fuel discovery, recent supported station prices, price conditions and directions. Browsing does not require an account or GPS.
+- **Contribute:** capture a price photo, review suggested values and follow validation status. Private audit photos expire within 24 hours; a submission does not automatically become a trusted current price.
+- **Participate:** free accounts, station/fuel ratings, 280-character comments/replies and validity votes. Price confidence, personal stars and community agreement are separate signals.
+- **Keep useful tools:** offline reference, vehicles, calculations, ANP history and navigation remain available. Optional paid benefits never buy trust or restrict free social participation.
 
-- [Roadmap with executable microtasks](ROADMAP.md)
-- [Fast phase delivery: branches, PRs, issues and wiki](docs/planning/DELIVERY_WORKFLOW.md), [execution card](docs/planning/FAST_EXECUTION.md) and [CI cadence](docs/planning/CI_PLAN.md)
-- [Documentation index](docs/README.md) and [current audit](docs/CURRENT_STATE_AUDIT.md)
-- [Target architecture](docs/backend/TARGET_ARCHITECTURE.md), [API plan](docs/backend/API_PLAN.md) and [infrastructure plan](docs/backend/INFRASTRUCTURE_PLAN.md)
-- [Product scope](docs/product/PRODUCT_CONTRACT.md), [privacy/security](docs/security/SECURITY_PRIVACY.md) and [decisions](docs/planning/DECISIONS.md)
-- [Agent entry point](AGENTS.md) and [execution progress](docs/planning/PROGRESS.md)
+## Current state and next phases
 
-Official ANP prices and community observations remain distinct. Offline Android functionality is preserved; paid convenience never affects contribution trust. Existing MIT notices remain unchanged. Code may be public; production data, photos, credentials and contributor location stay private.
+Backend/local infrastructure and P12–P17 functional modules are integrated; P18 local validation was merged in [PR #67](https://github.com/AlexandreZanata/abastevo/pull/67). Full functional device acceptance and real-production certification remain incomplete. The redesigned commercial experience below is **PLANNED**, not shipped. [Current evidence](docs/planning/PROGRESS.md) separates implementation, integration and release readiness.
+
+**Android-first:** P19 identity/navigation → P20 community discovery → P21 photo contribution → P22 social/moderation → P23 community operations → P24 Android commercial acceptance. Only afterward: separate P09/G09 real-production certification, bounded P10-T09 public pilot and optional P11 paid benefits. [Complete commercial plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and [experience specification](docs/product/COMMUNITY_EXPERIENCE.md).
+
+**iOS is archived and deferred until the maintainer explicitly requests resumption.** Shared Kotlin ports, native source and prepared icon assets are preserved; no iOS build/device acceptance is claimed. [Archived backlog](docs/planning/archive/IOS_DEFERRED.md), [platform decision](docs/adr/016-android-commercial-community-ios-deferred.md).
+
+## Development and documentation
+
+- [Roadmap and bounded tasks](ROADMAP.md), [current progress](docs/planning/PROGRESS.md) and [documentation index](docs/README.md).
+- [Fast phase delivery](docs/planning/DELIVERY_WORKFLOW.md), [execution card](docs/planning/FAST_EXECUTION.md) and [CI cadence](docs/planning/CI_PLAN.md): targeted TDD/risk checks per task, one phase branch/PR, protected quick verification at integration and wiki from the merged snapshot.
+- [Backend architecture](docs/backend/TARGET_ARCHITECTURE.md), [backend setup/tests](backend/README.md), [API contracts](docs/backend/API_PLAN.md) and [infrastructure](docs/backend/INFRASTRUCTURE_PLAN.md).
+- [Product contract](docs/product/PRODUCT_CONTRACT.md), [feedback rules](docs/product/STATION_FUEL_FEEDBACK.md), [privacy/security](docs/security/SECURITY_PRIVACY.md) and [decisions](docs/planning/DECISIONS.md).
+- [Approved brand](docs/brand/IDENTITY.md), [native app icons](docs/brand/APP_ICONS.md) and [agent entry point](AGENTS.md).
+
+## Origin and license
+
+Based on [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. Existing modules, `com.anpfuel` and [MIT notices](LICENSE) remain preserved. Production photos, credentials, contributor precise location and personal data do not belong in Git or public activity.
 
 ## Imported Android documentation
 

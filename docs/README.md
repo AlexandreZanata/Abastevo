@@ -1,5 +1,7 @@
 # abastevo documentation
 
+Current commercial direction: [community delivery plan](planning/COMMERCIAL_COMMUNITY_PLAN.md), [experience contract](product/COMMUNITY_EXPERIENCE.md), [Android/iOS scope ADR](adr/016-android-commercial-community-ios-deferred.md), [parked iOS backlog](planning/archive/IOS_DEFERRED.md) and [native icon guide](brand/APP_ICONS.md).
+
 This repository contains the preserved Android app, integrated backend phase history and the next functional multiplatform plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next implementation: [P12-T01](../ROADMAP.md#p12-t01) after G09-LOCAL correction integration; real-production G09 waits until G18.
 
 ## Canonical planning documents
