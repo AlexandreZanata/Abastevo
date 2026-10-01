@@ -1264,6 +1264,162 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '410':
           $ref: '#/components/responses/Gone'
+  /v1/feedback/ratings:
+    post:
+      summary: Rate a station/fuel with 1-5 personal stars.
+      operationId: rateStation
+      tags: [feedback]
+      security: []
+      description: >
+        Session-authenticated write (P22-T02, B-BR-F02): one current
+        rating per account/target; equal stars converge idempotently,
+        changed stars bump the revision. Returns the rating plus the
+        exact count/sum aggregate. Community stars stay separate from
+        price confidence (B-BR-C04).
+      requestBody:
+        required: true
+        description: Live session plus target and integer stars.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, station_id, product, stars]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                station_id:
+                  type: string
+                  format: uuid
+                  example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                product:
+                  type: string
+                  example: GASOLINE_ADDITIVED
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+      responses:
+        '201':
+          description: Rating stored with the exact aggregate.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rating, stats]
+                properties:
+                  rating:
+                    $ref: '#/components/schemas/FeedbackRatingReceipt'
+                  stats:
+                    $ref: '#/components/schemas/FeedbackRatingStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/feedback/ratings/remove:
+    post:
+      summary: Remove my station/fuel rating.
+      operationId: removeRating
+      tags: [feedback]
+      security: []
+      description: >
+        Tombstones the caller's current rating; unknown keys refuse
+        with rating-not-found without touching aggregates.
+      requestBody:
+        required: true
+        description: Live session plus target.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, station_id, product]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                station_id:
+                  type: string
+                  format: uuid
+                  example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+                product:
+                  type: string
+                  example: GASOLINE_ADDITIVED
+      responses:
+        '200':
+          description: Rating removed.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/feedback/ratings/stats:
+    get:
+      summary: Read a station/fuel rating aggregate.
+      operationId: readRatingStats
+      tags: [feedback]
+      security: []
+      description: >
+        Public anonymous read: exact count/sum plus truncated integer
+        mean; null mean means no ratings, never an invented score.
+      parameters:
+        - name: station_id
+          in: query
+          required: true
+          description: Directory station identifier of the rated target.
+          schema:
+            type: string
+            format: uuid
+        - name: product
+          in: query
+          required: true
+          description: Catalog fuel product wire name of the rated target.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exact aggregate, zeroed when no rating exists.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stats]
+                properties:
+                  stats:
+                    $ref: '#/components/schemas/FeedbackRatingStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
   /v1/feedback/comments:
     post:
       summary: Submit a station/fuel comment.
@@ -2504,8 +2660,8 @@ components:
     FeedbackRating:
       description: >
         Personal-experience stars (P14-T01, B-BR-F02): integer 1–5, one
-        current rating per account/target. Preview schema only; paths
-        land with handlers in P14-T02.
+        current rating per account/target. Write/read paths landed in
+        P22-T02; the aggregate shape is FeedbackRatingStats.
       type: object
       required: [station_id, product, stars]
       properties:
@@ -2522,6 +2678,60 @@ components:
           minimum: 1
           maximum: 5
           example: 5
+    FeedbackRatingReceipt:
+      description: >
+        Server-confirmed rating write (P22-T02, B-BR-F02): stored stars
+        plus revision and whether this write created the current row.
+      type: object
+      required: [station_id, product, stars, revision, created]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        product:
+          type: string
+          example: GASOLINE_ADDITIVED
+        stars:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        revision:
+          type: integer
+          minimum: 1
+          example: 1
+        created:
+          type: boolean
+          example: true
+    FeedbackRatingStats:
+      description: >
+        Rebuildable rating aggregate (P22-T02, B-BR-F02): exact count
+        and star sum per station/product; truncated integer mean in
+        thousandths, null when no rating exists. Community stars stay
+        separate from price confidence (B-BR-C04).
+      type: object
+      required: [station_id, product, count, sum]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        product:
+          type: string
+          example: GASOLINE_ADDITIVED
+        count:
+          type: integer
+          minimum: 0
+          example: 5
+        sum:
+          type: integer
+          minimum: 0
+          example: 21
+        mean_milli:
+          type: [integer, 'null']
+          description: Truncated mean in thousandths (4200 = 4.2); null with zero ratings.
+          example: 4200
     FeedbackComment:
       description: >
         Plain-text comment or reply (P14-T01, B-BR-F03/F04): nonempty,

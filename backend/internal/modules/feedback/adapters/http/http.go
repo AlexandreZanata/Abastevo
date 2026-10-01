@@ -25,6 +25,9 @@ import (
 
 // Service is the feedback use-case port behind the handlers.
 type Service interface {
+	Rate(ctx context.Context, accountID, stationID, product string, stars int) (application.RateResult, error)
+	DeleteRating(ctx context.Context, accountID, stationID, product string) error
+	RatingStats(ctx context.Context, stationID, product string) (domain.RatingStats, error)
 	SubmitComment(ctx context.Context, accountID, stationID, product, text string) (domain.StoredComment, error)
 	Reply(ctx context.Context, accountID, stationID, product, parentID, text string) (domain.StoredComment, error)
 	EditComment(ctx context.Context, accountID, commentID, text string, expectedRevision int) (domain.StoredComment, error)
@@ -49,6 +52,9 @@ type Handler struct {
 
 // RegisterRoutes mounts the additive feedback paths.
 func (h Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/v1/feedback/ratings", h.rateRating)
+	r.Post("/v1/feedback/ratings/remove", h.deleteRating)
+	r.Get("/v1/feedback/ratings/stats", h.ratingStats)
 	r.Post("/v1/feedback/comments", h.submitComment)
 	r.Post("/v1/feedback/comments/{id}/replies", h.reply)
 	r.Post("/v1/feedback/comments/{id}/edit", h.editComment)
@@ -92,6 +98,8 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 	case "comment-not-found", "not-author":
 		// Missing and foreign share one 404: no ownership oracle.
 		status, code, msg = http.StatusNotFound, "feedback.comment-not-found", "comment not found"
+	case "rating-not-found":
+		status, code, msg = http.StatusNotFound, "feedback.rating-not-found", "rating not found"
 	case "stale-revision":
 		status, code, msg = http.StatusConflict, "feedback.stale-revision", "comment changed, reload and retry"
 	case "self-vote":
@@ -167,6 +175,113 @@ func (h Handler) sessionAccount(w http.ResponseWriter, r *http.Request, dto sess
 		return "", false
 	}
 	return accountID, true
+}
+
+type ratingJSON struct {
+	StationID string `json:"station_id"`
+	Product   string `json:"product"`
+	Stars     int    `json:"stars"`
+	Revision  int    `json:"revision"`
+	Created   bool   `json:"created"`
+}
+
+type ratingStatsJSON struct {
+	StationID string `json:"station_id"`
+	Product   string `json:"product"`
+	Count     int64  `json:"count"`
+	Sum       int64  `json:"sum"`
+	MeanMilli *int64 `json:"mean_milli"`
+}
+
+func ratingStatsJSONOf(stats domain.RatingStats) ratingStatsJSON {
+	out := ratingStatsJSON{
+		StationID: stats.StationID,
+		Product:   stats.Product,
+		Count:     stats.Count,
+		Sum:       stats.Sum,
+	}
+	if mean, ok := stats.MeanMilli(); ok {
+		out.MeanMilli = &mean
+	}
+	return out
+}
+
+// rateRating records one current 1–5 personal-experience rating per
+// account/target (P22-T02, B-BR-F02). Equal stars converge
+// idempotently; changed stars bump the revision. Writes derive the
+// author server-side from a live session; every response is no-store.
+func (h Handler) rateRating(w http.ResponseWriter, r *http.Request) {
+	var raw struct {
+		FamilyID  string `json:"family_id"`
+		AccessTok string `json:"access_token"`
+		StationID string `json:"station_id"`
+		Product   string `json:"product"`
+		Stars     int    `json:"stars"`
+	}
+	if err := read(r, &raw); err != nil || raw.StationID == "" || raw.Product == "" {
+		bad(w, r)
+		return
+	}
+	accountID, ok := h.sessionAccount(w, r, sessionDTO{FamilyID: raw.FamilyID, AccessToken: raw.AccessTok})
+	if !ok {
+		return
+	}
+	res, err := h.Service.Rate(r.Context(), accountID, raw.StationID, raw.Product, raw.Stars)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusCreated, map[string]any{
+		"rating": ratingJSON{
+			StationID: res.Rating.StationID,
+			Product:   res.Rating.Product,
+			Stars:     res.Rating.Stars,
+			Revision:  res.Rating.Revision,
+			Created:   res.Created,
+		},
+		"stats": ratingStatsJSONOf(res.Stats),
+	})
+}
+
+func (h Handler) deleteRating(w http.ResponseWriter, r *http.Request) {
+	var raw struct {
+		FamilyID  string `json:"family_id"`
+		AccessTok string `json:"access_token"`
+		StationID string `json:"station_id"`
+		Product   string `json:"product"`
+	}
+	if err := read(r, &raw); err != nil || raw.StationID == "" || raw.Product == "" {
+		bad(w, r)
+		return
+	}
+	accountID, ok := h.sessionAccount(w, r, sessionDTO{FamilyID: raw.FamilyID, AccessToken: raw.AccessTok})
+	if !ok {
+		return
+	}
+	if err := h.Service.DeleteRating(r.Context(), accountID, raw.StationID, raw.Product); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// ratingStats is a public anonymous read: exact count/sum plus a
+// truncated integer mean, or null mean when no rating exists — never
+// an invented score. Community stars stay separate from price
+// confidence (B-BR-C04).
+func (h Handler) ratingStats(w http.ResponseWriter, r *http.Request) {
+	stationID := r.URL.Query().Get("station_id")
+	product := r.URL.Query().Get("product")
+	if stationID == "" || product == "" {
+		bad(w, r)
+		return
+	}
+	stats, err := h.Service.RatingStats(r.Context(), stationID, product)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{"stats": ratingStatsJSONOf(stats)})
 }
 
 func (h Handler) submitComment(w http.ResponseWriter, r *http.Request) {

@@ -3,11 +3,13 @@ package com.anpfuel.app.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.port.FeedbackFlagProvider
+import com.anpfuel.application.usecase.feedback.FeedbackStatsOutcome
 import com.anpfuel.application.usecase.feedback.FeedbackWriteOutcome
 import com.anpfuel.application.usecase.feedback.FeedbackPageOutcome
 import com.anpfuel.application.usecase.feedback.GetFeedbackPageUseCase
 import com.anpfuel.application.usecase.feedback.SubmitFeedbackUseCase
 import com.anpfuel.domain.exception.DomainException
+import com.anpfuel.domain.portable.PortableFeedback
 import com.anpfuel.domain.portable.PortableText
 import com.anpfuel.domain.repository.FeedbackCommentView
 import com.anpfuel.domain.repository.FeedbackException
@@ -22,19 +24,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * P17-T02 social-flow state (B-BR-F01…F08, BUC-F01…F05).
+ * P17-T02 social-flow state (B-BR-F01…F08, BUC-F01…F05); P22-T02
+ * wires the 1–5 personal stars through the published ratings
+ * transport plus the public aggregate read.
  *
  * Flag-gated: [FeedbackUiState.Disabled] performs no network IO and
  * renders nothing (rollback is flag OFF). [prepare] fixes the target
  * plus the caller-held account id; a blank account surfaces
- * [FeedbackUiState.SignInRequired] without IO — anonymous browsing
- * stays available through [loadFirstPage], which needs no session.
- * Over-280 text is rejected locally ([INVALID], no IO). Terminal
- * rejections carry fixed kind labels for optimistic rollback;
- * outages queue with one stable op id and [retry] reuses it, so
- * retries never amplify the write. Ratings stay out of the actions:
- * the backend publishes no ratings path (recorded P14 gap), and the
- * gateway refuses explicitly instead of faking success.
+ * [FeedbackUiState.SignInRequired] without IO for writes — anonymous
+ * browsing stays available through [loadFirstPage] and [loadStats],
+ * which need no session. Over-280 text and out-of-range stars are
+ * rejected locally ([INVALID], no IO). Terminal rejections carry
+ * fixed kind labels for optimistic rollback; outages queue with one
+ * stable op id and [retry] reuses it, so retries never amplify the
+ * write. Rating aggregates travel as exact count/sum; the mean
+ * renders through [FeedbackDisplay.ratingLine], kept separate from
+ * price confidence (B-BR-C04).
  */
 sealed interface FeedbackUiState {
     data object Disabled : FeedbackUiState
@@ -47,6 +52,9 @@ sealed interface FeedbackUiState {
     ) : FeedbackUiState
     data object Submitting : FeedbackUiState
     data class Saved(val commentId: String, val revision: Int) : FeedbackUiState
+    data class Rated(val created: Boolean, val count: Long, val sum: Long) : FeedbackUiState
+    data object RatingDeleted : FeedbackUiState
+    data class StatsLoaded(val count: Long, val sum: Long) : FeedbackUiState
     data class Voted(val valid: Long, val invalid: Long) : FeedbackUiState
     data object VoteRemoved : FeedbackUiState
     data object Reported : FeedbackUiState
@@ -63,6 +71,8 @@ class FeedbackViewModel @Inject constructor(
 ) : ViewModel() {
 
     private sealed interface LastWrite {
+        data class Rating(val stars: Int, val opId: String) : LastWrite
+        data class DeleteRating(val opId: String) : LastWrite
         data class Comment(val text: String, val opId: String) : LastWrite
         data class Reply(val parentId: String, val text: String, val opId: String) : LastWrite
         data class Edit(val commentId: String, val text: String, val revision: Int, val opId: String) : LastWrite
@@ -114,6 +124,55 @@ class FeedbackViewModel @Inject constructor(
                 is FeedbackPageOutcome.Unavailable ->
                     FeedbackUiState.Rejected(FeedbackDisplay.rejectKindLabel(FeedbackRejectKind.TRANSPORT), "feedback unavailable")
             }
+        }
+    }
+
+    fun loadStats() {
+        val current = target ?: return
+        if (!flagProvider.isEnabled()) {
+            _state.value = FeedbackUiState.Disabled
+            return
+        }
+        if (_state.value is FeedbackUiState.Submitting) return
+        _state.value = FeedbackUiState.Submitting
+        viewModelScope.launch {
+            _state.value = when (val outcome = runReads { reads.stats(current.stationId, current.product) }) {
+                is FeedbackStatsOutcome.Disabled -> FeedbackUiState.Disabled
+                is FeedbackStatsOutcome.Fresh ->
+                    FeedbackUiState.StatsLoaded(outcome.stats.count, outcome.stats.sum)
+                is FeedbackStatsOutcome.Unavailable ->
+                    FeedbackUiState.Rejected(FeedbackDisplay.rejectKindLabel(FeedbackRejectKind.TRANSPORT), "ratings unavailable")
+            }
+        }
+    }
+
+    fun rate(stars: Int) {
+        val current = target ?: return
+        if (guardCommon(current.accountId)) return
+        if (!PortableFeedback.isValidRating(stars)) {
+            _state.value = FeedbackUiState.Rejected("INVALID", "rating outside 1-5")
+            return
+        }
+        val op = LastWrite.Rating(stars, UUID.randomUUID().toString())
+        lastWrite = op
+        submitting()
+        viewModelScope.launch {
+            _state.value = writeState(
+                runWrites { writes.rate(current.accountId, current.stationId, current.product, stars, op.opId) },
+            )
+        }
+    }
+
+    fun deleteRating() {
+        val current = target ?: return
+        if (guardCommon(current.accountId)) return
+        val op = LastWrite.DeleteRating(UUID.randomUUID().toString())
+        lastWrite = op
+        submitting()
+        viewModelScope.launch {
+            _state.value = writeState(
+                runWrites { writes.deleteRating(current.accountId, current.stationId, current.product, op.opId) },
+            )
         }
     }
 
@@ -227,6 +286,12 @@ class FeedbackViewModel @Inject constructor(
         val current = target ?: return
         when (val action = lastWrite) {
             null -> return
+            is LastWrite.Rating -> submitWithId(action) { id ->
+                writes.rate(current.accountId, current.stationId, current.product, action.stars, id)
+            }
+            is LastWrite.DeleteRating -> submitWithId(action) { id ->
+                writes.deleteRating(current.accountId, current.stationId, current.product, id)
+            }
             is LastWrite.Comment -> submitWithId(action) { id ->
                 writes.comment(current.accountId, current.stationId, current.product, action.text, id)
             }
@@ -254,6 +319,8 @@ class FeedbackViewModel @Inject constructor(
     ) {
         if (_state.value is FeedbackUiState.Submitting) return
         val opId = when (action) {
+            is LastWrite.Rating -> action.opId
+            is LastWrite.DeleteRating -> action.opId
             is LastWrite.Comment -> action.opId
             is LastWrite.Reply -> action.opId
             is LastWrite.Edit -> action.opId
@@ -311,15 +378,15 @@ class FeedbackViewModel @Inject constructor(
         }
     }
 
-    private suspend fun runReads(call: suspend () -> FeedbackPageOutcome): FeedbackPageOutcome = call()
+    private suspend fun <T> runReads(call: suspend () -> T): T = call()
 
     private fun writeState(outcome: FeedbackWriteOutcome): FeedbackUiState {
         return when (outcome) {
             is FeedbackWriteOutcome.Disabled -> FeedbackUiState.Disabled
             is FeedbackWriteOutcome.LoginRequired -> FeedbackUiState.SignInRequired
             is FeedbackWriteOutcome.Rated ->
-                FeedbackUiState.Saved(outcome.receipt.ratingId, 1)
-            is FeedbackWriteOutcome.RatingDeleted -> FeedbackUiState.CommentDeleted
+                FeedbackUiState.Rated(outcome.receipt.created, outcome.stats.count, outcome.stats.sum)
+            is FeedbackWriteOutcome.RatingDeleted -> FeedbackUiState.RatingDeleted
             is FeedbackWriteOutcome.Commented ->
                 FeedbackUiState.Saved(outcome.receipt.commentId, outcome.receipt.revision)
             is FeedbackWriteOutcome.Replied ->

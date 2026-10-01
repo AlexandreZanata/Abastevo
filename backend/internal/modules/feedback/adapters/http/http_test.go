@@ -19,6 +19,7 @@ type testService struct {
 	comments map[string]domain.StoredComment
 	views    map[string]domain.CommentView
 	aliases  map[string]string
+	ratings  map[string]domain.StoredRating
 	err      error
 	nextPage application.CommentPage
 }
@@ -28,6 +29,7 @@ func newTestService() *testService {
 		comments: map[string]domain.StoredComment{},
 		views:    map[string]domain.CommentView{},
 		aliases:  map[string]string{"acc-1": "adore-fox-42"},
+		ratings:  map[string]domain.StoredRating{},
 	}
 }
 
@@ -148,6 +150,74 @@ func (s *testService) Tally(_ context.Context, commentID string) (domain.VoteTal
 		return domain.VoteTally{}, s.err
 	}
 	return domain.VoteTally{CommentID: commentID, Revision: 1, Valid: 2, Invalid: 1}, nil
+}
+
+func ratingKey(stationID, product, accountID string) string {
+	return stationID + "|" + product + "|" + accountID
+}
+
+func (s *testService) Rate(_ context.Context, accountID, stationID, product string, stars int) (application.RateResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return application.RateResult{}, s.err
+	}
+	if strings.TrimSpace(stationID) == "" || strings.TrimSpace(product) == "" {
+		return application.RateResult{}, domain.ErrTargetInvalid
+	}
+	if err := domain.Rating(stars).Validate(); err != nil {
+		return application.RateResult{}, err
+	}
+	key := ratingKey(stationID, product, accountID)
+	rec, existed := s.ratings[key]
+	if !existed {
+		rec = domain.StoredRating{ID: "r1", AccountID: accountID, StationID: stationID, Product: product, Revision: 1}
+	}
+	rec.Stars = stars
+	if existed {
+		rec.Revision++
+	}
+	s.ratings[key] = rec
+	stats, _, _ := s.statsLocked(stationID, product)
+	return application.RateResult{Rating: rec, Stats: stats, Created: !existed}, nil
+}
+
+func (s *testService) DeleteRating(_ context.Context, accountID, stationID, product string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return s.err
+	}
+	key := ratingKey(stationID, product, accountID)
+	if _, ok := s.ratings[key]; !ok {
+		return domain.ErrRatingNotFound
+	}
+	delete(s.ratings, key)
+	return nil
+}
+
+func (s *testService) RatingStats(_ context.Context, stationID, product string) (domain.RatingStats, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return domain.RatingStats{}, s.err
+	}
+	if strings.TrimSpace(stationID) == "" || strings.TrimSpace(product) == "" {
+		return domain.RatingStats{}, domain.ErrTargetInvalid
+	}
+	stats, _, _ := s.statsLocked(stationID, product)
+	return stats, nil
+}
+
+func (s *testService) statsLocked(stationID, product string) (domain.RatingStats, bool, error) {
+	var count, sum int64
+	for _, rec := range s.ratings {
+		if rec.StationID == stationID && rec.Product == product {
+			count++
+			sum += int64(rec.Stars)
+		}
+	}
+	return domain.RatingStats{StationID: stationID, Product: product, Count: count, Sum: sum}, count > 0, nil
 }
 
 func testHandler() (*testService, Handler) {
@@ -344,6 +414,79 @@ func TestVoteRemoveTallyFlow(t *testing.T) {
 	if tout.Tally.Valid != 2 || tout.Tally.Invalid != 1 || tout.Tally.Total != 3 ||
 		tout.Tally.PercentageBps == nil || *tout.Tally.PercentageBps != 6666 {
 		t.Errorf("tally must match the golden 2/1 vector: %+v", tout.Tally)
+	}
+}
+
+func TestRatingRateRemoveStatsFlow(t *testing.T) {
+	_, h := testHandler()
+
+	rec := call(t, h, "POST", "/v1/feedback/ratings",
+		authed+`,"station_id":"s1","product":"GASOLINE","stars":5}`)
+	if rec.Code != 201 {
+		t.Fatalf("rate: %d (%s)", rec.Code, rec.Body.String())
+	}
+	var out struct {
+		Rating struct {
+			Stars    int  `json:"stars"`
+			Revision int  `json:"revision"`
+			Created  bool `json:"created"`
+		} `json:"rating"`
+		Stats struct {
+			Count     int64  `json:"count"`
+			Sum       int64  `json:"sum"`
+			MeanMilli *int64 `json:"mean_milli"`
+		} `json:"stats"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Rating.Stars != 5 || out.Rating.Revision != 1 || !out.Rating.Created {
+		t.Errorf("first rating must create revision 1: %+v", out.Rating)
+	}
+	if out.Stats.Count != 1 || out.Stats.Sum != 5 || out.Stats.MeanMilli == nil || *out.Stats.MeanMilli != 5000 {
+		t.Errorf("stats must be 1/5 with milli mean 5000: %+v", out.Stats)
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Error("rating response must be no-store")
+	}
+	if strings.Contains(rec.Body.String(), "acc-1") {
+		t.Error("rating response must not leak the account id")
+	}
+
+	rec = call(t, h, "POST", "/v1/feedback/ratings",
+		authed+`,"station_id":"s1","product":"GASOLINE","stars":6}`)
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "feedback.rating-out-of-range") {
+		t.Errorf("six stars must be 400 rating-out-of-range, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	rec = call(t, h, "GET", "/v1/feedback/ratings/stats?station_id=s1&product=GASOLINE", "")
+	if rec.Code != 200 {
+		t.Fatalf("stats: %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = call(t, h, "GET", "/v1/feedback/ratings/stats?station_id=unknown&product=GASOLINE", "")
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"count":0`) {
+		t.Errorf("missing key must be honest empty, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = call(t, h, "GET", "/v1/feedback/ratings/stats?product=GASOLINE", "")
+	if rec.Code != 400 {
+		t.Errorf("missing station must be 400, got %d", rec.Code)
+	}
+
+	rec = call(t, h, "POST", "/v1/feedback/ratings/remove",
+		authed+`,"station_id":"s1","product":"GASOLINE"}`)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "deleted") {
+		t.Fatalf("delete: %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = call(t, h, "POST", "/v1/feedback/ratings/remove",
+		authed+`,"station_id":"s1","product":"GASOLINE"}`)
+	if rec.Code != 404 || !strings.Contains(rec.Body.String(), "feedback.rating-not-found") {
+		t.Errorf("second delete must be 404 rating-not-found, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	rec = call(t, h, "POST", "/v1/feedback/ratings",
+		`{"family_id":"bad","access_token":"bad","station_id":"s1","product":"GASOLINE","stars":4}`)
+	if rec.Code != 401 || !strings.Contains(rec.Body.String(), "feedback.session-invalid") {
+		t.Errorf("forged session must be 401 session-invalid, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

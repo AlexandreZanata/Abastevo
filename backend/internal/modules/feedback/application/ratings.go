@@ -135,3 +135,22 @@ func (s *Service) DeleteRating(ctx context.Context, accountID, stationID, produc
 func (s *Service) RebuildStats(ctx context.Context, stationID, product string) (domain.RatingStats, error) {
 	return s.Store.RebuildStats(ctx, strings.TrimSpace(stationID), strings.TrimSpace(product), s.Clock.NowUnix())
 }
+
+// RatingStats reads the maintained aggregate for one station/product
+// (P22-T02, B-BR-F02). Public anonymous read like comment lists and
+// vote tallies: blank targets refuse, missing keys return zero
+// counts (honest empty, never an error or invented mean).
+func (s *Service) RatingStats(ctx context.Context, stationID, product string) (domain.RatingStats, error) {
+	target := domain.Target{StationID: strings.TrimSpace(stationID), Product: strings.TrimSpace(product)}
+	if err := target.Validate(); err != nil {
+		return domain.RatingStats{}, err
+	}
+	stats, found, err := s.Store.Stats(ctx, target.StationID, target.Product)
+	if err != nil {
+		return domain.RatingStats{}, err
+	}
+	if !found {
+		return domain.RatingStats{StationID: target.StationID, Product: target.Product}, nil
+	}
+	return stats, nil
+}
