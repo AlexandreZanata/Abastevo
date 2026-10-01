@@ -14,8 +14,16 @@
     "guarded_merge",
     "wiki_home_explicit_adoption"
   ],
-  "state": "LOCAL_DONE_AWAITING_PHASE_INTEGRATION",
+  "state": "READY_FOR_REQUIRED_CURRENT_HEAD_INTEGRATION",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "release": "G09_NOT_CERTIFIED",
-  "evidence": "docs/release-evidence/p00-app-icons-commercial-plan.md"
+  "evidence": "docs/release-evidence/p00-app-icons-commercial-plan.md",
+  "pr": 70,
+  "task_commits": {
+    "P00-T04": "1de6423",
+    "P00-T05": "28bf779"
+  },
+  "required_check": "Quick verification",
+  "tested_base": "9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96",
+  "wiki": "PENDING_MERGED_SNAPSHOT"
 }

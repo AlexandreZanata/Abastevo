@@ -25,4 +25,4 @@ Issue #69, LOCAL_DONE (planning only). Commercial experience contract B-BR-C01â€
 
 ## Integration
 
-Task issues/PR, exact tested head/base, required checks, guarded merge and wiki snapshot will be recorded at batch closure. No deploy/tag/pilot.
+Task commits `1de6423` / `28bf779`; issues #68/#69; draft [PR #70](https://github.com/AlexandreZanata/abastevo/pull/70); base `9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96`. Required protection is Quick verification with strict base/enforced admins. Closure verifies final head/base/provider, runs local quick once through finish, guarded merge preserving task commits and one wiki snapshot. Actual post-merge SHA/wiki commit cannot be fabricated in their own source snapshot; record them in the retained ledger and next authorized branch. No deploy/tag/pilot.
