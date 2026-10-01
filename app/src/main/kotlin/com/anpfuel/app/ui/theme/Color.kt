@@ -19,6 +19,17 @@ val FuelOrange = Color(0xFFEF6C00)
 val FuelOrangeLight = Color(0xFFFFAB40)
 val FuelPremiumBadge = Color(0xFFFFC107)
 
+/**
+ * P19-T03 abastevo brand aliases over the approved blue/green palette.
+ * Blue is the principal action color; green signals contribution/community
+ * and never price truth. No new hex values: aliases reuse the audited
+ * contrast-checked palette above.
+ */
+val AbastevoActionBlue = AnpBlue
+val AbastevoActionBlueDark = AnpBlueDark
+val AbastevoCommunityGreen = AnpGreen
+val AbastevoCommunityGreenDark = AnpGreenDark
+
 internal object ColorTokens {
     val White = Color.White
     val BlueLight = Color(0xFF90CAF9)

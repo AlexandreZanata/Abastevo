@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ANP Fuel Prices</string>
+    <string name="app_name">abastevo</string>
+
+    <!-- Price source badge (P19-T03): text plus icon, never color alone -->
+    <string name="source_badge_community">Comunidade</string>
+    <string name="source_badge_anp_dated">ANP • %1$s</string>
+    <string name="source_badge_unknown">Sem informação</string>
+    <string name="a11y_source_badge_community">Preço da comunidade. %1$s</string>
+    <string name="a11y_source_badge_anp_dated">Referência ANP datada. %1$s</string>
+    <string name="a11y_source_badge_unknown">Sem informação de preço. %1$s</string>
 
     <!-- Navigation -->
     <string name="nav_onboarding">Onboarding</string>
     <string name="nav_home">Home</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_community">Community</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_update_price">Update price</string>
+    <string name="a11y_nav_update_price">Update fuel price with photo capture</string>
     <string name="nav_search">Search</string>
     <string name="nav_location">Location</string>
     <string name="nav_prices">Prices</string>
@@ -12,6 +25,37 @@
     <string name="nav_stations">Stations</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_vehicles">Vehicles</string>
+
+    <!-- Community screen (P19-T04) -->
+    <string name="community_screen_title">Community</string>
+    <string name="community_header_subtitle">Local station activity and consensus verification</string>
+    <string name="community_empty_title">No recent community updates</string>
+    <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Photos are transient audit evidence kept for up to 24 hours.</string>
+    <string name="community_action_contribute">Contribute price</string>
+    <string name="community_rules_title">Community verification rules</string>
+    <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
+
+    <!-- Profile screen (P19-T04) -->
+    <string name="profile_screen_title">Profile</string>
+    <string name="profile_account_section">Account</string>
+    <string name="profile_guest_title">Guest mode</string>
+    <string name="profile_guest_subtitle">Anonymous price browsing. Free account needed for ratings, comments and votes.</string>
+    <string name="profile_action_sign_in">Sign in or create free account</string>
+    <string name="profile_expert_tools_section">Expert tools and references</string>
+    <string name="profile_tool_vehicles_title">My vehicles</string>
+    <string name="profile_tool_vehicles_subtitle">Register up to 3 vehicles to calculate tank fill costs</string>
+    <string name="profile_tool_history_title">ANP historical prices</string>
+    <string name="profile_tool_history_subtitle">Browse official price series by state and municipality</string>
+    <string name="profile_tool_prices_title">Full price table</string>
+    <string name="profile_tool_prices_subtitle">View detailed average, min and max fuel prices</string>
+    <string name="profile_tool_stations_title">Surveyed stations</string>
+    <string name="profile_tool_stations_subtitle">Official ANP surveyed gas stations by brand</string>
+    <string name="profile_tool_settings_title">App settings</string>
+    <string name="profile_tool_settings_subtitle">Offline cache, Wi-Fi sync, notifications and theme</string>
+    <string name="profile_tool_week_picker_title">Survey week</string>
+    <string name="profile_tool_week_picker_subtitle">Select archived weekly ANP surveys</string>
+    <string name="profile_privacy_section">Privacy and participation</string>
+    <string name="profile_privacy_body">No precise GPS is shared publicly. Verification photos expire across all copies within 24 hours. Paid features never affect ranking or trust.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>

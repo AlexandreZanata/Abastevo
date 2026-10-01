@@ -1,7 +1,6 @@
 {
-  "base_sha": "fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9",
-  "branch": "codex/phase-18-functional-acceptance",
-  "cleanup": "remote + delivery-clone branch removed; original local branch retained due to unowned in-progress changes",
+  "base_sha": "bad31b79d6b83bf0fede7b456321f05846c2e06a",
+  "branch": "codex/phase-19-product-identity-foundation",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -42,17 +41,17 @@
     "P17-T04": 58,
     "P18-T01": 60,
     "P18-T02": 61,
-    "P18-T03": 62
+    "P18-T03": 62,
+    "P19-T01": 71,
+    "P19-T02": 72,
+    "P19-T03": 73,
+    "P19-T04": 74
   },
   "issues_close_on_merge": false,
-  "local_quick": "full PASS once, 12s",
-  "merged_sha": "9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96",
-  "milestone": 10,
-  "milestone_title": "P18 \u2014 Functional app acceptance and performance",
-  "other_checks": "fast / integration SUCCESS",
-  "phase": "18",
-  "post_merge_record": "Recorded on authorized P00 continuation branch",
-  "pr": 67,
+  "milestone": 13,
+  "milestone_title": "P19 — Product and identity foundation",
+  "phase": "19",
+  "pr": 75,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -61,8 +60,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "required_check": "Quick verification SUCCESS",
-  "state": "LOCAL_VALIDATION_INTEGRATED / G18_BLOCKED",
-  "tested_head": "37e21cc28f42c8e548f2b36e208d14821d4ebeca",
-  "wiki": "b4b6c97e575fbe997f6f15cb32c165052d897759"
+  "state": "P19-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
 }

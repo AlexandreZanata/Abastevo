@@ -17,6 +17,22 @@ class RoutesTest {
     }
 
     @Test
+    fun exploreRouteMatchesHome() {
+        assertEquals("home", Routes.EXPLORE)
+        assertEquals(Routes.HOME, Routes.EXPLORE)
+    }
+
+    @Test
+    fun communityRouteIsRegisteredConstant() {
+        assertEquals("community", Routes.COMMUNITY)
+    }
+
+    @Test
+    fun profileRouteIsRegisteredConstant() {
+        assertEquals("profile", Routes.PROFILE)
+    }
+
+    @Test
     fun stationsRouteIncludesFuelProductName() {
         assertEquals(
             "stations/GASOLINE_REGULAR",
