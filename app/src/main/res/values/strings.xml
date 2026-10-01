@@ -41,6 +41,9 @@
     <string name="profile_guest_title">Guest mode</string>
     <string name="profile_guest_subtitle">Anonymous price browsing. Free account needed for ratings, comments and votes.</string>
     <string name="profile_action_sign_in">Sign in or create free account</string>
+    <string name="profile_signed_in_title">Signed in</string>
+    <string name="profile_signed_in_subtitle">Free account active. Manage sign-in, providers and deletion in Account.</string>
+    <string name="profile_action_manage_account">Manage account</string>
     <string name="profile_contributions_section">My contributions</string>
     <string name="profile_contributions_empty">No contributions on this device yet.</string>
     <string name="profile_contributions_error">Could not load your contributions.</string>
@@ -356,6 +359,10 @@
     <string name="auth_google">Link Google</string>
     <string name="auth_apple">Link Apple</string>
     <string name="auth_logout">Sign out everywhere</string>
+    <string name="auth_delete_account">Delete my account</string>
+    <string name="auth_delete_title">Delete account?</string>
+    <string name="auth_delete_copy">This removes your account and signs you out on this device. Prices you reported stay anonymous.</string>
+    <string name="auth_delete_confirm">Yes, delete</string>
     <string name="auth_pending_provider">Waiting for %1$s…</string>
     <string name="auth_logged_in">Signed in</string>
     <string name="auth_account_row">Account</string>
