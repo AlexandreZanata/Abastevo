@@ -18,3 +18,6 @@ Base `fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9`, merged normally into phase head
 ## Gate semantics and remaining work
 
 P18 local implementation/evidence integration is distinct from complete functional acceptance. Issues #60–#62 retain their required feature/device/performance/native proof; PR #67 references them without closing keywords. Milestone 10 remains open. G18 is BLOCKED / NOT_ACCEPTED; G09 remains deferred and uncertified. Required local quick runs once through `finish --required "Quick verification"`; current-head/base remote quick and any reported failing checks must be resolved before merge. Post-merge evidence goes to PR metadata/local record without direct bookkeeping push to main.
+
+
+Post-merge local record (pending next authorized branch): PR #67 merged as 9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96; required Quick verification / fast / integration SUCCESS on 37e21cc / base fd3dbcd; local full quick PASS once in 12 s. Wiki b4b6c97e575fbe997f6f15cb32c165052d897759 published the merged snapshot. Primary dirty checkout preserved; remote/isolated-clone branch cleanup complete, original occupied local branch retained. G18 NOT_ACCEPTED; issues #60–#62 and milestone 10 remain open.

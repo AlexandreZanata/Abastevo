@@ -1,5 +1,7 @@
 # ADR-014: Functional app before real production release
 
+Current scope update (2026-10-01): [ADR-016](016-android-commercial-community-ios-deferred.md) supersedes the both-platform release dependency and old-design restriction. P19–P24 plan Android commercial delivery; iOS is archived with explicit resumption only. Historical G18 remains unaccepted. Full G09 evidence is retained. See [commercial plan](../planning/COMMERCIAL_COMMUNITY_PLAN.md).
+
 Date: 2026-09-30. Status: ACCEPTED by explicit user direction; implementation remains separately gated.
 
 ## Decision

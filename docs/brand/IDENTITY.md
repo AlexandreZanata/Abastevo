@@ -43,3 +43,7 @@ P00-T03 outcome 2026-10-01: LOCAL_PREVIEW_DONE / AWAITING_VISUAL_APPROVAL. [Word
 
 
 Publication authorization 2026-10-01: the maintainer requested updating GitHub with the artwork and README. V2 is approved; earlier pending-approval notes are historical task evidence. P00-T01–T03 are LOCAL_DONE / AWAITING_PHASE_MERGE; no runtime resources, release tags or deployment are in scope.
+
+## P00-T04 — Native app launcher icons
+
+Maintainer request 2026-10-01: adopt the existing vector A alone, unchanged in shape/gradients, on a white background as the app icon. Scope: Android adaptive/color/themed/fallback launcher resources and manifest round icon; iPhone/iPad AppIcon asset catalog plus explicit host wiring instructions. Preserve master SVG, identifiers and runtime behavior. Current iOS host is an SPM shell with no Xcode application project; asset catalog preparation is not a compiled/shipped iOS launcher claim. Validate crop-safe placement, resource compilation, opaque iOS sizes/catalog coverage, independent SVG source preservation and visual previews. No screenshot/banner wordmark in the icon.

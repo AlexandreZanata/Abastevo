@@ -1,16 +1,16 @@
 # Product contract: backend first
 
-Status: target planning revised 2026-09-30; new functionality NOT IMPLEMENTED. Project name **abastevo** was selected by the maintainer on 2026-10-01; [brand identity](../brand/IDENTITY.md) owns the logo and README artwork status.
+Status: product direction revised 2026-10-01; existing local modules are integrated, but new commercial UX remains PLANNED. See current PROGRESS for runtime evidence. Project name **abastevo** was selected by the maintainer on 2026-10-01; [brand identity](../brand/IDENTITY.md) owns the logo and README artwork status.
 
 ## Objective and release order
 
-Build a reliable network of recent community fuel-price observations alongside the official ANP reference. Integrate and locally validate the backend/infrastructure first (G09-LOCAL), then deliver the functional Kotlin Multiplatform app with native Android/Swift adapters. G09 is classified real-production RELEASE and deferred until functional Android/iOS acceptance G18, per ADR-014.
+Build a reliable network of recent community fuel-price observations alongside the official ANP reference. Integrate and locally validate the backend/infrastructure first (G09-LOCAL), then deliver the functional Kotlin Multiplatform app with native Android/Swift adapters. G09 is classified real-production RELEASE, deferred until G24-ANDROID-COMMERCIAL for Android/backend scope under [ADR-016](../adr/016-android-commercial-community-ios-deferred.md). Historical full G18 remains unaccepted; iOS is archived with explicit resumption only. [Community experience](COMMUNITY_EXPERIENCE.md) makes community prices primary and ANP dated reference.
 
 1. Import and audit the existing Android application; plan the work.
 2. Build the modular monolith, official station catalog and anonymous identity.
 3. Deliver community observations, private evidence, validation, consensus and moderation.
 4. Integrate local infrastructure/security/recovery checks, then P12–P16 KMP/free accounts/feedback/media/location extensions.
-5. Complete P10/P17/P18 functional Android/iOS acceptance, preserving offline features and current design.
+5. Preserve P10/P17/P18 local integration and unresolved evidence; implement P19–P24 Android commercial community experience, preserving offline features. iOS is deferred, not accepted.
 6. Only then certify real production G09 and public pilot; paid benefits remain later P11.
 
 Existing Android regression may run anytime. New app work requires G09-LOCAL integration; native KMP/Swift work starts P12 and affected backend extensions precede consumers. Local synthetic services are used until actual real-production release.

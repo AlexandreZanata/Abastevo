@@ -10,7 +10,9 @@ SIGNOFF="${1:-docs/release-evidence/G09.md}"
 grep -Fqx 'Classification: **RELEASE**' "$SIGNOFF" || refuse 'G09 must be classified RELEASE'
 grep -Fqx 'Status: **DEFERRED_UNTIL_APP_FUNCTIONAL**' "$SIGNOFF" || refuse 'unsupported certification/status claim'
 grep -Fqx 'Entry for mobile: **G09-LOCAL integration**, not production certification.' "$SIGNOFF" || refuse 'missing protected local integration prerequisite'
-grep -Fqx 'Production prerequisite: **G18 functional Android/iOS acceptance**.' "$SIGNOFF" || refuse 'missing functional app prerequisite'
+grep -Fqx 'Production prerequisite: **G24-ANDROID-COMMERCIAL functional Android acceptance**.' "$SIGNOFF" || refuse 'missing functional app prerequisite'
+grep -Fqx 'Certification scope: **Android/backend only; iOS DEFERRED_EXPLICIT_RESUME_ONLY**.' "$SIGNOFF" || refuse 'missing bounded certification scope or explicit iOS deferral'
+grep -Fqx 'Historical multiplatform gate: **G18_NOT_ACCEPTED**.' "$SIGNOFF" || refuse 'historical full G18 must remain unaccepted'
 grep -Fq '4ce5aaf79aa3bf8d8cf31c05635dfa2b30714556' "$SIGNOFF" || refuse 'historical provenance missing'
 for condition in 'Fresh certification' 'Provisioned staging' 'Legal review' 'Wiki mirror'; do
     grep -Fq "$condition" "$SIGNOFF" || refuse "missing production condition: $condition"
@@ -18,4 +20,4 @@ done
 for file in docs/release-evidence/p09-t01-rehearsal.md docs/release-evidence/p09-t02-compatibility.md docs/release-evidence/p08-t04-restore-drill.md docs/release-evidence/p08-t07-load.md docs/release-evidence/p08-t08-security.md contracts/testdata/compat/legacy-deltas.json docs/release-evidence/p09-local-runtime-validation.md; do
     [[ -f "$file" ]] || refuse "missing evidence $file"
 done
-echo 'g09 record ok: RELEASE deferred until G18; mobile requires G09-LOCAL integration'
+echo 'g09 record ok: RELEASE deferred until G24 Android; iOS explicit resumption only; mobile requires G09-LOCAL integration'

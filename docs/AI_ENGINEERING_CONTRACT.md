@@ -18,7 +18,7 @@ Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-014 supersedes the pro
 
 ## Safety boundaries
 
-- Backend/infra integration before app improvements through G09-LOCAL; actual G09 production release is deferred until G18. Functional gates and production certification are distinct. Preserve Android modules/packages, offline data and license.
+- Backend/infra integration before app improvements through G09-LOCAL; actual G09 production release is deferred until G24-ANDROID-COMMERCIAL for Android/backend scope (ADR-016); historical full G18 remains unaccepted, iOS is archived until explicit user resumption. Functional gates and production certification are distinct. Preserve Android modules/packages, offline data and license.
 - No invented API/field, silent money rounding, swallowed error, false source/price fallback or dropped unknown ANP data.
 - Pure deterministic domain tests; real PostGIS for changed transactional/geo/schema behavior. Auth/ownership, replay, idempotency, concurrency, media/privacy and money invariants are immediate risk checks.
 - No test deletion/skip/useless mock, reduced threshold or ignored failure to make CI green. Regression fixes include tests; expensive checks can be scheduled but relevant known failures cannot be deferred.
@@ -34,7 +34,7 @@ Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-014 supersedes the pro
 
 **Phase INTEGRATED:** all included task acceptance and specialized phase checks pass, local quick and required remote checks/reviews verify the current expected PR head/base, guarded merge succeeds and linked issues close. Wiki synchronization has its own explicit pending/synced status. No duplicate full suite for each microtask or phase.
 
-**Release RELEASE_CERTIFIED:** full required matrix and external operational evidence validate the immutable merged release candidate at the designated release checkpoint (functional G18 first, real-production P09/G09 afterward, then public P10 pilot/P11 as applicable). A new relevant code/config change invalidates affected evidence. No stable tag/deploy based only on quick CI.
+**Release RELEASE_CERTIFIED:** full required matrix and external operational evidence validate the immutable merged release candidate at the designated release checkpoint (commercial Android G24 first (iOS deferred), real-production P09/G09 afterward, then public P10 pilot/P11 as applicable). A new relevant code/config change invalidates affected evidence. No stable tag/deploy based only on quick CI.
 
 ## Publication scope
 
