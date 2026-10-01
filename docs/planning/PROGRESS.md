@@ -17,3 +17,11 @@
 
 - [P01–P09 history](history/P01_P09_PROGRESS_20260930.md), [P14 task detail](history/P14_PROGRESS_20260930.md), [P15 task detail](history/P15_PROGRESS_20260930.md), [P09 local-only state](history/P09_LOCAL_PROGRESS_20260930.md), [original roadmap snapshot](history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md).
 - [Delivery workflow](DELIVERY_WORKFLOW.md), [CI cadence](CI_PLAN.md), [fast execution](FAST_EXECUTION.md), [functional plan](MOBILE_DELIVERY_PLAN.md).
+
+## Isolated brand preview (2026-10-01)
+
+- Task P00-T01: selected name abastevo and supplied logo; local documentation plus README artwork awaiting visual approval.
+- Branch codex/phase-00-abastevo-brand-preview; worktree .worktrees/abastevo-brand-preview; base origin/main be680d1. Ongoing P17 checkout remains separate.
+- Publication scope LOCAL_PREVIEW_ONLY; no remote issue/PR/merge/wiki update. This preview does not advance a functional or production gate.
+- Artifact: docs/assets/brand/abastevo-readme-banner-v1.png; README.brand-preview.md. Original logo copied byte-for-byte; no runtime code changed.
+- Evidence/approval source: docs/brand/IDENTITY.md. State LOCAL_PREVIEW_DONE / AWAITING_VISUAL_APPROVAL; not INTEGRATED.

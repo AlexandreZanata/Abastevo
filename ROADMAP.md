@@ -16,6 +16,28 @@ Completed backend phase history remains P01–P08 → P09 local rehearsal/correc
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
 
+## P00 — Project identity documentation and visual preview
+
+Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved identity/assets/README via guarded phase merge and wiki mirror. Maintainer approved V2 publication on 2026-10-01. This task does not block or alter the ongoing functional phase.
+
+<a id="p00-t01"></a>
+
+### P00-T01 — abastevo identity and README artwork proposal
+
+- **ID / priority / status:** P00-T01 / MUST / LOCAL_DONE — APPROVED_FOR_PUBLICATION.
+- **Goal:** Reflect the selected abastevo name and supplied logo in current documentation; prepare one minimal professional README banner.
+- **Why:** Replace the provisional project name with the maintainer's chosen identity.
+- **Inputs:** Maintainer's 2026-10-01 request and attached logo; docs/brand/IDENTITY.md; existing attribution/rights notices.
+- **Files/areas expected:** README/TRADEMARKS; current product docs/decisions; docs/assets/brand; local README.brand-preview.md.
+- **Dependencies:** No runtime dependency; isolated worktree while P17 occupies the primary checkout.
+- **Tests first:** Inspect original logo and current naming references; verify exact source-byte copy, banner wordmark/legibility, image links and unchanged source/license files.
+- **Implementation outline:** Preserve the supplied logo source; use built-in imagegen for a white-space composition with lowercase wordmark; record exact prompt/provenance and show the banner before adoption.
+- **Acceptance criteria:** Selected name recorded; one usable visual draft and README preview shown for approval. No premature published banner or runtime/package rename.
+- **Validation commands:** `git diff --check`; scoped Markdown-link/image inspection, source hash equality and changed-file review. No backend/Android aggregate suite for docs/assets.
+- **Risks:** Misrepresenting draft art as approved; disturbing the occupied phase checkout; changing historic attribution.
+- **Rollback/Recovery:** Keep original/logo history and isolated edits; discard only owned draft files if requested.
+- **Definition of done:** Local draft validated and delivered; visual approval/publication are separate pending states. No remote issue/PR/wiki operation during preview.
+
 ## P01 — Backend foundations
 
 Priority: **MUST**. Entry: No earlier implementation gate; planning baseline exists..
@@ -2164,4 +2186,3 @@ Exit gate: **G18: integrated functional Android/iOS candidate accepted locally; 
 - [ ] Load/fault/cache tests meet accepted capacity and freshness budgets.
 - [ ] Operator can deploy, monitor, moderate, revoke, rollback and restore using tested runbooks.
 - [ ] G18 functional Android/iOS acceptance is integrated; release evidence signed off; public P10-T09 pilot may start.
-
