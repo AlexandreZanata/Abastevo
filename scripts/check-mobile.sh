@@ -92,6 +92,17 @@ print("no force-unwrap in AnpFuelCore")
 PY
 pass "no force-unwrap in AnpFuelCore"
 
+# 4. Release artifact assertion (P16-T02): no test-injection hook in
+# production sources. Debug injection lives only behind the
+# LocationEnvironment port (BuildConfig.DEBUG) and in test fakes;
+# setting testInjected=true in shipped code would smuggle an
+# always-simulated path into release. Static only; device run still
+# proves the provider wiring on hardware.
+if grep -rn "testInjected *= *true" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null; then
+    fail "test-injection hook found in production sources"
+fi
+pass "no test-injection hooks in release sources"
+
 if [[ "$MODE" == "static" ]]; then
     echo "check-mobile: static-only ok"
     exit 0
