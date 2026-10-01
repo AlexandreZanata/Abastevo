@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Preços ANP Combustíveis</string>
+    <string name="app_name">abastevo</string>
+
+    <!-- Price source badge (P19-T03): text plus icon, never color alone -->
+    <string name="source_badge_community">Comunidade</string>
+    <string name="source_badge_anp_dated">ANP • %1$s</string>
+    <string name="source_badge_unknown">Sem informação</string>
+    <string name="a11y_source_badge_community">Preço da comunidade. %1$s</string>
+    <string name="a11y_source_badge_anp_dated">Referência ANP datada. %1$s</string>
+    <string name="a11y_source_badge_unknown">Sem informação de preço. %1$s</string>
 
     <!-- Navigation -->
     <string name="nav_onboarding">Introdução</string>
     <string name="nav_home">Início</string>
+    <string name="nav_explore">Explorar</string>
+    <string name="nav_community">Comunidade</string>
+    <string name="nav_profile">Perfil</string>
+    <string name="nav_update_price">Atualizar preço</string>
+    <string name="a11y_nav_update_price">Atualizar preço de combustível com foto</string>
     <string name="nav_search">Buscar</string>
     <string name="nav_location">Localização</string>
     <string name="nav_prices">Preços</string>
@@ -12,6 +25,37 @@
     <string name="nav_stations">Postos</string>
     <string name="nav_settings">Configurações</string>
     <string name="nav_vehicles">Veículos</string>
+
+    <!-- Community screen (P19-T04) -->
+    <string name="community_screen_title">Comunidade</string>
+    <string name="community_header_subtitle">Atividade local recente e verificação por consenso</string>
+    <string name="community_empty_title">Nenhuma atualização recente</string>
+    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="community_action_contribute">Colaborar com preço</string>
+    <string name="community_rules_title">Regras de verificação comunitária</string>
+    <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
+
+    <!-- Profile screen (P19-T04) -->
+    <string name="profile_screen_title">Perfil</string>
+    <string name="profile_account_section">Conta</string>
+    <string name="profile_guest_title">Modo visitante</string>
+    <string name="profile_guest_subtitle">Pesquisa anônima de preços. Cadastro gratuito necessário para avaliações, comentários e votos.</string>
+    <string name="profile_action_sign_in">Entrar ou criar conta gratuita</string>
+    <string name="profile_expert_tools_section">Ferramentas e referências</string>
+    <string name="profile_tool_vehicles_title">Meus veículos</string>
+    <string name="profile_tool_vehicles_subtitle">Cadastre até 3 veículos para estimar o custo do tanque</string>
+    <string name="profile_tool_history_title">Histórico de preços ANP</string>
+    <string name="profile_tool_history_subtitle">Série histórica oficial por estado e município</string>
+    <string name="profile_tool_prices_title">Tabela completa de preços</string>
+    <string name="profile_tool_prices_subtitle">Médias, mínimos e máximos da semana de pesquisa</string>
+    <string name="profile_tool_stations_title">Postos pesquisados</string>
+    <string name="profile_tool_stations_subtitle">Postos oficiais pesquisados pela ANP por bandeira</string>
+    <string name="profile_tool_settings_title">Configurações do app</string>
+    <string name="profile_tool_settings_subtitle">Cache offline, sincronização Wi-Fi, notificações e tema</string>
+    <string name="profile_tool_week_picker_title">Semana de pesquisa</string>
+    <string name="profile_tool_week_picker_subtitle">Selecione semanas anteriores arquivadas da ANP</string>
+    <string name="profile_privacy_section">Privacidade e participação</string>
+    <string name="profile_privacy_body">Nenhum GPS exato é compartilhado publicamente. Fotos de verificação expiram em todas as cópias em 24 horas. Recursos pagos nunca afetam ranking ou confiança.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
