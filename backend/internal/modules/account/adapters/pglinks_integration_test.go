@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -113,6 +114,11 @@ func freshLinkService(t *testing.T) *linkService {
 	}
 	codes := []string{"482916", "111111", "222222", "333333", "444444", "555555", "666666"}
 	var ci, gi, tn, an int
+	// The bind race test drives these stub generators from 16
+	// goroutines; guard the counters so the harness itself stays
+	// race-clean under -race (production uniqueness still comes
+	// from the database, never from these fakes).
+	var genMu sync.Mutex
 	svc := &application.Service{
 		Clock:    clock,
 		Hasher:   domain.SHA256Hasher{},
@@ -120,19 +126,27 @@ func freshLinkService(t *testing.T) *linkService {
 		Store:    NewPGStore(pool),
 		Verifier: verifier,
 		CodeGen: func() (string, error) {
+			genMu.Lock()
+			defer genMu.Unlock()
 			c := codes[ci%len(codes)]
 			ci++
 			return c, nil
 		},
 		TokenGen: func() (string, error) {
+			genMu.Lock()
+			defer genMu.Unlock()
 			tn++
 			return fmt.Sprintf("tok-%d", tn), nil
 		},
 		AliasGen: func() (string, error) {
+			genMu.Lock()
+			defer genMu.Unlock()
 			an++
 			return fmt.Sprintf("alias-%d", an), nil
 		},
 		IDGen: func() (string, error) {
+			genMu.Lock()
+			defer genMu.Unlock()
 			gi++
 			return testUUID(gi), nil
 		},
