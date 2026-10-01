@@ -13,7 +13,9 @@ import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.SubmitCommunityVoteUseCase
+import com.anpfuel.application.usecase.contribution.CancelOwnedContributionUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
 import com.anpfuel.application.usecase.feedback.GetFeedbackPageUseCase
 import com.anpfuel.application.usecase.feedback.SubmitFeedbackUseCase
 import com.anpfuel.application.usecase.identity.AnonymousDeviceFlow
@@ -492,6 +494,18 @@ object UseCaseModule {
         flagProvider = flagProvider,
         outbox = outbox,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetOwnedContributionsUseCase(
+        outbox: ContributionOutboxRepository,
+    ): GetOwnedContributionsUseCase = GetOwnedContributionsUseCase(outbox)
+
+    @Provides
+    @Singleton
+    fun provideCancelOwnedContributionUseCase(
+        outbox: ContributionOutboxRepository,
+    ): CancelOwnedContributionUseCase = CancelOwnedContributionUseCase(outbox)
 
     @Provides
     @Singleton

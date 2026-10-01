@@ -34,6 +34,7 @@ sealed interface CaptureOcrUiState {
     data class Confirmed(
         val candidate: PortablePriceOcr.OcrCandidate,
         val product: FuelProduct,
+        val conditionKind: String,
     ) : CaptureOcrUiState
 }
 
@@ -59,21 +60,59 @@ class CaptureOcrViewModel @Inject constructor(
         _state.value = outcome.toUiState()
     }
 
-    /** Confirms one candidate only with explicit approval + picked product. */
+    /**
+     * P21-T02 — confirms one OCR candidate with explicit approval plus
+     * contributor-picked product and condition.
+     */
     fun onConfirm(
         candidate: PortablePriceOcr.OcrCandidate?,
         product: FuelProduct?,
+        conditionKind: String?,
         humanConfirmed: Boolean,
     ) {
-        when (val outcome = useCase.confirm(candidate, product, humanConfirmed)) {
+        when (val outcome = useCase.confirm(candidate, product, conditionKind, humanConfirmed)) {
             is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed ->
-                _state.value = CaptureOcrUiState.Confirmed(outcome.candidate, outcome.product)
+                _state.value = CaptureOcrUiState.Confirmed(
+                    outcome.candidate,
+                    outcome.product,
+                    outcome.conditionKind,
+                )
             is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice ->
                 _state.value = CaptureOcrUiState.NeedsConfirmation(
                     candidates = outcome.candidates,
                     lowConfidence = outcome.candidates.isEmpty() ||
                         outcome.candidates.any { useCase.isLowConfidence(it) },
                 )
+        }
+    }
+
+    /**
+     * P21-T02 — confirms a human-typed price for empty/low-confidence OCR
+     * sets. A failed parse keeps the current candidate list instead of
+     * replacing it with an empty choice.
+     */
+    fun onConfirmManual(
+        rawPrice: String?,
+        product: FuelProduct?,
+        conditionKind: String?,
+        humanConfirmed: Boolean,
+    ) {
+        when (val outcome = useCase.confirmManual(rawPrice, product, conditionKind, humanConfirmed)) {
+            is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed ->
+                _state.value = CaptureOcrUiState.Confirmed(
+                    outcome.candidate,
+                    outcome.product,
+                    outcome.conditionKind,
+                )
+            is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice -> {
+                val current = _state.value
+                if (current !is CaptureOcrUiState.NeedsConfirmation) {
+                    _state.value = CaptureOcrUiState.NeedsConfirmation(
+                        candidates = emptyList(),
+                        lowConfidence = true,
+                    )
+                }
+            }
         }
     }
 

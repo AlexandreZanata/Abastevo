@@ -1,5 +1,6 @@
 package com.anpfuel.domain.repository
 
+import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
 
 /**
@@ -28,6 +29,42 @@ interface ContributionOutboxRepository {
     suspend fun markAcknowledged(commandId: String, revision: Int)
     suspend fun markFailed(commandId: String, nowMillis: Long)
     suspend fun cancel(commandId: String)
+
+    /**
+     * P21-T03 private owner status: every locally retained command with
+     * its durable phase. Acknowledged commands are deleted on ack, so only
+     * QUEUED/IN_FLIGHT/FAILED/CANCELLED rows appear; anything else stored
+     * is corruption and fails closed.
+     */
+    suspend fun listOwned(): List<OwnedContribution>
+}
+
+/**
+ * P21-T03 persisted owner phases. No ACKED: ack deletes the row, so a
+ * stored ACKED (or any unknown string) is corruption, never a status.
+ */
+enum class OwnedContributionPhase {
+    QUEUED,
+    IN_FLIGHT,
+    FAILED,
+    CANCELLED,
+}
+
+data class OwnedContribution(
+    val commandId: String,
+    val revision: Int,
+    val attempts: Int,
+    val phase: OwnedContributionPhase,
+) {
+    companion object {
+        fun phaseOf(stored: String): OwnedContributionPhase = when (stored) {
+            OwnedContributionPhase.QUEUED.name -> OwnedContributionPhase.QUEUED
+            OwnedContributionPhase.IN_FLIGHT.name -> OwnedContributionPhase.IN_FLIGHT
+            OwnedContributionPhase.FAILED.name -> OwnedContributionPhase.FAILED
+            OwnedContributionPhase.CANCELLED.name -> OwnedContributionPhase.CANCELLED
+            else -> throw DomainException("corrupt outbox state: $stored")
+        }
+    }
 }
 
 /** Local submission states mirrored from the backend lifecycle. */

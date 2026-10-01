@@ -1,6 +1,6 @@
 {
-  "base_sha": "b5ae5d7c1a5f77d83285b7d891ac5ebce92bceca",
-  "branch": "codex/phase-20-community-discovery",
+  "base_sha": "2788356e078e7ddf41f5167d3a75f6506529c381",
+  "branch": "codex/phase-21-photo-contribution",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -49,13 +49,17 @@
     "P20-T01": 76,
     "P20-T02": 77,
     "P20-T03": 78,
-    "P20-T04": 79
+    "P20-T04": 79,
+    "P21-T01": 81,
+    "P21-T02": 82,
+    "P21-T03": 83,
+    "P21-T04": 84
   },
   "issues_close_on_merge": false,
-  "milestone": 14,
-  "milestone_title": "P20 \u2014 Community-first price discovery",
-  "phase": "20",
-  "pr": 80,
+  "milestone": 15,
+  "milestone_title": "P21 \u2014 Photo-led contribution journey",
+  "phase": "21",
+  "pr": 85,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -64,5 +68,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P20-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "P21-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
 }

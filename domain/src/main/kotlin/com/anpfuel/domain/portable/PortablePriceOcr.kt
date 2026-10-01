@@ -24,6 +24,9 @@ package com.anpfuel.domain.portable
  * - Confidence is a local hint: 0.90 when the line carries a currency
  *   marker, 0.50 (below [LOW_CONFIDENCE_THRESHOLD]) for a bare number.
  *   [isLowConfidence] forces manual entry; it is never a guarantee.
+ * - P21-T02 human-typed entries ([OcrCandidate.manualEntry]) skip the OCR
+ *   confidence gate: a typed price was read by the contributor, not the
+ *   recognizer. Their confidence value is unused.
  */
 object PortablePriceOcr {
 
@@ -39,11 +42,12 @@ object PortablePriceOcr {
         val raw: String,
         val confidence: Double,
         val hasCurrencyMarker: Boolean,
+        val manualEntry: Boolean = false,
     )
 
     /** True when [candidate] confidence is below the manual-entry bar. */
     fun isLowConfidence(candidate: OcrCandidate): Boolean =
-        candidate.confidence < LOW_CONFIDENCE_THRESHOLD
+        !candidate.manualEntry && candidate.confidence < LOW_CONFIDENCE_THRESHOLD
 
     /**
      * Parses OCR text into at most [MAX_CANDIDATES] candidates in text

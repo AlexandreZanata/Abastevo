@@ -2,11 +2,14 @@ package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.dao.ContributionOutboxDao
 import com.anpfuel.data.local.entity.ContributionOutboxEntity
+import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import com.anpfuel.domain.repository.OwnedContributionPhase
 import com.anpfuel.domain.valueobject.FuelProduct
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -90,6 +93,44 @@ class RoomContributionOutboxRepositoryTest {
 
         assertTrue(repo.listDispatchable(1_000_000L).isEmpty())
         assertEquals(1, repo.listDispatchable(1_000_000L + 1_000L).size)
+    }
+
+    @Test
+    fun `owner listing carries phase revision and attempts`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+
+        repo.enqueue(draft("cmd-1"), payload())
+        repo.markFailed("cmd-1", 1_000_000L)
+        repo.enqueue(draft("cmd-2"), payload())
+
+        val owned = repo.listOwned().sortedBy { it.commandId }
+        assertEquals(2, owned.size)
+        assertEquals(OwnedContributionPhase.FAILED, owned[0].phase)
+        assertEquals(1, owned[0].revision)
+        assertEquals(OwnedContributionPhase.QUEUED, owned[1].phase)
+    }
+
+    @Test
+    fun `owner listing fails closed on corrupt state`() = runTest {
+        val dao = FakeDao()
+        dao.upsert(
+            ContributionOutboxEntity(
+                commandId = "cmd-9",
+                kind = "contribution.submit",
+                payload = payload(),
+                revision = 1,
+                state = "ACKED",
+                attempts = 1,
+                nextEligibleTick = 0L,
+                nonce = "",
+            ),
+        )
+        val repo = RoomContributionOutboxRepository(dao)
+
+        assertThrows(DomainException::class.java) {
+            kotlinx.coroutines.runBlocking { repo.listOwned() }
+        }
     }
 
     @Test
