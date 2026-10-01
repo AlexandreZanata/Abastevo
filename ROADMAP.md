@@ -69,6 +69,18 @@ Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved id
 - **Acceptance/checks:** Preserve eight uppercase glyphs/counters, native paths without raster/font/external content, unchanged logo hash, render/visual comparison, local links, whitespace and scoped secret review. Present the revised preview for visual approval.
 - **Evidence:** docs/brand/IDENTITY.md and docs/assets/brand wordmark provenance; no backend/mobile aggregate tests for artwork.
 
+<a id="p00-t04"></a>
+
+### P00-T04 — Adopt the vector A as native Android/iOS app icon
+
+- **ID / priority / status:** P00-T04 / MUST / LOCAL_DONE — ANDROID_BUILT / IOS_ASSETS_PREPARED_DEFERRED.
+- **Goal:** White background and unchanged vector A in native launcher assets.
+- **Scope:** Android VectorDrawable adaptive foreground, white background, monochrome API33 layer, density fallbacks and manifest; iPhone/iPad opaque AppIcon PNGs derived directly from SVG, asset catalog and host settings.
+- **Dependencies:** Approved P00-T02 SVG; no Mac available, existing iOS SPM host has no Xcode application target.
+- **Acceptance criteria:** Master bytes/shape/gradients preserved; adaptive safe-zone masks do not clip the A; Android compiles/links; iOS entries have exact dimensions and no alpha; native iOS build remains explicitly unverified.
+- **Validation commands:** Deterministic vector export + structural/raster dimension/crop checks; :app:assembleDebug and affected resource lint; git diff --check/secret review. No backend suite for icon assets.
+- **Evidence:** docs/brand/APP_ICONS.md; runtime scope excludes permissions/data/identifiers.
+
 ## P01 — Backend foundations
 
 Priority: **MUST**. Entry: No earlier implementation gate; planning baseline exists..

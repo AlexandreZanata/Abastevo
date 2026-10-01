@@ -1,0 +1,22 @@
+{
+  "task": "P00-T04",
+  "source": "abastevo-logo.svg",
+  "source_sha256": "706fc79d36df750838256dab85f05791eeb8476dc031717dd6c3559c6d57fe0d",
+  "method": "Native SVG geometry/gradients preserved; Inkscape exports, white opaque background; no generative image tool",
+  "bounds": [
+    155,
+    211,
+    1110,
+    1020
+  ],
+  "android_safe_zone_radius_dp": 32.5,
+  "android_transform": {
+    "scale": 0.055323777393277325,
+    "x": 19.007710798752093,
+    "y": 19.948215014437807
+  },
+  "ios_master_pixels": 1024,
+  "ios_mark_width_pixels": 760,
+  "ios_slots": 18,
+  "ios_runtime": "NOT_COMPILED: no Xcode application target / Mac on this host"
+}
