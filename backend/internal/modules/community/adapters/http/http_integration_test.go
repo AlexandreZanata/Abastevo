@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -119,6 +120,36 @@ func fixture(t *testing.T) (chi.Router, *pgxpool.Pool, string) {
 	}
 	ports := communityapp.Ports{
 		Clock: time.Now,
+		Locate: func(ctx context.Context, stationID string, lat, lon float64) (float64, communityapp.StationSite, error) {
+			var distanceM float64
+			var quality string
+			err := pool.QueryRow(ctx,
+				`SELECT ST_Distance(current_point, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography),
+					current_quality FROM directory_stations WHERE id = $3 AND current_point IS NOT NULL`,
+				lon, lat, stationID).Scan(&distanceM, &quality)
+			if err != nil {
+				return 0, communityapp.SiteUnknown, nil
+			}
+			if quality != "reviewed" {
+				return 0, communityapp.SiteUnknown, nil
+			}
+			return distanceM, communityapp.SitePrecise, nil
+		},
+		LastSite: func(ctx context.Context, ref string) (string, time.Time, bool, error) {
+			return store.LastObservationSite(ctx, ref)
+		},
+		StationDistance: func(ctx context.Context, a, b string) (float64, error) {
+			var distanceM float64
+			err := pool.QueryRow(ctx,
+				`SELECT ST_Distance(x.current_point, y.current_point)
+				 FROM directory_stations x JOIN directory_stations y ON y.id = $2
+				 WHERE x.id = $1 AND x.current_point IS NOT NULL AND y.current_point IS NOT NULL`,
+				a, b).Scan(&distanceM)
+			if err != nil {
+				return 0, err
+			}
+			return distanceM, nil
+		},
 		NewID: newUUID,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
 			return registrar.AttributionToken(ctx, contributorID)
@@ -483,5 +514,62 @@ func TestStatusAndHistory(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &ho)
 	if len(ho["items"].([]any)) != 0 {
 		t.Errorf("cross-contributor leak: %v", ho)
+	}
+}
+
+func locationSubmitBody(station, submission, verdict string, accuracy float64, captured string, lat, lon float64) string {
+	base := submitBody(station, submission)
+	return strings.Replace(base, `"condition"`, `"location":{"verdict":`+strconv.Quote(verdict)+
+		`,"permission_granted":true,"has_fix":true,"source_info_present":true,"simulated":false,`+
+		`"accuracy_m":`+strconv.FormatFloat(accuracy, 'f', -1, 64)+
+		`,"manual":false,"captured_at":`+strconv.Quote(captured)+
+		`,"lat":`+strconv.FormatFloat(lat, 'f', -1, 64)+
+		`,"lon":`+strconv.FormatFloat(lon, 'f', -1, 64)+`},"condition"`, 1)
+}
+
+// TestSubmitLocationEndToEnd posts verified and forged location claims
+// through the real signed stack: the verified fix stores bands and
+// derives NEAR proximity on PostGIS, while the forged verdict refuses
+// with location-forged and stores nothing.
+func TestSubmitLocationEndToEnd(t *testing.T) {
+	r, pool, station := fixture(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx,
+		`UPDATE directory_stations SET current_point = ST_SetSRID(ST_MakePoint(-46.633309, -23.55052), 4326)::geography,
+			current_quality = 'reviewed' WHERE id = $1`, station); err != nil {
+		t.Fatalf("precise point: %v", err)
+	}
+	c := enrollCaller(t, pool)
+	captured := time.Now().Add(-30 * time.Second).UTC().Format(time.RFC3339)
+
+	post := func(body, key string) *httptest.ResponseRecorder {
+		req := signedRequest(t, pool, c, http.MethodPost, "/v1/observations", body)
+		req.Header.Set("Idempotency-Key", key)
+		return doRequest(t, r, req)
+	}
+
+	w := post(locationSubmitBody(station, "loc-1", "VERIFIED", 25.0, captured, -23.55052, -46.633309), "cmd-loc-1")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("verified status = %d: %s", w.Code, w.Body.String())
+	}
+
+	forged := strings.Replace(
+		locationSubmitBody(station, "loc-2", "VERIFIED", 25.0, captured, -23.55052, -46.633309),
+		`"accuracy_m":25`, `"accuracy_m":500`, 1)
+	w = post(forged, "cmd-loc-2")
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("forged status = %d, want 400", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "community.location-forged") {
+		t.Errorf("forged body must carry location-forged: %s", w.Body.String())
+	}
+
+	var stored int
+	if err := pool.QueryRow(ctx,
+		`SELECT count(*) FROM community_observations WHERE client_submission_id = 'loc-2'`).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != 0 {
+		t.Error("forged claim stored a fact")
 	}
 }

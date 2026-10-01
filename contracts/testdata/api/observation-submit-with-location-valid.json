@@ -1,0 +1,34 @@
+{
+  "id": "observation-submit-with-location-valid",
+  "version": 1,
+  "schema": "ObservationSubmit",
+  "valid": true,
+  "provenance": "P16-T03B additive location evidence; synthetic, no real fix",
+  "value": {
+    "client_submission_id": "sub-2026-09-30-101",
+    "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+    "fuel_product": "GASOLINE_REGULAR",
+    "price": {
+      "amount_milli_brl": 5999,
+      "currency": "BRL",
+      "unit": "L"
+    },
+    "condition": {
+      "kind": "STANDARD",
+      "qualifier_id": null
+    },
+    "location": {
+      "verdict": "VERIFIED",
+      "permission_granted": true,
+      "has_fix": true,
+      "source_info_present": true,
+      "simulated": false,
+      "accuracy_m": 25.0,
+      "clock_skew_s": 10,
+      "manual": false,
+      "captured_at": "2026-09-30T12:00:00Z",
+      "lat": -23.55052,
+      "lon": -46.633309
+    }
+  }
+}

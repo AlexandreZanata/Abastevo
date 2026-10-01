@@ -47,6 +47,7 @@ const (
 	RiskNoPhoto             = "no-photo"
 	RiskDuplicateImage      = "duplicate-image"
 	RiskRegionalDeviation   = "regional-deviation"
+	RiskTeleportSuspect     = "teleport-suspect"
 )
 
 // Tunable experiment thresholds (spec defaults): 300 m station

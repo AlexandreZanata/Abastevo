@@ -35,9 +35,11 @@ import (
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
@@ -383,8 +385,39 @@ func run() error {
 		}
 		return nil
 	}
+	// Verified location intake (P16-T03B): submit-time PostGIS
+	// distance against the precise station point plus teleport
+	// review against the contributor's last site. The transient fix
+	// never persists: only bands survive the call.
+	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,
+		Locate: func(ctx context.Context, stationID string, lat, lon float64) (float64, communityapp.StationSite, error) {
+			st, err := directoryRepo.Station(ctx, stationID)
+			if err != nil {
+				if errors.Is(err, directorydomain.ErrUnknownStation) {
+					return 0, communityapp.SiteUnknown, nil
+				}
+				return 0, "", err
+			}
+			if st.CurrentPointWKT == "" || st.CurrentQuality != directorydomain.QualityReviewed {
+				return 0, communityapp.SiteUnknown, nil
+			}
+			distanceM, err := directoryRepo.FixDistance(ctx, stationID, lon, lat)
+			if err != nil {
+				if errors.Is(err, directorydomain.ErrUnknownStation) {
+					return 0, communityapp.SiteUnknown, nil
+				}
+				return 0, "", err
+			}
+			return distanceM, communityapp.SitePrecise, nil
+		},
+		LastSite: func(ctx context.Context, contributorRef string) (string, time.Time, bool, error) {
+			return communityStore.LastObservationSite(ctx, contributorRef)
+		},
+		StationDistance: func(ctx context.Context, a, b string) (float64, error) {
+			return directoryRepo.StationPairDistanceM(ctx, a, b)
+		},
 		NewID: newUUID,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
 			return identityRegistrar.AttributionToken(ctx, contributorID)

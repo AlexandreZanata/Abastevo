@@ -50,7 +50,8 @@ func (q *Queries) AppendDecision(ctx context.Context, arg AppendDecisionParams) 
 const getObservation = `-- name: GetObservation :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE id = $1
 `
@@ -74,6 +75,9 @@ func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (Community
 		&i.ClaimedCapturedAt,
 		&i.SupersedesID,
 		&i.PolicyVersion,
+		&i.LocationVerdict,
+		&i.LocationProximity,
+		&i.LocationReason,
 	)
 	return i, err
 }
@@ -81,7 +85,8 @@ func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (Community
 const getObservationByNaturalKey = `-- name: GetObservationByNaturalKey :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE contributor_ref = $1 AND client_submission_id = $2
 `
@@ -110,6 +115,9 @@ func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObserva
 		&i.ClaimedCapturedAt,
 		&i.SupersedesID,
 		&i.PolicyVersion,
+		&i.LocationVerdict,
+		&i.LocationProximity,
+		&i.LocationReason,
 	)
 	return i, err
 }
@@ -119,11 +127,13 @@ const insertObservation = `-- name: InsertObservation :one
 INSERT INTO community_observations
     (id, contributor_ref, client_submission_id, station_id, fuel_product,
      unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version)
+     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+     location_verdict, location_proximity, location_reason)
 VALUES ($1, $2, $3, $4,
     $5, $6, $7, $8,
     $9, $10, $11, $12,
-    $13, $14, $15)
+    $13, $14, $15,
+    $16, $17, $18)
 ON CONFLICT (contributor_ref, client_submission_id) DO NOTHING
 RETURNING id
 `
@@ -144,6 +154,9 @@ type InsertObservationParams struct {
 	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
 	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
 	PolicyVersion      string             `json:"policy_version"`
+	LocationVerdict    pgtype.Text        `json:"location_verdict"`
+	LocationProximity  pgtype.Text        `json:"location_proximity"`
+	LocationReason     pgtype.Text        `json:"location_reason"`
 }
 
 // Owned by community. Facts and decisions are insert-only: this file
@@ -166,16 +179,43 @@ func (q *Queries) InsertObservation(ctx context.Context, arg InsertObservationPa
 		arg.ClaimedCapturedAt,
 		arg.SupersedesID,
 		arg.PolicyVersion,
+		arg.LocationVerdict,
+		arg.LocationProximity,
+		arg.LocationReason,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
 }
 
+const lastObservationSite = `-- name: LastObservationSite :one
+SELECT station_id, received_at
+FROM community_observations
+WHERE contributor_ref = $1
+ORDER BY received_at DESC, id::text DESC
+LIMIT 1
+`
+
+type LastObservationSiteRow struct {
+	StationID  pgtype.UUID        `json:"station_id"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+// Last site for teleport review (P16-T03B): the contributor's most
+// recent observation station and receipt time. Absence means no
+// baseline: first observations never teleport.
+func (q *Queries) LastObservationSite(ctx context.Context, contributorRef string) (LastObservationSiteRow, error) {
+	row := q.db.QueryRow(ctx, lastObservationSite, contributorRef)
+	var i LastObservationSiteRow
+	err := row.Scan(&i.StationID, &i.ReceivedAt)
+	return i, err
+}
+
 const listByContributor = `-- name: ListByContributor :many
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
-    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version
+    evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
+    location_verdict, location_proximity, location_reason
 FROM community_observations
 WHERE contributor_ref = $1
     AND ($2::boolean = FALSE OR
@@ -223,6 +263,9 @@ func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorPa
 			&i.ClaimedCapturedAt,
 			&i.SupersedesID,
 			&i.PolicyVersion,
+			&i.LocationVerdict,
+			&i.LocationProximity,
+			&i.LocationReason,
 		); err != nil {
 			return nil, err
 		}

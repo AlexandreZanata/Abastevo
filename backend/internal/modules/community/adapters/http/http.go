@@ -71,6 +71,9 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusConflict, "community.already-confirmed", "observation already confirmed by contributor", nil)
 	case errors.Is(err, application.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "community.conflict", "same key, different body", nil)
+	case errors.Is(err, application.ErrLocationForged):
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.location-forged", "location claim contradicts its metadata",
+			[]httpapi.Detail{{Field: "location", Code: "forged"}})
 	case errors.Is(err, domain.ErrUnknownReason),
 		errors.Is(err, domain.ErrInvalidDispute),
 		errors.Is(err, domain.ErrInvalidConfirmation):
@@ -97,9 +100,46 @@ type submitDTO struct {
 		Kind        string  `json:"kind"`
 		QualifierID *string `json:"qualifier_id"`
 	} `json:"condition"`
-	EvidenceID        *string `json:"evidence_id"`
-	ClaimedCapturedAt *string `json:"claimed_captured_at"`
-	SupersedesID      *string `json:"supersedes_observation_id"`
+	EvidenceID        *string      `json:"evidence_id"`
+	ClaimedCapturedAt *string      `json:"claimed_captured_at"`
+	SupersedesID      *string      `json:"supersedes_observation_id"`
+	Location          *locationDTO `json:"location"`
+}
+
+// locationDTO is the strict wire parse for the optional device
+// location claim: unknown fields rejected, numbers in canonical
+// decimal form, verdict semantics checked by the application layer
+// (a lying verdict refuses as forged, not malformed).
+type locationDTO struct {
+	ClaimedVerdict    string       `json:"verdict"`
+	PermissionGranted bool         `json:"permission_granted"`
+	HasFix            bool         `json:"has_fix"`
+	SourceInfoPresent bool         `json:"source_info_present"`
+	Simulated         bool         `json:"simulated"`
+	AccuracyMeters    *json.Number `json:"accuracy_m"`
+	ClockSkewSeconds  *json.Number `json:"clock_skew_s"`
+	Manual            bool         `json:"manual"`
+	CapturedAt        *string      `json:"captured_at"`
+	Latitude          *json.Number `json:"lat"`
+	Longitude         *json.Number `json:"lon"`
+}
+
+// parseLocationNumber parses an optional canonical JSON number: plain
+// decimal form only (no NaN/Infinity/exponent tricks), range-checked
+// by the caller.
+func parseLocationNumber(raw *json.Number, field string) (*float64, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	text := raw.String()
+	if text == "" {
+		return nil, errors.New(field + " required")
+	}
+	value, err := strconv.ParseFloat(text, 64)
+	if err != nil {
+		return nil, errors.New(field + " must be a number")
+	}
+	return &value, nil
 }
 
 func parseSubmitBody(raw []byte) (application.SubmitDTO, error) {
@@ -147,6 +187,74 @@ func parseSubmitBody(raw []byte) (application.SubmitDTO, error) {
 		}
 		out.ClaimedCapturedAt = day
 	}
+	if in.Location != nil {
+		loc, err := parseLocationEvidence(in.Location)
+		if err != nil {
+			return application.SubmitDTO{}, err
+		}
+		out.Location = loc
+	}
+	return out, nil
+}
+
+// parseLocationEvidence validates the optional location claim block.
+// Shapes refuse here (400 malformed); verdict semantics refuse later
+// as forged claims, so a lying verdict is distinguishable from a
+// malformed body.
+func parseLocationEvidence(in *locationDTO) (*application.LocationEvidence, error) {
+	if strings.TrimSpace(in.ClaimedVerdict) == "" {
+		return nil, errors.New("location verdict required")
+	}
+	out := &application.LocationEvidence{
+		ClaimedVerdict:    strings.TrimSpace(in.ClaimedVerdict),
+		PermissionGranted: in.PermissionGranted,
+		HasFix:            in.HasFix,
+		SourceInfoPresent: in.SourceInfoPresent,
+		Simulated:         in.Simulated,
+		Manual:            in.Manual,
+	}
+	accuracy, err := parseLocationNumber(in.AccuracyMeters, "accuracy_m")
+	if err != nil {
+		return nil, err
+	}
+	if accuracy != nil && *accuracy < 0 {
+		return nil, errors.New("accuracy_m must be non-negative")
+	}
+	out.AccuracyMeters = accuracy
+	skew, err := parseLocationNumber(in.ClockSkewSeconds, "clock_skew_s")
+	if err != nil {
+		return nil, err
+	}
+	if skew != nil {
+		whole := int64(*skew)
+		if float64(whole) != *skew {
+			return nil, errors.New("clock_skew_s must be whole seconds")
+		}
+		out.ClockSkewSeconds = &whole
+	}
+	if in.CapturedAt != nil {
+		at, err := time.Parse(time.RFC3339, *in.CapturedAt)
+		if err != nil {
+			return nil, err
+		}
+		out.CapturedAt = &at
+	}
+	lat, err := parseLocationNumber(in.Latitude, "lat")
+	if err != nil {
+		return nil, err
+	}
+	if lat != nil && (*lat < -90 || *lat > 90) {
+		return nil, errors.New("lat out of range")
+	}
+	out.Latitude = lat
+	lon, err := parseLocationNumber(in.Longitude, "lon")
+	if err != nil {
+		return nil, err
+	}
+	if lon != nil && (*lon < -180 || *lon > 180) {
+		return nil, errors.New("lon out of range")
+	}
+	out.Longitude = lon
 	return out, nil
 }
 

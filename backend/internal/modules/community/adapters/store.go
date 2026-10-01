@@ -85,6 +85,22 @@ func uuidOrNull(text string) (pgtype.UUID, error) {
 	return mustUUID(text)
 }
 
+// textOrNull maps an optional band: empty means absent (NULL), never a
+// stored empty string that later reads as a band.
+func textOrNull(text string) pgtype.Text {
+	if strings.TrimSpace(text) == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: text, Valid: true}
+}
+
+func textValue(v pgtype.Text) string {
+	if !v.Valid {
+		return ""
+	}
+	return v.String
+}
+
 // Submit persists one observation with its validation job atomically. A
 // retry with the same key returns the existing row; a different payload
 // under the same key conflicts. The enqueue closure receives the open
@@ -129,6 +145,9 @@ func (s *Store) Submit(ctx context.Context, obs domain.Observation, enqueue func
 		ClaimedCapturedAt:  pgTime(obs.ClaimedCapturedAt),
 		SupersedesID:       supersedesUUID,
 		PolicyVersion:      obs.PolicyVersion,
+		LocationVerdict:    textOrNull(obs.LocationVerdict),
+		LocationProximity:  textOrNull(obs.LocationProximity),
+		LocationReason:     textOrNull(obs.LocationReason),
 	})
 	_ = inserted
 	if err != nil {
@@ -166,7 +185,10 @@ func (s *Store) resolveConflict(ctx context.Context, obs domain.Observation) (st
 		row.ConditionKind != obs.ConditionKind ||
 		row.QualifierKey != obs.QualifierKey ||
 		uuidString(row.EvidenceID) != obs.EvidenceID ||
-		uuidString(row.SupersedesID) != obs.SupersedesID {
+		uuidString(row.SupersedesID) != obs.SupersedesID ||
+		textValue(row.LocationVerdict) != obs.LocationVerdict ||
+		textValue(row.LocationProximity) != obs.LocationProximity ||
+		textValue(row.LocationReason) != obs.LocationReason {
 		return "", false, domain.ErrConflict
 	}
 	return uuidString(row.ID), true, nil
@@ -344,7 +366,24 @@ func mapObservation(row community.CommunityObservation) domain.Observation {
 		SupersedesID:      uuidString(row.SupersedesID),
 		PolicyVersion:     row.PolicyVersion,
 		Freshness:         domain.CaptureFreshness(claimed, row.ReceivedAt.Time),
+		LocationVerdict:   textValue(row.LocationVerdict),
+		LocationProximity: textValue(row.LocationProximity),
+		LocationReason:    textValue(row.LocationReason),
 	}
+}
+
+// LastObservationSite reports the contributor's most recent observation
+// site for teleport review. Absence (no prior fact) is not an error:
+// first observations never teleport.
+func (s *Store) LastObservationSite(ctx context.Context, contributorRef string) (string, time.Time, bool, error) {
+	row, err := community.New(s.pool).LastObservationSite(ctx, contributorRef)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", time.Time{}, false, nil
+		}
+		return "", time.Time{}, false, err
+	}
+	return uuidString(row.StationID), row.ReceivedAt.Time, true, nil
 }
 
 // ListByContributor returns one contributor's facts newest-first with

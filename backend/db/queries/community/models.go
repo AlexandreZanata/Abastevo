@@ -67,6 +67,9 @@ type CommunityObservation struct {
 	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
 	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
 	PolicyVersion      string             `json:"policy_version"`
+	LocationVerdict    pgtype.Text        `json:"location_verdict"`
+	LocationProximity  pgtype.Text        `json:"location_proximity"`
+	LocationReason     pgtype.Text        `json:"location_reason"`
 }
 
 type CommunityObservationDecision struct {

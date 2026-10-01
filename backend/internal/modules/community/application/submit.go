@@ -73,6 +73,18 @@ type Ports struct {
 	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
 	Resolve      func(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
 	Store        Store
+	// Locate measures the PostGIS distance from a precise station
+	// point to a transient fix and reports the station site. Nil
+	// skips the location intake entirely (pre-location behavior);
+	// when location evidence is present but ports are missing, the
+	// submit fails closed instead of storing unverified bands.
+	Locate func(ctx context.Context, stationID string, lat, lon float64) (distanceM float64, site StationSite, err error)
+	// LastSite reports the contributor's most recent observation
+	// site for teleport review. Nil skips teleport checks.
+	LastSite func(ctx context.Context, contributorRef string) (stationID string, receivedAt time.Time, found bool, err error)
+	// StationDistance measures PostGIS distance between two
+	// stations for teleport review. Nil skips teleport checks.
+	StationDistance func(ctx context.Context, a, b string) (distanceM float64, err error)
 }
 
 // Store is the owned persistence port.
@@ -84,7 +96,8 @@ type Store interface {
 }
 
 // SubmitDTO carries a validated submission body. Amounts arrive parsed;
-// handlers reject malformed JSON before this point.
+// handlers reject malformed JSON before this point. Location is
+// optional: nil preserves pre-location behavior exactly.
 type SubmitDTO struct {
 	ClientSubmissionID string
 	StationID          string
@@ -97,6 +110,7 @@ type SubmitDTO struct {
 	EvidenceID         string
 	ClaimedCapturedAt  time.Time
 	SupersedesID       string
+	Location           *LocationEvidence
 }
 
 // SubmitResult is the safe acknowledgment: identity plus RECEIVED state,
@@ -159,6 +173,10 @@ func execute(ctx context.Context, p Ports, caller Caller, dto SubmitDTO) (Outcom
 	})
 	if err != nil {
 		return Outcome{}, fmt.Errorf("community: invalid submission: %w", err)
+	}
+	obs, err = attachLocation(ctx, p, caller.Token, dto, obs, now)
+	if err != nil {
+		return Outcome{}, err
 	}
 	storedID, _, err := p.Store.Submit(ctx, obs, func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 		return p.EnqueueJob(ctx, tx, kind, payload, dedupe)
