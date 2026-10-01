@@ -59,12 +59,38 @@ class CaptureOcrViewModelTest {
         assertTrue(pending is CaptureOcrUiState.NeedsConfirmation)
         assertTrue((pending as CaptureOcrUiState.NeedsConfirmation).candidates.size == 2)
 
-        vm.onConfirm(pending.candidates.first(), null, true)
+        vm.onConfirm(pending.candidates.first(), null, "STANDARD", true)
         assertTrue(vm.state.value is CaptureOcrUiState.NeedsConfirmation)
 
-        vm.onConfirm(pending.candidates[1], FuelProduct.GASOLINE_REGULAR, true)
+        vm.onConfirm(pending.candidates[1], FuelProduct.GASOLINE_REGULAR, null, true)
+        assertTrue(vm.state.value is CaptureOcrUiState.NeedsConfirmation)
+
+        vm.onConfirm(pending.candidates[1], FuelProduct.GASOLINE_REGULAR, "STANDARD", true)
         val done = vm.state.value
         assertTrue(done is CaptureOcrUiState.Confirmed)
         assertTrue((done as CaptureOcrUiState.Confirmed).candidate.priceMilli == 5890L)
+        assertTrue(done.conditionKind == "STANDARD")
+    }
+
+    @Test
+    fun `manual price confirms and invalid input keeps candidates`() {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.onCaptureResult(cancelled = false, ocrText = "5,89")
+        val pending = vm.state.value
+        assertTrue(pending is CaptureOcrUiState.NeedsConfirmation)
+
+        vm.onConfirmManual("nove", FuelProduct.ETHANOL, "APP", true)
+        val kept = vm.state.value
+        assertTrue(kept is CaptureOcrUiState.NeedsConfirmation)
+        assertTrue((kept as CaptureOcrUiState.NeedsConfirmation).candidates.size == 1)
+
+        vm.onConfirmManual("5,89", FuelProduct.ETHANOL, "APP", true)
+        val done = vm.state.value
+        assertTrue(done is CaptureOcrUiState.Confirmed)
+        val confirmed = done as CaptureOcrUiState.Confirmed
+        assertTrue(confirmed.candidate.priceMilli == 5890L)
+        assertTrue(confirmed.candidate.manualEntry)
+        assertTrue(confirmed.product == FuelProduct.ETHANOL)
+        assertTrue(confirmed.conditionKind == "APP")
     }
 }

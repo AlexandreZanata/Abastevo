@@ -89,14 +89,17 @@ class ConfirmPriceCaptureUseCaseTest {
         val choices = (out as ConfirmPriceCaptureUseCase.StartOutcome.NeedsHumanChoice).candidates
         assertTrue(choices.size == 1 && useCase.isLowConfidence(choices[0]))
 
-        val noProduct = useCase.confirm(choices[0], null, true)
+        val noProduct = useCase.confirm(choices[0], null, "STANDARD", true)
         assertTrue(noProduct is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
-        val unconfirmed = useCase.confirm(choices[0], FuelProduct.GASOLINE_REGULAR, false)
+        val unconfirmed = useCase.confirm(choices[0], FuelProduct.GASOLINE_REGULAR, "STANDARD", false)
         assertTrue(unconfirmed is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
-        val ok = useCase.confirm(choices[0], FuelProduct.GASOLINE_REGULAR, true)
+        val noCondition = useCase.confirm(choices[0], FuelProduct.GASOLINE_REGULAR, "  ", true)
+        assertTrue(noCondition is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
+        val ok = useCase.confirm(choices[0], FuelProduct.GASOLINE_REGULAR, "STANDARD", true)
         assertTrue(ok is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed)
         assertTrue((ok as ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed).product ==
             FuelProduct.GASOLINE_REGULAR)
+        assertTrue(ok.conditionKind == "STANDARD")
     }
 
     @Test
@@ -112,8 +115,33 @@ class ConfirmPriceCaptureUseCaseTest {
         val stayed = useCase.confirm(
             (out as ConfirmPriceCaptureUseCase.StartOutcome.NeedsHumanChoice).candidates.first(),
             null,
+            "STANDARD",
             humanConfirmed = true,
         )
         assertTrue(stayed is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
+    }
+
+    @Test
+    fun `manual price confirms exact milli-BRL with picked product and condition`() {
+        val useCase = ConfirmPriceCaptureUseCase(FakeFlags(true), FakeOcr())
+        val out = useCase.confirmManual("5,89", FuelProduct.ETHANOL, "APP", true)
+        assertTrue(out is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed)
+        val confirmed = out as ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed
+        assertTrue(confirmed.candidate.priceMilli == 5890L)
+        assertTrue(confirmed.candidate.manualEntry)
+        assertTrue(confirmed.product == FuelProduct.ETHANOL)
+        assertTrue(confirmed.conditionKind == "APP")
+    }
+
+    @Test
+    fun `invalid manual price stays in choice without candidates`() {
+        val useCase = ConfirmPriceCaptureUseCase(FakeFlags(true), FakeOcr())
+        val invalid = useCase.confirmManual("nove", FuelProduct.ETHANOL, "APP", true)
+        assertTrue(invalid is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
+        assertTrue(
+            (invalid as ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice).candidates.isEmpty(),
+        )
+        val missing = useCase.confirmManual("5,89", null, "APP", true)
+        assertTrue(missing is ConfirmPriceCaptureUseCase.ConfirmOutcome.StillNeedsChoice)
     }
 }

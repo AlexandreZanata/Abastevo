@@ -2,6 +2,8 @@ package com.anpfuel.application.usecase.capture
 
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.OcrPort
+import com.anpfuel.domain.portable.PortableMoney
+import com.anpfuel.domain.portable.PortableMoneyException
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 
@@ -20,8 +22,11 @@ import com.anpfuel.domain.valueobject.FuelProduct
  * no `min()` lowest-price choice anywhere in this flow.
  *
  * [confirm] completes only when the contributor explicitly confirms with a
- * non-null product; otherwise it returns [ConfirmOutcome.StillNeedsChoice].
- * This use case never uploads: P10-T05 owns the outbox/direct media flow.
+ * non-null product and an explicitly picked condition; otherwise it returns
+ * [ConfirmOutcome.StillNeedsChoice]. [confirmManual] accepts a human-typed
+ * price (exact [PortableMoney] milli-BRL, never rounded) for empty or
+ * low-confidence OCR sets. This use case never uploads: P10-T05 owns the
+ * outbox/direct media flow.
  */
 class ConfirmPriceCaptureUseCase(
     private val flagProvider: CaptureOcrFlagProvider,
@@ -52,6 +57,7 @@ class ConfirmPriceCaptureUseCase(
         data class Confirmed(
             val candidate: PortablePriceOcr.OcrCandidate,
             val product: FuelProduct,
+            val conditionKind: String,
         ) : ConfirmOutcome
     }
 
@@ -74,12 +80,14 @@ class ConfirmPriceCaptureUseCase(
 
     /**
      * Confirms one candidate only with explicit human approval plus a
-     * contributor-picked product. Condition/product are never taken from
-     * OCR; a null product or `humanConfirmed = false` stays in choice.
+     * contributor-picked product and condition. Condition/product are never
+     * taken from OCR; a null product, blank condition or
+     * `humanConfirmed = false` stays in choice.
      */
     fun confirm(
         candidate: PortablePriceOcr.OcrCandidate?,
         product: FuelProduct?,
+        conditionKind: String?,
         humanConfirmed: Boolean,
     ): ConfirmOutcome {
         if (!flagProvider.isEnabled()) {
@@ -87,12 +95,50 @@ class ConfirmPriceCaptureUseCase(
                 if (candidate == null) emptyList() else listOf(candidate),
             )
         }
-        if (candidate == null || product == null || !humanConfirmed) {
+        val condition = conditionKind?.trim().orEmpty()
+        if (candidate == null || product == null || condition.isEmpty() || !humanConfirmed) {
             return ConfirmOutcome.StillNeedsChoice(
                 if (candidate == null) emptyList() else listOf(candidate),
             )
         }
-        return ConfirmOutcome.Confirmed(candidate, product)
+        return ConfirmOutcome.Confirmed(candidate, product, condition)
+    }
+
+    /**
+     * Confirms a human-typed price for empty/low-confidence OCR sets. The
+     * raw text must parse to exact milli-BRL; invalid input stays in
+     * choice with an empty set so the caller keeps its own candidates.
+     * Typed entries skip the OCR confidence gate ([OcrCandidate.manualEntry]).
+     */
+    fun confirmManual(
+        rawPrice: String?,
+        product: FuelProduct?,
+        conditionKind: String?,
+        humanConfirmed: Boolean,
+    ): ConfirmOutcome {
+        if (!flagProvider.isEnabled()) return ConfirmOutcome.StillNeedsChoice(emptyList())
+        val condition = conditionKind?.trim().orEmpty()
+        if (product == null || condition.isEmpty() || !humanConfirmed) {
+            return ConfirmOutcome.StillNeedsChoice(emptyList())
+        }
+        val raw = rawPrice?.trim().orEmpty()
+        if (raw.isEmpty()) return ConfirmOutcome.StillNeedsChoice(emptyList())
+        val milli = try {
+            PortableMoney.parse(raw)
+        } catch (error: PortableMoneyException) {
+            return ConfirmOutcome.StillNeedsChoice(emptyList())
+        }
+        return ConfirmOutcome.Confirmed(
+            candidate = PortablePriceOcr.OcrCandidate(
+                priceMilli = milli,
+                raw = raw,
+                confidence = 1.0,
+                hasCurrencyMarker = false,
+                manualEntry = true,
+            ),
+            product = product,
+            conditionKind = condition,
+        )
     }
 
     /** Local hint: below-threshold candidates require manual entry. */

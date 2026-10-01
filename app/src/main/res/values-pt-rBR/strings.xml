@@ -396,8 +396,12 @@
     <string name="capture_permission_required">Permissão de câmera é necessária para capturar. Você pode continuar contribuindo sem foto.</string>
     <string name="capture_cancelled">Captura cancelada. Nada foi salvo.</string>
     <string name="capture_no_price">Nenhum preço detectado. Digite o preço manualmente.</string>
-    <string name="capture_low_confidence">Confiança do OCR baixa. Confira o preço e escolha o combustível.</string>
-    <string name="capture_check_price">Confira o preço detectado e escolha o combustível.</string>
+    <string name="capture_low_confidence">Confiança do OCR baixa. Confira o preço e escolha o combustível e a condição.</string>
+    <string name="capture_check_price">Confira o preço detectado e escolha o combustível e a condição.</string>
+    <string name="capture_pick_product">Escolha o combustível</string>
+    <string name="capture_pick_condition">Escolha a condição do preço</string>
+    <string name="capture_manual_price_label">Ou digite o preço</string>
+    <string name="capture_manual_price_placeholder">Ex.: 5,89</string>
     <string name="capture_confirm_explicit">Confirmar (explícito)</string>
     <string name="capture_confirmed_outbox">Preço confirmado: %1$s. O envio acontece só pela caixa de contribuições.</string>
     <string name="capture_done">Concluir</string>

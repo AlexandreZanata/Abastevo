@@ -44,6 +44,25 @@ class PortablePriceOcrTest {
     }
 
     @Test
+    fun `parsed candidates are never manual entries`() {
+        val out = PortablePriceOcr.parseCandidates("R$ 5,89")
+        assertEquals(1, out.size)
+        assertFalse(out[0].manualEntry)
+    }
+
+    @Test
+    fun `human-typed entry skips the OCR confidence gate`() {
+        val manual = PortablePriceOcr.OcrCandidate(
+            priceMilli = 5890L,
+            raw = "5,89",
+            confidence = 1.0,
+            hasCurrencyMarker = false,
+            manualEntry = true,
+        )
+        assertFalse(PortablePriceOcr.isLowConfidence(manual))
+    }
+
+    @Test
     fun `over-precision and over-range fragments are skipped`() {
         assertTrue(PortablePriceOcr.parseCandidates("R$ 5,8999").isEmpty())
         assertTrue(PortablePriceOcr.parseCandidates("R$ 99999,00").isEmpty())

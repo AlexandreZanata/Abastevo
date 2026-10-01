@@ -397,8 +397,12 @@
     <string name="capture_permission_required">Camera permission is required for capture. You can keep contributing without a photo.</string>
     <string name="capture_cancelled">Capture cancelled. Nothing was saved.</string>
     <string name="capture_no_price">No price detected. Enter the price manually.</string>
-    <string name="capture_low_confidence">Low OCR confidence. Check the price and pick the fuel.</string>
-    <string name="capture_check_price">Check the detected price and pick the fuel.</string>
+    <string name="capture_low_confidence">Low OCR confidence. Check the price and pick the fuel and condition.</string>
+    <string name="capture_check_price">Check the detected price and pick the fuel and condition.</string>
+    <string name="capture_pick_product">Pick the fuel</string>
+    <string name="capture_pick_condition">Pick the price condition</string>
+    <string name="capture_manual_price_label">Or type the price</string>
+    <string name="capture_manual_price_placeholder">E.g. 5,89</string>
     <string name="capture_confirm_explicit">Confirm (explicit)</string>
     <string name="capture_confirmed_outbox">Price confirmed: %1$s. Upload happens only from the contribution outbox.</string>
     <string name="capture_done">Done</string>
