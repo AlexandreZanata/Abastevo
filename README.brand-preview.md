@@ -1,4 +1,6 @@
-![ABASTEVO — blue and green logo with reference lettering](docs/assets/brand/abastevo-readme-banner-v2.svg)
+<!-- Approved composition preview; canonical README uses the same SVG. -->
+
+![abastevo — original blue and green A logo and reference ABASTEVO lettering](docs/assets/brand/abastevo-readme-banner-v2.svg)
 
 # abastevo
 

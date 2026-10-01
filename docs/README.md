@@ -1,4 +1,4 @@
-# Documentation index
+# abastevo documentation
 
 This repository contains the preserved Android app, integrated backend phase history and the next functional multiplatform plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next implementation: [P12-T01](../ROADMAP.md#p12-t01) after G09-LOCAL correction integration; real-production G09 waits until G18.
 
@@ -51,3 +51,5 @@ Technical/legal/provider facts were checked on 2026-09-28; recheck at implementa
 - [FREE_ACCOUNT_ACCESS](security/FREE_ACCOUNT_ACCESS.md) — free email-code/Google/Apple signup and secure recovery.
 - [LOCAL_MEDIA_LOCATION_POLICY](security/LOCAL_MEDIA_LOCATION_POLICY.md) — low-memory encoding, all-copy 24-hour expiry and simulated-location controls.
 - [ADR-014](adr/014-functional-app-before-production-release.md), [ADR-015](adr/015-kotlin-multiplatform-shared-domain.md) — release order and Kotlin/Swift boundaries.
+
+- [Brand identity](brand/IDENTITY.md) — selected name/logo and local README artwork awaiting approval.

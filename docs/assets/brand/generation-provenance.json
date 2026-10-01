@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-01",
+  "tool": "built-in image_gen.imagegen",
+  "status": "PENDING_VISUAL_APPROVAL",
+  "project": "abastevo",
+  "source_logo": "abastevo-logo-source.png",
+  "source_logo_sha256": "dc6daf86d19ddb6d0590ac71e11529b72b29cf40d0dc0b3fd88e72167ccd0760",
+  "banner": "abastevo-readme-banner-v1.png",
+  "banner_sha256": "85b7a29b53ed10fd73a1e691dc718e78a27e588739c88695ff2375d2a22ea5b5",
+  "prompt": "readme-banner-prompt.txt",
+  "publication_scope": "LOCAL_PREVIEW_ONLY"
+}

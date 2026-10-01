@@ -1,0 +1,47 @@
+{
+  "task": "P00-T03",
+  "date": "2026-10-01",
+  "state": "LOCAL_DONE / APPROVED_FOR_PUBLICATION",
+  "reference_sha256": "01de65db5c91c1a9b12a55713a27c782fed25d06f0da757d77d058180b134f2d",
+  "reference_text_crop_xyxy": [
+    40,
+    310,
+    470,
+    374
+  ],
+  "ignored_reference_logo": true,
+  "glyphs": "ABASTEVO",
+  "glyph_components": 8,
+  "method": "Binary silhouette tracing to spline paths, counters retained with evenodd fill; no font substitution or generative image tool. Existing P00-T02 logo geometry/gradients copied without changes into horizontal composition.",
+  "text_color": "#0b1849 (navy, existing banner palette)",
+  "original_logo_sha256_unchanged": "706fc79d36df750838256dab85f05791eeb8476dc031717dd6c3559c6d57fe0d",
+  "assets": {
+    "abastevo-wordmark.svg": {
+      "sha256": "a2986a6a6db9c90ffb922b63fcaf9ba7c9e661acbd39710dcb3d24f37e501a70",
+      "bytes": 194860
+    },
+    "abastevo-readme-banner-v2.svg": {
+      "sha256": "f7bd9a4866d3660dafe0c1697c0ff85844d13e60b18e31bf0bf9839486e99d20",
+      "bytes": 218533
+    },
+    "abastevo-readme-banner-v2.png": {
+      "sha256": "2079895263382937922f70e630556795762130f97c0945fdd0e1708db902e167",
+      "bytes": 83301
+    }
+  },
+  "limitation": "Lettering reconstructed from 512px raster reference; small curve differences may remain. App runtime assets unchanged.",
+  "reference_glyph_bbox_xyxy": [
+    48,
+    317,
+    463,
+    367
+  ],
+  "checks": {
+    "native_svg_safety": "PASS",
+    "reference_glyph_count": 8,
+    "original_logo_hash_and_geometry_gradients": "UNCHANGED",
+    "wordmark_silhouette_iou_at_reference_size": 0.99082,
+    "banner_render": "PASS (2172 x 724)",
+    "visual_approval": "APPROVED: maintainer GitHub publication request 2026-10-01"
+  }
+}
