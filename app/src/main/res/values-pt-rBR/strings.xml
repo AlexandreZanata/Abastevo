@@ -321,4 +321,18 @@
     <string name="community_official_empty">Preço oficial indisponível (UNKNOWN)</string>
     <string name="community_official_detail">Oficial: %1$s · %2$s · Coletado %3$s</string>
     <string name="community_availability_detail">Comunidade: %1$s · %2$s</string>
+
+    <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
+    <string name="community_vote_title">Confirmar ou contestar este preço</string>
+    <string name="community_vote_confirm">Confirmar preço</string>
+    <string name="community_vote_dispute">Enviar contestação</string>
+    <string name="community_vote_dispute_hint">Confirmar atesta o valor e a condição exatos acima. Contestações nunca ampliam votos.</string>
+    <string name="community_vote_detail_label">O que está errado? (opcional)</string>
+    <string name="community_vote_private_note">Detalhes ficam privados e nunca mostram nomes.</string>
+    <string name="community_vote_replacement_label">Id da observação substituta (opcional)</string>
+    <string name="community_vote_replacement_hint">Se o preço mudou, o novo preço viaja como observação nova.</string>
+    <string name="community_vote_confirmed">Confirmação registrada. Obrigado por corroborar.</string>
+    <string name="community_vote_replayed">Já registrada — nenhum segundo voto contado.</string>
+    <string name="community_vote_disputed">Contestação registrada (%1$s). Obrigado pela correção.</string>
+    <string name="community_vote_rejected">Não registrada (%1$s)</string>
 </resources>

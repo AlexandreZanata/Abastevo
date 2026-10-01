@@ -322,4 +322,18 @@
     <string name="community_official_empty">Official price unavailable (UNKNOWN)</string>
     <string name="community_official_detail">Official: %1$s · %2$s · Collected %3$s</string>
     <string name="community_availability_detail">Community: %1$s · %2$s</string>
+
+    <!-- Confirm/dispute (P10-T07, beta, flag-gated) -->
+    <string name="community_vote_title">Confirm or dispute this price</string>
+    <string name="community_vote_confirm">Confirm price</string>
+    <string name="community_vote_dispute">Send dispute</string>
+    <string name="community_vote_dispute_hint">Confirm affirms the exact amount and condition above. Disputes never amplify votes.</string>
+    <string name="community_vote_detail_label">What is wrong? (optional)</string>
+    <string name="community_vote_private_note">Details stay private and never show names.</string>
+    <string name="community_vote_replacement_label">Replacement observation id (optional)</string>
+    <string name="community_vote_replacement_hint">If the price changed, the new price travels as a fresh observation.</string>
+    <string name="community_vote_confirmed">Confirmation recorded. Thanks for corroborating.</string>
+    <string name="community_vote_replayed">Already recorded — no second vote counted.</string>
+    <string name="community_vote_disputed">Dispute recorded (%1$s). Thanks for the correction.</string>
+    <string name="community_vote_rejected">Not recorded (%1$s)</string>
 </resources>

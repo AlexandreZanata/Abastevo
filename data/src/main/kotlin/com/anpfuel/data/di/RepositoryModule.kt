@@ -21,12 +21,15 @@ import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.CommunityVoteFlagProvider
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.preferences.AnonymousContributionFlagStore
 import com.anpfuel.data.local.preferences.CaptureOcrFlagStore
 import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
+import com.anpfuel.data.local.preferences.CommunityVoteFlagStore
 import com.anpfuel.data.local.preferences.ContributionOutboxFlagStore
+import com.anpfuel.data.remote.CommunityVoteHttpClient
 import com.anpfuel.data.remote.ContributionUploadHttpClient
 import com.anpfuel.data.repository.AddressGeocodeRepositoryImpl
 import com.anpfuel.data.repository.AveragePriceRepositoryImpl
@@ -48,6 +51,7 @@ import com.anpfuel.data.repository.ReverseGeocodeRepositoryImpl
 import com.anpfuel.data.repository.VehicleRepositoryImpl
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
 import com.anpfuel.data.notification.PriceDropNotificationRepositoryImpl
@@ -209,6 +213,18 @@ abstract class RepositoryModule {
     abstract fun bindCommunityReadsFlagProvider(
         impl: CommunityReadsFlagStore,
     ): CommunityReadsFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunityVoteFlagProvider(
+        impl: CommunityVoteFlagStore,
+    ): CommunityVoteFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunityVoteGateway(
+        impl: CommunityVoteHttpClient,
+    ): CommunityVoteGateway
 
     @Binds
     @Singleton

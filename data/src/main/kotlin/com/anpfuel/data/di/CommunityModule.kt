@@ -1,6 +1,7 @@
 package com.anpfuel.data.di
 
 import com.anpfuel.data.remote.BackendStationPriceHttpClient
+import com.anpfuel.data.remote.CommunityVoteHttpClient
 import com.anpfuel.data.remote.OkHttpClientFactory
 import dagger.Module
 import dagger.Provides
@@ -26,6 +27,14 @@ object CommunityModule {
     @Singleton
     fun provideBackendStationPriceHttpClient(): BackendStationPriceHttpClient =
         BackendStationPriceHttpClient(
+            client = OkHttpClientFactory.create(),
+            baseUrl = PREVIEW_BASE_URL,
+        )
+
+    @Provides
+    @Singleton
+    fun provideCommunityVoteHttpClient(): CommunityVoteHttpClient =
+        CommunityVoteHttpClient(
             client = OkHttpClientFactory.create(),
             baseUrl = PREVIEW_BASE_URL,
         )
