@@ -9,7 +9,9 @@ cat > "$tmp/deferred.md" <<'RECORD'
 Classification: **RELEASE**
 Status: **DEFERRED_UNTIL_APP_FUNCTIONAL**
 Entry for mobile: **G09-LOCAL integration**, not production certification.
-Production prerequisite: **G18 functional Android/iOS acceptance**.
+Production prerequisite: **G24-ANDROID-COMMERCIAL functional Android acceptance**.
+Certification scope: **Android/backend only; iOS DEFERRED_EXPLICIT_RESUME_ONLY**.
+Historical multiplatform gate: **G18_NOT_ACCEPTED**.
 Historical candidate: 4ce5aaf79aa3bf8d8cf31c05635dfa2b30714556
 Fresh certification
 Provisioned staging
@@ -17,11 +19,15 @@ Legal review
 Wiki mirror
 RECORD
 bash scripts/check-g09.sh "$tmp/deferred.md"
-for mutation in certified missing-app missing-legal mobile-without-integration; do
+for mutation in certified missing-app missing-legal mobile-without-integration old-multiplatform-gate missing-scope ios-certified g18-accepted; do
     cp "$tmp/deferred.md" "$tmp/mutant.md"
     case "$mutation" in
         certified) sed -i 's/DEFERRED_UNTIL_APP_FUNCTIONAL/RELEASE_CERTIFIED/' "$tmp/mutant.md" ;;
         missing-app) sed -i '/Production prerequisite:/d' "$tmp/mutant.md" ;;
+        old-multiplatform-gate) sed -i 's/G24-ANDROID-COMMERCIAL functional Android acceptance/G18 functional Android\/iOS acceptance/' "$tmp/mutant.md" ;;
+        missing-scope) sed -i '/Certification scope:/d' "$tmp/mutant.md" ;;
+        ios-certified) sed -i 's/iOS DEFERRED_EXPLICIT_RESUME_ONLY/iOS CERTIFIED/' "$tmp/mutant.md" ;;
+        g18-accepted) sed -i 's/G18_NOT_ACCEPTED/G18_ACCEPTED/' "$tmp/mutant.md" ;;
         missing-legal) sed -i '/Legal review/d' "$tmp/mutant.md" ;;
         mobile-without-integration) sed -i '/Entry for mobile:/d' "$tmp/mutant.md" ;;
     esac

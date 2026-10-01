@@ -19,6 +19,7 @@ Issue #69, LOCAL_DONE (planning only). Commercial experience contract B-BR-C01â€
 - Changed Markdown local destinations, unique task IDs/anchors/dependency order, ledger JSON and preservation of imported README section PASS.
 - `bash scripts/tests/test-wiki.sh`: 39 passed, 0 failed; source-SHA-selected overview, guarded owned pages and manual-page safety preserved.
 - Previous manual Home exact bytes/hash match the archived source copy; one-time adoption authorized explicitly, unrelated manual pages excluded.
+- Deferred-release record guard updated for ADR-016's Android/backend scope, explicit iOS deferral and historical G18 nonacceptance. RED: updated policy fixture refused the old G18-only guard. GREEN: `bash scripts/tests/test-g09.sh` passes valid fixture/canonical record and rejects premature certification, missing app/legal/local prerequisites, old gate, absent scope, claimed iOS certification, claimed G18 acceptance and missing record. Shell syntax PASS. This validates policy records, not runtime certification.
 - Whitespace and scoped secret-surface review PASS. No backend behavior change in this task and no future phase issues created.
 - Historical full G18 remains unaccepted; Android/backend real G09 deferred until actual G24 and full production evidence. iOS native work is deferred until a new explicit request; prepared assets preserved.
 - This task does not implement the planned redesigned experience or certify production.
