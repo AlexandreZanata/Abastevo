@@ -64,6 +64,7 @@ import com.anpfuel.domain.valueobject.FuelProduct
 @Composable
 fun StationsScreen(
     onNavigateBack: (() -> Unit)? = null,
+    onNavigateToUpdatePrice: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
@@ -135,7 +136,10 @@ fun StationsScreen(
         onDownloadStationDetail = { viewModel.downloadStationDetail(locale) },
         onRetry = { viewModel.load(locale) },
         onWeekChanged = { viewModel.load(locale) },
+        onStationSelected = viewModel::onStationSelected,
         onNavigateToStation = viewModel::onNavigateToStation,
+        onDetailDismissed = viewModel::onDetailDismissed,
+        onNavigateToUpdatePrice = onNavigateToUpdatePrice,
         modifier = modifier,
     )
 }
@@ -151,7 +155,10 @@ private fun StationsContent(
     onDownloadStationDetail: () -> Unit,
     onRetry: () -> Unit,
     onWeekChanged: () -> Unit,
+    onStationSelected: (String) -> Unit,
     onNavigateToStation: (String) -> Unit,
+    onDetailDismissed: () -> Unit,
+    onNavigateToUpdatePrice: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -350,7 +357,7 @@ private fun StationsContent(
                     uiState.stations.forEach { station ->
                         StationPriceRow(
                             station = station,
-                            onNavigate = { onNavigateToStation(station.cnpjDigits) },
+                            onNavigate = { onStationSelected(station.cnpjDigits) },
                         )
                     }
                     Text(
@@ -363,6 +370,27 @@ private fun StationsContent(
                     )
                 }
             }
+        }
+
+        uiState.selectedDetail?.let { detail ->
+            val locationLabel =
+                if (uiState.municipality != null && uiState.state != null) {
+                    stringResource(
+                        R.string.home_location_format,
+                        uiState.municipality,
+                        uiState.state.abbreviation,
+                    )
+                } else {
+                    null
+                }
+            StationDetailSheet(
+                detail = detail,
+                fuelProduct = uiState.selectedFuelProduct,
+                locationLabel = locationLabel,
+                onDismiss = onDetailDismissed,
+                onRoute = { onNavigateToStation(detail.station.cnpjDigits) },
+                onUpdatePrice = onNavigateToUpdatePrice,
+            )
         }
     }
 }
@@ -426,7 +454,10 @@ private fun StationsScreenPreview() {
             onDownloadStationDetail = {},
             onRetry = {},
             onWeekChanged = {},
+            onStationSelected = {},
             onNavigateToStation = {},
+            onDetailDismissed = {},
+            onNavigateToUpdatePrice = {},
         )
     }
 }

@@ -206,7 +206,12 @@
     <!-- UC-007 Stations -->
     <string name="stations_title">Stations</string>
     <string name="stations_sort_by_price">Sorted by price (lowest first)</string>
-    <string name="stations_tap_to_navigate_hint">Tap a station to open it in Google Maps.</string>
+    <string name="stations_tap_to_navigate_hint">Tap a station to see details, prices and route options.</string>
+    <string name="station_detail_anp_title">ANP reference price</string>
+    <string name="station_detail_survey_week">Survey week: %1$s</string>
+    <string name="station_detail_stale_badge">Stale survey — check the pump price.</string>
+    <string name="station_detail_unknown_date">Collection date unknown.</string>
+    <string name="station_detail_disputed">Under community dispute — treat with caution.</string>
     <string name="stations_download_prompt">Station-level prices are not on this device yet. Download the ANP station file for this week to compare prices by station.</string>
     <string name="stations_download_action">Download station prices</string>
     <string name="stations_empty">No stations reported this fuel in the selected city for this week.</string>

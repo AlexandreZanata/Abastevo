@@ -14,7 +14,12 @@ import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCas
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
 import com.anpfuel.app.mapper.StationPriceUiMapper
+import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.model.StationDetailUiModel
 import com.anpfuel.app.ui.model.StationPriceUiModel
+import com.anpfuel.domain.discovery.StationDetailRule
+import com.anpfuel.domain.discovery.StationDetailState
+import com.anpfuel.domain.discovery.StationRowFreshness
 import com.anpfuel.domain.event.SyncJobOutcome
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.model.RetailStation
@@ -22,6 +27,7 @@ import com.anpfuel.domain.valueobject.DeviceLocation
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.valueobject.SurveyWeek
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
 import androidx.lifecycle.SavedStateHandle
@@ -46,6 +52,7 @@ data class StationsUiState(
     val stations: List<StationPriceUiModel> = emptyList(),
     val searchQuery: String = "",
     val searchNoMatch: String? = null,
+    val selectedDetail: StationDetailUiModel? = null,
     val showDownloadPrompt: Boolean = false,
     val showEmpty: Boolean = false,
     val showNoLocation: Boolean = false,
@@ -132,6 +139,7 @@ class StationsViewModel @Inject constructor(
                 selectedFuelProduct = fuelProduct,
                 stations = emptyList(),
                 searchNoMatch = null,
+                selectedDetail = null,
             )
         }
         loadForFuel(fuelProduct, locale)
@@ -221,6 +229,54 @@ class StationsViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * P20-T03 — opens the station detail sheet from the cached domain list.
+     * Unknown CNPJ (or no survey week yet) yields no detail, never an
+     * invented card.
+     */
+    fun onStationSelected(cnpjDigits: String) {
+        val locale = lastLocale ?: return
+        val state = _uiState.value
+        val domain = lastStations.firstOrNull { it.station.cnpj.digits == cnpjDigits }
+        val week = state.surveyWeek
+        if (domain == null || week == null) {
+            _uiState.update { it.copy(selectedDetail = null) }
+            return
+        }
+        when (val detail = StationDetailRule.resolve(
+            rows = listOf(domain),
+            surveyWeek = week,
+            today = LocalDate.now(),
+            staleCache = false,
+        )) {
+            is StationDetailState.NoCoverage ->
+                _uiState.update { it.copy(selectedDetail = null) }
+            is StationDetailState.AnpReference -> {
+                val row = detail.rows.first()
+                _uiState.update {
+                    it.copy(
+                        selectedDetail = StationDetailUiModel(
+                            station = StationPriceUiMapper.toUiModel(
+                                stationPrice = domain,
+                                locale = locale,
+                                preferredState = state.state,
+                                preferredMunicipality = state.municipality,
+                            ),
+                            surveyWeekLabel = SurveyWeekFormatter.formatRange(week, locale),
+                            isStale = row.freshness == StationRowFreshness.STALE,
+                            dateUnknown = row.freshness == StationRowFreshness.UNKNOWN,
+                            communityDisputed = detail.communityDisputed,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun onDetailDismissed() {
+        _uiState.update { it.copy(selectedDetail = null) }
     }
 
     fun onNavigateToStation(cnpjDigits: String) {
