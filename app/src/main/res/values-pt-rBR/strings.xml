@@ -310,4 +310,44 @@
     <string name="auth_error_provider">Falha na verificação, tente de novo</string>
     <string name="auth_error_login_first">Entre com email primeiro</string>
     <string name="auth_error_unknown">Algo deu errado</string>
+
+    <!-- Preços da comunidade (P10-T06, beta, atrás de flag) -->
+    <string name="community_section_title">Preços da comunidade (beta)</string>
+    <string name="community_source_version">Fonte: %1$s · Contrato %2$s</string>
+    <string name="community_stale_label">Dados em cache podem estar desatualizados. Exibidos como defasados, não atuais.</string>
+    <string name="community_pending_p04">Sem preços da comunidade ainda. Comunidade permanece UNKNOWN até revisão (P04).</string>
+    <string name="community_confidence_note">Apoio da comunidade, não garantia. ANP é pesquisa oficial, não preço vivo na bomba.</string>
+    <string name="community_unavailable_retry">Preços da comunidade indisponíveis. A navegação oficial ANP continua funcionando.</string>
+    <string name="community_official_empty">Preço oficial indisponível (UNKNOWN)</string>
+    <string name="community_official_detail">Oficial: %1$s · %2$s · Coletado %3$s</string>
+    <string name="community_availability_detail">Comunidade: %1$s · %2$s</string>
+
+    <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
+    <string name="community_vote_title">Confirmar ou contestar este preço</string>
+    <string name="community_vote_confirm">Confirmar preço</string>
+    <string name="community_vote_dispute">Enviar contestação</string>
+    <string name="community_vote_dispute_hint">Confirmar atesta o valor e a condição exatos acima. Contestações nunca ampliam votos.</string>
+    <string name="community_vote_detail_label">O que está errado? (opcional)</string>
+    <string name="community_vote_private_note">Detalhes ficam privados e nunca mostram nomes.</string>
+    <string name="community_vote_replacement_label">Id da observação substituta (opcional)</string>
+    <string name="community_vote_replacement_hint">Se o preço mudou, o novo preço viaja como observação nova.</string>
+    <string name="community_vote_confirmed">Confirmação registrada. Obrigado por corroborar.</string>
+    <string name="community_vote_replayed">Já registrada — nenhum segundo voto contado.</string>
+    <string name="community_vote_disputed">Contestação registrada (%1$s). Obrigado pela correção.</string>
+    <string name="community_vote_rejected">Não registrada (%1$s)</string>
+
+    <!-- Privacidade da comunidade (P10-T08: o que sai do aparelho) -->
+    <string name="community_privacy_footnote">Anônimo: sem conta. Envia posto, preço e condição — e sua foto por 24h só quando você anexa uma.</string>
+    <string name="community_privacy_keys">Seu aparelho guarda a única chave. Perdê-la encerra esta identidade anônima.</string>
+
+    <!-- Captura da comunidade (P10-T08 i18n: extraído do CaptureScreen) -->
+    <string name="capture_disabled">Captura da comunidade desativada.</string>
+    <string name="capture_permission_required">Permissão de câmera é necessária para capturar. Você pode continuar contribuindo sem foto.</string>
+    <string name="capture_cancelled">Captura cancelada. Nada foi salvo.</string>
+    <string name="capture_no_price">Nenhum preço detectado. Digite o preço manualmente.</string>
+    <string name="capture_low_confidence">Confiança do OCR baixa. Confira o preço e escolha o combustível.</string>
+    <string name="capture_check_price">Confira o preço detectado e escolha o combustível.</string>
+    <string name="capture_confirm_explicit">Confirmar (explícito)</string>
+    <string name="capture_confirmed_outbox">Preço confirmado: %1$s. O envio acontece só pela caixa de contribuições.</string>
+    <string name="capture_done">Concluir</string>
 </resources>

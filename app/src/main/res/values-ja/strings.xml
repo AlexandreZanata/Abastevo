@@ -287,4 +287,44 @@
     <string name="a11y_screen_title">%1$s画面</string>
     <string name="a11y_week_picker_operational_note_expand">運用上のお知らせを展開</string>
     <string name="a11y_week_picker_operational_note_collapse">運用上のお知らせを折りたたむ</string>
+
+    <!-- コミュニティ価格（P10-T06、ベータ、フラグ付き） -->
+    <string name="community_section_title">コミュニティ価格（ベータ）</string>
+    <string name="community_source_version">出典：%1$s · 契約 %2$s</string>
+    <string name="community_stale_label">キャッシュされたデータは古い可能性があります。最新ではなく古いものとして表示されます。</string>
+    <string name="community_pending_p04">コミュニティ価格はまだありません。レビュー（P04）までコミュニティは UNKNOWN のままです。</string>
+    <string name="community_confidence_note">コミュニティの支持であり、保証ではありません。ANP は公式調査であり、店頭のリアルタイム価格ではありません。</string>
+    <string name="community_unavailable_retry">コミュニティ価格は利用できません。ANP 公式ブラウズは引き続き利用できます。</string>
+    <string name="community_official_empty">公式価格は利用できません（UNKNOWN）</string>
+    <string name="community_official_detail">公式：%1$s · %2$s · 収集 %3$s</string>
+    <string name="community_availability_detail">コミュニティ：%1$s · %2$s</string>
+
+    <!-- 確認/異議（P10-T07、ベータ、フラグ付き） -->
+    <string name="community_vote_title">この価格を確認または異議申立てする</string>
+    <string name="community_vote_confirm">価格を確認する</string>
+    <string name="community_vote_dispute">異議を送信する</string>
+    <string name="community_vote_dispute_hint">確認すると上記の正確な金額と条件を証明します。異議申立てで投票が増えることはありません。</string>
+    <string name="community_vote_detail_label">何が間違っていますか？（任意）</string>
+    <string name="community_vote_private_note">詳細は非公開であり、名前が表示されることはありません。</string>
+    <string name="community_vote_replacement_label">代替観測 ID（任意）</string>
+    <string name="community_vote_replacement_hint">価格が変更された場合、新しい価格は新しい観測として送信されます。</string>
+    <string name="community_vote_confirmed">確認が記録されました。裏付けありがとうございます。</string>
+    <string name="community_vote_replayed">すでに記録済み — 2 票目はカウントされません。</string>
+    <string name="community_vote_disputed">異議が記録されました（%1$s）。修正ありがとうございます。</string>
+    <string name="community_vote_rejected">記録されませんでした（%1$s）</string>
+
+    <!-- コミュニティプライバシー（P10-T08：デバイスから送信される内容） -->
+    <string name="community_privacy_footnote">匿名：アカウント不要です。ステーション、価格、条件を送信します — 写真を添付した場合のみ 24 時間写真も送信されます。</string>
+    <string name="community_privacy_keys">お使いのデバイスが唯一の鍵を保持します。紛失するとこの匿名 ID は終了します。</string>
+
+    <!-- コミュニティキャプチャ（P10-T08 i18n） -->
+    <string name="capture_disabled">コミュニティキャプチャは無効です。</string>
+    <string name="capture_permission_required">キャプチャにはカメラの許可が必要です。写真なしでも投稿を続けられます。</string>
+    <string name="capture_cancelled">キャプチャはキャンセルされました。何も保存されませんでした。</string>
+    <string name="capture_no_price">価格が検出されませんでした。価格を手動で入力してください。</string>
+    <string name="capture_low_confidence">OCR の信頼度が低いです。価格を確認して燃料を選んでください。</string>
+    <string name="capture_check_price">検出された価格を確認して燃料を選んでください。</string>
+    <string name="capture_confirm_explicit">確認する（明示的）</string>
+    <string name="capture_confirmed_outbox">価格を確認しました：%1$s。アップロードは投稿アウトボックスからのみ行われます。</string>
+    <string name="capture_done">完了</string>
 </resources>

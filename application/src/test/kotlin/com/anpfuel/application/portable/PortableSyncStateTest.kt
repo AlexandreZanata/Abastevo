@@ -79,4 +79,19 @@ class PortableSyncStateTest {
         assertEquals(ReadOrigin.EMPTY, result.origin)
         assertNull(result.payload)
     }
+
+    @Test
+    fun outageWithoutRemoteFallsBackToCacheNeverEmpty() {
+        val cache = CachedValue("cached", revision = 4L, cachedTick = 9000L)
+        val result = PortableSyncState.resolve(
+            remotePayload = null,
+            remoteRevision = 0L,
+            cache = cache,
+            isOnline = true,
+            tickMillis = 9500L,
+            staleAfterMillis = 1000L,
+        )
+        assertEquals(ReadOrigin.CACHE, result.origin)
+        assertEquals("cached", result.payload)
+    }
 }

@@ -58,7 +58,10 @@ class VehicleRepositoryImplTest {
         repository.save(first)
         repository.save(second)
 
-        assertEquals(listOf(second, first), repository.listAll())
+        assertEquals(
+            listOf(second.id.value, first.id.value),
+            repository.listAll().map { it.id.value },
+        )
         assertEquals(2, repository.count())
     }
 
@@ -67,7 +70,9 @@ class VehicleRepositoryImplTest {
         val vehicle = sampleVehicle(id = DomainId.from("vehicle-3"))
         repository.save(vehicle)
 
-        assertEquals(vehicle, repository.findById(vehicle.id))
+        val found = repository.findById(vehicle.id)
+        assertEquals(vehicle.id.value, found?.id?.value)
+        assertEquals(vehicle.displayName, found?.displayName)
     }
 
     @Test

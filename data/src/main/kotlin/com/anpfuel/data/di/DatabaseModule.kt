@@ -6,6 +6,8 @@ import androidx.room.RoomDatabase
 import com.anpfuel.data.local.AnpFuelDatabase
 import com.anpfuel.data.local.AnpFuelDatabaseMigrations
 import com.anpfuel.data.local.dao.AveragePriceDao
+import com.anpfuel.data.local.dao.BackendPriceCacheDao
+import com.anpfuel.data.local.dao.ContributionOutboxDao
 import com.anpfuel.data.local.dao.ImportAuditLogDao
 import com.anpfuel.data.local.dao.MunicipalityCatalogDao
 import com.anpfuel.data.local.dao.MunicipalityFtsDao
@@ -36,6 +38,8 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_1_2,
                 AnpFuelDatabaseMigrations.MIGRATION_2_3,
                 AnpFuelDatabaseMigrations.MIGRATION_3_4,
+                AnpFuelDatabaseMigrations.MIGRATION_4_5,
+                AnpFuelDatabaseMigrations.MIGRATION_5_6,
             )
             .build()
 
@@ -66,4 +70,12 @@ object DatabaseModule {
     @Provides
     fun provideVehicleDao(database: AnpFuelDatabase): VehicleDao =
         database.vehicleDao()
+
+    @Provides
+    fun provideBackendPriceCacheDao(database: AnpFuelDatabase): BackendPriceCacheDao =
+        database.backendPriceCacheDao()
+
+    @Provides
+    fun provideContributionOutboxDao(database: AnpFuelDatabase): ContributionOutboxDao =
+        database.contributionOutboxDao()
 }

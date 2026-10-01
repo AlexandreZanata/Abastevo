@@ -311,4 +311,44 @@
     <string name="auth_error_provider">Provider check failed, try again</string>
     <string name="auth_error_login_first">Sign in with email first</string>
     <string name="auth_error_unknown">Something went wrong</string>
+
+    <!-- Community prices (P10-T06, beta, flag-gated) -->
+    <string name="community_section_title">Community prices (beta)</string>
+    <string name="community_source_version">Source: %1$s · Contract %2$s</string>
+    <string name="community_stale_label">Cached data may be outdated. Shown as stale, not current.</string>
+    <string name="community_pending_p04">No community prices yet. Community stays UNKNOWN until review (P04).</string>
+    <string name="community_confidence_note">Community support, not a guarantee. ANP is an official survey, not a live pump price.</string>
+    <string name="community_unavailable_retry">Community prices unavailable. Official ANP browsing still works.</string>
+    <string name="community_official_empty">Official price unavailable (UNKNOWN)</string>
+    <string name="community_official_detail">Official: %1$s · %2$s · Collected %3$s</string>
+    <string name="community_availability_detail">Community: %1$s · %2$s</string>
+
+    <!-- Confirm/dispute (P10-T07, beta, flag-gated) -->
+    <string name="community_vote_title">Confirm or dispute this price</string>
+    <string name="community_vote_confirm">Confirm price</string>
+    <string name="community_vote_dispute">Send dispute</string>
+    <string name="community_vote_dispute_hint">Confirm affirms the exact amount and condition above. Disputes never amplify votes.</string>
+    <string name="community_vote_detail_label">What is wrong? (optional)</string>
+    <string name="community_vote_private_note">Details stay private and never show names.</string>
+    <string name="community_vote_replacement_label">Replacement observation id (optional)</string>
+    <string name="community_vote_replacement_hint">If the price changed, the new price travels as a fresh observation.</string>
+    <string name="community_vote_confirmed">Confirmation recorded. Thanks for corroborating.</string>
+    <string name="community_vote_replayed">Already recorded — no second vote counted.</string>
+    <string name="community_vote_disputed">Dispute recorded (%1$s). Thanks for the correction.</string>
+    <string name="community_vote_rejected">Not recorded (%1$s)</string>
+
+    <!-- Community privacy (P10-T08: what actually leaves the device) -->
+    <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
+    <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
+
+    <!-- Community capture (P10-T08 i18n: extracted from CaptureScreen) -->
+    <string name="capture_disabled">Community capture is disabled.</string>
+    <string name="capture_permission_required">Camera permission is required for capture. You can keep contributing without a photo.</string>
+    <string name="capture_cancelled">Capture cancelled. Nothing was saved.</string>
+    <string name="capture_no_price">No price detected. Enter the price manually.</string>
+    <string name="capture_low_confidence">Low OCR confidence. Check the price and pick the fuel.</string>
+    <string name="capture_check_price">Check the detected price and pick the fuel.</string>
+    <string name="capture_confirm_explicit">Confirm (explicit)</string>
+    <string name="capture_confirmed_outbox">Price confirmed: %1$s. Upload happens only from the contribution outbox.</string>
+    <string name="capture_done">Done</string>
 </resources>
