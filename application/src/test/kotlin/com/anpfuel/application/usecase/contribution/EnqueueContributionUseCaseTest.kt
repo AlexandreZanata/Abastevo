@@ -4,6 +4,7 @@ import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
 import com.anpfuel.domain.repository.ContributionOutboxRepository
+import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.QueuedContribution
 import com.anpfuel.domain.valueobject.FuelProduct
 import kotlinx.coroutines.test.runTest
@@ -64,6 +65,8 @@ class EnqueueContributionUseCaseTest {
         override suspend fun markFailed(commandId: String, nowMillis: Long) = Unit
 
         override suspend fun cancel(commandId: String) = Unit
+
+        override suspend fun listOwned(): List<OwnedContribution> = emptyList()
     }
 
     private fun request(
@@ -137,6 +140,20 @@ class EnqueueContributionUseCaseTest {
 
         assertThrows(DomainException::class.java) {
             kotlinx.coroutines.runBlocking { useCase.invoke(request(commandId = "  ")) }
+        }
+    }
+
+    @Test
+    fun `payload carries no location contributor or metadata keys`() = runTest {
+        val outbox = InMemoryOutbox()
+        val useCase = EnqueueContributionUseCase(FakeFlags(true), outbox, nowMillis = { 2_000_000L })
+
+        val outcome = useCase.invoke(request(capturedAt = 1_900_000L))
+
+        assertTrue(outcome is EnqueueContributionOutcome.Queued)
+        val payload = (outcome as EnqueueContributionOutcome.Queued).command.payloadJson.lowercase()
+        for (key in listOf("lat", "lng", "lon", "gps", "location", "exif", "contributor", "signed_url", "mock", "simulated")) {
+            assertTrue(!payload.contains("\"$key\""), "payload leaks $key")
         }
     }
 }

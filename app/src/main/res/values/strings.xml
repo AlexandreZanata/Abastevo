@@ -41,6 +41,14 @@
     <string name="profile_guest_title">Guest mode</string>
     <string name="profile_guest_subtitle">Anonymous price browsing. Free account needed for ratings, comments and votes.</string>
     <string name="profile_action_sign_in">Sign in or create free account</string>
+    <string name="profile_contributions_section">My contributions</string>
+    <string name="profile_contributions_empty">No contributions on this device yet.</string>
+    <string name="profile_contributions_error">Could not load your contributions.</string>
+    <string name="profile_contributions_state_queued">Queued for upload</string>
+    <string name="profile_contributions_state_retrying">Queued — retrying automatically</string>
+    <string name="profile_contributions_state_cancelled">Cancelled — never sent</string>
+    <string name="profile_contributions_revision_attempts">rev %1$d · %2$d attempts</string>
+    <string name="profile_contributions_cancel">Cancel upload</string>
     <string name="profile_expert_tools_section">Expert tools and references</string>
     <string name="profile_tool_vehicles_title">My vehicles</string>
     <string name="profile_tool_vehicles_subtitle">Register up to 3 vehicles to calculate tank fill costs</string>

@@ -8,6 +8,7 @@ import com.anpfuel.data.local.entity.ContributionOutboxEntity
 import com.anpfuel.data.local.outbox.OutboxCommandMapper
 import com.anpfuel.domain.model.ContributionDraft
 import com.anpfuel.domain.repository.ContributionOutboxRepository
+import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.QueuedContribution
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -91,6 +92,16 @@ class RoomContributionOutboxRepository @Inject constructor(
         val cancelled = PortableOutbox.cancel(listOf(current), commandId).first()
         dao.upsert(toEntity(cancelled))
     }
+
+    override suspend fun listOwned(): List<OwnedContribution> =
+        dao.listAll().map { entity ->
+            OwnedContribution(
+                commandId = entity.commandId,
+                revision = entity.revision,
+                attempts = entity.attempts,
+                phase = OwnedContribution.phaseOf(entity.state),
+            )
+        }
 
     private fun toCommand(entity: ContributionOutboxEntity): OutboxCommand =
         OutboxCommandMapper.fromEntityFields(

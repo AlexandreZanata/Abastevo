@@ -29,7 +29,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,6 +40,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -63,7 +68,12 @@ fun ProfileScreen(
     onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
+    statusViewModel: ContributionStatusViewModel = hiltViewModel(),
 ) {
+    val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(statusViewModel) {
+        statusViewModel.load()
+    }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -122,6 +132,20 @@ fun ProfileScreen(
                     }
                 }
             }
+
+            // P21-T03 private owner status section
+            Text(
+                text = stringResource(R.string.profile_contributions_section),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { heading() },
+            )
+            ContributionStatusCard(
+                state = statusState,
+                onRetry = statusViewModel::load,
+                onCancel = statusViewModel::onCancel,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             // Preserved Expert Tools section
             Text(

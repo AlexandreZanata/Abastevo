@@ -41,6 +41,14 @@
     <string name="profile_guest_title">Modo visitante</string>
     <string name="profile_guest_subtitle">Pesquisa anônima de preços. Cadastro gratuito necessário para avaliações, comentários e votos.</string>
     <string name="profile_action_sign_in">Entrar ou criar conta gratuita</string>
+    <string name="profile_contributions_section">Minhas contribuições</string>
+    <string name="profile_contributions_empty">Nenhuma contribuição neste dispositivo ainda.</string>
+    <string name="profile_contributions_error">Não foi possível carregar suas contribuições.</string>
+    <string name="profile_contributions_state_queued">Na fila para envio</string>
+    <string name="profile_contributions_state_retrying">Na fila — tentando de novo sozinho</string>
+    <string name="profile_contributions_state_cancelled">Cancelada — nunca enviada</string>
+    <string name="profile_contributions_revision_attempts">rev %1$d · %2$d tentativas</string>
+    <string name="profile_contributions_cancel">Cancelar envio</string>
     <string name="profile_expert_tools_section">Ferramentas e referências</string>
     <string name="profile_tool_vehicles_title">Meus veículos</string>
     <string name="profile_tool_vehicles_subtitle">Cadastre até 3 veículos para estimar o custo do tanque</string>
