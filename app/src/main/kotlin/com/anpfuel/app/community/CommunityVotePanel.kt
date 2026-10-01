@@ -18,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 
@@ -61,6 +63,7 @@ fun CommunityVotePanel(
                     Text(
                         text = stringResource(R.string.community_vote_confirmed),
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
                     )
                     if (state.replayed) {
                         Text(
@@ -81,6 +84,7 @@ fun CommunityVotePanel(
                     Text(
                         text = stringResource(R.string.community_vote_disputed, state.state),
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
             }
@@ -94,6 +98,7 @@ fun CommunityVotePanel(
                     Text(
                         text = stringResource(R.string.community_vote_rejected, state.kindLabel),
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
                     )
                     Text(
                         text = state.message,
@@ -127,6 +132,7 @@ private fun VoteForm(
             Text(
                 text = stringResource(R.string.community_vote_title),
                 style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = summary,
@@ -196,6 +202,16 @@ private fun VoteForm(
             ) {
                 Text(text = stringResource(R.string.community_vote_dispute))
             }
+            Text(
+                text = stringResource(R.string.community_privacy_footnote),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.community_privacy_keys),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

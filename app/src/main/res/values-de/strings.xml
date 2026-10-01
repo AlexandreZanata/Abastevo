@@ -287,4 +287,44 @@
     <string name="a11y_screen_title">Bildschirm %1$s</string>
     <string name="a11y_week_picker_operational_note_expand">Betriebsmitteilung erweitern</string>
     <string name="a11y_week_picker_operational_note_collapse">Betriebsmitteilung einklappen</string>
+
+    <!-- Community-Preise (P10-T06, Beta, hinter Flag) -->
+    <string name="community_section_title">Community-Preise (Beta)</string>
+    <string name="community_source_version">Quelle: %1$s · Vertrag %2$s</string>
+    <string name="community_stale_label">Zwischengespeicherte Daten sind möglicherweise veraltet. Als veraltet angezeigt, nicht aktuell.</string>
+    <string name="community_pending_p04">Noch keine Community-Preise. Community bleibt UNKNOWN bis zur Prüfung (P04).</string>
+    <string name="community_confidence_note">Community-Unterstützung, keine Garantie. ANP ist eine offizielle Erhebung, kein Live-Zapfsäulenpreis.</string>
+    <string name="community_unavailable_retry">Community-Preise nicht verfügbar. Offizielles ANP-Stöbern funktioniert weiterhin.</string>
+    <string name="community_official_empty">Offizieller Preis nicht verfügbar (UNKNOWN)</string>
+    <string name="community_official_detail">Offiziell: %1$s · %2$s · Erhoben %3$s</string>
+    <string name="community_availability_detail">Community: %1$s · %2$s</string>
+
+    <!-- Bestätigen/Beanstanden (P10-T07, Beta, hinter Flag) -->
+    <string name="community_vote_title">Diesen Preis bestätigen oder beanstanden</string>
+    <string name="community_vote_confirm">Preis bestätigen</string>
+    <string name="community_vote_dispute">Beanstandung senden</string>
+    <string name="community_vote_dispute_hint">Bestätigen bestätigt den exakten Betrag und Zustand oben. Beanstandungen verstärken Stimmen nie.</string>
+    <string name="community_vote_detail_label">Was stimmt nicht? (optional)</string>
+    <string name="community_vote_private_note">Details bleiben privat und zeigen nie Namen.</string>
+    <string name="community_vote_replacement_label">ID der Ersatzbeobachtung (optional)</string>
+    <string name="community_vote_replacement_hint">Wenn sich der Preis geändert hat, reist der neue Preis als frische Beobachtung.</string>
+    <string name="community_vote_confirmed">Bestätigung gespeichert. Danke fürs Bekräftigen.</string>
+    <string name="community_vote_replayed">Bereits gespeichert — keine zweite Stimme gezählt.</string>
+    <string name="community_vote_disputed">Beanstandung gespeichert (%1$s). Danke für die Korrektur.</string>
+    <string name="community_vote_rejected">Nicht gespeichert (%1$s)</string>
+
+    <!-- Community-Datenschutz (P10-T08: was das Gerät verlässt) -->
+    <string name="community_privacy_footnote">Anonym: kein Konto nötig. Sendet Station, Preis und Zustand — und dein Foto nur für 24h, wenn du eines anhängst.</string>
+    <string name="community_privacy_keys">Dein Gerät hält den einzigen Schlüssel. Bei Verlust endet diese anonyme Identität.</string>
+
+    <!-- Community-Erfassung (P10-T08 i18n) -->
+    <string name="capture_disabled">Community-Erfassung ist deaktiviert.</string>
+    <string name="capture_permission_required">Kameraberechtigung ist für die Erfassung erforderlich. Du kannst auch ohne Foto beitragen.</string>
+    <string name="capture_cancelled">Erfassung abgebrochen. Nichts wurde gespeichert.</string>
+    <string name="capture_no_price">Kein Preis erkannt. Gib den Preis manuell ein.</string>
+    <string name="capture_low_confidence">Niedrige OCR-Konfidenz. Prüfe den Preis und wähle den Kraftstoff.</string>
+    <string name="capture_check_price">Prüfe den erkannten Preis und wähle den Kraftstoff.</string>
+    <string name="capture_confirm_explicit">Bestätigen (explizit)</string>
+    <string name="capture_confirmed_outbox">Preis bestätigt: %1$s. Upload nur aus dem Beitrags-Ausgang.</string>
+    <string name="capture_done">Fertig</string>
 </resources>

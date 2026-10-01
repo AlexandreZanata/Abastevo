@@ -80,6 +80,8 @@ object InstrumentedAppDataSeeder {
                 AnpFuelDatabaseMigrations.MIGRATION_1_2,
                 AnpFuelDatabaseMigrations.MIGRATION_2_3,
                 AnpFuelDatabaseMigrations.MIGRATION_3_4,
+                AnpFuelDatabaseMigrations.MIGRATION_4_5,
+                AnpFuelDatabaseMigrations.MIGRATION_5_6,
             )
             .allowMainThreadQueries()
             .build()
@@ -145,6 +147,8 @@ object InstrumentedAppDataSeeder {
                 AnpFuelDatabaseMigrations.MIGRATION_1_2,
                 AnpFuelDatabaseMigrations.MIGRATION_2_3,
                 AnpFuelDatabaseMigrations.MIGRATION_3_4,
+                AnpFuelDatabaseMigrations.MIGRATION_4_5,
+                AnpFuelDatabaseMigrations.MIGRATION_5_6,
             )
             .allowMainThreadQueries()
             .build()

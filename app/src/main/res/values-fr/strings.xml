@@ -287,4 +287,44 @@
     <string name="a11y_screen_title">Écran %1$s</string>
     <string name="a11y_week_picker_operational_note_expand">Développer l\'avis opérationnel</string>
     <string name="a11y_week_picker_operational_note_collapse">Réduire l\'avis opérationnel</string>
+
+    <!-- Prix de la communauté (P10-T06, bêta, derrière flag) -->
+    <string name="community_section_title">Prix de la communauté (bêta)</string>
+    <string name="community_source_version">Source : %1$s · Contrat %2$s</string>
+    <string name="community_stale_label">Les données en cache peuvent être obsolètes. Affichées comme obsolètes, non actuelles.</string>
+    <string name="community_pending_p04">Pas encore de prix de la communauté. La communauté reste UNKNOWN jusqu\'à révision (P04).</string>
+    <string name="community_confidence_note">Soutien de la communauté, pas une garantie. L\'ANP est une enquête officielle, pas un prix en direct à la pompe.</string>
+    <string name="community_unavailable_retry">Prix de la communauté indisponibles. La navigation officielle ANP fonctionne toujours.</string>
+    <string name="community_official_empty">Prix officiel indisponible (UNKNOWN)</string>
+    <string name="community_official_detail">Officiel : %1$s · %2$s · Collecté %3$s</string>
+    <string name="community_availability_detail">Communauté : %1$s · %2$s</string>
+
+    <!-- Confirmer/contester (P10-T07, bêta, derrière flag) -->
+    <string name="community_vote_title">Confirmer ou contester ce prix</string>
+    <string name="community_vote_confirm">Confirmer le prix</string>
+    <string name="community_vote_dispute">Envoyer la contestation</string>
+    <string name="community_vote_dispute_hint">Confirmer atteste le montant et la condition exacts ci-dessus. Les contestations n\'amplifient jamais les votes.</string>
+    <string name="community_vote_detail_label">Qu\'est-ce qui ne va pas ? (facultatif)</string>
+    <string name="community_vote_private_note">Les détails restent privés et ne montrent jamais de noms.</string>
+    <string name="community_vote_replacement_label">Id de l\'observation de remplacement (facultatif)</string>
+    <string name="community_vote_replacement_hint">Si le prix a changé, le nouveau prix voyage comme observation nouvelle.</string>
+    <string name="community_vote_confirmed">Confirmation enregistrée. Merci de corroborer.</string>
+    <string name="community_vote_replayed">Déjà enregistrée — aucun second vote compté.</string>
+    <string name="community_vote_disputed">Contestation enregistrée (%1$s). Merci pour la correction.</string>
+    <string name="community_vote_rejected">Non enregistrée (%1$s)</string>
+
+    <!-- Confidentialité de la communauté (P10-T08 : ce qui quitte l\'appareil) -->
+    <string name="community_privacy_footnote">Anonyme : aucun compte requis. La station, le prix et la condition sont envoyés — ainsi que votre photo pendant 24h seulement si vous en joignez une.</string>
+    <string name="community_privacy_keys">Votre appareil détient la seule clé. La perdre met fin à cette identité anonyme.</string>
+
+    <!-- Capture de la communauté (P10-T08 i18n) -->
+    <string name="capture_disabled">La capture communautaire est désactivée.</string>
+    <string name="capture_permission_required">L\'autorisation caméra est requise pour capturer. Vous pouvez continuer à contribuer sans photo.</string>
+    <string name="capture_cancelled">Capture annulée. Rien n\'a été enregistré.</string>
+    <string name="capture_no_price">Aucun prix détecté. Saisissez le prix manuellement.</string>
+    <string name="capture_low_confidence">Confiance OCR faible. Vérifiez le prix et choisissez le carburant.</string>
+    <string name="capture_check_price">Vérifiez le prix détecté et choisissez le carburant.</string>
+    <string name="capture_confirm_explicit">Confirmer (explicite)</string>
+    <string name="capture_confirmed_outbox">Prix confirmé : %1$s. L\'envoi se fait uniquement depuis la boîte d\'envoi des contributions.</string>
+    <string name="capture_done">Terminé</string>
 </resources>

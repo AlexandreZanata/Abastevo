@@ -287,4 +287,44 @@
     <string name="a11y_screen_title">Экран «%1$s»</string>
     <string name="a11y_week_picker_operational_note_expand">Развернуть операционное уведомление</string>
     <string name="a11y_week_picker_operational_note_collapse">Свернуть операционное уведомление</string>
+
+    <!-- Цены сообщества (P10-T06, бета, за флагом) -->
+    <string name="community_section_title">Цены сообщества (бета)</string>
+    <string name="community_source_version">Источник: %1$s · Контракт %2$s</string>
+    <string name="community_stale_label">Кэшированные данные могут быть устаревшими. Показаны как устаревшие, а не актуальные.</string>
+    <string name="community_pending_p04">Цен сообщества пока нет. Сообщество остаётся UNKNOWN до проверки (P04).</string>
+    <string name="community_confidence_note">Поддержка сообщества, а не гарантия. ANP — официальный обзор, а не живая цена на колонке.</string>
+    <string name="community_unavailable_retry">Цены сообщества недоступны. Официальный просмотр ANP продолжает работать.</string>
+    <string name="community_official_empty">Официальная цена недоступна (UNKNOWN)</string>
+    <string name="community_official_detail">Официально: %1$s · %2$s · Собрано %3$s</string>
+    <string name="community_availability_detail">Сообщество: %1$s · %2$s</string>
+
+    <!-- Подтверждение/спор (P10-T07, бета, за флагом) -->
+    <string name="community_vote_title">Подтвердить или оспорить эту цену</string>
+    <string name="community_vote_confirm">Подтвердить цену</string>
+    <string name="community_vote_dispute">Отправить спор</string>
+    <string name="community_vote_dispute_hint">Подтверждение удостоверяет точную сумму и условия выше. Споры никогда не усиливают голоса.</string>
+    <string name="community_vote_detail_label">Что неверно? (необязательно)</string>
+    <string name="community_vote_private_note">Детали остаются приватными и никогда не показывают имён.</string>
+    <string name="community_vote_replacement_label">ID заменяющего наблюдения (необязательно)</string>
+    <string name="community_vote_replacement_hint">Если цена изменилась, новая цена отправляется как новое наблюдение.</string>
+    <string name="community_vote_confirmed">Подтверждение записано. Спасибо за подтверждение.</string>
+    <string name="community_vote_replayed">Уже записано — второй голос не засчитан.</string>
+    <string name="community_vote_disputed">Спор записан (%1$s). Спасибо за исправление.</string>
+    <string name="community_vote_rejected">Не записано (%1$s)</string>
+
+    <!-- Приватность сообщества (P10-T08: что покидает устройство) -->
+    <string name="community_privacy_footnote">Анонимно: аккаунт не нужен. Отправляются станция, цена и условия — и ваше фото только на 24 ч, если вы его прикрепили.</string>
+    <string name="community_privacy_keys">Ваше устройство хранит единственный ключ. Его потеря завершает эту анонимную личность.</string>
+
+    <!-- Захват сообщества (P10-T08 i18n) -->
+    <string name="capture_disabled">Захват сообщества отключён.</string>
+    <string name="capture_permission_required">Для захвата требуется разрешение камеры. Вы можете продолжать участвовать без фото.</string>
+    <string name="capture_cancelled">Захват отменён. Ничего не сохранено.</string>
+    <string name="capture_no_price">Цена не обнаружена. Введите цену вручную.</string>
+    <string name="capture_low_confidence">Низкая уверенность OCR. Проверьте цену и выберите топливо.</string>
+    <string name="capture_check_price">Проверьте распознанную цену и выберите топливо.</string>
+    <string name="capture_confirm_explicit">Подтвердить (явно)</string>
+    <string name="capture_confirmed_outbox">Цена подтверждена: %1$s. Загрузка выполняется только из исходящих вкладов.</string>
+    <string name="capture_done">Готово</string>
 </resources>

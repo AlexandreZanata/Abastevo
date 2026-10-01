@@ -173,6 +173,11 @@ object AnpFuelDatabaseMigrations {
 
     val MIGRATION_4_5: Migration = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
+            // P10-T08: no secondary index on purpose. Every cache read
+            // is by primary `key` (or full-table expiry sweep), so an
+            // undeclared station_id index only drifts migrated installs
+            // away from the entity schema and fails Room validation
+            // on device. Fresh installs never had it.
             db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `backend_price_cache` (
@@ -187,10 +192,6 @@ object AnpFuelDatabaseMigrations {
                     PRIMARY KEY(`key`)
                 )
                 """.trimIndent(),
-            )
-            db.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_backend_price_cache_station_id` " +
-                    "ON `backend_price_cache` (`station_id`)",
             )
         }
     }

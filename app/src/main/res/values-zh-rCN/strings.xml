@@ -287,4 +287,44 @@
     <string name="a11y_screen_title">%1$s 界面</string>
     <string name="a11y_week_picker_operational_note_expand">展开运营通知</string>
     <string name="a11y_week_picker_operational_note_collapse">收起运营通知</string>
+
+    <!-- 社区价格（P10-T06，测试版，功能开关后） -->
+    <string name="community_section_title">社区价格（测试版）</string>
+    <string name="community_source_version">来源：%1$s · 合约 %2$s</string>
+    <string name="community_stale_label">缓存数据可能已过时。显示为过时数据，而非当前数据。</string>
+    <string name="community_pending_p04">暂无社区价格。在审核（P04）之前，社区保持 UNKNOWN 状态。</string>
+    <string name="community_confidence_note">社区支持，而非保证。ANP 是官方调查，不是加油站实时价格。</string>
+    <string name="community_unavailable_retry">社区价格不可用。ANP 官方浏览仍可使用。</string>
+    <string name="community_official_empty">官方价格不可用（UNKNOWN）</string>
+    <string name="community_official_detail">官方：%1$s · %2$s · 收集于 %3$s</string>
+    <string name="community_availability_detail">社区：%1$s · %2$s</string>
+
+    <!-- 确认/异议（P10-T07，测试版，功能开关后） -->
+    <string name="community_vote_title">确认此价格或提出异议</string>
+    <string name="community_vote_confirm">确认价格</string>
+    <string name="community_vote_dispute">提交异议</string>
+    <string name="community_vote_dispute_hint">确认即证明上述确切金额和条件。异议绝不会增加投票权重。</string>
+    <string name="community_vote_detail_label">有什么问题？（可选）</string>
+    <string name="community_vote_private_note">详细信息保持私密，绝不显示姓名。</string>
+    <string name="community_vote_replacement_label">替代观测 ID（可选）</string>
+    <string name="community_vote_replacement_hint">如果价格发生变化，新价格将作为新的观测发送。</string>
+    <string name="community_vote_confirmed">确认已记录。感谢您的佐证。</string>
+    <string name="community_vote_replayed">已记录 — 不会重复计票。</string>
+    <string name="community_vote_disputed">异议已记录（%1$s）。感谢您的更正。</string>
+    <string name="community_vote_rejected">未记录（%1$s）</string>
+
+    <!-- 社区隐私（P10-T08：离开设备的内容） -->
+    <string name="community_privacy_footnote">匿名：无需帐户。发送站点、价格和条件 — 仅当您附加照片时，照片会保留 24 小时。</string>
+    <string name="community_privacy_keys">您的设备持有唯一密钥。丢失密钥将终止此匿名身份。</string>
+
+    <!-- 社区采集（P10-T08 i18n） -->
+    <string name="capture_disabled">社区采集已停用。</string>
+    <string name="capture_permission_required">采集需要相机权限。您也可以不附照片继续贡献。</string>
+    <string name="capture_cancelled">采集已取消。未保存任何内容。</string>
+    <string name="capture_no_price">未检测到价格。请手动输入价格。</string>
+    <string name="capture_low_confidence">OCR 置信度低。请核对价格并选择燃油。</string>
+    <string name="capture_check_price">请核对检测到的价格并选择燃油。</string>
+    <string name="capture_confirm_explicit">确认（显式）</string>
+    <string name="capture_confirmed_outbox">价格已确认：%1$s。仅通过贡献发件箱上传。</string>
+    <string name="capture_done">完成</string>
 </resources>

@@ -9,11 +9,13 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * P10-T02 schema-4 upgrade guard (unit side).
+ * P10-T02 schema-4 upgrade guard (unit side), corrected in P10-T08.
  *
  * The device-side `V4ToV5DatabaseMigrationTest` proves vehicles/history
  * survive; here we prove MIGRATION_4_5 issues the additive
- * `backend_price_cache` DDL and never drops existing tables.
+ * `backend_price_cache` DDL, creates no undeclared secondary index
+ * (every read is by primary key; an extra index fails Room validation
+ * on device) and never drops existing tables.
  */
 class Migration4To5UnitTest {
 
@@ -30,7 +32,7 @@ class Migration4To5UnitTest {
         AnpFuelDatabaseMigrations.MIGRATION_4_5.migrate(db)
 
         assertTrue(statements.any { it.contains("CREATE TABLE IF NOT EXISTS `backend_price_cache`") })
-        assertTrue(statements.any { it.contains("index_backend_price_cache_station_id") })
+        assertTrue(statements.none { it.contains("CREATE INDEX") })
         verify(exactly = 0) { db.execSQL(match { it.contains("DROP TABLE") }) }
     }
 }

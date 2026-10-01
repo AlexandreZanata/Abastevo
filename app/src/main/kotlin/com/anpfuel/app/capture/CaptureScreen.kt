@@ -9,13 +9,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.anpfuel.app.R
 import com.anpfuel.domain.valueobject.FuelProduct
 
 /**
  * P10-T04 minimal capture/confirmation screen behind the capture flag.
+ *
+ * P10-T08 i18n: every user-visible copy comes from resources (en +
+ * seven locales); nothing is hardcoded in English anymore.
  *
  * No CameraX preview is bundled in this slice: capture comes from the
  * system camera intent and compression reuses PhotoFlow budgets; this
@@ -33,34 +38,33 @@ fun CaptureScreen(
         when (val current = state) {
             CaptureOcrUiState.Disabled -> {
                 Text(
-                    "Community capture is disabled.",
+                    stringResource(R.string.capture_disabled),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = onNavigateBack) { Text("Back") }
+                Button(onClick = onNavigateBack) { Text(stringResource(R.string.action_back)) }
             }
             CaptureOcrUiState.PermissionDenied -> {
                 Text(
-                    "Camera permission is required for capture. " +
-                        "You can keep contributing without a photo.",
+                    stringResource(R.string.capture_permission_required),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = onNavigateBack) { Text("Back") }
+                Button(onClick = onNavigateBack) { Text(stringResource(R.string.action_back)) }
             }
             CaptureOcrUiState.Cancelled -> {
                 Text(
-                    "Capture cancelled. Nothing was saved.",
+                    stringResource(R.string.capture_cancelled),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = onNavigateBack) { Text("Back") }
+                Button(onClick = onNavigateBack) { Text(stringResource(R.string.action_back)) }
             }
             is CaptureOcrUiState.NeedsConfirmation -> {
                 Text(
                     if (current.candidates.isEmpty()) {
-                        "No price detected. Enter the price manually."
+                        stringResource(R.string.capture_no_price)
                     } else if (current.lowConfidence) {
-                        "Low OCR confidence. Check the price and pick the fuel."
+                        stringResource(R.string.capture_low_confidence)
                     } else {
-                        "Check the detected price and pick the fuel."
+                        stringResource(R.string.capture_check_price)
                     },
                     style = MaterialTheme.typography.bodyLarge,
                 )
@@ -76,15 +80,14 @@ fun CaptureScreen(
                             humanConfirmed = true,
                         )
                     },
-                ) { Text("Confirm (explicit)") }
+                ) { Text(stringResource(R.string.capture_confirm_explicit)) }
             }
             is CaptureOcrUiState.Confirmed -> {
                 Text(
-                    "Price confirmed: ${current.candidate.raw}. " +
-                        "Upload happens only from the outbox (P10-T05).",
+                    stringResource(R.string.capture_confirmed_outbox, current.candidate.raw),
                     style = MaterialTheme.typography.bodyLarge,
                 )
-                Button(onClick = onNavigateBack) { Text("Done") }
+                Button(onClick = onNavigateBack) { Text(stringResource(R.string.capture_done)) }
             }
         }
     }

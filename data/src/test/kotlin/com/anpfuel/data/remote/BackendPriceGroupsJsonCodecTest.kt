@@ -70,8 +70,40 @@ class BackendPriceGroupsJsonCodecTest {
     }
 
     @Test
-    fun `refuses legacy premium unknown fuel and non-null community`() {
-        assertThrows(DomainException::class.java) {
+    fun `tolerates unknown additive fields from newer api`() {
+        val payload = """
+        {"items": [{
+          "station_id": "$stationId",
+          "fuel_product": "GASOLINE_REGULAR",
+          "unit": "L",
+          "future_item_field": "ignore-me",
+          "condition": {"kind": "STANDARD", "qualifier_id": null, "future_flag": true},
+          "official": {
+            "source": "ANP",
+            "amount_milli_brl": 5999,
+            "currency": "BRL",
+            "collected_on": "2026-09-28",
+            "future_official_field": 1,
+            "survey_week": {"start": "2026-09-21", "end": "2026-09-27"},
+            "revision_id": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "community": null
+        }], "generated_at": "2026-09-28T00:00:00Z", "future_top_level": []}
+        """.trimIndent()
+        val groups = BackendPriceGroupsJsonCodec.decode(
+            payload = payload,
+            stationId = stationId,
+            fuelFilterWire = null,
+            fetchedAtMillis = 1_000_000L,
+            expiresAtMillis = 1_060_000L,
+        )
+
+        assertEquals(1, groups.groups.size)
+        assertEquals(5999L, groups.groups.single().official?.amountMilliBrl)
+    }
+
+    @Test
+    fun `refuses legacy premium unknown fuel and non-null community`() {        assertThrows(DomainException::class.java) {
             BackendPriceGroupsJsonCodec.decode(
                 payload = payload(fuel = "GASOLINE_PREMIUM"),
                 stationId = stationId,

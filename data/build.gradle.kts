@@ -97,6 +97,7 @@ dependencies {
     androidTestImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
     androidTestImplementation(libs.mockk)
     androidTestImplementation("io.mockk:mockk-android:${libs.versions.mockk.get()}")
+    androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(project(":application"))
     androidTestUtil("androidx.test:orchestrator:1.5.1")
 }

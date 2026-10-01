@@ -12,15 +12,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * P10-T05 — schema-5 upgrade preserves vehicles, survey weeks and cache
- * and adds the additive contribution outbox. ANP screens keep working
- * unchanged. Strengthened in P10-T08: vehicle and survey-week rows are
- * now inserted and asserted, not just the cache row.
+ * P10-T08 — Full schema-4 upgrade chain preserves user data and ANP
+ * history while adding the community cache (v5) and the contribution
+ * outbox (v6). No table holding user data is dropped; rollback is the
+ * tested previous compatible release with community flags OFF.
  */
 @RunWith(AndroidJUnit4::class)
-class V5ToV6DatabaseMigrationTest {
+class V4ToV6DatabaseMigrationTest {
 
-    private val testDb = "v5-user-data-migration"
+    private val testDb = "v4-to-v6-user-data-migration"
 
     @get:Rule
     val helper: MigrationTestHelper = MigrationTestHelper(
@@ -35,8 +35,8 @@ class V5ToV6DatabaseMigrationTest {
     }
 
     @Test
-    fun migrateFromV5PreservesCacheAndAddsOutbox() {
-        helper.createDatabase(testDb, 5).apply {
+    fun migrateFromV4ToV6PreservesVehiclesHistoryAndAddsCommunityTables() {
+        helper.createDatabase(testDb, 4).apply {
             execSQL(
                 """
                 INSERT INTO vehicle (
@@ -60,12 +60,12 @@ class V5ToV6DatabaseMigrationTest {
             )
             execSQL(
                 """
-                INSERT INTO backend_price_cache (
-                    key, station_id, fuel_filter, payload_json, source, version,
-                    fetched_at_millis, expires_at_millis
+                INSERT INTO average_price (
+                    id, survey_week_id, state, municipality, fuel_product,
+                    station_count, unit, avg_price, min_price, max_price, std_dev
                 ) VALUES (
-                    'station|ALL', 'd6c74c23-63db-4c24-a2e5-408cb23bad26', 'ALL',
-                    '{"items": []}', 'backend', 'v1', 1000000, 1060000
+                    'avg-sp-ethanol', 'week-2026-06-07', 'SP', 'SAO PAULO', 'ETHANOL',
+                    42, 'R$/l', 3.42, 3.10, 3.80, 0.12
                 )
                 """.trimIndent(),
             )
@@ -76,6 +76,7 @@ class V5ToV6DatabaseMigrationTest {
             testDb,
             6,
             true,
+            AnpFuelDatabaseMigrations.MIGRATION_4_5,
             AnpFuelDatabaseMigrations.MIGRATION_5_6,
         ).apply {
             query("SELECT display_name FROM vehicle").use { cursor ->
@@ -86,18 +87,22 @@ class V5ToV6DatabaseMigrationTest {
                 assertTrue(cursor.moveToFirst())
                 assertEquals(1, cursor.getInt(0))
             }
-            query("SELECT COUNT(*) FROM backend_price_cache").use { cursor ->
+            query("SELECT avg_price FROM average_price").use { cursor ->
                 assertTrue(cursor.moveToFirst())
-                assertEquals(1, cursor.getInt(0))
+                assertEquals(3.42, cursor.getDouble(0), 0.0001)
             }
             query(
                 """
                 SELECT name FROM sqlite_master
-                WHERE type = 'table' AND name = 'contribution_outbox'
+                WHERE type = 'table' AND name IN ('backend_price_cache', 'contribution_outbox')
                 """.trimIndent(),
             ).use { cursor ->
-                assertTrue(cursor.moveToFirst())
-                assertEquals("contribution_outbox", cursor.getString(0))
+                val tables = mutableSetOf<String>()
+                while (cursor.moveToNext()) {
+                    tables += cursor.getString(0)
+                }
+                assertTrue(tables.contains("backend_price_cache"))
+                assertTrue(tables.contains("contribution_outbox"))
             }
             close()
         }

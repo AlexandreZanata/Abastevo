@@ -335,4 +335,19 @@
     <string name="community_vote_replayed">Já registrada — nenhum segundo voto contado.</string>
     <string name="community_vote_disputed">Contestação registrada (%1$s). Obrigado pela correção.</string>
     <string name="community_vote_rejected">Não registrada (%1$s)</string>
+
+    <!-- Privacidade da comunidade (P10-T08: o que sai do aparelho) -->
+    <string name="community_privacy_footnote">Anônimo: sem conta. Envia posto, preço e condição — e sua foto por 24h só quando você anexa uma.</string>
+    <string name="community_privacy_keys">Seu aparelho guarda a única chave. Perdê-la encerra esta identidade anônima.</string>
+
+    <!-- Captura da comunidade (P10-T08 i18n: extraído do CaptureScreen) -->
+    <string name="capture_disabled">Captura da comunidade desativada.</string>
+    <string name="capture_permission_required">Permissão de câmera é necessária para capturar. Você pode continuar contribuindo sem foto.</string>
+    <string name="capture_cancelled">Captura cancelada. Nada foi salvo.</string>
+    <string name="capture_no_price">Nenhum preço detectado. Digite o preço manualmente.</string>
+    <string name="capture_low_confidence">Confiança do OCR baixa. Confira o preço e escolha o combustível.</string>
+    <string name="capture_check_price">Confira o preço detectado e escolha o combustível.</string>
+    <string name="capture_confirm_explicit">Confirmar (explícito)</string>
+    <string name="capture_confirmed_outbox">Preço confirmado: %1$s. O envio acontece só pela caixa de contribuições.</string>
+    <string name="capture_done">Concluir</string>
 </resources>

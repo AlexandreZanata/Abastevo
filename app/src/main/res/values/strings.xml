@@ -336,4 +336,19 @@
     <string name="community_vote_replayed">Already recorded — no second vote counted.</string>
     <string name="community_vote_disputed">Dispute recorded (%1$s). Thanks for the correction.</string>
     <string name="community_vote_rejected">Not recorded (%1$s)</string>
+
+    <!-- Community privacy (P10-T08: what actually leaves the device) -->
+    <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
+    <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
+
+    <!-- Community capture (P10-T08 i18n: extracted from CaptureScreen) -->
+    <string name="capture_disabled">Community capture is disabled.</string>
+    <string name="capture_permission_required">Camera permission is required for capture. You can keep contributing without a photo.</string>
+    <string name="capture_cancelled">Capture cancelled. Nothing was saved.</string>
+    <string name="capture_no_price">No price detected. Enter the price manually.</string>
+    <string name="capture_low_confidence">Low OCR confidence. Check the price and pick the fuel.</string>
+    <string name="capture_check_price">Check the detected price and pick the fuel.</string>
+    <string name="capture_confirm_explicit">Confirm (explicit)</string>
+    <string name="capture_confirmed_outbox">Price confirmed: %1$s. Upload happens only from the contribution outbox.</string>
+    <string name="capture_done">Done</string>
 </resources>

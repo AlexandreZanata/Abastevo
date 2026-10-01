@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 
@@ -68,6 +70,7 @@ fun CommunityPricePanel(
                     Text(
                         text = stringResource(R.string.community_section_title),
                         style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.semantics { heading() },
                     )
                     Text(
                         text = stringResource(R.string.community_unavailable_retry),
@@ -100,6 +103,7 @@ private fun PriceSections(
             Text(
                 text = stringResource(titleRes),
                 style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = stringResource(R.string.community_source_version, source, version),
