@@ -38,6 +38,24 @@ Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved id
 - **Rollback/Recovery:** Keep original/logo history and isolated edits; discard only owned draft files if requested.
 - **Definition of done:** Local draft validated and delivered; visual approval/publication are separate pending states. No remote issue/PR/wiki operation during preview.
 
+<a id="p00-t02"></a>
+
+### P00-T02 — Vectorize the original abastevo logo for app assets
+
+- **ID / priority / status:** P00-T02 / MUST / LOCAL_DONE (assets only; not runtime-integrated).
+- **Goal:** Save a scalable native-vector rendition of the supplied original logo for future app use.
+- **Why:** Avoid scaling a fixed-resolution PNG in future branding work.
+- **Inputs:** Original logo asset and maintainer request 2026-10-01; docs/brand/IDENTITY.md.
+- **Files/areas expected:** docs/assets/brand vector master/platform exports; usage/evidence notes.
+- **Dependencies:** Supplied logo selected; no dependency on README banner approval.
+- **Tests first:** Inspect alpha/contours and color folds; render fidelity/size checks; reject embedded raster, unsafe SVG and external references.
+- **Implementation outline:** Trace cleaned contours as curves, reconstruct native gradients and preserve transparent negative space; validate platform exports.
+- **Acceptance criteria:** Genuine vector geometry, recognizably faithful silhouette/gradients, original source preserved and future app import instructions.
+- **Validation commands:** SVG XML/path inspection, Inkscape render/export and visual checks; git diff --check and scoped secret review. No aggregate runtime tests for assets.
+- **Risks:** Posterized color bands, raster embedding, altered silhouette or falsely claiming pixel-exact lossless recovery from PNG.
+- **Rollback/Recovery:** Keep original PNG and use versioned generated filenames; do not replace active launcher assets.
+- **Definition of done:** Assets validated and saved locally with provenance; runtime adoption and remote publication remain separate.
+
 ## P01 — Backend foundations
 
 Priority: **MUST**. Entry: No earlier implementation gate; planning baseline exists..

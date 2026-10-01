@@ -25,3 +25,6 @@
 - Publication scope LOCAL_PREVIEW_ONLY; no remote issue/PR/merge/wiki update. This preview does not advance a functional or production gate.
 - Artifact: docs/assets/brand/abastevo-readme-banner-v1.png; README.brand-preview.md. Original logo copied byte-for-byte; no runtime code changed.
 - Evidence/approval source: docs/brand/IDENTITY.md. State LOCAL_PREVIEW_DONE / AWAITING_VISUAL_APPROVAL; not INTEGRATED.
+
+- P00-T02 LOCAL_DONE on the same isolated branch/base (uncommitted): native SVG (~23 KB), Android XML and iOS vector PDF saved under docs/assets/brand; original PNG preserved. Evidence/imports: docs/assets/brand/README.md and vector-provenance.json.
+- Vector checks: 32–4096 px render/visual inspection, SVG safety, SVG/Android path-gradient parity, Android aapt2 compile/link and PDF zero-raster inventory PASS; no device/runtime integration. Next: review brand preview, then authorized publication separately; banner approval remains pending.
