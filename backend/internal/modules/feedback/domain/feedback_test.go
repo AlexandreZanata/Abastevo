@@ -51,6 +51,29 @@ func TestCommentBounds(t *testing.T) {
 	}
 }
 
+func TestCommentAstralBoundary(t *testing.T) {
+	// Astral-plane emoji are 4 bytes / 2 UTF-16 units each but count
+	// as one scalar: 280 emoji (1120 bytes) must pass, 281 must
+	// refuse. This pins scalar counting against byte/UTF-16 length
+	// across Go/Kotlin/Swift (P22-T04, B-BR-F03).
+	pump := strings.Repeat("⛽", 280)
+	got, err := ParseComment(pump)
+	if err != nil {
+		t.Fatalf("280 astral scalars must pass: %v", err)
+	}
+	if got.Scalars != 280 {
+		t.Errorf("scalars = %d, want 280", got.Scalars)
+	}
+	if _, err := ParseComment(strings.Repeat("⛽", 281)); err == nil {
+		t.Error("281 astral scalars must refuse without truncation")
+	}
+	// Lone CR folds like CRLF; mixed breaks plus emoji count once each.
+	got, err = ParseComment("a\rb\r\n⛽")
+	if err != nil || got.Text != "a\nb\n⛽" || got.Scalars != 5 {
+		t.Errorf("CR/CRLF/emoji must normalize to 5 scalars, got %+v err=%v", got, err)
+	}
+}
+
 func TestAgreementMath(t *testing.T) {
 	got, err := ComputeAgreement(2, 1)
 	if err != nil {
