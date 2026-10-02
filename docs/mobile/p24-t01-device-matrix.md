@@ -32,10 +32,14 @@ Status: IN_PROGRESS on `codex/phase-24-android-acceptance`. Issue: #96 OPEN. Ent
 
 Tested tree: branch head at device run (`bd6dcdd` + this commit). No candidate SHA is frozen while proofs are missing.
 
-## Validation (mockk-free worker proof, commit `4730c12` tree)
+## Validation (device proofs, this turn)
 
-- `SyncWorkerTest` (3) + `PriceDropEvaluationWorkerTest` (2): 5/5 PASS on `anpfuel-low26` (API 26, SQLite 3.18.2) — the exact row where mockk interception failed on ART. Command: `:data:connectedDebugAndroidTest` with class filter, `ANDROID_SERIAL=emulator-5554`.
-- `git diff --check` clean; secret scan PASS. T01 stays IN_PROGRESS: full-suite runs, V6ToV7 proof on newer SQLite and real low-end hardware row still missing.
+- `:data:connectedDebugAndroidTest` FULL green both rows: API-26 emulator 43 tests 0-fail (7 skipped: 5 migration self-skips where v6 history cannot exist + 2 live `@Ignore`); Xiaomi API 36 43 tests 0-fail (2 skipped: live `@Ignore` only). `V6ToV7DatabaseMigrationTest` executed + PASS on Xiaomi newer SQLite.
+- `AnpScaffoldTest`: PASS on Xiaomi API 36 → the inset failure is an API-26-emulator-only row (pre-existing, env).
+- `TempSeedDumpTest` R3.1.2/R3.1.3 replication: `R313_REPLICA_ROW=true` twice on the API-26 emulator; probe fulfilled and removed, flow stays covered by `AppendixA2PostSyncTest`.
+- `AppendixA2PostSyncTest` on Xiaomi: green through R3.1.8; red at R3.1.9 (no node with content-description 'Ethanol' — fix slice pending). On the API-26 emulator the R3.1.3 search stalls 120s (open, env-specific; identical query green on hardware and in the Temp replication).
+- `AppendixA2FreshInstallTest`: red on the offline emulator (no network route; auto-download needs real network) — networked-device proof pending.
+- `git diff --check` clean; secret scan PASS. T01 stays IN_PROGRESS: PostSync R3.1.3 emulator stall + R3.1.9 content-description fix, FreshInstall networked proof, real low-end hardware row.
 
 - FreshInstall page-count fix (test-only change for the 4-page onboarding).
 - JVM `OnboardingViewModelTest` pager test still green (4-page walk).
