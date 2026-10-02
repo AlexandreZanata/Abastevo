@@ -6,8 +6,10 @@ import androidx.room.RoomDatabase
 import androidx.work.WorkManager
 import com.anpfuel.data.local.AnpFuelDatabase
 import com.anpfuel.data.local.AnpFuelDatabaseMigrations
+import com.anpfuel.data.local.catalog.MunicipalityCatalogSeeder
 import com.anpfuel.data.local.entity.AveragePriceEntity
 import com.anpfuel.data.local.entity.SurveyWeekEntity
+import com.anpfuel.data.local.fts.MunicipalityFtsIndexer
 import com.anpfuel.data.mapper.VehicleMapper
 import com.anpfuel.data.local.preferences.SyncStateDataStore
 import com.anpfuel.data.local.preferences.UserPreferencesDataStore
@@ -55,6 +57,46 @@ object InstrumentedAppDataSeeder {
             state = BrazilianState.PARANA,
             surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13"),
         )
+        // R3.1.5 needs a city with import history but no current-week
+        // data, so its row carries the no-data badge (NEVER_IN_ANP
+        // rows show no subtitle by design).
+        seedHistoricalAverage(
+            context = context,
+            surveyWeek = SurveyWeek.fromIsoDates("2026-05-31", "2026-06-06"),
+            state = BrazilianState.BAHIA,
+            municipality = "BOM JESUS DA LAPA",
+        )
+        // Warm the FTS catalog once here: first search would pay the
+        // 5571-row seed + rebuild inside UI waits, which flakes past
+        // timeouts on low-end devices. Searches below then hit warm
+        // tables deterministically.
+        warmMunicipalityCatalog(context)
+    }
+
+    private suspend fun warmMunicipalityCatalog(context: Context) {
+        val database = Room.databaseBuilder(context, AnpFuelDatabase::class.java, DATABASE_NAME)
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(
+                AnpFuelDatabaseMigrations.MIGRATION_1_2,
+                AnpFuelDatabaseMigrations.MIGRATION_2_3,
+                AnpFuelDatabaseMigrations.MIGRATION_3_4,
+                AnpFuelDatabaseMigrations.MIGRATION_4_5,
+                AnpFuelDatabaseMigrations.MIGRATION_5_6,
+                AnpFuelDatabaseMigrations.MIGRATION_6_7,
+            )
+            .allowMainThreadQueries()
+            .build()
+
+        try {
+            MunicipalityCatalogSeeder(
+                context = context,
+                database = database,
+                municipalityCatalogDao = database.municipalityCatalogDao(),
+                ftsIndexer = MunicipalityFtsIndexer(database.municipalityFtsDao()),
+            ).seedIfEmpty()
+        } finally {
+            database.close()
+        }
     }
 
     private suspend fun seedPostSyncState(
@@ -71,6 +113,10 @@ object InstrumentedAppDataSeeder {
                 activeSurveyWeek = surveyWeek,
                 preferredMunicipality = municipality,
                 preferredState = state,
+                // Deterministic fixture: no background auto-download races
+                // with the asserted flows (the auto-download journey is
+                // covered by the fresh-install test on real defaults).
+                autoDownloadLatestWeek = false,
             ),
         )
 
@@ -82,6 +128,7 @@ object InstrumentedAppDataSeeder {
                 AnpFuelDatabaseMigrations.MIGRATION_3_4,
                 AnpFuelDatabaseMigrations.MIGRATION_4_5,
                 AnpFuelDatabaseMigrations.MIGRATION_5_6,
+                AnpFuelDatabaseMigrations.MIGRATION_6_7,
             )
             .allowMainThreadQueries()
             .build()
@@ -133,6 +180,58 @@ object InstrumentedAppDataSeeder {
         SyncStateDataStore(context).writeState(SyncJobState.COMPLETED)
     }
 
+    private suspend fun seedHistoricalAverage(
+        context: Context,
+        surveyWeek: SurveyWeek,
+        state: BrazilianState,
+        municipality: String,
+    ) {
+        val surveyWeekId = DomainId.forSurveyWeek(surveyWeek).value
+        val database = Room.databaseBuilder(context, AnpFuelDatabase::class.java, DATABASE_NAME)
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(
+                AnpFuelDatabaseMigrations.MIGRATION_1_2,
+                AnpFuelDatabaseMigrations.MIGRATION_2_3,
+                AnpFuelDatabaseMigrations.MIGRATION_3_4,
+                AnpFuelDatabaseMigrations.MIGRATION_4_5,
+                AnpFuelDatabaseMigrations.MIGRATION_5_6,
+                AnpFuelDatabaseMigrations.MIGRATION_6_7,
+            )
+            .allowMainThreadQueries()
+            .build()
+
+        try {
+            database.surveyWeekDao().insert(
+                SurveyWeekEntity(
+                    id = surveyWeekId,
+                    startDate = surveyWeek.startDate.toString(),
+                    endDate = surveyWeek.endDate.toString(),
+                    summaryImportedAt = 1_718_197_200_000L,
+                    stationImportedAt = null,
+                ),
+            )
+            database.averagePriceDao().insertAll(
+                listOf(
+                    AveragePriceEntity(
+                        id = "avg-$municipality-ethanol",
+                        surveyWeekId = surveyWeekId,
+                        state = state.abbreviation,
+                        municipality = municipality.uppercase(),
+                        fuelProduct = "ETHANOL",
+                        stationCount = 12,
+                        unit = "R$/l",
+                        avgPrice = 3.61,
+                        minPrice = 3.40,
+                        maxPrice = 3.85,
+                        stdDev = 0.09,
+                    ),
+                ),
+            )
+        } finally {
+            database.close()
+        }
+    }
+
     private suspend fun seedSampleVehicle(context: Context) {
         val vehicle = Vehicle.create(
             displayName = "Gol",
@@ -149,6 +248,7 @@ object InstrumentedAppDataSeeder {
                 AnpFuelDatabaseMigrations.MIGRATION_3_4,
                 AnpFuelDatabaseMigrations.MIGRATION_4_5,
                 AnpFuelDatabaseMigrations.MIGRATION_5_6,
+                AnpFuelDatabaseMigrations.MIGRATION_6_7,
             )
             .allowMainThreadQueries()
             .build()

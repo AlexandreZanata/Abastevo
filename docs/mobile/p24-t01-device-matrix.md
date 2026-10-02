@@ -15,7 +15,7 @@ Status: IN_PROGRESS on `codex/phase-24-android-acceptance`. Issue: #96 OPEN. Ent
 - HomeScreenTest now asserts the merged accessibility announcement (descendants are intentionally merged).
 - Restored the Search entry chip on home (`Routes.SEARCH` had zero callers — dead route); manually verified home → SearchScreen on API 26.
 - Historical migration tests (V1–V6 from-states contain `remove_diacritics=2`, which cannot exist on API 26) self-skip there via a shared SQLite probe and run fully where supported.
-- Worker device tests use mockk on final use-case classes, whose interception fails on API 26 ART (real method runs → NPE): slated for a mockk-free rewrite with hand fakes next.
+- Worker device tests are mockk-free (hand fakes run the real use cases): mockk cannot intercept final use-case methods on API 26 ART (real method ran → NPE).
 - PostSync journey: entry fixed via the Search chip; full script re-run pending.
 - Device caveat: MIUI cancels installs intermittently (`INSTALL_FAILED_USER_RESTRICTED`) even with Install-via-USB enabled — each reinstall may need on-screen confirmation.
 

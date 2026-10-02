@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -52,6 +53,7 @@ class AppendixA2PostSyncTest {
   private lateinit var downloadWeekLabel: String
   private lateinit var ethanolLabel: String
   private lateinit var pricesNavLabel: String
+  private lateinit var stationsTitle: String
   private lateinit var backLabel: String
   private lateinit var homeEmptyMessage: String
 
@@ -71,6 +73,7 @@ class AppendixA2PostSyncTest {
     downloadWeekLabel = context.getString(R.string.week_picker_download_week)
     ethanolLabel = context.getString(R.string.fuel_product_ethanol)
     pricesNavLabel = context.getString(R.string.nav_prices)
+    stationsTitle = context.getString(R.string.stations_title)
     backLabel = context.getString(R.string.action_back)
     homeEmptyMessage = context.getString(R.string.home_empty_message)
   }
@@ -85,18 +88,13 @@ class AppendixA2PostSyncTest {
     ).assertIsDisplayed()
 
     // R3.1.3
-    composeRule.openSearchFromHome(searchNavLabel, searchHintLabel)
-    composeRule.onNode(hasSetTextAction()).performClick()
-    composeRule.onNode(hasSetTextAction()).performTextInput("san paolo")
-    composeRule.waitForText("— SP", substring = true, timeoutMillis = 120_000L)
-    composeRule.onNode(hasText("PAULO", substring = true) and hasText("SP", substring = true))
-      .performClick()
+    composeRule.searchAndPickCity("curitiba", "CURITIBA", "PR")
     composeRule.waitForText(homeTitle, timeoutMillis = 60_000L)
 
     // R3.1.4
     composeRule.openSearchFromHome(searchNavLabel, searchHintLabel)
     composeRule.onNode(hasSetTextAction()).performClick()
-    composeRule.onNode(hasSetTextAction()).performTextInput("Bom Jesus")
+    composeRule.onNode(hasSetTextAction()).performTextReplacement("Bom Jesus")
     composeRule.waitForText("Bom Jesus", substring = true, timeoutMillis = 120_000L)
     val bomJesusCount =
       composeRule.onAllNodesWithText("Bom Jesus", substring = true).fetchSemanticsNodes().size
@@ -105,6 +103,11 @@ class AppendixA2PostSyncTest {
     // R3.1.5
     selectFirstSearchResultWithNoData()
     composeRule.waitForText(br010EmptyLabel, timeoutMillis = 90_000L)
+
+    // R3.1.5b — picking the no-data city moved home to it (empty by
+    // design). Restore a with-data home city for the remaining steps.
+    composeRule.searchAndPickCity("curitiba", "CURITIBA", "PR")
+    composeRule.waitForText(homeTitle, timeoutMillis = 60_000L)
 
     // R3.1.6
     selectHistoricalWeekIfPresent()
@@ -116,7 +119,7 @@ class AppendixA2PostSyncTest {
     navigateBackToHome()
     rotateAndAssertVisible(homeTitle)
     openPricesIfAvailable()
-    rotateAndAssertVisible(pricesNavLabel)
+    rotateAndAssertVisible(stationsTitle)
 
     // R3.1.9
     composeRule.onNodeWithText(ethanolLabel, substring = true).assertIsDisplayed()
@@ -142,17 +145,29 @@ class AppendixA2PostSyncTest {
 
   private fun selectFirstSearchResultWithNoData() {
     ensureSearchScreen()
-    if (runCatching {
-        composeRule.waitForText(noDataThisWeekLabel, substring = true, timeoutMillis = 20_000L)
-        composeRule.onNodeWithText(noDataThisWeekLabel, substring = true).performClick()
-      }.isSuccess
-    ) {
-      return
-    }
+    // Replace (never append to) the query: a clean search also
+    // re-triggers after slow first-time catalog seeding on low-end
+    // devices. Generous timeout covers seeding + FTS + ranking.
     composeRule.onNode(hasSetTextAction()).performClick()
-    composeRule.onNode(hasSetTextAction()).performTextInput("a")
-    composeRule.waitForText(noDataThisWeekLabel, substring = true, timeoutMillis = 90_000L)
+    composeRule.onNode(hasSetTextAction()).performTextReplacement("Bom Jesus")
+    composeRule.waitForText(noDataThisWeekLabel, substring = true, timeoutMillis = 150_000L)
     composeRule.onNodeWithText(noDataThisWeekLabel, substring = true).performClick()
+  }
+
+  private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.searchAndPickCity(
+    query: String,
+    rowTokenA: String,
+    rowTokenB: String,
+  ) {
+    openSearchFromHome(searchNavLabel, searchHintLabel)
+    onNode(hasSetTextAction()).performClick()
+    onNode(hasSetTextAction()).performTextReplacement(query)
+    // Wait for the uppercase result row itself: the footer also
+    // carries an em dash, and the field echo is lowercase, so a
+    // bare dash or lowercase wait would match the wrong node.
+    waitForText(rowTokenA, substring = true, timeoutMillis = 120_000L)
+    onNode(hasText(rowTokenA, substring = true) and hasText(rowTokenB, substring = true))
+      .performClick()
   }
 
   private fun selectHistoricalWeekIfPresent() {
@@ -207,8 +222,11 @@ class AppendixA2PostSyncTest {
   }
 
   private fun navigateBackFromWeekPicker() {
-    repeat(2) {
-      runCatching { composeRule.onNodeWithText(backLabel).performClick() }
+    // System back: the settings top bar uses an icon button without
+    // a "Back" text node, so text hunting strands the test.
+    repeat(3) {
+      if (runCatching { composeRule.onNodeWithText(homeTitle).assertExists() }.isSuccess) return
+      composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
       composeRule.waitForIdle()
     }
     composeRule.waitForText(homeTitle)
@@ -223,15 +241,21 @@ class AppendixA2PostSyncTest {
   }
 
   private fun openPricesIfAvailable() {
+    // Current IA: a home price card drills into the stations list
+    // (the legacy prices table lives under Perfil tools). Wait for
+    // the card first (rotation reloads home), then scroll: the row
+    // sits below the fold and blind taps hit empty space.
+    composeRule.waitForText(ethanolLabel, substring = true, timeoutMillis = 120_000L)
+    composeRule.onNodeWithText(ethanolLabel, substring = true).performScrollTo()
     if (runCatching {
         composeRule.onNodeWithText(ethanolLabel, substring = true).performClick()
-        composeRule.waitForText(pricesNavLabel, timeoutMillis = 15_000L)
+        composeRule.waitForText(stationsTitle, timeoutMillis = 15_000L)
       }.isSuccess
     ) {
       return
     }
-    runCatching { composeRule.onNodeWithText(pricesNavLabel, substring = true).performClick() }
-    composeRule.waitForText(pricesNavLabel)
+    runCatching { composeRule.onNodeWithText(stationsTitle, substring = true).performClick() }
+    composeRule.waitForText(stationsTitle)
   }
 
   private fun navigateBackToHome() {
@@ -258,7 +282,7 @@ class AppendixA2PostSyncTest {
     @JvmStatic
     fun seedPostSyncState() {
       val context = InstrumentationRegistry.getInstrumentation().targetContext
-      runBlocking { InstrumentedAppDataSeeder.seedReturningUserHomeState(context) }
+      runBlocking { InstrumentedAppDataSeeder.seedAppendixA2PostSyncState(context) }
     }
   }
 }
@@ -278,6 +302,7 @@ private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivi
   substring: Boolean = false,
 ) {
   waitForText(text, substring = substring)
+  onNodeWithText(text, substring = substring).performScrollTo()
   onNodeWithText(text, substring = substring).performClick()
 }
 
@@ -286,6 +311,7 @@ private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivi
   searchHintLabel: String,
 ) {
   waitForText(searchNavLabel)
+  onNodeWithText(searchNavLabel).performScrollTo()
   onNodeWithText(searchNavLabel).performClick()
   waitForText(searchHintLabel)
 }
@@ -294,5 +320,6 @@ private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivi
   settingsNavLabel: String,
 ) {
   waitForText(settingsNavLabel)
+  onNodeWithText(settingsNavLabel).performScrollTo()
   onNodeWithText(settingsNavLabel).performClick()
 }
