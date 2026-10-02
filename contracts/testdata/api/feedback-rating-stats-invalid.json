@@ -1,0 +1,1 @@
+{"id":"feedback-rating-stats-invalid","provenance":"P22-T02 additive ratings transport; synthetic","schema":"FeedbackRatingStats","valid":false,"value":{"count":-1,"product":"GASOLINE_ADDITIVED","station_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","sum":21},"version":1}

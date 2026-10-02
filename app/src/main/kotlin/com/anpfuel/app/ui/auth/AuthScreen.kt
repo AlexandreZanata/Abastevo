@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +19,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -66,6 +70,7 @@ fun AuthRoute(
         onProviderClick = viewModel::onProviderClick,
         onCancelProviderLink = viewModel::onCancelProviderLink,
         onLogout = viewModel::onLogout,
+        onDeleteAccount = viewModel::onDeleteAccount,
         onDismissError = viewModel::onDismissError,
         onNavigateBack = onNavigateBack,
         modifier = modifier,
@@ -83,10 +88,12 @@ fun AuthScreen(
     onProviderClick: (String) -> Unit,
     onCancelProviderLink: () -> Unit,
     onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
     onDismissError: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -171,6 +178,12 @@ fun AuthScreen(
                     ) {
                         Text(text = stringResource(R.string.auth_logout))
                     }
+                    OutlinedButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.auth_delete_account))
+                    }
                 }
             }
             state.error?.let { error ->
@@ -186,6 +199,28 @@ fun AuthScreen(
                 Text(text = stringResource(R.string.action_back))
             }
         }
+    }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(text = stringResource(R.string.auth_delete_title)) },
+            text = { Text(text = stringResource(R.string.auth_delete_copy)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDeleteAccount()
+                    },
+                ) {
+                    Text(text = stringResource(R.string.auth_delete_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 
@@ -220,6 +255,7 @@ private fun AuthScreenEmailPreview() {
             onProviderClick = {},
             onCancelProviderLink = {},
             onLogout = {},
+            onDeleteAccount = {},
             onDismissError = {},
             onNavigateBack = {},
         )
@@ -240,6 +276,7 @@ private fun AuthScreenAuthenticatedPreview() {
             onProviderClick = {},
             onCancelProviderLink = {},
             onLogout = {},
+            onDeleteAccount = {},
             onDismissError = {},
             onNavigateBack = {},
         )

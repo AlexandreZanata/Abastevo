@@ -40,6 +40,12 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
  * - Explicit empty / local activity presentation
  * - Transient 24-hour photo evidence retention explanation
  * - Entry point to contribute price (Routes.CAPTURE) or authenticate (Routes.AUTH)
+ *
+ * P22-T03 surfaces the moderation policy
+ * (docs/product/COMMUNITY_MODERATION.md) as an accessible rules card:
+ * any active account may report, reports never delete content alone,
+ * restricted moderators review with recorded reasons, and appeals
+ * reopen as a new reviewed case. No user-level mute exists in v1.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,6 +140,33 @@ fun CommunityScreen(
                     )
                     Text(
                         text = stringResource(R.string.community_rules_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RowWithIcon(
+                        icon = Icons.Default.Info,
+                        title = stringResource(R.string.community_moderation_title),
+                    )
+                    Text(
+                        text = stringResource(R.string.community_moderation_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(R.string.community_moderation_appeal),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

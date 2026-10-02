@@ -225,6 +225,28 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    /**
+     * P22-T01 — self-deletes the account (server `POST
+     * /v1/accounts/deletion` plus local storage wipe inside
+     * [AuthFlow.deleteAccount]). Success returns to email entry with the
+     * Deleted notice; failure keeps the session and maps the verdict.
+     */
+    fun onDeleteAccount() {
+        viewModelScope.launch {
+            when (val res = authFlow.deleteAccount()) {
+                is AuthApiResult.Ok -> {
+                    pendingAttempt = null
+                    _uiState.update {
+                        AuthUiState(step = AuthStep.EMAIL_ENTRY, error = AuthUiError.Deleted)
+                    }
+                }
+                is AuthApiResult.Err -> {
+                    _uiState.update { it.copy(error = mapError(res.verdict)) }
+                }
+            }
+        }
+    }
+
     fun onDismissError() {
         _uiState.update { it.copy(error = null) }
     }

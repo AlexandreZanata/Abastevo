@@ -171,6 +171,28 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun deleteAccountReturnsToEmailEntryWithNotice() = runTest {
+        advanceUntilIdle()
+        every { authFlow.deleteAccount() } returns AuthApiResult.Ok(Unit)
+        viewModel.onDeleteAccount()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthUiError.Deleted, state.error)
+        verify(exactly = 1) { authFlow.deleteAccount() }
+    }
+
+    @Test
+    fun failedDeleteKeepsSessionWithMappedError() = runTest {
+        advanceUntilIdle()
+        every { authFlow.deleteAccount() } returns
+            AuthApiResult.Err(PortableAuth.Verdict.ACCOUNT_SUSPENDED)
+        viewModel.onDeleteAccount()
+        advanceUntilIdle()
+        assertEquals(AuthUiError.Suspended, viewModel.uiState.value.error)
+    }
+
+    @Test
     fun mapsProviderVerdicts() {
         assertEquals(
             AuthUiError.ProviderDenied,

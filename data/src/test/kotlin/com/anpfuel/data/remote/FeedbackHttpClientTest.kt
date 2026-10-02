@@ -16,15 +16,15 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 
 /**
- * P17-T02 RED: feedback transport against the wired P14 routes.
+ * P17-T02 RED: feedback transport against the wired P14 routes;
+ * P22-T02 wires the ratings paths the same way.
  *
  * Writes carry the live session (family_id + access_token; the
  * author derives server-side). Missing/expired sessions never touch
  * the network ([FeedbackRejectKind.GATE_REQUIRED]). Backend codes
- * map to stable kinds (stale-revision, self-vote, quota-exceeded);
- * IO failures and unmapped statuses are TRANSPORT. Ratings have no
- * published path (recorded P14 gap) and refuse explicitly — never a
- * fake success.
+ * map to stable kinds (rating-out-of-range, stale-revision,
+ * self-vote, quota-exceeded); IO failures and unmapped statuses are
+ * TRANSPORT.
  */
 class FeedbackHttpClientTest {
 
@@ -160,16 +160,87 @@ class FeedbackHttpClientTest {
     }
 
     @Test
-    fun `ratings refuse without a published path`() = runTest {
+    fun `rate posts session target stars and parses receipt with stats`() = runTest {
         val server = MockWebServer()
         try {
+            server.enqueue(
+                MockResponse().setResponseCode(201).setBody(
+                    """{"rating":{"station_id":"s-1","product":"GASOLINE","stars":5,"revision":1,"created":true},""" +
+                        """"stats":{"station_id":"s-1","product":"GASOLINE","count":1,"sum":5,"mean_milli":5000}}""",
+                ),
+            )
+            val receipt = client(server, FakeSessions(session))
+                .rate("acc-1", "s-1", "GASOLINE", 5)
+
+            assertTrue(receipt.created)
+            assertEquals(1L, receipt.stats.count)
+            assertEquals(5L, receipt.stats.sum)
+            val recorded = server.takeRequest()
+            assertTrue(recorded.path!!.contains("/v1/feedback/ratings"))
+            val body = JSONObject(recorded.body.readUtf8())
+            assertEquals(session.familyId, body.getString("family_id"))
+            assertEquals(5, body.getInt("stars"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `out of range stars map to denied kind`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(
+                MockResponse().setResponseCode(400)
+                    .setBody("""{"code":"feedback.rating-out-of-range","message":"invalid"}"""),
+            )
             try {
-                client(server, FakeSessions(session)).rate("acc-1", "s-1", "GASOLINE", 5)
-                fail("expected GATE_REQUIRED")
+                client(server, FakeSessions(session)).rate("acc-1", "s-1", "GASOLINE", 6)
+                fail("expected RATING_OUT_OF_RANGE")
             } catch (refused: FeedbackException) {
-                assertEquals(FeedbackRejectKind.GATE_REQUIRED, refused.kind)
+                assertEquals(FeedbackRejectKind.RATING_OUT_OF_RANGE, refused.kind)
             }
-            assertEquals(0, server.requestCount)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `stats get parses zeroed aggregate for unknown keys`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"stats":{"station_id":"s-9","product":"GASOLINE","count":0,"sum":0,"mean_milli":null}}""",
+                ),
+            )
+            val stats = client(server, FakeSessions(session)).stats("s-9", "GASOLINE")
+            assertEquals(0L, stats.count)
+            assertEquals(0L, stats.sum)
+            val recorded = server.takeRequest()
+            assertTrue(recorded.path!!.contains("/v1/feedback/ratings/stats"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `second delete maps to rating not found`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"status":"deleted"}"""),
+            )
+            client(server, FakeSessions(session)).deleteRating("acc-1", "s-1", "GASOLINE")
+            server.enqueue(
+                MockResponse().setResponseCode(404)
+                    .setBody("""{"code":"feedback.rating-not-found","message":"gone"}"""),
+            )
+            try {
+                client(server, FakeSessions(session)).deleteRating("acc-1", "s-1", "GASOLINE")
+                fail("expected RATING_NOT_FOUND")
+            } catch (refused: FeedbackException) {
+                assertEquals(FeedbackRejectKind.RATING_NOT_FOUND, refused.kind)
+            }
         } finally {
             server.shutdown()
         }

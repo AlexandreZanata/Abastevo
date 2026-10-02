@@ -34,6 +34,9 @@
     <string name="community_action_contribute">Colaborar com preço</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
+    <string name="community_moderation_title">Denúncias e moderação</string>
+    <string name="community_moderation_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas — moderadores restritos revisam cada caso com motivos registrados.</string>
+    <string name="community_moderation_appeal">Discorda de uma decisão? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado, o histórico nunca é editado.</string>
 
     <!-- Profile screen (P19-T04) -->
     <string name="profile_screen_title">Perfil</string>
@@ -41,6 +44,9 @@
     <string name="profile_guest_title">Modo visitante</string>
     <string name="profile_guest_subtitle">Pesquisa anônima de preços. Cadastro gratuito necessário para avaliações, comentários e votos.</string>
     <string name="profile_action_sign_in">Entrar ou criar conta gratuita</string>
+    <string name="profile_signed_in_title">Conectado</string>
+    <string name="profile_signed_in_subtitle">Conta gratuita ativa. Gerencie login, provedores e exclusão em Conta.</string>
+    <string name="profile_action_manage_account">Gerenciar conta</string>
     <string name="profile_contributions_section">Minhas contribuições</string>
     <string name="profile_contributions_empty">Nenhuma contribuição neste dispositivo ainda.</string>
     <string name="profile_contributions_error">Não foi possível carregar suas contribuições.</string>
@@ -355,6 +361,10 @@
     <string name="auth_google">Vincular Google</string>
     <string name="auth_apple">Vincular Apple</string>
     <string name="auth_logout">Sair de todos os aparelhos</string>
+    <string name="auth_delete_account">Excluir minha conta</string>
+    <string name="auth_delete_title">Excluir conta?</string>
+    <string name="auth_delete_copy">Isso remove sua conta e desconecta este aparelho. Preços que você informou seguem anônimos.</string>
+    <string name="auth_delete_confirm">Sim, excluir</string>
     <string name="auth_pending_provider">Aguardando %1$s…</string>
     <string name="auth_logged_in">Conectado</string>
     <string name="auth_account_row">Conta</string>

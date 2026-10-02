@@ -22,21 +22,19 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
- * P17-T02 bounded feedback HTTP client (B-BR-F01…F08).
+ * P17-T02 bounded feedback HTTP client (B-BR-F01…F08), ratings
+ * transport landed in P22-T02.
  *
- * Covers the ten published P14 routes: comment/reply/edit/remove,
- * comment/reply pages, vote/remove/tally and report. Every write
- * carries the live session (`family_id` + `access_token`; the author
- * derives server-side). A missing or expired session never touches
- * the network ([FeedbackRejectKind.GATE_REQUIRED]). Backend codes
- * map to stable kinds (stale-revision, self-vote, quota-exceeded);
- * IO failures, empty bodies and unmapped statuses are TRANSPORT with
- * fixed messages — raw bodies never enter error text.
- *
- * Ratings have no published path (recorded P14 gap: store and
- * application exist, handlers were never wired): [rate],
- * [deleteRating] and [stats] refuse explicitly with GATE_REQUIRED,
- * never a fake success.
+ * Covers the thirteen P14/P22 routes: rating/stats/remove plus
+ * comment/reply/edit/remove, comment/reply pages, vote/remove/tally
+ * and report. Every write carries the live session (`family_id` +
+ * `access_token`; the author derives server-side). A missing or
+ * expired session never touches the network
+ * ([FeedbackRejectKind.GATE_REQUIRED]). Backend codes map to stable
+ * kinds (rating-out-of-range, stale-revision, self-vote,
+ * quota-exceeded); IO failures, empty bodies and unmapped statuses
+ * are TRANSPORT with fixed messages — raw bodies never enter error
+ * text.
  */
 class FeedbackHttpClient(
     private val client: OkHttpClient,
@@ -71,23 +69,58 @@ class FeedbackHttpClient(
         stationId: String,
         product: String,
         stars: Int,
-    ): RatingWriteReceipt = throw FeedbackException(
-        FeedbackRejectKind.GATE_REQUIRED,
-        "ratings transport not published",
-    )
-
-    override suspend fun deleteRating(accountId: String, stationId: String, product: String) {
-        throw FeedbackException(
-            FeedbackRejectKind.GATE_REQUIRED,
-            "ratings transport not published",
+    ): RatingWriteReceipt {
+        val payload = sessionJson()
+            .put("station_id", stationId)
+            .put("product", product)
+            .put("stars", stars)
+            .toString()
+        val raw = post("/v1/feedback/ratings", payload, expected = 201)
+        val root = try {
+            JSONObject(raw)
+        } catch (_: Exception) {
+            throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad rating")
+        }
+        val rating = root.optJSONObject("rating")
+        val created = rating?.optBoolean("created", false) ?: false
+        return RatingWriteReceipt(
+            ratingId = "local:$stationId|$product",
+            created = created,
+            stats = statsOf(root),
         )
     }
 
+    override suspend fun deleteRating(accountId: String, stationId: String, product: String) {
+        val payload = sessionJson()
+            .put("station_id", stationId)
+            .put("product", product)
+            .toString()
+        val raw = post("/v1/feedback/ratings/remove", payload, expected = 200)
+        val status = try {
+            JSONObject(raw).optString("status", "")
+        } catch (_: Exception) {
+            ""
+        }
+        if (status != "deleted") {
+            throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad rating delete")
+        }
+    }
+
     override suspend fun stats(stationId: String, product: String): RatingStatsSnapshot {
-        throw FeedbackException(
-            FeedbackRejectKind.GATE_REQUIRED,
-            "ratings transport not published",
-        )
+        val path = "/v1/feedback/ratings/stats?station_id=" + encode(stationId) +
+            "&product=" + encode(product)
+        val request = Request.Builder()
+            .url(baseUrl.trimEnd('/') + path)
+            .get()
+            .header("Accept", "application/json")
+            .build()
+        val raw = execute(request, expected = 200)
+        val root = try {
+            JSONObject(raw)
+        } catch (_: Exception) {
+            throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad stats")
+        }
+        return statsOf(root)
     }
 
     override suspend fun submitComment(
@@ -253,6 +286,8 @@ class FeedbackHttpClient(
                 FeedbackException(FeedbackRejectKind.SELF_VOTE, "authors cannot vote on their comments")
             code == 403 ->
                 FeedbackException(FeedbackRejectKind.NOT_AUTHOR, "feedback write refused")
+            code == 404 && body.contains(CODE_RATING_NOT_FOUND) ->
+                FeedbackException(FeedbackRejectKind.RATING_NOT_FOUND, "rating not found")
             code == 404 ->
                 FeedbackException(FeedbackRejectKind.COMMENT_NOT_FOUND, "comment not found")
             code == 409 && body.contains(CODE_STALE) ->
@@ -290,8 +325,20 @@ class FeedbackHttpClient(
         return CommentWriteReceipt(id, revision)
     }
 
-    private fun tallyOf(raw: String): VoteTallySnapshot {
-        val tally = try {
+    private fun statsOf(root: JSONObject): RatingStatsSnapshot {
+        val stats = root.optJSONObject("stats")
+            ?: throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad stats")
+        val stationId = stats.optString("station_id", "")
+        val product = stats.optString("product", "")
+        val count = stats.optLong("count", -1L)
+        val sum = stats.optLong("sum", -1L)
+        if (stationId.isBlank() || product.isBlank() || count < 0 || sum < 0) {
+            throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad stats")
+        }
+        return RatingStatsSnapshot(stationId, product, count, sum)
+    }
+
+    private fun tallyOf(raw: String): VoteTallySnapshot {        val tally = try {
             JSONObject(raw).getJSONObject("tally")
         } catch (_: Exception) {
             throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad tally")
@@ -368,6 +415,7 @@ class FeedbackHttpClient(
         private const val CODE_TEXT_EMPTY = "feedback.text-empty"
         private const val CODE_TEXT_LONG = "feedback.text-too-long"
         private const val CODE_RATING = "feedback.rating-out-of-range"
+        private const val CODE_RATING_NOT_FOUND = "feedback.rating-not-found"
         private const val CODE_CHOICE = "feedback.vote-choice-invalid"
         private const val CODE_REPORT = "feedback.report-invalid"
     }

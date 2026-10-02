@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.auth.AuthStep
+import com.anpfuel.app.ui.auth.AuthViewModel
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
@@ -69,11 +71,16 @@ fun ProfileScreen(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     statusViewModel: ContributionStatusViewModel = hiltViewModel(),
+    authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(statusViewModel) {
         statusViewModel.load()
     }
+    // P22-T01: same shared session store as the auth flow; rehydrate runs
+    // once here so Perfil reflects sign-in without duplicating ceremony.
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val signedIn = authState.step == AuthStep.AUTHENTICATED
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -113,12 +120,24 @@ fun ProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.profile_guest_title),
+                        text = stringResource(
+                            if (signedIn) {
+                                R.string.profile_signed_in_title
+                            } else {
+                                R.string.profile_guest_title
+                            },
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.semantics { heading() },
                     )
                     Text(
-                        text = stringResource(R.string.profile_guest_subtitle),
+                        text = stringResource(
+                            if (signedIn) {
+                                R.string.profile_signed_in_subtitle
+                            } else {
+                                R.string.profile_guest_subtitle
+                            },
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -128,7 +147,15 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .padding(top = 4.dp),
                     ) {
-                        Text(text = stringResource(R.string.profile_action_sign_in))
+                        Text(
+                            text = stringResource(
+                                if (signedIn) {
+                                    R.string.profile_action_manage_account
+                                } else {
+                                    R.string.profile_action_sign_in
+                                },
+                            ),
+                        )
                     }
                 }
             }

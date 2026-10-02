@@ -6,6 +6,7 @@ import com.anpfuel.domain.repository.FeedbackCacheRepository
 import com.anpfuel.domain.repository.FeedbackException
 import com.anpfuel.domain.repository.FeedbackGateway
 import com.anpfuel.domain.repository.FeedbackPage
+import com.anpfuel.domain.repository.RatingStatsSnapshot
 
 /**
  * P17-T01 — Shared feedback reads (B-BR-F06/F07, BUC-F05).
@@ -24,6 +25,17 @@ sealed interface FeedbackPageOutcome {
     data class Fresh(val page: FeedbackPage) : FeedbackPageOutcome
     data class StaleCache(val page: FeedbackPage, val cause: Throwable) : FeedbackPageOutcome
     data class Unavailable(val cause: Throwable) : FeedbackPageOutcome
+}
+
+/**
+ * Public rating aggregate outcome (P22-T02, B-BR-F02): exact
+ * count/sum, zeroed when no rating exists — never an error or an
+ * invented mean. Reads need no login.
+ */
+sealed interface FeedbackStatsOutcome {
+    data object Disabled : FeedbackStatsOutcome
+    data class Fresh(val stats: RatingStatsSnapshot) : FeedbackStatsOutcome
+    data class Unavailable(val cause: Throwable) : FeedbackStatsOutcome
 }
 
 class GetFeedbackPageUseCase(
@@ -73,13 +85,22 @@ class GetFeedbackPageUseCase(
             FeedbackPageOutcome.Unavailable(transport)
         }
     }
-
     private fun clampLimit(limit: Int): Int =
         when {
             limit <= 0 -> DEFAULT_LIMIT
             limit > MAX_LIMIT -> MAX_LIMIT
             else -> limit
         }
+
+    suspend fun stats(stationId: String, product: String): FeedbackStatsOutcome {
+        if (!flagProvider.isEnabled()) return FeedbackStatsOutcome.Disabled
+        if (stationId.isBlank() || product.isBlank()) throw DomainException("station/product target is blank")
+        return try {
+            FeedbackStatsOutcome.Fresh(gateway.stats(stationId.trim(), product.trim()))
+        } catch (error: Exception) {
+            FeedbackStatsOutcome.Unavailable(error)
+        }
+    }
 
     companion object {
         const val DEFAULT_LIMIT = 20

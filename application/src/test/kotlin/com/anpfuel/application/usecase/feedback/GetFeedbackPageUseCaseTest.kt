@@ -42,6 +42,9 @@ class GetFeedbackPageUseCaseTest {
                 "next-1",
             ),
         ),
+        var statsResult: Result<RatingStatsSnapshot> = Result.success(
+            RatingStatsSnapshot("s-1", "GASOLINE", 5L, 21L),
+        ),
     ) : FeedbackGateway {
         var calls = 0
 
@@ -57,7 +60,7 @@ class GetFeedbackPageUseCaseTest {
         }
 
         override suspend fun stats(stationId: String, product: String): RatingStatsSnapshot =
-            throw UnsupportedOperationException()
+            statsResult.getOrThrow()
 
         override suspend fun submitComment(
             accountId: String,
@@ -171,5 +174,36 @@ class GetFeedbackPageUseCaseTest {
         val useCase = GetFeedbackPageUseCase(FakeFlags(true), gateway, FakeCache(null))
         val outcome = useCase.comments("s-1", "GASOLINE", "!!!not-a-cursor!!!", 20)
         assertTrue(outcome is FeedbackPageOutcome.Unavailable)
+    }
+
+    @Test
+    fun `stats read needs no login and serves exact counts`() = runTest {
+        val useCase = GetFeedbackPageUseCase(FakeFlags(true), FakeGateway(), FakeCache(null))
+        val outcome = useCase.stats("s-1", "GASOLINE")
+        assertTrue(outcome is FeedbackStatsOutcome.Fresh)
+        val stats = (outcome as FeedbackStatsOutcome.Fresh).stats
+        assertEquals(5L, stats.count)
+        assertEquals(21L, stats.sum)
+    }
+
+    @Test
+    fun `stats disabled serves nothing and transport fails closed`() = runTest {
+        val disabled = GetFeedbackPageUseCase(FakeFlags(false), FakeGateway(), FakeCache(null))
+        assertTrue(disabled.stats("s-1", "GASOLINE") is FeedbackStatsOutcome.Disabled)
+
+        val offline = GetFeedbackPageUseCase(
+            FakeFlags(true),
+            FakeGateway(statsResult = Result.failure(RuntimeException("offline"))),
+            FakeCache(null),
+        )
+        assertTrue(offline.stats("s-1", "GASOLINE") is FeedbackStatsOutcome.Unavailable)
+    }
+
+    @Test
+    fun `stats blank target fails fast`() = runTest {
+        val useCase = GetFeedbackPageUseCase(FakeFlags(true), FakeGateway(), FakeCache(null))
+        assertThrows(DomainException::class.java) {
+            kotlinx.coroutines.runBlocking { useCase.stats("  ", "GASOLINE") }
+        }
     }
 }
