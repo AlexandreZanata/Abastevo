@@ -24,16 +24,33 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.model.StationPriceUiModel
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
+/**
+ * P24-T02 pure TalkBack join: price part (name + price, already localized via
+ * `a11y_station_price_row`) plus optional recency part (already localized via
+ * `stations_collected_at_label`). Kept pure for JVM RED → GREEN coverage; the
+ * composable supplies the localized parts.
+ */
+fun stationRowTalkBackDescription(pricePart: String, collectedPart: String?): String =
+    if (collectedPart.isNullOrBlank()) pricePart else "$pricePart, $collectedPart"
+
 @Composable
 fun StationPriceRow(
     station: StationPriceUiModel,
     onNavigate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rowDescription = stringResource(
-        R.string.a11y_station_navigate,
+    // P24-T02: TalkBack must announce content (name + price + recency for
+    // B-BR-C01 comprehension), not only the navigate verb. Role.Button keeps
+    // the row actionable; a11y_station_price_row already exists in all locales.
+    val pricePart = stringResource(
+        R.string.a11y_station_price_row,
         station.displayName,
+        station.priceFormatted,
     )
+    val collectedPart = station.collectedAtLabel?.takeIf { it.isNotBlank() }?.let {
+        stringResource(R.string.stations_collected_at_label, it)
+    }
+    val rowDescription = stationRowTalkBackDescription(pricePart, collectedPart)
 
     Card(
         modifier = modifier
