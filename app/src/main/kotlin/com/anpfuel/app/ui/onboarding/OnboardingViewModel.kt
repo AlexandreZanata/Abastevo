@@ -377,6 +377,6 @@ class OnboardingViewModel @Inject constructor(
     }
 
     companion object {
-        const val PAGE_COUNT = 3
+        const val PAGE_COUNT = 4
     }
 }

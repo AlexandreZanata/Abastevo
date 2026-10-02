@@ -16,6 +16,7 @@ object Routes {
     const val STATIONS = "stations"
     const val STATIONS_WITH_FUEL = "stations/{fuelProduct}"
     const val SETTINGS = "settings"
+    const val HELP = "help"
     const val VEHICLES = "vehicles"
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"

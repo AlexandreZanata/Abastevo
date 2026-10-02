@@ -67,7 +67,7 @@
   "milestone": 17,
   "milestone_title": "P23 — Community operations and sustainable participation",
   "phase": "22",
-  "pr": null,
+  "pr": 95,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -76,5 +76,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P23-T01 LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "P23-T02 LOCAL_DONE / AWAITING_PHASE_MERGE"
 }
