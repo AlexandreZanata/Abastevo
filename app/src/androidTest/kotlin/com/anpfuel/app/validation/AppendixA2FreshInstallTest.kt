@@ -46,7 +46,7 @@ class AppendixA2FreshInstallTest {
     }
 
     if (runCatching { composeRule.onNodeWithText(weekPickerTitle).assertExists() }.isFailure) {
-      repeat(2) {
+      repeat(3) {
         composeRule.onNodeWithText(nextLabel).performClick()
         composeRule.waitForIdle()
       }

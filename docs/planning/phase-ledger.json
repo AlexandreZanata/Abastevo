@@ -1,6 +1,6 @@
 {
-  "base_sha": "cdd395fb33a65e25fca285547e3854ee818c1126",
-  "branch": "codex/phase-23-community-operations",
+  "base_sha": "b4f664e6b12cb3e053dff6aeb84607dd5dbe5d62",
+  "branch": "codex/phase-24-android-acceptance",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -61,13 +61,17 @@
     "P23-T01": 91,
     "P23-T02": 92,
     "P23-T03": 93,
-    "P23-T04": 94
+    "P23-T04": 94,
+    "P24-T01": 96,
+    "P24-T02": 97,
+    "P24-T03": 98,
+    "P24-T04": 99
   },
   "issues_close_on_merge": false,
-  "milestone": 17,
-  "milestone_title": "P23 — Community operations and sustainable participation",
+  "milestone": 18,
+  "milestone_title": "P24 — Android commercial acceptance",
   "phase": "22",
-  "pr": 95,
+  "pr": null,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -76,5 +80,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P23-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "P24-T01 IN_PROGRESS / DEVICE_PROOF_PENDING"
 }
