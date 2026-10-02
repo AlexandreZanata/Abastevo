@@ -21,6 +21,10 @@ ROOT="${WIKI_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 OWNER_REPO="AlexandreZanata/brazil-fuel-prices"
 EXPECTED_WIKI_SSH="git@github.com:AlexandreZanata/brazil-fuel-prices.wiki.git"
 EXPECTED_WIKI_HTTPS="https://github.com/AlexandreZanata/brazil-fuel-prices.wiki.git"
+# Post-rename alias (2026-10-02): the repository moved to AlexandreZanata/abastevo.
+# GitHub redirects both wiki remotes to the same history; accept either origin.
+EXPECTED_WIKI_SSH_ALIAS="git@github.com:AlexandreZanata/abastevo.wiki.git"
+EXPECTED_WIKI_HTTPS_ALIAS="https://github.com/AlexandreZanata/abastevo.wiki.git"
 MANIFEST_NAME="wiki-manifest.json"
 SIDEBAR_NAME="_Sidebar.md"
 
@@ -187,7 +191,7 @@ wiki_origin_ok() {
     if [[ "${ANPFUEL_WIKI_OVERRIDE:-0}" == "1" ]]; then
         return 0
     fi
-    [[ "$url" == "$EXPECTED_WIKI_SSH" || "$url" == "$EXPECTED_WIKI_HTTPS" ]] || return 1
+    [[ "$url" == "$EXPECTED_WIKI_SSH" || "$url" == "$EXPECTED_WIKI_HTTPS" || "$url" == "$EXPECTED_WIKI_SSH_ALIAS" || "$url" == "$EXPECTED_WIKI_HTTPS_ALIAS" ]] || return 1
 }
 
 cmd_publish() {
