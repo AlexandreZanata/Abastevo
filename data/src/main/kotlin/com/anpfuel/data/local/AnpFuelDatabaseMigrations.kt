@@ -215,4 +215,73 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // P24-T01: FTS4 `unicode61 remove_diacritics=*` needs
+            // SQLite 3.20+ (value 2 additionally needs ICU) and
+            // crashes table creation on API 26 (`unknown
+            // tokenizer`). Rebuild the derived index with the plain
+            // `unicode61` tokenizer plus the pre-normalized ASCII
+            // `normalized_name` column, so "SAO*" (normalized) and
+            // "SÃO*" (raw) both match on every API level. The index
+            // is fully derived from `municipality_catalog` (rebuilt
+            // below); catalog rows are never touched.
+            db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_municipality_fts_BEFORE_UPDATE")
+            db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_municipality_fts_BEFORE_DELETE")
+            db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_municipality_fts_AFTER_UPDATE")
+            db.execSQL("DROP TRIGGER IF EXISTS room_fts_content_sync_municipality_fts_AFTER_INSERT")
+            db.execSQL("DROP TABLE IF EXISTS `municipality_fts`")
+            db.execSQL(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS `municipality_fts` USING FTS4(
+                    `municipality` TEXT NOT NULL,
+                    `state` TEXT NOT NULL,
+                    `normalized_name` TEXT NOT NULL,
+                    tokenize=unicode61,
+                    content=`municipality_catalog`
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_UPDATE
+                BEFORE UPDATE ON `municipality_catalog`
+                BEGIN
+                    DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`;
+                END
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_DELETE
+                BEFORE DELETE ON `municipality_catalog`
+                BEGIN
+                    DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`;
+                END
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_UPDATE
+                AFTER UPDATE ON `municipality_catalog`
+                BEGIN
+                    INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`, `normalized_name`)
+                    VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`, NEW.`normalized_name`);
+                END
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_INSERT
+                AFTER INSERT ON `municipality_catalog`
+                BEGIN
+                    INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`, `normalized_name`)
+                    VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`, NEW.`normalized_name`);
+                END
+                """.trimIndent(),
+            )
+            db.execSQL("INSERT INTO municipality_fts(municipality_fts) VALUES('rebuild')")
+        }
+    }
 }

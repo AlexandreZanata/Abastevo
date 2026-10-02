@@ -206,7 +206,7 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Gol").assertIsDisplayed()
-        composeTestRule.onNodeWithText("R$ 274,50", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Gol", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("R$ 274,50", substring = true).assertIsDisplayed()
     }
 }
