@@ -32,7 +32,10 @@ Status: IN_PROGRESS on `codex/phase-24-android-acceptance`. Issue: #96 OPEN. Ent
 
 Tested tree: branch head at device run (`bd6dcdd` + this commit). No candidate SHA is frozen while proofs are missing.
 
-## Validation (this commit)
+## Validation (mockk-free worker proof, commit `4730c12` tree)
+
+- `SyncWorkerTest` (3) + `PriceDropEvaluationWorkerTest` (2): 5/5 PASS on `anpfuel-low26` (API 26, SQLite 3.18.2) — the exact row where mockk interception failed on ART. Command: `:data:connectedDebugAndroidTest` with class filter, `ANDROID_SERIAL=emulator-5554`.
+- `git diff --check` clean; secret scan PASS. T01 stays IN_PROGRESS: full-suite runs, V6ToV7 proof on newer SQLite and real low-end hardware row still missing.
 
 - FreshInstall page-count fix (test-only change for the 4-page onboarding).
 - JVM `OnboardingViewModelTest` pager test still green (4-page walk).
