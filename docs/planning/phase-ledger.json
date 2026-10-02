@@ -1,6 +1,6 @@
 {
-  "base_sha": "f24afd1a3d2dcb942c2babe382ed0e42408bd31d",
-  "branch": "codex/phase-22-social-moderation",
+  "base_sha": "cdd395fb33a65e25fca285547e3854ee818c1126",
+  "branch": "codex/phase-23-community-operations",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -57,13 +57,17 @@
     "P22-T01": 86,
     "P22-T02": 87,
     "P22-T03": 88,
-    "P22-T04": 89
+    "P22-T04": 89,
+    "P23-T01": 91,
+    "P23-T02": 92,
+    "P23-T03": 93,
+    "P23-T04": 94
   },
   "issues_close_on_merge": false,
-  "milestone": 16,
-  "milestone_title": "P22 — Social experience and moderation",
+  "milestone": 17,
+  "milestone_title": "P23 — Community operations and sustainable participation",
   "phase": "22",
-  "pr": 90,
+  "pr": null,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -72,5 +76,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P22-T04 LOCAL_DONE / AWAITING_PHASE_MERGE"
+  "state": "P23-T01 LOCAL_DONE / AWAITING_PHASE_MERGE"
 }

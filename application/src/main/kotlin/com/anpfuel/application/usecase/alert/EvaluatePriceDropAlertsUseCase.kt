@@ -3,6 +3,7 @@ package com.anpfuel.application.usecase.alert
 import com.anpfuel.application.format.BrlPriceFormatter
 import com.anpfuel.domain.model.PriceDropAlertNotification
 import com.anpfuel.domain.repository.AveragePriceRepository
+import com.anpfuel.domain.repository.PriceDropAlertHistoryRepository
 import com.anpfuel.domain.repository.PriceDropNotificationRepository
 import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.StationPriceRepository
@@ -30,6 +31,12 @@ data class EvaluatePriceDropAlertsResult(
 
 /**
  * UC-014 — Evaluates configured vehicles after a successful weekly import.
+ *
+ * Duplicate suppression (P23-T01): the same drop notifies once per
+ * vehicle per evaluated week. Repeat evaluations while the condition
+ * holds show nothing new; a new week re-arms. History is device-local
+ * ([PriceDropAlertHistoryRepository]); clearing app data resets it,
+ * which may repeat one alert — safe and explicit.
  */
 class EvaluatePriceDropAlertsUseCase(
     private val vehicleRepository: VehicleRepository,
@@ -38,6 +45,7 @@ class EvaluatePriceDropAlertsUseCase(
     private val priceTableRepository: PriceTableRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val priceDropNotificationRepository: PriceDropNotificationRepository,
+    private val priceDropAlertHistoryRepository: PriceDropAlertHistoryRepository,
 ) {
 
     suspend operator fun invoke(): EvaluatePriceDropAlertsResult {
@@ -98,6 +106,9 @@ class EvaluatePriceDropAlertsUseCase(
             if (!PriceDropDetectionRule.shouldNotify(currentPrice, previousPrice)) {
                 continue
             }
+            if (priceDropAlertHistoryRepository.lastNotifiedWeek(vehicle.id) == currentWeek) {
+                continue
+            }
 
             priceDropNotificationRepository.showPriceDropAlert(
                 PriceDropAlertNotification(
@@ -106,6 +117,7 @@ class EvaluatePriceDropAlertsUseCase(
                     currentPriceFormatted = BrlPriceFormatter.format(currentPrice!!),
                 ),
             )
+            priceDropAlertHistoryRepository.recordNotified(vehicle.id, currentWeek)
             notificationsShown++
         }
 

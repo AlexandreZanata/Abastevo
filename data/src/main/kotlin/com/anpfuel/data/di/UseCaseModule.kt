@@ -58,6 +58,7 @@ import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.application.usecase.vehicle.SaveVehicleUseCase
 import com.anpfuel.domain.repository.AddressGeocodeRepository
+import com.anpfuel.domain.repository.PriceDropAlertHistoryRepository
 import com.anpfuel.domain.repository.PriceDropNotificationRepository
 import com.anpfuel.domain.repository.ReverseGeocodeRepository
 import com.anpfuel.domain.repository.VehicleRepository
@@ -436,6 +437,7 @@ object UseCaseModule {
         priceTableRepository: PriceTableRepository,
         userPreferencesRepository: UserPreferencesRepository,
         priceDropNotificationRepository: PriceDropNotificationRepository,
+        priceDropAlertHistoryRepository: PriceDropAlertHistoryRepository,
     ): EvaluatePriceDropAlertsUseCase = EvaluatePriceDropAlertsUseCase(
         vehicleRepository = vehicleRepository,
         averagePriceRepository = averagePriceRepository,
@@ -443,6 +445,7 @@ object UseCaseModule {
         priceTableRepository = priceTableRepository,
         userPreferencesRepository = userPreferencesRepository,
         priceDropNotificationRepository = priceDropNotificationRepository,
+        priceDropAlertHistoryRepository = priceDropAlertHistoryRepository,
     )
 
     @Provides
