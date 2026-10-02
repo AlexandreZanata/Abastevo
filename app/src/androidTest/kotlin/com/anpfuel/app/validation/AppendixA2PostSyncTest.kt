@@ -4,13 +4,14 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -123,7 +124,12 @@ class AppendixA2PostSyncTest {
 
     // R3.1.9
     composeRule.onNodeWithText(ethanolLabel, substring = true).assertIsDisplayed()
-    composeRule.onNodeWithContentDescription(ethanolLabel, substring = true).assertExists()
+    // The ethanol FilterChip carries a text label (announced by TalkBack
+    // with its selected state); its icon is decorative by design, so the
+    // operability contract is label + click action, not a duplicate
+    // content-description node.
+    composeRule.onNodeWithText(ethanolLabel, substring = true).assertHasClickAction()
+    composeRule.onNodeWithText(ethanolLabel, substring = true).assertIsEnabled()
 
     // R3.1.10
     val chipBefore = activeSurveyWeekChipDescription()
