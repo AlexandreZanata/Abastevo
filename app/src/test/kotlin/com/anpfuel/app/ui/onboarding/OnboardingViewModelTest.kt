@@ -39,6 +39,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -90,6 +92,24 @@ class OnboardingViewModelTest {
     @AfterEach
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun introPagesWalkFourStepsEndingOnWeekChoice() = runTest {
+        assertEquals(4, OnboardingViewModel.PAGE_COUNT)
+
+        viewModel.onNextPage()
+        viewModel.onNextPage()
+        viewModel.onNextPage()
+        assertEquals(3, viewModel.uiState.value.pageIndex)
+        assertTrue(viewModel.uiState.value.isOnLastPage)
+
+        viewModel.onNextPage()
+        assertEquals(3, viewModel.uiState.value.pageIndex)
+
+        viewModel.onPreviousPage()
+        assertEquals(2, viewModel.uiState.value.pageIndex)
+        assertFalse(viewModel.uiState.value.isOnLastPage)
     }
 
     @Test

@@ -66,6 +66,17 @@
     <string name="profile_tool_stations_subtitle">Official ANP surveyed gas stations by brand</string>
     <string name="profile_tool_settings_title">App settings</string>
     <string name="profile_tool_settings_subtitle">Offline cache, Wi-Fi sync, notifications and theme</string>
+    <string name="profile_tool_help_title">Help and community rules</string>
+    <string name="profile_tool_help_subtitle">Contribute guidance, reporting, moderation and privacy</string>
+    <string name="help_screen_title">Help and community rules</string>
+    <string name="help_contribute_title">Contribute well</string>
+    <string name="help_contribute_body">Photograph price panels only from safe public spots and keep totals legible. Pick the exact price condition. Never invent prices, stations or people.</string>
+    <string name="help_rules_title">Community rules</string>
+    <string name="help_rules_body">Prices are validated by contributor consensus; dated ANP data is never mixed with live reports. Payment never buys trust, ranking or placement.</string>
+    <string name="help_report_title">Report and appeal</string>
+    <string name="help_report_body">Any active account can report abuse. Reports never delete content by themselves; restricted moderators review every case. Disagree? Report again with the new reason — appeals reopen as a new reviewed case.</string>
+    <string name="help_privacy_title">Privacy</string>
+    <string name="help_privacy_body">Anonymous browsing needs no account and coordinates are not stored. Photos are transient audit evidence kept for up to 24 hours.</string>
     <string name="profile_tool_week_picker_title">Survey week</string>
     <string name="profile_tool_week_picker_subtitle">Select archived weekly ANP surveys</string>
     <string name="profile_privacy_section">Privacy and participation</string>
@@ -138,6 +149,8 @@
     <string name="onboarding_body_anp_source">Official weekly fuel prices from ANP (Brazilian National Agency of Petroleum, Natural Gas and Biofuels).</string>
     <string name="onboarding_title_offline">Works offline</string>
     <string name="onboarding_body_offline">After the first sync, browse average prices without an internet connection.</string>
+    <string name="onboarding_title_contribute">Contribute honestly</string>
+    <string name="onboarding_body_contribute">Photograph price panels only from safe public spots, keep totals legible, pick the exact condition, and never invent prices or people.</string>
     <string name="onboarding_title_ready">Choose a survey week</string>
     <string name="onboarding_body_ready">Select which ANP survey week to download. You can skip and sync later from home.</string>
     <string name="onboarding_action_get_started">Get started</string>

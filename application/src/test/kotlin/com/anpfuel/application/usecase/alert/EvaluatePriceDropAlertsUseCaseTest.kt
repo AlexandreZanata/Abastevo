@@ -8,6 +8,7 @@ import com.anpfuel.domain.model.StationPrice
 import com.anpfuel.domain.model.UserPreferences
 import com.anpfuel.domain.model.Vehicle
 import com.anpfuel.domain.repository.AveragePriceRepository
+import com.anpfuel.domain.repository.PriceDropAlertHistoryRepository
 import com.anpfuel.domain.repository.PriceDropNotificationRepository
 import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.StationPriceRepository
@@ -40,6 +41,7 @@ class EvaluatePriceDropAlertsUseCaseTest {
     private val priceTableRepository = mockk<PriceTableRepository>()
     private val userPreferencesRepository = mockk<UserPreferencesRepository>()
     private val priceDropNotificationRepository = mockk<PriceDropNotificationRepository>(relaxed = true)
+    private val priceDropAlertHistoryRepository = mockk<PriceDropAlertHistoryRepository>()
 
     private lateinit var useCase: EvaluatePriceDropAlertsUseCase
 
@@ -59,6 +61,7 @@ class EvaluatePriceDropAlertsUseCaseTest {
             priceTableRepository = priceTableRepository,
             userPreferencesRepository = userPreferencesRepository,
             priceDropNotificationRepository = priceDropNotificationRepository,
+            priceDropAlertHistoryRepository = priceDropAlertHistoryRepository,
         )
 
         coEvery { priceDropNotificationRepository.hasPostNotificationsPermission() } returns true
@@ -80,6 +83,12 @@ class EvaluatePriceDropAlertsUseCaseTest {
         coEvery {
             averagePriceRepository.getPricesByMunicipality(state, municipality, any())
         } returns emptyList()
+        coEvery {
+            priceDropAlertHistoryRepository.lastNotifiedWeek(any())
+        } returns null
+        coEvery {
+            priceDropAlertHistoryRepository.recordNotified(any(), any())
+        } returns Unit
     }
 
     @Test
@@ -135,6 +144,45 @@ class EvaluatePriceDropAlertsUseCaseTest {
         assertEquals(0, result.notificationsShown)
         assertNull(result.skipReason)
         coVerify(exactly = 0) { priceDropNotificationRepository.showPriceDropAlert(any()) }
+    }
+
+    @Test
+    fun doesNotRenotifyForSameWeek() = runTest {
+        val trackedVehicle = vehicle("Gol")
+        coEvery { vehicleRepository.listAll() } returns listOf(trackedVehicle)
+        stubStationPrices(
+            currentPrices = listOf("5.40"),
+            previousPrices = listOf("5.60"),
+        )
+        coEvery {
+            priceDropAlertHistoryRepository.lastNotifiedWeek(trackedVehicle.id)
+        } returns currentWeek
+
+        val result = useCase()
+
+        assertEquals(0, result.notificationsShown)
+        coVerify(exactly = 0) { priceDropNotificationRepository.showPriceDropAlert(any()) }
+    }
+
+    @Test
+    fun notifiesAgainForNewWeekAndRecordsIt() = runTest {
+        val trackedVehicle = vehicle("Gol")
+        coEvery { vehicleRepository.listAll() } returns listOf(trackedVehicle)
+        stubStationPrices(
+            currentPrices = listOf("5.40"),
+            previousPrices = listOf("5.60"),
+        )
+        coEvery {
+            priceDropAlertHistoryRepository.lastNotifiedWeek(trackedVehicle.id)
+        } returns previousWeek
+
+        val result = useCase()
+
+        assertEquals(1, result.notificationsShown)
+        coVerify(exactly = 1) { priceDropNotificationRepository.showPriceDropAlert(any()) }
+        coVerify(exactly = 1) {
+            priceDropAlertHistoryRepository.recordNotified(trackedVehicle.id, currentWeek)
+        }
     }
 
     @Test

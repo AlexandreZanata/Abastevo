@@ -66,6 +66,17 @@
     <string name="profile_tool_stations_subtitle">Postos oficiais pesquisados pela ANP por bandeira</string>
     <string name="profile_tool_settings_title">Configurações do app</string>
     <string name="profile_tool_settings_subtitle">Cache offline, sincronização Wi-Fi, notificações e tema</string>
+    <string name="profile_tool_help_title">Ajuda e regras da comunidade</string>
+    <string name="profile_tool_help_subtitle">Orientações de colaboração, denúncias, moderação e privacidade</string>
+    <string name="help_screen_title">Ajuda e regras da comunidade</string>
+    <string name="help_contribute_title">Colabore bem</string>
+    <string name="help_contribute_body">Fotografe painéis de preço só de locais públicos seguros e mantenha os valores legíveis. Escolha a condição exata do preço. Nunca invente preços, postos ou pessoas.</string>
+    <string name="help_rules_title">Regras da comunidade</string>
+    <string name="help_rules_body">Preços são validados por consenso; dados datados da ANP nunca se misturam com relatos ao vivo. Pagamento nunca compra confiança, ranking ou posição.</string>
+    <string name="help_report_title">Denúncia e recurso</string>
+    <string name="help_report_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas; moderadores restritos revisam cada caso. Discorda? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado.</string>
+    <string name="help_privacy_title">Privacidade</string>
+    <string name="help_privacy_body">A navegação anônima não precisa de conta e coordenadas não são guardadas. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
     <string name="profile_tool_week_picker_title">Semana de pesquisa</string>
     <string name="profile_tool_week_picker_subtitle">Selecione semanas anteriores arquivadas da ANP</string>
     <string name="profile_privacy_section">Privacidade e participação</string>
@@ -138,6 +149,8 @@
     <string name="onboarding_body_anp_source">Preços semanais oficiais da ANP (Agência Nacional do Petróleo, Gás Natural e Biocombustíveis).</string>
     <string name="onboarding_title_offline">Funciona offline</string>
     <string name="onboarding_body_offline">Após a primeira sincronização, consulte preços médios sem conexão com a internet.</string>
+    <string name="onboarding_title_contribute">Colabore com honestidade</string>
+    <string name="onboarding_body_contribute">Fotografe painéis de preço só de locais públicos seguros, mantenha os valores legíveis, escolha a condição exata e nunca invente preços ou pessoas.</string>
     <string name="onboarding_title_ready">Escolha a semana de pesquisa</string>
     <string name="onboarding_body_ready">Selecione qual semana da ANP baixar. Você pode pular e sincronizar depois na tela inicial.</string>
     <string name="onboarding_action_get_started">Começar</string>

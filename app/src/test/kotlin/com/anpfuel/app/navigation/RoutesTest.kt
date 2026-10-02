@@ -28,6 +28,11 @@ class RoutesTest {
     }
 
     @Test
+    fun helpRouteIsRegisteredConstant() {
+        assertEquals("help", Routes.HELP)
+    }
+
+    @Test
     fun profileRouteIsRegisteredConstant() {
         assertEquals("profile", Routes.PROFILE)
     }

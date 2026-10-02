@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Lock
@@ -231,6 +232,13 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_settings_title),
                         subtitle = stringResource(R.string.profile_tool_settings_subtitle),
                         onClick = { onNavigate(Routes.SETTINGS) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.HelpOutline,
+                        title = stringResource(R.string.profile_tool_help_title),
+                        subtitle = stringResource(R.string.profile_tool_help_subtitle),
+                        onClick = { onNavigate(Routes.HELP) },
                     )
                 }
             }

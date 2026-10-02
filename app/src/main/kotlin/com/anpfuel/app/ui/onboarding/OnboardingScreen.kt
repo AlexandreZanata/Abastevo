@@ -275,6 +275,7 @@ private fun OnboardingPageContent(pageIndex: Int) {
     val (titleRes, bodyRes) = when (pageIndex) {
         0 -> R.string.onboarding_title_welcome to R.string.onboarding_body_anp_source
         1 -> R.string.onboarding_title_offline to R.string.onboarding_body_offline
+        2 -> R.string.onboarding_title_contribute to R.string.onboarding_body_contribute
         else -> R.string.onboarding_title_ready to R.string.onboarding_body_ready
     }
 

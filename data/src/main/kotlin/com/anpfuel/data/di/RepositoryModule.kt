@@ -51,6 +51,7 @@ import com.anpfuel.data.repository.PriceTableSyncGatewayImpl
 import com.anpfuel.data.repository.StationPriceRepositoryImpl
 import com.anpfuel.data.repository.StorageStatsRepositoryImpl
 import com.anpfuel.data.repository.SyncJobRepositoryImpl
+import com.anpfuel.data.repository.PriceDropAlertHistoryRepositoryImpl
 import com.anpfuel.data.repository.UserPreferencesRepositoryImpl
 import com.anpfuel.data.repository.ReverseGeocodeRepositoryImpl
 import com.anpfuel.data.repository.VehicleRepositoryImpl
@@ -66,6 +67,7 @@ import com.anpfuel.data.notification.PriceDropNotificationRepositoryImpl
 import com.anpfuel.domain.repository.AddressGeocodeRepository
 import com.anpfuel.domain.repository.ReverseGeocodeRepository
 import com.anpfuel.domain.repository.VehicleRepository
+import com.anpfuel.domain.repository.PriceDropAlertHistoryRepository
 import com.anpfuel.domain.repository.PriceDropNotificationRepository
 import com.anpfuel.domain.repository.AveragePriceRepository
 import com.anpfuel.domain.repository.CacheRepository
@@ -155,6 +157,12 @@ abstract class RepositoryModule {
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPriceDropAlertHistoryRepository(
+        impl: PriceDropAlertHistoryRepositoryImpl,
+    ): PriceDropAlertHistoryRepository
 
     @Binds
     @Singleton

@@ -21,6 +21,7 @@ import com.anpfuel.app.ui.auth.AuthRoute
 import com.anpfuel.app.ui.community.CommunityScreen
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.history.HistoryScreen
+import com.anpfuel.app.ui.help.HelpScreen
 import com.anpfuel.app.ui.home.HomeScreen
 import com.anpfuel.app.ui.location.LocationPickerScreen
 import com.anpfuel.app.ui.onboarding.OnboardingScreen
@@ -233,6 +234,9 @@ fun AnpNavGraph(
         }
         composable(Routes.CAPTURE) {
             CaptureScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Routes.HELP) {
+            HelpScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Routes.WEEK_PICKER) {
             val canNavigateBack = navController.previousBackStackEntry != null
