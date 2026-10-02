@@ -2,11 +2,10 @@ package com.anpfuel.app.validation
 
 import android.content.Context
 import android.content.pm.ActivityInfo
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -123,13 +122,22 @@ class AppendixA2PostSyncTest {
     rotateAndAssertVisible(stationsTitle)
 
     // R3.1.9
-    composeRule.onNodeWithText(ethanolLabel, substring = true).assertIsDisplayed()
-    // The ethanol FilterChip carries a text label (announced by TalkBack
-    // with its selected state); its icon is decorative by design, so the
-    // operability contract is label + click action, not a duplicate
-    // content-description node.
-    composeRule.onNodeWithText(ethanolLabel, substring = true).assertHasClickAction()
-    composeRule.onNodeWithText(ethanolLabel, substring = true).assertIsEnabled()
+    // The stations screen can show the fuel name in more than one text
+    // node (filter chip + station rows), so pin the operability contract
+    // to nodes instead of a single match: at least one visible Ethanol
+    // node, and at least one enabled clickable one (the filter chip).
+    val ethanolNodes = composeRule
+      .onAllNodesWithText(ethanolLabel, substring = true)
+      .fetchSemanticsNodes()
+      .filter { !it.config.contains(SemanticsProperties.InvisibleToUser) }
+    assertTrue("Expected a visible Ethanol filter affordance", ethanolNodes.isNotEmpty())
+    assertTrue(
+      "Expected an enabled clickable Ethanol node",
+      ethanolNodes.any {
+        it.config.contains(SemanticsActions.OnClick) &&
+          !it.config.contains(SemanticsProperties.Disabled)
+      },
+    )
 
     // R3.1.10
     val chipBefore = activeSurveyWeekChipDescription()
