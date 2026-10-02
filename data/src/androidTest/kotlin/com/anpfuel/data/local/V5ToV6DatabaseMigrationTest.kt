@@ -36,6 +36,7 @@ class V5ToV6DatabaseMigrationTest {
 
     @Test
     fun migrateFromV5PreservesCacheAndAddsOutbox() {
+        LegacyFtsMigrationSupport.assumeLegacyFtsCreatable()
         helper.createDatabase(testDb, 5).apply {
             execSQL(
                 """

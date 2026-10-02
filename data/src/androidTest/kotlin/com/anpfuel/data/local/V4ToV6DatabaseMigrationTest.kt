@@ -36,6 +36,7 @@ class V4ToV6DatabaseMigrationTest {
 
     @Test
     fun migrateFromV4ToV6PreservesVehiclesHistoryAndAddsCommunityTables() {
+        LegacyFtsMigrationSupport.assumeLegacyFtsCreatable()
         helper.createDatabase(testDb, 4).apply {
             execSQL(
                 """

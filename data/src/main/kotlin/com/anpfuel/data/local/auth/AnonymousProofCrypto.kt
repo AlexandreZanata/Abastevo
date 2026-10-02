@@ -92,7 +92,7 @@ object AnonymousProofCrypto {
             val bigY = BigInteger(1, y)
             if (bigX >= P || bigY >= P) return false
             // y^2 == x^3 - 3x + b (mod p).
-            val lhs = bigY.modPow(BigInteger.TWO, P)
+            val lhs = bigY.modPow(BigInteger("2"), P)
             val rhs = bigX.modPow(BigInteger("3"), P)
                 .subtract(bigX.multiply(BigInteger("3")).mod(P))
                 .add(B).mod(P)

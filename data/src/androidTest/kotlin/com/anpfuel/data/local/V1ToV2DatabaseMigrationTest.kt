@@ -33,6 +33,7 @@ class V1ToV2DatabaseMigrationTest {
 
     @Test
     fun migrateFromV1PreservesImportedPricesAndAddsMunicipalityCatalog() {
+        LegacyFtsMigrationSupport.assumeLegacyFtsCreatable()
         helper.createDatabase(testDb, 1).apply {
             execSQL(
                 """

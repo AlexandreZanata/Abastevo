@@ -34,6 +34,7 @@ class V4ToV5DatabaseMigrationTest {
 
     @Test
     fun migrateFromV4PreservesVehiclesAndAddsBackendCache() {
+        LegacyFtsMigrationSupport.assumeLegacyFtsCreatable()
         helper.createDatabase(testDb, 4).apply {
             execSQL(
                 """

@@ -33,7 +33,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         BackendPriceCacheEntity::class,
         ContributionOutboxEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
