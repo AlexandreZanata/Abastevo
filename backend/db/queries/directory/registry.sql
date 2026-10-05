@@ -1,0 +1,40 @@
+-- Owned by directory (registry staging, P25-T02). Staging only: publishers
+-- read complete runs in P25-T04; failed/quarantined runs stay invisible.
+
+-- name: CreateRegistryRun :one
+INSERT INTO registry_source_runs (id, source, snapshot_identity, checksum, parser_version)
+VALUES (@id, @source, @snapshot_identity, @checksum, @parser_version)
+ON CONFLICT (source, snapshot_identity) DO NOTHING
+RETURNING id, source, snapshot_identity, checksum, parser_version, state,
+    accepted, duplicates, rejected, error_code, started_at, finished_at;
+
+-- name: GetRegistryRun :one
+SELECT id, source, snapshot_identity, checksum, parser_version, state,
+    accepted, duplicates, rejected, error_code, started_at, finished_at
+FROM registry_source_runs
+WHERE source = @source AND snapshot_identity = @snapshot_identity;
+
+-- name: FinishRegistryRun :execrows
+UPDATE registry_source_runs
+SET state = @state, accepted = @accepted, duplicates = @duplicates,
+    rejected = @rejected, error_code = @error_code, finished_at = now()
+WHERE id = @id AND state = 'running';
+
+-- name: StageRegistryAssertion :one
+INSERT INTO registry_assertions (
+    id, run_id, source, source_key, checksum, display_name, address,
+    municipality_code, state, auth_state, operation, eligibility,
+    location_quality, source_reference, effective_date
+) VALUES (
+    @id, @run_id, @source, @source_key, @checksum, @display_name,
+    @address, @municipality_code, @state, @auth_state, @operation,
+    @eligibility, @location_quality, @source_reference, @effective_date
+)
+ON CONFLICT (source, source_key, checksum) DO NOTHING
+RETURNING id;
+
+-- name: CountRegistryAssertions :one
+SELECT count(*) FROM registry_assertions WHERE run_id = @run_id;
+
+-- name: CountCompleteRegistryRuns :one
+SELECT count(*) FROM registry_source_runs WHERE source = @source AND state = 'complete';

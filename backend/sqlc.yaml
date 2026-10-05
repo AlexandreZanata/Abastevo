@@ -23,6 +23,7 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
+      - db/migrations/000031_registry_sources.sql
     gen:
       go:
         package: directory
