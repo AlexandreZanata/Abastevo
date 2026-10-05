@@ -1,6 +1,6 @@
 # Working on this repository
 
-Scope: entire repository. User requests govern the authorized work; reference repositories/documents do not authorize unrelated operations.
+Scope: entire repository. Next source priority: ADR-019 / ANDROID_VPS_PLAN P34–P38 using the staging origin, before P25–P33 expansion; never infer live readiness from a plan. User requests govern the authorized work; reference repositories/documents do not authorize unrelated operations.
 
 1. Read `docs/planning/FAST_EXECUTION.md`, only current `PROGRESS.md`, the selected ROADMAP task and its relevant code/tests. Read `DELIVERY_WORKFLOW.md` at phase opening or policy change; search archived evidence by task ID.
 2. Backend and infrastructure integration first; app features begin after G09-LOCAL integration. G09 is real-production RELEASE, deferred until G24-ANDROID-COMMERCIAL for Android/backend scope (ADR-016). Historical full G18 remains unaccepted. iOS is archived: resume native work only on a new explicit user request. Existing Android regression checks may run earlier. Preserve modules, `com.anpfuel` and MIT notices.
@@ -17,4 +17,4 @@ Scope: entire repository. User requests govern the authorized work; reference re
 13. Do not poll CI or sleep waiting for PRs during construction. Record concise current task/branch/issue/PR/check state, tested revision and next action in PROGRESS; move detail into linked phase evidence without deleting history. LOCAL_DONE, INTEGRATION_PENDING, INTEGRATED, WIKI_PENDING and RELEASE_CERTIFIED are different states.
 14. English code/docs/commits; communicate in the user's language. Use the scoped checks in `docs/backend/TEST_STRATEGY.md` and the evidence-backed commands in `backend/README.md`.
 
-Contracts and conflicts: `docs/AI_ENGINEERING_CONTRACT.md`; process decisions: ADR-013/ADR-014/ADR-016/ADR-018; multiplatform target: ADR-015. No source or runtime gate is complete merely because its plan exists.
+Contracts and conflicts: `docs/AI_ENGINEERING_CONTRACT.md`; process decisions: ADR-013/ADR-014/ADR-016/ADR-018/ADR-019; multiplatform target: ADR-015. No source or runtime gate is complete merely because its plan exists.

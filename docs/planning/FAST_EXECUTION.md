@@ -1,5 +1,7 @@
 # Fast execution card
 
+Next source task: [P34-T01 Android/VPS connection](ANDROID_VPS_PLAN.md), under ADR-019. Staging origin is `https://teste.abastevo.com.br`; do not resume the public pilot or national importer before app-first scope.
+
 [ADR-018](../adr/018-project-batch-delivery.md), adopted 2026-10-05, supersedes per-phase PR/CI/merge waits. Read AGENTS, this card, current [PROGRESS](PROGRESS.md), selected ROADMAP task and relevant code/tests. Read [DELIVERY_WORKFLOW](DELIVERY_WORKFLOW.md) at opening/policy change; search archives by task ID.
 
 1. **Locate:** inspect status/diff and actual commits; resume owned work. Isolate another occupied checkout with a worktree. Never overwrite/stash another person's edits.

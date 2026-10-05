@@ -34,3 +34,6 @@ Existing Android decisions remain applicable to the imported release. New status
 - [ADR-015 — Shared KMP domain and native Swift adapters](adr/015-kotlin-multiplatform-shared-domain.md): toolchain audit and platform evidence before readiness.
 
 - [ADR-018 — Project batch delivery](adr/018-project-batch-delivery.md): tested local phase checkpoints; CI/PR merge/wiki at final project construction closure.
+
+- [ADR-017 — Station profiles and verified representation](adr/017-station-profile-and-verified-representation.md): private claims, independent corporate authority and scoped permissions.
+- [ADR-019 — Android/VPS first](adr/019-android-vps-integration-first.md): P34–P38 live app source integration before catalog/profile expansion; final project batch delivery.

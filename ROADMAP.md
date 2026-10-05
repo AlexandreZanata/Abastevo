@@ -12,7 +12,7 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
-Completed backend phase history remains P01–P08 → P09 local rehearsal/corrections. Next: **G09-LOCAL → P12 → P13 → P14 → P15 → P16 → P10 local integration → P17 → P18 local integration (full G18 unaccepted; iOS deferred) → P19 → P20 → P21 → P22 → P23 → P24/G24-ANDROID-COMMERCIAL → P09/G09 scoped real production release → P10-T09 public pilot → P11 optional paid benefits**. Preserve IDs; dependency order controls execution. P11-T02 account linking is superseded by free P13. No real production deployment or stable release is authorized by a merged plan.
+Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
 
@@ -2641,3 +2641,808 @@ Priority: **MUST**. Entry: G19–G23 integrated and required P18 Android/backend
 - **Validation commands:** Select and record affected existing Gradle/backend test/compile/instrumentation commands before coding; docs-only slices use links/state checks. git diff --check and scoped secret review; specialized phase exit once plus actual finish --required "Quick verification" --pr <number> at phase closure only.
 - **Risks / recovery:** Follow owning phase risks; preserve v1/legacy tools, append-only migration recovery and safe replay. Revert owned presentation changes without destroying contribution history.
 - **Definition of done:** Targeted acceptance evidence, atomic task commit/issue, protected phase merge and wiki snapshot; no iOS acceptance, production certification or deployment inferred.
+
+<a id="station-catalog-expansion"></a>
+
+## P25 — National ANP registry
+
+Priority: **MUST for catalog scope**. Entry: G24-ANDROID-COMMERCIAL integrated; existing Directory baseline reconciled. Exit: **G25: validated national registry ingestion and canonical server publication, including stations with no prices**. State: PLANNED. Branch: `codex/phase-25-national-registry`.
+
+<a id="p25-t01"></a>
+
+### P25-T01 — Source contracts, eligibility and registry fixtures
+
+- **ID / priority / status:** P25-T01 / MUST / PLANNED.
+- **Goal:** Freeze independent source/authorization/operation/location/publication semantics before behavior.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D01–D06/D10–D12; BUC-D01/D05/D08; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** G24-ANDROID-COMMERCIAL integrated; existing Directory baseline reconciled.
+- **Files/areas expected:** docs/product/STATION_CATALOG.md; docs/backend/DATA_MODEL.md and API_PLAN.md; public minimal contracts/testdata registry fixtures.
+- **Risk / tests first:** docs; Representative CSV/API fields, numeric/alphanumeric CNPJ, publication-date semantics, coordinate quality, completeness and client-state compatibility.
+- **Implementation outline:** Record access/rights/quotas, limits and resource/freshness policy; document fixtures with provenance; freeze schema and OpenAPI rollout boundaries.
+- **Acceptance criteria:** Versioned field/state mapping, sufficient-evidence eligibility, source precedence/conflict handling, numerical safety limits and resource budgets documented; unsupported inputs explicitly quarantined.
+- **Validation commands:** Scoped Markdown links, rule/use-case/task/dependency consistency and explicit new-file whitespace/secret review; `git diff --check`. No runtime gate inferred from fixtures or docs.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p25-t02"></a>
+
+### P25-T02 — Bounded CSV snapshot staging
+
+- **ID / priority / status:** P25-T02 / MUST / PLANNED.
+- **Goal:** Discover and stream the national registry without exposing partial imports.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02/D03/D05/D10; BUC-D01/D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P25-T01.
+- **Files/areas expected:** backend/internal/modules/directory adapters/application; owned SQL/migrations; existing source transport/platform jobs; registry fixtures.
+- **Risk / tests first:** critical; Headers/encoding/leading zeros, malformed/oversize input, repeated checksum, duplicate/conflicting records, truncated snapshot and concurrent import.
+- **Implementation outline:** Introduce bounded parser and source-run staging/checksum/checkpoints; append-only migration with short batches and explicit completion.
+- **Acceptance criteria:** All input rows accounted; incomplete/invalid snapshots preserve last-good state; identical replay adds no duplicate assertions; empty/upgrade/recovery and concurrency pass.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p25-t03"></a>
+
+### P25-T03 — Paginated and targeted ANP API discovery
+
+- **ID / priority / status:** P25-T03 / MUST / PLANNED.
+- **Goal:** Verify reported CNPJs and discover bounded scopes using the official API.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02/D03/D05/D06/D10; BUC-D01; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P25-T02.
+- **Files/areas expected:** Directory source adapter and existing HTTP transport/jobs; contract fixtures.
+- **Risk / tests first:** critical; Pagination gaps/reordering/duplicates, false success payload, 429/timeout/redirect, unsupported CNPJ forms, missing coordinates and invalid CRS.
+- **Implementation outline:** Implement typed bounded page traversal and targeted lookup with global quota/cache/backoff; retain metadata and completeness, no fetch in public handlers.
+- **Acceptance criteria:** Bounded queries resolve supported identifiers; partial traversal never masquerades as a full snapshot; unsupported identifier/provider behavior has a safe documented fallback, not identifier corruption.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p25-t04"></a>
+
+### P25-T04 — Canonical reconciliation and zero-price public reads
+
+- **ID / priority / status:** P25-T04 / MUST / PLANNED.
+- **Goal:** Publish verified catalog identities independently of price-survey participation.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D01–D06/D12; BUC-D01/D05/D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P25-T03.
+- **Files/areas expected:** Directory domain/application/repository/read/http; contracts/openapi/v1.yaml and shared fixtures; owned migration(s).
+- **Risk / tests first:** critical; Concurrent CSV/API first creation, two nearby distinct CNPJs, succession, status chronology, missing-row no-closure, centroid no-proximity and no-price reads.
+- **Implementation outline:** Reconcile staged assertions into stable UUIDs/identifier history/status projections; extend anonymous paginated list/detail with safe provenance/freshness.
+- **Acceptance criteria:** Exactly one active identity per full validated identifier; no address-only merge or invented price/location; station with no price is searchable and detail-readable; old readers remain compatible.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p25-t05"></a>
+
+### P25-T05 — Registry jobs, outage recovery and phase acceptance
+
+- **ID / priority / status:** P25-T05 / MUST / PLANNED.
+- **Goal:** Prove resumable registry operations and safe publication under failure.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D03/D05/D10/D12; BUC-D01/D06/D08; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P25-T04.
+- **Files/areas expected:** Directory jobs and affected platform job tests; operator registry runbook and phase evidence.
+- **Risk / tests first:** critical; Worker death, stale lease/fencing, duplicate enqueue, database outage, partial snapshot, retry exhaustion, late source and rollback of publication pointer.
+- **Implementation outline:** Wire the proposed schedule after source-contract verification; add restricted pause/retry/quarantine/last-success controls and verify immediate risk tests.
+- **Acceptance criteria:** G25 specialized exit recorded once; complete recovery conserves IDs and last-good state; counts/freshness and missing source guarantees visible; no Android visibility or production claim inferred.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+## P26 — DOU regulatory discovery
+
+Priority: **MUST for catalog scope**. Entry: G25 integrated and INLABS access/rights available. Exit: **G26: deterministic regulatory-change ingestion and reviewed ambiguity/recovery**. State: PLANNED. Branch: `codex/phase-26-regulatory-discovery`.
+
+<a id="p26-t01"></a>
+
+### P26-T01 — Bounded INLABS editions and access
+
+- **ID / priority / status:** P26-T01 / MUST / PLANNED.
+- **Goal:** Fetch relevant editions safely without exposing source credentials.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D03/D10/D11; BUC-D02; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** G25 integrated and INLABS access/rights available.
+- **Files/areas expected:** Directory DOU source adapter; operator secret configuration; synthetic/public minimized act fixtures.
+- **Risk / tests first:** critical; Access denial, incomplete edition, XML entity/DTD/decompression attack, oversized text, duplicate edition and missing-day catch-up.
+- **Implementation outline:** Document rights/access and use operator-configured credentials; bounded allowlisted XML/PDF discovery with edition identity and checkpoints.
+- **Acceptance criteria:** No credentials or arbitrary remote URL in jobs/logs; absent access fails explicitly; only complete validated editions enter parsing; fixture-based tests do not hammer the source.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p26-t02"></a>
+
+### P26-T02 — ANP acts and chronological reconciliation
+
+- **ID / priority / status:** P26-T02 / MUST / PLANNED.
+- **Goal:** Turn relevant regulatory acts into verifiable assertions, not inferred openings.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02–D05/D10; BUC-D02/D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P26-T01.
+- **Files/areas expected:** Directory pure act parser/application verifier/repository; edition/act contract vectors.
+- **Risk / tests first:** critical; Multiple grants per act, unrelated products, amendment/republication, revocation before/after grant, operator change and unknown wording.
+- **Implementation outline:** Parse deterministic identifiers/act types; verify official reference and reconcile through Directory; quarantine ambiguous language.
+- **Acceptance criteria:** No unknown/free-text/LLM interpretation publishes authorization; effective chronology and corrections are preserved; duplicate acts converge; grant date never becomes inauguration date.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p26-t03"></a>
+
+### P26-T03 — Regulatory review, catch-up and phase acceptance
+
+- **ID / priority / status:** P26-T03 / MUST / PLANNED.
+- **Goal:** Operate regulatory discovery with audit and failure recovery.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D03–D05/D10/D12; BUC-D02/D04/D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P26-T02.
+- **Files/areas expected:** Existing moderation/operator commands through explicit ports; DOU runbook/evidence and affected job tests.
+- **Risk / tests first:** critical; Edition outage/restart, conflicting CSV/API/DOU facts, review concurrency/role denial, late revocation and harmless replay.
+- **Implementation outline:** Provide audited ambiguous-act review and bounded catch-up; record source freshness/lag and retry/escalation behavior.
+- **Acceptance criteria:** G26 acceptance proves correct recovered state without duplicate or premature closure; unavailable access/facts remain pending and visible to operators; no national opening SLA asserted.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+## P27 — Account station intake and Android catalog
+
+Priority: **MUST for catalog scope**. Entry: G26 integrated; existing P13/P15/P16 and moderation prerequisites verified. Exit: **G27: secure account intake, audited verification and actual Android catalog/suggestion visibility**. State: PLANNED. Branch: `codex/phase-27-station-intake`.
+
+<a id="p27-t01"></a>
+
+### P27-T01 — Signed station suggestions and private status
+
+- **ID / priority / status:** P27-T01 / MUST / PLANNED.
+- **Goal:** Let active free accounts propose a missing station or correction securely.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D07–D10; BUC-D03/D04; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** G26 integrated; existing P13/P15/P16 and moderation prerequisites verified.
+- **Files/areas expected:** Directory application/intake/http/repository; explicit account/evidence ports; additive OpenAPI/fixtures/migrations.
+- **Risk / tests first:** critical; Anonymous contributor proof, revoked account/session, forged/replayed signature, IDOR, foreign evidence, quota, same-key changed-body and parallel same-station suggestions.
+- **Implementation outline:** Freeze structured input/quotas/retention and statuses before handlers; atomically store request, idempotency result and verification job; expose owner-only no-store status.
+- **Acceptance criteria:** Free active accounts can submit; no proof bypass or private leak; concurrency preserves each request but converges on one canonical station; never grants ownership from CNPJ.
+- **Validation commands:** Directory targeted unit/race + real-PostGIS integration and every affected account/evidence/moderation/privacy/job consumer, with failure/ownership/expiry tests; actual package list frozen at opening. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p27-t02"></a>
+
+### P27-T02 — Verified decisions, corrections and reviewed locations
+
+- **ID / priority / status:** P27-T02 / MUST / PLANNED.
+- **Goal:** Resolve exact official matches and review remaining conflicts through audited authority.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02/D04–D10; BUC-D03/D04/D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P27-T01.
+- **Files/areas expected:** Directory verifier/review commands and location revisions; existing moderation/evidence/privacy interfaces.
+- **Risk / tests first:** critical; Exact match versus conflicting address/status, fake pin/centroid, reviewer role denial/stale decision, evidence expiry/rebinding, cancellation/appeal and concurrent source correction.
+- **Implementation outline:** Freeze public eligibility and review transitions; automate only approved exact official cases; create audited decisions and reviewed geometry through existing location ports.
+- **Acceptance criteria:** Unreviewed suggestion remains private; no arbitrary pin is canonical; only eligible catalog facts publish; 24h expiry survives retries/review; stale decisions fail safely and minimal decision data has retention.
+- **Validation commands:** Directory targeted unit/race + real-PostGIS integration and every affected account/evidence/moderation/privacy/job consumer, with failure/ownership/expiry tests; actual package list frozen at opening. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p27-t03"></a>
+
+### P27-T03 — Server catalog, offline cache and canonical action targets
+
+- **ID / priority / status:** P27-T03 / MUST / PLANNED.
+- **Goal:** Make stations without survey prices visible in the app and resolve Directory UUIDs for existing actions.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D01/D02/D04/D06/D07; BUC-D05; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P27-T02; new backend intake/read contracts integrated before their consumer.
+- **Files/areas expected:** Existing Kotlin domain/application/data/app discovery, HTTP adapters, Room cache and affected social/contribution consumers; shared contracts.
+- **Risk / tests first:** critical; No-price station, missing coordinates, stale/unknown status, cursor/filter boundaries, legacy full CNPJ to UUID, missing/retired target, offline/refresh failure and cache upgrade.
+- **Implementation outline:** Add portable station DTO/read port; integrate bounded server catalog with distinct nullable price sections and compatible local caching; use verified full-CNPJ resolver where legacy data needs a UUID.
+- **Acceptance criteria:** Explore/detail shows registry-only station honestly; no price-row fabrication or CNPJ-as-UUID; unchanged expert tools preserved; contributions/comments/ratings/reports use a valid existing target; sorting missing prices is deterministic and explicit.
+- **Validation commands:** Root: affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug`; actual affected Room/device instrumentation and backend contract/PostGIS checks. New schema migration and canonical-target negative cases mandatory. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p27-t04"></a>
+
+### P27-T04 — Lightweight suggest-correct-status Android journey
+
+- **ID / priority / status:** P27-T04 / MUST / PLANNED.
+- **Goal:** Offer a clear free-account missing-station journey with progressive permissions.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D06–D09; BUC-D03/D04/D05; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P27-T03; new backend intake/read contracts integrated before their consumer.
+- **Files/areas expected:** Existing account/navigation/capture/outbox/status Kotlin and Android modules; portable state fixtures.
+- **Risk / tests first:** critical; Guest sign-in, permission denial, duplicate hint, no-photo case, optional photo optimization, offline replay, revoked session and owner status recovery.
+- **Implementation outline:** Implement search-before-submit, structured form, optional existing capture/evidence pipeline, reviewed confirmation and private status/correction journey; freeze transport retry semantics.
+- **Acceptance criteria:** No duplicate visible station from offline retry; no background permission demand or long-lived photo; user sees pending/reviewed/unresolved truth; backend T01/T02 and catalog T03 integrate before this consumer.
+- **Validation commands:** Root: affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug`; actual affected Room/device instrumentation and backend contract/PostGIS checks. New schema migration and canonical-target negative cases mandatory. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p27-t05"></a>
+
+### P27-T05 — Intake abuse, privacy and lifecycle acceptance
+
+- **ID / priority / status:** P27-T05 / MUST / PLANNED.
+- **Goal:** Prove new source and account workflows together under failure.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D01–D12; BUC-D03–D06; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P27-T04; new backend intake/read contracts integrated before their consumer.
+- **Files/areas expected:** Affected Directory/account/evidence/moderation/privacy/platform and Android tests; P27 phase evidence.
+- **Risk / tests first:** critical; Coordinated suggestions, signed account abuse, source race, expired evidence, erased/suspended author, restore deletion replay, offline retry and existing price/social regression.
+- **Implementation outline:** Run targeted cross-module PostGIS/race/security/media and device checks, reconcile pending cases and document operator review capacity.
+- **Acceptance criteria:** G27 scope passes with genuine required storage/device evidence; no missing row inferred green; public projections exclude private data and remain independent from prices/feedback trust.
+- **Validation commands:** Immediate targeted backend real-PostGIS/race/account/privacy/storage suites plus affected Gradle/unit/compile/real-device acceptance from the catalog plan; freeze actual package/device/budget selection first. `git diff --check` and scoped secret review. No complete production certification here.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+## P28 — Optional licensed coverage complements
+
+Priority: **SHOULD / SELECTED_ONLY**. Entry: G27 plus measured gap, explicit selected task range and rights/access decision. Exit: **G28 for selected tasks only: permitted source/representation implemented, attributed and recoverable**. State: PLANNED / optional tasks DEFERRED until selected. Branch: `codex/phase-28-catalog-complements`.
+
+<a id="p28-t01"></a>
+
+### P28-T01 — Source selection and rights assessment
+
+- **ID / priority / status:** P28-T01 / SHOULD, selected scope only / DEFERRED until explicit selection.
+- **Goal:** Choose a complementary source only if core coverage/accuracy measurements justify it.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D06/D11/D12; BUC-D07; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** G27 plus measured gap, explicit selected task range and rights/access decision.
+- **Files/areas expected:** Source decision/ADR if needed; measured coverage/cost/rights records.
+- **Risk / tests first:** docs; Representative coverage gaps, retained-field rights, attribution obligations, supplier outage and independent authorization limits.
+- **Implementation outline:** Compare OSM extracts, contractable POI, partner feeds and no additional provider; record persistence/redistribution terms and budget.
+- **Acceptance criteria:** One explicit selected scope or DEFERRED decision; no purchase or nationwide scrape inferred; legal/data-rights obligations and unavailable guarantees stay explicit.
+- **Validation commands:** Scoped Markdown links, rule/use-case/task/dependency consistency and explicit new-file whitespace/secret review; `git diff --check`. No runtime gate inferred from fixtures or docs.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p28-t02"></a>
+
+### P28-T02 — Selected geometry or POI candidate adapter
+
+- **ID / priority / status:** P28-T02 / SHOULD, selected scope only / DEFERRED until explicit selection.
+- **Goal:** Supplement candidate location/identity with only a permitted selected dataset.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02–D06/D10/D11; BUC-D07; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P28-T01 selection for this task and G27; a different optional adapter/representation task is not an automatic prerequisite.
+- **Files/areas expected:** One selected Directory source adapter and source-specific staging/location review; attribution/public projection if permitted.
+- **Risk / tests first:** critical; POI duplicates/conflicts, centroid/bad CRS, stale/removed map item, bounded extract/diff replay and provider shutdown.
+- **Implementation outline:** Implement only the chosen feed, quotas/diffs/provenance/attribution and review; keep restricted provider fields outside unrestricted views.
+- **Acceptance criteria:** No restricted copy or unreviewed precise point; one-source failure does not delete official facts; disabled adapter leaves stable IDs and honest freshness; task stays deferred without selected rights.
+- **Validation commands:** From backend/: `go test -race ./internal/modules/directory/...` and `go test -race -tags=integration ./internal/modules/directory/...` using the disposable environment in backend/README; actual changed job/schema/transport consumers, empty/upgrade/recovery migrations and SQL generation/contract checks as affected. `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p28-t03"></a>
+
+### P28-T03 — Authenticated partner opening-change feed
+
+- **ID / priority / status:** P28-T03 / SHOULD, selected scope only / DEFERRED until explicit selection.
+- **Goal:** Accept a real contracted partner feed with narrowly defined authority.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02–D05/D07/D10/D11; BUC-D07; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P28-T01 selection for this task and G27; a different optional adapter/representation task is not an automatic prerequisite.
+- **Files/areas expected:** Bounded Directory partner adapter; operator credential/contract scope and audit; fixtures.
+- **Risk / tests first:** critical; Forged/rotated credentials, replay/out-of-order event, tenant-like scope confusion, wrong branch CNPJ, partner correction and independent ANP verification.
+- **Implementation outline:** Freeze partner schema/auth/event semantics from an actual agreement; implement explicit partner scope and verification via existing catalog pipeline.
+- **Acceptance criteria:** Partner claim never grants regulatory status or arbitrary catalog editing; replay is idempotent and correction auditable; no partner service without measured need/agreement.
+- **Validation commands:** Directory targeted unit/race + real-PostGIS integration and every affected account/evidence/moderation/privacy/job consumer, with failure/ownership/expiry tests; actual package list frozen at opening. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p28-t04"></a>
+
+### P28-T04 — Independent owner representation verification
+
+- **ID / priority / status:** P28-T04 / historical optional task / SUPERSEDED_BY_P30_P33 (2026-10-02).
+- **Reason:** Maintainer explicitly requested the complete station profile/entity and verified representation workflow. The bounded optional idea is now fully owned by [P30–P33](#station-profile-and-representation), [profile plan](docs/planning/STATION_PROFILE_PLAN.md) and [target rules](docs/product/STATION_PROFILE_REPRESENTATION.md).
+- **Recovery / delivery:** Preserve this ID and historical catalog scope; no implementation/issue/acceptance is complete. Do not open a duplicate owner-verification issue or mark this task DONE. P28-T01–T03 remain optional sources/partner feeds; partner credentials never grant profile administration.
+
+## P29 — Catalog capacity and refreshed Android acceptance
+
+Priority: **MUST for catalog scope**. Entry: G27; every selected enabled G28 task integrated; applicable G24 evidence mapped to unchanged inputs. Exit: **G29-CATALOG: measured catalog workload and complete affected Android acceptance, ready for separate P09/G09 certification**. State: PLANNED. Branch: `codex/phase-29-catalog-acceptance`.
+
+<a id="p29-t01"></a>
+
+### P29-T01 — Capacity, freshness and review-backlog campaign
+
+- **ID / priority / status:** P29-T01 / MUST / PLANNED.
+- **Goal:** Freeze and measure national-scale ingestion with simultaneous reads/writes and dependency recovery.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D02/D03/D05/D10/D12; BUC-D06/D08; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** G27; every selected enabled G28 task integrated; applicable G24 evidence mapped to unchanged inputs.
+- **Files/areas expected:** Synthetic load/clock fixtures, existing operator/load harness extensions, source/queue metrics and phase evidence.
+- **Risk / tests first:** critical; 100k synthetic stations/10k novel assertions per day hypothesis, 1k inputs per 10min burst, 48h outage/catch-up, duplicates, lease failure, query plans and manual-review backlog.
+- **Implementation outline:** Freeze actual workload/configuration/latency/memory/recovery thresholds before campaign; use fixture upstreams; measure source lag separately from eligibility-to-publication lag.
+- **Acceptance criteria:** Counts reconcile with no dropped input/identity split/partial publication; accepted predeclared read/resource/recovery budgets pass or remediation is required; 24/48h results and unresolved denominator reported without claiming live SLA.
+- **Validation commands:** Directory targeted unit/race + real-PostGIS integration and every affected account/evidence/moderation/privacy/job consumer, with failure/ownership/expiry tests; actual package list frozen at opening. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p29-t02"></a>
+
+### P29-T02 — Source-to-app lifecycle and affected device reacceptance
+
+- **ID / priority / status:** P29-T02 / MUST / PLANNED.
+- **Goal:** Accept the new immutable Android/backend candidate on affected real flows.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D01–D12; BUC-D01–D08 applicable to enabled scope; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P29-T01.
+- **Files/areas expected:** Affected existing Android/backend E2E tests and P24 device/accessibility/performance manifest; phase evidence.
+- **Risk / tests first:** critical; Registry-only station to suggestion/review/location/price/comment/report, closed/stale source, offline replay, unknown states, denied GPS, photo expiry and low-end resources.
+- **Implementation outline:** Map old G24 proof to matching inputs; re-run every changed required functional/device/security/accessibility/performance row and correct failures.
+- **Acceptance criteria:** Changed catalog/intake/social-target flows have real acceptance evidence; no cached-home timing substitutes cold-process proof; no Android support/storage/auth gap waived; iOS remains deferred.
+- **Validation commands:** Immediate targeted backend real-PostGIS/race/account/privacy/storage suites plus affected Gradle/unit/compile/real-device acceptance from the catalog plan; freeze actual package/device/budget selection first. `git diff --check` and scoped secret review. No complete production certification here.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+<a id="p29-t03"></a>
+
+### P29-T03 — Pinned catalog candidate and production handoff
+
+- **ID / priority / status:** P29-T03 / MUST / PLANNED.
+- **Goal:** Provide an auditable integrated catalog candidate and operating model for existing release phases.
+- **Inputs / rules:** docs/planning/STATION_CATALOG_PLAN.md; docs/product/STATION_CATALOG.md B-BR-D03/D05/D09–D12; BUC-D06/D08; existing owning account/media/location/moderation/price contracts.
+- **Dependencies:** P29-T02.
+- **Files/areas expected:** Catalog phase evidence/manifest; operator runbooks; P09/G09 and P10-T09 prerequisite notes.
+- **Risk / tests first:** critical; Source pause/retry/review/disable, binary/projection rollback, migration recovery, privacy deletion-ledger restore and staffed backlog drill.
+- **Implementation outline:** Collect exact candidate/config/check/limitations, support staffing and retention/cost measures; perform scoped recovery drills and define remaining real production checks.
+- **Acceptance criteria:** G29 acceptance accounts for all enabled sources/tasks and required rows; actual launch waits for G09 certification and separate deployment authorization; optional-source exclusions and no nationwide inauguration promise explicit.
+- **Validation commands:** Directory targeted unit/race + real-PostGIS integration and every affected account/evidence/moderation/privacy/job consumer, with failure/ownership/expiry tests; actual package list frozen at opening. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review.
+- **Risks / recovery:** Preserve stable UUID/history and last validated publication; disable the changed source/flow or restore the projection with audit. Applied migrations are append-only with previous-schema upgrade/recovery tests; no data-destructive rollback, broader trust, privacy exception or hidden failure.
+- **Definition of done:** Actual scoped evidence and task issue/atomic commit, integrated through its guarded phase PR; specialized exit once and required current-head/base Quick verification through finish, then merged-SHA wiki once. Planning is not LOCAL_DONE, integration is not G09 certification, and optional unselected tasks are never marked complete.
+
+## Station profile and representation — PLANNED
+
+<a id="station-profile-and-representation"></a>
+
+[STATION_PROFILE_PLAN](docs/planning/STATION_PROFILE_PLAN.md) defines the full process; [STATION_PROFILE_REPRESENTATION](docs/product/STATION_PROFILE_REPRESENTATION.md) owns B-BR-P01–P16 / BUC-P01–P10; [ADR-017](docs/adr/017-station-profile-and-verified-representation.md) records identity/authority boundaries. Reuse Directory Station; new profile/claim/grant entities do not duplicate station IDs. Sequence after app-first P34–P38 and catalog checkpoints: G29 source checkpoint → P30 → P31 → P32 → P33 → end affected Android manual/device acceptance → final integration → existing P09/G09. P28-T04 is superseded, preserving its ID; no duplicate owner-verification implementation. All tasks below are PLANNED, local-only documentation, not runtime readiness or remote issues.
+
+## P30 — Station profile and private claim foundations
+
+Priority: **MUST for selected profile scope**. Entry: G29-CATALOG validated source checkpoint (full end device acceptance remains owed); actual Directory/account/moderation/media contracts reconciled. Exit: **G30: entities, unclaimed profile reads, signed claims and bounded private proof intake; no management authority yet**. State: PLANNED. Branch: `codex/phase-30-station-profiles`.
+
+<a id="p30-t01"></a>
+
+### P30-T01 — Entity, proof, permission and privacy contract freeze
+
+- **ID / priority / status:** P30-T01 / MUST for selected profile scope / PLANNED.
+- **Goal:** Freeze Station/Profile/operator/claim/proof/grant ownership, safe states and equivalent representation criteria.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01–P08/P10/P15/P16; BUC-P01–P04/P09; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** G29-CATALOG integrated; actual Directory/account/moderation/media contracts reconciled.
+- **Files/areas expected:** docs/product/STATION_PROFILE_REPRESENTATION.md; docs/backend/API_PLAN.md and DATA_MODEL.md; privacy inventory; permitted verifier decision and portable synthetic fixtures.
+- **Risk / tests first:** docs; Full branch versus matrix, homonymous identity, joint authority, signature vs powers, claim-state transitions, document/scan categories and unknown provider capabilities.
+- **Implementation outline:** Freeze wire enums, additional-auth/delegation policy, claim nonce/TTL/input/quota limits, field/scopes and private retention/backup handling; record source/provider license/security/access decisions.
+- **Acceptance criteria:** No implementation starts with undefined proof-time/revocation/retention or broad OWNER role; official sources and document paths have permitted access and safe unresolved states.
+- **Validation commands:** Scoped entity/rule/task/transition/source/dependency/Markdown consistency, new-file whitespace and secret review; `git diff --check`. A schema/handler/gate disguised as docs needs actual behavioral checks.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p30-t02"></a>
+
+### P30-T02 — Canonical operator link and public unclaimed profile
+
+- **ID / priority / status:** P30-T02 / MUST for selected profile scope / PLANNED.
+- **Goal:** Extend the existing Station with a distinct profile and effective operator reference without duplicate station identity.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01/P02/P11/P12/P15/P16; BUC-P01/P08; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P30-T01.
+- **Files/areas expected:** Directory declared operator read/revision port; new stationprofile domain/repository/public read DTO; owned SQL/migrations/OpenAPI/golden vectors.
+- **Risk / tests first:** critical; Zero-price/no-location/no-representative reads, stale operator, unique station profile, same CNPJ root distinct branches, cursor/cache/old-reader compatibility and previous-schema upgrade.
+- **Implementation outline:** Add minimal profile/operator-applicability schema and anonymous read projection with separated official/community/business fields; use existing canonical UUID and explicit ports.
+- **Acceptance criteria:** No duplicate station or ownership assumption; profile exists read-only without grants; no private proof/person data in public DTO/cache; nullable facts and provenance honest; real migration/PostGIS tests pass.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p30-t03"></a>
+
+### P30-T03 — Account-bound claim and one-use declaration
+
+- **ID / priority / status:** P30-T03 / MUST for selected profile scope / PLANNED.
+- **Goal:** Create private representation requests with server-bound exact authorization content.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P03/P04/P07/P09/P16; BUC-P02/P03; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P30-T02.
+- **Files/areas expected:** stationprofile domain/application/signed HTTP/private read/repository; explicit account/key ports; OpenAPI/fixtures and transaction/job schema.
+- **Risk / tests first:** critical; Guest/anonymous proof, expired/revoked session, account substitution, claim IDOR, same-key changed payload, challenge reissue/replay and parallel competing requests.
+- **Implementation outline:** Generate versioned exact declaration and nonce digest bound to account/station/operator/scopes; atomically store claim/idempotency/job intent; expose owner-only no-store status/export.
+- **Acceptance criteria:** No grant from submission, CNPJ or client flags; one-use/idempotency/account ownership enforced under races; competing cases stay private; no source fetch under DB lock.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p30-t04"></a>
+
+### P30-T04 — Private immutable signed-document intake and expiry
+
+- **ID / priority / status:** P30-T04 / MUST for selected profile scope / PLANNED.
+- **Goal:** Accept allowed proof bytes safely without treating PDF as an optimized photo or storing private keys.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P05/P08/P15/P16; BUC-P03/P09; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P30-T03.
+- **Files/areas expected:** Explicit private document/evidence capability and stationprofile ports; bounded parser/storage adapters; permission/expiry/delete/restore fixtures.
+- **Risk / tests first:** critical; PFX/P12/private key, malformed/oversize/encrypted/active PDF, embedded scans, magic mismatch, arbitrary URL/SSRF, foreign claim proof, overwrite race, expiry and restore.
+- **Implementation outline:** Use private server-generated immutable keys and exact-byte hashes; reject unsafe formats; enforce frozen photo/scan 24h cap and signed-authorization retention across copies; restricted owner/reviewer status only.
+- **Acceptance criteria:** No public bytes/URLs/key/password intake; exact signed bytes preserved for verifier; query-time denial plus physical all-copy cleanup tested; missing document retention/storage enforcement blocks intake, not approval fallback.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+## P31 — Verified representation, capabilities and lifecycle
+
+Priority: **MUST for selected profile scope**. Entry: G30 integrated and selected signature/source access proved. Exit: **G31: independently verified authority, reviewed scoped grants and complete privileged lifecycle**. State: PLANNED. Branch: `codex/phase-31-verified-representation`.
+
+<a id="p31-t01"></a>
+
+### P31-T01 — Independent signature and declaration verification
+
+- **ID / priority / status:** P31-T01 / MUST for selected profile scope / PLANNED.
+- **Goal:** Verify cryptographic proof and exact server declaration using permitted maintained tooling.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P04–P08/P16; BUC-P03; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** G30 integrated and selected signature/source access proved.
+- **Files/areas expected:** stationprofile pure verification-result policy and bounded signature adapter/operator validation entry; source trust/format fixtures.
+- **Risk / tests first:** critical; Forged/test root in release, revocation/expiry/unknown status, wrong signed account/station/CNPJ, unsigned appended semantic changes, report screenshot forgery and source outage.
+- **Implementation outline:** Implement approved verifier interface or independent restricted validation process; compare extracted signed content to immutable declaration; record safe indeterminate/invalid/valid results and consume binding correctly.
+- **Acceptance criteria:** Valid signature fixture proves recognized trust separately from synthetic roots; invalid/indeterminate proof cannot approve; signature alone never grants powers; external validation outside locks with bounded resources.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t02"></a>
+
+### P31-T02 — Operating-company and corporate authority verification
+
+- **ID / priority / status:** P31-T02 / MUST for selected profile scope / PLANNED.
+- **Goal:** Establish applicant linkage and sufficient powers for the exact operating establishment.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01/P06/P07/P10/P13; BUC-P03/P04/P08; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T01.
+- **Files/areas expected:** stationprofile authority checker/reviewer evidence ports; declared Directory/CNPJ/corporate source adapters; current mandate/branch fixtures.
+- **Risk / tests first:** critical; Valid e-CNPJ held by accountant, public CNPJ/ANP certificate, masked/homonymous identity, shareholder without powers, matrix/branch mismatch, expired mandate and missing joint signer.
+- **Implementation outline:** Obtain authoritative facts independently; verify authentic corporate acts, applicant/recipient identity linkage, joint signature and explicit delegation scope; route uncertainty to review.
+- **Acceptance criteria:** Company existence, signer identity and authority are separately supported; no name-only/brand/root match approves; equivalent manual route has issuer checks and independent confirmation, not weak automatic fallback.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t03"></a>
+
+### P31-T03 — Restricted case review and atomic scoped grants
+
+- **ID / priority / status:** P31-T03 / MUST for selected profile scope / PLANNED.
+- **Goal:** Allow independent authorized operators to decide claims without stale or self-approved authority.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P07/P09/P10/P14/P16; BUC-P04/P07; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T02.
+- **Files/areas expected:** Explicit moderation target/action/CLI extensions via application ports; stationprofile decision/grant SQL/idempotency/job; tests/OpenAPI safe owner status.
+- **Risk / tests first:** critical; Unknown moderation target, role denial/self-review, concurrent approve/cancel/operator succession/account deletion, duplicate grants and stale proof/reviewer version.
+- **Implementation outline:** Introduce bounded claim target/actions; atomically record reviewed decision/grant/consumed proof and required projection/status intent with expected versions.
+- **Acceptance criteria:** No public admin route or moderator role from representation; pending/denied claims grant nothing; races converge on policy-valid scopes and decisions; source/policy/account/applicability rechecked at commit.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t04"></a>
+
+### P31-T04 — Scoped business edits and official replies
+
+- **ID / priority / status:** P31-T04 / MUST for selected profile scope / PLANNED.
+- **Goal:** Enforce actual management capabilities while protecting canonical facts and community independence.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P02/P10–P12/P16; BUC-P05; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T03.
+- **Files/areas expected:** stationprofile business commands/revisions/public projection; explicit feedback attribution/account/Directory ports; additive contracts and tested SQL.
+- **Risk / tests first:** critical; Manager wrong station/scope, revoked session/grant, stale operator, optimistic conflict, unauthorized canonical edit, 280/281 reply, delete others text/votes and forged business label.
+- **Implementation outline:** Implement bounded permitted field changes and existing feedback reply route with server-verified business attribution; preserve normal source, author and moderation semantics.
+- **Acceptance criteria:** Only current approved scope edits allowed business fields; no price-trust/ranking/regulatory overwrite or criticism suppression; safe at-time reply attribution; every privilege enforced server-side before app buttons.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t05"></a>
+
+### P31-T05 — Contestation, suspension and immediate revocation
+
+- **ID / priority / status:** P31-T05 / MUST for selected profile scope / PLANNED.
+- **Goal:** Handle competing claims and impersonation reports without competitor takeover or queue-dependent authority.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P09/P10/P13/P14/P16; BUC-P07/P08; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T04.
+- **Files/areas expected:** stationprofile dispute/grant checks; restricted moderation commands; public badge purge/TTL and private notice/status projection.
+- **Risk / tests first:** critical; Mass false reports, rival document IDOR, substantiated conflict review, revoke vs write race, dead cleanup worker, stale cache badge and appeal of terminal claim.
+- **Implementation outline:** Open private linked cases for new evidence; operator decides substantiated-risk suspension/revocation with audit; writes recheck validity and operator version; freeze/report badge-cache bound.
+- **Acceptance criteria:** Report count cannot transfer/suspend automatically; revoked/suspended scope denied immediately despite job outage; private rivals not exposed; new linked appeal preserves closed-case history.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t06"></a>
+
+### P31-T06 — Scoped delegation, transfer and reviewed recovery
+
+- **ID / priority / status:** P31-T06 / MUST for selected profile scope / PLANNED.
+- **Goal:** Support multiple authorized representatives without unverified privilege escalation or lost-admin shortcuts.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01/P04/P06/P10/P13/P14; BUC-P06/P08; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T05.
+- **Files/areas expected:** stationprofile invitation/recipient proof/grant lifecycle ports and schema; explicit fresh-auth method; synthetic mandate/account fixtures.
+- **Risk / tests first:** critical; Manager self-promotion, scope wider than mandate, expired/wrong-recipient invite, transfer without recipient authority, operator change, parallel revoke/accept and last-admin recovery.
+- **Implementation outline:** Implement recipient-bound one-use invitation and fresh acceptance; reviewed transfer requires new scoped proof; reverify changed authority/operator; use existing permitted sharing/status rather than invent a mail service.
+- **Acceptance criteria:** Invitation alone does not grant wider corporate powers; transfer/recovery has independent recipient proof and review; no generic business OWNER across stations or old-operator access after succession.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p31-t07"></a>
+
+### P31-T07 — Proof, grant and profile privacy recovery
+
+- **ID / priority / status:** P31-T07 / MUST for selected profile scope / PLANNED.
+- **Goal:** Close rights/expiry and restore behavior across new authority and public history.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P08/P13–P16; BUC-P09/P10; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P31-T06.
+- **Files/areas expected:** stationprofile/account/privacy/evidence/moderation explicit rights workflows; deletion/revocation ledger and private storage restore tests.
+- **Risk / tests first:** critical; Cross-owner export, delete account during approve, 24h scan expiry, signed-proof retention, replica/copy cleanup, grant replay after restore and at-time official-reply attribution.
+- **Implementation outline:** Implement minimal-data export/erasure/expiry, revoke before cleanup, policy-bound audit and deletion/revocation replay; verify empty/upgrade/restore recovery.
+- **Acceptance criteria:** No revoked grant or expired proof returns after restore/rollback; deletion does not erase station/others facts; export isolates owner documents; all-copy/private retention enforcement has genuine evidence.
+- **Validation commands:** Use actual affected existing Directory/account/moderation/evidence/feedback/privacy/job suites and, after creation, stationprofile unit/race and disposable real-PostGIS integration from backend/README. Required auth/ownership/failure/concurrency tests immediately; changed SQL requires empty/upgrade/recovery and query-plan proof. Affected OpenAPI/golden/compatibility checks; `git diff --check` and scoped secret review. Freeze actual package/command list at opening; nonexistent verifier tests are not evidence.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+## P32 — Android station profile and representation journeys
+
+Priority: **MUST for selected profile scope**. Entry: G31 tested backend source checkpoint; actual contract/authority precedes app consumers and live deployment remains explicitly verified. Exit: **G32: functional profile, claim/status and bounded management journeys accepted on Android**. State: PLANNED. Branch: `codex/phase-32-station-profile-app`.
+
+<a id="p32-t01"></a>
+
+### P32-T01 — Public profile, provenance and representation badge
+
+- **ID / priority / status:** P32-T01 / MUST for selected profile scope / PLANNED.
+- **Goal:** Display the actual station profile and independent business/price/source states.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01/P02/P11/P12/P16; BUC-P01; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** G31 integrated; backend contract/authority precedes app consumers; affected backend contract/permission integrated before consumer.
+- **Files/areas expected:** Kotlin domain/application/data/profile DTO and read port; app station detail/navigation/public cache; portable fixtures.
+- **Risk / tests first:** critical; No prices/no representative/no reviewed location, stale/revoked badge, unknown server state, large text/screen-reader labels and canonical UUID mapping.
+- **Implementation outline:** Integrate anonymous profile read and cautious badge/time/source presentation, preserving current price/social hierarchy and legacy expert tools.
+- **Acceptance criteria:** Public UI exposes no private proof/person; no badge conflated with fuel/price quality; stale cache cannot imply privileged access; server station exists without synthetic price row.
+- **Validation commands:** Root affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug` and relevant real-device/file-picker/cache instrumentation; affected backend contract/security checks from backend/README. Freeze device/resource row selection before coding. `git diff --check` and scoped secret review; iOS excluded.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p32-t02"></a>
+
+### P32-T02 — Free-account claim export-sign-import and private status
+
+- **ID / priority / status:** P32-T02 / MUST for selected profile scope / PLANNED.
+- **Goal:** Make the reviewed representation process usable without exposing certificate secrets.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P03–P08/P16; BUC-P02/P03/P04; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P32-T01; affected backend contract/permission integrated before consumer.
+- **Files/areas expected:** Existing Kotlin/Android auth/document picker/share/status ports and bounded claim outbox; application use cases.
+- **Risk / tests first:** critical; Guest login, expired declaration, permission denied, original signed PDF import, scan cap, wrong file type, offline submit/status retry and owner mismatch.
+- **Implementation outline:** Build structured role/scope request and server declaration export/import with externally signed original bytes, private progress/need-information/appeal states; no PDF rewrite or certificate-key collection.
+- **Acceptance criteria:** User can complete a genuine signed-file flow; client never certifies signature/powers; original upload bounded/private and retry account-bound; existing media and free social flows preserved.
+- **Validation commands:** Root affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug` and relevant real-device/file-picker/cache instrumentation; affected backend contract/security checks from backend/README. Freeze device/resource row selection before coding. `git diff --check` and scoped secret review; iOS excluded.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p32-t03"></a>
+
+### P32-T03 — Representative management, invitations and contested access
+
+- **ID / priority / status:** P32-T03 / MUST for selected profile scope / PLANNED.
+- **Goal:** Expose only server-authorized business capabilities and reviewed lifecycle actions.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P09–P16; BUC-P05–P08; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P32-T02; affected backend contract/permission integrated before consumer.
+- **Files/areas expected:** Existing app profile/feedback/editor/status screens and Kotlin management use cases; account fresh-auth adapter selected in P30/P31.
+- **Risk / tests first:** critical; Revoked/suspended role mid-edit, stale operator, missing required additional auth, invite/transfer/recovery status, 280/281 official reply and denied privileged retry.
+- **Implementation outline:** Implement allowed business edits/replies and scoped invitation/contest/reverification UI; server remains authoritative; explain badge and review limitations in user-facing copy.
+- **Acceptance criteria:** No optimistic false approval or UI-only permission gate; canonical correction path distinct; failed/revoked writes recover without replaying stale privilege; no in-app moderator or hidden critique control.
+- **Validation commands:** Root affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug` and relevant real-device/file-picker/cache instrumentation; affected backend contract/security checks from backend/README. Freeze device/resource row selection before coding. `git diff --check` and scoped secret review; iOS excluded.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p32-t04"></a>
+
+### P32-T04 — Offline, accessibility and real-device acceptance
+
+- **ID / priority / status:** P32-T04 / MUST for selected profile scope / PLANNED.
+- **Goal:** Prove new profile and claim flows with actual bounded signed-file/device behavior.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01–P16; BUC-P01–P09; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P32-T03; affected backend contract/permission integrated before consumer.
+- **Files/areas expected:** Affected domain/application/data/app tests and device/Room/file URI/low-end evidence; P32 exit record.
+- **Risk / tests first:** critical; Offline pending vs expired/revoked role, process restart, file URI permission expiry, no-photo cache, low-end parsing memory, screen reader/font scale and old API/cache fallback.
+- **Implementation outline:** Run targeted device/privacy/canonical action regressions and measured budgets; preserve portable Kotlin and isolated Android adapters.
+- **Acceptance criteria:** Required flows genuinely pass on supported devices; no PDF/photo processing freeze/unbounded memory or cached authority acceptance; no iOS or production provider proof inferred.
+- **Validation commands:** Root affected `:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:assembleDebug` and relevant real-device/file-picker/cache instrumentation; affected backend contract/security checks from backend/README. Freeze device/resource row selection before coding. `git diff --check` and scoped secret review; iOS excluded.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+## P33 — Profile fraud, operations and candidate acceptance
+
+Priority: **MUST for selected profile scope**. Entry: G32 integrated; enabled source/verifier/storage/device prerequisites available. Exit: **G33-PROFILE: adversarial lifecycle/privacy and refreshed Android candidate acceptance, separate from G09**. State: PLANNED. Branch: `codex/phase-33-profile-acceptance`.
+
+<a id="p33-t01"></a>
+
+### P33-T01 — Adversarial, resource and review-operations campaign
+
+- **ID / priority / status:** P33-T01 / MUST for selected profile scope / PLANNED.
+- **Goal:** Measure abuse controls and staffed review throughput under the declared workload.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P03–P10/P13–P16; BUC-P03/P04/P07/P10; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** G32 integrated; enabled source/verifier/storage/device prerequisites available.
+- **Files/areas expected:** Synthetic claim/trust/PDF/source load fixtures, existing load/job harness extensions and operator runbooks.
+- **Risk / tests first:** critical; 1k/day synthetic claim hypothesis with frozen ambiguous mix, rival-claim burst, signature parser exhaustion, provider downtime, stale job/fencing and grant race/read traffic.
+- **Implementation outline:** Freeze workload/hardware/resource/query/queue/staffing budgets before campaign; use fixture upstreams; run pure/race/PostGIS/adversarial checks and measure genuine available-source smoke separately.
+- **Acceptance criteria:** No unverified grant, private leak, silent dropped claim or budget failure; human review/indeterminate backlog and escalation measured; no fake fraud-free or instant-approval promise.
+- **Validation commands:** Frozen affected backend real-PostGIS/race/critical proof/privacy/storage/restore tests plus exact enabled provider and Android device/compatibility/accessibility/performance rows. Record artifact/config/workload/commands/results; missing required row blocks gate. Specialized exit once; required Quick verification through finish only once; no unrelated full G09 repeat.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p33-t02"></a>
+
+### P33-T02 — End-to-end authority, privacy and device reacceptance
+
+- **ID / priority / status:** P33-T02 / MUST for selected profile scope / PLANNED.
+- **Goal:** Accept the complete selected profile lifecycle on the updated candidate.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P01–P16; BUC-P01–P10; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P33-T01.
+- **Files/areas expected:** Existing backend process/account/Directory/profile/moderation/storage integration and Android device/accessibility/performance manifest.
+- **Risk / tests first:** critical; Unclaimed profile→claim→signed proof→independent review→edit/reply→delegate→contest→revoke→operator change→erase/restore; wrong account/authority/provider and regression rows.
+- **Implementation outline:** Execute meaningful lifecycle scenarios and real necessary provider/storage/device rows; carry forward prior evidence only for identical relevant artifacts/inputs; correct all required failures.
+- **Acceptance criteria:** G33 manifest has no missing required anti-fraud/permissions/expiry/restore/device row; forged/wrong powers and stale grants denied; no simulation substituted for real approved trust-provider acceptance.
+- **Validation commands:** Frozen affected backend real-PostGIS/race/critical proof/privacy/storage/restore tests plus exact enabled provider and Android device/compatibility/accessibility/performance rows. Record artifact/config/workload/commands/results; missing required row blocks gate. Specialized exit once; required Quick verification through finish only once; no unrelated full G09 repeat.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="p33-t03"></a>
+
+### P33-T03 — Pinned profile candidate and release operating handoff
+
+- **ID / priority / status:** P33-T03 / MUST for selected profile scope / PLANNED.
+- **Goal:** Provide the verified scoped candidate, reviewer runbooks and existing-release prerequisites.
+- **Inputs / rules:** docs/planning/STATION_PROFILE_PLAN.md; docs/product/STATION_PROFILE_REPRESENTATION.md B-BR-P08/P13–P16; BUC-P08/P09/P10; ADR-017 and existing account/catalog/media/feedback/moderation contracts.
+- **Dependencies:** P33-T02.
+- **Files/areas expected:** P33 evidence/candidate manifest; operator access/review/suspension/privacy runbooks; P09/G09 and P10-T09 handoff.
+- **Risk / tests first:** critical; Source/verifier access health, urgent impersonation review, feature disable/binary rollback, revocation/deletion restore, contact/source rights and actual staffing drill.
+- **Implementation outline:** Record exact artifact/config/source/check scope and limitations; validate operator procedures and real-production unresolved checklist; G09 remains sole full certification.
+- **Acceptance criteria:** G33 integration/readiness distinguished from G09 real release; no iOS acceptance or deployment inferred; selected profile tasks/source/retention/auth criteria covered with current evidence.
+- **Validation commands:** Frozen affected backend real-PostGIS/race/critical proof/privacy/storage/restore tests plus exact enabled provider and Android device/compatibility/accessibility/performance rows. Record artifact/config/workload/commands/results; missing required row blocks gate. Specialized exit once; required Quick verification through finish only once; no unrelated full G09 repeat.
+- **Risks / recovery:** Deny invalid/stale authority, retain stable station IDs/community facts, disable the changed capability or revert only safe projection/binary behavior. Applied migrations are append-only with recovery; restore replays deletion/revocation and purges expired proof; no rollback restores lost privileges or private evidence.
+- **Definition of done:** Actual scoped evidence, one task issue/atomic commit, guarded phase integration and merged-SHA wiki once. Specialized exit plus required current-head/base Quick verification through `finish --required "Quick verification" --pr <actual-number>`; no skipped/failed/missing checks. Planning is not LOCAL_DONE; integrated profile is not G09 RELEASE_CERTIFIED. iOS stays explicitly deferred.
+
+<a id="android-vps-integration"></a>
+
+## P34–P38 — Android integration with the existing VPS (next construction)
+
+Execution priority supersedes numerical phase order: [ADR-019](docs/adr/019-android-vps-integration-first.md), [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md). All tasks below are **PLANNED / LOCAL_ONLY**. Current temporary origin: `https://teste.abastevo.com.br`. Actual source/risk acceptance precedes local checkpoints; remote CI/merge and the user-deferred manual/device union happen at end project closure. No live/production success follows from fixture tests or a health check.
+
+### P34 — Staging connection and test catalog
+
+State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/ANDROID_VPS_PLAN.md#p34--staging-connection-and-a-useful-test-catalog).
+
+<a id="p34-t01"></a>
+
+#### P34-T01 — Inventory and verify the staging contract
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Resolve HTTPS trust and verify public health/Directory reads; inventory deployed clients/flags without server writes.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p34-t02"></a>
+
+#### P34-T02 — One explicit Android environment configuration
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Wire all existing backend clients to one origin, isolate sessions/flags and prove routing/error/security behavior.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p34-t03"></a>
+
+#### P34-T03 — Bounded synthetic integration dataset
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Specify and, only with write scope, prepare reproducible owned fixtures through existing supported mechanisms; no global reset.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+### P35 — Live discovery and community prices
+
+State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/ANDROID_VPS_PLAN.md#p35--explore-station-detail-and-actual-community-prices).
+
+<a id="p35-t01"></a>
+
+#### P35-T01 — Directory UUID ports and cache
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Consume bounded canonical server station IDs and preserve legacy CNPJ/offline data; migrations need recovery proof.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p35-t02"></a>
+
+#### P35-T02 — Explore and station detail integration
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Wire community-first prices, dated ANP references, source/condition/time and honest empty/stale/error states.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p35-t03"></a>
+
+#### P35-T03 — Search and degraded discovery regression
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Fix search emission, prove paging/cache/restart/location denial/outage and preserve expert features.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+### P36 — Free account and social journeys
+
+State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/ANDROID_VPS_PLAN.md#p36--free-accounts-and-stationfuel-social-participation).
+
+<a id="p36-t01"></a>
+
+#### P36-T01 — Staging account and provider integration
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Wire email/provider/session/key flows; prove denial/replay/revocation and record owed actual provider evidence.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p36-t02"></a>
+
+#### P36-T02 — Station and fuel feedback screens
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Connect ratings/comments/replies/votes/reports to canonical targets with signed writes and 280-scalar limits.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p36-t03"></a>
+
+#### P36-T03 — Private activity and account rights
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Owner status/retry/deletion; export requires a bounded backend contract/privacy extension and IDOR tests.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+### P37 — Capture and durable contributions
+
+State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/ANDROID_VPS_PLAN.md#p37--capture-upload-and-durable-contribution-status).
+
+<a id="p37-t01"></a>
+
+#### P37-T01 — Contextual capture and review
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Station/fuel/photo/OCR/manual price/condition selection, explicit submit and existing location-integrity/bounded media rules.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p37-t02"></a>
+
+#### P37-T02 — Live upload and outbox lifecycle
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Actual identity/upload/observation/status/cancel and safe retry/recovery; backend defects tested before consumers.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p37-t03"></a>
+
+#### P37-T03 — Private storage and all-copy expiry
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Prove 24h deletion/cache/outbox/storage/restore; missing attached VPS media blocks live photo acceptance explicitly.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+### P38 — Source regression and end acceptance handoff
+
+State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/ANDROID_VPS_PLAN.md#p38--app-regression-end-validation-and-release-handoff).
+
+<a id="p38-t01"></a>
+
+#### P38-T01 — Integrated code journey regression
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Test full read/account/contribution/social/privacy/offline/error lifecycle on actual source contracts, then build affected APK.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p38-t02"></a>
+
+#### P38-T02 — Consolidated end Android manual matrix
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Plan the union of P24/P29/P33 provider/device/performance/novice/accessibility rows; execute only after all selected source phases.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+<a id="p38-t03"></a>
+
+#### P38-T03 — Candidate, final integration and G09 handoff
+
+- **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
+- **Goal:** Record actual source/backend/config/evidence; required final PR/CI/reviews/merge/wiki happen at project closure, certification remains G09.
+- **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
+- **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
