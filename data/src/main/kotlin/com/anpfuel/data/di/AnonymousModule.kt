@@ -1,33 +1,36 @@
 package com.anpfuel.data.di
 
 import com.anpfuel.data.remote.AnonymousProofHttpClient
+import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.OkHttpClientFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
- * P10-T03 anonymous-proof bindings.
+ * P10-T03 anonymous-proof bindings (origin shared in P34-T02).
  *
- * The base URL is an explicit preview placeholder (RFC 2606 `.invalid`,
- * never resolves): proofs stay disabled by default and issue nowhere
- * until deployment configuration lands, mirroring the P10-T02/P13
- * precedent. Private key material never crosses the HTTP client.
+ * DI uses the shared [ApiEnvironment] staging selection; preview
+ * (RFC 2606 `.invalid`, never resolves) stays available as
+ * [ApiEnvironment.PREVIEW]. Private key material never crosses the HTTP client.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object AnonymousModule {
 
-    /** Preview API base; deployment configuration replaces it. */
+    /** Preview API base; kept for reference, DI uses the shared origin. */
     const val PREVIEW_BASE_URL: String = "https://api.anpfuel.example.invalid"
 
     @Provides
     @Singleton
-    fun provideAnonymousProofHttpClient(): AnonymousProofHttpClient =
+    fun provideAnonymousProofHttpClient(
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): AnonymousProofHttpClient =
         AnonymousProofHttpClient(
             client = OkHttpClientFactory.create(),
-            baseUrl = PREVIEW_BASE_URL,
+            baseUrl = environment.origin,
         )
 }
