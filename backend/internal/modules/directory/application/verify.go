@@ -8,14 +8,17 @@ import (
 )
 
 // VerifyPorts isolates review automation: exact-match resolution,
-// unknown-quality pin recording (never projected) and audited
-// decision persistence.
+// unknown-quality pin recording (never projected), audited decision
+// persistence and author liveness. A nil AccountLive skips the liveness
+// check (unit tests); production always wires it so erased/suspended
+// authors never publish through automation or review.
 type VerifyPorts struct {
-	Store     VerifyStore
-	Resolve   func(ctx context.Context, cnpj, display string, address map[string]string) (stationID, municipality, state string, err error)
-	RecordPin func(ctx context.Context, stationID string, lat, lon float64, ref string) error
-	NewID     func() (string, error)
-	Reviewer  string
+	Store       VerifyStore
+	Resolve     func(ctx context.Context, cnpj, display string, address map[string]string) (stationID, municipality, state string, err error)
+	RecordPin   func(ctx context.Context, stationID string, lat, lon float64, ref string) error
+	NewID       func() (string, error)
+	Reviewer    string
+	AccountLive func(ctx context.Context, accountID string) (bool, error)
 }
 
 // VerifyStore persists review decisions and pending transitions.
@@ -31,7 +34,25 @@ var (
 	ErrVerifyReviewer = errors.New("directory: reviewer is required")
 	ErrVerifyReason   = errors.New("directory: decision reason is required")
 	ErrStationUnknown = errors.New("directory: station unknown")
+	ErrAccountGone    = errors.New("directory: author account is not active")
 )
+
+// authorLive reports whether the suggestion author may still publish.
+// Erased/suspended authors defer (automation) or fail closed (review);
+// reactivation unblocks without any data rewrite.
+func authorLive(ctx context.Context, ports VerifyPorts, accountID string) error {
+	if ports.AccountLive == nil {
+		return nil
+	}
+	live, err := ports.AccountLive(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	if !live {
+		return ErrAccountGone
+	}
+	return nil
+}
 
 const (
 	DecisionApproved = "approved"
@@ -58,6 +79,12 @@ func AutoVerify(ctx context.Context, ports VerifyPorts, suggestionID string) (Ve
 	}
 	if row.State != SuggestionPending {
 		return VerifyResult{}, nil
+	}
+	if err := authorLive(ctx, ports, row.AccountID); err != nil {
+		if errors.Is(err, ErrAccountGone) {
+			return VerifyResult{}, nil
+		}
+		return VerifyResult{}, err
 	}
 	proposal, err := decodeProposal(row.Proposal)
 	if err != nil || proposal.CNPJ == "" {
@@ -110,6 +137,9 @@ func Decide(ctx context.Context, ports VerifyPorts, suggestionID, reviewer strin
 	}
 	if row.State != SuggestionPending {
 		return ErrVerifyClosed
+	}
+	if err := authorLive(ctx, ports, row.AccountID); err != nil {
+		return err
 	}
 	decision := DecisionRejected
 	if approve {

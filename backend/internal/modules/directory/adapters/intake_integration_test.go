@@ -139,3 +139,18 @@ func TestIntakeIntegrationIdempotencyQuotaAndIsolation(t *testing.T) {
 		t.Fatalf("proposal lost CNPJ: %s", raw)
 	}
 }
+
+func TestIntakeIntegrationQuotaBoundary(t *testing.T) {
+	svc, _ := freshIntake(t)
+	ctx := context.Background()
+	acc := "44444444-4444-4444-8444-444444444444"
+
+	for i := 0; i < application.MaxSuggestionsPerDay; i++ {
+		if _, _, err := svc.Submit(ctx, acc, "quota-key-"+string(rune('a'+i/26))+string(rune('a'+i%26)), intakeInput()); err != nil {
+			t.Fatalf("submit %d: %v", i, err)
+		}
+	}
+	if _, _, err := svc.Submit(ctx, acc, "quota-key-over", intakeInput()); err != application.ErrSuggestionQuota {
+		t.Fatalf("21st submit err = %v, want quota", err)
+	}
+}

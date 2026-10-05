@@ -192,3 +192,35 @@ func TestDecideIntegrationConcurrentReviewers(t *testing.T) {
 		t.Fatalf("wins = %d, want exactly 1", wins)
 	}
 }
+
+func TestVerifyIntegrationSuspendedAuthorStaysPending(t *testing.T) {
+	pool, store, canon, svc := verifyTestSetup(t)
+	ctx := context.Background()
+	suspendedAcc := "33333333-3333-4333-8333-333333333333"
+	if _, err := pool.Exec(ctx,
+		"INSERT INTO accounts (id, alias, status) VALUES ($1, 'suspended-author', 'suspended')",
+		suspendedAcc); err != nil {
+		t.Fatalf("seed account: %v", err)
+	}
+
+	created, _, err := svc.Submit(ctx, suspendedAcc, "key-susp", suggestionInput("04218406000104", "3550308", 0, 0, false))
+	if err != nil {
+		t.Fatalf("submit: %v", err)
+	}
+	handler := verifyHandler(pool, store, canon)
+	handler.AccountLive = func(ctx context.Context, accountID string) (bool, error) {
+		var status string
+		if err := pool.QueryRow(ctx, "SELECT status FROM accounts WHERE id = $1", accountID).Scan(&status); err != nil {
+			return false, err
+		}
+		return status == "active", nil
+	}
+	payload, _ := json.Marshal(map[string]any{"version": 1, "batch": 25})
+	if err := handler.Handle(ctx, platformjobs.Job{Kind: handler.Kind(), Payload: payload}); err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+	owned, err := svc.Owned(ctx, suspendedAcc, created.ID)
+	if err != nil || owned.State != application.SuggestionPending {
+		t.Fatalf("owned = %+v, err = %v (suspended author must stay pending)", owned, err)
+	}
+}

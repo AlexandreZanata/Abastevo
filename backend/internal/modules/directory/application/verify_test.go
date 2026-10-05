@@ -108,8 +108,7 @@ func TestAutoVerifyApprovesExactMatchOnly(t *testing.T) {
 	}
 }
 
-func TestDecideEnforcesReviewerReasonAndPending(t *testing.T) {
-	store := &verifyStore{rows: map[string]SuggestionRow{
+func TestDecideEnforcesReviewerReasonAndPending(t *testing.T) {	store := &verifyStore{rows: map[string]SuggestionRow{
 		"s-1": storedRow("s-1", "04218406000104", "3550308"),
 	}}
 	ports := verifyPorts(store)
@@ -131,5 +130,24 @@ func TestDecideEnforcesReviewerReasonAndPending(t *testing.T) {
 	}
 	if err := Decide(context.Background(), ports, "missing", "op-1", true, "ok", "s"); err == nil {
 		t.Fatal("missing record must fail")
+	}
+}
+
+func TestGoneAuthorDefersAutomationAndFailsReviewClosed(t *testing.T) {
+	store := &verifyStore{rows: map[string]SuggestionRow{
+		"s-1": storedRow("s-1", "04218406000104", "3550308"),
+	}}
+	ports := verifyPorts(store)
+	ports.AccountLive = func(_ context.Context, _ string) (bool, error) { return false, nil }
+
+	deferred, err := AutoVerify(context.Background(), ports, "s-1")
+	if err != nil || deferred.Approved {
+		t.Fatalf("gone author = %+v, err = %v (must defer)", deferred, err)
+	}
+	if err := Decide(context.Background(), ports, "s-1", "op-1", true, "ok", "station-alfa"); err != ErrAccountGone {
+		t.Fatalf("review err = %v (must fail closed)", err)
+	}
+	if store.rows["s-1"].State != SuggestionPending {
+		t.Fatalf("state = %q (must stay pending)", store.rows["s-1"].State)
 	}
 }

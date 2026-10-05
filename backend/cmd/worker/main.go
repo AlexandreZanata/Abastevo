@@ -21,6 +21,8 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
@@ -462,6 +464,13 @@ func run() error {
 			},
 			NewID: jobs.NewUUIDv4,
 			Batch: 25,
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				account, found, err := accountadapters.NewPGStore(pool.Underlying()).GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return account.Status == accountdomain.StatusActive, nil
+			},
 		},
 		"validate-observation": communityjobs.Validate{
 			// Fresh signal bands persist after admission (P06-T01):

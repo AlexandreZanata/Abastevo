@@ -16,11 +16,12 @@ import (
 // unknown-quality revisions through the ports; projection stays
 // official-only.
 type VerifySweep struct {
-	Store     application.VerifyStore
-	Resolve   func(ctx context.Context, cnpj, display string, address map[string]string) (stationID, municipality, state string, err error)
-	RecordPin func(ctx context.Context, stationID string, lat, lon float64, ref string) error
-	NewID     func() (string, error)
-	Batch     int
+	Store       application.VerifyStore
+	Resolve     func(ctx context.Context, cnpj, display string, address map[string]string) (stationID, municipality, state string, err error)
+	RecordPin   func(ctx context.Context, stationID string, lat, lon float64, ref string) error
+	NewID       func() (string, error)
+	Batch       int
+	AccountLive func(ctx context.Context, accountID string) (bool, error)
 }
 
 // Kind implements jobs.Handler.
@@ -54,6 +55,7 @@ func (v VerifySweep) Handle(ctx context.Context, job jobs.Job) error {
 	}
 	ports := application.VerifyPorts{
 		Store: v.Store, Resolve: v.Resolve, RecordPin: v.RecordPin, NewID: v.NewID,
+		AccountLive: v.AccountLive,
 	}
 	if ports.NewID == nil {
 		return errors.New("verify: id generator required")
