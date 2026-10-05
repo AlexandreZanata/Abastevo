@@ -25,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
@@ -66,6 +67,7 @@ fun StationsScreen(
     onNavigateBack: (() -> Unit)? = null,
     onNavigateToUpdatePrice: () -> Unit = {},
     onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
+    onSuggestStation: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
@@ -151,6 +153,7 @@ fun StationsScreen(
         onServerUpdatePrice = { station, fuelWire ->
             onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
         },
+        onSuggestStation = onSuggestStation,
         modifier = modifier,
     )
 }
@@ -174,6 +177,7 @@ private fun StationsContent(
     onServerDetailDismissed: () -> Unit = {},
     onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
     onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
+    onSuggestStation: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -407,6 +411,12 @@ private fun StationsContent(
                         station = station,
                         onSelect = onServerStationSelected,
                     )
+                }
+                OutlinedButton(
+                    onClick = onSuggestStation,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = stringResource(R.string.suggest_open_action))
                 }
             }
             if (uiState.serverError != null && uiState.serverStations.isEmpty()) {

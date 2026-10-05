@@ -180,6 +180,7 @@ fun AnpNavGraph(
                 onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
                     navController.navigate(Routes.capture(stationId, fuelWire))
                 },
+                onSuggestStation = { navController.navigate(Routes.SUGGEST) },
             )
         }
         composable(
@@ -194,6 +195,7 @@ fun AnpNavGraph(
                 onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
                     navController.navigate(Routes.capture(stationId, fuelWire))
                 },
+                onSuggestStation = { navController.navigate(Routes.SUGGEST) },
             )
         }
         composable(Routes.VEHICLES) {
@@ -240,6 +242,11 @@ fun AnpNavGraph(
         }
         composable(Routes.CAPTURE) {
             CaptureScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Routes.SUGGEST) {
+            com.anpfuel.app.ui.suggest.SuggestStationScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(
             route = Routes.CAPTURE_WITH_TARGET,

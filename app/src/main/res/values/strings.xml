@@ -428,6 +428,26 @@
     <string name="station_feedback_delete_rating">Remove my rating</string>
     <string name="station_feedback_report">Report</string>
 
+    <!-- Station suggestions (P27-T04, signed, flag-free by session) -->
+    <string name="suggest_title">Suggest a station</string>
+    <string name="suggest_display">Station name</string>
+    <string name="suggest_municipality">IBGE municipality code</string>
+    <string name="suggest_state">State (UF)</string>
+    <string name="suggest_cnpj">CNPJ (optional)</string>
+    <string name="suggest_submit">Send suggestion</string>
+    <string name="suggest_new_form">New form</string>
+    <string name="suggest_duplicate_hint">Already listed as %1$s — review will link duplicates.</string>
+    <string name="suggest_sent">Suggestion received. It stays private until review.</string>
+    <string name="suggest_conflict">Same reference with different content — check your draft.</string>
+    <string name="suggest_quota">Daily suggestion limit reached. Try again tomorrow.</string>
+    <string name="suggest_signin">Sign in to suggest a station.</string>
+    <string name="suggest_invalid">Check the highlighted fields and try again.</string>
+    <string name="suggest_unavailable">Could not send (%1$s). Nothing was duplicated — retry.</string>
+    <string name="suggest_mine_title">My suggestions</string>
+    <string name="suggest_refresh_status">Refresh status</string>
+    <string name="suggest_cancel">Cancel suggestion</string>
+    <string name="suggest_open_action">Suggest missing station</string>
+
     <!-- Confirm/dispute (P10-T07, beta, flag-gated) -->
     <string name="community_vote_title">Confirm or dispute this price</string>
     <string name="community_vote_confirm">Confirm price</string>

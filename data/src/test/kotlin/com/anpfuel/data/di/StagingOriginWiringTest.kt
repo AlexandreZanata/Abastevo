@@ -27,6 +27,7 @@ class StagingOriginWiringTest {
         ContributionModule,
         FeedbackModule,
         DirectoryModule,
+        IntakeModule,
     )
 
     @Test
@@ -43,7 +44,7 @@ class StagingOriginWiringTest {
                 .filter { it.isAnnotationPresent(Provides::class.java) }
                 .filter { method ->
                     val name = method.returnType.simpleName
-                    (name.contains("Client") || name.contains("Api")) &&
+                    (name.contains("Client") || name.contains("Api") || name.contains("Gateway")) &&
                         name != "OkHttpClient"
                 }
             assertTrue(methods.isNotEmpty(), "${module.javaClass.simpleName} has no client bindings")

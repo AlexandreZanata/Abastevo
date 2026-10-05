@@ -427,6 +427,26 @@
     <string name="station_feedback_delete_rating">Remover minha avaliação</string>
     <string name="station_feedback_report">Denunciar</string>
 
+    <!-- Station suggestions (P27-T04, signed, flag-free by session) -->
+    <string name="suggest_title">Sugerir um posto</string>
+    <string name="suggest_display">Nome do posto</string>
+    <string name="suggest_municipality">Código IBGE do município</string>
+    <string name="suggest_state">Estado (UF)</string>
+    <string name="suggest_cnpj">CNPJ (opcional)</string>
+    <string name="suggest_submit">Enviar sugestão</string>
+    <string name="suggest_new_form">Novo formulário</string>
+    <string name="suggest_duplicate_hint">Já listado como %1$s — a revisão vai vincular duplicados.</string>
+    <string name="suggest_sent">Sugestão recebida. Fica privada até a revisão.</string>
+    <string name="suggest_conflict">Mesma referência com conteúdo diferente — confira o rascunho.</string>
+    <string name="suggest_quota">Limite diário de sugestões atingido. Tente amanhã.</string>
+    <string name="suggest_signin">Entre para sugerir um posto.</string>
+    <string name="suggest_invalid">Confira os campos e tente de novo.</string>
+    <string name="suggest_unavailable">Não foi enviar (%1$s). Nada foi duplicado — tente de novo.</string>
+    <string name="suggest_mine_title">Minhas sugestões</string>
+    <string name="suggest_refresh_status">Atualizar status</string>
+    <string name="suggest_cancel">Cancelar sugestão</string>
+    <string name="suggest_open_action">Sugerir posto ausente</string>
+
     <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
     <string name="community_vote_title">Confirmar ou contestar este preço</string>
     <string name="community_vote_confirm">Confirmar preço</string>
