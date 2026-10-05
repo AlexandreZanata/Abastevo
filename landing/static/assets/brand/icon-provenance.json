@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Abastevo Landing Brand Asset Provenance",
+  "task": "P25-T04",
+  "date": "2026-10-05",
+  "derivation": {
+    "favicon.ico": {
+      "source": "docs/assets/brand/abastevo-app-icon-1024.png",
+      "resolutions": [16, 32, 48],
+      "format": "image/x-icon",
+      "purpose": "Legacy browser favicon compatibility and root /favicon.ico fallback"
+    },
+    "favicon.svg": {
+      "source": "docs/assets/brand/abastevo-app-icon.svg",
+      "format": "image/svg+xml",
+      "purpose": "Modern browser vector favicon"
+    },
+    "apple-touch-icon.png": {
+      "source": "docs/assets/brand/abastevo-app-icon-1024.png",
+      "dimensions": "180x180",
+      "format": "image/png",
+      "purpose": "Apple iOS home screen icon"
+    },
+    "icon-192.png": {
+      "source": "docs/assets/brand/abastevo-app-icon-1024.png",
+      "dimensions": "192x192",
+      "format": "image/png",
+      "purpose": "Android home screen icon & web app manifest"
+    },
+    "icon-512.png": {
+      "source": "docs/assets/brand/abastevo-app-icon-1024.png",
+      "dimensions": "512x512",
+      "format": "image/png",
+      "purpose": "PWA install splash icon & Organization schema logo"
+    },
+    "og-image-v1.png": {
+      "source": "docs/assets/brand/abastevo-logo.svg",
+      "dimensions": "1200x630",
+      "format": "image/png",
+      "budget_kib": 300,
+      "purpose": "Versioned social link preview image (Open Graph & Twitter Summary Large Image)"
+    }
+  }
+}

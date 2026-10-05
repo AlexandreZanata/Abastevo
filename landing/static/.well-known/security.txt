@@ -1,0 +1,5 @@
+Contact: https://github.com/AlexandreZanata/abastevo/security/advisories
+Preferred-Languages: pt-BR, en
+Canonical: {{CANONICAL_ORIGIN}}/.well-known/security.txt
+Policy: https://github.com/AlexandreZanata/abastevo/blob/main/docs/security/SECURITY_PRIVACY.md
+Expires: 2027-10-05T00:00:00.000Z
