@@ -955,6 +955,79 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /v1/profile/claims/{id}/proof:
+    post:
+      summary: Submit private signed proof bytes (signed).
+      operationId: submitClaimProof
+      tags: [directory]
+      security: []
+      description: >
+        Private proof intake (P30-T04, B-BR-P05/P08): base64 PDF bytes
+        against the claim's single active declaration, validated
+        (magic, 5 MB cap, no encrypted/active content, no key
+        material) and hash-bound immutably. Identical redelivery
+        dedups; stale declarations, foreign claims and missing object
+        storage (503) never approve. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, declaration_id, filename, content_type, kind, content_base64]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                declaration_id:
+                  type: string
+                  format: uuid
+                filename:
+                  type: string
+                content_type:
+                  type: string
+                kind:
+                  type: string
+                  enum: [authorization, mandate, scan]
+                content_base64:
+                  type: string
+      responses:
+        '200':
+          description: Idempotent redelivery of the existing proof.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimProof'
+        '201':
+          description: Proof accepted and hash-bound.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimProof'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/profile/claims/{id}/cancel:
     post:
       summary: Cancel one owned open claim.
@@ -2881,6 +2954,22 @@ components:
         expires_at:
           type: string
           format: date-time
+    ClaimProof:
+      description: >
+        Private proof receipt (P30-T04): id, lifecycle state and
+        expiry only — never bytes, keys or personal data.
+      type: object
+      required: [id, status, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [received, verified, rejected, expired, deleted]
+        expires_at:
+          type: string
+          format: date-time
           example: '2026-09-28T00:05:00Z'
     PublicJWK:
       description: P-256 public key; private material never crosses the wire.
@@ -3868,6 +3957,12 @@ components:
       headers:
         Retry-After:
           schema: {type: integer, example: 60}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unavailable:
+      description: Dependency (e.g. proof object storage) not configured; retry later, never an approval.
       content:
         application/json:
           schema:

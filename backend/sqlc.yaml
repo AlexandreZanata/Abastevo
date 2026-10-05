@@ -165,6 +165,7 @@ sql:
       - db/migrations/000002_directory.sql
       - db/migrations/000036_station_profiles.sql
       - db/migrations/000037_profile_claims.sql
+      - db/migrations/000038_claim_proofs.sql
     gen:
       go:
         package: stationprofile

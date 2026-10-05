@@ -438,6 +438,22 @@ func run() error {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
 	}.RegisterRoutes(router)
+	// Private proof intake (P30-T04). Object storage is unprovisioned:
+	// Bytes stays nil so intake refuses with 503 instead of any
+	// approval fallback. Wire it with the storage scope when that
+	// lands; nothing else changes.
+	profileadapters.ProofHandler{
+		Ports: profileapplication.ProofPorts{
+			Proofs: profileadapters.ProofStore{Q: dbstationprofile.New(pool.Underlying())},
+			Claims: profileadapters.ClaimStore{Q: dbstationprofile.New(pool.Underlying())},
+			Clock:  time.Now,
+			NewID:  newUUID,
+			Bytes:  nil,
+		},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+	}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// checkAccountGate refuses social writes from contributors bound

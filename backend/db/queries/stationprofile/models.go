@@ -22,6 +22,20 @@ type ClaimDeclaration struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type ClaimProof struct {
+	ID            pgtype.UUID        `json:"id"`
+	ClaimID       pgtype.UUID        `json:"claim_id"`
+	DeclarationID pgtype.UUID        `json:"declaration_id"`
+	Sha256        string             `json:"sha256"`
+	BytesSize     int64              `json:"bytes_size"`
+	Format        string             `json:"format"`
+	EvidenceKind  string             `json:"evidence_kind"`
+	ObjectKey     string             `json:"object_key"`
+	Status        string             `json:"status"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`
