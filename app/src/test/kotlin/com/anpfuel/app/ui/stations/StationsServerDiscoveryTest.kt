@@ -2,10 +2,13 @@ package com.anpfuel.app.ui.stations
 
 import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
+import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.application.usecase.directory.ServerStationDetailOutcome
 import com.anpfuel.application.usecase.directory.ServerStationsOutcome
+import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
@@ -25,6 +28,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -52,6 +56,7 @@ class StationsServerDiscoveryTest {
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
     private val getServerStationsUseCase = mockk<GetServerStationsUseCase>()
     private val getServerStationDetailUseCase = mockk<GetServerStationDetailUseCase>()
+    private val getNearbyServerStationsUseCase = mockk<GetNearbyServerStationsUseCase>()
 
     private val stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26"
     private val station = ServerStation.create(
@@ -83,6 +88,7 @@ class StationsServerDiscoveryTest {
             savedStateHandle = SavedStateHandle(),
             getServerStationsUseCase = getServerStationsUseCase,
             getServerStationDetailUseCase = getServerStationDetailUseCase,
+            getNearbyServerStationsUseCase = getNearbyServerStationsUseCase,
         )
     }
 
@@ -128,6 +134,7 @@ class StationsServerDiscoveryTest {
             savedStateHandle = SavedStateHandle(),
             getServerStationsUseCase = getServerStationsUseCase,
             getServerStationDetailUseCase = getServerStationDetailUseCase,
+            getNearbyServerStationsUseCase = getNearbyServerStationsUseCase,
         )
         freshViewModel.loadServerStations()
         advanceUntilIdle()
@@ -164,8 +171,7 @@ class StationsServerDiscoveryTest {
     }
 
     @Test
-    fun `navigating to unknown-location station emits nothing`() = runTest(dispatcher) {
-        val unknown = ServerStation.create(
+    fun `navigating to unknown-location station emits nothing`() = runTest(dispatcher) {        val unknown = ServerStation.create(
             stationId = "e7d85d34-74ec-5d35-b3f6-519dc34ce370",
             displayName = "[P34-TEST] Posto Gama",
             locationQuality = StationLocationQuality.UNKNOWN,
@@ -184,5 +190,54 @@ class StationsServerDiscoveryTest {
         job.cancel()
 
         assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun `nearby without permission requests it and loads nothing`() = runTest(dispatcher) {
+        every { locationPermissionHandler.hasLocationPermission() } returns false
+        val requests = mutableListOf<Unit>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.locationPermissionRequest.collect { requests += it }
+        }
+
+        viewModel.loadNearbyServerStations()
+        advanceUntilIdle()
+
+        assertEquals(1, requests.size)
+        assertTrue(viewModel.uiState.value.nearbyStations.isEmpty())
+    }
+
+    @Test
+    fun `nearby with fix loads transient results without caching`() = runTest(dispatcher) {
+        every { locationPermissionHandler.hasLocationPermission() } returns true
+        coEvery { locationPermissionHandler.getCurrentLocation() } returns
+            com.anpfuel.domain.valueobject.DeviceLocation.of(-23.55, -46.63)
+        coEvery { getNearbyServerStationsUseCase(-23.55, -46.63, 2000, 20) } returns
+            NearbyServerStationsOutcome.Fresh(listOf(NearbyServerStation(station, 120.5)))
+
+        viewModel.loadNearbyServerStations()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.nearbyStations.size)
+        assertEquals(120.5, viewModel.uiState.value.nearbyStations.first().distanceMeters)
+        assertNull(viewModel.uiState.value.serverError)
+    }
+
+    @Test
+    fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {
+        coEvery { getServerStationsUseCase(20, null) } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
+        coEvery { getServerStationDetailUseCase(stationId) } returns
+            ServerStationDetailOutcome.Fresh(station)
+
+        viewModel.loadServerStations()
+        advanceUntilIdle()
+        viewModel.onServerStationSelected(stationId)
+        advanceUntilIdle()
+        viewModel.refreshServerStations()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.serverStations.size)
+        assertEquals(stationId, viewModel.uiState.value.selectedServerStation?.stationId)
     }
 }

@@ -103,6 +103,36 @@ class GetServerStationsUseCaseTest {
         }
     }
 
+    @Test
+    fun `nearby success returns fresh without touching cache`() = runTest {
+        every { flag.isEnabled() } returns true
+        val nearby = com.anpfuel.domain.discovery.NearbyServerStation(station(), 120.5)
+        val nearbyUseCase = GetNearbyServerStationsUseCase(flag, gateway)
+        coEvery { gateway.nearby(-23.55, -46.63, 2000, 20) } returns listOf(nearby)
+
+        val outcome = nearbyUseCase(-23.55, -46.63)
+
+        assertInstanceOf(NearbyServerStationsOutcome.Fresh::class.java, outcome)
+    }
+
+    @Test
+    fun `nearby failure is unavailable and disabled never calls network`() = runTest {
+        every { flag.isEnabled() } returns true
+        val nearbyUseCase = GetNearbyServerStationsUseCase(flag, gateway)
+        coEvery { gateway.nearby(any(), any(), any(), any()) } throws IOException("down")
+
+        assertInstanceOf(
+            NearbyServerStationsOutcome.Unavailable::class.java,
+            nearbyUseCase(-23.55, -46.63),
+        )
+
+        every { flag.isEnabled() } returns false
+        assertInstanceOf(
+            NearbyServerStationsOutcome.Disabled::class.java,
+            nearbyUseCase(-23.55, -46.63),
+        )
+    }
+
     private class FakeServerStationCache : ServerStationCache {
         private var page: ServerStationPage? = null
         private val details = mutableMapOf<String, ServerStation>()

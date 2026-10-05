@@ -70,3 +70,37 @@ class GetServerStationDetailUseCase(
         }
     }
 }
+
+/**
+ * P35-T03 bounded nearby lookup.
+ *
+ * Explicit-permission transient GPS only: coordinates are passed in by the
+ * caller (which owns the permission flow), never persisted, logged or
+ * cached here. Bounds (lat/lon/radius/limit) are refused before any
+ * network call. No last-known replay: a failed nearby lookup reports
+ * `Unavailable` honestly instead of a stale position.
+ */
+sealed interface NearbyServerStationsOutcome {
+    data object Disabled : NearbyServerStationsOutcome
+    data class Fresh(val stations: List<com.anpfuel.domain.discovery.NearbyServerStation>) : NearbyServerStationsOutcome
+    data class Unavailable(val cause: Exception) : NearbyServerStationsOutcome
+}
+
+class GetNearbyServerStationsUseCase(
+    private val flagProvider: CommunityReadsFlagProvider,
+    private val gateway: ServerStationGateway,
+) {
+    suspend operator fun invoke(
+        lat: Double,
+        lon: Double,
+        radiusMeters: Int = 2000,
+        limit: Int = 20,
+    ): NearbyServerStationsOutcome {
+        if (!flagProvider.isEnabled()) return NearbyServerStationsOutcome.Disabled
+        return try {
+            NearbyServerStationsOutcome.Fresh(gateway.nearby(lat, lon, radiusMeters, limit))
+        } catch (error: Exception) {
+            NearbyServerStationsOutcome.Unavailable(error)
+        }
+    }
+}

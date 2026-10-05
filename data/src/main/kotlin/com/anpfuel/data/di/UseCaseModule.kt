@@ -14,6 +14,7 @@ import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.SubmitCommunityVoteUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
 import com.anpfuel.application.usecase.contribution.CancelOwnedContributionUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
@@ -495,6 +496,17 @@ object UseCaseModule {
         gateway = gateway,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetNearbyServerStationsUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+    ): GetNearbyServerStationsUseCase =
+        GetNearbyServerStationsUseCase(
+            flagProvider = flagProvider,
+            gateway = gateway,
+        )
 
     @Provides
     @Singleton

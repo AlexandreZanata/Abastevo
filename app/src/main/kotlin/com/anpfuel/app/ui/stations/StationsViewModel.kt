@@ -9,12 +9,15 @@ import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
+import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.application.usecase.directory.ServerStationDetailOutcome
 import com.anpfuel.application.usecase.directory.ServerStationsOutcome
-import com.anpfuel.application.usecase.station.BuildStationNavigationQueryUseCase
+import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
+import com.anpfuel.application.usecase.station.BuildStationNavigationQueryUseCase
 import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCase
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
@@ -75,6 +78,12 @@ data class StationsUiState(
     val serverError: String? = null,
     val selectedServerStation: ServerStation? = null,
     val serverDetailFromCache: Boolean = false,
+    /**
+     * P35-T03 — bounded nearby lookup (explicit permission, transient
+     * GPS, never cached) and its loading state.
+     */
+    val nearbyStations: List<NearbyServerStation> = emptyList(),
+    val isNearbyLoading: Boolean = false,
 )
 
 sealed interface StationsNavigationEffect {
@@ -102,6 +111,7 @@ class StationsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val getServerStationsUseCase: GetServerStationsUseCase? = null,
     private val getServerStationDetailUseCase: GetServerStationDetailUseCase? = null,
+    private val getNearbyServerStationsUseCase: GetNearbyServerStationsUseCase? = null,
 ) : ViewModel() {
 
     private val savedStateHandleRef: SavedStateHandle = savedStateHandle
@@ -304,10 +314,16 @@ class StationsViewModel @Inject constructor(
      * journeys keep working. Transport failure keeps the last good list
      * (`serverFromCache`) instead of an empty error; a first-load failure
      * reports an honest error without inventing stations.
+     *
+     * P35-T03 — the in-flight load is cancellable: a restart/refresh
+     * cancels the previous request so only the latest result lands.
      */
+    private var serverLoadJob: kotlinx.coroutines.Job? = null
+
     fun loadServerStations(limit: Int = 20) {
         val useCase = getServerStationsUseCase ?: return
-        viewModelScope.launch {
+        serverLoadJob?.cancel()
+        serverLoadJob = viewModelScope.launch {
             _uiState.update { it.copy(isServerLoading = true, serverError = null) }
             when (val outcome = useCase(limit, null)) {
                 is ServerStationsOutcome.Disabled ->
@@ -339,6 +355,19 @@ class StationsViewModel @Inject constructor(
                         )
                     }
             }
+        }
+    }
+
+    /**
+     * P35-T03 — refreshes the server page without losing the selected
+     * detail when it is still present; a failed refresh keeps cached
+     * stations exactly like the legacy P20-T02 recovery.
+     */
+    fun refreshServerStations(limit: Int = 20) {
+        val selected = _uiState.value.selectedServerStation?.stationId
+        loadServerStations(limit)
+        if (selected != null) {
+            onServerStationSelected(selected)
         }
     }
 
@@ -398,6 +427,54 @@ class StationsViewModel @Inject constructor(
             _navigationEffects.emit(
                 StationsNavigationEffect.LaunchMaps("$lat,$lon"),
             )
+        }
+    }
+
+    /**
+     * P35-T03 — bounded nearby lookup with explicit permission.
+     * GPS denied without a prior grant requests permission and loads
+     * nothing; manual city browsing keeps working. A granted fix runs
+     * the transient lookup (never cached); no fix or transport failure
+     * reports an honest error without stale positions.
+     */
+    fun loadNearbyServerStations(radiusMeters: Int = 2000, limit: Int = 20) {
+        val useCase = getNearbyServerStationsUseCase ?: return
+        if (!locationPermissionHandler.hasLocationPermission()) {
+            _locationPermissionRequest.tryEmit(Unit)
+            return
+        }
+        viewModelScope.launch {
+            val fix = locationPermissionHandler.getCurrentLocation()
+            if (fix == null) {
+                _uiState.update {
+                    it.copy(
+                        isNearbyLoading = false,
+                        serverError = "location unavailable",
+                    )
+                }
+                return@launch
+            }
+            _uiState.update { it.copy(isNearbyLoading = true, serverError = null) }
+            when (val outcome = useCase(fix.latitude, fix.longitude, radiusMeters, limit)) {
+                is NearbyServerStationsOutcome.Disabled ->
+                    _uiState.update { it.copy(isNearbyLoading = false) }
+                is NearbyServerStationsOutcome.Fresh ->
+                    _uiState.update {
+                        it.copy(
+                            isNearbyLoading = false,
+                            nearbyStations = outcome.stations,
+                            serverError = null,
+                        )
+                    }
+                is NearbyServerStationsOutcome.Unavailable ->
+                    _uiState.update {
+                        it.copy(
+                            isNearbyLoading = false,
+                            serverError = outcome.cause.message
+                                ?: outcome.cause.javaClass.simpleName,
+                        )
+                    }
+            }
         }
     }
 
