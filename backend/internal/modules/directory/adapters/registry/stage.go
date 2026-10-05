@@ -249,6 +249,13 @@ func (s *PGStore) SetAssertionStation(ctx context.Context, assertionID, stationI
 	return err
 }
 
+// WithRun attaches the staging run id carried out-of-band from the
+// assertion columns.
+func (a Assertion) WithRun(runID string) Assertion {
+	a.runID = runID
+	return a
+}
+
 func textOrNull(value string) pgtype.Text {
 	if value == "" {
 		return pgtype.Text{}
