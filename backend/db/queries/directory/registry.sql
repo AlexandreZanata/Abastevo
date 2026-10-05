@@ -77,3 +77,8 @@ FROM registry_source_runs
 WHERE source = @source AND state = 'complete'
 ORDER BY finished_at DESC NULLS LAST, started_at DESC
 LIMIT 1;
+
+-- name: SetAssertionSuperseded :execrows
+UPDATE registry_assertions
+SET superseded_by = @superseded_by
+WHERE id = @id AND superseded_by IS NULL;

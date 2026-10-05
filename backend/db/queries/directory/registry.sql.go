@@ -286,6 +286,25 @@ func (q *Queries) SetAssertionStation(ctx context.Context, arg SetAssertionStati
 	return result.RowsAffected(), nil
 }
 
+const setAssertionSuperseded = `-- name: SetAssertionSuperseded :execrows
+UPDATE registry_assertions
+SET superseded_by = $1
+WHERE id = $2 AND superseded_by IS NULL
+`
+
+type SetAssertionSupersededParams struct {
+	SupersededBy pgtype.UUID `json:"superseded_by"`
+	ID           pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetAssertionSuperseded(ctx context.Context, arg SetAssertionSupersededParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setAssertionSuperseded, arg.SupersededBy, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
