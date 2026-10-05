@@ -1,0 +1,90 @@
+{
+  "id": "p34-staging-catalog",
+  "version": 1,
+  "provenance": "P34-T03 bounded synthetic staging catalog; reuses the proven local alfa/beta/gama pattern, no national ingestion, no VPS seeding without write scope",
+  "ownership_mark": "[P34-TEST]",
+  "seed_mechanism": "resolve-cnpj + record-location/project-location per test database (existing repository); official prices only via validated ANP import; no invented admin API",
+  "cleanup_scope": "owned station UUIDs only (per-run disposable database locally; owned-UUID delete when staging writes are authorized); global reset forbidden",
+  "no_admin_api": true,
+  "no_global_reset": true,
+  "no_private_photos": true,
+  "stations": [
+    {
+      "key": "alfa",
+      "display_name": "[P34-TEST] Posto Alfa",
+      "cnpj_normalized": "04218406000104",
+      "municipality_code": "3550308",
+      "location_quality": "reviewed",
+      "lat": -23.55,
+      "lon": -46.633,
+      "has_coordinates": true
+    },
+    {
+      "key": "beta",
+      "display_name": "[P34-TEST] Posto Beta",
+      "cnpj_normalized": "11222333000181",
+      "municipality_code": "3550308",
+      "location_quality": "reviewed",
+      "lat": -23.555,
+      "lon": -46.64,
+      "has_coordinates": true
+    },
+    {
+      "key": "gama",
+      "display_name": "[P34-TEST] Posto Gama",
+      "cnpj_normalized": "12ABC34501DE35",
+      "municipality_code": "3550308",
+      "location_quality": "unknown",
+      "lat": 0,
+      "lon": 0,
+      "has_coordinates": false
+    }
+  ],
+  "cases": [
+    {
+      "id": "p34-list",
+      "kind": "list",
+      "golden_vector": "station-list-valid.json"
+    },
+    {
+      "id": "p34-nearby",
+      "kind": "nearby",
+      "golden_vector": "nearby-valid.json"
+    },
+    {
+      "id": "p34-detail",
+      "kind": "detail",
+      "golden_vector": "station-valid.json"
+    },
+    {
+      "id": "p34-empty-price",
+      "kind": "empty-price",
+      "golden_vector": "price-groups-valid.json"
+    },
+    {
+      "id": "p34-community-valid",
+      "kind": "community-valid",
+      "golden_vector": "community-price-valid.json"
+    },
+    {
+      "id": "p34-disputed",
+      "kind": "disputed",
+      "golden_vector": "community-price-disputed-valid.json"
+    },
+    {
+      "id": "p34-stale",
+      "kind": "stale",
+      "golden_vector": ""
+    },
+    {
+      "id": "p34-invalid-lat",
+      "kind": "invalid-lat",
+      "golden_vector": ""
+    },
+    {
+      "id": "p34-unknown-uuid",
+      "kind": "unknown-uuid",
+      "golden_vector": ""
+    }
+  ]
+}
