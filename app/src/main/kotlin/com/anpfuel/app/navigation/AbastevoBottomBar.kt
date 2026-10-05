@@ -1,5 +1,6 @@
 package com.anpfuel.app.navigation
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddAPhoto
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.theme.AbastevoActionBlue
 
@@ -53,8 +55,10 @@ fun AbastevoBottomBar(
     onNavigateToTab: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Compact bar (M3 default is 80.dp): trims the space above the icons
+    // while keeping labels visible and 48.dp touch targets intact.
     NavigationBar(
-        modifier = modifier,
+        modifier = modifier.height(72.dp),
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {

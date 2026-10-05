@@ -48,7 +48,6 @@ import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
 import com.anpfuel.app.navigation.Routes
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
@@ -141,7 +140,6 @@ internal fun HomeContent(
                 },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Column(
             modifier = Modifier
