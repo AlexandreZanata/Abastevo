@@ -176,6 +176,11 @@ Task issues: [T01A #118](https://github.com/AlexandreZanata/abastevo/issues/118)
 [T03A supported slice #120](https://github.com/AlexandreZanata/abastevo/issues/120),
 [T04A #121](https://github.com/AlexandreZanata/abastevo/issues/121), milestone 21.
 All remain open until actual guarded integration; no historical phase gate closed.
+Tested source behavior committed as `359f848` and pushed. Cumulative
+[PR #122](https://github.com/AlexandreZanata/abastevo/pull/122) is OPEN/DRAFT;
+it is attached to this task. No required remote check is asserted, and no
+finish, merge, issue closure or wiki publication occurred. Subsequent
+record-only documentation does not change either tested APK/source behavior.
 Main fetched again at `938fc1f`; strict protection, enforce-admins and required
 `Quick verification` reverified. The cumulative lineage includes P34–P38,
 catalog P25–P27/P29 and profile P30–P33; no duplicate merge of those ancestors.
