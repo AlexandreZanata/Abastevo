@@ -752,6 +752,119 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+    post:
+      summary: Edit permitted business fields (signed, scoped).
+      operationId: editBusinessProfile
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated scoped edit (P31-T04, B-BR-P10/P11):
+        only the current approved `profile.edit` scope, only frozen
+        policy fields, optimistic revision match, live account and
+        operator rechecked server-side. Regulatory identity, prices,
+        locations and community facts are unreachable here. Always
+        `no-store`.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed profile.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, expected_revision, fields]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                expected_revision:
+                  type: integer
+                  minimum: 1
+                fields:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Updated projection with bumped revision.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/stations/{station_id}/profile/replies:
+    post:
+      summary: Post an official business reply (signed, scoped).
+      operationId: postOfficialReply
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated scoped reply (P31-T04, B-BR-P11/P12):
+        only the current approved `reply.official` scope with live
+        account/operator rechecked at publication; text obeys the
+        existing 280-scalar feedback rules and the grant id stamps
+        only after the comment authorship check. No vote weight,
+        ranking or criticism suppression follows. Always `no-store`.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed profile.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, product, text]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                product:
+                  type: string
+                text:
+                  type: string
+      responses:
+        '201':
+          description: Official reply recorded with business attribution.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment_id]
+                properties:
+                  comment_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/stations/{station_id}/claims:
     post:
       summary: Open a private representation claim (signed).
@@ -3523,6 +3636,14 @@ components:
           type: string
           format: date-time
           example: 2026-10-01T00:00:00Z
+        business_station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Server-verified official-reply station (P31-T04); null for personal voices.
+        business_grant_id:
+          type: [string, 'null']
+          format: uuid
+          description: Grant verified at publication (P31-T04); null for personal voices.
     FeedbackTally:
       description: >
         Exact per-revision vote tally (P14-T04, B-BR-F05/F06): counts

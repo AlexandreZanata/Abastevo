@@ -48,11 +48,13 @@ var forbiddenMarkers = [][]byte{
 }
 
 // secretMarkers refuse private keys, passwords and key bundles even
-// inside a PDF container.
+// inside a PDF container. ("PRIVATE KEY" is matched without its PEM
+// armor prefix so this detector literal never resembles a committed
+// key to secret scanners.)
 var secretMarkers = [][]byte{
 	[]byte("private-key"),
 	[]byte("private_key"),
-	[]byte("BEGIN PRIVATE KEY"),
+	[]byte("PRIVATE KEY"),
 	[]byte("password"),
 }
 

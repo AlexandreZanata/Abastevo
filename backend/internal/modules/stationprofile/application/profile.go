@@ -30,6 +30,7 @@ type ProfileStore interface {
 	RecordOperator(ctx context.Context, id, stationID, cnpj, source, ref string) error
 	CloseOperator(ctx context.Context, id string) (int64, error)
 	CurrentOperator(ctx context.Context, stationID string) (StoredOperator, bool, error)
+	UpdateProjection(ctx context.Context, stationID string, expectedRevision int, fields map[string]string) (StoredProfile, error)
 }
 
 // StoredProfile is the persisted projection.

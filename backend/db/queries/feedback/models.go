@@ -72,6 +72,33 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type ClaimDecision struct {
+	ID            pgtype.UUID        `json:"id"`
+	ClaimID       pgtype.UUID        `json:"claim_id"`
+	Reviewer      string             `json:"reviewer"`
+	Decision      string             `json:"decision"`
+	Reason        string             `json:"reason"`
+	PolicyVersion string             `json:"policy_version"`
+	ProofVersion  int32              `json:"proof_version"`
+	OperatorCnpj  string             `json:"operator_cnpj"`
+	Scopes        string             `json:"scopes"`
+	DecidedAt     pgtype.Timestamptz `json:"decided_at"`
+}
+
+type ClaimDeclaration struct {
+	ID             pgtype.UUID        `json:"id"`
+	ClaimID        pgtype.UUID        `json:"claim_id"`
+	Version        int32              `json:"version"`
+	NonceDigest    string             `json:"nonce_digest"`
+	ExpectedDigest string             `json:"expected_digest"`
+	Declaration    string             `json:"declaration"`
+	State          string             `json:"state"`
+	Attempts       int32              `json:"attempts"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt     pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`
@@ -107,18 +134,20 @@ type DirectoryStation struct {
 }
 
 type FeedbackComment struct {
-	ID         pgtype.UUID        `json:"id"`
-	AccountID  pgtype.UUID        `json:"account_id"`
-	StationID  pgtype.UUID        `json:"station_id"`
-	Product    string             `json:"product"`
-	ParentID   pgtype.UUID        `json:"parent_id"`
-	Depth      int16              `json:"depth"`
-	Text       string             `json:"text"`
-	Revision   int32              `json:"revision"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
-	Visibility string             `json:"visibility"`
+	ID                pgtype.UUID        `json:"id"`
+	AccountID         pgtype.UUID        `json:"account_id"`
+	StationID         pgtype.UUID        `json:"station_id"`
+	Product           string             `json:"product"`
+	ParentID          pgtype.UUID        `json:"parent_id"`
+	Depth             int16              `json:"depth"`
+	Text              string             `json:"text"`
+	Revision          int32              `json:"revision"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	Visibility        string             `json:"visibility"`
+	BusinessStationID pgtype.UUID        `json:"business_station_id"`
+	BusinessGrantID   pgtype.UUID        `json:"business_grant_id"`
 }
 
 type FeedbackRating struct {
@@ -156,4 +185,52 @@ type FeedbackVote struct {
 	Choice          string             `json:"choice"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ProfileClaim struct {
+	ID             pgtype.UUID        `json:"id"`
+	AccountID      pgtype.UUID        `json:"account_id"`
+	StationID      pgtype.UUID        `json:"station_id"`
+	OperatorCnpj   string             `json:"operator_cnpj"`
+	OperatorSource string             `json:"operator_source"`
+	Role           string             `json:"role"`
+	Scopes         string             `json:"scopes"`
+	PolicyVersion  string             `json:"policy_version"`
+	State          string             `json:"state"`
+	ClientKey      string             `json:"client_key"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type RepresentationGrant struct {
+	ID           pgtype.UUID        `json:"id"`
+	AccountID    pgtype.UUID        `json:"account_id"`
+	StationID    pgtype.UUID        `json:"station_id"`
+	OperatorCnpj string             `json:"operator_cnpj"`
+	Role         string             `json:"role"`
+	Scopes       string             `json:"scopes"`
+	Version      int32              `json:"version"`
+	Status       string             `json:"status"`
+	ClaimID      pgtype.UUID        `json:"claim_id"`
+	DecisionID   pgtype.UUID        `json:"decision_id"`
+	ValidFrom    pgtype.Timestamptz `json:"valid_from"`
+	ValidTo      pgtype.Timestamptz `json:"valid_to"`
+}
+
+type StationOperatorRevision struct {
+	ID              pgtype.UUID        `json:"id"`
+	StationID       pgtype.UUID        `json:"station_id"`
+	Cnpj            string             `json:"cnpj"`
+	Source          string             `json:"source"`
+	SourceReference string             `json:"source_reference"`
+	ValidFrom       pgtype.Timestamptz `json:"valid_from"`
+	ValidTo         pgtype.Timestamptz `json:"valid_to"`
+}
+
+type StationProfile struct {
+	StationID     pgtype.UUID        `json:"station_id"`
+	PolicyVersion string             `json:"policy_version"`
+	Projection    []byte             `json:"projection"`
+	Revision      int32              `json:"revision"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }

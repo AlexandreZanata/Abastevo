@@ -42,6 +42,15 @@ func (f *fakeClaimStore) Claim(_ context.Context, id string) (ClaimRow, error) {
 	return row, nil
 }
 
+func (f *fakeClaimStore) setState(id, state string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if row, ok := f.claims[id]; ok {
+		row.State = state
+		f.claims[id] = row
+	}
+}
+
 func (f *fakeClaimStore) ClaimByKey(_ context.Context, accountID, clientKey string) (ClaimRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

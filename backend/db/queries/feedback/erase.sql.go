@@ -19,15 +19,30 @@ WHERE account_id = $1
 ORDER BY created_at, id
 `
 
-func (q *Queries) ListCommentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]FeedbackComment, error) {
+type ListCommentsByAccountRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	Depth      int16              `json:"depth"`
+	Text       string             `json:"text"`
+	Revision   int32              `json:"revision"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
+	Visibility string             `json:"visibility"`
+}
+
+func (q *Queries) ListCommentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]ListCommentsByAccountRow, error) {
 	rows, err := q.db.Query(ctx, listCommentsByAccount, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FeedbackComment
+	var items []ListCommentsByAccountRow
 	for rows.Next() {
-		var i FeedbackComment
+		var i ListCommentsByAccountRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.AccountID,

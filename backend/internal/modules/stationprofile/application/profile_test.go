@@ -69,6 +69,10 @@ func (f *fakeProfileStore) CurrentOperator(_ context.Context, stationID string) 
 	return op, ok, nil
 }
 
+func (f *fakeProfileStore) UpdateProjection(_ context.Context, stationID string, expectedRevision int, fields map[string]string) (StoredProfile, error) {
+	return StoredProfile{PolicyVersion: "profile-v1", Revision: expectedRevision + 1, Business: fields}, nil
+}
+
 func testReader(display string) StationReader {
 	lat, lon := -23.55, -46.63
 	return func(context.Context, string) (string, string, *float64, *float64, error) {

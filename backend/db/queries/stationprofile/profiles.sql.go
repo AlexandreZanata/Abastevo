@@ -132,3 +132,29 @@ func (q *Queries) RecordOperatorRevision(ctx context.Context, arg RecordOperator
 	)
 	return i, err
 }
+
+const updateProfileProjection = `-- name: UpdateProfileProjection :one
+UPDATE station_profiles
+SET projection = $1, revision = revision + 1, updated_at = now()
+WHERE station_id = $2 AND revision = $3
+RETURNING station_id, policy_version, projection, revision, updated_at
+`
+
+type UpdateProfileProjectionParams struct {
+	Projection       []byte      `json:"projection"`
+	StationID        pgtype.UUID `json:"station_id"`
+	ExpectedRevision int32       `json:"expected_revision"`
+}
+
+func (q *Queries) UpdateProfileProjection(ctx context.Context, arg UpdateProfileProjectionParams) (StationProfile, error) {
+	row := q.db.QueryRow(ctx, updateProfileProjection, arg.Projection, arg.StationID, arg.ExpectedRevision)
+	var i StationProfile
+	err := row.Scan(
+		&i.StationID,
+		&i.PolicyVersion,
+		&i.Projection,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

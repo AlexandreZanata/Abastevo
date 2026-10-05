@@ -37,6 +37,10 @@ func (f *fakeProfileStore) CurrentOperator(_ context.Context, stationID string) 
 	return op, ok, nil
 }
 
+func (f *fakeProfileStore) UpdateProjection(_ context.Context, _ string, expectedRevision int, fields map[string]string) (application.StoredProfile, error) {
+	return application.StoredProfile{PolicyVersion: "profile-v1", Revision: expectedRevision + 1, Business: fields}, nil
+}
+
 func serveProfile(store *fakeProfileStore) (string, int) {
 	handler := Handler{
 		Store: store,

@@ -31,3 +31,9 @@ FROM station_operator_revisions
 WHERE station_id = @station_id AND valid_to IS NULL
 ORDER BY valid_from DESC
 LIMIT 1;
+
+-- name: UpdateProfileProjection :one
+UPDATE station_profiles
+SET projection = @projection, revision = revision + 1, updated_at = now()
+WHERE station_id = @station_id AND revision = @expected_revision
+RETURNING station_id, policy_version, projection, revision, updated_at;

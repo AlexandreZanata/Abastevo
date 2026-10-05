@@ -106,6 +106,31 @@ func (s Store) CurrentOperator(ctx context.Context, stationID string) (applicati
 	}, true, nil
 }
 
+func (s Store) UpdateProjection(ctx context.Context, stationID string, expectedRevision int, fields map[string]string) (application.StoredProfile, error) {
+	uid, err := mustUUID(stationID)
+	if err != nil {
+		return application.StoredProfile{}, err
+	}
+	projection, err := json.Marshal(fields)
+	if err != nil {
+		return application.StoredProfile{}, err
+	}
+	row, err := s.Q.UpdateProfileProjection(ctx, stationprofile.UpdateProfileProjectionParams{
+		Projection: projection, StationID: uid, ExpectedRevision: int32(expectedRevision),
+	})
+	if err != nil {
+		if isNoRows(err) {
+			return application.StoredProfile{}, application.ErrManageVersion
+		}
+		return application.StoredProfile{}, err
+	}
+	business := map[string]string{}
+	_ = json.Unmarshal(row.Projection, &business)
+	return application.StoredProfile{
+		PolicyVersion: row.PolicyVersion, Revision: int(row.Revision), Business: business,
+	}, nil
+}
+
 func isNoRows(err error) bool {
 	return err != nil && (err == pgx.ErrNoRows || (len(err.Error()) >= 7 && err.Error()[:7] == "no rows"))
 }

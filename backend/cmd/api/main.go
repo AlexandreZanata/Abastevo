@@ -454,6 +454,49 @@ func run() error {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
 	}.RegisterRoutes(router)
+	// Scoped business management (P31-T04). Same composition rule:
+	// grant/operator checks, feedback reply submission and business
+	// attribution arrive as closures so modules never cross-read.
+	// Every privilege enforces server-side before any app button.
+	profileManageStore := profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())}
+	profileManagePorts := func(r *http.Request) profileapplication.ManagePorts {
+		_ = r
+		return profileapplication.ManagePorts{
+			Grants:   profileadapters.ReviewDecisions{Pool: pool.Underlying()},
+			Profiles: profileManageStore,
+			OperatorOf: func(ctx context.Context, stationID string) (string, bool, error) {
+				operator, found, err := profileManageStore.CurrentOperator(ctx, stationID)
+				if err != nil || !found {
+					return "", false, err
+				}
+				return operator.CNPJ, true, nil
+			},
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				acc, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return acc.Active(), nil
+			},
+			SubmitReply: func(ctx context.Context, accountID, stationID, product, text string) (string, error) {
+				stored, err := feedbackService.SubmitComment(ctx, accountID, stationID, product, text)
+				if err != nil {
+					return "", err
+				}
+				return stored.ID, nil
+			},
+			Attribute: func(ctx context.Context, commentID, accountID, stationID, grantID string) error {
+				return feedbackService.AttributeBusinessComment(ctx, accountID, commentID, stationID, grantID)
+			},
+		}
+	}
+	profileadapters.ManageHandler{
+		EditPorts:  profileManagePorts,
+		ReplyPorts: profileManagePorts,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+	}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// checkAccountGate refuses social writes from contributors bound

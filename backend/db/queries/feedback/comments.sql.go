@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attributeCommentBusiness = `-- name: AttributeCommentBusiness :execrows
+UPDATE feedback_comments
+SET business_station_id = $1, business_grant_id = $2
+WHERE id = $3 AND account_id = $4 AND deleted_at IS NULL
+    AND business_station_id IS NULL AND business_grant_id IS NULL
+`
+
+type AttributeCommentBusinessParams struct {
+	BusinessStationID pgtype.UUID `json:"business_station_id"`
+	BusinessGrantID   pgtype.UUID `json:"business_grant_id"`
+	ID                pgtype.UUID `json:"id"`
+	AccountID         pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) AttributeCommentBusiness(ctx context.Context, arg AttributeCommentBusinessParams) (int64, error) {
+	result, err := q.db.Exec(ctx, attributeCommentBusiness,
+		arg.BusinessStationID,
+		arg.BusinessGrantID,
+		arg.ID,
+		arg.AccountID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const flagComment = `-- name: FlagComment :execrows
 UPDATE feedback_comments SET visibility = 'flagged'
 WHERE id = $1 AND visibility = 'visible' AND deleted_at IS NULL
@@ -27,25 +54,27 @@ func (q *Queries) FlagComment(ctx context.Context, id pgtype.UUID) (int64, error
 const getCommentView = `-- name: GetCommentView :one
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.id = $1 AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
 `
 
 type GetCommentViewRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	AccountID  pgtype.UUID        `json:"account_id"`
-	Alias      string             `json:"alias"`
-	StationID  pgtype.UUID        `json:"station_id"`
-	Product    string             `json:"product"`
-	ParentID   pgtype.UUID        `json:"parent_id"`
-	Depth      int16              `json:"depth"`
-	Text       string             `json:"text"`
-	Revision   int32              `json:"revision"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	Visibility string             `json:"visibility"`
+	ID                pgtype.UUID        `json:"id"`
+	AccountID         pgtype.UUID        `json:"account_id"`
+	Alias             string             `json:"alias"`
+	StationID         pgtype.UUID        `json:"station_id"`
+	Product           string             `json:"product"`
+	ParentID          pgtype.UUID        `json:"parent_id"`
+	Depth             int16              `json:"depth"`
+	Text              string             `json:"text"`
+	Revision          int32              `json:"revision"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Visibility        string             `json:"visibility"`
+	BusinessStationID pgtype.UUID        `json:"business_station_id"`
+	BusinessGrantID   pgtype.UUID        `json:"business_grant_id"`
 }
 
 func (q *Queries) GetCommentView(ctx context.Context, id pgtype.UUID) (GetCommentViewRow, error) {
@@ -64,6 +93,8 @@ func (q *Queries) GetCommentView(ctx context.Context, id pgtype.UUID) (GetCommen
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Visibility,
+		&i.BusinessStationID,
+		&i.BusinessGrantID,
 	)
 	return i, err
 }
@@ -104,7 +135,7 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) er
 const listReplies = `-- name: ListReplies :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.parent_id = $1 AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
@@ -121,18 +152,20 @@ type ListRepliesParams struct {
 }
 
 type ListRepliesRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	AccountID  pgtype.UUID        `json:"account_id"`
-	Alias      string             `json:"alias"`
-	StationID  pgtype.UUID        `json:"station_id"`
-	Product    string             `json:"product"`
-	ParentID   pgtype.UUID        `json:"parent_id"`
-	Depth      int16              `json:"depth"`
-	Text       string             `json:"text"`
-	Revision   int32              `json:"revision"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	Visibility string             `json:"visibility"`
+	ID                pgtype.UUID        `json:"id"`
+	AccountID         pgtype.UUID        `json:"account_id"`
+	Alias             string             `json:"alias"`
+	StationID         pgtype.UUID        `json:"station_id"`
+	Product           string             `json:"product"`
+	ParentID          pgtype.UUID        `json:"parent_id"`
+	Depth             int16              `json:"depth"`
+	Text              string             `json:"text"`
+	Revision          int32              `json:"revision"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Visibility        string             `json:"visibility"`
+	BusinessStationID pgtype.UUID        `json:"business_station_id"`
+	BusinessGrantID   pgtype.UUID        `json:"business_grant_id"`
 }
 
 func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]ListRepliesRow, error) {
@@ -162,6 +195,8 @@ func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]Lis
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Visibility,
+			&i.BusinessStationID,
+			&i.BusinessGrantID,
 		); err != nil {
 			return nil, err
 		}
@@ -176,7 +211,7 @@ func (q *Queries) ListReplies(ctx context.Context, arg ListRepliesParams) ([]Lis
 const listTopLevel = `-- name: ListTopLevel :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.station_id = $1 AND c.product = $2
@@ -195,18 +230,20 @@ type ListTopLevelParams struct {
 }
 
 type ListTopLevelRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	AccountID  pgtype.UUID        `json:"account_id"`
-	Alias      string             `json:"alias"`
-	StationID  pgtype.UUID        `json:"station_id"`
-	Product    string             `json:"product"`
-	ParentID   pgtype.UUID        `json:"parent_id"`
-	Depth      int16              `json:"depth"`
-	Text       string             `json:"text"`
-	Revision   int32              `json:"revision"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	Visibility string             `json:"visibility"`
+	ID                pgtype.UUID        `json:"id"`
+	AccountID         pgtype.UUID        `json:"account_id"`
+	Alias             string             `json:"alias"`
+	StationID         pgtype.UUID        `json:"station_id"`
+	Product           string             `json:"product"`
+	ParentID          pgtype.UUID        `json:"parent_id"`
+	Depth             int16              `json:"depth"`
+	Text              string             `json:"text"`
+	Revision          int32              `json:"revision"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Visibility        string             `json:"visibility"`
+	BusinessStationID pgtype.UUID        `json:"business_station_id"`
+	BusinessGrantID   pgtype.UUID        `json:"business_grant_id"`
 }
 
 func (q *Queries) ListTopLevel(ctx context.Context, arg ListTopLevelParams) ([]ListTopLevelRow, error) {
@@ -237,6 +274,8 @@ func (q *Queries) ListTopLevel(ctx context.Context, arg ListTopLevelParams) ([]L
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Visibility,
+			&i.BusinessStationID,
+			&i.BusinessGrantID,
 		); err != nil {
 			return nil, err
 		}
@@ -257,13 +296,28 @@ WHERE id = $1
 FOR UPDATE
 `
 
+type LockCommentRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	AccountID  pgtype.UUID        `json:"account_id"`
+	StationID  pgtype.UUID        `json:"station_id"`
+	Product    string             `json:"product"`
+	ParentID   pgtype.UUID        `json:"parent_id"`
+	Depth      int16              `json:"depth"`
+	Text       string             `json:"text"`
+	Revision   int32              `json:"revision"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt  pgtype.Timestamptz `json:"deleted_at"`
+	Visibility string             `json:"visibility"`
+}
+
 // Owned by feedback. Bounded plain-text comments and one-level
 // replies (P14-T03, B-BR-F03/F04). Edits compare-and-swap the
 // revision; deletes tombstone. Reads resolve the opaque account
 // alias and never expose addresses or provider subjects.
-func (q *Queries) LockComment(ctx context.Context, id pgtype.UUID) (FeedbackComment, error) {
+func (q *Queries) LockComment(ctx context.Context, id pgtype.UUID) (LockCommentRow, error) {
 	row := q.db.QueryRow(ctx, lockComment, id)
-	var i FeedbackComment
+	var i LockCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,

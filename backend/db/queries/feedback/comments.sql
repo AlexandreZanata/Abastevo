@@ -30,7 +30,7 @@ WHERE id = @id AND account_id = @account_id AND deleted_at IS NULL;
 -- name: GetCommentView :one
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.id = @id AND c.deleted_at IS NULL AND c.visibility <> 'hidden';
@@ -45,7 +45,7 @@ WHERE id = @id AND visibility = 'visible' AND deleted_at IS NULL;
 -- name: ListTopLevel :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.station_id = @station_id AND c.product = @product
@@ -57,10 +57,16 @@ LIMIT @page_limit;
 -- name: ListReplies :many
 SELECT c.id, c.account_id, a.alias, c.station_id, c.product,
     c.parent_id, c.depth, c.text, c.revision, c.created_at, c.updated_at,
-    c.visibility
+    c.visibility, c.business_station_id, c.business_grant_id
 FROM feedback_comments c
 JOIN accounts a ON a.id = c.account_id
 WHERE c.parent_id = @parent_id AND c.deleted_at IS NULL AND c.visibility <> 'hidden'
     AND (c.created_at, c.id) > (@after_at, @after_id::uuid)
 ORDER BY c.created_at, c.id
 LIMIT @page_limit;
+
+-- name: AttributeCommentBusiness :execrows
+UPDATE feedback_comments
+SET business_station_id = @business_station_id, business_grant_id = @business_grant_id
+WHERE id = @id AND account_id = @account_id AND deleted_at IS NULL
+    AND business_station_id IS NULL AND business_grant_id IS NULL;

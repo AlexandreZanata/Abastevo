@@ -22,6 +22,7 @@ type MemStore struct {
 	aliases  map[string]string
 	votes    map[string]domain.StoredVote
 	tallies  map[string]domain.VoteTally
+	business map[string]businessAttribution
 }
 
 // NewMemStore returns an empty memory store.
@@ -190,6 +191,34 @@ func (m *MemStore) DeleteComment(_ context.Context, id, accountID string, nowUni
 	return nil
 }
 
+func (m *MemStore) AttributeBusinessComment(_ context.Context, id, accountID, stationID, grantID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	rec, ok := m.comments[id]
+	if !ok || !rec.Live() {
+		return domain.ErrCommentNotFound
+	}
+	if rec.AccountID != accountID {
+		return domain.ErrNotAuthor
+	}
+	if stationID == "" || grantID == "" {
+		return domain.ErrTargetInvalid
+	}
+	if _, attributed := m.business[id]; attributed {
+		return domain.ErrCommentNotFound
+	}
+	if m.business == nil {
+		m.business = map[string]businessAttribution{}
+	}
+	m.business[id] = businessAttribution{stationID: stationID, grantID: grantID}
+	return nil
+}
+
+type businessAttribution struct {
+	stationID string
+	grantID   string
+}
+
 // ViewComment resolves one live comment with its author alias.
 func hiddenLocked(rec domain.StoredComment) bool {
 	return rec.Visibility == domain.VisibilityHidden
@@ -238,17 +267,20 @@ func (m *MemStore) viewLocked(rec domain.StoredComment) domain.CommentView {
 	if !ok {
 		alias = "alias-" + rec.AccountID
 	}
+	attribution := m.business[rec.ID]
 	return domain.CommentView{
-		ID:        rec.ID,
-		Alias:     alias,
-		StationID: rec.StationID,
-		Product:   rec.Product,
-		ParentID:  rec.ParentID,
-		Depth:     rec.Depth,
-		Text:      rec.Text,
-		Revision:  rec.Revision,
-		CreatedAt: rec.CreatedAt,
-		UpdatedAt: rec.UpdatedAt,
+		ID:                rec.ID,
+		Alias:             alias,
+		StationID:         rec.StationID,
+		Product:           rec.Product,
+		ParentID:          rec.ParentID,
+		Depth:             rec.Depth,
+		Text:              rec.Text,
+		Revision:          rec.Revision,
+		CreatedAt:         rec.CreatedAt,
+		UpdatedAt:         rec.UpdatedAt,
+		BusinessStationID: attribution.stationID,
+		BusinessGrantID:   attribution.grantID,
 	}
 }
 
