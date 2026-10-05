@@ -1,0 +1,9 @@
+{
+  "id": "registry-manifest",
+  "version": 1,
+  "provenance": "P25-T01 synthetic; owned [P25-TEST] markers; no real personal data; reconfirm live column contract at P25-T02 opening",
+  "files": [
+    {"path": "registry-csv-sample.csv", "kind": "csv", "rows": 10, "note": "numeric/alphanumeric/leading-zero CNPJs, duplicate row 5, unknown column COLUNA_DESCONHECIDA, invalid rows 6/10, unknown/suspended/cancelled statuses"},
+    {"path": "registry-api-sample.json", "kind": "api-page", "records": 3, "note": "reviewed + unknown + city-centroid locations; null authorization stays unknown"}
+  ]
+}
