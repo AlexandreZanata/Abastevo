@@ -84,7 +84,15 @@ class LocationPermissionHandler @Inject constructor(
         locationManager.allProviders
             .filterNot { it == LocationManager.PASSIVE_PROVIDER }
             .mapNotNull { provider ->
-                runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+                try {
+                    locationManager.getLastKnownLocation(provider)
+                } catch (_: SecurityException) {
+                    // Permission may be revoked after the caller check.
+                    null
+                } catch (_: IllegalArgumentException) {
+                    // A provider may disappear between enumeration and read.
+                    null
+                }
             }
 
     /**

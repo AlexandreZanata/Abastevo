@@ -136,6 +136,8 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    // Reuse the existing pinned runtime HTTP client for the explicit live anonymous smoke.
+    androidTestImplementation(libs.okhttp)
     androidTestImplementation(libs.kotlinx.coroutines.android)
     androidTestImplementation(libs.room.runtime)
     androidTestImplementation(libs.room.ktx)
