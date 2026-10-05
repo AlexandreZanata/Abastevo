@@ -1,6 +1,6 @@
 {
-  "base_sha": "59ea84557063b9fd9bd6c6ed4e25f46bb116deef",
-  "branch": "codex/phase-10-t09-pilot",
+  "base_sha": "4cd745e2779aa9f900edbee30d51097f66e951f4",
+  "branch": "codex/phase-10-t09-followup",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -80,5 +80,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P10-T09 OPEN / DEFINITION_ONLY / LAUNCH_BLOCKED_ON_G09"
+  "state": "P10-T09 INTEGRATED_AS_DEFINITION_SMOKE / LAUNCH_BLOCKED_ON_G09"
 }
