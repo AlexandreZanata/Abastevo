@@ -4,7 +4,7 @@ Planning revision: 2026-10-01; [commercial community plan](docs/planning/COMMERC
 
 ## How to execute
 
-Read [AGENTS](AGENTS.md), [FAST_EXECUTION](docs/planning/FAST_EXECUTION.md), current [PROGRESS](docs/planning/PROGRESS.md) and the selected task. [DELIVERY_WORKFLOW](docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](docs/planning/CI_PLAN.md) govern one issue/atomic commit per task and one milestone/branch/draft PR per phase. Helpers and required Quick verification are active; protection was reverified on 2026-09-30. Historical task labels remain as original estimates where not individually reconciled; Git and linked evidence determine actual state.
+Read [AGENTS](AGENTS.md), [FAST_EXECUTION](docs/planning/FAST_EXECUTION.md), current [PROGRESS](docs/planning/PROGRESS.md) and the selected task. [DELIVERY_WORKFLOW](docs/planning/DELIVERY_WORKFLOW.md) and [CI_PLAN](docs/planning/CI_PLAN.md) govern one issue/atomic commit per task and one milestone/isolated branch per phase, local checkpoints and one cumulative final project batch PR under ADR-018. Helpers and required Quick verification are active; protection was reverified on 2026-09-30. Historical task labels remain as original estimates where not individually reconciled; Git and linked evidence determine actual state.
 
 [Functional multiplatform delivery](docs/planning/MOBILE_DELIVERY_PLAN.md) is the new plan. **G09 is a deferred real-production RELEASE after G24-ANDROID-COMMERCIAL for Android/backend scope, not an app-entry blocker (ADR-016).** Historical full G18 remains unaccepted; iOS is archived until a new explicit user request. App work requires **G09-LOCAL**: the locally validated corrections integrated with current-head required CI. Free email-code/Google/Apple accounts and 280-character comments are user-confirmed; future functionality is NOT IMPLEMENTED merely by this plan. Existing Android regression remains allowed at any time.
 
@@ -412,6 +412,18 @@ These are implementation tasks for the already delivered plan; this documentatio
 - **Risks:** Required check disappears during transition; plan falsely labelled deployed.
 - **Rollback/Recovery:** Keep/restore prior checks until replacement works; never bypass main protection or publish untested release.
 - **Definition of done:** DOD-1 local acceptance; G01-FLOW additionally needs T17 integration evidence. Do not claim publication/activation based on planning alone.
+
+<a id="p01-t18"></a>
+
+### P01-T18 — Deferred project batch CI and integration
+
+- **Priority / status:** MUST / LOCAL_IMPLEMENTATION (2026-10-05); remote rollout PENDING.
+- **Goal:** continue authorized phase construction without waiting for PR checks or merges, using exact local acceptance checkpoints and isolated dependency branches.
+- **Scope:** ADR-018, AGENTS/rules/canonical cadence, Git helper/worktree state, draft job conditions and focused regression harnesses. No backend/app behavior or existing PR merge.
+- **Dependencies:** existing G01-FLOW helpers; explicit maintainer cadence change. Preserve task-level immediate critical tests and G09 production gates.
+- **Acceptance:** clean evidence checkpoint; stale/dirty/missing acceptance refused; next branch inherits tested head; no gh/CI/merge calls between phases; draft/missing/failed/skipped/cancelled checks block finalization; non-draft ready PR and main push still run checks.
+- **Evidence:** [flow validation](docs/planning/PROJECT_BATCH_FLOW_VALIDATION.md). Local changes do not prove GitHub rollout or close a remote issue.
+
 
 ## P02 — Official catalog and ANP ingestion
 

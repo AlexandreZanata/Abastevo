@@ -12,9 +12,6 @@ quick-verify:
 check-mobile:
 	bash scripts/check-mobile.sh
 
-quick-verify:
-	bash scripts/quick-verify.sh
-
 verify-release:
 	bash scripts/verify-release.sh
 
@@ -23,6 +20,8 @@ test-gate:
 
 test-flow:
 	bash scripts/tests/test-git-flow.sh
+	bash scripts/tests/test-project-batch-flow.sh
+	python3 scripts/tests/test-ci-cadence.py
 
 test-issues:
 	bash scripts/tests/test-issues.sh

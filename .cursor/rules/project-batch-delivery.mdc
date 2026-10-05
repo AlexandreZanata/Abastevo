@@ -1,0 +1,21 @@
+---
+description: Continue tested phase construction without PR or CI waits; integrate at final project closure
+alwaysApply: true
+---
+
+# Project batch delivery
+
+- Read AGENTS, current PROGRESS, FAST_EXECUTION and the selected task; ADR-018 governs cadence.
+- One authorized task/atomic commit at a time on `codex/phase-NN-slug`; isolate occupied checkouts with worktrees.
+- Keep immediate TDD/DDD tests and affected auth/privacy/money/SQL/migration/job risk checks. Fix known failures before dependent work.
+- Commit phase exit evidence with `Status: LOCAL_DONE` and `Validation: PASS` only after local acceptance passes.
+- Run `bash scripts/git-flow.sh checkpoint --evidence docs/<phase-record>.md`.
+- Start the next authorized phase with `start --phase NN --slug name --from-checkpoint`; preserve ancestry and record INTEGRATION_PENDING.
+- During construction do not create per-phase PRs, invoke finish, poll CI/check APIs, wait with sleeps or publish wiki.
+- Authorized phase-branch pushes are backups; keep task issues open until actual final integration.
+- At the end of all authorized project construction phases, prepare the cumulative final PR, reconcile main, run final acceptance, ready the PR, then verify required current head/base checks and guarded merge.
+- `finish --required "Quick verification"` is finalization only; pending/failed/skipped checks are not success. No admin/force/no-verify/direct-main bypass.
+- Record post-merge outcomes in PR metadata/local pending notes and the next useful commit; never open a bookkeeping-only PR to record another PR.
+- Mirror owned wiki pages once per final merged batch; preserve manual pages and retry WIKI_PENDING without rerunning code tests.
+- Device/emulator validation remains owed after all P phases; iOS remains archived until explicit user resumption. G09 real-production certification and deployment/pilot are separate gates.
+- Do not claim YAML/remote protection activation or product implementation from a local plan. This workflow request does not authorize new features.

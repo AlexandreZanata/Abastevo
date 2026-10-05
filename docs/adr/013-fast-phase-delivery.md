@@ -32,3 +32,5 @@ Detailed contracts: [delivery workflow](../planning/DELIVERY_WORKFLOW.md), [CI p
 Phase integration no longer implies complete-system certification. Records must distinguish LOCAL_DONE, INTEGRATED, WIKI_PENDING/SYNCED and RELEASE_CERTIFIED. A broader defect can still be found at release; mandatory task checks, required quick tests and an explicit candidate matrix reduce that risk without claiming it is eliminated. Measure quick duration and adjust selection based on evidence without weakening acceptance.
 
 2026-09-30 amendment: G01-FLOW is active. ADR-014 supersedes the G09-before-mobile dependency; full real-production certification waits for G18. Immediate critical checks and fast phase delivery remain mandatory.
+
+2026-10-05 amendment: [ADR-018](018-project-batch-delivery.md) supersedes the per-phase PR/remote CI/merge/wiki cadence with local phase checkpoints and final project batch integration. Immediate task/risk tests and real release certification remain mandatory. Historical activation evidence above is unchanged.

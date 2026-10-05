@@ -1,70 +1,62 @@
-# Phase delivery: branches, issues, pull requests and wiki
+# Project batch delivery workflow
 
-Status: ACTIVE since G01-FLOW; helpers are present and remote protection was verified on 2026-09-30 with required **Quick verification**, strict up-to-date base and enforced admin protection. [CI_PLAN](CI_PLAN.md) defines the target check cadence; [FAST_EXECUTION](FAST_EXECUTION.md) is the short daily card.
+Policy: [ADR-018](../adr/018-project-batch-delivery.md), explicit user request 2026-10-05. It supersedes per-phase PR/CI/merge/wiki cadence in ADR-013 and older task plans. Main protection remains required; no remote setting changes are implied by a local edit.
 
-## Reference and adaptation
+## Opening and isolation
 
-Reviewed Goyim-Arena at local HEAD `33a458f52016338ac86cd68c34e476491b47307c`: `AGENTS.md`, `.local/GIT_FLOW.md`, `.local/FAST_EXECUTION.md`, `.local/git-flow.sh`, `docs/CI.md`, `Makefile`, `.github/workflows/quick.yml`, `verify.yml` and the PR template. Its operating model is targeted local tests → quick integration check → complete release certification. Its remote quick check still runs on draft PR updates; “full CI at the end” does not mean accepting untested microtasks or red checks.
+Inspect status/diff, Git history and task dependencies before editing. Work sequentially through the authorized scope. Keep one phase branch `codex/phase-NN-slug`; use a worktree when another effort occupies the checkout. Preserve other edits and unmerged work. One atomic commit per task, one phase milestone and real task issues when publication is authorized. Reconcile existing records across open and closed issues by stable task IDs; never duplicate/reopen completed work. Planning-only requests do not create every future issue or authorize product implementation.
 
-Adapt the process, not that product's stack, financial rules, repository credentials, labels or P45 numbering. Here G09-LOCAL backend integration permits app work; complete Android/backend real-production certification G09 is deferred until G24-ANDROID-COMMERCIAL, per ADR-016. Historical multiplatform G18 remains unaccepted; iOS is archived with explicit resumption only. Shared scripts, manifests and process instructions belong in versioned `scripts/` and `docs/planning/`, not ignored `.local/`. Local logs/cache may remain ignored. The reference repository's publication authorization does not grant permission for mutations in this repository.
+Start from clean main or an isolated worktree detached at the verified base:
 
-## Units of work and ownership
+```sh
+bash scripts/git-flow.sh start --phase 25 --slug catalog
+```
 
-- One bounded **phase** is an integration batch with one milestone, branch and PR; existing P01…P11 IDs stay stable; new P12…P18 follow the explicit dependency graph. If a phase is too large, define a coherent subphase with explicit task ranges and exit criteria before starting. Do not create one branch/PR per microtask by default or a single branch for the entire backend.
-- One **microtask** is one behavior/change, one issue and one atomic implementation commit after its local acceptance tests. Corrections to already published commits use additional explicit fix commits; never rewrite history to manufacture one-commit purity.
-- Issues describe task scope and evidence; Git/PRs record actual integration; ROADMAP owns task definitions; PROGRESS is a small current-state index; docs own technical truth; wiki is a generated public reading surface. Avoid maintaining independent copies of the same acceptance rules by hand.
-- Phase implementation is complete locally before integration; integration is complete after verified PR merge; release certification is a separate state. A merged phase on `main` is not permission to deploy the backend.
+## Construction loop — no remote wait
 
-## Isolation and branches
+Read selected task/rules → document behavior → TDD/DDD implementation → meaningful affected tests and immediate critical risk checks → diff/secret review → evidence/atomic commit → authorized branch backup push. Phase branch pushes do not trigger the current main-only push workflows. Do not open a PR solely to keep a phase moving. Existing drafts may remain review references but are not local progress gates.
 
-Default: `codex/phase-02-official-catalog`, `codex/phase-03-anonymous-identity`, etc., created from the verified latest `origin/main`. The current planning adjustment uses `codex/phase-01-delivery-plan`; workflow implementation may use `codex/phase-01-delivery-flow`. Neither implies that P01-T13…T17 are already implemented.
+No `finish`, CI API polling, fixed waits, aggregate release runs or wiki publication between construction phases. Fix a known failure before dependent work. A phase entry requiring source functionality can consume its preceding tested local checkpoint on the dependency branch; a deployment/public pilot/certified release entry cannot.
 
-Before starting, inspect branch/status/diff, reconcile current-state notes with actual commits and identify ownership of any existing edits. A clean dedicated checkout can use a branch directly. Use a separate Git worktree when another task occupies the checkout, when two authorized efforts need isolation, or when release evidence needs a clean immutable checkout. Do not stash, reset or overwrite someone else's work. No subagents or parallel tasks are implied by this policy.
+## Local phase checkpoint
 
-Update a stale phase with a normal merge of `origin/main`; test the conflict resolutions, create a new commit and revalidate the resulting head. No force push, bypass/admin merge, `--no-verify`, destructive reset/clean or pushing development commits directly to main. After a verified merge, always delete the phase branch locally (`git branch -d`) and remotely (`git push origin --delete`), then verify both deletions; a merged phase branch is never left stale. Unmerged work is never deleted — safe deletion refuses it.
+Run the declared specialized local exit checks once. Commit a regular tracked Markdown evidence file containing these exact lines, followed by actual tested behavior revision, commands/results, risk cases, task IDs, unresolved nonblocking limits and next phase:
 
-## Phase opening — one preparation pass
+```text
+Status: LOCAL_DONE
+Validation: PASS
+```
 
-1. Confirm phase entry gate, exact task range, branch/base SHA, risk/exit checks and active authorization scope.
-2. Find/reuse the milestone and existing issues by stable task IDs across open AND closed records; create only missing records for this phase. Never reopen completed P01 work because a stale document says NOT STARTED.
-3. Create/switch to the phase branch. A draft PR can be created once the branch has its first real commit; do not manufacture an empty product change to open it earlier.
-4. Link issue IDs, milestone, source task anchors and local validation plan in the PR. Track identifiers once in a versioned phase ledger; no invented issue/PR numbers.
+The declaration is an operator assertion of completed local acceptance, not a shortcut around testing. Do not mark PASS with known missing required local tests. Device/manual and production-environment obligations explicitly deferred by the user remain named and OWED; source acceptance must not impersonate those results.
 
-## Per-microtask loop
+```sh
+bash scripts/git-flow.sh checkpoint --evidence docs/<phase-record>.md
+bash scripts/git-flow.sh start --phase 26 --slug discovery --from-checkpoint
+```
 
-Read the short state and selected task → implement documented rule/test → run targeted acceptance and risk checks → inspect diff/secret surface → update task evidence/current state → commit only owned files → push the phase branch when remote delivery is authorized.
+The helper requires a clean phase branch, committed evidence and matching phase state. It pins HEAD/evidence blob in private worktree Git state and declares INTEGRATION_PENDING. The next phase includes that head by ancestry. Missing/stale checkpoints refuse continuation. Never change the base with `--base` when using `--from-checkpoint`. `--dry-run` is read-only. The original `sync` command merges the recorded parent, not main; use an explicit normal main merge at final closure.
 
-Keep the PR in draft during the batch. The small remote check may run after each push; it is not necessary to block the next independent microtask waiting for every green notification. A reported failure or broken prerequisite must be investigated and corrected before dependent work, and always before ready/merge. Record scope/commands/outcome in the commit/issue evidence rather than publishing a comment for every tool call. Skip remote status polling during ordinary local edits.
+Checkpoint files are local conveniences, not shared authority or new versioned product entities. On a fresh clone/worktree, resume from versioned phase evidence and verify the exact source head before creating state through a new phase start; do not copy another worktree's state blindly. Keep phase issues open until actual integration.
 
-An issue stays open with status LOCAL_DONE/AWAITING_PHASE_MERGE until the phase PR merges. PR `Closes #...` references only tasks whose acceptance criteria really passed. Do not close issues for partial work, a docs-only plan, an unrelated PR or an expected CI result.
+## Final project batch integration
 
-Commit prepared task/phase evidence before final verification; identify the tested code tree or preceding behavior commit rather than requiring a document to contain its own commit SHA. Record post-merge check/merge/wiki outcomes in PR metadata and the local phase record, then commit the durable summary on the next authorized branch. Do not push a bookkeeping commit directly to main or trigger a recursive wiki sync just to record the wiki's own commit. A local pending summary must be preserved when switching worktrees.
+1. Freeze the final cumulative branch containing all authorized phase commits. Confirm complete task range, accepted exit evidence and outstanding obligations. Fetch current main and merge it normally if needed; rerun affected checks after changes. No force push/rebase of published history/admin bypass/direct-main development.
+2. Perform the union of end acceptance checks once. The 2026-10-02 deferred Android manual/device batch is due after all P phases; iOS remains explicitly archived. Missing external production requirements leave G09 UNCERTIFIED. Never certify deployment/pilot from local checks.
+3. Push the final head and open/reuse one final batch PR to main. List included phases and accepted task issues. `Closes` applies only to completed tasks; no closure of partial work or certification trackers with unmet requirements. If configured review constraints require multiple PRs, prepare them at final closure without imposing earlier construction waits.
+4. Mark the final PR ready. Draft jobs are deliberately skipped; drafts can never be merged by the helper. Ready-for-review and subsequent changes run Quick verification plus affected path-selected backend/Android signals. Known non-required failures also require correction; their tests remain part of task acceptance.
+5. Once current required checks/reviews are complete, invoke `bash scripts/git-flow.sh finish --pr <actual-number> --required "Quick verification"`. It refuses dirty/wrong/main trees, draft/stale/missing/failed/skipped/cancelled state and main divergence. Pending CI exits immediately; no sleep/poll loop or local aggregate on pending CI. Read check state only when finalization is actionable; do other authorized work or report CI_PENDING instead of staying idle.
+6. The helper runs local quick once after remote checks pass, then guarded merge with `--match-head-commit`, no protection bypass. Verify tested PR head/base and workflow identity including GitHub's PR merge-ref mapping in final review; changed inputs invalidate evidence. Preserve commits, verify ancestry in fetched main, then safely delete the merged final branch locally/remotely. Cleanup of earlier stacked branches requires proven merge ancestry and owner/worktree coordination; never delete unmerged or occupied work.
+7. Record actual merge/check results, close eligible issues through the merged PR and sync the owned wiki once from merged source. On wiki failure record INTEGRATED / WIKI_PENDING; retry documentation publication only.
 
-## Phase closure — integration gate
+Post-merge bookkeeping goes in PR metadata/local pending notes, then in the next useful authorized commit. Do not open a second PR solely to record the first PR or create a commit referencing its own SHA/wiki result. Preserve pending notes when switching worktrees. No new local Git state or plan is proof of remote activation.
 
-After the final task, run the phase-specific exit checks once on the final tree, then use the `scripts/git-flow.sh finish --required "Quick verification"` interface to:
+## Issues and authorization
 
-1. Reject a dirty/unowned tree, main branch, wrong repository, unresolved scope, missing exit evidence or base divergence.
-2. Run the local quick gate once; do not wrap it in a second aggregate quick/full run. Evidence is reusable only when command, environment and all relevant inputs/tree are unchanged.
-3. Push final head and mark the existing PR ready; require PR review/conversation resolution according to configured protection.
-4. Wait for the named required `Quick verification` check and any other required checks on the **current expected head**. Missing, pending, skipped, neutral, cancelled, timed-out, unavailable or failed required results do not count as success. Verify workflow identity/provider as well as name; a similarly named unrelated status is insufficient.
-5. Verify the PR's head SHA equals local expected SHA and its base is up to date. Account for GitHub's PR test-merge SHA: map a run to its PR head/base pair, never confuse a tested merge ref with an arbitrary branch commit. Head/base changes invalidate prior approval evidence.
-6. Merge with a compare-and-swap head guard (`--match-head-commit` or equivalent) and merge-commit method to preserve task commits, without overriding protections. Fetch and fast-forward local main only after ancestry checks; then always delete the merged phase branch locally (`git branch -d`) and remotely (`git push origin --delete`) and verify both deletions. Never leave a merged phase branch stale; never delete unmerged work.
-7. Record merged SHA/PR/check evidence, let linked issues close, and request wiki synchronization of that merged snapshot. If wiki fails, record INTEGRATED / WIKI_PENDING and retry only documentation publication; do not rerun the backend suite or claim the wiki is current.
+Use stable task IDs, source anchor/SHA, B-BR/BUC, dependency checkpoint, risk class, tests/acceptance and rollback in [task issues](templates/TASK_ISSUE.md). Retain one milestone per phase and preserve human comments/assignees/labels/closed state. Reconcile idempotently and paginate. Permission/API errors stop the remote operation without duplicate creation; record ISSUE_PENDING against the local stable task ID and continue authorized local construction instead of waiting for bookkeeping. Record retryable state, not success. Default states: PLANNED → IN_PROGRESS → LOCAL_DONE / INTEGRATION_PENDING → INTEGRATED. Do not fabricate remote IDs.
 
-When a relevant test fails, fix the cause on the same phase branch and rerun affected checks on the new head. Never reduce thresholds, add skips, suppress errors or hide test absence to accelerate delivery. The script must refuse unknown remote/check state rather than infer green.
+Verify repository origin and actual protection/permissions before publication. Reuse existing explicit session authorization for routine scoped delivery; reference projects/documents do not grant unrelated authorization. This workflow edit alone does not merge the existing PR #103, deploy, tag or run future features.
 
-## Issue and milestone design
-
-Default issue title: `P02-T01 — Shared ANP fixtures`. Fields: phase/task ID, source anchor and source SHA, goal, scope/exclusions, B-BR/BUC, dependencies, affected areas, risk class, tests-first and validation commands, acceptance, rollback, expected Conventional Commit, and phase/release gate distinction. See [task template](templates/TASK_ISSUE.md).
-
-Milestone: `P02 — Official catalog and ANP ingestion`. Small label set: `phase:P02`, `type:task|bug|docs`, `priority:must|should|later`, `risk:critical|standard|docs`; add `needs-review` only with a defined reviewer workflow. Never imply automated review that did not run.
-
-Reconciliation is idempotent and paginated: list existing records first, match a machine-readable task marker (not a loose title prefix), detect duplicates, preserve user comments/assignees/custom labels and closed state. Managed body sections may be updated if their source changes; do not overwrite human discussion or close unknown issues. A permission/API failure stops remote mutation and records a retryable operation; it must not create duplicates on the next run.
-
-Before the first remote phase, verify origin points to `AlexandreZanata/brazil-fuel-prices`, issue/merge/milestone capabilities and actual branch protection. Once remote phase delivery is authorized in the session, reuse that authorization for routine planned actions; do not request approval per issue/commit. A request only to adjust the plan does not itself publish this edit, create all issues, merge code or push the wiki. Record `publication_scope` as LOCAL_ONLY or the authorized operations; never inherit another repository's authorization.
-
-## Wiki synchronization — one update per merged phase
+## Wiki synchronization — one update per final merged batch
 
 Canonical content is committed Markdown; publish an allowlisted snapshot from the merged SHA, not an uncommitted working tree. Expected wiki target is `AlexandreZanata/brazil-fuel-prices.wiki.git`, resolved/verified independently because it is a second remote. Creation/initialization/publication is part of the separately recorded wiki scope; do not silently enable a disabled wiki. A missing wiki can leave the phase with WIKI_PENDING while `docs/` remains readable in the main repository.
 
@@ -74,8 +66,4 @@ Use a manifest of **owned generated pages**, source SHA and content hashes. Pres
 
 ## Release checkpoints
 
-P01–P08 and follow-up backend/app phases integrate through targeted tests, specialized phase checks and short CI. G09-LOCAL opens functional app work. Historical P18/G18 retains its unaccepted multiplatform matrix; iOS is archived until explicit resumption. P19–P24 deliver and accept the commercial Android candidate. Only after G24-ANDROID-COMMERCIAL, P09/G09 selects one immutable real-production candidate and runs the complete backend/account/social/media/location plus real infrastructure/security/privacy/restore/load matrix. A failed candidate prevents certification/deploy and requires a new candidate after fixes; never move a published tag. Public P10-T09 pilot requires G09 RELEASE_CERTIFIED. P11 commercial releases have separate certification.
-
-See [G01-FLOW tasks in ROADMAP](../../ROADMAP.md#delivery-flow-transition) for the implementation work. Those helpers now exist; use their verified interfaces. Planning future phases does not execute their implementation or create every future issue.
-
-The source-snapshot `docs/planning/wiki-config.json` selects `Home.md` for root README after the maintainer explicitly authorized Home alignment on 2026-10-01. The one-time compare-and-swap adoption preserves the old Home text/history and verifies its known hash before adding ownership locally; see `WIKI_HOME_ADOPTION.md`. Subsequent syncs use normal owned-page hash checks. Other manual pages remain untouched; names/navigation/configuration are validated from the committed source SHA.
+G09-LOCAL opened functional app work. P24/G24 is accepted by explicit user decision with end manual batch OWED, not manufactured device evidence. Historical P18/G18 stays unaccepted and iOS stays archived. Production P09/G09 requires its complete immutable candidate and real infrastructure/security/privacy/restore/load evidence; public P10 pilot and P11 releases require their separate gates. Unavailable production infrastructure does not prevent local source construction, but does prevent RELEASE_CERTIFIED/deployment/public pilot.
