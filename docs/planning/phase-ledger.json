@@ -1,6 +1,6 @@
 {
-  "base_sha": "b4f664e6b12cb3e053dff6aeb84607dd5dbe5d62",
-  "branch": "codex/phase-24-android-acceptance",
+  "base_sha": "0bf388544dcb2015fea2b1ba0caa547b77fb4faf",
+  "branch": "codex/phase-09-g09-scoped-release",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -68,10 +68,10 @@
     "P24-T04": 99
   },
   "issues_close_on_merge": false,
-  "milestone": 18,
-  "milestone_title": "P24 — Android commercial acceptance",
-  "phase": "22",
-  "pr": null,
+  "milestone": 2,
+  "milestone_title": "G09 — Real production release (after functional app)",
+  "phase": "09",
+  "pr": 102,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -80,5 +80,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P24-T01 IN_PROGRESS / DEVICE_PROOF_PENDING"
+  "state": "P09-T03 OPEN / G09_UNCERTIFIED_BLOCKED"
 }
