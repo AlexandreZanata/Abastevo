@@ -1,6 +1,6 @@
 {
-  "base_sha": "b4754b21e4fd3c192ae69e6e42cfbac6fb0d5209",
-  "branch": "codex/phase-25-static-landing",
+  "base_sha": "a3c1eb350775d7505693cf464c45d3dd14c4e097",
+  "branch": "codex/phase-26-landing-guides",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -70,13 +70,18 @@
     "P25-T02": 107,
     "P25-T03": 108,
     "P25-T04": 109,
-    "P25-T05": 110
+    "P25-T05": 110,
+    "P26-T01": 112,
+    "P26-T02": 113,
+    "P26-T03": 114,
+    "P26-T04": 115,
+    "P26-T05": 116
   },
   "issues_close_on_merge": false,
-  "milestone": 19,
-  "milestone_title": "P25 — Static abastevo landing page",
-  "phase": "25",
-  "pr": 111,
+  "milestone": 20,
+  "milestone_title": "P26 — Landing educational guides",
+  "phase": "26",
+  "pr": 117,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
@@ -85,5 +90,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P25-T01, P25-T02, P25-T03 LOCAL_DONE / DRAFT_PR_111"
+  "state": "P26-T01 LOCAL_DONE"
 }

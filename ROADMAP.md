@@ -2705,3 +2705,69 @@ Current authority: local planning only (specification revision 2, including the 
 - **Acceptance criteria:** Final artifact passes declared build/links/metadata/negative/store-state/accessibility/performance checks, with pinned tool/config/revision evidence. Record owed manual/field evidence honestly, including WhatsApp/Telegram link-preview observation. Hosting handoff covers HTTPS/canonical redirects/404/cache/headers/indexing, the publication-time discoverability checklist (README/repository website field, Play listing website field, Search Console and Bing Webmaster) and immutable-artifact rollback; activation verifies the future public listing and updates single link/badge, attribution, JSON-LD, sitemap and copy together, re-checking current Play policy destinations.
 - **Validation commands:** Final scoped landing exit once using actual T02 interfaces and documented browser/lab tooling; `git diff --check`, secret/private-data review. At authorized integration only: `scripts/git-flow.sh finish --required "Quick verification" --pr <actual-number>` once, current-head/base guards and separately authorized wiki mirror.
 - **Recovery / done:** Restore a previous verified static artifact; deactivate a removed store listing to the honest prelaunch state. LOCAL_DONE/INTEGRATED/WEBSITE_PUBLISHED are separate; no G09/G24/G18 acceptance, public pilot or search-position result follows from this gate.
+
+## P26 — Landing educational guides
+
+Priority: **MUST within the authorized website scope**. State: **PLANNED**. Entry: G25-STATIC-READY and approved landing foundation. Specification: [educational guides contract](docs/product/LANDING_GUIDES_CONTRACT.md). Exit: **G26-GUIDES-READY**, demonstrated acceptance for static educational guides, index hub, sitemap, JSON-LD and zero runtime dependencies.
+
+Branch: `codex/phase-26-landing-guides`; T01–T05 run sequentially under milestone 20.
+
+<a id="p26-t01"></a>
+
+### P26-T01 — Guides content contract and structure specification
+
+- **ID / priority / status:** P26-T01 / MUST / LOCAL_DONE (2026-10-05, issue #112). Output: [guides contract](docs/product/LANDING_GUIDES_CONTRACT.md).
+- **Goal:** Freeze Portuguese educational guide content contracts, directory structure, factual citations, and truthfulness guidelines for 3 evergreen guides (ANP survey methodology, ethanol vs gasoline parity, interpreting prices and sources) and the `/guias/` index.
+- **Inputs / rules:** Landing specification, B-BR-L01, B-BR-L04, B-BR-L05, BUC-L01, BUC-L04.
+- **Dependencies:** G25-STATIC-READY.
+- **Files / risk:** `docs/product/LANDING_GUIDES_CONTRACT.md`, `ROADMAP.md`; docs risk.
+- **Acceptance criteria:** Bounded contract defining 4 URLs (`/guias/`, `/guias/pesquisa-anp/`, `/guias/etanol-ou-gasolina/`, `/guias/como-ler-precos/`), title/description length limits, semantic headings, factual non-affiliated ANP citations, and breadcrumbs without JS.
+- **Validation commands:** Links/task consistency, `git diff --check`, `bash scripts/scan-secrets.sh`.
+
+<a id="p26-t02"></a>
+
+### P26-T02 — Evergreen guides and guide index implementation
+
+- **ID / priority / status:** P26-T02 / MUST / PLANNED (issue #113).
+- **Goal:** Author and build static HTML pages for `/guias/`, `/guias/pesquisa-anp/`, `/guias/etanol-ou-gasolina/`, and `/guias/como-ler-precos/`, integrating discreet guide links in landing navigation and footer.
+- **Inputs / rules:** P26-T01 contract, B-BR-L01, B-BR-L02, B-BR-L04, BUC-L01, BUC-L02.
+- **Dependencies:** P26-T01.
+- **Files / risk:** `landing/static/guias/`; standard risk.
+- **Acceptance criteria:** Authored static HTML pages using existing design tokens, accessible breadcrumbs, zero runtime dependencies, WCAG AA compliance, and working navigation without JS.
+- **Validation commands:** `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test`.
+
+<a id="p26-t03"></a>
+
+### P26-T03 — SEO metadata, JSON-LD schema, sitemap and discovery
+
+- **ID / priority / status:** P26-T03 / MUST / PLANNED (issue #114).
+- **Goal:** Complete initial-response SEO metadata, Article/TechArticle and BreadcrumbList JSON-LD schemas, sitemap entries, and discovery files for all guides.
+- **Inputs / rules:** P26-T01 contract, B-BR-L04, B-BR-L05, BUC-L04.
+- **Dependencies:** P26-T02.
+- **Files / risk:** `landing/static/sitemap.xml`, `landing/static/llms.txt`, guide HTML `<head>`, `landing/scripts/build.mjs`, `landing/scripts/check.mjs`.
+- **Acceptance criteria:** Strict bounds on titles (30–65 chars) and descriptions (110–165 chars); factual JSON-LD with unique IDs; valid sitemap with all 4 guide URLs; Open Graph and Twitter large cards.
+- **Validation commands:** `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test`.
+
+<a id="p26-t04"></a>
+
+### P26-T04 — Automated regression tests and gate verification
+
+- **ID / priority / status:** P26-T04 / MUST / PLANNED (issue #115).
+- **Goal:** Add and execute automated unit and integration tests verifying guides content, accessibility, schemas, sitemap, and performance budgets.
+- **Inputs / rules:** B-BR-L01–L07, BUC-L01–L05, performance budgets.
+- **Dependencies:** P26-T03.
+- **Files / risk:** `landing/tests/`; standard risk.
+- **Acceptance criteria:** Automated tests in `landing/tests/guides-content.test.mjs` passing; sitemap and JSON-LD test suites passing; budgets (<25 KiB CSS, <10 KiB JS, <500 KiB page transfer) respected.
+- **Validation commands:** `npm --prefix landing test`, `bash scripts/tests/test-gate-selection.sh`, `git diff --check`, `bash scripts/scan-secrets.sh`.
+
+<a id="p26-t05"></a>
+
+### P26-T05 — Release evidence, hosting handoff and phase closure
+
+- **ID / priority / status:** P26-T05 / MUST / PLANNED (issue #116).
+- **Goal:** Document release evidence in `docs/release-evidence/p26-landing-guides.md` for G26-GUIDES-READY, update README/progress, and integrate via git-flow.sh finish.
+- **Inputs / rules:** P26-T01–T04 evidence, DELIVERY_WORKFLOW.
+- **Dependencies:** P26-T04.
+- **Files / risk:** `docs/release-evidence/p26-landing-guides.md`, `PROGRESS.md`, `ROADMAP.md`, `landing/README.md`.
+- **Acceptance criteria:** Evidence recorded; quick verification passed; PR review satisfied; guarded merge preserving commits to `main`; wiki synced.
+- **Validation commands:** `bash scripts/quick-verify.sh`, `scripts/git-flow.sh finish --required "Quick verification" --pr <number>`.

@@ -146,6 +146,10 @@ export function build(options = {}) {
       { srcRel: 'privacidade/index.html', destRel: 'privacidade/index.html' },
       { srcRel: 'excluir-conta/index.html', destRel: 'excluir-conta/index.html' },
       { srcRel: 'termos/index.html', destRel: 'termos/index.html' },
+      { srcRel: 'guias/index.html', destRel: 'guias/index.html' },
+      { srcRel: 'guias/pesquisa-anp/index.html', destRel: 'guias/pesquisa-anp/index.html' },
+      { srcRel: 'guias/etanol-ou-gasolina/index.html', destRel: 'guias/etanol-ou-gasolina/index.html' },
+      { srcRel: 'guias/como-ler-precos/index.html', destRel: 'guias/como-ler-precos/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 
