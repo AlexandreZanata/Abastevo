@@ -1,6 +1,6 @@
 {
-  "base_sha": "4e1c73a21c573e46fb3fb09752721c9d741d8967",
-  "branch": "codex/phase-09-g09-followup",
+  "base_sha": "59ea84557063b9fd9bd6c6ed4e25f46bb116deef",
+  "branch": "codex/phase-10-t09-pilot",
   "functional_gate": "G18_NOT_ACCEPTED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "issues": {
@@ -68,9 +68,9 @@
     "P24-T04": 99
   },
   "issues_close_on_merge": false,
-  "milestone": 2,
-  "milestone_title": "G09 — Real production release (after functional app)",
-  "phase": "09",
+  "milestone": 8,
+  "milestone_title": "P10 — Functional app integration after G09-LOCAL",
+  "phase": "10",
   "pr": 103,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
@@ -80,5 +80,5 @@
     "milestone": 2,
     "status": "DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL"
   },
-  "state": "P09-T03 INTEGRATED / G09_UNCERTIFIED_BLOCKED / WIKI_PENDING"
+  "state": "P10-T09 OPEN / DEFINITION_ONLY / LAUNCH_BLOCKED_ON_G09"
 }
