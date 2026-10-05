@@ -13,22 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 
 @Composable
 fun PlaceholderScreen(
     titleRes: Int,
     modifier: Modifier = Modifier,
-    showAttribution: Boolean = false,
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (showAttribution) {
-                AnpAttributionFooter()
-            }
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -82,7 +75,6 @@ fun PricesPlaceholderScreen(modifier: Modifier = Modifier) {
     PlaceholderScreen(
         titleRes = R.string.nav_prices,
         modifier = modifier,
-        showAttribution = true,
     )
 }
 
@@ -91,7 +83,6 @@ fun HistoryPlaceholderScreen(modifier: Modifier = Modifier) {
     PlaceholderScreen(
         titleRes = R.string.nav_history,
         modifier = modifier,
-        showAttribution = true,
     )
 }
 
@@ -100,7 +91,6 @@ fun StationsPlaceholderScreen(modifier: Modifier = Modifier) {
     PlaceholderScreen(
         titleRes = R.string.nav_stations,
         modifier = modifier,
-        showAttribution = true,
     )
 }
 

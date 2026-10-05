@@ -36,7 +36,6 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.accessibility.headingSemantics
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -102,16 +101,9 @@ fun WeekPickerScreen(
         topBar = {
             AnpTopAppBar(
                 title = { Text(text = stringResource(R.string.week_picker_title)) },
-                navigationIcon = {
-                    if (onNavigateBack != null) {
-                        TextButton(onClick = onNavigateBack) {
-                            Text(text = stringResource(R.string.action_back))
-                        }
-                    }
-                },
+                onNavigateUp = onNavigateBack,
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         WeekPickerContent(
             uiState = uiState,

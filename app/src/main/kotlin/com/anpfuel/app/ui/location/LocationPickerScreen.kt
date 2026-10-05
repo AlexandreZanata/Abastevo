@@ -45,7 +45,6 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.BrazilianStateI18n
 import com.anpfuel.app.mapper.DataAvailabilityI18n
 import com.anpfuel.application.usecase.location.CatalogMunicipalityItem
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
@@ -149,7 +148,6 @@ internal fun LocationPickerContent(
                 },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Box(
             modifier = Modifier

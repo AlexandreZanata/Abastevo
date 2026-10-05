@@ -47,7 +47,6 @@ import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
 import com.anpfuel.app.mapper.FuelProductI18n
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductIcon
@@ -201,7 +200,6 @@ private fun StationsContent(
                 },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Column(
             modifier = Modifier

@@ -68,31 +68,28 @@ fun AnpNavGraph(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val isTopLevelTab = currentRoute in setOf(Routes.HOME, Routes.COMMUNITY, Routes.PROFILE)
 
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (isTopLevelTab) {
-                AbastevoBottomBar(
-                    currentRoute = currentRoute,
-                    onNavigateToTab = { targetRoute ->
-                        if (currentRoute != targetRoute) {
-                            navController.navigate(targetRoute) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+            AbastevoBottomBar(
+                currentRoute = currentRoute,
+                onNavigateToTab = { targetRoute ->
+                    if (currentRoute != targetRoute) {
+                        navController.navigate(targetRoute) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    },
-                )
-            }
+                    }
+                },
+            )
         },
         floatingActionButton = {
-            if (isTopLevelTab) {
+            if (currentRoute == Routes.HOME) {
                 AbastevoUpdatePriceFab(
                     onClick = { navController.navigate(Routes.CAPTURE) },
                 )

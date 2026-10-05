@@ -12,7 +12,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,11 +43,7 @@ fun HelpScreen(
         topBar = {
             AnpTopAppBar(
                 title = { Text(text = stringResource(R.string.help_screen_title)) },
-                navigationIcon = {
-                    TextButton(onClick = onNavigateBack) {
-                        Text(text = stringResource(R.string.action_back))
-                    }
-                },
+                onNavigateUp = onNavigateBack,
             )
         },
     ) { innerPadding ->
