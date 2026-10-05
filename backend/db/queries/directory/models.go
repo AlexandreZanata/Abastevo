@@ -80,3 +80,14 @@ type RegistrySourceRun struct {
 	StartedAt        pgtype.Timestamptz `json:"started_at"`
 	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
 }
+
+type StationSuggestion struct {
+	ID                 pgtype.UUID        `json:"id"`
+	AccountID          pgtype.UUID        `json:"account_id"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	Proposal           []byte             `json:"proposal"`
+	EvidenceRef        string             `json:"evidence_ref"`
+	State              string             `json:"state"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	DecidedAt          pgtype.Timestamptz `json:"decided_at"`
+}

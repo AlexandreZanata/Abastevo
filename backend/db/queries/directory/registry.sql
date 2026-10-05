@@ -82,3 +82,43 @@ LIMIT 1;
 UPDATE registry_assertions
 SET superseded_by = @superseded_by
 WHERE id = @id AND superseded_by IS NULL;
+
+-- Owned by directory (station suggestions, P27-T01). Private intake:
+-- one row per owner idempotency key; owner-only reads; decisions land
+-- in T02 (approved/rejected), cancellation stays owner-side.
+
+-- name: CreateSuggestion :one
+INSERT INTO station_suggestions (id, account_id, client_submission_id, proposal, evidence_ref)
+VALUES (@id, @account_id, @client_submission_id, @proposal, @evidence_ref)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING
+RETURNING id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at;
+
+-- name: GetSuggestion :one
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE id = @id;
+
+-- name: GetSuggestionByKey :one
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE account_id = @account_id AND client_submission_id = @client_submission_id;
+
+-- name: ListOwnedSuggestions :many
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE account_id = @account_id
+ORDER BY created_at DESC
+LIMIT @page_limit::int OFFSET @page_offset::int;
+
+-- name: CountRecentSuggestions :one
+SELECT count(*) FROM station_suggestions
+WHERE account_id = @account_id AND created_at > now() - make_interval(days => 1);
+
+-- name: CancelSuggestion :execrows
+UPDATE station_suggestions
+SET state = 'cancelled'
+WHERE id = @id AND account_id = @account_id AND state = 'pending';

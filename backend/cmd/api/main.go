@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
@@ -37,6 +38,7 @@ import (
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
+	directoryintake "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
@@ -364,6 +366,30 @@ func run() error {
 					return "", feedbackdomain.ErrAuthorForbidden
 				default:
 					return "", feedbackdomain.ErrSessionInvalid
+				}
+			}
+			return id, nil
+		},
+	}.RegisterRoutes(router)
+	// Private station intake (P27-T01). Only this composition root wires
+	// modules together: the intake handler gets session validation as a
+	// closure so modules never cross-read. Suspended/deleted accounts
+	// cannot write; anything else invalid is a 401 (the handler maps
+	// service verdicts itself).
+	directoryintake.Handler{
+		Service: directoryapp.IntakeService{
+			Store: directoryadapters.IntakeStore{Q: dbdirectory.New(pool.Underlying())},
+			Clock: time.Now,
+			NewID: newUUID,
+		},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, familyID, accessToken)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "account-suspended", "account-deleted":
+					return "", directoryapp.ErrAuthorForbidden
+				default:
+					return "", err
 				}
 			}
 			return id, nil

@@ -11,12 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelSuggestion = `-- name: CancelSuggestion :execrows
+UPDATE station_suggestions
+SET state = 'cancelled'
+WHERE id = $1 AND account_id = $2 AND state = 'pending'
+`
+
+type CancelSuggestionParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) CancelSuggestion(ctx context.Context, arg CancelSuggestionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelSuggestion, arg.ID, arg.AccountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countCompleteRegistryRuns = `-- name: CountCompleteRegistryRuns :one
 SELECT count(*) FROM registry_source_runs WHERE source = $1 AND state = 'complete'
 `
 
 func (q *Queries) CountCompleteRegistryRuns(ctx context.Context, source string) (int64, error) {
 	row := q.db.QueryRow(ctx, countCompleteRegistryRuns, source)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRecentSuggestions = `-- name: CountRecentSuggestions :one
+SELECT count(*) FROM station_suggestions
+WHERE account_id = $1 AND created_at > now() - make_interval(days => 1)
+`
+
+func (q *Queries) CountRecentSuggestions(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecentSuggestions, accountID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -74,6 +105,48 @@ func (q *Queries) CreateRegistryRun(ctx context.Context, arg CreateRegistryRunPa
 		&i.ErrorCode,
 		&i.StartedAt,
 		&i.FinishedAt,
+	)
+	return i, err
+}
+
+const createSuggestion = `-- name: CreateSuggestion :one
+
+INSERT INTO station_suggestions (id, account_id, client_submission_id, proposal, evidence_ref)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING
+RETURNING id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+`
+
+type CreateSuggestionParams struct {
+	ID                 pgtype.UUID `json:"id"`
+	AccountID          pgtype.UUID `json:"account_id"`
+	ClientSubmissionID string      `json:"client_submission_id"`
+	Proposal           []byte      `json:"proposal"`
+	EvidenceRef        string      `json:"evidence_ref"`
+}
+
+// Owned by directory (station suggestions, P27-T01). Private intake:
+// one row per owner idempotency key; owner-only reads; decisions land
+// in T02 (approved/rejected), cancellation stays owner-side.
+func (q *Queries) CreateSuggestion(ctx context.Context, arg CreateSuggestionParams) (StationSuggestion, error) {
+	row := q.db.QueryRow(ctx, createSuggestion,
+		arg.ID,
+		arg.AccountID,
+		arg.ClientSubmissionID,
+		arg.Proposal,
+		arg.EvidenceRef,
+	)
+	var i StationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.ClientSubmissionID,
+		&i.Proposal,
+		&i.EvidenceRef,
+		&i.State,
+		&i.CreatedAt,
+		&i.DecidedAt,
 	)
 	return i, err
 }
@@ -168,6 +241,57 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (Regis
 	return i, err
 }
 
+const getSuggestion = `-- name: GetSuggestion :one
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE id = $1
+`
+
+func (q *Queries) GetSuggestion(ctx context.Context, id pgtype.UUID) (StationSuggestion, error) {
+	row := q.db.QueryRow(ctx, getSuggestion, id)
+	var i StationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.ClientSubmissionID,
+		&i.Proposal,
+		&i.EvidenceRef,
+		&i.State,
+		&i.CreatedAt,
+		&i.DecidedAt,
+	)
+	return i, err
+}
+
+const getSuggestionByKey = `-- name: GetSuggestionByKey :one
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE account_id = $1 AND client_submission_id = $2
+`
+
+type GetSuggestionByKeyParams struct {
+	AccountID          pgtype.UUID `json:"account_id"`
+	ClientSubmissionID string      `json:"client_submission_id"`
+}
+
+func (q *Queries) GetSuggestionByKey(ctx context.Context, arg GetSuggestionByKeyParams) (StationSuggestion, error) {
+	row := q.db.QueryRow(ctx, getSuggestionByKey, arg.AccountID, arg.ClientSubmissionID)
+	var i StationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.ClientSubmissionID,
+		&i.Proposal,
+		&i.EvidenceRef,
+		&i.State,
+		&i.CreatedAt,
+		&i.DecidedAt,
+	)
+	return i, err
+}
+
 const lastCompleteRegistryRun = `-- name: LastCompleteRegistryRun :one
 SELECT id, source, snapshot_identity, checksum, parser_version, state,
     accepted, duplicates, rejected, error_code, started_at, finished_at
@@ -195,6 +319,50 @@ func (q *Queries) LastCompleteRegistryRun(ctx context.Context, source string) (R
 		&i.FinishedAt,
 	)
 	return i, err
+}
+
+const listOwnedSuggestions = `-- name: ListOwnedSuggestions :many
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE account_id = $1
+ORDER BY created_at DESC
+LIMIT $3::int OFFSET $2::int
+`
+
+type ListOwnedSuggestionsParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+func (q *Queries) ListOwnedSuggestions(ctx context.Context, arg ListOwnedSuggestionsParams) ([]StationSuggestion, error) {
+	rows, err := q.db.Query(ctx, listOwnedSuggestions, arg.AccountID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationSuggestion
+	for rows.Next() {
+		var i StationSuggestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ClientSubmissionID,
+			&i.Proposal,
+			&i.EvidenceRef,
+			&i.State,
+			&i.CreatedAt,
+			&i.DecidedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many

@@ -721,6 +721,213 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/stations/suggestions:
+    post:
+      summary: Submit a private station suggestion (signed).
+      operationId: submitStationSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated intake (P27-T01, B-BR-D07/D08): active
+        free accounts propose a missing station or correction; the
+        author derives server-side from the live session. Same
+        idempotency key plus same body replays the record (200);
+        same key plus changed body conflicts (409). Anonymous
+        contributor proof alone is insufficient (401). Suggestions
+        stay private to the submitter and reviewers until a decision;
+        knowing a public CNPJ grants nothing.
+      requestBody:
+        required: true
+        description: Live session plus idempotency key and structured proposal.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, client_submission_id, proposal]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                client_submission_id:
+                  type: string
+                  example: 9d2c1a44-3b1f-4e5a-9c8d-7f6e5a4b3c2d1
+                proposal:
+                  $ref: '#/components/schemas/StationSuggestionProposal'
+      responses:
+        '200':
+          description: Idempotent replay of the existing suggestion.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '201':
+          description: Suggestion stored privately.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/stations/suggestions/mine:
+    post:
+      summary: List the caller's private suggestions.
+      operationId: listOwnedSuggestions
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P27-T01): newest first,
+        at most 20 per page in v1. The session travels in the JSON
+        body, never the URL. Always `no-store`; foreign owners share
+        nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Owner suggestion page.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/stations/suggestions/{id}/status:
+    post:
+      summary: Read one owned suggestion status.
+      operationId: readOwnedSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P27-T01). Missing and
+        foreign records share one 404 (no ownership oracle). The
+        session travels in the JSON body, never the URL. Always
+        `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Suggestion identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Private suggestion status.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/suggestions/{id}/cancel:
+    post:
+      summary: Cancel one owned pending suggestion.
+      operationId: cancelOwnedSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only cancel (P27-T01): pending
+        records close; other states, foreign owners and unknown ids
+        fail without leaking which condition fired. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Suggestion identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Suggestion cancelled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: cancelled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/accounts/email/codes:
     post:
       summary: Request a FREE email access code.
@@ -2728,6 +2935,58 @@ components:
           type: integer
           minimum: 0
           example: 21
+    StationSuggestionProposal:
+      description: >
+        Structured station suggestion body (P27-T01, B-BR-D07/D08):
+        display name plus municipality code and state; optional
+        kernel-validated CNPJ text, optional bounded coordinates and
+        an opaque private-evidence reference. Never grants ownership.
+      type: object
+      required: [display_name, municipality_code, state]
+      properties:
+        display_name:
+          type: string
+          example: Posto Novo
+        municipality_code:
+          type: string
+          example: '3550308'
+        state:
+          type: string
+          example: SP
+        cnpj_normalized:
+          type: string
+          example: '04218406000104'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        has_coordinates:
+          type: boolean
+        evidence_ref:
+          type: string
+    StationSuggestion:
+      description: >
+        Private suggestion status (P27-T01): id, idempotency key and
+        lifecycle state only — never another owner's data and never a
+        grant of ownership.
+      type: object
+      required: [id, client_submission_id, state, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_submission_id:
+          type: string
+        state:
+          type: string
+          enum: [pending, cancelled, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
         mean_milli:
           type: [integer, 'null']
           description: Truncated mean in thousandths (4200 = 4.2); null with zero ratings.
