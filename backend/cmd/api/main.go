@@ -62,6 +62,7 @@ import (
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
+	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -412,6 +413,29 @@ func run() error {
 				}
 			}
 			return id, nil
+		},
+	}.RegisterRoutes(router)
+	// Private representation claims (P30-T03). Same composition rule:
+	// session validation and the current operator link arrive as
+	// closures so modules never cross-read. No grant flows from
+	// submission, CNPJ knowledge or client flags.
+	profileStore := profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())}
+	profileClaimPorts := profileapplication.ClaimPorts{
+		Store: profileadapters.ClaimStore{Q: dbstationprofile.New(pool.Underlying())},
+		Clock: time.Now,
+		NewID: newUUID,
+		OperatorOf: func(ctx context.Context, stationID string) (string, string, bool, error) {
+			operator, found, err := profileStore.CurrentOperator(ctx, stationID)
+			if err != nil || !found {
+				return "", "", false, err
+			}
+			return operator.CNPJ, operator.Source, true, nil
+		},
+	}
+	profileadapters.ClaimHandler{
+		Ports: profileClaimPorts,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
 	}.RegisterRoutes(router)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")

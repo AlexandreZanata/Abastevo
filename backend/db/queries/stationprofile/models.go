@@ -8,6 +8,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ClaimDeclaration struct {
+	ID             pgtype.UUID        `json:"id"`
+	ClaimID        pgtype.UUID        `json:"claim_id"`
+	Version        int32              `json:"version"`
+	NonceDigest    string             `json:"nonce_digest"`
+	ExpectedDigest string             `json:"expected_digest"`
+	Declaration    string             `json:"declaration"`
+	State          string             `json:"state"`
+	Attempts       int32              `json:"attempts"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	ConsumedAt     pgtype.Timestamptz `json:"consumed_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`
@@ -40,6 +54,21 @@ type DirectoryStation struct {
 	CurrentQuality    pgtype.Text        `json:"current_quality"`
 	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type ProfileClaim struct {
+	ID             pgtype.UUID        `json:"id"`
+	AccountID      pgtype.UUID        `json:"account_id"`
+	StationID      pgtype.UUID        `json:"station_id"`
+	OperatorCnpj   string             `json:"operator_cnpj"`
+	OperatorSource string             `json:"operator_source"`
+	Role           string             `json:"role"`
+	Scopes         string             `json:"scopes"`
+	PolicyVersion  string             `json:"policy_version"`
+	State          string             `json:"state"`
+	ClientKey      string             `json:"client_key"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type StationOperatorRevision struct {

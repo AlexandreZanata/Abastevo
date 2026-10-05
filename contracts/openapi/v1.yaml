@@ -752,6 +752,261 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/claims:
+    post:
+      summary: Open a private representation claim (signed).
+      operationId: openRepresentationClaim
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated claim intake (P30-T03, B-BR-P03/P04):
+        active free accounts open a private request bound to the
+        station UUID with a server-generated one-use declaration for
+        export. Same key plus same request replays (200); same key
+        plus changed request conflicts (409). No grant, CNPJ insight
+        or client flag creates authority; competing claims stay
+        private.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the claimed establishment.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, role, scopes, client_key]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                role:
+                  type: string
+                  enum: [administrator, manager]
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                client_key:
+                  type: string
+      responses:
+        '200':
+          description: Idempotent replay of the existing claim.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '201':
+          description: Claim opened with its first declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/profile/claims/mine:
+    post:
+      summary: List the caller's private claims.
+      operationId: listOwnedClaims
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P30-T03): id, state
+        and version only. The session travels in the JSON body, never
+        the URL. Always `no-store`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Owner claim page.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/profile/claims/{id}/status:
+    post:
+      summary: Read one owned claim status with its declaration.
+      operationId: readOwnedClaim
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P30-T03). Missing and
+        foreign records share one 404. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Private claim with its active declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/profile/claims/{id}/reissue:
+    post:
+      summary: Reissue a claim declaration (owner only).
+      operationId: reissueClaimDeclaration
+      tags: [directory]
+      security: []
+      description: >
+        Versions the challenge and supersedes prior active versions
+        in one step: exactly one active declaration ever binds proof.
+        Closed claims refuse. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Claim with the new active declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/profile/claims/{id}/cancel:
+    post:
+      summary: Cancel one owned open claim.
+      operationId: cancelOwnedClaim
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only cancel (P30-T03): open
+        records close; terminal records, foreign owners and unknown
+        ids fail without leaking which fired. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Claim cancelled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: cancelled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/stations/suggestions:
     post:
       summary: Submit a private station suggestion (signed).
@@ -3052,6 +3307,35 @@ components:
           type: object
         has_badge:
           type: boolean
+    RepresentationClaim:
+      description: >
+        Private claim with its active declaration (P30-T03,
+        B-BR-P03/P04): id, station, role, scopes, state, version,
+        exportable declaration and expiry only — never another
+        owner's data and never a grant.
+      type: object
+      required: [id, station_id, role, state, version, declaration, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        station_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [administrator, manager]
+        state:
+          type: string
+          enum: [draft, awaiting_proof, checking, needs_information, in_review, approved, denied, cancelled, expired]
+        version:
+          type: integer
+          minimum: 1
+        declaration:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
         mean_milli:
           type: [integer, 'null']
           description: Truncated mean in thousandths (4200 = 4.2); null with zero ratings.

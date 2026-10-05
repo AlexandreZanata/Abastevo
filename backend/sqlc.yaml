@@ -164,6 +164,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000036_station_profiles.sql
+      - db/migrations/000037_profile_claims.sql
     gen:
       go:
         package: stationprofile
