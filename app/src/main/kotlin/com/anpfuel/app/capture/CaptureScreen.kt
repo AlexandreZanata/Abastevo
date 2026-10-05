@@ -124,6 +124,36 @@ fun CaptureScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val submit by viewModel.submit.collectAsStateWithLifecycle()
+                when (val sent = submit) {
+                    is CaptureOcrViewModel.SubmitState.Queued ->
+                        Text(
+                            text = stringResource(R.string.capture_submitted),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    is CaptureOcrViewModel.SubmitState.Failed ->
+                        Text(
+                            text = stringResource(R.string.capture_submit_failed, sent.reason),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    is CaptureOcrViewModel.SubmitState.NoTarget ->
+                        Text(
+                            text = stringResource(R.string.capture_target_invalid),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    is CaptureOcrViewModel.SubmitState.FuelMismatch ->
+                        Text(
+                            text = stringResource(R.string.capture_target_invalid),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    is CaptureOcrViewModel.SubmitState.Disabled, null -> Unit
+                }
+                Button(onClick = { viewModel.submitConfirmed() }) {
+                    Text(stringResource(R.string.capture_submit))
+                }
                 Button(onClick = onNavigateBack) { Text(stringResource(R.string.capture_done)) }
             }
         }

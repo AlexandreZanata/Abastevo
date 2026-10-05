@@ -460,5 +460,8 @@
     <string name="capture_confirmed_outbox">Preço confirmado: %1$s. O envio acontece só pela caixa de contribuições.</string>
     <string name="capture_target_label">Publicando no posto %1$s · %2$s</string>
     <string name="capture_target_invalid">Referência de posto inválida — volte e escolha o posto de novo.</string>
+    <string name="capture_submit">Enviar à caixa</string>
+    <string name="capture_submitted">Na fila de envio. Status, repetição e cancelamento ficam nas suas contribuições.</string>
+    <string name="capture_submit_failed">Não foi enfileirar (%1$s). Nada foi enviado.</string>
     <string name="capture_done">Concluir</string>
 </resources>
