@@ -24,6 +24,7 @@ import (
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
+	dbstationprofile "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/stationprofile"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
@@ -60,6 +61,7 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -199,6 +201,23 @@ func run() error {
 	prices := officialread.NewReader(pool.Underlying())
 	communityPrices := communityread.NewReader(pool.Underlying())
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	// Public station profiles (P30-T02). Same composition rule: the
+	// profile handler gets the canonical reader as a closure so
+	// modules never cross-read. Anonymous; no badge without a grant.
+	profileadapters.Handler{
+		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
+		Read: func(ctx context.Context, stationID string) (string, string, *float64, *float64, error) {
+			station, err := stations.Detail(ctx, stationID)
+			if err != nil {
+				return "", "", nil, nil, err
+			}
+			var lat, lon *float64
+			if station.Coordinates != nil {
+				lat, lon = &station.Coordinates.Lat, &station.Coordinates.Lon
+			}
+			return station.DisplayName, station.LocationQuality, lat, lon, nil
+		},
+	}.RegisterRoutes(router)
 	officialhttp.Handler{
 		Prices:  prices,
 		Secrets: cfg.CursorSecret,

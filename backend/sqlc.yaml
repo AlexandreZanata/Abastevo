@@ -158,3 +158,15 @@ sql:
         out: db/queries/privacy
         sql_package: pgx/v5
         emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/stationprofile
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000036_station_profiles.sql
+    gen:
+      go:
+        package: stationprofile
+        out: db/queries/stationprofile
+        sql_package: pgx/v5
+        emit_json_tags: true

@@ -721,6 +721,37 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/profile:
+    get:
+      summary: Read a station public profile (anonymous).
+      operationId: readStationProfile
+      tags: [directory]
+      security: []
+      description: >
+        Public anonymous read (P30-T02, B-BR-P01/P02): station identity,
+        versioned business fields and the operator link only. No
+        private proof, personal identity, prices or grants; unclaimed
+        profiles read honestly with empty business fields and no badge.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Public profile projection.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/stations/suggestions:
     post:
       summary: Submit a private station suggestion (signed).
@@ -2987,6 +3018,40 @@ components:
         created_at:
           type: string
           format: date-time
+    StationProfile:
+      description: >
+        Public station profile (P30-T02, B-BR-P01/P02): identity,
+        versioned business fields and operator link only. No badge
+        without an actual grant record; no private proof, personal
+        identity, prices or grants.
+      type: object
+      required: [station_id, display_name, location_quality, policy_version, revision, has_badge]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        location_quality:
+          type: string
+          enum: [unknown, city-centroid, reviewed]
+        coordinates:
+          type: object
+          properties:
+            lat: {type: number}
+            lon: {type: number}
+        policy_version:
+          type: string
+          example: profile-v1
+        revision:
+          type: integer
+          minimum: 1
+        business:
+          type: object
+        operator:
+          type: object
+        has_badge:
+          type: boolean
         mean_milli:
           type: [integer, 'null']
           description: Truncated mean in thousandths (4200 = 4.2); null with zero ratings.
