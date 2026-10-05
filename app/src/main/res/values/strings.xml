@@ -414,6 +414,20 @@
     <string name="server_station_cached">Showing last known data (offline cache).</string>
     <string name="server_stations_unavailable">Server directory unavailable. Official ANP browsing still works.</string>
 
+    <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
+    <string name="station_feedback_title">Station discussion</string>
+    <string name="station_feedback_guest">Sign in to rate, comment or vote. Reading is open to everyone.</string>
+    <string name="station_feedback_rate">Rate this station (1–5)</string>
+    <string name="station_feedback_comment_hint">Share a note (280 characters)</string>
+    <string name="station_feedback_submit">Post</string>
+    <string name="station_feedback_retry">Retry</string>
+    <string name="station_feedback_queued">Saved offline — will send automatically.</string>
+    <string name="station_feedback_vote_valid">Helpful</string>
+    <string name="station_feedback_vote_invalid">Not helpful</string>
+    <string name="station_feedback_votes">Helpful %1$d · Not helpful %2$d</string>
+    <string name="station_feedback_delete_rating">Remove my rating</string>
+    <string name="station_feedback_report">Report</string>
+
     <!-- Confirm/dispute (P10-T07, beta, flag-gated) -->
     <string name="community_vote_title">Confirm or dispute this price</string>
     <string name="community_vote_confirm">Confirm price</string>

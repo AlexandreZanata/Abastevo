@@ -413,6 +413,20 @@
     <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
     <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>
 
+    <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
+    <string name="station_feedback_title">Discussão do posto</string>
+    <string name="station_feedback_guest">Entre para avaliar, comentar ou votar. A leitura é aberta a todos.</string>
+    <string name="station_feedback_rate">Avalie este posto (1–5)</string>
+    <string name="station_feedback_comment_hint">Compartilhe uma nota (280 caracteres)</string>
+    <string name="station_feedback_submit">Publicar</string>
+    <string name="station_feedback_retry">Tentar de novo</string>
+    <string name="station_feedback_queued">Salvo offline — será enviado automaticamente.</string>
+    <string name="station_feedback_vote_valid">Útil</string>
+    <string name="station_feedback_vote_invalid">Não útil</string>
+    <string name="station_feedback_votes">Útil %1$d · Não útil %2$d</string>
+    <string name="station_feedback_delete_rating">Remover minha avaliação</string>
+    <string name="station_feedback_report">Denunciar</string>
+
     <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
     <string name="community_vote_title">Confirmar ou contestar este preço</string>
     <string name="community_vote_confirm">Confirmar preço</string>

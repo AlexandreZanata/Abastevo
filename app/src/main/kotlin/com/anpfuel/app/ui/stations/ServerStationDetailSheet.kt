@@ -81,6 +81,13 @@ fun ServerStationDetailSheet(
     onRoute: (ServerStation) -> Unit,
     onUpdatePrice: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Canonical discussion target: wire fuel product (e.g.
+     * `GASOLINE_REGULAR`) plus caller-held account id (blank = guest
+     * reads). Null wire keeps the honest pending card without network.
+     */
+    fuelProductWire: String? = null,
+    accountId: String = "",
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -135,30 +142,39 @@ fun ServerStationDetailSheet(
                 )
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            if (fuelProductWire != null) {
+                StationFeedbackSection(
+                    stationId = station.stationId,
+                    fuelProductWire = fuelProductWire,
+                    accountId = accountId,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ),
                 ) {
-                    Text(
-                        text = stringResource(R.string.community_section_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        text = stringResource(R.string.community_pending_p04),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.community_confidence_note),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.community_section_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                        Text(
+                            text = stringResource(R.string.community_pending_p04),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.community_confidence_note),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 

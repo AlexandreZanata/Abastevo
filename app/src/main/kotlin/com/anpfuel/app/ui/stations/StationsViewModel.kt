@@ -84,6 +84,12 @@ data class StationsUiState(
      */
     val nearbyStations: List<NearbyServerStation> = emptyList(),
     val isNearbyLoading: Boolean = false,
+    /**
+     * P36-T02 — caller-held account id for the canonical discussion
+     * target. Blank is an honest guest (reads only); session binding is
+     * owned by P36-T03.
+     */
+    val serverAccountId: String = "",
 )
 
 sealed interface StationsNavigationEffect {

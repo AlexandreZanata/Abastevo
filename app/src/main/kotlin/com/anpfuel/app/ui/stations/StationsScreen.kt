@@ -441,6 +441,10 @@ private fun StationsContent(
                 onDismiss = onServerDetailDismissed,
                 onRoute = onServerStationNavigate,
                 onUpdatePrice = onNavigateToUpdatePrice,
+                fuelProductWire = com.anpfuel.data.mapper.WireFuelMapper.toWire(
+                    uiState.selectedFuelProduct,
+                ),
+                accountId = uiState.serverAccountId,
             )
         }
     }
