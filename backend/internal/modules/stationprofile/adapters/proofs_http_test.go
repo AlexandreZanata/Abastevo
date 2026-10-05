@@ -56,6 +56,36 @@ func (f *fakeProofStore) MarkProofExpired(_ context.Context, _ string) error { r
 
 func (f *fakeProofStore) MarkProofDeleted(_ context.Context, _ string) error { return nil }
 
+func (f *fakeProofStore) GetProof(_ context.Context, id string) (application.ProofRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.proofs[id]
+	if !ok {
+		return application.ProofRow{}, application.ErrClaimNotFound
+	}
+	return row, nil
+}
+
+func (f *fakeProofStore) SetProofStatus(_ context.Context, id, status string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.proofs[id]
+	if !ok {
+		return application.ErrClaimNotFound
+	}
+	row.Status = status
+	f.proofs[id] = row
+	return nil
+}
+
+func (f *fakeProofStore) BumpAttempts(_ context.Context, _ string) (int64, error) {
+	return 1, nil
+}
+
+func (f *fakeProofStore) ConsumeDeclaration(_ context.Context, _ string) error { return nil }
+
+func (f *fakeProofStore) ExpireDeclaration(_ context.Context, _ string) error { return nil }
+
 func proofTestHandler(proofs *fakeProofStore, bytes application.ProofBytes, claims *fakeClaimStore, declaration application.DeclarationRow) ProofHandler {
 	n := 0
 	return ProofHandler{

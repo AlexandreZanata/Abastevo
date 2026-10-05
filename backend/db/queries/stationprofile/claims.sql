@@ -51,3 +51,24 @@ FROM claim_declarations
 WHERE claim_id = @claim_id AND state = 'active'
 ORDER BY version DESC
 LIMIT 1;
+
+-- name: GetDeclaration :one
+SELECT id, claim_id, version, nonce_digest, expected_digest, declaration, state, attempts, expires_at, consumed_at, created_at
+FROM claim_declarations
+WHERE id = @id;
+
+-- name: BumpDeclarationAttempts :one
+UPDATE claim_declarations
+SET attempts = attempts + 1
+WHERE id = @id AND state = 'active'
+RETURNING id, attempts;
+
+-- name: ConsumeDeclaration :execrows
+UPDATE claim_declarations
+SET state = 'consumed', consumed_at = now()
+WHERE id = @id AND state = 'active';
+
+-- name: ExpireDeclaration :execrows
+UPDATE claim_declarations
+SET state = 'expired'
+WHERE id = @id AND state = 'active';

@@ -40,6 +40,7 @@ type ClaimStore interface {
 	CreateDeclaration(ctx context.Context, id, claimID string, version int, nonceDigest, expectedDigest, declaration string, expiresAt time.Time) (DeclarationRow, error)
 	SupersedeDeclarations(ctx context.Context, claimID string) error
 	ActiveDeclaration(ctx context.Context, claimID string) (DeclarationRow, error)
+	GetDeclaration(ctx context.Context, id string) (DeclarationRow, error)
 }
 
 // ClaimRow is the stored claim.

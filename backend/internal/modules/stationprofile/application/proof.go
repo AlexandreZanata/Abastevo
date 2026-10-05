@@ -26,22 +26,28 @@ type Proof struct {
 type ProofStore interface {
 	CreateProof(ctx context.Context, id, claimID, declarationID, sha, format, kind, objectKey string, bytesSize int64, expiresAt time.Time) (ProofRow, bool, error)
 	ProofByHash(ctx context.Context, claimID, sha string) (ProofRow, error)
+	GetProof(ctx context.Context, id string) (ProofRow, error)
 	ListExpiredProofs(ctx context.Context, limit int) ([]ProofRow, error)
 	MarkProofExpired(ctx context.Context, id string) error
 	MarkProofDeleted(ctx context.Context, id string) error
+	SetProofStatus(ctx context.Context, id, status string) error
+	BumpAttempts(ctx context.Context, declarationID string) (int64, error)
+	ConsumeDeclaration(ctx context.Context, declarationID string) error
+	ExpireDeclaration(ctx context.Context, declarationID string) error
 }
 
 // ProofRow is the stored proof.
 type ProofRow struct {
-	ID        string
-	ClaimID   string
-	SHA256    string
-	BytesSize int64
-	Format    string
-	Kind      string
-	ObjectKey string
-	Status    string
-	ExpiresAt time.Time
+	ID            string
+	ClaimID       string
+	DeclarationID string
+	SHA256        string
+	BytesSize     int64
+	Format        string
+	Kind          string
+	ObjectKey     string
+	Status        string
+	ExpiresAt     time.Time
 }
 
 // ProofBytes stores and deletes immutable proof objects behind

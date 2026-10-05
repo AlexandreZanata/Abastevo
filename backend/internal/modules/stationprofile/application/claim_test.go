@@ -106,6 +106,17 @@ func (f *fakeClaimStore) SupersedeDeclarations(_ context.Context, claimID string
 	return nil
 }
 
+func (f *fakeClaimStore) GetDeclaration(_ context.Context, id string) (DeclarationRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, row := range f.decls {
+		if row.ID == id {
+			return row, nil
+		}
+	}
+	return DeclarationRow{}, ErrClaimNotFound
+}
+
 func (f *fakeClaimStore) ActiveDeclaration(_ context.Context, claimID string) (DeclarationRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

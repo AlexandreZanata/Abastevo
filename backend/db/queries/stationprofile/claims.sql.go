@@ -38,6 +38,39 @@ func (q *Queries) ActiveDeclaration(ctx context.Context, claimID pgtype.UUID) (C
 	return i, err
 }
 
+const bumpDeclarationAttempts = `-- name: BumpDeclarationAttempts :one
+UPDATE claim_declarations
+SET attempts = attempts + 1
+WHERE id = $1 AND state = 'active'
+RETURNING id, attempts
+`
+
+type BumpDeclarationAttemptsRow struct {
+	ID       pgtype.UUID `json:"id"`
+	Attempts int32       `json:"attempts"`
+}
+
+func (q *Queries) BumpDeclarationAttempts(ctx context.Context, id pgtype.UUID) (BumpDeclarationAttemptsRow, error) {
+	row := q.db.QueryRow(ctx, bumpDeclarationAttempts, id)
+	var i BumpDeclarationAttemptsRow
+	err := row.Scan(&i.ID, &i.Attempts)
+	return i, err
+}
+
+const consumeDeclaration = `-- name: ConsumeDeclaration :execrows
+UPDATE claim_declarations
+SET state = 'consumed', consumed_at = now()
+WHERE id = $1 AND state = 'active'
+`
+
+func (q *Queries) ConsumeDeclaration(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, consumeDeclaration, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countOpenClaims = `-- name: CountOpenClaims :one
 SELECT count(*) FROM profile_claims
 WHERE account_id = $1 AND state NOT IN ('approved', 'denied', 'cancelled', 'expired')
@@ -147,6 +180,20 @@ func (q *Queries) CreateDeclaration(ctx context.Context, arg CreateDeclarationPa
 	return i, err
 }
 
+const expireDeclaration = `-- name: ExpireDeclaration :execrows
+UPDATE claim_declarations
+SET state = 'expired'
+WHERE id = $1 AND state = 'active'
+`
+
+func (q *Queries) ExpireDeclaration(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, expireDeclaration, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getClaim = `-- name: GetClaim :one
 SELECT id, account_id, station_id, operator_cnpj, operator_source, role, scopes, policy_version, state, client_key, created_at, updated_at
 FROM profile_claims
@@ -200,6 +247,31 @@ func (q *Queries) GetClaimByKey(ctx context.Context, arg GetClaimByKeyParams) (P
 		&i.ClientKey,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getDeclaration = `-- name: GetDeclaration :one
+SELECT id, claim_id, version, nonce_digest, expected_digest, declaration, state, attempts, expires_at, consumed_at, created_at
+FROM claim_declarations
+WHERE id = $1
+`
+
+func (q *Queries) GetDeclaration(ctx context.Context, id pgtype.UUID) (ClaimDeclaration, error) {
+	row := q.db.QueryRow(ctx, getDeclaration, id)
+	var i ClaimDeclaration
+	err := row.Scan(
+		&i.ID,
+		&i.ClaimID,
+		&i.Version,
+		&i.NonceDigest,
+		&i.ExpectedDigest,
+		&i.Declaration,
+		&i.State,
+		&i.Attempts,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }

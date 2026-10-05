@@ -22,7 +22,8 @@ func mapProofRow(row stationprofile.ClaimProof) application.ProofRow {
 	}
 	return application.ProofRow{
 		ID: uuidString(row.ID), ClaimID: uuidString(row.ClaimID),
-		SHA256: row.Sha256, BytesSize: row.BytesSize, Format: row.Format,
+		DeclarationID: uuidString(row.DeclarationID),
+		SHA256:        row.Sha256, BytesSize: row.BytesSize, Format: row.Format,
 		Kind: row.EvidenceKind, ObjectKey: row.ObjectKey,
 		Status: row.Status, ExpiresAt: expires,
 	}
@@ -102,5 +103,59 @@ func (s ProofStore) MarkProofDeleted(ctx context.Context, id string) error {
 		return err
 	}
 	_, err = s.Q.MarkProofDeleted(ctx, uid)
+	return err
+}
+
+func (s ProofStore) GetProof(ctx context.Context, id string) (application.ProofRow, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return application.ProofRow{}, application.ErrClaimNotFound
+	}
+	row, err := s.Q.GetProof(ctx, uid)
+	if err != nil {
+		if isNoRows(err) {
+			return application.ProofRow{}, application.ErrClaimNotFound
+		}
+		return application.ProofRow{}, err
+	}
+	return mapProofRow(row), nil
+}
+
+func (s ProofStore) SetProofStatus(ctx context.Context, id, status string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.SetProofStatus(ctx, stationprofile.SetProofStatusParams{ID: uid, Status: status})
+	return err
+}
+
+func (s ProofStore) BumpAttempts(ctx context.Context, declarationID string) (int64, error) {
+	uid, err := mustUUID(declarationID)
+	if err != nil {
+		return 0, err
+	}
+	row, err := s.Q.BumpDeclarationAttempts(ctx, uid)
+	if err != nil {
+		return 0, err
+	}
+	return int64(row.Attempts), nil
+}
+
+func (s ProofStore) ConsumeDeclaration(ctx context.Context, declarationID string) error {
+	uid, err := mustUUID(declarationID)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.ConsumeDeclaration(ctx, uid)
+	return err
+}
+
+func (s ProofStore) ExpireDeclaration(ctx context.Context, declarationID string) error {
+	uid, err := mustUUID(declarationID)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.ExpireDeclaration(ctx, uid)
 	return err
 }

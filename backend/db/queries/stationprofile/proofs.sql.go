@@ -64,6 +64,31 @@ func (q *Queries) CreateProof(ctx context.Context, arg CreateProofParams) (Claim
 	return i, err
 }
 
+const getProof = `-- name: GetProof :one
+SELECT id, claim_id, declaration_id, sha256, bytes_size, format, evidence_kind, object_key, status, expires_at, created_at
+FROM claim_proofs
+WHERE id = $1
+`
+
+func (q *Queries) GetProof(ctx context.Context, id pgtype.UUID) (ClaimProof, error) {
+	row := q.db.QueryRow(ctx, getProof, id)
+	var i ClaimProof
+	err := row.Scan(
+		&i.ID,
+		&i.ClaimID,
+		&i.DeclarationID,
+		&i.Sha256,
+		&i.BytesSize,
+		&i.Format,
+		&i.EvidenceKind,
+		&i.ObjectKey,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProofByHash = `-- name: GetProofByHash :one
 SELECT id, claim_id, declaration_id, sha256, bytes_size, format, evidence_kind, object_key, status, expires_at, created_at
 FROM claim_proofs
@@ -156,6 +181,25 @@ WHERE id = $1 AND status NOT IN ('expired', 'deleted')
 
 func (q *Queries) MarkProofExpired(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, markProofExpired, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setProofStatus = `-- name: SetProofStatus :execrows
+UPDATE claim_proofs
+SET status = $1
+WHERE id = $2 AND status = 'received'
+`
+
+type SetProofStatusParams struct {
+	Status string      `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetProofStatus(ctx context.Context, arg SetProofStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setProofStatus, arg.Status, arg.ID)
 	if err != nil {
 		return 0, err
 	}

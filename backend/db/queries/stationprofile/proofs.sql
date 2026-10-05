@@ -30,3 +30,13 @@ WHERE id = @id AND status NOT IN ('expired', 'deleted');
 UPDATE claim_proofs
 SET status = 'deleted'
 WHERE id = @id AND status NOT IN ('deleted');
+
+-- name: GetProof :one
+SELECT id, claim_id, declaration_id, sha256, bytes_size, format, evidence_kind, object_key, status, expires_at, created_at
+FROM claim_proofs
+WHERE id = @id;
+
+-- name: SetProofStatus :execrows
+UPDATE claim_proofs
+SET status = @status
+WHERE id = @id AND status = 'received';

@@ -128,6 +128,16 @@ func (f *fakeClaimStore) ActiveDeclaration(_ context.Context, claimID string) (a
 	return application.DeclarationRow{}, application.ErrClaimNotFound
 }
 
+func (f *fakeClaimStore) GetDeclaration(_ context.Context, id string) (application.DeclarationRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.decls[id]
+	if !ok {
+		return application.DeclarationRow{}, application.ErrClaimNotFound
+	}
+	return row, nil
+}
+
 func claimTestPorts(store *fakeClaimStore) application.ClaimPorts {
 	n := 0
 	return application.ClaimPorts{

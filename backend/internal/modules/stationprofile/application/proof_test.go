@@ -8,8 +8,9 @@ import (
 )
 
 type fakeProofStore struct {
-	mu     sync.Mutex
-	proofs map[string]ProofRow
+	mu       sync.Mutex
+	proofs   map[string]ProofRow
+	attempts map[string]int
 }
 
 func (f *fakeProofStore) CreateProof(_ context.Context, id, claimID, declarationID, sha, format, kind, objectKey string, bytesSize int64, expiresAt time.Time) (ProofRow, bool, error) {
@@ -20,7 +21,7 @@ func (f *fakeProofStore) CreateProof(_ context.Context, id, claimID, declaration
 			return ProofRow{}, false, nil
 		}
 	}
-	row := ProofRow{ID: id, ClaimID: claimID, SHA256: sha, BytesSize: bytesSize, Format: format, Kind: kind, ObjectKey: objectKey, Status: "received", ExpiresAt: expiresAt}
+	row := ProofRow{ID: id, ClaimID: claimID, DeclarationID: declarationID, SHA256: sha, BytesSize: bytesSize, Format: format, Kind: kind, ObjectKey: objectKey, Status: "received", ExpiresAt: expiresAt}
 	if f.proofs == nil {
 		f.proofs = map[string]ProofRow{}
 	}
@@ -86,6 +87,22 @@ func (f *fakeProofBytes) Put(_ context.Context, key string, body []byte) error {
 	}
 	f.objects[key] = body
 	return nil
+}
+
+type errorString string
+
+func (e errorString) Error() string { return string(e) }
+
+var errProofBytesGone = errorString("proof bytes gone")
+
+func (f *fakeProofBytes) Get(_ context.Context, key string) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	body, ok := f.objects[key]
+	if !ok {
+		return nil, errProofBytesGone
+	}
+	return body, nil
 }
 
 func (f *fakeProofBytes) Delete(_ context.Context, key string) error {
@@ -202,6 +219,13 @@ func (a *claimStoreAdapter) ActiveDeclaration(ctx context.Context, claimID strin
 	return a.declaration, nil
 }
 
+func (a *claimStoreAdapter) GetDeclaration(ctx context.Context, id string) (DeclarationRow, error) {
+	if a.declaration.ID == id {
+		return a.declaration, nil
+	}
+	return DeclarationRow{}, ErrClaimNotFound
+}
+
 func TestSubmitProofRefusesUnsafeAndForeign(t *testing.T) {
 	claims := &fakeClaimStore{}
 	proofs := &fakeProofStore{}
@@ -259,4 +283,44 @@ func TestPurgeExpiredDeletesBytesKeepsRows(t *testing.T) {
 	if proofs.proofs[submitted.ID].Status != "expired" {
 		t.Fatal("row must stay as expired audit")
 	}
+}
+
+func (f *fakeProofStore) GetProof(_ context.Context, id string) (ProofRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.proofs[id]
+	if !ok {
+		return ProofRow{}, ErrClaimNotFound
+	}
+	return row, nil
+}
+
+func (f *fakeProofStore) SetProofStatus(_ context.Context, id, status string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.proofs[id]
+	if !ok {
+		return ErrClaimNotFound
+	}
+	row.Status = status
+	f.proofs[id] = row
+	return nil
+}
+
+func (f *fakeProofStore) BumpAttempts(_ context.Context, declarationID string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.attempts == nil {
+		f.attempts = map[string]int{}
+	}
+	f.attempts[declarationID]++
+	return int64(f.attempts[declarationID]), nil
+}
+
+func (f *fakeProofStore) ConsumeDeclaration(_ context.Context, declarationID string) error {
+	return nil
+}
+
+func (f *fakeProofStore) ExpireDeclaration(_ context.Context, declarationID string) error {
+	return nil
 }

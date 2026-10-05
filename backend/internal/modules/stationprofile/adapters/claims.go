@@ -189,3 +189,18 @@ func (s ClaimStore) ActiveDeclaration(ctx context.Context, claimID string) (appl
 	}
 	return mapDeclarationRow(row), nil
 }
+
+func (s ClaimStore) GetDeclaration(ctx context.Context, id string) (application.DeclarationRow, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return application.DeclarationRow{}, application.ErrClaimNotFound
+	}
+	row, err := s.Q.GetDeclaration(ctx, uid)
+	if err != nil {
+		if isNoRows(err) {
+			return application.DeclarationRow{}, application.ErrClaimNotFound
+		}
+		return application.DeclarationRow{}, err
+	}
+	return mapDeclarationRow(row), nil
+}
