@@ -54,10 +54,13 @@ type Store interface {
 	GetRun(ctx context.Context, source, snapshot string) (Report, error)
 	FinishRun(ctx context.Context, runID, state string, accepted, duplicates, rejected int64, errorCode string) error
 	StageAssertion(ctx context.Context, a Assertion) (accepted bool, err error)
+	ListAssertions(ctx context.Context, runID string) ([]Assertion, error)
+	SetAssertionStation(ctx context.Context, assertionID, stationID string) error
 }
 
 // Assertion is one validated source row ready for staging.
 type Assertion struct {
+	ID               string
 	Source           string
 	SourceKey        string
 	Checksum         string
@@ -70,6 +73,10 @@ type Assertion struct {
 	LocationQuality  string
 	SourceReference  string
 	EffectiveDate    pgtype.Date
+	Latitude         float64
+	Longitude        float64
+	HasCoords        bool
+	CRS              string
 	runID            string
 }
 
@@ -175,6 +182,9 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 		AuthState: a.AuthState, Operation: "unknown", Eligibility: a.Eligibility,
 		LocationQuality: a.LocationQuality, SourceReference: a.SourceReference,
 		EffectiveDate: a.EffectiveDate,
+		Latitude:      floatOrNull(a.Latitude, a.HasCoords),
+		Longitude:     floatOrNull(a.Longitude, a.HasCoords),
+		Crs:           crsOrEmpty(a.CRS, a.HasCoords),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -185,11 +195,79 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 	return id.Valid, nil
 }
 
+func (s *PGStore) ListAssertions(ctx context.Context, runID string) ([]Assertion, error) {
+	uid, err := mustUUID(runID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.Q.ListRegistryAssertions(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Assertion, 0, len(rows))
+	for _, row := range rows {
+		address := map[string]string{}
+		if len(row.Address) > 0 {
+			_ = json.Unmarshal(row.Address, &address)
+		}
+		out = append(out, Assertion{
+			ID:               uuidString(row.ID),
+			Source:           row.Source,
+			SourceKey:        row.SourceKey,
+			Checksum:         row.Checksum,
+			DisplayName:      row.DisplayName,
+			Address:          address,
+			MunicipalityCode: row.MunicipalityCode.String,
+			State:            row.State.String,
+			AuthState:        row.AuthState,
+			Eligibility:      row.Eligibility,
+			LocationQuality:  row.LocationQuality,
+			SourceReference:  row.SourceReference,
+			Latitude:         row.Latitude.Float64,
+			Longitude:        row.Longitude.Float64,
+			HasCoords:        row.Latitude.Valid && row.Longitude.Valid,
+			CRS:              row.Crs,
+			runID:            uuidString(row.RunID),
+		})
+	}
+	return out, nil
+}
+
+func (s *PGStore) SetAssertionStation(ctx context.Context, assertionID, stationID string) error {
+	assertionUID, err := mustUUID(assertionID)
+	if err != nil {
+		return err
+	}
+	stationUID, err := mustUUID(stationID)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.SetAssertionStation(ctx, directory.SetAssertionStationParams{
+		ID:        assertionUID,
+		StationID: stationUID,
+	})
+	return err
+}
+
 func textOrNull(value string) pgtype.Text {
 	if value == "" {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: value, Valid: true}
+}
+
+func floatOrNull(value float64, present bool) pgtype.Float8 {
+	if !present {
+		return pgtype.Float8{}
+	}
+	return pgtype.Float8{Float64: value, Valid: true}
+}
+
+func crsOrEmpty(crs string, present bool) string {
+	if !present {
+		return ""
+	}
+	return crs
 }
 
 // StageCSV streams one bounded CSV snapshot into staging. Header

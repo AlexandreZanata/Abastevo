@@ -10,12 +10,13 @@ import (
 // exactly like the (source, source_key, checksum) unique key.
 type fakeStore struct {
 	runs       map[string]Report
-	assertions map[string]bool
+	assertions map[string]Assertion
 	failStage  bool
+	nextID     int
 }
 
 func newFakeStore() *fakeStore {
-	return &fakeStore{runs: map[string]Report{}, assertions: map[string]bool{}}
+	return &fakeStore{runs: map[string]Report{}, assertions: map[string]Assertion{}}
 }
 
 func (f *fakeStore) CreateRun(_ context.Context, id, _, snapshot, _ string) (string, bool, error) {
@@ -45,12 +46,40 @@ func (f *fakeStore) StageAssertion(_ context.Context, a Assertion) (bool, error)
 	if f.failStage {
 		return false, errTest
 	}
-	key := a.SourceKey + "|" + a.Checksum
-	if f.assertions[key] {
+	key := a.Source + "|" + a.SourceKey + "|" + a.Checksum
+	if _, ok := f.assertions[key]; ok {
 		return false, nil
 	}
-	f.assertions[key] = true
+	f.nextID++
+	a.ID = "fake-assertion-" + itoa(f.nextID)
+	f.assertions[key] = a
 	return true, nil
+}
+
+func (f *fakeStore) ListAssertions(_ context.Context, runID string) ([]Assertion, error) {
+	var out []Assertion
+	for _, a := range f.assertions {
+		if a.runID == runID {
+			out = append(out, a)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) SetAssertionStation(_ context.Context, _, _ string) error {
+	return nil
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var digits []byte
+	for n > 0 {
+		digits = append([]byte{byte('0' + n%10)}, digits...)
+		n /= 10
+	}
+	return string(digits)
 }
 
 var errTest = errTestSentinel()

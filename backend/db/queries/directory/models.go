@@ -61,6 +61,9 @@ type RegistryAssertion struct {
 	EffectiveDate    pgtype.Date        `json:"effective_date"`
 	FetchedAt        pgtype.Timestamptz `json:"fetched_at"`
 	SupersededBy     pgtype.UUID        `json:"superseded_by"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
+	Crs              string             `json:"crs"`
 }
 
 type RegistrySourceRun struct {

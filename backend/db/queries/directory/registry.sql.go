@@ -141,36 +141,157 @@ func (q *Queries) GetRegistryRun(ctx context.Context, arg GetRegistryRunParams) 
 	return i, err
 }
 
+const getRegistryRunByID = `-- name: GetRegistryRunByID :one
+SELECT id, source, snapshot_identity, checksum, parser_version, state,
+    accepted, duplicates, rejected, error_code, started_at, finished_at
+FROM registry_source_runs
+WHERE id = $1
+`
+
+func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (RegistrySourceRun, error) {
+	row := q.db.QueryRow(ctx, getRegistryRunByID, id)
+	var i RegistrySourceRun
+	err := row.Scan(
+		&i.ID,
+		&i.Source,
+		&i.SnapshotIdentity,
+		&i.Checksum,
+		&i.ParserVersion,
+		&i.State,
+		&i.Accepted,
+		&i.Duplicates,
+		&i.Rejected,
+		&i.ErrorCode,
+		&i.StartedAt,
+		&i.FinishedAt,
+	)
+	return i, err
+}
+
+const listRegistryAssertions = `-- name: ListRegistryAssertions :many
+SELECT id, run_id, source, source_key, checksum, display_name, address,
+    municipality_code, state, auth_state, operation, eligibility,
+    location_quality, source_reference, latitude, longitude, crs,
+    station_id
+FROM registry_assertions
+WHERE run_id = $1
+ORDER BY source_key, checksum
+`
+
+type ListRegistryAssertionsRow struct {
+	ID               pgtype.UUID   `json:"id"`
+	RunID            pgtype.UUID   `json:"run_id"`
+	Source           string        `json:"source"`
+	SourceKey        string        `json:"source_key"`
+	Checksum         string        `json:"checksum"`
+	DisplayName      string        `json:"display_name"`
+	Address          []byte        `json:"address"`
+	MunicipalityCode pgtype.Text   `json:"municipality_code"`
+	State            pgtype.Text   `json:"state"`
+	AuthState        string        `json:"auth_state"`
+	Operation        string        `json:"operation"`
+	Eligibility      string        `json:"eligibility"`
+	LocationQuality  string        `json:"location_quality"`
+	SourceReference  string        `json:"source_reference"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Crs              string        `json:"crs"`
+	StationID        pgtype.UUID   `json:"station_id"`
+}
+
+func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID) ([]ListRegistryAssertionsRow, error) {
+	rows, err := q.db.Query(ctx, listRegistryAssertions, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRegistryAssertionsRow
+	for rows.Next() {
+		var i ListRegistryAssertionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RunID,
+			&i.Source,
+			&i.SourceKey,
+			&i.Checksum,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+			&i.AuthState,
+			&i.Operation,
+			&i.Eligibility,
+			&i.LocationQuality,
+			&i.SourceReference,
+			&i.Latitude,
+			&i.Longitude,
+			&i.Crs,
+			&i.StationID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setAssertionStation = `-- name: SetAssertionStation :execrows
+UPDATE registry_assertions
+SET station_id = $1
+WHERE id = $2 AND station_id IS NULL
+`
+
+type SetAssertionStationParams struct {
+	StationID pgtype.UUID `json:"station_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetAssertionStation(ctx context.Context, arg SetAssertionStationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setAssertionStation, arg.StationID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
     municipality_code, state, auth_state, operation, eligibility,
-    location_quality, source_reference, effective_date
+    location_quality, source_reference, effective_date,
+    latitude, longitude, crs
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10, $11,
-    $12, $13, $14, $15
+    $12, $13, $14, $15,
+    $16, $17, $18
 )
 ON CONFLICT (source, source_key, checksum) DO NOTHING
 RETURNING id
 `
 
 type StageRegistryAssertionParams struct {
-	ID               pgtype.UUID `json:"id"`
-	RunID            pgtype.UUID `json:"run_id"`
-	Source           string      `json:"source"`
-	SourceKey        string      `json:"source_key"`
-	Checksum         string      `json:"checksum"`
-	DisplayName      string      `json:"display_name"`
-	Address          []byte      `json:"address"`
-	MunicipalityCode pgtype.Text `json:"municipality_code"`
-	State            pgtype.Text `json:"state"`
-	AuthState        string      `json:"auth_state"`
-	Operation        string      `json:"operation"`
-	Eligibility      string      `json:"eligibility"`
-	LocationQuality  string      `json:"location_quality"`
-	SourceReference  string      `json:"source_reference"`
-	EffectiveDate    pgtype.Date `json:"effective_date"`
+	ID               pgtype.UUID   `json:"id"`
+	RunID            pgtype.UUID   `json:"run_id"`
+	Source           string        `json:"source"`
+	SourceKey        string        `json:"source_key"`
+	Checksum         string        `json:"checksum"`
+	DisplayName      string        `json:"display_name"`
+	Address          []byte        `json:"address"`
+	MunicipalityCode pgtype.Text   `json:"municipality_code"`
+	State            pgtype.Text   `json:"state"`
+	AuthState        string        `json:"auth_state"`
+	Operation        string        `json:"operation"`
+	Eligibility      string        `json:"eligibility"`
+	LocationQuality  string        `json:"location_quality"`
+	SourceReference  string        `json:"source_reference"`
+	EffectiveDate    pgtype.Date   `json:"effective_date"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Crs              string        `json:"crs"`
 }
 
 func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryAssertionParams) (pgtype.UUID, error) {
@@ -190,8 +311,34 @@ func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryA
 		arg.LocationQuality,
 		arg.SourceReference,
 		arg.EffectiveDate,
+		arg.Latitude,
+		arg.Longitude,
+		arg.Crs,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateStationStatus = `-- name: UpdateStationStatus :execrows
+UPDATE directory_stations
+SET status = $1
+WHERE id = $2 AND status <> $1
+  -- Revocation sticks: a sourced suspended/revoked status is never
+  -- cleared back to active by a later snapshot; reactivation is an
+  -- audited operator decision, not an import side effect.
+  AND NOT (status IN ('suspended', 'revoked') AND $1 = 'active')
+`
+
+type UpdateStationStatusParams struct {
+	Status string      `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateStationStatus(ctx context.Context, arg UpdateStationStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateStationStatus, arg.Status, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

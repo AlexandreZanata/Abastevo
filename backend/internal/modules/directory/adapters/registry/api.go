@@ -213,6 +213,9 @@ func parseAPIRecord(raw json.RawMessage) (Assertion, bool) {
 	if rec.LocationWire == "reviewed" || rec.LocationWire == "city-centroid" {
 		quality = rec.LocationWire
 	}
+	var lat, lon float64
+	var hasCoords bool
+	var crs string
 	if rec.Coordenadas != nil {
 		coords := rec.Coordenadas
 		if math.IsNaN(coords.Lat) || math.IsNaN(coords.Lon) ||
@@ -221,10 +224,11 @@ func parseAPIRecord(raw json.RawMessage) (Assertion, bool) {
 			coords.Lon < -180 || coords.Lon > 180 {
 			return Assertion{}, false
 		}
-		crs := strings.ToUpper(strings.TrimSpace(coords.CRS))
+		crs = strings.ToUpper(strings.TrimSpace(coords.CRS))
 		if crs != "WGS84" && crs != "SIRGAS2000" {
 			return Assertion{}, false
 		}
+		lat, lon, hasCoords = coords.Lat, coords.Lon, true
 	} else if quality != "unknown" {
 		// A reviewed claim without coordinates is honest unknown, never
 		// an inferred point.
@@ -255,6 +259,10 @@ func parseAPIRecord(raw json.RawMessage) (Assertion, bool) {
 		LocationQuality:  quality,
 		SourceReference:  ato,
 		EffectiveDate:    effective,
+		Latitude:         lat,
+		Longitude:        lon,
+		HasCoords:        hasCoords,
+		CRS:              crs,
 	}, true
 }
 

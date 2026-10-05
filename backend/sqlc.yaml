@@ -24,6 +24,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000031_registry_sources.sql
+      - db/migrations/000032_registry_assertion_coords.sql
     gen:
       go:
         package: directory
