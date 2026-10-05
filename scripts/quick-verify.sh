@@ -91,7 +91,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
+            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -179,6 +179,24 @@ else
     if [[ "$MOBILE_CHANGED" == "1" ]]; then
         echo "== mobile static selection =="
         bash scripts/check-mobile.sh --static-only
+    fi
+    # Bounded landing selection (P25-T02): landing-area changes run the
+    # static build, check and tests.
+    LANDING_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            landing/*)
+                LANDING_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$LANDING_CHANGED" == "1" ]]; then
+        echo "== landing static & ts selection =="
+        npm --prefix landing run typecheck
+        npm --prefix landing run build
+        npm --prefix landing run check
+        npm --prefix landing test
     fi
 fi
 

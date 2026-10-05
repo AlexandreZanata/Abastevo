@@ -1,0 +1,21 @@
+{
+  "name": "abastevo",
+  "short_name": "abastevo",
+  "description": "Preços de combustíveis com a comunidade",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f8fc",
+  "theme_color": "#f5f8fc",
+  "icons": [
+    {
+      "src": "/assets/brand/abastevo-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/assets/brand/abastevo-app-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
