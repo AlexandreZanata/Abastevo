@@ -81,7 +81,7 @@
   "milestone": 20,
   "milestone_title": "P26 — Landing educational guides",
   "phase": "26",
-  "pr": null,
+  "pr": 117,
   "publication_scope": "AUTHORIZED_CURRENT_PHASE_ISSUES_PR_GUARDED_MERGE_WIKI",
   "release_tracker": {
     "classification": "RELEASE",
