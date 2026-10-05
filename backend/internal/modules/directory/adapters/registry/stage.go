@@ -58,6 +58,7 @@ type Store interface {
 
 // Assertion is one validated source row ready for staging.
 type Assertion struct {
+	Source           string
 	SourceKey        string
 	Checksum         string
 	DisplayName      string
@@ -66,7 +67,9 @@ type Assertion struct {
 	State            string
 	AuthState        string
 	Eligibility      string
+	LocationQuality  string
 	SourceReference  string
+	EffectiveDate    pgtype.Date
 	runID            string
 }
 
@@ -166,11 +169,12 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 		return false, err
 	}
 	id, err := s.Q.StageRegistryAssertion(ctx, directory.StageRegistryAssertionParams{
-		ID: uid, RunID: runUID, Source: SourceCSV, SourceKey: a.SourceKey,
+		ID: uid, RunID: runUID, Source: a.Source, SourceKey: a.SourceKey,
 		Checksum: a.Checksum, DisplayName: a.DisplayName, Address: address,
 		MunicipalityCode: textOrNull(a.MunicipalityCode), State: textOrNull(a.State),
 		AuthState: a.AuthState, Operation: "unknown", Eligibility: a.Eligibility,
-		LocationQuality: "unknown", SourceReference: a.SourceReference,
+		LocationQuality: a.LocationQuality, SourceReference: a.SourceReference,
+		EffectiveDate: a.EffectiveDate,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -311,6 +315,7 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 	})
 	sum := sha256.Sum256([]byte(strings.Join(record, "\x1f")))
 	return Assertion{
+		Source:           SourceCSV,
 		SourceKey:        cnpj,
 		Checksum:         hex.EncodeToString(sum[:]),
 		DisplayName:      name,
@@ -319,6 +324,7 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 		State:            uf,
 		AuthState:        string(auth),
 		Eligibility:      string(eligibility),
+		LocationQuality:  "unknown",
 		SourceReference:  at("ATO_AUTORIZACAO"),
 	}, true
 }
