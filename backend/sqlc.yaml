@@ -27,6 +27,7 @@ sql:
       - db/migrations/000032_registry_assertion_coords.sql
       - db/migrations/000033_dou_run_sources.sql
       - db/migrations/000034_station_suggestions.sql
+      - db/migrations/000035_suggestion_decisions.sql
     gen:
       go:
         package: directory

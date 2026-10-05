@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
@@ -121,4 +122,55 @@ func (s IntakeStore) CancelSuggestion(ctx context.Context, id, accountID string)
 		return 0, nil
 	}
 	return s.Q.CancelSuggestion(ctx, directory.CancelSuggestionParams{ID: uid, AccountID: ownerID})
+}
+
+func (s IntakeStore) CreateDecision(ctx context.Context, id, suggestionID, decision, reason, reviewer, stationID string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	sugUID, err := mustUUID(suggestionID)
+	if err != nil {
+		return err
+	}
+	var stationUID pgtype.UUID
+	if stationID != "" {
+		stationUID, err = mustUUID(stationID)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = s.Q.CreateDecision(ctx, directory.CreateDecisionParams{
+		ID: uid, SuggestionID: sugUID, Decision: decision,
+		Reason: reason, Reviewer: reviewer, StationID: stationUID,
+	})
+	return err
+}
+
+func (s IntakeStore) SetSuggestionState(ctx context.Context, id, state string) (int64, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return 0, err
+	}
+	return s.Q.DecideSuggestion(ctx, directory.DecideSuggestionParams{ID: uid, State: state})
+}
+
+func (s IntakeStore) ListPending(ctx context.Context, limit int) ([]application.SuggestionRow, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+	rows, err := s.Q.ListPendingSuggestions(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]application.SuggestionRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, intakeRow(directory.StationSuggestion{
+			ID: row.ID, AccountID: row.AccountID,
+			ClientSubmissionID: row.ClientSubmissionID, Proposal: row.Proposal,
+			EvidenceRef: row.EvidenceRef, State: row.State,
+			CreatedAt: row.CreatedAt, DecidedAt: row.DecidedAt,
+		}))
+	}
+	return out, nil
 }

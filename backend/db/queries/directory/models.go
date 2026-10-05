@@ -91,3 +91,13 @@ type StationSuggestion struct {
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	DecidedAt          pgtype.Timestamptz `json:"decided_at"`
 }
+
+type SuggestionDecision struct {
+	ID           pgtype.UUID        `json:"id"`
+	SuggestionID pgtype.UUID        `json:"suggestion_id"`
+	Decision     string             `json:"decision"`
+	Reason       string             `json:"reason"`
+	Reviewer     string             `json:"reviewer"`
+	StationID    pgtype.UUID        `json:"station_id"`
+	DecidedAt    pgtype.Timestamptz `json:"decided_at"`
+}

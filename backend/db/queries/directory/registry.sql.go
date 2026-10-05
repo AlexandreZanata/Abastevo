@@ -64,6 +64,47 @@ func (q *Queries) CountRegistryAssertions(ctx context.Context, runID pgtype.UUID
 	return count, err
 }
 
+const createDecision = `-- name: CreateDecision :one
+
+INSERT INTO suggestion_decisions (id, suggestion_id, decision, reason, reviewer, station_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, suggestion_id, decision, reason, reviewer, station_id, decided_at
+`
+
+type CreateDecisionParams struct {
+	ID           pgtype.UUID `json:"id"`
+	SuggestionID pgtype.UUID `json:"suggestion_id"`
+	Decision     string      `json:"decision"`
+	Reason       string      `json:"reason"`
+	Reviewer     string      `json:"reviewer"`
+	StationID    pgtype.UUID `json:"station_id"`
+}
+
+// Owned by directory (suggestion review, P27-T02). Audited decisions:
+// only pending suggestions transition; concurrent reviewers converge
+// on the SQL guard instead of overwriting.
+func (q *Queries) CreateDecision(ctx context.Context, arg CreateDecisionParams) (SuggestionDecision, error) {
+	row := q.db.QueryRow(ctx, createDecision,
+		arg.ID,
+		arg.SuggestionID,
+		arg.Decision,
+		arg.Reason,
+		arg.Reviewer,
+		arg.StationID,
+	)
+	var i SuggestionDecision
+	err := row.Scan(
+		&i.ID,
+		&i.SuggestionID,
+		&i.Decision,
+		&i.Reason,
+		&i.Reviewer,
+		&i.StationID,
+		&i.DecidedAt,
+	)
+	return i, err
+}
+
 const createRegistryRun = `-- name: CreateRegistryRun :one
 
 INSERT INTO registry_source_runs (id, source, snapshot_identity, checksum, parser_version)
@@ -147,6 +188,60 @@ func (q *Queries) CreateSuggestion(ctx context.Context, arg CreateSuggestionPara
 		&i.State,
 		&i.CreatedAt,
 		&i.DecidedAt,
+	)
+	return i, err
+}
+
+const decideSuggestion = `-- name: DecideSuggestion :execrows
+UPDATE station_suggestions
+SET state = $1, decided_at = now()
+WHERE id = $2 AND state = 'pending'
+`
+
+type DecideSuggestionParams struct {
+	State string      `json:"state"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, decideSuggestion, arg.State, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findOfficialAssertion = `-- name: FindOfficialAssertion :one
+SELECT a.source_key, a.display_name, a.municipality_code, a.state,
+    a.auth_state, a.eligibility
+FROM registry_assertions AS a
+JOIN registry_source_runs AS r ON r.id = a.run_id
+WHERE a.source_key = $1
+  AND a.source IN ('registry-csv', 'registry-api')
+  AND r.state = 'complete'
+ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
+LIMIT 1
+`
+
+type FindOfficialAssertionRow struct {
+	SourceKey        string      `json:"source_key"`
+	DisplayName      string      `json:"display_name"`
+	MunicipalityCode pgtype.Text `json:"municipality_code"`
+	State            pgtype.Text `json:"state"`
+	AuthState        string      `json:"auth_state"`
+	Eligibility      string      `json:"eligibility"`
+}
+
+func (q *Queries) FindOfficialAssertion(ctx context.Context, sourceKey string) (FindOfficialAssertionRow, error) {
+	row := q.db.QueryRow(ctx, findOfficialAssertion, sourceKey)
+	var i FindOfficialAssertionRow
+	err := row.Scan(
+		&i.SourceKey,
+		&i.DisplayName,
+		&i.MunicipalityCode,
+		&i.State,
+		&i.AuthState,
+		&i.Eligibility,
 	)
 	return i, err
 }
@@ -338,6 +433,44 @@ type ListOwnedSuggestionsParams struct {
 
 func (q *Queries) ListOwnedSuggestions(ctx context.Context, arg ListOwnedSuggestionsParams) ([]StationSuggestion, error) {
 	rows, err := q.db.Query(ctx, listOwnedSuggestions, arg.AccountID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationSuggestion
+	for rows.Next() {
+		var i StationSuggestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.ClientSubmissionID,
+			&i.Proposal,
+			&i.EvidenceRef,
+			&i.State,
+			&i.CreatedAt,
+			&i.DecidedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingSuggestions = `-- name: ListPendingSuggestions :many
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE state = 'pending'
+ORDER BY created_at ASC
+LIMIT $1::int
+`
+
+func (q *Queries) ListPendingSuggestions(ctx context.Context, pageLimit int32) ([]StationSuggestion, error) {
+	rows, err := q.db.Query(ctx, listPendingSuggestions, pageLimit)
 	if err != nil {
 		return nil, err
 	}

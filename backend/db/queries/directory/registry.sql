@@ -83,6 +83,17 @@ UPDATE registry_assertions
 SET superseded_by = @superseded_by
 WHERE id = @id AND superseded_by IS NULL;
 
+-- name: FindOfficialAssertion :one
+SELECT a.source_key, a.display_name, a.municipality_code, a.state,
+    a.auth_state, a.eligibility
+FROM registry_assertions AS a
+JOIN registry_source_runs AS r ON r.id = a.run_id
+WHERE a.source_key = @source_key
+  AND a.source IN ('registry-csv', 'registry-api')
+  AND r.state = 'complete'
+ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
+LIMIT 1;
+
 -- Owned by directory (station suggestions, P27-T01). Private intake:
 -- one row per owner idempotency key; owner-only reads; decisions land
 -- in T02 (approved/rejected), cancellation stays owner-side.
@@ -122,3 +133,25 @@ WHERE account_id = @account_id AND created_at > now() - make_interval(days => 1)
 UPDATE station_suggestions
 SET state = 'cancelled'
 WHERE id = @id AND account_id = @account_id AND state = 'pending';
+
+-- Owned by directory (suggestion review, P27-T02). Audited decisions:
+-- only pending suggestions transition; concurrent reviewers converge
+-- on the SQL guard instead of overwriting.
+
+-- name: CreateDecision :one
+INSERT INTO suggestion_decisions (id, suggestion_id, decision, reason, reviewer, station_id)
+VALUES (@id, @suggestion_id, @decision, @reason, @reviewer, @station_id)
+RETURNING id, suggestion_id, decision, reason, reviewer, station_id, decided_at;
+
+-- name: DecideSuggestion :execrows
+UPDATE station_suggestions
+SET state = @state, decided_at = now()
+WHERE id = @id AND state = 'pending';
+
+-- name: ListPendingSuggestions :many
+SELECT id, account_id, client_submission_id, proposal, evidence_ref,
+    state, created_at, decided_at
+FROM station_suggestions
+WHERE state = 'pending'
+ORDER BY created_at ASC
+LIMIT @page_limit::int;
