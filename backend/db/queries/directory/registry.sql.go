@@ -168,6 +168,35 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (Regis
 	return i, err
 }
 
+const lastCompleteRegistryRun = `-- name: LastCompleteRegistryRun :one
+SELECT id, source, snapshot_identity, checksum, parser_version, state,
+    accepted, duplicates, rejected, error_code, started_at, finished_at
+FROM registry_source_runs
+WHERE source = $1 AND state = 'complete'
+ORDER BY finished_at DESC NULLS LAST, started_at DESC
+LIMIT 1
+`
+
+func (q *Queries) LastCompleteRegistryRun(ctx context.Context, source string) (RegistrySourceRun, error) {
+	row := q.db.QueryRow(ctx, lastCompleteRegistryRun, source)
+	var i RegistrySourceRun
+	err := row.Scan(
+		&i.ID,
+		&i.Source,
+		&i.SnapshotIdentity,
+		&i.Checksum,
+		&i.ParserVersion,
+		&i.State,
+		&i.Accepted,
+		&i.Duplicates,
+		&i.Rejected,
+		&i.ErrorCode,
+		&i.StartedAt,
+		&i.FinishedAt,
+	)
+	return i, err
+}
+
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
     municipality_code, state, auth_state, operation, eligibility,

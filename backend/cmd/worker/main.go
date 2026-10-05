@@ -19,6 +19,7 @@ import (
 	"time"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
@@ -26,6 +27,7 @@ import (
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
+	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
@@ -426,6 +428,10 @@ func run() error {
 			Service: nil,
 			Batch:   25,
 		},
+		"registry-reconcile": directoryjobs.Reconcile{
+			Store: &directoryregistry.PGStore{Q: dbdirectory.New(raw)},
+			Canon: directoryadapters.RegistryCanonicalizer{Repo: directoryRepo},
+		},
 		"validate-observation": communityjobs.Validate{
 			// Fresh signal bands persist after admission (P06-T01):
 			// claimant-position intake does not exist yet, so the
@@ -666,6 +672,13 @@ func run() error {
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,
 			Interval: time.Hour, Enabled: false, Reason: "D05 pending: no live provider",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "registry-reconcile-daily", Kind: "registry-reconcile", Version: 1,
+			Interval: 24 * time.Hour, Enabled: false, Reason: "P25 pending: no live source access yet; staging stays operator-triggered",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "source": "registry-csv", "snapshot": period}
+			},
 		},
 		{
 			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,

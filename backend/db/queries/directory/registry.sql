@@ -69,3 +69,11 @@ WHERE id = @id AND status <> @status
   -- cleared back to active by a later snapshot; reactivation is an
   -- audited operator decision, not an import side effect.
   AND NOT (status IN ('suspended', 'revoked') AND @status = 'active');
+
+-- name: LastCompleteRegistryRun :one
+SELECT id, source, snapshot_identity, checksum, parser_version, state,
+    accepted, duplicates, rejected, error_code, started_at, finished_at
+FROM registry_source_runs
+WHERE source = @source AND state = 'complete'
+ORDER BY finished_at DESC NULLS LAST, started_at DESC
+LIMIT 1;
