@@ -76,6 +76,7 @@ var (
 	ErrClaimNotFound = errors.New("stationprofile: claim not found")
 	ErrClaimClosed   = errors.New("stationprofile: claim is no longer open")
 	ErrClaimProof    = errors.New("stationprofile: proof window expired or consumed")
+	ErrClaimBusy     = errors.New("stationprofile: claim is being published, retry the same request")
 )
 
 // ClaimPorts isolates claim orchestration.
@@ -128,6 +129,13 @@ func OpenClaim(ctx context.Context, ports ClaimPorts, accountID, stationID, role
 		}
 		declaration, err := ports.Store.ActiveDeclaration(ctx, existing.ID)
 		if err != nil {
+			if errors.Is(err, ErrClaimNotFound) {
+				// The winning writer created the claim but has not
+				// published its first declaration yet. Report a
+				// retryable transient instead of a misleading
+				// not-found: the same request is safe to replay.
+				return Claim{}, false, ErrClaimBusy
+			}
 			return Claim{}, false, err
 		}
 		return mapClaim(existing, declaration), false, nil

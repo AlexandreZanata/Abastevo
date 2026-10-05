@@ -193,6 +193,8 @@ func failClaim(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusTooManyRequests, "claim.quota-exceeded", "too many open claims", nil)
 	case errors.Is(err, application.ErrClaimConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "claim.idempotency-conflict", "same key with different request", nil)
+	case errors.Is(err, application.ErrClaimBusy):
+		httpapi.WriteError(w, r, http.StatusConflict, "claim.busy-retry", "claim is being published, retry the same request", nil)
 	case errors.Is(err, application.ErrClaimNotFound):
 		httpapi.WriteError(w, r, http.StatusNotFound, "claim.not-found", "claim not found", nil)
 	case errors.Is(err, application.ErrClaimClosed):

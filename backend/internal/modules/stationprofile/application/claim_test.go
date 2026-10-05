@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -147,13 +148,12 @@ func splitScopes(scopes string) []string {
 }
 
 func claimPorts(store *fakeClaimStore) ClaimPorts {
-	n := 0
+	var n atomic.Int64
 	return ClaimPorts{
 		Store: store,
 		Clock: func() time.Time { return time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC) },
 		NewID: func() (string, error) {
-			n++
-			return "claim-id-" + string(rune('0'+n)), nil
+			return "claim-id-" + string(rune('0'+n.Add(1))), nil
 		},
 		OperatorOf: func(context.Context, string) (string, string, bool, error) {
 			return "04218406000104", "registry", true, nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/authority"
@@ -54,7 +55,7 @@ func (f *fakeDecisions) ActiveGrant(_ context.Context, accountID, stationID stri
 
 func reviewTestPorts(store *fakeClaimStore, decisions *fakeDecisions) ReviewPorts {
 	decisions.claims = store
-	n := 0
+	var n atomic.Int64
 	return ReviewPorts{
 		Claims:    store,
 		Decisions: decisions,
@@ -63,8 +64,7 @@ func reviewTestPorts(store *fakeClaimStore, decisions *fakeDecisions) ReviewPort
 		},
 		AccountLive: func(context.Context, string) (bool, error) { return true, nil },
 		NewID: func() (string, error) {
-			n++
-			return "review-id-" + string(rune('0'+n)), nil
+			return "review-id-" + string(rune('0'+n.Add(1))), nil
 		},
 	}
 }
