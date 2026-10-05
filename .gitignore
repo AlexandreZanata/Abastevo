@@ -81,3 +81,7 @@ uploads/
 *.orig
 *.rej
 .freebuff/
+
+# Landing build artifacts & dependencies
+landing/dist/
+landing/node_modules/

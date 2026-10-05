@@ -1,0 +1,24 @@
+# abastevo
+
+> Preços de combustíveis com a comunidade. Transparência, fonte, data e condição à vista.
+
+## Visão Geral
+O abastevo é um projeto de código aberto sob licença MIT desenvolvido para dar visibilidade aos preços de combustíveis no Brasil. O projeto separa com clareza observações colaborativas da comunidade e referências oficiais da pesquisa semanal de preços da ANP.
+
+## Princípios Fundamentais
+- **Fonte e data à vista**: todo preço indica explicitamente sua procedência (colaboração da comunidade ou referência ANP) e a data do registro.
+- **Transparência e honestidade**: não faz promessas de "posto mais barato perto de mim" ou cobertura inexistente.
+- **Privacidade por padrão**: consulta e navegação sem exigência de conta ou geolocalização. O site não utiliza cookies nem rastreadores de terceiros.
+- **Retenção de evidências**: fotos de comprovantes e bombas enviadas por colaboradores são de uso exclusivo para auditoria e expiram em até 24 horas (política do projeto).
+- **Participação gratuita**: contas e envio de preços são gratuitos. Pagamentos ou planos futuros nunca compram confiança de preços.
+
+## Links Canônicos
+- Site principal: {{CANONICAL_ORIGIN}}/
+- Guias Educativos: {{CANONICAL_ORIGIN}}/guias/
+- Guia: Pesquisa semanal da ANP: {{CANONICAL_ORIGIN}}/guias/pesquisa-anp/
+- Guia: Etanol ou gasolina (regra dos 70%): {{CANONICAL_ORIGIN}}/guias/etanol-ou-gasolina/
+- Guia: Como ler preços na bomba e na placa: {{CANONICAL_ORIGIN}}/guias/como-ler-precos/
+- Política de Privacidade: {{CANONICAL_ORIGIN}}/privacidade/
+- Exclusão de Conta e Dados: {{CANONICAL_ORIGIN}}/excluir-conta/
+- Termos de Uso e Comunidade: {{CANONICAL_ORIGIN}}/termos/
+- Repositório no GitHub: https://github.com/AlexandreZanata/abastevo

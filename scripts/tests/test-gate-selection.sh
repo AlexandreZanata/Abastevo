@@ -142,6 +142,22 @@ else
 fi
 rm -rf "$SKELETON"
 
+echo "== bounded landing selection (P25-T02) =="
+if grep -q "landing/\*" scripts/quick-verify.sh; then
+    echo "PASS: landing path classified in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: landing path missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+if grep -q "npm --prefix landing run check" scripts/quick-verify.sh; then
+    echo "PASS: landing check integration present in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: landing check integration missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+
 echo "== summary: $PASS passed, $FAIL failed =="
 if [[ "$FAIL" -gt 0 ]]; then
     exit 1

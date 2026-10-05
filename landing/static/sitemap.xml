@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/privacidade/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/excluir-conta/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/termos/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/guias/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/guias/pesquisa-anp/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/guias/etanol-ou-gasolina/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/guias/como-ler-precos/</loc>
+  </url>
+</urlset>

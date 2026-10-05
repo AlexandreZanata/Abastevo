@@ -1,6 +1,6 @@
 # abastevo implementation roadmap
 
-Planning revision: 2026-10-01; [commercial community plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and ADR-016 own current direction. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.
+Planning revision: 2026-10-05; [commercial community plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and ADR-016 own current app direction; [P25 static landing plan](docs/planning/STATIC_LANDING_PLAN.md) owns the independent website phase. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.
 
 ## How to execute
 
@@ -15,6 +15,8 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
+
+**Independent website phase:** [P25 — Static landing page](#p25--static-landing-page) follows its own T01–T05 sequence after existing G09-LOCAL integration. It can be built locally before Play Store availability; it neither blocks nor accepts Android/backend release gates. This planning request authorizes local docs only, with website publication and store-link activation handled separately.
 
 ## P00 — Project identity documentation and visual preview
 
@@ -3446,3 +3448,143 @@ State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/
 - **Goal:** Record actual source/backend/config/evidence; required final PR/CI/reviews/merge/wiki happen at project closure, certification remains G09.
 - **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
 - **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
+
+## P25 — Static landing page
+
+Priority: **MUST within the authorized website scope**. State: **PLANNED**. Entry: existing G09-LOCAL integration and approved abastevo identity. Independent from the Android/backend release sequence. Exit: **G25-STATIC-READY**, demonstrated static-site acceptance; integration, website publication, store availability and Google field evidence remain distinct. Specification: [static landing plan](docs/planning/STATIC_LANDING_PLAN.md).
+
+Current authority: local planning only (specification revision 2, including the maintainer-requested review: legal destinations, owner decisions D-L01–D-L08, hosting policy, icons/social/headers, visual contract, verification tooling). Future implementation branch: `codex/phase-25-static-landing`; T01–T05 run sequentially under one phase milestone/draft PR when delivery is authorized. Public hosting, Search Console ownership operations and the later real Play Store activation have their own prerequisites and authorization. No website/runtime is completed by this plan.
+
+<a id="p25-t01"></a>
+
+### P25-T01 — Landing content, visual and decision contract
+
+- **ID / priority / status:** P25-T01 / MUST / LOCAL_DONE (2026-10-05, issue #106) — APPROVED. Output: [content contract](docs/product/LANDING_CONTENT_CONTRACT.md), [375 px](docs/assets/landing/wireframe-375.svg) and [1280 px](docs/assets/landing/wireframe-1280.svg) wireframes.
+- **Goal:** Freeze a clear Portuguese product explanation, calm section layout, approved visual contract, legal-destination requirements, owner-decision status and truthful prelaunch/published-store states.
+- **Inputs / rules:** [Landing specification](docs/planning/STATIC_LANDING_PLAN.md), B-BR-L01–L07, BUC-L01–L05; approved brand, [security/privacy plan](docs/security/SECURITY_PRIVACY.md) and current owning product/release evidence. Zaflas is a read-only design/SEO reference.
+- **Dependencies:** Existing G09-LOCAL integration and approved identity; no public Play Store listing needed to plan the prelaunch state.
+- **Files / risk:** Landing content/visual contract in docs/planning; docs risk. No runtime changes.
+- **Acceptance criteria:** One short contract document covering section order, page inventory (home, privacy, account deletion, terms, 404), verified feature claims, source/date/condition explanation, illustrative comparison card, GitHub destination, restrained links and accessibility direction. Records status of D-L01–D-L08 (repository name, domain, host criteria, contact channel, delivery shape, crawler policy), the dated current Google Play policy check for legal destinations, reconciliation of retention wording (README 24 h vs retention table), and maintainer-approved 375/1280 wireframes plus design tokens with contrast ratios. No copied ratings or unsupported availability/coverage claims. No code.
+- **Validation commands:** Changed-document links/anchors/task consistency, `git diff --check` and scoped secret/private-data review; no backend/mobile aggregate for this docs task.
+- **Recovery / done:** Revise owned copy; preserve product contracts/brand/license. Actual task evidence and local acceptance recorded; remote integration follows the authorized phase workflow.
+
+<a id="p25-t02"></a>
+
+### P25-T02 — Static foundation and TypeScript compilation
+
+- **ID / priority / status:** P25-T02 / MUST / LOCAL_DONE (2026-10-05, issue #107).
+- **Goal:** Build deployable static HTML/CSS with plain TypeScript 7.0.2 compiled to browser JavaScript, content-hash fingerprinted assets and no framework/runtime dependency.
+- **Inputs / rules:** Landing specification, B-BR-L03/L04/L06/L07, BUC-L01–L05 and T01 contract.
+- **Dependencies:** P25-T01. Exact compiler artifact `typescript@7.0.2` verified, binary `tsc`, strict `tsconfig.json` with `noEmitOnError`, Node v26.3.1 support, Apache-2.0 license.
+- **Files / risk:** `landing/`; bounded landing selection/check integration in `scripts/quick-verify.sh`, gate-selection tests in `scripts/tests/test-gate-selection.sh`. Standard risk; preserve required Quick verification.
+- **Tests first:** Static essential content/links without JS; missing/invalid public origin; store prelaunch and valid/invalid listing state; reproducible build and deploy artifact contents.
+- **Acceptance criteria:** Authored HTML/static CSS including the full `<head>` metadata skeleton and page inventory; strict exact-pinned TS compiler with lockfile and noEmitOnError; deterministic files-only output with content-hash fingerprinted CSS/JS/images; header/redirect source files for the selected host; no private/server/TS-source leakage; legal links present without JS. Executable landing changes receive real quick checks and unknown-path rejection is preserved.
+- **Validation commands:** `npm --prefix landing ci`, `npm --prefix landing run typecheck`, `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test` (11/11 PASS); `bash scripts/tests/test-gate-selection.sh` (15/15 PASS); `git diff --check` PASS; `bash scripts/scan-secrets.sh` PASS.
+- **Recovery / done:** Revert owned static/tooling/selection changes without weakening required checks. Record compiler revision, actual commands and task evidence; do not claim an unavailable tool/script passes.
+
+<a id="p25-t03"></a>
+
+### P25-T03 — Visual polish, legal pages and progressive enhancement
+
+- **ID / priority / status:** P25-T03 / MUST / LOCAL_DONE (2026-10-05, issue #108).
+- **Goal:** Deliver an attractive, readable, easy-to-use page with the abastevo identity, restrained calls to action and truthful legal/help pages.
+- **Inputs / rules:** Landing specification, B-BR-L01–L04/L06/L07, BUC-L01–L03/L05; T01 copy/wireframes/tokens and T02 static artifact.
+- **Dependencies:** P25-T02.
+- **Files / risk:** Landing HTML/CSS, approved assets, privacy/deletion/terms pages and minimal optional DOM interactions in TS (active-section highlight, copy-link helper, back-to-top); standard risk.
+- **Tests first:** Meaningful regression checks for introduced interaction, including keyboard/JS failure and truthful link states. Native anchors/details handle navigation/disclosure where sufficient.
+- **Acceptance criteria:** Implementation follows the approved tokens/wireframes; illustrative source comparison is labelled fictional; legal pages state actual behavior and the contact channel without claiming legal approval. Declared responsive widths/zoom/browser support, focus/contrast/landmarks/alt text and reduced motion checked; essential navigation survives JS failure. No popup, urgency, autoplay or repeated conversion banner.
+- **Validation commands:** `npm --prefix landing ci`, `npm --prefix landing run typecheck`, `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test` (13/13 PASS); `bash scripts/tests/test-gate-selection.sh` (15/15 PASS); `git diff --check` PASS; `bash scripts/scan-secrets.sh` PASS.
+- **Recovery / done:** Revert owned presentation/enhancement changes while preserving static content and links. Record revision and observed usability/accessibility results; no Android emulator/device acceptance is implied.
+
+<a id="p25-t04"></a>
+
+### P25-T04 — SEO, icons and indexing contracts
+
+- **ID / priority / status:** P25-T04 / MUST / LOCAL_DONE (2026-10-05, issue #109).
+- **Goal:** Complete accurate, discoverable initial HTML, icons/manifest, social previews and response policy using the reference's applicable SEO principles and official Google guidance.
+- **Inputs / rules:** Landing specification SEO acceptance, B-BR-L01/L03–L05, BUC-L04, D-L02/D-L07; actual content/assets/origin configuration.
+- **Dependencies:** P25-T03. Final public origin is required for public-artifact acceptance; private local preview can proceed with explicit nonpublic configuration.
+- **Files / risk:** Landing static head/JSON-LD/robots/sitemap, icon set/manifest, versioned 1200×630 social image, headers file, optional `llms.txt`/`security.txt` and emitted-artifact checks; standard risk.
+- **Tests first:** Origin/canonical/sitemap/ID consistency, malformed JSON-LD, placeholders, nonexistent store links or rating claims, local-resource errors, public/preview noindex cases, title/description length bounds and security/cache header expectations.
+- **Acceptance criteria:** Accurate title/description/semantic HTML, absolute canonical/social URLs with `pt_BR` locale and large-card Twitter metadata, icons/manifest/theme-color from approved brand assets, factual JSON-LD with real `sameAs` only, small valid sitemap (home plus legal pages) and correct robots/indexing state with recorded crawler policy. Header baseline (nosniff, referrer, permissions, strict CSP, cache) matches the chosen host. Omit unsupported entity/rating/offer facts; no rich-result or ranking promise. No unnecessary city pages/blog/translations.
+- **Validation commands:** T02 checks plus emitted HTML/XML/metadata tests for both store-state fixtures and indexing modes; applicable official structured-data validation; `git diff --check` and scoped secret review.
+- **Recovery / done:** Restore prior consistent metadata/origin configuration and static artifact; record exact checks and pending public Search Console/field evidence separately.
+
+<a id="p25-t05"></a>
+
+### P25-T05 — Landing acceptance and publication handoff
+
+- **ID / priority / status:** P25-T05 / MUST / LOCAL_DONE (2026-10-05, issue #110).
+- **Goal:** Demonstrate G25-STATIC-READY and prepare a concrete static hosting/rollback and later Play Store activation procedure.
+- **Inputs / rules:** Landing specification budgets/exit, B-BR-L01–L07, BUC-L01–L05 and task evidence T01–T04.
+- **Dependencies:** P25-T04. Site publication requires selected domain/host/owner access and separate authorization; public app listing is not needed for prelaunch acceptance.
+- **Files / risk:** Landing README/runbook, `docs/release-evidence/p25-static-landing.md` and current progress; standard risk. No automatic deployment or release.
+- **Acceptance criteria:** Final artifact passes declared build/links/metadata/negative/store-state/accessibility/performance checks, with pinned tool/config/revision evidence. Record owed manual/field evidence honestly, including WhatsApp/Telegram link-preview observation. Hosting handoff covers HTTPS/canonical redirects/404/cache/headers/indexing, the publication-time discoverability checklist (README/repository website field, Play listing website field, Search Console and Bing Webmaster) and immutable-artifact rollback; activation verifies the future public listing and updates single link/badge, attribution, JSON-LD, sitemap and copy together, re-checking current Play policy destinations.
+- **Validation commands:** Final scoped landing exit once using actual T02 interfaces and documented browser/lab tooling; `git diff --check`, secret/private-data review. At authorized integration only: `scripts/git-flow.sh finish --required "Quick verification" --pr <actual-number>` once, current-head/base guards and separately authorized wiki mirror.
+- **Recovery / done:** Restore a previous verified static artifact; deactivate a removed store listing to the honest prelaunch state. LOCAL_DONE/INTEGRATED/WEBSITE_PUBLISHED are separate; no G09/G24/G18 acceptance, public pilot or search-position result follows from this gate.
+
+## P26 — Landing educational guides
+
+Priority: **MUST within the authorized website scope**. State: **PLANNED**. Entry: G25-STATIC-READY and approved landing foundation. Specification: [educational guides contract](docs/product/LANDING_GUIDES_CONTRACT.md). Exit: **G26-GUIDES-READY**, demonstrated acceptance for static educational guides, index hub, sitemap, JSON-LD and zero runtime dependencies.
+
+Branch: `codex/phase-26-landing-guides`; T01–T05 run sequentially under milestone 20.
+
+<a id="p26-t01"></a>
+
+### P26-T01 — Guides content contract and structure specification
+
+- **ID / priority / status:** P26-T01 / MUST / LOCAL_DONE (2026-10-05, issue #112). Output: [guides contract](docs/product/LANDING_GUIDES_CONTRACT.md).
+- **Goal:** Freeze Portuguese educational guide content contracts, directory structure, factual citations, and truthfulness guidelines for 3 evergreen guides (ANP survey methodology, ethanol vs gasoline parity, interpreting prices and sources) and the `/guias/` index.
+- **Inputs / rules:** Landing specification, B-BR-L01, B-BR-L04, B-BR-L05, BUC-L01, BUC-L04.
+- **Dependencies:** G25-STATIC-READY.
+- **Files / risk:** `docs/product/LANDING_GUIDES_CONTRACT.md`, `ROADMAP.md`; docs risk.
+- **Acceptance criteria:** Bounded contract defining 4 URLs (`/guias/`, `/guias/pesquisa-anp/`, `/guias/etanol-ou-gasolina/`, `/guias/como-ler-precos/`), title/description length limits, semantic headings, factual non-affiliated ANP citations, and breadcrumbs without JS.
+- **Validation commands:** Links/task consistency, `git diff --check`, `bash scripts/scan-secrets.sh`.
+
+<a id="p26-t02"></a>
+
+### P26-T02 — Evergreen guides and guide index implementation
+
+- **ID / priority / status:** P26-T02 / MUST / PLANNED (issue #113).
+- **Goal:** Author and build static HTML pages for `/guias/`, `/guias/pesquisa-anp/`, `/guias/etanol-ou-gasolina/`, and `/guias/como-ler-precos/`, integrating discreet guide links in landing navigation and footer.
+- **Inputs / rules:** P26-T01 contract, B-BR-L01, B-BR-L02, B-BR-L04, BUC-L01, BUC-L02.
+- **Dependencies:** P26-T01.
+- **Files / risk:** `landing/static/guias/`; standard risk.
+- **Acceptance criteria:** Authored static HTML pages using existing design tokens, accessible breadcrumbs, zero runtime dependencies, WCAG AA compliance, and working navigation without JS.
+- **Validation commands:** `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test`.
+
+<a id="p26-t03"></a>
+
+### P26-T03 — SEO metadata, JSON-LD schema, sitemap and discovery
+
+- **ID / priority / status:** P26-T03 / MUST / PLANNED (issue #114).
+- **Goal:** Complete initial-response SEO metadata, Article/TechArticle and BreadcrumbList JSON-LD schemas, sitemap entries, and discovery files for all guides.
+- **Inputs / rules:** P26-T01 contract, B-BR-L04, B-BR-L05, BUC-L04.
+- **Dependencies:** P26-T02.
+- **Files / risk:** `landing/static/sitemap.xml`, `landing/static/llms.txt`, guide HTML `<head>`, `landing/scripts/build.mjs`, `landing/scripts/check.mjs`.
+- **Acceptance criteria:** Strict bounds on titles (30–65 chars) and descriptions (110–165 chars); factual JSON-LD with unique IDs; valid sitemap with all 4 guide URLs; Open Graph and Twitter large cards.
+- **Validation commands:** `npm --prefix landing run build`, `npm --prefix landing run check`, `npm --prefix landing test`.
+
+<a id="p26-t04"></a>
+
+### P26-T04 — Automated regression tests and gate verification
+
+- **ID / priority / status:** P26-T04 / MUST / PLANNED (issue #115).
+- **Goal:** Add and execute automated unit and integration tests verifying guides content, accessibility, schemas, sitemap, and performance budgets.
+- **Inputs / rules:** B-BR-L01–L07, BUC-L01–L05, performance budgets.
+- **Dependencies:** P26-T03.
+- **Files / risk:** `landing/tests/`; standard risk.
+- **Acceptance criteria:** Automated tests in `landing/tests/guides-content.test.mjs` passing; sitemap and JSON-LD test suites passing; budgets (<25 KiB CSS, <10 KiB JS, <500 KiB page transfer) respected.
+- **Validation commands:** `npm --prefix landing test`, `bash scripts/tests/test-gate-selection.sh`, `git diff --check`, `bash scripts/scan-secrets.sh`.
+
+<a id="p26-t05"></a>
+
+### P26-T05 — Release evidence, hosting handoff and phase closure
+
+- **ID / priority / status:** P26-T05 / MUST / PLANNED (issue #116).
+- **Goal:** Document release evidence in `docs/release-evidence/p26-landing-guides.md` for G26-GUIDES-READY, update README/progress, and integrate via git-flow.sh finish.
+- **Inputs / rules:** P26-T01–T04 evidence, DELIVERY_WORKFLOW.
+- **Dependencies:** P26-T04.
+- **Files / risk:** `docs/release-evidence/p26-landing-guides.md`, `PROGRESS.md`, `ROADMAP.md`, `landing/README.md`.
+- **Acceptance criteria:** Evidence recorded; quick verification passed; PR review satisfied; guarded merge preserving commits to `main`; wiki synced.
+- **Validation commands:** `bash scripts/quick-verify.sh`, `scripts/git-flow.sh finish --required "Quick verification" --pr <number>`.
