@@ -9,6 +9,7 @@ import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
@@ -118,6 +119,12 @@ class StationsViewModel @Inject constructor(
     private val getServerStationsUseCase: GetServerStationsUseCase? = null,
     private val getServerStationDetailUseCase: GetServerStationDetailUseCase? = null,
     private val getNearbyServerStationsUseCase: GetNearbyServerStationsUseCase? = null,
+    /**
+     * P36-T03 — secure session source for the discussion account id.
+     * Null keeps legacy construction working; a missing/foreign blob
+     * resolves to honest guest ("") and never to another account.
+     */
+    private val sessionStore: AuthSessionStore? = null,
 ) : ViewModel() {
 
     private val savedStateHandleRef: SavedStateHandle = savedStateHandle
@@ -384,6 +391,11 @@ class StationsViewModel @Inject constructor(
      */
     fun onServerStationSelected(stationId: String) {
         val useCase = getServerStationDetailUseCase ?: return
+        // P36-T03 — bind the caller-held account id once per selection so
+        // discussion writes authenticate as the session owner; guests stay
+        // blank (reads only). Store failures fail closed to guest.
+        val accountId = runCatching { sessionStore?.load()?.accountId.orEmpty() }.getOrDefault("")
+        _uiState.update { it.copy(serverAccountId = accountId) }
         viewModelScope.launch {
             when (val outcome = useCase(stationId)) {
                 is ServerStationDetailOutcome.Disabled ->

@@ -2,6 +2,7 @@ package com.anpfuel.app.ui.stations
 
 import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
@@ -57,6 +58,7 @@ class StationsServerDiscoveryTest {
     private val getServerStationsUseCase = mockk<GetServerStationsUseCase>()
     private val getServerStationDetailUseCase = mockk<GetServerStationDetailUseCase>()
     private val getNearbyServerStationsUseCase = mockk<GetNearbyServerStationsUseCase>()
+    private val sessionStore = mockk<AuthSessionStore>()
 
     private val stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26"
     private val station = ServerStation.create(
@@ -77,6 +79,7 @@ class StationsServerDiscoveryTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         every { observeNetworkConnectivityUseCase.invoke() } returns flowOf(true)
+        every { sessionStore.load() } returns null
         viewModel = StationsViewModel(
             getStationPricesUseCase = getStationPricesUseCase,
             buildStationNavigationQueryUseCase = buildStationNavigationQueryUseCase,
@@ -89,6 +92,7 @@ class StationsServerDiscoveryTest {
             getServerStationsUseCase = getServerStationsUseCase,
             getServerStationDetailUseCase = getServerStationDetailUseCase,
             getNearbyServerStationsUseCase = getNearbyServerStationsUseCase,
+            sessionStore = sessionStore,
         )
     }
 
@@ -224,8 +228,7 @@ class StationsServerDiscoveryTest {
     }
 
     @Test
-    fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {
-        coEvery { getServerStationsUseCase(20, null) } returns
+    fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
         coEvery { getServerStationDetailUseCase(stationId) } returns
             ServerStationDetailOutcome.Fresh(station)
@@ -238,6 +241,45 @@ class StationsServerDiscoveryTest {
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.serverStations.size)
+        assertEquals(stationId, viewModel.uiState.value.selectedServerStation?.stationId)
+    }
+
+    @Test
+    fun `selecting binds the session account and guests stay blank`() = runTest(dispatcher) {
+        coEvery { getServerStationDetailUseCase(stationId) } returns
+            ServerStationDetailOutcome.Fresh(station)
+        every { sessionStore.load() } returns
+            com.anpfuel.domain.portable.PortableAuth.Session(
+                familyId = "fam-1",
+                accountId = "acc-123",
+                accessToken = "at",
+                refreshToken = "rt",
+                accessExpiresAt = 9_999_999_999L,
+                absoluteExpiresAt = 9_999_999_999L,
+            )
+
+        viewModel.onServerStationSelected(stationId)
+        advanceUntilIdle()
+
+        assertEquals("acc-123", viewModel.uiState.value.serverAccountId)
+
+        every { sessionStore.load() } returns null
+        viewModel.onServerStationSelected(stationId)
+        advanceUntilIdle()
+
+        assertEquals("", viewModel.uiState.value.serverAccountId)
+    }
+
+    @Test
+    fun `failing session store fails closed to guest`() = runTest(dispatcher) {
+        coEvery { getServerStationDetailUseCase(stationId) } returns
+            ServerStationDetailOutcome.Fresh(station)
+        every { sessionStore.load() } throws RuntimeException("keystore locked")
+
+        viewModel.onServerStationSelected(stationId)
+        advanceUntilIdle()
+
+        assertEquals("", viewModel.uiState.value.serverAccountId)
         assertEquals(stationId, viewModel.uiState.value.selectedServerStation?.stationId)
     }
 }
