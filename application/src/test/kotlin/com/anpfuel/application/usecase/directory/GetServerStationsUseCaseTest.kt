@@ -40,7 +40,7 @@ class GetServerStationsUseCaseTest {
     )
 
     @BeforeEach
-    fun setUp() {
+    fun setUp() = kotlinx.coroutines.runBlocking {
         cache.clear()
         listUseCase = GetServerStationsUseCase(flag, gateway, cache)
         detailUseCase = GetServerStationDetailUseCase(flag, gateway, cache)
@@ -137,21 +137,21 @@ class GetServerStationsUseCaseTest {
         private var page: ServerStationPage? = null
         private val details = mutableMapOf<String, ServerStation>()
 
-        override fun savePage(page: ServerStationPage) {
+        override suspend fun savePage(page: ServerStationPage) {
             this.page = page
             for (station in page.items) details[station.stationId] = station
         }
 
-        override fun loadPage(): ServerStationPage? = page
+        override suspend fun loadPage(): ServerStationPage? = page
 
-        override fun saveDetail(station: ServerStation) {
+        override suspend fun saveDetail(station: ServerStation) {
             details[station.stationId] = station
         }
 
-        override fun loadDetail(stationId: String): ServerStation? =
+        override suspend fun loadDetail(stationId: String): ServerStation? =
             details[stationId.lowercase()]
 
-        override fun clear() {
+        override suspend fun clear() {
             page = null
             details.clear()
         }

@@ -40,7 +40,7 @@ import com.anpfuel.data.repository.BackendPriceCacheRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceHttpGatewayImpl
 import com.anpfuel.data.repository.CacheRepositoryImpl
 import com.anpfuel.data.repository.DirectoryStationGatewayImpl
-import com.anpfuel.data.repository.DirectoryStationMemoryCache
+import com.anpfuel.data.repository.DirectoryStationRoomCache
 import com.anpfuel.data.repository.FeedbackCacheMemory
 import com.anpfuel.data.repository.FeedbackOutboxMemory
 import com.anpfuel.data.repository.RoomContributionOutboxRepository
@@ -237,7 +237,7 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindServerStationCache(
-        impl: DirectoryStationMemoryCache,
+        impl: DirectoryStationRoomCache,
     ): ServerStationCache
 
     @Binds

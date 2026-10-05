@@ -5,7 +5,6 @@ import com.anpfuel.data.remote.DirectoryStationJsonCodec
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
-import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
 import java.io.IOException
 import javax.inject.Inject
@@ -61,38 +60,5 @@ class DirectoryStationGatewayImpl @Inject constructor(
             throw IOException("directory detail failed", error)
         }
         return DirectoryStationJsonCodec.decodeStation(raw)
-    }
-}
-
-@Singleton
-class DirectoryStationMemoryCache @Inject constructor() : ServerStationCache {
-
-    private val lock = Any()
-    private var lastPage: ServerStationPage? = null
-    private val details = mutableMapOf<String, ServerStation>()
-
-    override fun savePage(page: ServerStationPage) {
-        synchronized(lock) {
-            lastPage = page
-            for (station in page.items) {
-                details[station.stationId] = station
-            }
-        }
-    }
-
-    override fun loadPage(): ServerStationPage? = synchronized(lock) { lastPage }
-
-    override fun saveDetail(station: ServerStation) {
-        synchronized(lock) { details[station.stationId] = station }
-    }
-
-    override fun loadDetail(stationId: String): ServerStation? =
-        synchronized(lock) { details[stationId.lowercase()] }
-
-    override fun clear() {
-        synchronized(lock) {
-            lastPage = null
-            details.clear()
-        }
     }
 }

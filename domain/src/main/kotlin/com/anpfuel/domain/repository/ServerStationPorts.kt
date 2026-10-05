@@ -27,13 +27,13 @@ interface ServerStationGateway {
 }
 
 interface ServerStationCache {
-    fun savePage(page: ServerStationPage)
+    suspend fun savePage(page: ServerStationPage)
 
-    fun loadPage(): ServerStationPage?
+    suspend fun loadPage(): ServerStationPage?
 
-    fun saveDetail(station: ServerStation)
+    suspend fun saveDetail(station: ServerStation)
 
-    fun loadDetail(stationId: String): ServerStation?
+    suspend fun loadDetail(stationId: String): ServerStation?
 
-    fun clear()
+    suspend fun clear()
 }

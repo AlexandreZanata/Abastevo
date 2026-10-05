@@ -68,29 +68,4 @@ class DirectoryStationRepositoryTest {
             server.shutdown()
         }
     }
-
-    @Test
-    fun `memory cache replays last good page and detail`() {
-        val cache = DirectoryStationMemoryCache()
-        assertNull(cache.loadPage())
-
-        val station = com.anpfuel.domain.discovery.ServerStation.create(
-            stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26",
-            displayName = "Posto Central",
-            locationQuality = com.anpfuel.domain.discovery.StationLocationQuality.REVIEWED,
-            latitude = -23.55,
-            longitude = -46.63,
-            cnpjNormalized = "04218406000104",
-            municipalityCode = "3550308",
-            state = "SP",
-            currentRevisionId = null,
-        )
-        cache.savePage(com.anpfuel.domain.discovery.ServerStationPage(listOf(station), null))
-        assertEquals(1, cache.loadPage()!!.items.size)
-        assertEquals("Posto Central", cache.loadDetail(station.stationId)!!.displayName)
-
-        cache.clear()
-        assertNull(cache.loadPage())
-        assertNull(cache.loadDetail(station.stationId))
-    }
 }
