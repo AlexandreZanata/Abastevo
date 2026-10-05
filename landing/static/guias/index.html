@@ -34,19 +34,35 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
+    "@graph": [
       {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Início",
-        "item": "{{CANONICAL_ORIGIN}}/"
+        "@type": "CollectionPage",
+        "@id": "{{CANONICAL_ORIGIN}}/guias/#webpage",
+        "url": "{{CANONICAL_ORIGIN}}/guias/",
+        "name": "Guias Educativos sobre Combustíveis | abastevo",
+        "description": "Entenda como funciona a pesquisa da ANP, o cálculo entre etanol e gasolina e como interpretar preços de combustíveis com transparência e dados reais.",
+        "inLanguage": "pt-BR",
+        "isPartOf": {
+          "@id": "{{CANONICAL_ORIGIN}}/#website"
+        }
       },
       {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "Guias",
-        "item": "{{CANONICAL_ORIGIN}}/guias/"
+        "@type": "BreadcrumbList",
+        "@id": "{{CANONICAL_ORIGIN}}/guias/#breadcrumbs",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "{{CANONICAL_ORIGIN}}/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Guias",
+            "item": "{{CANONICAL_ORIGIN}}/guias/"
+          }
+        ]
       }
     ]
   }
