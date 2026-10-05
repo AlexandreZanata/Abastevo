@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
+	profileDomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
 
@@ -39,13 +40,19 @@ type proofDTO struct {
 
 func (h ProofHandler) submit(w http.ResponseWriter, r *http.Request) {
 	var dto proofDTO
-	if err := read(r, &dto); err != nil {
+	// Base64 expands raw proof bytes; retain a small bounded JSON envelope.
+	const maxProofJSON = int64(((profileDomain.MaxProofBytes+2)/3)*4 + (8 << 10))
+	if err := readLimit(r, &dto, maxProofJSON); err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "proof.bad-request", "invalid proof input", nil)
 		return
 	}
 	accountID, err := h.Sessions(r.Context(), dto.FamilyID, dto.AccessToken)
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "proof.session-invalid", "valid account session required", nil)
+		return
+	}
+	if len(dto.ContentB64) > ((profileDomain.MaxProofBytes+2)/3)*4 {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "proof.bad-request", "proof exceeds limit", nil)
 		return
 	}
 	body, err := base64.StdEncoding.DecodeString(dto.ContentB64)

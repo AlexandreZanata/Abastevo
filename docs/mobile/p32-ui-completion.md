@@ -48,3 +48,33 @@ commands/outcomes below; no acceptance inferred from compilation.
   DTO/cache, price-quality badge or synthetic station. `git diff --check`
   and `bash scripts/scan-secrets.sh` PASS. Claim entry still auth-only until
   P32-T02A; end device evidence remains pending.
+
+## P32-T02A actual source evidence
+
+- Added owner claim routes/HTTP transport, real server scopes and expiry,
+  role selection, list/status/reissue/cancel, SAF TXT declaration export,
+  original PDF selection then explicit submit confirmation. Signature and
+  authority remain independently reviewed. No PDF/key rendering or cache.
+- Imported PDFs are memory-only, cap 5 MiB by stream (not provider size),
+  wiped after submission/owner changes/ViewModel teardown. No persisted URI
+  permissions; lost provider access requests re-selection. Reads/status
+  precede writes; restart reconstructs owner status from the server. Stable
+  open key survives transport retry in the live ViewModel, not auto-replay.
+- RED backend reproduced missing export declaration id, 8 KiB proof cap,
+  and owner status returning 404 after declaration consumption. Fixed
+  additive id/state DTO + bounded base64 envelope; new LatestDeclaration
+  query is status-only, never reused for proof/authority acceptance.
+- `sqlc generate && sqlc vet`, stationprofile+apicontract `go test -race`
+  PASS; real PostGIS stationprofile adapters `-race -count=1 -tags=integration`
+  PASS (6.844s). Initial integration test table-name typo fixed; no failures
+  deferred. `go vet` PASS; vacuum PASS (0 errors, 288 pre-existing naming/
+  documentation warnings; direct CLI uses the default ruleset).
+- `:application:test --tests '*StationProfileActionsTest'`, data profile/
+  document tests + `assembleDebug` PASS (53s); claim ViewModel tests +
+  `assembleDebug` PASS (21s). Covers guest/expired/reissued/terminal/no-store/
+  original bytes/privacy/stable retry/restart/logout/server refusal.
+- Live staging retry with normal TLS remains UNVERIFIED (`curl` 60);
+  current device: physical 2311DRK48G Android 16/API36, emulator API26.
+  Export TXT requires inclusion of exact declaration in an externally signed
+  PDF; there is no server-generated PDF/export endpoint. Invites/contest/
+  reverify commands are absent server-side and not invented client-side.

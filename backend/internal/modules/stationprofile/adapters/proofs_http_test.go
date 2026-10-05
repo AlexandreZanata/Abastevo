@@ -221,3 +221,38 @@ func TestProofSubmitRefusesUnsafeAndMissingStorage(t *testing.T) {
 		t.Fatalf("no storage = %d, want 503", res.Code)
 	}
 }
+
+func TestProofHTTPAcceptsBoundedPDFAboveSmallJSONCap(t *testing.T) {
+	claims := &fakeClaimStore{}
+	row, declaration := openHTTPClaim(t, claims, "large-http")
+	handler := proofTestHandler(&fakeProofStore{}, &fakeProofBytes{}, claims, declaration)
+	content := []byte("%PDF-1.7\n" + strings.Repeat("a", 20<<10))
+	payload, _ := json.Marshal(map[string]any{
+		"family_id": "fam", "access_token": "tok", "declaration_id": declaration.ID,
+		"filename": "signed.pdf", "content_type": "application/pdf", "kind": "scan",
+		"content_base64": base64.StdEncoding.EncodeToString(content),
+	})
+	res := doProofRequest(handler, "/v1/profile/claims/"+row.ID+"/proof", string(payload))
+	if res.Code != http.StatusCreated {
+		t.Fatalf("bounded PDF = %d", res.Code)
+	}
+}
+
+func TestProofHTTPRejectsOversizeEnvelopeAndBytes(t *testing.T) {
+	claims := &fakeClaimStore{}
+	row, declaration := openHTTPClaim(t, claims, "over-http")
+	storage := &fakeProofBytes{}
+	handler := proofTestHandler(&fakeProofStore{}, storage, claims, declaration)
+	content := []byte("%PDF-1.7\n" + strings.Repeat("a", 5<<20))
+	payload, _ := json.Marshal(map[string]any{
+		"family_id": "fam", "access_token": "tok", "declaration_id": declaration.ID,
+		"filename": "signed.pdf", "content_type": "application/pdf", "kind": "scan",
+		"content_base64": base64.StdEncoding.EncodeToString(content),
+	})
+	for _, body := range []string{string(payload), string(payload) + strings.Repeat(" ", 9<<10)} {
+		res := doProofRequest(handler, "/v1/profile/claims/"+row.ID+"/proof", body)
+		if res.Code != http.StatusBadRequest || len(storage.objects) != 0 {
+			t.Fatalf("oversize = %d or stored", res.Code)
+		}
+	}
+}

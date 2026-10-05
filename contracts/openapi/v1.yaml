@@ -3516,7 +3516,7 @@ components:
         exportable declaration and expiry only — never another
         owner's data and never a grant.
       type: object
-      required: [id, station_id, role, state, version, declaration, expires_at]
+      required: [id, station_id, role, state, version, declaration_state, declaration_id, declaration, expires_at]
       properties:
         id:
           type: string
@@ -3533,6 +3533,13 @@ components:
         version:
           type: integer
           minimum: 1
+        declaration_state:
+          type: string
+          enum: [active, superseded, consumed, expired]
+        declaration_id:
+          type: string
+          format: uuid
+          description: Active server-issued declaration identifier required for proof submission.
         declaration:
           type: string
         expires_at:

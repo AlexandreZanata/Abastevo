@@ -175,6 +175,22 @@ func (s ClaimStore) SupersedeDeclarations(ctx context.Context, claimID string) e
 	return err
 }
 
+// LatestDeclaration is owner status metadata only; proof/review still require ActiveDeclaration.
+func (s ClaimStore) LatestDeclaration(ctx context.Context, claimID string) (application.DeclarationRow, error) {
+	uid, err := mustUUID(claimID)
+	if err != nil {
+		return application.DeclarationRow{}, application.ErrClaimNotFound
+	}
+	row, err := s.Q.LatestDeclaration(ctx, uid)
+	if err != nil {
+		if isNoRows(err) {
+			return application.DeclarationRow{}, application.ErrClaimNotFound
+		}
+		return application.DeclarationRow{}, err
+	}
+	return mapDeclarationRow(row), nil
+}
+
 func (s ClaimStore) ActiveDeclaration(ctx context.Context, claimID string) (application.DeclarationRow, error) {
 	uid, err := mustUUID(claimID)
 	if err != nil {

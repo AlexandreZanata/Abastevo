@@ -276,6 +276,33 @@ func (q *Queries) GetDeclaration(ctx context.Context, id pgtype.UUID) (ClaimDecl
 	return i, err
 }
 
+const latestDeclaration = `-- name: LatestDeclaration :one
+SELECT id, claim_id, version, nonce_digest, expected_digest, declaration, state, attempts, expires_at, consumed_at, created_at
+FROM claim_declarations
+WHERE claim_id = $1
+ORDER BY version DESC
+LIMIT 1
+`
+
+func (q *Queries) LatestDeclaration(ctx context.Context, claimID pgtype.UUID) (ClaimDeclaration, error) {
+	row := q.db.QueryRow(ctx, latestDeclaration, claimID)
+	var i ClaimDeclaration
+	err := row.Scan(
+		&i.ID,
+		&i.ClaimID,
+		&i.Version,
+		&i.NonceDigest,
+		&i.ExpectedDigest,
+		&i.Declaration,
+		&i.State,
+		&i.Attempts,
+		&i.ExpiresAt,
+		&i.ConsumedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listOwnedClaims = `-- name: ListOwnedClaims :many
 SELECT id, account_id, station_id, operator_cnpj, operator_source, role, scopes, policy_version, state, client_key, created_at, updated_at
 FROM profile_claims

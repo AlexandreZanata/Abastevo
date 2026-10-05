@@ -173,10 +173,17 @@ fun AnpNavGraph(
         composable(Routes.HISTORY) {
             HistoryScreen(onNavigateBack = { navController.popBackStack() })
         }
+        composable(Routes.STATION_CLAIM, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
+            com.anpfuel.app.ui.stationprofile.StationClaimScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onManage = { navController.navigate(Routes.stationProfile(it)) },
+            )
+        }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(
                 onBack = { navController.popBackStack() },
-                onClaim = { navController.navigate(Routes.AUTH) },
+                onClaim = { navController.navigate(Routes.stationClaim(it)) },
             )
         }
         composable(Routes.STATIONS) {

@@ -47,11 +47,15 @@ type openDTO struct {
 }
 
 func read(r *http.Request, dst any) error {
+	return readLimit(r, dst, 8<<10)
+}
+
+func readLimit(r *http.Request, dst any, max int64) error {
 	typ, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || typ != "application/json" {
 		return errors.New("JSON required")
 	}
-	raw, err := httpapi.ReadBody(r, 8<<10)
+	raw, err := httpapi.ReadBody(r, max)
 	if err != nil {
 		return err
 	}
@@ -60,14 +64,16 @@ func read(r *http.Request, dst any) error {
 
 func writeClaim(w http.ResponseWriter, r *http.Request, claim application.Claim, status int) {
 	raw, err := json.Marshal(map[string]any{
-		"id":          claim.ID,
-		"station_id":  claim.StationID,
-		"role":        claim.Role,
-		"scopes":      claim.Scopes,
-		"state":       claim.State,
-		"version":     claim.Version,
-		"declaration": claim.Declaration,
-		"expires_at":  claim.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		"id":                claim.ID,
+		"station_id":        claim.StationID,
+		"role":              claim.Role,
+		"scopes":            claim.Scopes,
+		"state":             claim.State,
+		"version":           claim.Version,
+		"declaration_state": claim.DeclarationState,
+		"declaration_id":    claim.DeclarationID,
+		"declaration":       claim.Declaration,
+		"expires_at":        claim.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	})
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusInternalServerError, "claim.unavailable", "claim service unavailable", nil)

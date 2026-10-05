@@ -149,3 +149,29 @@ func TestClaimIntegrationLifecycleAndPrivacy(t *testing.T) {
 		t.Fatalf("closed = %+v, err = %v", closed, err)
 	}
 }
+
+func TestOwnerStatusAfterDeclarationConsumedIntegration(t *testing.T) {
+	pool, store, stationID := freshClaimDB(t)
+	ctx := context.Background()
+	accountID := "11111111-1111-4111-8111-111111111111"
+	claim, _, err := application.OpenClaim(ctx, claimLifecyclePorts(store), accountID, stationID, "manager", []string{"profile.edit"}, "status-consumed-live")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE claim_declarations SET state='consumed' WHERE claim_id=$1::uuid", claim.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE profile_claims SET state='approved' WHERE id=$1::uuid", claim.ID); err != nil {
+		t.Fatal(err)
+	}
+	status, err := application.ClaimStatus(ctx, store, accountID, claim.ID)
+	if err != nil || status.DeclarationState != "consumed" || status.State != "approved" {
+		t.Fatalf("terminal owner status lost: %v", err)
+	}
+	if _, err := store.ActiveDeclaration(ctx, claim.ID); err == nil {
+		t.Fatal("consumed proof regained active declaration")
+	}
+	if _, err := application.ClaimStatus(ctx, store, "foreign", claim.ID); err == nil {
+		t.Fatal("foreign status leaked")
+	}
+}

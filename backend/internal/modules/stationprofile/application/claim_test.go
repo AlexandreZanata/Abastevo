@@ -127,6 +127,21 @@ func (f *fakeClaimStore) GetDeclaration(_ context.Context, id string) (Declarati
 	return DeclarationRow{}, ErrClaimNotFound
 }
 
+func (f *fakeClaimStore) LatestDeclaration(_ context.Context, claimID string) (DeclarationRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var latest DeclarationRow
+	for _, row := range f.decls {
+		if row.ClaimID == claimID && row.Version > latest.Version {
+			latest = row
+		}
+	}
+	if latest.ID == "" {
+		return DeclarationRow{}, ErrClaimNotFound
+	}
+	return latest, nil
+}
+
 func (f *fakeClaimStore) ActiveDeclaration(_ context.Context, claimID string) (DeclarationRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

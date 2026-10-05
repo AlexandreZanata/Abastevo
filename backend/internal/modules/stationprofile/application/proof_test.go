@@ -215,6 +215,10 @@ func (a *claimStoreAdapter) SupersedeDeclarations(ctx context.Context, claimID s
 	return a.claims.SupersedeDeclarations(ctx, claimID)
 }
 
+func (a *claimStoreAdapter) LatestDeclaration(ctx context.Context, claimID string) (DeclarationRow, error) {
+	return a.declaration, nil
+}
+
 func (a *claimStoreAdapter) ActiveDeclaration(ctx context.Context, claimID string) (DeclarationRow, error) {
 	return a.declaration, nil
 }

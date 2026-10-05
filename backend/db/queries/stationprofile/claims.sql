@@ -57,6 +57,13 @@ WHERE claim_id = @claim_id AND state = 'active'
 ORDER BY version DESC
 LIMIT 1;
 
+-- name: LatestDeclaration :one
+SELECT id, claim_id, version, nonce_digest, expected_digest, declaration, state, attempts, expires_at, consumed_at, created_at
+FROM claim_declarations
+WHERE claim_id = @claim_id
+ORDER BY version DESC
+LIMIT 1;
+
 -- name: GetDeclaration :one
 SELECT id, claim_id, version, nonce_digest, expected_digest, declaration, state, attempts, expires_at, consumed_at, created_at
 FROM claim_declarations

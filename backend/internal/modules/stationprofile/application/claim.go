@@ -16,17 +16,19 @@ import (
 // Claim is one private representation request with its active
 // declaration for export.
 type Claim struct {
-	ID            string
-	AccountID     string
-	StationID     string
-	OperatorCNPJ  string
-	Role          string
-	Scopes        []string
-	PolicyVersion string
-	State         string
-	Declaration   string
-	ExpiresAt     time.Time
-	Version       int
+	ID               string
+	AccountID        string
+	StationID        string
+	OperatorCNPJ     string
+	Role             string
+	Scopes           []string
+	PolicyVersion    string
+	State            string
+	DeclarationState string
+	DeclarationID    string
+	Declaration      string
+	ExpiresAt        time.Time
+	Version          int
 }
 
 // ClaimStore persists claims and declarations.
@@ -39,6 +41,7 @@ type ClaimStore interface {
 	SetClaimState(ctx context.Context, id, expected, state string) (int64, error)
 	CreateDeclaration(ctx context.Context, id, claimID string, version int, nonceDigest, expectedDigest, declaration string, expiresAt time.Time) (DeclarationRow, error)
 	SupersedeDeclarations(ctx context.Context, claimID string) error
+	LatestDeclaration(ctx context.Context, claimID string) (DeclarationRow, error)
 	ActiveDeclaration(ctx context.Context, claimID string) (DeclarationRow, error)
 	GetDeclaration(ctx context.Context, id string) (DeclarationRow, error)
 }
@@ -191,7 +194,7 @@ func ClaimStatus(ctx context.Context, store ClaimStore, accountID, claimID strin
 	if err != nil {
 		return Claim{}, err
 	}
-	declaration, err := store.ActiveDeclaration(ctx, row.ID)
+	declaration, err := store.LatestDeclaration(ctx, row.ID)
 	if err != nil {
 		return Claim{}, err
 	}
@@ -345,7 +348,7 @@ func mapClaim(row ClaimRow, declaration DeclarationRow) Claim {
 		ID: row.ID, AccountID: row.AccountID, StationID: row.StationID,
 		OperatorCNPJ: row.OperatorCNPJ, Role: row.Role, Scopes: row.Scopes,
 		PolicyVersion: row.PolicyVersion, State: row.State,
-		Declaration: declaration.Declaration, ExpiresAt: declaration.ExpiresAt,
+		DeclarationState: declaration.State, DeclarationID: declaration.ID, Declaration: declaration.Declaration, ExpiresAt: declaration.ExpiresAt,
 		Version: declaration.Version,
 	}
 }

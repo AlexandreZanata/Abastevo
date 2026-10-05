@@ -115,6 +115,21 @@ func (f *fakeClaimStore) SupersedeDeclarations(_ context.Context, claimID string
 	return nil
 }
 
+func (f *fakeClaimStore) LatestDeclaration(_ context.Context, claimID string) (application.DeclarationRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var latest application.DeclarationRow
+	for _, row := range f.decls {
+		if row.ClaimID == claimID && row.Version > latest.Version {
+			latest = row
+		}
+	}
+	if latest.ID == "" {
+		return application.DeclarationRow{}, application.ErrClaimNotFound
+	}
+	return latest, nil
+}
+
 func (f *fakeClaimStore) ActiveDeclaration(_ context.Context, claimID string) (application.DeclarationRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -266,5 +281,51 @@ func TestClaimStatusReissueCancelAreOwnerOnly(t *testing.T) {
 	mine := doClaimRequest(h, http.MethodPost, "/v1/profile/claims/mine", session)
 	if mine.Code != http.StatusOK || !strings.Contains(mine.Body.String(), id) {
 		t.Fatalf("mine = %d: %s", mine.Code, mine.Body.String())
+	}
+}
+
+func TestClaimExportCarriesActiveDeclarationID(t *testing.T) {
+	store := &fakeClaimStore{}
+	h := claimTestHandler(store)
+	created := doClaimRequest(h, http.MethodPost, "/v1/stations/d6c74c23-63db-4c24-a2e5-408cb23bad26/claims", openBody("export-id"))
+	var doc map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	id, ok := doc["declaration_id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("export missing active declaration id")
+	}
+	active, err := store.ActiveDeclaration(context.Background(), doc["id"].(string))
+	if err != nil || id != active.ID {
+		t.Fatalf("export id mismatch")
+	}
+}
+
+func TestOwnerStatusSurvivesConsumedDeclaration(t *testing.T) {
+	store := &fakeClaimStore{}
+	h := claimTestHandler(store)
+	created := doClaimRequest(h, http.MethodPost, "/v1/stations/d6c74c23-63db-4c24-a2e5-408cb23bad26/claims", openBody("consumed-status"))
+	var doc map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	claimID := doc["id"].(string)
+	declaration, _ := store.ActiveDeclaration(context.Background(), claimID)
+	declaration.State = "consumed"
+	store.decls[declaration.ID] = declaration
+	row := store.claims[claimID]
+	row.State = "approved"
+	store.claims[claimID] = row
+	response := doClaimRequest(h, http.MethodPost, "/v1/profile/claims/"+claimID+"/status", `{"family_id":"fam","access_token":"tok"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("owner terminal status = %d", response.Code)
+	}
+	var status map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status["state"] != "approved" || status["declaration_state"] != "consumed" {
+		t.Fatal("terminal/declaration state lost")
 	}
 }
