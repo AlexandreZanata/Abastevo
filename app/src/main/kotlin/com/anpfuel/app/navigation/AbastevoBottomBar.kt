@@ -63,8 +63,8 @@ enum class NavigationTab(
     }
 }
 
-/** Extra top padding is kept minimal; bottom mirrors the label gap. */
-private val BarTopPadding = 2.dp
+/** No extra space above the icons; bottom mirrors the label gap. */
+private val BarTopPadding = 0.dp
 private val BarBottomPadding = 8.dp
 
 /**
