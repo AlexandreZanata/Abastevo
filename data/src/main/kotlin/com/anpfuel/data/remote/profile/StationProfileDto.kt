@@ -12,6 +12,9 @@ data class StationProfileDto(
     val stationId: String,
     val displayName: String,
     val business: Map<String, String> = emptyMap(),
+    val revision: Int = 0,
+    val operatorSource: String = "",
+    val hasBadge: Boolean = false,
 ) {
     fun toDomain(): StationProfile? {
         if (stationId.isBlank()) return null
@@ -19,6 +22,9 @@ data class StationProfileDto(
             stationId = stationId,
             displayName = displayName,
             business = StationProfile.projectBusiness(business),
+            revision = revision,
+            operatorSource = operatorSource,
+            hasBadge = hasBadge,
         )
     }
 }

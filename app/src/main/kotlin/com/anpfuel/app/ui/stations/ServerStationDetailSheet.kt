@@ -88,6 +88,7 @@ fun ServerStationDetailSheet(
      */
     fuelProductWire: String? = null,
     accountId: String = "",
+    onProfile: () -> Unit = {},
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -176,6 +177,10 @@ fun ServerStationDetailSheet(
                         )
                     }
                 }
+            }
+
+            OutlinedButton(onClick = onProfile, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.station_profile_title))
             }
 
             Row(

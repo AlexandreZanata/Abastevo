@@ -68,6 +68,7 @@ fun StationsScreen(
     onNavigateToUpdatePrice: () -> Unit = {},
     onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onStationProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
@@ -154,6 +155,7 @@ fun StationsScreen(
             onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
         },
         onSuggestStation = onSuggestStation,
+        onStationProfile = onStationProfile,
         modifier = modifier,
     )
 }
@@ -178,6 +180,7 @@ private fun StationsContent(
     onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
     onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onStationProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -461,6 +464,7 @@ private fun StationsContent(
                 onUpdatePrice = { onServerUpdatePrice(serverStation, fuelWire) },
                 fuelProductWire = fuelWire,
                 accountId = uiState.serverAccountId,
+                onProfile = { onServerDetailDismissed(); onStationProfile(serverStation.stationId) },
             )
         }
     }

@@ -19,6 +19,9 @@ data class StationProfile(
     val stationId: String,
     val displayName: String,
     val business: Map<String, String> = emptyMap(),
+    val revision: Int = 0,
+    val operatorSource: String = "",
+    val hasBadge: Boolean = false,
 ) {
     companion object {
         fun projectBusiness(raw: Map<String, String>): Map<String, String> =

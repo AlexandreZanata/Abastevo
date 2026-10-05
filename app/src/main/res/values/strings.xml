@@ -485,4 +485,17 @@
     <string name="capture_submitted">Queued for upload. Status, retry and cancel live in your contributions.</string>
     <string name="capture_submit_failed">Could not queue (%1$s). Nothing was sent.</string>
     <string name="capture_done">Done</string>
+    <string name="station_profile_title">Station profile</string>
+    <string name="station_profile_unavailable">Profile unavailable. Try again when connected.</string>
+    <string name="station_profile_verified">Verified representation</string>
+    <string name="station_profile_stale">Outdated verification · reconnect to check</string>
+    <string name="station_profile_unclaimed">Unclaimed profile</string>
+    <string name="station_profile_representation_note">Representation is separate from fuel quality, prices and community ratings.</string>
+    <string name="station_profile_empty">No business information provided.</string>
+    <string name="station_profile_hours">Opening hours</string>
+    <string name="station_profile_services">Services</string>
+    <string name="station_profile_phone">Phone</string>
+    <string name="station_profile_website">Website</string>
+    <string name="station_profile_description">Description</string>
+    <string name="station_profile_claim">Representation and management</string>
 </resources>

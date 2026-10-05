@@ -484,4 +484,17 @@
     <string name="capture_submitted">Na fila de envio. Status, repetição e cancelamento ficam nas suas contribuições.</string>
     <string name="capture_submit_failed">Não foi enfileirar (%1$s). Nada foi enviado.</string>
     <string name="capture_done">Concluir</string>
+    <string name="station_profile_title">Perfil do posto</string>
+    <string name="station_profile_unavailable">Perfil indisponível. Tente novamente quando houver conexão.</string>
+    <string name="station_profile_verified">Representação verificada</string>
+    <string name="station_profile_stale">Verificação desatualizada · conecte-se para consultar</string>
+    <string name="station_profile_unclaimed">Perfil não reivindicado</string>
+    <string name="station_profile_representation_note">A representação é independente da qualidade do combustível, dos preços e das avaliações da comunidade.</string>
+    <string name="station_profile_empty">Nenhuma informação comercial cadastrada.</string>
+    <string name="station_profile_hours">Horário de funcionamento</string>
+    <string name="station_profile_services">Serviços</string>
+    <string name="station_profile_phone">Telefone</string>
+    <string name="station_profile_website">Site</string>
+    <string name="station_profile_description">Descrição</string>
+    <string name="station_profile_claim">Representação e gestão</string>
 </resources>

@@ -173,6 +173,12 @@ fun AnpNavGraph(
         composable(Routes.HISTORY) {
             HistoryScreen(onNavigateBack = { navController.popBackStack() })
         }
+        composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
+            com.anpfuel.app.ui.stationprofile.StationProfileScreen(
+                onBack = { navController.popBackStack() },
+                onClaim = { navController.navigate(Routes.AUTH) },
+            )
+        }
         composable(Routes.STATIONS) {
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -181,6 +187,7 @@ fun AnpNavGraph(
                     navController.navigate(Routes.capture(stationId, fuelWire))
                 },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
             )
         }
         composable(
@@ -196,6 +203,7 @@ fun AnpNavGraph(
                     navController.navigate(Routes.capture(stationId, fuelWire))
                 },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
             )
         }
         composable(Routes.VEHICLES) {
