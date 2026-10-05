@@ -72,7 +72,7 @@ class StationProfileActions(
 
     suspend fun edit(stationId: String, revision: Int, fields: Map<String, String>) {
         val current = session()
-        if (revision < 1 || fields.isEmpty() || !com.anpfuel.domain.profile.PUBLIC_BUSINESS_KEYS.containsAll(fields.keys)) throw ProfileInputInvalid()
+        if (revision < 1 || !com.anpfuel.domain.profile.ProfileBusinessFieldsRule.valid(fields)) throw ProfileInputInvalid()
         gateway.edit(current, stationId, revision, fields)
     }
 

@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -117,4 +118,42 @@ func splitScopes(scopes string) []string {
 		return nil
 	}
 	return strings.Split(scopes, ",")
+}
+
+// HasRepresentation exposes one boolean only. Grant pages are bounded; account
+// liveness comes through the composition port, never cross-module table reads.
+// A two-second deadline returns unavailable, never guessed representation.
+func (d ReviewDecisions) HasRepresentation(ctx context.Context, stationID, operatorCNPJ string, accountLive func(context.Context, string) (bool, error)) (bool, error) {
+	if operatorCNPJ == "" || accountLive == nil {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	station, err := mustUUID(stationID)
+	if err != nil {
+		return false, err
+	}
+	after, _ := mustUUID("00000000-0000-0000-0000-000000000000")
+	queries := stationprofile.New(d.Pool)
+	for {
+		candidates, err := queries.RepresentationCandidates(ctx, stationprofile.RepresentationCandidatesParams{
+			StationID: station, OperatorCnpj: operatorCNPJ, AfterID: after,
+		})
+		if err != nil {
+			return false, err
+		}
+		for _, candidate := range candidates {
+			live, err := accountLive(ctx, uuidString(candidate.AccountID))
+			if err != nil {
+				return false, err
+			}
+			if live {
+				return true, nil
+			}
+			after = candidate.ID
+		}
+		if len(candidates) < 50 {
+			return false, nil
+		}
+	}
 }

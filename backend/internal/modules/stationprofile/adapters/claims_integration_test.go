@@ -73,10 +73,13 @@ func freshClaimDB(t *testing.T) (*pgxpool.Pool, ClaimStore, string) {
 
 func claimLifecyclePorts(store ClaimStore) application.ClaimPorts {
 	n := 0
+	var idMu sync.Mutex
 	return application.ClaimPorts{
 		Store: store,
 		Clock: func() time.Time { return time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC) },
 		NewID: func() (string, error) {
+			idMu.Lock()
+			defer idMu.Unlock()
 			n++
 			return fmt.Sprintf("00000000-0000-4000-8000-%012d", n), nil
 		},

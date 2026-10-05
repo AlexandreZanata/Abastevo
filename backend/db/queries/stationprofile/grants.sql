@@ -17,4 +17,15 @@ RETURNING id, account_id, station_id, operator_cnpj, role, scopes, version, stat
 -- name: ActiveGrant :one
 SELECT id, account_id, station_id, operator_cnpj, role, scopes, version, status, claim_id, decision_id, valid_from, valid_to
 FROM representation_grants
-WHERE account_id = @account_id AND station_id = @station_id AND status = 'active';
+WHERE account_id = @account_id AND station_id = @station_id AND status = 'active'
+  AND valid_from <= now() AND (valid_to IS NULL OR valid_to > now());
+
+-- name: RepresentationCandidates :many
+-- Bounded keyset pages for the public badge. Account liveness stays an injected port.
+SELECT id, account_id
+FROM representation_grants
+WHERE station_id = @station_id AND operator_cnpj = @operator_cnpj
+  AND status = 'active' AND valid_from <= now()
+  AND (valid_to IS NULL OR valid_to > now()) AND id > @after_id
+ORDER BY id
+LIMIT 50;

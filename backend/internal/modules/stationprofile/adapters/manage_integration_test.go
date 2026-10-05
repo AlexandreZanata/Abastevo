@@ -191,3 +191,49 @@ func TestManageIntegrationStaleAndConcurrent(t *testing.T) {
 		t.Fatalf("wins = %d, errs = %v", wins, errs)
 	}
 }
+
+func TestGrantValidityWindowBlocksManagementIntegration(t *testing.T) {
+	pool, store, decisions, stationID := freshManageDB(t)
+	ctx := context.Background()
+	accountID := "11111111-1111-4111-8111-111111111111"
+	grantID := seedGrant(t, pool, accountID, stationID)
+	ports := managePortsForTest(store, decisions)
+	for _, update := range []string{
+		"UPDATE representation_grants SET valid_to=now()-interval '1 second' WHERE id=$1::uuid",
+		"UPDATE representation_grants SET valid_to=NULL, valid_from=now()+interval '1 hour' WHERE id=$1::uuid",
+	} {
+		if _, err := pool.Exec(ctx, update, grantID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := application.EditBusinessFields(ctx, ports, accountID, stationID, 1, map[string]string{"phone": "public"}); err == nil {
+			t.Fatal("expired/future grant edited profile")
+		}
+	}
+}
+
+func TestPublicBadgeRequiresLiveAccountOperatorAndGrantIntegration(t *testing.T) {
+	pool, _, decisions, stationID := freshManageDB(t)
+	ctx := context.Background()
+	accountID := "11111111-1111-4111-8111-111111111111"
+	grantID := seedGrant(t, pool, accountID, stationID)
+	check := func(cnpj string, live bool, want bool) {
+		t.Helper()
+		badge, err := decisions.HasRepresentation(ctx, stationID, cnpj, func(context.Context, string) (bool, error) { return live, nil })
+		if err != nil || badge != want {
+			t.Fatalf("badge=%v want=%v error=%v", badge, want, err)
+		}
+	}
+	check("04218406000104", true, true)
+	check("04218406000104", false, false)
+	check("other-operator", true, false)
+	for _, status := range []string{"suspended", "revoked", "expired"} {
+		if _, err := pool.Exec(ctx, "UPDATE representation_grants SET status=$2 WHERE id=$1::uuid", grantID, status); err != nil {
+			t.Fatal(err)
+		}
+		check("04218406000104", true, false)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE representation_grants SET status='active', valid_to=now()-interval '1 second' WHERE id=$1::uuid", grantID); err != nil {
+		t.Fatal(err)
+	}
+	check("04218406000104", true, false)
+}

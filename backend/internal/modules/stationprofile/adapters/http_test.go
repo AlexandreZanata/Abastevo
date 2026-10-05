@@ -104,3 +104,40 @@ func TestProfileReadShowsOperatorWithoutBadge(t *testing.T) {
 		t.Fatal("operator link alone must not badge (grants arrive in P31)")
 	}
 }
+
+func TestPublicProfileBadgePortAndFailureAreHonest(t *testing.T) {
+	stationID := "d6c74c23-63db-4c24-a2e5-408cb23bad26"
+	for _, failed := range []bool{false, true} {
+		handler := Handler{
+			Store: &fakeProfileStore{profile: application.StoredProfile{Revision: 1}, ops: map[string]application.StoredOperator{stationID: {CNPJ: "04218406000104", Source: "registry"}}},
+			Read: func(context.Context, string) (string, string, *float64, *float64, error) {
+				return "Posto", "unknown", nil, nil, nil
+			},
+			Representation: func(_ context.Context, id, cnpj string) (bool, error) {
+				if id != stationID || cnpj != "04218406000104" {
+					t.Fatal("badge identity mismatch")
+				}
+				if failed {
+					return false, context.DeadlineExceeded
+				}
+				return true, nil
+			},
+		}
+		router := chi.NewRouter()
+		handler.RegisterRoutes(router)
+		res := httptest.NewRecorder()
+		router.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/v1/stations/"+stationID+"/profile", nil))
+		if failed {
+			if res.Code != http.StatusServiceUnavailable {
+				t.Fatal("badge lookup failure guessed success")
+			}
+		} else if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), `"has_badge":true`) {
+			t.Fatal("live representation not shown")
+		}
+		for _, private := range []string{`"account_id"`, `"grant_id"`, `"declaration"`} {
+			if strings.Contains(res.Body.String(), private) {
+				t.Fatal("private badge data leaked")
+			}
+		}
+	}
+}

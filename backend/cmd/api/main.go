@@ -205,8 +205,18 @@ func run() error {
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
+	accountStore := accountadapters.NewPGStore(pool.Underlying())
 	profileadapters.Handler{
 		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
+		Representation: func(ctx context.Context, stationID, cnpj string) (bool, error) {
+			return (profileadapters.ReviewDecisions{Pool: pool.Underlying()}).HasRepresentation(ctx, stationID, cnpj, func(ctx context.Context, accountID string) (bool, error) {
+				account, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return account.Active(), nil
+			})
+		},
 		Read: func(ctx context.Context, stationID string) (string, string, *float64, *float64, error) {
 			station, err := stations.Detail(ctx, stationID)
 			if err != nil {
@@ -300,7 +310,6 @@ func run() error {
 	// The account store doubles as the social-write gate source
 	// (P13-T04D): one shared handle feeds the service and the
 	// community CheckAccount closures below.
-	accountStore := accountadapters.NewPGStore(pool.Underlying())
 	accountService := &accountapp.Service{
 		Clock:     unixClock{},
 		Hasher:    accountdomain.SHA256Hasher{},

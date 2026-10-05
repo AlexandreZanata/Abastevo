@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -15,8 +16,9 @@ import (
 // only — no private proof, personal identity, prices or grants, and no
 // badge without an actual grant record (grants arrive in P31).
 type Handler struct {
-	Store application.ProfileStore
-	Read  application.StationReader
+	Store          application.ProfileStore
+	Read           application.StationReader
+	Representation func(ctx context.Context, stationID, operatorCNPJ string) (bool, error)
 }
 
 // RegisterRoutes mounts the additive profile path.
@@ -29,6 +31,14 @@ func (h Handler) profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusNotFound, "profile.not-found", "station profile not found", nil)
 		return
+	}
+	if h.Representation != nil && profile.OperatorCNPJ != "" {
+		badge, err := h.Representation(r.Context(), profile.StationID, profile.OperatorCNPJ)
+		if err != nil {
+			httpapi.WriteError(w, r, http.StatusServiceUnavailable, "profile.unavailable", "profile service unavailable", nil)
+			return
+		}
+		profile.HasBadge = badge
 	}
 	operator := map[string]any{"cnpj": profile.OperatorCNPJ, "source": profile.OperatorSource}
 	if profile.OperatorCNPJ == "" {

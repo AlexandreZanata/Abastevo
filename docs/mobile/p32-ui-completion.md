@@ -78,3 +78,36 @@ commands/outcomes below; no acceptance inferred from compilation.
   Export TXT requires inclusion of exact declaration in an externally signed
   PDF; there is no server-generated PDF/export endpoint. Invites/contest/
   reverify commands are absent server-side and not invented client-side.
+
+## P32-T03A source scope clarification
+
+Backend inspection found `has_badge` always false and `ActiveGrant` ignoring
+`valid_from`/`valid_to`. B-BR-P02/P14 require a real current badge and expired
+capability denial; neither could be accepted as complete merely from a client
+model. Public badge now uses bounded keyset grant pages with an injected
+account-liveness port, a two-second lookup deadline (unavailable on error),
+matching operator and validity window. No cross-module table read and no
+private account/grant metadata in the public DTO. SQL management lookup now
+also enforces the validity window. Existing server account/operator/scope
+checks remain mandatory on each write. The grant-window test failed before
+this fix (expired/future grant incorrectly allowed an edit).
+
+- Additional risk run found an existing concurrent fixture ID counter race
+  in `claimLifecyclePorts`; synchronized that counter without weakening
+  concurrency assertions. Process API test also refused missing explicit
+  disposable DB configuration; rerun uses `ANPFUEL_TEST_DATABASE_URL` for the
+  existing local test DB, never the provided staging environment.
+
+- GREEN management: `:domain:test --tests '*ProfileBusinessFieldsRuleTest'`
+  + `:app:testDebugUnitTest --tests '*StationManagementViewModelTest'` +
+  `:app:assembleDebug` PASS (2m17s). Service enum, UTF-8/scalar limits,
+  revision conflict and revoked grant UI tested. Form sends changed fields
+  only; official reply acknowledgment is required, no optimistic success.
+- `sqlc generate && sqlc vet` PASS; grant expiry test RED then GREEN.
+  Real PostGIS adapters + process API `-race -count=1 -tags=integration`
+  PASS (19.729s / 4.779s) with explicit disposable DB. `go vet` and
+  apicontract PASS. No migration changed.
+- Invites/contest/reverification are explicitly unavailable because no
+  executable server routes exist. P32-T03 full acceptance remains PARTIAL,
+  despite the supported edit/reply slice being LOCAL_DONE. Do not close
+  historical P32/P33/full acceptance tasks or claim G32/G33/G09 completion.

@@ -15,6 +15,7 @@ const activeGrant = `-- name: ActiveGrant :one
 SELECT id, account_id, station_id, operator_cnpj, role, scopes, version, status, claim_id, decision_id, valid_from, valid_to
 FROM representation_grants
 WHERE account_id = $1 AND station_id = $2 AND status = 'active'
+  AND valid_from <= now() AND (valid_to IS NULL OR valid_to > now())
 `
 
 type ActiveGrantParams struct {
@@ -140,4 +141,46 @@ func (q *Queries) CreateGrant(ctx context.Context, arg CreateGrantParams) (Repre
 		&i.ValidTo,
 	)
 	return i, err
+}
+
+const representationCandidates = `-- name: RepresentationCandidates :many
+SELECT id, account_id
+FROM representation_grants
+WHERE station_id = $1 AND operator_cnpj = $2
+  AND status = 'active' AND valid_from <= now()
+  AND (valid_to IS NULL OR valid_to > now()) AND id > $3
+ORDER BY id
+LIMIT 50
+`
+
+type RepresentationCandidatesParams struct {
+	StationID    pgtype.UUID `json:"station_id"`
+	OperatorCnpj string      `json:"operator_cnpj"`
+	AfterID      pgtype.UUID `json:"after_id"`
+}
+
+type RepresentationCandidatesRow struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+// Bounded keyset pages for the public badge. Account liveness stays an injected port.
+func (q *Queries) RepresentationCandidates(ctx context.Context, arg RepresentationCandidatesParams) ([]RepresentationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, representationCandidates, arg.StationID, arg.OperatorCnpj, arg.AfterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RepresentationCandidatesRow
+	for rows.Next() {
+		var i RepresentationCandidatesRow
+		if err := rows.Scan(&i.ID, &i.AccountID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
