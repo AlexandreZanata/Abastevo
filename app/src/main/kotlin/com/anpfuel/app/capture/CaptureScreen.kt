@@ -49,9 +49,36 @@ import com.anpfuel.domain.valueobject.FuelProduct
 fun CaptureScreen(
     onNavigateBack: () -> Unit,
     viewModel: CaptureOcrViewModel = hiltViewModel(),
+    stationId: String? = null,
+    fuelProductWire: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val target by viewModel.target.collectAsStateWithLifecycle()
+    val targetInvalid by viewModel.targetInvalid.collectAsStateWithLifecycle()
+    androidx.compose.runtime.LaunchedEffect(stationId, fuelProductWire) {
+        viewModel.bindTarget(stationId, fuelProductWire)
+    }
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        target?.let {
+            Text(
+                text = stringResource(
+                    R.string.capture_target_label,
+                    it.stationId.take(8),
+                    it.fuelProductWire,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (targetInvalid) {
+            Text(
+                text = stringResource(R.string.capture_target_invalid),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(onClick = onNavigateBack) { Text(stringResource(R.string.action_back)) }
+            return@Column
+        }
         when (val current = state) {
             CaptureOcrUiState.Disabled -> {
                 Text(

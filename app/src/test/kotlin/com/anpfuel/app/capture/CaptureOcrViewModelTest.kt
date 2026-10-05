@@ -93,4 +93,20 @@ class CaptureOcrViewModelTest {
         assertTrue(confirmed.product == FuelProduct.ETHANOL)
         assertTrue(confirmed.conditionKind == "APP")
     }
+
+    @Test
+    fun `valid target binds and legacy cnpj is invalid`() {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.bindTarget("d6c74c23-63db-4c24-a2e5-408cb23bad26", "GASOLINE_REGULAR")
+        assertTrue(vm.target.value?.stationId == "d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        assertTrue(!vm.targetInvalid.value)
+
+        vm.bindTarget("04218406000104", "GASOLINE_REGULAR")
+        assertTrue(vm.target.value == null)
+        assertTrue(vm.targetInvalid.value)
+
+        vm.bindTarget(null, null)
+        assertTrue(vm.target.value == null)
+        assertTrue(!vm.targetInvalid.value)
+    }
 }

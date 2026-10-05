@@ -3,6 +3,7 @@ package com.anpfuel.app.capture
 import androidx.lifecycle.ViewModel
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
+import com.anpfuel.domain.contribution.ContributionTarget
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,31 @@ class CaptureOcrViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<CaptureOcrUiState>(initialState())
     val state: StateFlow<CaptureOcrUiState> = _state.asStateFlow()
+
+    /**
+     * P37-T01 — contextual capture target (canonical UUID + wire fuel).
+     * Null binds no target (context-free FAB flow; manual station pick
+     * stays future work). An invalid target blocks capture honestly via
+     * [targetInvalid] instead of a silent misattribution.
+     */
+    private val _target = MutableStateFlow<ContributionTarget?>(null)
+    val target: StateFlow<ContributionTarget?> = _target.asStateFlow()
+
+    private val _targetInvalid = MutableStateFlow(false)
+    val targetInvalid: StateFlow<Boolean> = _targetInvalid.asStateFlow()
+
+    fun bindTarget(stationId: String?, fuelProductWire: String?) {
+        if (stationId == null || fuelProductWire == null) {
+            _target.value = null
+            _targetInvalid.value = false
+            return
+        }
+        val resolved = runCatching {
+            ContributionTarget.create(stationId, fuelProductWire)
+        }.getOrNull()
+        _target.value = resolved
+        _targetInvalid.value = resolved == null
+    }
 
     /** Reviews one capture result: system-camera bytes already compressed via PhotoFlow. */
     fun onCaptureResult(cancelled: Boolean, ocrText: String?) {

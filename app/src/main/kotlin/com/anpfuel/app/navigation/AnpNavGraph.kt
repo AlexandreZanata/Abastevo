@@ -177,6 +177,9 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
+                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
+                    navController.navigate(Routes.capture(stationId, fuelWire))
+                },
             )
         }
         composable(
@@ -188,6 +191,9 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
+                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
+                    navController.navigate(Routes.capture(stationId, fuelWire))
+                },
             )
         }
         composable(Routes.VEHICLES) {
@@ -234,6 +240,19 @@ fun AnpNavGraph(
         }
         composable(Routes.CAPTURE) {
             CaptureScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.CAPTURE_WITH_TARGET,
+            arguments = listOf(
+                navArgument("stationId") { defaultValue = "" },
+                navArgument("fuel") { defaultValue = "" },
+            ),
+        ) { entry ->
+            CaptureScreen(
+                onNavigateBack = { navController.popBackStack() },
+                stationId = entry.arguments?.getString("stationId")?.takeIf { it.isNotEmpty() },
+                fuelProductWire = entry.arguments?.getString("fuel")?.takeIf { it.isNotEmpty() },
+            )
         }
         composable(Routes.HELP) {
             HelpScreen(onNavigateBack = { navController.popBackStack() })

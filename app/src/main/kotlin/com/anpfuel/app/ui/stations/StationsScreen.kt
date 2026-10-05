@@ -65,6 +65,7 @@ import com.anpfuel.domain.valueobject.FuelProduct
 fun StationsScreen(
     onNavigateBack: (() -> Unit)? = null,
     onNavigateToUpdatePrice: () -> Unit = {},
+    onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
@@ -147,6 +148,9 @@ fun StationsScreen(
         onServerStationSelected = viewModel::onServerStationSelected,
         onServerDetailDismissed = viewModel::onServerDetailDismissed,
         onServerStationNavigate = viewModel::onServerStationNavigate,
+        onServerUpdatePrice = { station, fuelWire ->
+            onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
+        },
         modifier = modifier,
     )
 }
@@ -169,6 +173,7 @@ private fun StationsContent(
     onServerStationSelected: (String) -> Unit = {},
     onServerDetailDismissed: () -> Unit = {},
     onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
+    onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -435,15 +440,16 @@ private fun StationsContent(
         }
 
         uiState.selectedServerStation?.let { serverStation ->
+            val fuelWire = com.anpfuel.data.mapper.WireFuelMapper.toWire(
+                uiState.selectedFuelProduct,
+            )
             ServerStationDetailSheet(
                 station = serverStation,
                 fromCache = uiState.serverDetailFromCache,
                 onDismiss = onServerDetailDismissed,
                 onRoute = onServerStationNavigate,
-                onUpdatePrice = onNavigateToUpdatePrice,
-                fuelProductWire = com.anpfuel.data.mapper.WireFuelMapper.toWire(
-                    uiState.selectedFuelProduct,
-                ),
+                onUpdatePrice = { onServerUpdatePrice(serverStation, fuelWire) },
+                fuelProductWire = fuelWire,
                 accountId = uiState.serverAccountId,
             )
         }

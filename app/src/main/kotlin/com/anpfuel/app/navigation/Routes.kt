@@ -20,6 +20,11 @@ object Routes {
     const val VEHICLES = "vehicles"
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"
+    const val CAPTURE_WITH_TARGET = "capture?stationId={stationId}&fuel={fuel}"
 
     fun stations(fuelProduct: FuelProduct): String = "stations/${fuelProduct.name}"
+
+    /** Contextual capture for one canonical station + wire fuel (P37-T01). */
+    fun capture(stationId: String, fuelProductWire: String): String =
+        "capture?stationId=$stationId&fuel=$fuelProductWire"
 }

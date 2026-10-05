@@ -459,5 +459,7 @@
     <string name="capture_manual_price_placeholder">E.g. 5,89</string>
     <string name="capture_confirm_explicit">Confirm (explicit)</string>
     <string name="capture_confirmed_outbox">Price confirmed: %1$s. Upload happens only from the contribution outbox.</string>
+    <string name="capture_target_label">Posting to station %1$s · %2$s</string>
+    <string name="capture_target_invalid">Invalid station reference — go back and pick the station again.</string>
     <string name="capture_done">Done</string>
 </resources>
