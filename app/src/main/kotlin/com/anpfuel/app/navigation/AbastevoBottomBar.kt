@@ -107,7 +107,7 @@ fun AbastevoBottomBar(
                             onClick = { onNavigateToTab(tab.route) },
                             role = Role.Tab,
                             interactionSource = interactionSource,
-                            indication = ripple(bounded = false),
+                            indication = ripple(),
                         )
                         .semantics {
                             contentDescription = label
