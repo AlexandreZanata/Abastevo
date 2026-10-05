@@ -323,6 +323,25 @@ func (q *Queries) ListOwnedClaims(ctx context.Context, arg ListOwnedClaimsParams
 	return items, nil
 }
 
+const setClaimReviewState = `-- name: SetClaimReviewState :execrows
+UPDATE profile_claims
+SET state = $1, updated_at = now()
+WHERE id = $2 AND state IN ('draft', 'awaiting_proof', 'checking', 'needs_information', 'in_review')
+`
+
+type SetClaimReviewStateParams struct {
+	State string      `json:"state"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetClaimReviewState(ctx context.Context, arg SetClaimReviewStateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setClaimReviewState, arg.State, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setClaimState = `-- name: SetClaimState :execrows
 UPDATE profile_claims
 SET state = $1, updated_at = now()

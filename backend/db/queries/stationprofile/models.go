@@ -8,6 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ClaimDecision struct {
+	ID            pgtype.UUID        `json:"id"`
+	ClaimID       pgtype.UUID        `json:"claim_id"`
+	Reviewer      string             `json:"reviewer"`
+	Decision      string             `json:"decision"`
+	Reason        string             `json:"reason"`
+	PolicyVersion string             `json:"policy_version"`
+	ProofVersion  int32              `json:"proof_version"`
+	OperatorCnpj  string             `json:"operator_cnpj"`
+	Scopes        string             `json:"scopes"`
+	DecidedAt     pgtype.Timestamptz `json:"decided_at"`
+}
+
 type ClaimDeclaration struct {
 	ID             pgtype.UUID        `json:"id"`
 	ClaimID        pgtype.UUID        `json:"claim_id"`
@@ -83,6 +96,21 @@ type ProfileClaim struct {
 	ClientKey      string             `json:"client_key"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type RepresentationGrant struct {
+	ID           pgtype.UUID        `json:"id"`
+	AccountID    pgtype.UUID        `json:"account_id"`
+	StationID    pgtype.UUID        `json:"station_id"`
+	OperatorCnpj string             `json:"operator_cnpj"`
+	Role         string             `json:"role"`
+	Scopes       string             `json:"scopes"`
+	Version      int32              `json:"version"`
+	Status       string             `json:"status"`
+	ClaimID      pgtype.UUID        `json:"claim_id"`
+	DecisionID   pgtype.UUID        `json:"decision_id"`
+	ValidFrom    pgtype.Timestamptz `json:"valid_from"`
+	ValidTo      pgtype.Timestamptz `json:"valid_to"`
 }
 
 type StationOperatorRevision struct {

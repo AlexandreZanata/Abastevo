@@ -35,6 +35,11 @@ UPDATE profile_claims
 SET state = @state, updated_at = now()
 WHERE id = @id AND state = @expected_state;
 
+-- name: SetClaimReviewState :execrows
+UPDATE profile_claims
+SET state = @state, updated_at = now()
+WHERE id = @id AND state IN ('draft', 'awaiting_proof', 'checking', 'needs_information', 'in_review');
+
 -- name: CreateDeclaration :one
 INSERT INTO claim_declarations (id, claim_id, version, nonce_digest, expected_digest, declaration, expires_at)
 VALUES (@id, @claim_id, @version, @nonce_digest, @expected_digest, @declaration, @expires_at)

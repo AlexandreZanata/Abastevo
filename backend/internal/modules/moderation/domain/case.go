@@ -23,6 +23,10 @@ const (
 	TargetContributor = "CONTRIBUTOR"
 	TargetEvidence    = "EVIDENCE"
 	TargetComment     = "COMMENT"
+	// TargetStationClaim routes representation-claim reports through
+	// the ordinary restricted moderation path (P31-T03, B-BR-P12):
+	// reports never suspend a business or grant access alone.
+	TargetStationClaim = "STATION_CLAIM"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -106,7 +110,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}
