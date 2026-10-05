@@ -2697,7 +2697,7 @@ Current authority: local planning only (specification revision 2, including the 
 
 ### P25-T05 — Landing acceptance and publication handoff
 
-- **ID / priority / status:** P25-T05 / MUST / PLANNED (issue #110).
+- **ID / priority / status:** P25-T05 / MUST / LOCAL_DONE (2026-10-05, issue #110).
 - **Goal:** Demonstrate G25-STATIC-READY and prepare a concrete static hosting/rollback and later Play Store activation procedure.
 - **Inputs / rules:** Landing specification budgets/exit, B-BR-L01–L07, BUC-L01–L05 and task evidence T01–T04.
 - **Dependencies:** P25-T04. Site publication requires selected domain/host/owner access and separate authorization; public app listing is not needed for prelaunch acceptance.

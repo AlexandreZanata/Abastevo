@@ -78,3 +78,50 @@ npm test
 - `--store-state <prelaunch|published>`: State of Google Play Store listing. Default is `prelaunch`.
 - `--store-url <url>`: Verified Play Store URL. Required if `--store-state published`. Must match `https://play.google.com/store/apps/details?id=com.anpfuel`.
 - `--out-dir <path>`: Output directory (defaults to `dist`).
+
+## Hosting & Response Policy
+
+The generated `dist/` directory contains plain static files ready to deploy to any modern static hosting provider.
+
+- **Preferred Hosts:** Cloudflare Pages or Netlify natively support the provided `_headers` and `_redirects` files, enabling:
+  - Custom security headers (`nosniff`, `strict-origin-when-cross-origin`, strict CSP).
+  - Permissions policy disabling camera, microphone, and geolocation.
+  - HSTS with subdomains.
+  - Long immutable caching for `/assets/*` (1 year) and zero-cache revalidation for HTML files.
+  - Real 404 response for unmatched paths.
+- **GitHub Pages:** Can serve the files, but custom response headers are not configurable. In-document metadata provides defense-in-depth if GitHub Pages is chosen.
+
+## Rollback Procedure
+
+All static deployments are immutable artifacts:
+1. **Immediate Rollback (Dashboard):** In the static host management console (e.g. Cloudflare Pages or Netlify), click **Rollback** to instantly reactivate the prior successful deployment.
+2. **Git Rollback:** Revert to the previous verified commit SHA, run `npm run build && npm run check`, and deploy the resulting `dist/` directory.
+
+## Publication-Time Discoverability Checklist
+
+When website publication is explicitly authorized:
+1. Configure custom domain DNS (apex `abastevo.com.br` and `www.abastevo.com.br` redirect) pointing to static host.
+2. Verify TLS certificate and HTTPS enforcement.
+3. Add the website link to the GitHub repository homepage and `README.md`.
+4. Register `https://abastevo.com.br` in **Google Search Console** and submit `https://abastevo.com.br/sitemap.xml`.
+5. Import property in **Bing Webmaster Tools**.
+6. Monitor Search Console for crawl errors or indexing coverage.
+
+## Google Play Store Activation Procedure
+
+When the Android app is officially published on Google Play:
+1. Confirm the live Play Store URL: `https://play.google.com/store/apps/details?id=com.anpfuel`.
+2. Build the landing page in published mode:
+   ```bash
+   node scripts/build.mjs --store-state published --store-url "https://play.google.com/store/apps/details?id=com.anpfuel"
+   ```
+3. Run checks to verify the build:
+   ```bash
+   node scripts/check.mjs
+   npm test
+   ```
+4. Confirm that:
+   - The CTA renders the link "Ver na Google Play" instead of the prelaunch notice.
+   - The JSON-LD in `dist/index.html` includes the `MobileApplication` schema pointing to the live URL.
+   - `Organization` structured data `sameAs` includes the Play Store link.
+5. Deploy `dist/` to the static hosting provider.
