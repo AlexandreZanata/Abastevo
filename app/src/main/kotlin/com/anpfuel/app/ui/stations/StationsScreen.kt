@@ -127,6 +127,10 @@ fun StationsScreen(
         viewModel.load(locale)
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.loadServerStations()
+    }
+
     StationsContent(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
@@ -140,6 +144,9 @@ fun StationsScreen(
         onNavigateToStation = viewModel::onNavigateToStation,
         onDetailDismissed = viewModel::onDetailDismissed,
         onNavigateToUpdatePrice = onNavigateToUpdatePrice,
+        onServerStationSelected = viewModel::onServerStationSelected,
+        onServerDetailDismissed = viewModel::onServerDetailDismissed,
+        onServerStationNavigate = viewModel::onServerStationNavigate,
         modifier = modifier,
     )
 }
@@ -159,6 +166,9 @@ private fun StationsContent(
     onNavigateToStation: (String) -> Unit,
     onDetailDismissed: () -> Unit,
     onNavigateToUpdatePrice: () -> Unit,
+    onServerStationSelected: (String) -> Unit = {},
+    onServerDetailDismissed: () -> Unit = {},
+    onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -370,6 +380,37 @@ private fun StationsContent(
                     )
                 }
             }
+
+            // P35-T02 — canonical server directory (flag-gated, additive).
+            // Legacy ANP rows above are never replaced; an empty server list
+            // renders nothing, never an error.
+            if (uiState.serverStations.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.server_stations_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                if (uiState.serverFromCache) {
+                    Text(
+                        text = stringResource(R.string.server_station_cached),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                uiState.serverStations.forEach { station ->
+                    ServerStationRow(
+                        station = station,
+                        onSelect = onServerStationSelected,
+                    )
+                }
+            }
+            if (uiState.serverError != null && uiState.serverStations.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.server_stations_unavailable),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         uiState.selectedDetail?.let { detail ->
@@ -389,6 +430,16 @@ private fun StationsContent(
                 locationLabel = locationLabel,
                 onDismiss = onDetailDismissed,
                 onRoute = { onNavigateToStation(detail.station.cnpjDigits) },
+                onUpdatePrice = onNavigateToUpdatePrice,
+            )
+        }
+
+        uiState.selectedServerStation?.let { serverStation ->
+            ServerStationDetailSheet(
+                station = serverStation,
+                fromCache = uiState.serverDetailFromCache,
+                onDismiss = onServerDetailDismissed,
+                onRoute = onServerStationNavigate,
                 onUpdatePrice = onNavigateToUpdatePrice,
             )
         }

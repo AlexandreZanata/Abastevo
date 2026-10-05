@@ -404,6 +404,15 @@
     <string name="community_official_detail">Oficial: %1$s · %2$s · Coletado %3$s</string>
     <string name="community_availability_detail">Comunidade: %1$s · %2$s</string>
 
+    <!-- Canonical server directory (P35-T02, beta, flag-gated) -->
+    <string name="server_stations_title">Diretório da comunidade (beta)</string>
+    <string name="server_station_quality_reviewed">Local verificado</string>
+    <string name="server_station_quality_centroid">Local aproximado da cidade</string>
+    <string name="server_station_quality_unknown">Local não verificado</string>
+    <string name="server_station_unknown_location">Local não verificado — exibido sem coordenadas.</string>
+    <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
+    <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>
+
     <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
     <string name="community_vote_title">Confirmar ou contestar este preço</string>
     <string name="community_vote_confirm">Confirmar preço</string>

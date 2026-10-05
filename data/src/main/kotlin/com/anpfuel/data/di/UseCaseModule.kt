@@ -13,6 +13,8 @@ import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.SubmitCommunityVoteUseCase
+import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
+import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
 import com.anpfuel.application.usecase.contribution.CancelOwnedContributionUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
 import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
@@ -21,6 +23,8 @@ import com.anpfuel.application.usecase.feedback.SubmitFeedbackUseCase
 import com.anpfuel.application.usecase.identity.AnonymousDeviceFlow
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.ServerStationCache
+import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.FeedbackCacheRepository
@@ -465,6 +469,30 @@ object UseCaseModule {
     ): GetCommunityPriceGroupsUseCase = GetCommunityPriceGroupsUseCase(
         flagProvider = flagProvider,
         httpGateway = httpGateway,
+        cache = cache,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetServerStationsUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+        cache: ServerStationCache,
+    ): GetServerStationsUseCase = GetServerStationsUseCase(
+        flagProvider = flagProvider,
+        gateway = gateway,
+        cache = cache,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetServerStationDetailUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+        cache: ServerStationCache,
+    ): GetServerStationDetailUseCase = GetServerStationDetailUseCase(
+        flagProvider = flagProvider,
+        gateway = gateway,
         cache = cache,
     )
 

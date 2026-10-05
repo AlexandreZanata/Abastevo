@@ -9,7 +9,12 @@ import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.app.location.LocationPermissionHandler
+import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
+import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
+import com.anpfuel.application.usecase.directory.ServerStationDetailOutcome
+import com.anpfuel.application.usecase.directory.ServerStationsOutcome
 import com.anpfuel.application.usecase.station.BuildStationNavigationQueryUseCase
+import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCase
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
@@ -58,6 +63,18 @@ data class StationsUiState(
     val showNoLocation: Boolean = false,
     val error: AppError? = null,
     val errorMessage: String? = null,
+    /**
+     * P35-T02 — canonical server discovery (UUID) alongside the legacy
+     * CNPJ list. Empty by default; populated only when the community-reads
+     * flag enables staging reads. Legacy ANP/offline journeys are never
+     * replaced here.
+     */
+    val serverStations: List<ServerStation> = emptyList(),
+    val isServerLoading: Boolean = false,
+    val serverFromCache: Boolean = false,
+    val serverError: String? = null,
+    val selectedServerStation: ServerStation? = null,
+    val serverDetailFromCache: Boolean = false,
 )
 
 sealed interface StationsNavigationEffect {
@@ -83,6 +100,8 @@ class StationsViewModel @Inject constructor(
     private val selectLocationUseCase: SelectLocationUseCase,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
     savedStateHandle: SavedStateHandle,
+    private val getServerStationsUseCase: GetServerStationsUseCase? = null,
+    private val getServerStationDetailUseCase: GetServerStationDetailUseCase? = null,
 ) : ViewModel() {
 
     private val savedStateHandleRef: SavedStateHandle = savedStateHandle
@@ -277,6 +296,109 @@ class StationsViewModel @Inject constructor(
 
     fun onDetailDismissed() {
         _uiState.update { it.copy(selectedDetail = null) }
+    }
+
+    /**
+     * P35-T02 — loads the canonical server page (UUID discovery).
+     * Disabled flag or missing binding is a no-op so legacy ANP/offline
+     * journeys keep working. Transport failure keeps the last good list
+     * (`serverFromCache`) instead of an empty error; a first-load failure
+     * reports an honest error without inventing stations.
+     */
+    fun loadServerStations(limit: Int = 20) {
+        val useCase = getServerStationsUseCase ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isServerLoading = true, serverError = null) }
+            when (val outcome = useCase(limit, null)) {
+                is ServerStationsOutcome.Disabled ->
+                    _uiState.update { it.copy(isServerLoading = false) }
+                is ServerStationsOutcome.Fresh ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoading = false,
+                            serverStations = outcome.page.items,
+                            serverFromCache = false,
+                            serverError = null,
+                        )
+                    }
+                is ServerStationsOutcome.StaleCache ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoading = false,
+                            serverStations = outcome.page.items,
+                            serverFromCache = true,
+                            serverError = null,
+                        )
+                    }
+                is ServerStationsOutcome.Unavailable ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoading = false,
+                            serverError = outcome.cause.message
+                                ?: outcome.cause.javaClass.simpleName,
+                        )
+                    }
+            }
+        }
+    }
+
+    /**
+     * P35-T02 — selects a canonical server station by UUID for the
+     * community-first detail. Unknown UUID (or disabled reads) yields no
+     * detail, never an invented card. Stale cache is labelled explicitly.
+     */
+    fun onServerStationSelected(stationId: String) {
+        val useCase = getServerStationDetailUseCase ?: return
+        viewModelScope.launch {
+            when (val outcome = useCase(stationId)) {
+                is ServerStationDetailOutcome.Disabled ->
+                    _uiState.update { it.copy(selectedServerStation = null) }
+                is ServerStationDetailOutcome.Fresh ->
+                    _uiState.update {
+                        it.copy(
+                            selectedServerStation = outcome.station,
+                            serverDetailFromCache = false,
+                            serverError = null,
+                        )
+                    }
+                is ServerStationDetailOutcome.StaleCache ->
+                    _uiState.update {
+                        it.copy(
+                            selectedServerStation = outcome.station,
+                            serverDetailFromCache = true,
+                            serverError = null,
+                        )
+                    }
+                is ServerStationDetailOutcome.Unavailable ->
+                    _uiState.update {
+                        it.copy(
+                            selectedServerStation = null,
+                            serverError = outcome.cause.message
+                                ?: outcome.cause.javaClass.simpleName,
+                        )
+                    }
+            }
+        }
+    }
+
+    fun onServerDetailDismissed() {
+        _uiState.update { it.copy(selectedServerStation = null, serverDetailFromCache = false) }
+    }
+
+    /**
+     * P35-T02 — routes to a canonical server station by reviewed
+     * coordinates. Unknown-location stations (no coordinates) cannot
+     * navigate and emit no effect, never a fabricated destination.
+     */
+    fun onServerStationNavigate(station: ServerStation) {
+        val lat = station.latitude
+        val lon = station.longitude
+        if (lat == null || lon == null) return
+        viewModelScope.launch {
+            _navigationEffects.emit(
+                StationsNavigationEffect.LaunchMaps("$lat,$lon"),
+            )
+        }
     }
 
     fun onNavigateToStation(cnpjDigits: String) {
