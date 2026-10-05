@@ -52,7 +52,7 @@ export function validateStoreState(storeState, storeUrl) {
 
 export function build(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
-  const origin = validateOrigin(options.origin || 'https://abastevo.com.br');
+  const origin = validateOrigin(options.origin || options.canonicalOrigin || 'https://abastevo.com.br');
   const storeState = options.storeState || 'prelaunch';
   const storeUrl = options.storeUrl || null;
   validateStoreState(storeState, storeUrl);
@@ -66,7 +66,8 @@ export function build(options = {}) {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   try {
-    const tscBin = path.join(root, 'node_modules', '.bin', 'tsc');
+    const localTsc = path.join(root, 'node_modules', '.bin', 'tsc');
+    const tscBin = fs.existsSync(localTsc) ? localTsc : 'tsc';
     execFileSync(tscBin, ['--project', path.join(root, 'tsconfig.json'), '--outDir', tmpDir], {
       cwd: root,
       stdio: 'pipe',
@@ -110,13 +111,32 @@ export function build(options = {}) {
     }
 
     // 6. Copy and substitute static configuration files
-    const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects'];
+    const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
     for (const file of configFiles) {
       const src = path.join(staticDir, file);
       if (fs.existsSync(src)) {
         let text = fs.readFileSync(src, 'utf8');
         text = text.replaceAll('{{CANONICAL_ORIGIN}}', origin);
         fs.writeFileSync(path.join(outDir, file), text, 'utf8');
+      }
+    }
+
+    // Copy root favicon.ico if present
+    const rootFavicon = path.join(staticDir, 'favicon.ico');
+    if (fs.existsSync(rootFavicon)) {
+      fs.copyFileSync(rootFavicon, path.join(outDir, 'favicon.ico'));
+    }
+
+    // Process .well-known directory
+    const wellKnownStatic = path.join(staticDir, '.well-known');
+    if (fs.existsSync(wellKnownStatic)) {
+      const wellKnownOut = path.join(outDir, '.well-known');
+      fs.mkdirSync(wellKnownOut, { recursive: true });
+      for (const item of fs.readdirSync(wellKnownStatic)) {
+        const itemSrc = path.join(wellKnownStatic, item);
+        let text = fs.readFileSync(itemSrc, 'utf8');
+        text = text.replaceAll('{{CANONICAL_ORIGIN}}', origin);
+        fs.writeFileSync(path.join(wellKnownOut, item), text, 'utf8');
       }
     }
 
@@ -128,6 +148,8 @@ export function build(options = {}) {
       { srcRel: 'termos/index.html', destRel: 'termos/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
+
+    const isPreview = process.env.PREVIEW === '1';
 
     for (const { srcRel, destRel } of htmlFiles) {
       const srcPath = path.join(staticDir, srcRel);
@@ -151,6 +173,22 @@ export function build(options = {}) {
           replacement = `<span class="store-notice">Em breve na Google Play</span>`;
         }
         html = html.replace(slotRegex, replacement);
+
+        if (storeState === 'published') {
+          html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', `,\n          "${storeUrl}"`);
+          const appNode = `,\n      {\n        "@type": "MobileApplication",\n        "@id": "${origin}/#mobileapp",\n        "name": "abastevo",\n        "operatingSystem": "Android",\n        "applicationCategory": "UtilitiesApplication",\n        "installUrl": "${storeUrl}",\n        "offers": {\n          "@type": "Offer",\n          "price": "0",\n          "priceCurrency": "BRL"\n        }\n      }`;
+          html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', appNode);
+        } else {
+          html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', '');
+          html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', '');
+        }
+      }
+
+      // Preview mode indexing guard
+      if (isPreview && srcRel !== '404.html') {
+        if (!html.includes('robots')) {
+          html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex, nofollow">');
+        }
       }
 
       const destPath = path.join(outDir, destRel);
@@ -213,3 +251,5 @@ if (process.argv[1] === __filename) {
   console.log(`  JS:  /assets/${result.fingerprintedJs} (hash ${result.jsHash})`);
   console.log(`  Store state: ${result.storeState}`);
 }
+
+export const buildSite = build;

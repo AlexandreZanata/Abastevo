@@ -193,6 +193,9 @@ else
     done <<< "$CHANGED_ALL"
     if [[ "$LANDING_CHANGED" == "1" ]]; then
         echo "== landing static & ts selection =="
+        if [[ ! -d "landing/node_modules" ]]; then
+            npm --prefix landing ci
+        fi
         npm --prefix landing run typecheck
         npm --prefix landing run build
         npm --prefix landing run check

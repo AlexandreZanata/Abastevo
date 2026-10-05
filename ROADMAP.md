@@ -2683,7 +2683,7 @@ Current authority: local planning only (specification revision 2, including the 
 
 ### P25-T04 — SEO, icons and indexing contracts
 
-- **ID / priority / status:** P25-T04 / MUST / PLANNED (issue #109).
+- **ID / priority / status:** P25-T04 / MUST / LOCAL_DONE (2026-10-05, issue #109).
 - **Goal:** Complete accurate, discoverable initial HTML, icons/manifest, social previews and response policy using the reference's applicable SEO principles and official Google guidance.
 - **Inputs / rules:** Landing specification SEO acceptance, B-BR-L01/L03–L05, BUC-L04, D-L02/D-L07; actual content/assets/origin configuration.
 - **Dependencies:** P25-T03. Final public origin is required for public-artifact acceptance; private local preview can proceed with explicit nonpublic configuration.

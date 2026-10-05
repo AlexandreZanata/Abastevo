@@ -22,18 +22,27 @@ landing/
     termos/index.html             # Community guidelines and moderation terms
     404.html                      # Real 404 page with noindex
     robots.txt                    # Crawler policy & sitemap pointer
-    sitemap.xml                   # Static sitemap
-    site.webmanifest              # Web application manifest
+    sitemap.xml                   # Static sitemap (canonical 200 URLs only)
+    site.webmanifest              # Web application manifest with icons
+    llms.txt                      # Factual project summary for LLMs (D-L07)
+    .well-known/security.txt      # RFC 9116 security policy & contact
+    favicon.ico                   # Root legacy multi-resolution favicon
     _headers                      # Security headers & cache rules for static hosts
     _redirects                    # Redirect definitions
     assets/
       styles.css                  # Token-based styles
-      brand/                      # Approved SVGs and icons
+      brand/                      # Approved SVGs, derived icons & versioned social preview
+        favicon.svg               # Modern vector favicon
+        apple-touch-icon.png      # 180x180 iOS touch icon
+        icon-192.png              # 192x192 Android manifest icon
+        icon-512.png              # 512x512 Android splash icon & schema logo
+        og-image-v1.png           # 1200x630 versioned social preview (<300 KiB)
+        icon-provenance.json      # Provenance and derivation log
   src/
     main.ts                       # TypeScript progressive enhancement
   scripts/
     build.mjs                     # Asset fingerprinting & HTML build
-    check.mjs                     # Artifact & budget verification
+    check.mjs                     # Artifact, SEO, JSON-LD & budget verification
   tests/                          # Automated contract & behavior tests
   dist/                           # Deployable built output (gitignored)
   package.json

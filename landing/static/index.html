@@ -4,39 +4,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abastevo | Preços de combustíveis com a comunidade</title>
-  <meta name="description" content="Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.">
+  <meta name="description" content="Consulte preços de combustíveis com fonte, data e condição à vista. Dados oficiais da ANP e colaboração da comunidade em código aberto sob licença MIT.">
   <link rel="canonical" href="{{CANONICAL_ORIGIN}}/">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="{{CANONICAL_ORIGIN}}/">
   <meta property="og:title" content="abastevo | Preços de combustíveis com a comunidade">
-  <meta property="og:description" content="Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.">
-  <meta property="og:image" content="{{CANONICAL_ORIGIN}}/assets/brand/abastevo-app-icon-1024.png">
+  <meta property="og:description" content="Consulte preços de combustíveis com fonte, data e condição à vista. Dados oficiais da ANP e colaboração da comunidade em código aberto sob licença MIT.">
+  <meta property="og:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="abastevo — Preços de combustíveis com a comunidade">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="abastevo | Preços de combustíveis com a comunidade">
-  <meta name="twitter:description" content="Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.">
-  <meta name="twitter:image" content="{{CANONICAL_ORIGIN}}/assets/brand/abastevo-app-icon-1024.png">
+  <meta name="twitter:description" content="Consulte preços de combustíveis com fonte, data e condição à vista. Dados oficiais da ANP e colaboração da comunidade em código aberto sob licença MIT.">
+  <meta name="twitter:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
+  <meta name="twitter:image:alt" content="abastevo — Preços de combustíveis com a comunidade">
 
   <!-- Favicons and Manifest -->
-  <link rel="icon" type="image/svg+xml" href="/assets/brand/abastevo-logo.svg">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/icon-192.png">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#f5f8fc">
+  <meta name="theme-color" content="#ffffff">
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "abastevo",
-    "url": "{{CANONICAL_ORIGIN}}/",
-    "description": "Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.",
-    "inLanguage": "pt-BR",
-    "sameAs": [
-      "https://github.com/AlexandreZanata/abastevo"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "{{CANONICAL_ORIGIN}}/#website",
+        "name": "abastevo",
+        "url": "{{CANONICAL_ORIGIN}}/",
+        "description": "Preços de combustíveis com fonte, data e condição à vista.",
+        "inLanguage": "pt-BR",
+        "publisher": {
+          "@id": "{{CANONICAL_ORIGIN}}/#organization"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "{{CANONICAL_ORIGIN}}/#organization",
+        "name": "abastevo",
+        "url": "{{CANONICAL_ORIGIN}}/",
+        "logo": "{{CANONICAL_ORIGIN}}/assets/brand/icon-512.png",
+        "sameAs": [
+          "https://github.com/AlexandreZanata/abastevo"{{STORE_SAME_AS_EXTRA}}
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "{{CANONICAL_ORIGIN}}/#webpage",
+        "url": "{{CANONICAL_ORIGIN}}/",
+        "name": "abastevo | Preços de combustíveis com a comunidade",
+        "isPartOf": {
+          "@id": "{{CANONICAL_ORIGIN}}/#website"
+        },
+        "about": {
+          "@id": "{{CANONICAL_ORIGIN}}/#organization"
+        },
+        "inLanguage": "pt-BR"
+      }{{STORE_APP_SCHEMA_NODE}}
     ]
   }
   </script>
