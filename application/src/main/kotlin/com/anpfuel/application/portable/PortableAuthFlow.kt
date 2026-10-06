@@ -77,8 +77,8 @@ class AuthFlow(private val ports: AuthPorts) {
         return@withLock when (val res = ports.api.consumeCode(email.trim(), code)) {
             is AuthApiResult.Err -> res
             is AuthApiResult.Ok -> {
-                ports.store.save(res.value.session)
-                AuthApiResult.Ok(Login(res.value.session, res.value.created))
+                if (persistSession(res.value.session)) AuthApiResult.Ok(Login(res.value.session, res.value.created))
+                else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
             }
         }
     }
@@ -95,7 +95,13 @@ class AuthFlow(private val ports: AuthPorts) {
         return@withLock when (val res = ports.api.createKeyAccount(name)) {
             is AuthApiResult.Err -> res
             is AuthApiResult.Ok -> {
-                ports.keys.saveKey(KeyBackup(res.value.username, res.value.accountKey))
+                // Always return the only issued key, including storage failure,
+                // so the UI can retain/reveal it for recovery rather than lose it.
+                try {
+                    ports.keys.saveKey(KeyBackup(res.value.username, res.value.accountKey))
+                } catch (_: Exception) {
+                    // loginWithKey verifies durable custody and reports failure.
+                }
                 res
             }
         }
@@ -115,11 +121,20 @@ class AuthFlow(private val ports: AuthPorts) {
                 val backup = KeyBackup(res.value.username, rawKey.trim())
                 val previousBackup = ports.keys.loadKey()
                 val previousSession = ports.store.load()
-                ports.keys.saveKey(backup)
-                if (ports.keys.loadKey() != backup || !persistSession(res.value.session)) {
+                val savedKey = try {
+                    ports.keys.saveKey(backup)
+                    ports.keys.loadKey() == backup
+                } catch (_: Exception) {
+                    false
+                }
+                if (!savedKey || !persistSession(res.value.session)) {
                     // Preserve a previously issued recovery key on write failure.
-                    if (previousBackup != null) ports.keys.saveKey(previousBackup)
-                    if (previousSession != null) ports.store.save(previousSession)
+                    try {
+                        if (previousBackup != null) ports.keys.saveKey(previousBackup)
+                        if (previousSession != null) ports.store.save(previousSession)
+                    } catch (_: Exception) {
+                        // The storage failure is reported; never grant navigation.
+                    }
                     AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
                 } else AuthApiResult.Ok(Login(res.value.session, created = false))
             }
@@ -189,8 +204,12 @@ class AuthFlow(private val ports: AuthPorts) {
     }
 
     private fun persistSession(session: PortableAuth.Session): Boolean {
-        ports.store.save(session)
-        return ports.store.load() == session
+        return try {
+            ports.store.save(session)
+            ports.store.load() == session
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun isAuthDenial(verdict: String): Boolean = verdict in listOf(

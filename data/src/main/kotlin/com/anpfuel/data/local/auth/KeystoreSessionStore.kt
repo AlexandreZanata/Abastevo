@@ -29,7 +29,7 @@ class KeystoreSessionStore(
 
     override fun save(session: PortableAuth.Session) {
         val key = keys.getOrCreateKey(alias) ?: return
-        prefs.edit().putString(prefKey, SessionEnvelope.seal(session, key)).apply()
+        persistAuthPreference(prefs, prefKey, SessionEnvelope.seal(session, key))
     }
 
     override fun load(): PortableAuth.Session? {
@@ -39,7 +39,7 @@ class KeystoreSessionStore(
     }
 
     override fun clear() {
-        prefs.edit().remove(prefKey).apply()
+        prefs.edit().remove(prefKey).commit()
     }
 
     companion object {
@@ -95,5 +95,16 @@ class AndroidKeystoreKeys : SessionKeyProvider {
 
     companion object {
         const val ANDROID_KEYSTORE: String = "AndroidKeyStore"
+    }
+}
+
+/** A read-back of apply() only proves memory, not a durable credential write. */
+internal fun persistAuthPreference(prefs: SharedPreferences, name: String, envelope: String) {
+    val previous = prefs.getString(name, null)
+    if (!prefs.edit().putString(name, envelope).commit()) {
+        // commit() updates memory even on disk failure. Restore the prior
+        // envelope so a retry cannot mistake that memory state for success.
+        prefs.edit().putString(name, previous).commit()
+        error("Secure storage write failed")
     }
 }

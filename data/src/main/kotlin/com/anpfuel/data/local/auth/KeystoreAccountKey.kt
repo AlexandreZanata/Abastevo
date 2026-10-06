@@ -28,7 +28,7 @@ class KeystoreAccountKey(
 
     override fun saveKey(backup: AuthFlow.KeyBackup) {
         val key = keys.getOrCreateKey(alias) ?: return
-        seal(backup, key)?.let { prefs.edit().putString(prefKey, it).apply() }
+        seal(backup, key)?.let { persistAuthPreference(prefs, prefKey, it) }
     }
 
     override fun loadKey(): AuthFlow.KeyBackup? {
@@ -38,7 +38,7 @@ class KeystoreAccountKey(
     }
 
     override fun clearKey() {
-        prefs.edit().remove(prefKey).apply()
+        prefs.edit().remove(prefKey).commit()
     }
 
     companion object {
@@ -61,6 +61,7 @@ class KeystoreAccountKey(
                 // encryption required reject caller IVs on device.
                 cipher.init(Cipher.ENCRYPT_MODE, key)
                 val iv = cipher.iv ?: return null
+                if (iv.size != SessionEnvelope.IV_BYTES) return null
                 val ct = cipher.doFinal(plain)
                 JSONObject()
                     .put("v", VERSION)

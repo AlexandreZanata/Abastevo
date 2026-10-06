@@ -138,6 +138,47 @@ private fun signup(flow: AuthFlow, email: String = "case-01@example.invalid"): P
 class PortableAuthFlowTest {
 
     @Test
+    fun failedEmailSessionWriteReportsStorageErrorWithoutGrantingLogin() {
+        val store = object : AuthSessionStore {
+            override fun save(session: PortableAuth.Session) { error("disk unavailable") }
+            override fun load(): PortableAuth.Session? = null
+            override fun clear() = Unit
+        }
+        val f = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.consumeEmailCode("test@example.invalid", "482916"))
+        assertNull(f.currentSession())
+    }
+
+    @Test
+    fun failedDurableSessionWriteReturnsStorageErrorAndRetainsIssuedKey() {
+        val keys = FakeKeys()
+        val store = object : AuthSessionStore {
+            override fun save(session: PortableAuth.Session) { error("disk unavailable") }
+            override fun load(): PortableAuth.Session? = null
+            override fun clear() = Unit
+        }
+        val f = AuthFlow(AuthPorts(store, keys, FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        val issued = f.createKeyAccount("ana123") as AuthApiResult.Ok
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.loginWithKey(issued.value.accountKey))
+        assertEquals(AuthFlow.KeyBackup("ana123", issued.value.accountKey), f.currentKey())
+        assertNull(f.currentSession())
+    }
+
+    @Test
+    fun keyStorageFailureStillReturnsOnlyIssuedRecoveryCredential() {
+        val keys = object : AuthKeyStore {
+            override fun saveKey(backup: AuthFlow.KeyBackup) { error("disk unavailable") }
+            override fun loadKey(): AuthFlow.KeyBackup? = null
+            override fun clearKey() = Unit
+        }
+        val f = AuthFlow(AuthPorts(FakeStore(), keys, FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        val issued = f.createKeyAccount("ana123") as AuthApiResult.Ok
+        assertEquals("key-for-ana123", issued.value.accountKey)
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.loginWithKey(issued.value.accountKey))
+        assertNull(f.currentSession())
+    }
+
+    @Test
     fun deletionRenewsExpiredAccessBeforeSendingProof() {
         val store = FakeStore()
         val api = FakeApi()

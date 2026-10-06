@@ -674,4 +674,8 @@
     <string name="station_page_report_other">Другое недопустимое содержание</string>
     <string name="station_page_report_send">Отправить жалобу</string>
     <string name="station_page_report_received">Жалоба получена для проверки.</string>
+    <string name="feed_best">Лучшее топливо</string>
+    <string name="feed_worst">Худшее топливо</string>
+    <string name="feed_rating_value">%1$.1f · %2$d оценок сообщества</string>
+    <string name="auth_brand_wordmark">Логотип Abastevo</string>
 </resources>

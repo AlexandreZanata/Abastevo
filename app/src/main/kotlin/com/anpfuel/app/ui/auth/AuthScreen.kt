@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,8 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -132,6 +135,13 @@ fun AuthScreen(
     modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val canCreate = state.username.length in 3..20 && state.username.firstOrNull() in 'a'..'z'
+    LaunchedEffect(state.step) {
+        if (state.step !in listOf(AuthStep.USERNAME_ENTRY, AuthStep.KEY_ENTRY, AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT)) {
+            focusManager.clearFocus()
+        }
+    }
     SecureAccountWindow()
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -182,14 +192,15 @@ fun AuthScreen(
                                     )
                                 },
                                 isError = usernameTaken,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { if (canCreate) onCreateAccount() }),
                                 shape = RoundedCornerShape(16.dp),
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             Button(
                                 onClick = onCreateAccount,
-                                enabled = state.username.length in 3..20 && state.username.firstOrNull() in 'a'..'z',
+                                enabled = canCreate,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(text = stringResource(R.string.auth_create_account))
@@ -218,7 +229,8 @@ fun AuthScreen(
                                 label = { Text(text = stringResource(R.string.auth_key_label)) },
                                 leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
                                 visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { if (state.accountKey.isNotBlank()) onLoginWithKey() }),
                                 shape = RoundedCornerShape(16.dp),
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
@@ -239,7 +251,8 @@ fun AuthScreen(
                                 value = state.email,
                                 onValueChange = onEmailChange,
                                 label = { Text(text = stringResource(R.string.auth_email_label)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { onRequestCode() }),
                                 singleLine = true,
                                 enabled = state.step == AuthStep.EMAIL_ENTRY,
                                 modifier = Modifier.fillMaxWidth(),
@@ -249,7 +262,8 @@ fun AuthScreen(
                                     value = state.code,
                                     onValueChange = onCodeChange,
                                     label = { Text(text = stringResource(R.string.auth_code_label)) },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { onConsumeCode() }),
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth(),
                                 )

@@ -34,8 +34,8 @@ object SessionEnvelope {
     const val MAX_ENVELOPE_CHARS: Int = 65536
 
     /**
-     * Seals [session] under [key]. The IV comes from the crypto
-     * provider (Keystore-owned on device).
+     * Seals [session] under [key]. The encryption provider generates the IV; AndroidKeyStore rejects
+     * caller-supplied IVs when randomized encryption is required.
      */
     fun seal(
         session: PortableAuth.Session,
@@ -56,7 +56,8 @@ object SessionEnvelope {
         // (InvalidAlgorithmParameterException); software keys get a
         // provider-random IV the same way.
         cipher.init(Cipher.ENCRYPT_MODE, key)
-        val iv = cipher.iv ?: throw IllegalStateException("seal: missing IV")
+        val iv = cipher.iv
+        check(iv != null && iv.size == IV_BYTES) { "Invalid encryption IV" }
         val ct = cipher.doFinal(plain)
         return JSONObject()
             .put("v", VERSION)

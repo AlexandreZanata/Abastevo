@@ -229,6 +229,47 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun continueAfterAutomaticSignupLoginDoesNotIssueAnotherSession() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Ok(AuthFlow.Login(session(), true))
+        every { authFlow.currentSession() } returns session()
+        viewModel.onUsernameChange("ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        viewModel.navigation.test {
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
+            assertEquals("", viewModel.uiState.value.issuedKey)
+            assertEquals(AuthNavigation.NavigateBack, awaitItem())
+        }
+        verify(exactly = 1) { authFlow.loginWithKey("key-for-ana123") }
+    }
+
+    @Test
+    fun signupStorageFailureKeepsRecoveryKeyAndDoesNotNavigate() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
+        every { authFlow.currentSession() } returns null
+        viewModel.onUsernameChange("ana123")
+        viewModel.navigation.test {
+            viewModel.onCreateAccount()
+            advanceUntilIdle()
+            assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+            assertEquals(AuthUiError.SecureStorage, viewModel.uiState.value.error)
+            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            expectNoEvents()
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun takenUsernameMapsError() = runTest {
         advanceUntilIdle()
         every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Err("username-taken")
