@@ -675,4 +675,7 @@
     <string name="station_page_report_other">その他の不適切な内容</string>
     <string name="station_page_report_send">通報を送信</string>
     <string name="station_page_report_received">審査のため通報を受け付けました。</string>
+    <string name="feed_best">評価の高い燃料</string>
+    <string name="feed_worst">評価の低い燃料</string>
+    <string name="feed_rating_value">%1$.1f · コミュニティの評価 %2$d 件</string>
 </resources>

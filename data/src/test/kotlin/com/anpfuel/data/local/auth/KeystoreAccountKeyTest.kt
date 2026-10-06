@@ -7,15 +7,17 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 private class KeyPrefs : SharedPreferences {
     val map = mutableMapOf<String, String?>()
+    var commitSuccess = true
 
     override fun getString(key: String, defValue: String?): String? =
         if (map.containsKey(key)) map[key] else defValue
 
-    override fun edit(): SharedPreferences.Editor = KeyEditor(map)
+    override fun edit(): SharedPreferences.Editor = KeyEditor(map, commitSuccess)
 
     override fun contains(key: String): Boolean = map.containsKey(key)
 
@@ -40,7 +42,7 @@ private class KeyPrefs : SharedPreferences {
     ) = Unit
 }
 
-private class KeyEditor(private val map: MutableMap<String, String?>) : SharedPreferences.Editor {
+private class KeyEditor(private val map: MutableMap<String, String?>, private val commitSuccess: Boolean) : SharedPreferences.Editor {
     override fun putString(key: String, value: String?): SharedPreferences.Editor {
         map[key] = value
         return this
@@ -56,7 +58,7 @@ private class KeyEditor(private val map: MutableMap<String, String?>) : SharedPr
         return this
     }
 
-    override fun commit(): Boolean = true
+    override fun commit(): Boolean = commitSuccess
 
     override fun apply() = Unit
 
@@ -90,6 +92,24 @@ private class KeyKeys : SessionKeyProvider {
 class KeystoreAccountKeyTest {
 
     private fun backup() = AuthFlow.KeyBackup("ana123", "key-for-ana123")
+
+    @Test
+    fun failedUpdateRestoresPreviousCredentialInMemory() {
+        val prefs = KeyPrefs()
+        val store = KeystoreAccountKey(prefs, KeyKeys())
+        store.saveKey(backup())
+        prefs.commitSuccess = false
+        assertThrows(IllegalStateException::class.java) { store.saveKey(backup().copy(accountKey = "replacement-test-key")) }
+        assertEquals(backup(), store.loadKey())
+    }
+
+    @Test
+    fun diskWriteFailureIsReportedEvenWhenPreferencesMemoryChanges() {
+        val prefs = KeyPrefs().apply { commitSuccess = false }
+        val store = KeystoreAccountKey(prefs, KeyKeys())
+        assertThrows(IllegalStateException::class.java) { store.saveKey(backup()) }
+        assertNull(store.loadKey())
+    }
 
     @Test
     fun savesAndLoadsRoundTrip() {

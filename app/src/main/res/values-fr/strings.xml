@@ -675,4 +675,7 @@
     <string name="station_page_report_other">Autre contenu inapproprié</string>
     <string name="station_page_report_send">Envoyer le signalement</string>
     <string name="station_page_report_received">Signalement reçu pour examen.</string>
+    <string name="feed_best">Meilleur carburant</string>
+    <string name="feed_worst">Pire carburant</string>
+    <string name="feed_rating_value">%1$.1f · %2$d évaluations de la communauté</string>
 </resources>

@@ -3,7 +3,6 @@ package com.anpfuel.data.local.auth
 import android.content.SharedPreferences
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthKeyStore
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -29,7 +28,7 @@ class KeystoreAccountKey(
 
     override fun saveKey(backup: AuthFlow.KeyBackup) {
         val key = keys.getOrCreateKey(alias) ?: return
-        seal(backup, key)?.let { prefs.edit().putString(prefKey, it).apply() }
+        seal(backup, key)?.let { persistAuthPreference(prefs, prefKey, it) }
     }
 
     override fun loadKey(): AuthFlow.KeyBackup? {
@@ -39,7 +38,7 @@ class KeystoreAccountKey(
     }
 
     override fun clearKey() {
-        prefs.edit().remove(prefKey).apply()
+        prefs.edit().remove(prefKey).commit()
     }
 
     companion object {
@@ -57,10 +56,10 @@ class KeystoreAccountKey(
                 .toString()
                 .toByteArray(Charsets.UTF_8)
             return try {
-                val iv = ByteArray(SessionEnvelope.IV_BYTES)
-                SecureRandom().nextBytes(iv)
                 val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(SessionEnvelope.TAG_BITS, iv))
+                cipher.init(Cipher.ENCRYPT_MODE, key)
+                val iv = cipher.iv ?: return null
+                if (iv.size != SessionEnvelope.IV_BYTES) return null
                 val ct = cipher.doFinal(plain)
                 JSONObject()
                     .put("v", VERSION)

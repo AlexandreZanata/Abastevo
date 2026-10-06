@@ -1,7 +1,6 @@
 package com.anpfuel.data.local.auth
 
 import com.anpfuel.domain.portable.PortableAuth
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -35,14 +34,12 @@ object SessionEnvelope {
     const val MAX_ENVELOPE_CHARS: Int = 65536
 
     /**
-     * Seals [session] under [key]. Randomness comes from [random] (a
-     * [SecureRandom] on device) so tests stay deterministic without
-     * depending on randomness.
+     * Seals [session] under [key]. The encryption provider generates the IV; AndroidKeyStore rejects
+     * caller-supplied IVs when randomized encryption is required.
      */
     fun seal(
         session: PortableAuth.Session,
         key: SecretKey,
-        random: SecureRandom = SecureRandom(),
     ): String {
         val plain = JSONObject()
             .put("family_id", session.familyId)
@@ -53,10 +50,10 @@ object SessionEnvelope {
             .put("absolute_expires_at", session.absoluteExpiresAt)
             .toString()
             .toByteArray(Charsets.UTF_8)
-        val iv = ByteArray(IV_BYTES)
-        random.nextBytes(iv)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+        check(iv != null && iv.size == IV_BYTES) { "Invalid encryption IV" }
         val ct = cipher.doFinal(plain)
         return JSONObject()
             .put("v", VERSION)

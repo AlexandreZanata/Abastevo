@@ -7,15 +7,17 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 private class FakePrefs : SharedPreferences {
     val map = mutableMapOf<String, String?>()
+    var commitSuccess = true
 
     override fun getString(key: String, defValue: String?): String? =
         if (map.containsKey(key)) map[key] else defValue
 
-    override fun edit(): SharedPreferences.Editor = FakeEditor(map)
+    override fun edit(): SharedPreferences.Editor = FakeEditor(map, commitSuccess)
 
     override fun contains(key: String): Boolean = map.containsKey(key)
 
@@ -40,7 +42,7 @@ private class FakePrefs : SharedPreferences {
     ) = Unit
 }
 
-private class FakeEditor(private val map: MutableMap<String, String?>) : SharedPreferences.Editor {
+private class FakeEditor(private val map: MutableMap<String, String?>, private val commitSuccess: Boolean) : SharedPreferences.Editor {
     override fun putString(key: String, value: String?): SharedPreferences.Editor {
         map[key] = value
         return this
@@ -56,7 +58,7 @@ private class FakeEditor(private val map: MutableMap<String, String?>) : SharedP
         return this
     }
 
-    override fun commit(): Boolean = true
+    override fun commit(): Boolean = commitSuccess
 
     override fun apply() = Unit
 
@@ -94,6 +96,24 @@ class KeystoreSessionStoreTest {
         accessToken = "access-1", refreshToken = "refresh-1",
         accessExpiresAt = 1_000_900L, absoluteExpiresAt = 4_259_200L,
     )
+
+    @Test
+    fun failedUpdateRestoresPreviousCredentialInMemory() {
+        val prefs = FakePrefs()
+        val store = KeystoreSessionStore(prefs, FakeKeys())
+        store.save(session())
+        prefs.commitSuccess = false
+        assertThrows(IllegalStateException::class.java) { store.save(session().copy(refreshToken = "replacement-test-refresh")) }
+        assertEquals(session(), store.load())
+    }
+
+    @Test
+    fun diskWriteFailureIsReportedEvenWhenPreferencesMemoryChanges() {
+        val prefs = FakePrefs().apply { commitSuccess = false }
+        val store = KeystoreSessionStore(prefs, FakeKeys())
+        assertThrows(IllegalStateException::class.java) { store.save(session()) }
+        assertNull(store.load())
+    }
 
     @Test
     fun savesAndLoadsRoundTrip() {

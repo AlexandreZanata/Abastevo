@@ -675,4 +675,7 @@
     <string name="station_page_report_other">Anderer unangemessener Inhalt</string>
     <string name="station_page_report_send">Meldung senden</string>
     <string name="station_page_report_received">Meldung zur Prüfung empfangen.</string>
+    <string name="feed_best">Bester Kraftstoff</string>
+    <string name="feed_worst">Schlechtester Kraftstoff</string>
+    <string name="feed_rating_value">%1$.1f · %2$d Bewertungen der Community</string>
 </resources>

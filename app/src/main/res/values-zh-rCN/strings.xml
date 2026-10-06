@@ -675,4 +675,7 @@
     <string name="station_page_report_other">其他不当内容</string>
     <string name="station_page_report_send">发送举报</string>
     <string name="station_page_report_received">已收到举报，等待审核。</string>
+    <string name="feed_best">最佳燃油</string>
+    <string name="feed_worst">最差燃油</string>
+    <string name="feed_rating_value">%1$.1f · %2$d 条社区评分</string>
 </resources>
