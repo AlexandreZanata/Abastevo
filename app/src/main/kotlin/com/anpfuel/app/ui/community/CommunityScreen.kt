@@ -1,6 +1,5 @@
 package com.anpfuel.app.ui.community
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -22,7 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -69,10 +67,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
     var showRules by remember { mutableStateOf(false) }
     AnpScaffold(modifier = modifier.fillMaxSize(), topBar = {
         AnpTopAppBar(title = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Image(painterResource(R.drawable.ic_abastevo_logo), null, Modifier.size(30.dp))
-                Text(stringResource(R.string.community_screen_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            Text(stringResource(R.string.community_screen_title))
         }, actions = {
             IconButton(onClick = onRefresh, enabled = state.city != null && !state.loading) {
                 Icon(Icons.Default.Refresh, stringResource(R.string.feed_refresh))
