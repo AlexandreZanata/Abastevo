@@ -1,6 +1,7 @@
 package com.anpfuel.app.navigation
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -88,18 +89,13 @@ fun AnpNavGraph(
                 },
             )
         },
-        floatingActionButton = {
-            if (currentRoute == Routes.HOME) {
-                AbastevoUpdatePriceFab(
-                    onClick = { navController.navigate(Routes.CAPTURE) },
-                )
-            }
-        },
     ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding),
+            // The shell already reserves the bottom bar and its system safe area.
+            // Consume that padding so child scaffolds do not reserve it again.
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
         ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(

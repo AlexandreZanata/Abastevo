@@ -16,10 +16,8 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -38,7 +35,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
-import com.anpfuel.app.ui.theme.AbastevoActionBlue
 
 /**
  * Top-level navigation tabs.
@@ -149,40 +145,4 @@ fun AbastevoBottomBar(
             }
         }
     }
-}
-
-/**
- * P19-T04: Persistent, labeled primary action ("Atualizar preço").
- *
- * It is an action (BUC-C02), not a fourth feed tab or mandatory onboarding step.
- * Uses the approved AbastevoActionBlue brand token with white icon and text,
- * guaranteeing contrast >= 4.5:1.
- */
-@Composable
-fun AbastevoUpdatePriceFab(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(R.string.nav_update_price)
-    val a11yDesc = stringResource(R.string.a11y_nav_update_price)
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.AddAPhoto,
-                contentDescription = null,
-            )
-        },
-        text = {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        },
-        containerColor = AbastevoActionBlue,
-        contentColor = Color.White,
-        modifier = modifier.semantics {
-            contentDescription = a11yDesc
-        },
-    )
 }
