@@ -40,7 +40,8 @@ class AuthViewModelTest {
         Dispatchers.setMain(dispatcher)
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         every { authFlow.currentKey() } returns null
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel.ioDispatcher = dispatcher
     }
 
     @AfterEach
@@ -59,7 +60,7 @@ class AuthViewModelTest {
     @Test
     fun rehydratesActiveSession() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -68,7 +69,7 @@ class AuthViewModelTest {
     fun rotatesStaleSessionOnStart() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(session())
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -77,7 +78,7 @@ class AuthViewModelTest {
     fun deadSessionReturnsToEmailEntry() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(null)
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
     }

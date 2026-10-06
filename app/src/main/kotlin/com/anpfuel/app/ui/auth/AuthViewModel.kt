@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Visible auth step. Session tokens never render; the account key renders only on its one-display and backup screens. */
 enum class AuthStep {
@@ -87,6 +89,18 @@ class AuthViewModel @Inject constructor(
 
     private var pendingAttempt: PortableAuth.LoginAttempt? = null
 
+    /** Test seam for the IO context (unit tests inject the test dispatcher). */
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Blocking account HTTP runs on IO: the portable flows are
+     * synchronous by contract (threading stays with the caller) and
+     * Main-thread network throws NetworkOnMainThreadException, which
+     * the UI would misread as "no connection".
+     */
+    private suspend fun <T> onIo(block: suspend () -> T): T =
+        withContext(ioDispatcher) { block() }
+
     init {
         viewModelScope.launch {
             when (val state = authFlow.rehydrate()) {
@@ -94,7 +108,7 @@ class AuthViewModel @Inject constructor(
                     _uiState.update { it.copy(step = AuthStep.AUTHENTICATED, keyBackup = authFlow.currentKey()) }
                 }
                 is AuthFlow.AuthState.NeedsRefresh -> {
-                    when (val res = authFlow.refreshSession()) {
+                    when (val res = onIo { authFlow.refreshSession() }) {
                         is AuthApiResult.Ok -> {
                             if (res.value == null) {
                                 _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY) }
@@ -136,7 +150,7 @@ class AuthViewModel @Inject constructor(
     fun onCreateAccount() {
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = authFlow.createKeyAccount(_uiState.value.username)) {
+            when (val res = onIo { authFlow.createKeyAccount(_uiState.value.username) }) {
                 is AuthApiResult.Ok -> {
                     _uiState.update {
                         it.copy(
@@ -161,7 +175,7 @@ class AuthViewModel @Inject constructor(
         val key = _uiState.value.accountKey.ifEmpty { _uiState.value.issuedKey }
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = authFlow.loginWithKey(key)) {
+            when (val res = onIo { authFlow.loginWithKey(key) }) {
                 is AuthApiResult.Ok -> {
                     _uiState.update {
                         it.copy(
@@ -200,7 +214,7 @@ class AuthViewModel @Inject constructor(
         val email = _uiState.value.email
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = authFlow.requestEmailCode(email)) {
+            when (val res = onIo { authFlow.requestEmailCode(email) }) {
                 is AuthApiResult.Ok -> {
                     _uiState.update { it.copy(step = AuthStep.CODE_SENT) }
                 }
@@ -217,7 +231,7 @@ class AuthViewModel @Inject constructor(
         val snapshot = _uiState.value
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = authFlow.consumeEmailCode(snapshot.email, snapshot.code)) {
+            when (val res = onIo { authFlow.consumeEmailCode(snapshot.email, snapshot.code) }) {
                 is AuthApiResult.Ok -> {
                     _uiState.update {
                         it.copy(step = AuthStep.AUTHENTICATED, code = "", error = null)
@@ -283,7 +297,7 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
         viewModelScope.launch {
             val callback = PortableAuth.ProviderCallback(provider, idToken, nonce, state)
-            when (val res = authFlow.completeProviderLogin(session, attempt, callback)) {
+            when (val res = onIo { authFlow.completeProviderLogin(session, attempt, callback) }) {
                 is AuthApiResult.Ok -> {
                     pendingAttempt = null
                     _uiState.update {
@@ -299,7 +313,7 @@ class AuthViewModel @Inject constructor(
 
     fun onLogout() {
         viewModelScope.launch {
-            authFlow.logout()
+            onIo { authFlow.logout() }
             pendingAttempt = null
             _uiState.update {
                 AuthUiState(step = AuthStep.USERNAME_ENTRY)
@@ -310,12 +324,12 @@ class AuthViewModel @Inject constructor(
     /**
      * P22-T01 — self-deletes the account (server `POST
      * /v1/accounts/deletion` plus local storage wipe inside
-     * [AuthFlow.deleteAccount]). Success returns to email entry with the
+     * [AuthFlow.deleteAccount]). Success returns to username entry with the
      * Deleted notice; failure keeps the session and maps the verdict.
      */
     fun onDeleteAccount() {
         viewModelScope.launch {
-            when (val res = authFlow.deleteAccount()) {
+            when (val res = onIo { authFlow.deleteAccount() }) {
                 is AuthApiResult.Ok -> {
                     pendingAttempt = null
                     _uiState.update {

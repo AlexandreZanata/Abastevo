@@ -65,7 +65,7 @@ class FeedbackViewModelTest {
     }
 
     private fun preparedVm(accountId: String = "acc-1"): FeedbackViewModel {
-        val vm = FeedbackViewModel(writes, reads, flags)
+        val vm = FeedbackViewModel(writes, reads, flags).also { it.ioDispatcher = dispatcher }
         vm.prepare(stationId = "s-1", product = "GASOLINE", accountId = accountId)
         return vm
     }
@@ -73,7 +73,7 @@ class FeedbackViewModelTest {
     @Test
     fun `disabled flag performs no io`() = runTest {
         enabled = false
-        val vm = FeedbackViewModel(writes, reads, flags)
+        val vm = FeedbackViewModel(writes, reads, flags).also { it.ioDispatcher = dispatcher }
 
         vm.prepare(stationId = "s-1", product = "GASOLINE", accountId = "acc-1")
         vm.submitComment("hello")
@@ -273,7 +273,7 @@ class FeedbackViewModelTest {
 
     @Test
     fun `disabled flag performs no rating io`() = runTest {        enabled = false
-        val vm = FeedbackViewModel(writes, reads, flags)
+        val vm = FeedbackViewModel(writes, reads, flags).also { it.ioDispatcher = dispatcher }
 
         vm.prepare(stationId = "s-1", product = "GASOLINE", accountId = "acc-1")
         vm.rate(5)

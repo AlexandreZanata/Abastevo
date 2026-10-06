@@ -50,7 +50,7 @@ class CommunityVoteViewModelTest {
     }
 
     private fun preparedVm(): CommunityVoteViewModel {
-        val vm = CommunityVoteViewModel(useCase, flags)
+        val vm = CommunityVoteViewModel(useCase, flags).also { it.ioDispatcher = dispatcher }
         vm.prepare(
             observationId = observationId,
             productWire = "GASOLINE_REGULAR",
@@ -64,7 +64,7 @@ class CommunityVoteViewModelTest {
     @Test
     fun `disabled flag performs no io`() = runTest {
         enabled = false
-        val vm = CommunityVoteViewModel(useCase, flags)
+        val vm = CommunityVoteViewModel(useCase, flags).also { it.ioDispatcher = dispatcher }
 
         vm.prepare(
             observationId = observationId,
