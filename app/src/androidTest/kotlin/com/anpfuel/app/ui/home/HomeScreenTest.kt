@@ -252,8 +252,22 @@ class HomeScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule.onNodeWithText(context.getString(R.string.home_hero_contribute))
             .performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.home_benefit_trust_description))
-            .performScrollTo().assertIsDisplayed()
+        val benefitBounds = listOf(
+            R.string.home_benefit_savings,
+            R.string.home_benefit_community,
+            R.string.home_benefit_trust,
+        ).map { title ->
+            composeTestRule.onNodeWithText(context.getString(title))
+                .performScrollTo().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        }
+        benefitBounds.zipWithNext().forEach { (left, right) ->
+            assertEquals(left.width, right.width, 1f)
+        }
+        assertEquals(
+            benefitBounds[1].center.x - benefitBounds[0].center.x,
+            benefitBounds[2].center.x - benefitBounds[1].center.x,
+            1f,
+        )
         composeTestRule.onNodeWithText("R$ 3,42").performScrollTo().assertIsDisplayed()
     }
 

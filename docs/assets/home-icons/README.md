@@ -8,7 +8,8 @@ references. Android VectorDrawables share the exact 64 × 64 geometry and fills.
 The app uses `Color.Unspecified` so theme tinting never removes their colors.
 Existing fuel SVGs/bitmaps and logo masters are unchanged.
 
-- [Savings / piggy bank](ic_home_savings.svg)
+- [Savings / piggy bank](ic_home_savings.svg): rounded body, curled tail, snout,
+  coin and accent highlights; refined in the compact-Home follow-up.
 - [Community](ic_home_community.svg)
 - [Trust / shield](ic_home_trust.svg)
 - [Stations / map](ic_home_stations.svg)

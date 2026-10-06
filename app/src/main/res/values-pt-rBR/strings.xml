@@ -564,11 +564,8 @@
     <string name="home_hero_description">Compare preços da cidade e compartilhe o que encontrar.</string>
     <string name="home_hero_contribute">Contribuir com um preço</string>
     <string name="home_benefit_savings">Economize mais</string>
-    <string name="home_benefit_savings_description">Compare preços na sua cidade.</string>
     <string name="home_benefit_community">Comunidade</string>
-    <string name="home_benefit_community_description">Motoristas compartilham preços.</string>
     <string name="home_benefit_trust">Origem clara</string>
-    <string name="home_benefit_trust_description">Veja a fonte e a data.</string>
     <string name="home_reference_prices_title">Preços na sua cidade</string>
     <string name="home_view_all">Ver todos</string>
     <string name="home_change_city">Minha cidade</string>

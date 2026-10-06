@@ -551,11 +551,8 @@
     <string name="home_hero_description">街の価格を比較し、見つけた情報を共有しましょう。</string>
     <string name="home_hero_contribute">価格を共有</string>
     <string name="home_benefit_savings">もっと節約</string>
-    <string name="home_benefit_savings_description">街の価格を比較。</string>
     <string name="home_benefit_community">コミュニティ</string>
-    <string name="home_benefit_community_description">ドライバーが価格を共有。</string>
     <string name="home_benefit_trust">明確な情報源</string>
-    <string name="home_benefit_trust_description">情報源と日付を確認。</string>
     <string name="home_reference_prices_title">街の価格</string>
     <string name="home_view_all">すべて表示</string>
     <string name="home_change_city">自分の街</string>

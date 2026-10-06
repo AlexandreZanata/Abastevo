@@ -76,3 +76,45 @@ APK SHA-256: `dda8b410abad62149bd83190d20028db3b624de07a069b72607c6bd39df6ad10`.
 
 INTEGRATION_PENDING. Existing batch/live-provider/release blockers are untouched.
 Rollback: revert this task commit; retain previous Home/navigation commits.
+
+## P32-UI-HOME-COMPACT — presentation follow-up
+
+2026-10-06 user scope, from `b3eb265` on the same isolated branch: compact,
+horizontal hero with smaller type; remove duplicated brand inside the hero and
+the decorative city pin. Redraw the savings pictogram as a recognizable rounded
+piggy bank in the existing native SVG/VectorDrawable palette. Benefits show only
+icons and main titles, centered in three equal columns with subtle separators.
+
+B-BR-C03 / BUC-C03: preserve C01/C02 data/source/navigation behavior and header
+branding. At normal font the hero becomes shorter without a fixed height; larger
+text can grow and scroll. All three benefits retain equal widths at large font,
+with wrapping titles rather than truncation or a stacked replacement.
+
+Planned validation: affected Home/contrast unit checks, both APKs and lint,
+existing Home instrumentation including 2x font, vector parity/safety, identified
+Poco update preserving data, light/dark visual review, diff and secret review.
+Status: LOCAL_DONE / INTEGRATION_PENDING; no publication or broader release acceptance.
+
+Actual checks: the same scoped Gradle command above PASS (1m06s): 15/15 unit
+checks, debug APK, instrumentation APK and lint. First process was interrupted
+(exit 143); final source was rebuilt successfully. Lint has zero errors and 175
+warnings, including the retained unused location drawable; no suppression or
+baseline added. Removed the three obsolete benefit-description strings from all
+eight locales. All locale XML and six SVG/vector path/color pairs PASS; no
+script, font, bitmap or external reference in the SVGs. Pig master rendered
+with existing Inkscape and inspected before device validation.
+
+Poco Home instrumentation PASS, 9/9 (15.45s). The existing 2x-font check now
+asserts all three main benefit titles remain visible with equal widths and
+equally spaced horizontal centers (1 pixel tolerance), while contribution,
+fuel/vehicle navigation and scrolling regressions remain covered.
+
+Installed both APKs with `install -r` only on the identified Poco, preserving
+app data. Light/dark screenshots inspected: wide compact banner, smaller native
+copy, no duplicated hero brand or city pin, improved pig and centered separated
+benefits. Header logo retained. Original dark theme restored; Home left open.
+Screenshots remain in `/tmp`, outside Git. One cold launch: Status ok, 936ms,
+not a performance certification. `git diff --check` and secret-surface review
+PASS. No dependency, backend/domain, fuel artwork or raster hero change.
+APK SHA-256: `935ce5c224b9a976b92231bc92610fad6ca8cdc8d59665441867dab70d573900`.
+Rollback: revert only this follow-up commit, preserving previous UI work.

@@ -4,10 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,10 +32,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 
@@ -67,41 +70,26 @@ internal fun HomeCommunityHero(onContribute: () -> Unit) {
             ),
         )
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_abastevo_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                )
-            }
             Column(modifier = Modifier.fillMaxWidth(0.78f)) {
                 Text(
                     text = stringResource(R.string.home_hero_title),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                 )
                 Text(
                     text = stringResource(R.string.home_hero_title_accent),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = HomeHeroColors.Mint,
                 )
                 Text(
                     text = stringResource(R.string.home_hero_description),
-                    modifier = Modifier.padding(top = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color.White,
                 )
             }
@@ -125,40 +113,40 @@ internal fun HomeCommunityHero(onContribute: () -> Unit) {
     }
 }
 
-private data class HomeBenefit(val icon: Int, val title: Int, val description: Int, val tint: Color)
+private data class HomeBenefit(val icon: Int, val title: Int, val tint: Color)
 
 @Composable
 internal fun HomeBenefits() {
     val benefits = listOf(
-        HomeBenefit(R.drawable.ic_home_savings, R.string.home_benefit_savings, R.string.home_benefit_savings_description, Color(0xFF209437)),
-        HomeBenefit(R.drawable.ic_home_community, R.string.home_benefit_community, R.string.home_benefit_community_description, Color(0xFF1478DD)),
-        HomeBenefit(R.drawable.ic_home_trust, R.string.home_benefit_trust, R.string.home_benefit_trust_description, Color(0xFFF57C00)),
+        HomeBenefit(R.drawable.ic_home_savings, R.string.home_benefit_savings, Color(0xFF209437)),
+        HomeBenefit(R.drawable.ic_home_community, R.string.home_benefit_community, Color(0xFF1478DD)),
+        HomeBenefit(R.drawable.ic_home_trust, R.string.home_benefit_trust, Color(0xFFF57C00)),
     )
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            if (maxWidth < 300.dp || LocalDensity.current.fontScale > 1.3f) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    benefits.forEach { benefit ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            BenefitIcon(benefit)
-                            BenefitText(benefit)
-                        }
-                    }
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 16.dp)) {
+            benefits.forEachIndexed { index, benefit ->
+                Column(
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BenefitIcon(benefit)
+                    Text(
+                        text = stringResource(benefit.title),
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
                 }
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    benefits.forEach { benefit ->
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            BenefitIcon(benefit)
-                            BenefitText(benefit)
-                        }
-                    }
+                if (index < benefits.lastIndex) {
+                    VerticalDivider(
+                        modifier = Modifier.fillMaxHeight(),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    )
                 }
             }
         }
@@ -176,18 +164,6 @@ private fun BenefitIcon(benefit: HomeBenefit) {
             contentDescription = null,
             tint = Color.Unspecified,
             modifier = Modifier.size(28.dp),
-        )
-    }
-}
-
-@Composable
-private fun BenefitText(benefit: HomeBenefit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(stringResource(benefit.title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        Text(
-            stringResource(benefit.description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

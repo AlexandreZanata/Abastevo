@@ -36,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -322,12 +321,6 @@ private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
     val municipality = uiState.municipality ?: return
     val state = uiState.state ?: return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(
-            painter = painterResource(R.drawable.ic_home_location),
-            contentDescription = null,
-            tint = Color.Unspecified,
-            modifier = Modifier.size(26.dp),
-        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
