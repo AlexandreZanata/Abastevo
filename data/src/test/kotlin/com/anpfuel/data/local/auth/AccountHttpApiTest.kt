@@ -182,4 +182,36 @@ class AccountHttpApiTest {
         check(refused is AuthApiResult.Err)
         assertEquals("key-invalid", refused.verdict)
     }
+    @Test
+    fun accountKeyNeverFollowsRedirectToAnotherDestination() {
+        val destination = MockWebServer()
+        try {
+            destination.start()
+            server.enqueue(MockResponse().setResponseCode(307).setHeader("Location", destination.url("/capture")))
+            destination.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            val result = api.loginWithKey("synthetic-account-key")
+            assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), result)
+            assertEquals(0, destination.requestCount)
+        } finally {
+            destination.shutdown()
+        }
+    }
+
+    @Test
+    fun oversizedResponseFailsClosed() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session":${sessionJson()},"padding":"${"x".repeat(70_000)}"}"""))
+        assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), api.refresh("family-1", "synthetic-refresh"))
+    }
+
+    @Test
+    fun emptyTokensAndInvertedSessionLifetimesRefuse() {
+        for (invalid in listOf(
+            sessionJson().replace("tok-access", ""),
+            sessionJson().replace("1970-02-19T07:06:40Z", "1970-01-01T00:00:00Z"),
+        )) {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session":$invalid}"""))
+            assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), api.refresh("family-1", "synthetic-refresh"))
+        }
+    }
+
 }

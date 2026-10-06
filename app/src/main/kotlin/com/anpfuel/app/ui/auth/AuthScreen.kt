@@ -1,16 +1,33 @@
 package com.anpfuel.app.ui.auth
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -24,24 +41,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
+import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AbastevoActionBlue
+import com.anpfuel.app.ui.theme.AbastevoCommunityGreen
 import com.anpfuel.app.ui.theme.AnpFuelTheme
+import com.anpfuel.app.ui.theme.ColorTokens
 
 /**
  * FREE-account screen: anonymous key accounts (P13 key extension).
  *
- * One tap on "Criar conta" plus a username mints the account and shows
- * the server-issued key exactly once; the key alone logs in afterwards
- * (no email, provider or device ceremony). Session tokens never render:
- * only the account key shows, on its one-display screen and the Profile
- * backup card. Provider completion arrives via the
+ * A username creates the account, signs in automatically and opens the
+ * protected key-backup step. The saved key also supports later login
+ * (no email or provider ceremony). Session tokens never render:
+ * only the account key can be deliberately revealed or exported.
+ * Provider completion for legacy accounts arrives via the
  * `anpfuel://auth/callback` deep link; the native SDK minting real id
  * tokens is device-gated (release horizon).
  */
@@ -60,6 +87,12 @@ fun AuthRoute(
         if (providerArg.isNotEmpty()) {
             viewModel.onProviderCallback(providerArg, idTokenArg, nonceArg, stateArg)
         }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.navigation.collect { onNavigateBack() }
+    }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshAccount()
     }
     AuthScreen(
         state = uiState,
@@ -84,6 +117,7 @@ fun AuthRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     state: AuthUiState,
@@ -107,165 +141,173 @@ fun AuthScreen(
     modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    SecureAccountWindow()
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            AnpTopAppBar(title = { Text(stringResource(R.string.auth_title)) }, onNavigateUp = onNavigateBack)
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = stringResource(R.string.auth_title),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            when (state.step) {
-                AuthStep.CHECKING, AuthStep.BUSY -> {
-                    CircularProgressIndicator()
-                }
-                AuthStep.USERNAME_ENTRY -> {
-                    Text(text = stringResource(R.string.auth_key_subtitle))
-                    OutlinedTextField(
-                        value = state.username,
-                        onValueChange = onUsernameChange,
-                        label = { Text(text = stringResource(R.string.auth_username_label)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        onClick = onCreateAccount,
-                        enabled = state.username.length >= 3,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_create_account))
-                    }
-                    TextButton(onClick = onGoToKeyEntry) {
-                        Text(text = stringResource(R.string.auth_have_key))
-                    }
-                }
-                AuthStep.KEY_ISSUED -> {
-                    Text(text = stringResource(R.string.auth_key_issued_title))
-                    Text(
-                        text = groupedKey(state.issuedKey),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.auth_key_issued_warning),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(state.issuedKey))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_copy_key))
-                    }
-                    Button(
-                        onClick = onLoginWithKey,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_saved_enter))
-                    }
-                    TextButton(onClick = onBackToUsername) {
-                        Text(text = stringResource(R.string.action_back))
-                    }
-                }
-                AuthStep.KEY_ENTRY -> {
-                    Text(text = stringResource(R.string.auth_key_subtitle))
-                    OutlinedTextField(
-                        value = state.accountKey,
-                        onValueChange = onKeyChange,
-                        label = { Text(text = stringResource(R.string.auth_key_label)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        onClick = onLoginWithKey,
-                        enabled = state.accountKey.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_key_login))
-                    }
-                    TextButton(onClick = onBackToUsername) {
-                        Text(text = stringResource(R.string.action_back))
-                    }
-                }
-                AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT -> {
-                    OutlinedTextField(
-                        value = state.email,
-                        onValueChange = onEmailChange,
-                        label = { Text(text = stringResource(R.string.auth_email_label)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        singleLine = true,
-                        enabled = state.step == AuthStep.EMAIL_ENTRY,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (state.step == AuthStep.CODE_SENT) {
-                        OutlinedTextField(
-                            value = state.code,
-                            onValueChange = onCodeChange,
-                            label = { Text(text = stringResource(R.string.auth_code_label)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Button(
-                            onClick = onConsumeCode,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.auth_confirm))
+            AccountBrandHero()
+            Card(
+                modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            ) {
+                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    when (state.step) {
+                        AuthStep.CHECKING, AuthStep.BUSY -> {
+                            CircularProgressIndicator()
                         }
-                        TextButton(onClick = onBackToEmail) {
-                            Text(text = stringResource(R.string.action_back))
+                        AuthStep.USERNAME_ENTRY -> {
+                            Text(stringResource(R.string.auth_signup_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(text = stringResource(R.string.auth_key_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            OutlinedTextField(
+                                value = state.username,
+                                onValueChange = onUsernameChange,
+                                label = { Text(text = stringResource(R.string.auth_username_label)) },
+                                leadingIcon = { Icon(Icons.Default.PersonOutline, contentDescription = null) },
+                                supportingText = { Text(stringResource(R.string.auth_username_hint)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
+                                shape = RoundedCornerShape(16.dp),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Button(
+                                onClick = onCreateAccount,
+                                enabled = state.username.length in 3..20 && state.username.firstOrNull() in 'a'..'z',
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.auth_create_account))
+                            }
+                            TextButton(onClick = onGoToKeyEntry) {
+                                Text(text = stringResource(R.string.auth_have_key))
+                            }
                         }
-                    } else {
-                        Button(
-                            onClick = onRequestCode,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.auth_continue))
+                        AuthStep.KEY_ISSUED -> {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                            Text(stringResource(R.string.auth_key_issued_title), style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.auth_key_issued_warning), style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            AccountKeyCard(com.anpfuel.application.portable.AuthFlow.KeyBackup(state.issuedUsername, state.issuedKey))
+                            Button(onClick = onLoginWithKey, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.auth_saved_enter))
+                            }
                         }
-                    }
-                }
-                AuthStep.PROVIDER_PENDING -> {
-                    CircularProgressIndicator()
-                    Text(text = stringResource(R.string.auth_pending_provider, state.pendingProvider))
-                    TextButton(onClick = onCancelProviderLink) {
-                        Text(text = stringResource(R.string.action_cancel))
-                    }
-                }
-                AuthStep.AUTHENTICATED -> {
-                    Text(text = stringResource(R.string.auth_logged_in))
-                    OutlinedButton(
-                        onClick = { onProviderClick("google") },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_google))
-                    }
-                    OutlinedButton(
-                        onClick = { onProviderClick("apple") },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_apple))
-                    }
-                    Button(
-                        onClick = onLogout,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_logout))
-                    }
-                    OutlinedButton(
-                        onClick = { showDeleteConfirm = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.auth_delete_account))
+                        AuthStep.KEY_ENTRY -> {
+                            Text(stringResource(R.string.auth_login_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(text = stringResource(R.string.auth_key_login_copy), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            OutlinedTextField(
+                                value = state.accountKey,
+                                onValueChange = onKeyChange,
+                                label = { Text(text = stringResource(R.string.auth_key_label)) },
+                                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                                shape = RoundedCornerShape(16.dp),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Button(
+                                onClick = onLoginWithKey,
+                                enabled = state.accountKey.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.auth_key_login))
+                            }
+                            TextButton(onClick = onBackToUsername) {
+                                Text(text = stringResource(R.string.action_back))
+                            }
+                        }
+                        AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT -> {
+                            OutlinedTextField(
+                                value = state.email,
+                                onValueChange = onEmailChange,
+                                label = { Text(text = stringResource(R.string.auth_email_label)) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                singleLine = true,
+                                enabled = state.step == AuthStep.EMAIL_ENTRY,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            if (state.step == AuthStep.CODE_SENT) {
+                                OutlinedTextField(
+                                    value = state.code,
+                                    onValueChange = onCodeChange,
+                                    label = { Text(text = stringResource(R.string.auth_code_label)) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Button(
+                                    onClick = onConsumeCode,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(text = stringResource(R.string.auth_confirm))
+                                }
+                                TextButton(onClick = onBackToEmail) {
+                                    Text(text = stringResource(R.string.action_back))
+                                }
+                            } else {
+                                Button(
+                                    onClick = onRequestCode,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(text = stringResource(R.string.auth_continue))
+                                }
+                            }
+                        }
+                        AuthStep.PROVIDER_PENDING -> {
+                            CircularProgressIndicator()
+                            Text(text = stringResource(R.string.auth_pending_provider, state.pendingProvider))
+                            TextButton(onClick = onCancelProviderLink) {
+                                Text(text = stringResource(R.string.action_cancel))
+                            }
+                        }
+                        AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                            Text(text = stringResource(R.string.auth_logged_in), style = MaterialTheme.typography.headlineSmall)
+                            Text(stringResource(if (state.step == AuthStep.OFFLINE_ACCOUNT) R.string.auth_offline_account else R.string.auth_session_retained),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            state.keyBackup?.let { AccountKeyCard(it) }
+                            if (state.step == AuthStep.AUTHENTICATED && state.keyBackup == null) {
+                                OutlinedButton(
+                                    onClick = { onProviderClick("google") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(text = stringResource(R.string.auth_google))
+                                }
+                                OutlinedButton(
+                                    onClick = { onProviderClick("apple") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(text = stringResource(R.string.auth_apple))
+                                }
+                            }
+                            Button(
+                                onClick = onLogout,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.auth_logout))
+                            }
+                            OutlinedButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.auth_delete_account))
+                            }
+                        }
                     }
                 }
             }
@@ -278,9 +320,8 @@ fun AuthScreen(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onNavigateBack) {
-                Text(text = stringResource(R.string.action_back))
-            }
+            Text(stringResource(R.string.auth_security_footer), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
     if (showDeleteConfirm) {
@@ -322,13 +363,62 @@ private fun errorText(error: AuthUiError): String = stringResource(
         AuthUiError.Offline -> R.string.auth_error_offline
         AuthUiError.ProviderDenied -> R.string.auth_error_provider
         AuthUiError.LoginFirst -> R.string.auth_error_login_first
+        AuthUiError.SecureStorage -> R.string.auth_error_secure_storage
         AuthUiError.Unknown -> R.string.auth_error_unknown
     },
 )
 
-/** Groups a raw account key in fours for transcription. */
-private fun groupedKey(raw: String): String =
-    raw.chunked(4).joinToString(" ")
+/** SVG-derived logo paired with a typographic lowercase wordmark. */
+@Composable
+private fun AccountBrandHero() {
+    val darkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    Column(
+        modifier = Modifier
+            .widthIn(max = 520.dp)
+            .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(
+                    listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface),
+                ),
+                shape = RoundedCornerShape(32.dp),
+            )
+            .padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_abastevo_logo),
+            contentDescription = null,
+            modifier = Modifier.size(88.dp),
+        )
+        Row {
+            Text(
+                text = "abaste",
+                color = if (darkSurface) ColorTokens.BlueLight else AbastevoActionBlue,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-1).sp,
+            )
+            Text(
+                text = "vo",
+                color = if (darkSurface) ColorTokens.GreenLight else AbastevoCommunityGreen,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-1).sp,
+            )
+        }
+        Text(
+            text = stringResource(R.string.auth_brand_tagline),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.auth_brand_copy),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 @Preview(showBackground = true)
 @Composable

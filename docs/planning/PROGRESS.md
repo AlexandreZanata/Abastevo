@@ -1,8 +1,12 @@
 # Current execution state
 
+- Active task 2026-10-06: P36-T01 account continuity/brand extension on maintained `dev`, starting from `2891df9`. [Behavior and evidence](../mobile/p36-account-continuity.md). Status: LOCAL_DONE / INTEGRATION_PENDING; scoped auth/HTTP/storage/concurrency tests, real PostGIS account regression, Android lint/compile/APK and secret review passed. Tested behavior fingerprint and exact commands are in the evidence; hardware/staging runtime remain OWED.
+- Actual history reconciled at task opening: dev/origin/dev contained 10 commits beyond origin/main, including the prior key-account/backend/capture work; this task adds one atomic source commit. The consolidation notes below describe the earlier integrated batch. Main is already an ancestor of dev after the final fetch/ancestry check.
+- Delivery: no existing dev → main PR at opening; main protection requires current `Quick verification` with strict base checks (read 2026-10-06). Next: atomic source commit, publish cumulative dev PR, guarded finish with required `Quick verification`, then one merged-SHA wiki mirror. No deployment, tag or device execution is authorized by this source task.
+
 - 2026-10-06: repository consolidation FINALIZED (INTEGRATED). Cumulative PR #122 merged to main (merge a424688, head 0a95153); all mobile/backend source now on main.
 - All 7 remaining open issues (#13, #53, #60, #61, #62, #119, #120) closed administratively as not planned, each with retained obligations pointing at [the consolidation record](repository-consolidation-20261006.md). 0 open issues, 0 open PRs on the remote.
 - Old work branches retired locally and remotely (20 local / 17 remote refs, each verified as ancestor of the merge head before deletion). Only main and dev remain, on origin and locally.
-- Local main and dev synchronized at a424688 (= origin/main = origin/dev); working tree clean. Next work starts on dev per ADR-020 maintained dev → protected main delivery.
+- At consolidation, local main and dev were synchronized at a424688 with a clean tree. Subsequent source work follows ADR-020 maintained dev → protected main delivery.
 - Production private representation remains contained with 503/no-store while contributor proof/binding and private proof storage stay unaccepted; public profile, prices, community and free account source remain available. Administrative closure never certifies incomplete gates.
 - Standing reservations unchanged: G18 NOT_ACCEPTED; iOS DEFERRED_EXPLICIT_RESUME_ONLY; G09 UNCERTIFIED; G24 user-accepted with manual evidence still owed. No deployment, tag, trust bypass or public pilot followed this integration.

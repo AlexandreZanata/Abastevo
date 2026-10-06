@@ -39,6 +39,23 @@ class SecurityConfigurationTest {
         assertTrue(rules.contains("-keep @androidx.room.Entity"), "Room keep rules required")
     }
 
+    @Test
+    fun credentialsExcludedFromBothBackupAndDeviceTransfer() {
+        val manifest = readProjectFile("src/main/AndroidManifest.xml")
+        assertTrue(manifest.contains("android:fullBackupContent=\"@xml/backup_rules\""))
+        assertTrue(manifest.contains("android:dataExtractionRules=\"@xml/data_extraction_rules\""))
+        val legacy = readProjectFile("src/main/res/xml/backup_rules.xml")
+        assertTrue(legacy.contains("<exclude domain=\"sharedpref\" path=\".\" />"))
+        val modern = readProjectFile("src/main/res/xml/data_extraction_rules.xml")
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+            .parse(modern.byteInputStream())
+        for (type in listOf("cloud-backup", "device-transfer")) {
+            val node = doc.getElementsByTagName(type).item(0) as org.w3c.dom.Element
+            val excluded = node.getElementsByTagName("exclude").item(0) as org.w3c.dom.Element
+            assertTrue(excluded.getAttribute("domain") == "sharedpref" && excluded.getAttribute("path") == ".")
+        }
+    }
+
     private fun readProjectFile(relativePath: String): String {
         val moduleRoot = Path.of(System.getProperty("user.dir"))
         return moduleRoot.resolve(relativePath).readText()

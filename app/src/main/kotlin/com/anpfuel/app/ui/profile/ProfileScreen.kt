@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
-import android.content.Intent
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,12 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -87,9 +80,12 @@ fun ProfileScreen(
         statusViewModel.load()
     }
     // P22-T01: same shared session store as the auth flow; rehydrate runs
-    // once here so Perfil reflects sign-in without duplicating ceremony.
+    // again on resume so Perfil reflects shared sign-in/logout changes.
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
-    val signedIn = authState.step == AuthStep.AUTHENTICATED
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        authViewModel.refreshAccount()
+    }
+    val signedIn = authState.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
     LaunchedEffect(authViewModel, signedIn) {
         if (signedIn) authViewModel.loadBackup()
     }
@@ -173,10 +169,10 @@ fun ProfileScreen(
             }
 
             // Account-key backup: the only login secret, shown for saving
-            // elsewhere (WhatsApp/safe place) plus one-tap copy.
+            // privately through the explicit reveal/export flow.
             if (signedIn) {
                 authState.keyBackup?.let { backup ->
-                    AccountKeyBackupCard(backup = backup)
+                    com.anpfuel.app.ui.auth.AccountKeyCard(backup = backup)
                 }
             }
 
@@ -338,92 +334,5 @@ private fun ProfileToolItem(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
         )
-    }
-}
-
-/**
- * Account-key backup card: username plus the only login secret with
- * reveal, one-tap copy and system share (WhatsApp/safe place). The key
- * renders only here and on its one-display signup screen.
- */
-@Composable
-private fun AccountKeyBackupCard(
-    backup: com.anpfuel.application.portable.AuthFlow.KeyBackup,
-    modifier: Modifier = Modifier,
-) {
-    var revealed by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.profile_backup_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = stringResource(R.string.profile_backup_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = stringResource(R.string.profile_backup_username, backup.username),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = if (revealed) {
-                    backup.accountKey.chunked(4).joinToString(" ")
-                } else {
-                    "•••• •••• •••• ••••"
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(onClick = { revealed = !revealed }) {
-                    Text(
-                        text = stringResource(
-                            if (revealed) {
-                                R.string.profile_backup_hide
-                            } else {
-                                R.string.profile_backup_show
-                            },
-                        ),
-                    )
-                }
-                OutlinedButton(
-                    onClick = {
-                        clipboard.setText(AnnotatedString(backup.accountKey))
-                    },
-                ) {
-                    Text(text = stringResource(R.string.profile_backup_copy))
-                }
-                Button(
-                    onClick = {
-                        val message = context.getString(
-                            R.string.profile_backup_share_text,
-                            backup.username,
-                            backup.accountKey,
-                        )
-                        val send = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, message)
-                        }
-                        context.startActivity(Intent.createChooser(send, null))
-                    },
-                ) {
-                    Text(text = stringResource(R.string.profile_backup_share))
-                }
-            }
-        }
     }
 }

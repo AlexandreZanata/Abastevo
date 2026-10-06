@@ -27,9 +27,16 @@ import org.json.JSONObject
  * seconds here, keeping portable code clock-pure.
  */
 class AccountHttpApi(
-    private val client: OkHttpClient,
+    client: OkHttpClient,
     private val baseUrl: String,
 ) : AuthAccountApi {
+    // Account keys and bearer tokens must never follow a redirect, even
+    // when a caller supplies an otherwise permissive HTTP client.
+    private val client = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .callTimeout(20L, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     override fun requestCode(email: String): AuthApiResult<Unit> {
         val res = post("/v1/accounts/email/codes", JSONObject().put("email", email))
@@ -163,7 +170,12 @@ class AccountHttpApi(
         }
         response.use {
             val raw = try {
-                it.body?.string() ?: ""
+                val body = it.body ?: return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                if (body.contentLength() > MAX_RESPONSE_BYTES) return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                val source = body.source()
+                source.request(MAX_RESPONSE_BYTES + 1L)
+                if (source.buffer.size > MAX_RESPONSE_BYTES) return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                source.readUtf8()
             } catch (_: Exception) {
                 return HttpResult.Err(PortableAuth.UNAVAILABLE)
             }
@@ -193,7 +205,7 @@ class AccountHttpApi(
 
     private fun parseSession(doc: JSONObject): PortableAuth.Session? {
         return try {
-            PortableAuth.Session(
+            val session = PortableAuth.Session(
                 familyId = doc.getString("family_id"),
                 accountId = doc.getString("account_id"),
                 accessToken = doc.getString("access_token"),
@@ -201,6 +213,10 @@ class AccountHttpApi(
                 accessExpiresAt = epochOf(doc.getString("access_expires_at")),
                 absoluteExpiresAt = epochOf(doc.getString("absolute_expires_at")),
             )
+            if (session.familyId.isBlank() || session.accountId.isBlank() ||
+                session.accessToken.isBlank() || session.refreshToken.isBlank() ||
+                session.accessExpiresAt <= 0L || session.absoluteExpiresAt <= session.accessExpiresAt
+            ) null else session
         } catch (_: Exception) {
             null
         }
@@ -211,6 +227,7 @@ class AccountHttpApi(
     }
 
     companion object {
+        private const val MAX_RESPONSE_BYTES = 64L * 1024L
         private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 }

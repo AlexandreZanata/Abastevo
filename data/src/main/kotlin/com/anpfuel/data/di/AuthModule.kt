@@ -13,6 +13,7 @@ import com.anpfuel.data.local.auth.AccountHttpApi
 import com.anpfuel.data.local.auth.AndroidKeystoreKeys
 import com.anpfuel.data.local.auth.KeystoreAccountKey
 import com.anpfuel.data.local.auth.KeystoreSessionStore
+import com.anpfuel.data.local.auth.SerializedAuthOperations
 import com.anpfuel.data.local.auth.SessionKeyProvider
 import com.anpfuel.data.remote.ApiEnvironment
 import dagger.Module
@@ -47,8 +48,18 @@ object AuthModule {
     @Provides
     @Singleton
     @Named("auth")
-    fun provideAuthPrefs(@ApplicationContext context: Context): SharedPreferences {
-        return context.getSharedPreferences("anpfuel_auth", Context.MODE_PRIVATE)
+    fun provideAuthPrefs(
+        @ApplicationContext context: Context,
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): SharedPreferences {
+        val scope = if (environment.origin == ApiEnvironment.STAGING.origin) {
+            "anpfuel_auth" // Preserve the existing explicitly staging account.
+        } else {
+            "anpfuel_auth_" + java.security.MessageDigest.getInstance("SHA-256")
+                .digest(environment.origin.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        }
+        return context.getSharedPreferences(scope, Context.MODE_PRIVATE)
     }
 
     @Provides
@@ -94,6 +105,7 @@ object AuthModule {
             clock = AuthWallClock { System.currentTimeMillis() / 1000L },
             nonces = PortableNonceSource { UUID.randomUUID().toString() },
             api = api,
+            lock = SerializedAuthOperations(),
         )
         return AuthFlow(ports)
     }

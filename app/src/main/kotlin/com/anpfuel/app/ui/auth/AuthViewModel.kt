@@ -29,6 +29,7 @@ enum class AuthStep {
     BUSY,
     PROVIDER_PENDING,
     AUTHENTICATED,
+    OFFLINE_ACCOUNT,
 }
 
 /** Locale-free auth failure for string mapping in the screen. */
@@ -45,6 +46,7 @@ sealed interface AuthUiError {
     data object Offline : AuthUiError
     data object ProviderDenied : AuthUiError
     data object LoginFirst : AuthUiError
+    data object SecureStorage : AuthUiError
     data object Unknown : AuthUiError
 }
 
@@ -87,6 +89,8 @@ class AuthViewModel @Inject constructor(
     private val _navigation = MutableSharedFlow<AuthNavigation>(extraBufferCapacity = 1)
     val navigation: SharedFlow<AuthNavigation> = _navigation.asSharedFlow()
 
+    private var refreshGeneration: Int = 0
+
     private var pendingAttempt: PortableAuth.LoginAttempt? = null
 
     /** Test seam for the IO context (unit tests inject the test dispatcher). */
@@ -102,36 +106,59 @@ class AuthViewModel @Inject constructor(
         withContext(ioDispatcher) { block() }
 
     init {
+        refreshAccount()
+    }
+
+    /** Reconcile shared secure storage when a retained destination resumes. */
+    fun refreshAccount() {
+        if (_uiState.value.step == AuthStep.BUSY || pendingAttempt != null) return
+        val generation = ++refreshGeneration
         viewModelScope.launch {
-            when (val state = authFlow.rehydrate()) {
+            val state = onIo { authFlow.rehydrate() }
+            if (generation != refreshGeneration) return@launch
+            when (state) {
                 is AuthFlow.AuthState.Active -> {
-                    _uiState.update { it.copy(step = AuthStep.AUTHENTICATED, keyBackup = authFlow.currentKey()) }
+                    _uiState.update {
+                        if (it.step == AuthStep.KEY_ISSUED && it.issuedKey.isNotEmpty()) {
+                            it.copy(keyBackup = authFlow.currentKey())
+                        } else AuthUiState(step = AuthStep.AUTHENTICATED, keyBackup = authFlow.currentKey())
+                    }
+                }
+                is AuthFlow.AuthState.PendingKeyAccount -> {
+                    _uiState.update {
+                        AuthUiState(step = AuthStep.KEY_ISSUED, issuedUsername = state.backup.username,
+                            issuedKey = state.backup.accountKey)
+                    }
                 }
                 is AuthFlow.AuthState.NeedsRefresh -> {
-                    when (val res = onIo { authFlow.refreshSession() }) {
-                        is AuthApiResult.Ok -> {
-                            if (res.value == null) {
-                                _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY) }
-                            } else {
-                                _uiState.update { it.copy(step = AuthStep.AUTHENTICATED, keyBackup = authFlow.currentKey()) }
-                            }
+                    val res = onIo { authFlow.refreshSession() }
+                    if (generation != refreshGeneration) return@launch
+                    when (res) {
+                        is AuthApiResult.Ok -> _uiState.update {
+                            AuthUiState(step = if (res.value == null) AuthStep.USERNAME_ENTRY else AuthStep.AUTHENTICATED,
+                                keyBackup = if (res.value == null) null else authFlow.currentKey())
                         }
-                        is AuthApiResult.Err -> {
-                            _uiState.update {
-                                it.copy(step = AuthStep.USERNAME_ENTRY, error = mapError(res.verdict))
-                            }
+                        is AuthApiResult.Err -> _uiState.update {
+                            AuthUiState(
+                                step = if (authFlow.rehydrate() is AuthFlow.AuthState.NeedsRefresh) {
+                                    AuthStep.OFFLINE_ACCOUNT
+                                } else AuthStep.USERNAME_ENTRY,
+                                keyBackup = authFlow.currentKey(), error = mapError(res.verdict),
+                            )
                         }
                     }
                 }
                 is AuthFlow.AuthState.LoggedOut -> {
-                    _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY) }
+                    if (_uiState.value.step in listOf(AuthStep.CHECKING, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) {
+                        _uiState.update { AuthUiState(step = AuthStep.USERNAME_ENTRY) }
+                    }
                 }
             }
         }
     }
 
     fun onUsernameChange(value: String) {
-        _uiState.update { it.copy(username = value.lowercase().filter { c -> c.isLetterOrDigit() }.take(20), error = null) }
+        _uiState.update { it.copy(username = value.lowercase().filter { c -> c in 'a'..'z' || c in '0'..'9' }.take(20), error = null) }
     }
 
     fun onKeyChange(value: String) {
@@ -139,22 +166,29 @@ class AuthViewModel @Inject constructor(
     }
 
     fun onGoToKeyEntry() {
+        if (_uiState.value.step == AuthStep.BUSY) return
         _uiState.update { it.copy(step = AuthStep.KEY_ENTRY, error = null) }
     }
 
     fun onBackToUsername() {
-        _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY, accountKey = "", error = null) }
+        if (_uiState.value.step == AuthStep.BUSY) return
+        _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY, accountKey = "", issuedKey = "", keyBackup = null, error = null) }
     }
 
-    /** Creates the anonymous account; the issued key shows exactly once. */
+    /** Create, sign in, then keep the issued-key backup step visible. */
     fun onCreateAccount() {
+        if (_uiState.value.step != AuthStep.USERNAME_ENTRY) return
+        refreshGeneration++
+        val username = _uiState.value.username
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = onIo { authFlow.createKeyAccount(_uiState.value.username) }) {
+            when (val res = onIo { authFlow.createKeyAccount(username) }) {
                 is AuthApiResult.Ok -> {
+                    val login = onIo { authFlow.loginWithKey(res.value.accountKey) }
                     _uiState.update {
                         it.copy(
                             step = AuthStep.KEY_ISSUED,
+                            error = (login as? AuthApiResult.Err)?.let { failure -> mapError(failure.verdict) },
                             issuedUsername = res.value.username,
                             issuedKey = res.value.accountKey,
                             keyBackup = authFlow.currentKey(),
@@ -172,10 +206,16 @@ class AuthViewModel @Inject constructor(
 
     /** Key-only login, including the enter-after-signup step. */
     fun onLoginWithKey() {
-        val key = _uiState.value.accountKey.ifEmpty { _uiState.value.issuedKey }
+        val snapshot = _uiState.value
+        if (snapshot.step !in listOf(AuthStep.KEY_ENTRY, AuthStep.KEY_ISSUED)) return
+        refreshGeneration++
+        val key = snapshot.accountKey.ifEmpty { snapshot.issuedKey }
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
         viewModelScope.launch {
-            when (val res = onIo { authFlow.loginWithKey(key) }) {
+            when (val res = onIo {
+                val session = if (snapshot.step == AuthStep.KEY_ISSUED) authFlow.currentSession() else null
+                if (session == null) authFlow.loginWithKey(key) else AuthApiResult.Ok(AuthFlow.Login(session, true))
+            }) {
                 is AuthApiResult.Ok -> {
                     _uiState.update {
                         it.copy(
@@ -190,7 +230,7 @@ class AuthViewModel @Inject constructor(
                 }
                 is AuthApiResult.Err -> {
                     _uiState.update {
-                        it.copy(step = AuthStep.KEY_ENTRY, error = mapError(res.verdict))
+                        it.copy(step = snapshot.step, error = mapError(res.verdict))
                     }
                 }
             }
@@ -312,6 +352,8 @@ class AuthViewModel @Inject constructor(
     }
 
     fun onLogout() {
+        refreshGeneration++
+        _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {
             onIo { authFlow.logout() }
             pendingAttempt = null
@@ -325,9 +367,12 @@ class AuthViewModel @Inject constructor(
      * P22-T01 — self-deletes the account (server `POST
      * /v1/accounts/deletion` plus local storage wipe inside
      * [AuthFlow.deleteAccount]). Success returns to username entry with the
-     * Deleted notice; failure keeps the session and maps the verdict.
+     * Deleted notice; transport failure keeps the account and backup.
+     * Definitive auth denials clear the displayed authority.
      */
     fun onDeleteAccount() {
+        refreshGeneration++
+        _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {
             when (val res = onIo { authFlow.deleteAccount() }) {
                 is AuthApiResult.Ok -> {
@@ -337,7 +382,18 @@ class AuthViewModel @Inject constructor(
                     }
                 }
                 is AuthApiResult.Err -> {
-                    _uiState.update { it.copy(error = mapError(res.verdict)) }
+                    val retained = onIo { authFlow.rehydrate() }
+                    _uiState.value = AuthUiState(
+                        step = when (retained) {
+                            is AuthFlow.AuthState.Active -> AuthStep.AUTHENTICATED
+                            is AuthFlow.AuthState.NeedsRefresh -> AuthStep.OFFLINE_ACCOUNT
+                            else -> AuthStep.USERNAME_ENTRY
+                        },
+                        keyBackup = if (retained is AuthFlow.AuthState.Active || retained is AuthFlow.AuthState.NeedsRefresh) {
+                            authFlow.currentKey()
+                        } else null,
+                        error = mapError(res.verdict),
+                    )
                 }
             }
         }
@@ -351,6 +407,7 @@ class AuthViewModel @Inject constructor(
         /** Backend verdicts (plus the local-hint code) to UI errors. */
         fun mapError(verdict: String): AuthUiError = when (verdict) {
             AuthFlow.CLIENT_INVALID -> AuthUiError.InvalidInput
+            AuthFlow.SECURE_STORAGE_UNAVAILABLE -> AuthUiError.SecureStorage
             PortableAuth.Verdict.CODE_UNKNOWN,
             PortableAuth.Verdict.CODE_CONSUMED,
             -> AuthUiError.WrongCode
