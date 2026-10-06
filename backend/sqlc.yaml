@@ -23,6 +23,11 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
+      - db/migrations/000031_registry_sources.sql
+      - db/migrations/000032_registry_assertion_coords.sql
+      - db/migrations/000033_dou_run_sources.sql
+      - db/migrations/000034_station_suggestions.sql
+      - db/migrations/000035_suggestion_decisions.sql
     gen:
       go:
         package: directory
@@ -50,6 +55,7 @@ sql:
       - db/migrations/000012_community_signals.sql
       - db/migrations/000013_community_votes.sql
       - db/migrations/000015_community_projection.sql
+      - db/migrations/000041_community_feed_indexes.sql
       - db/migrations/000030_community_location_bands.sql
     gen:
       go:
@@ -122,6 +128,10 @@ sql:
       - db/migrations/000027_feedback_visibility.sql
       - db/migrations/000026_moderation_comment_target.sql
       - db/migrations/000028_feedback_account_idx.sql
+      - db/migrations/000036_station_profiles.sql
+      - db/migrations/000037_profile_claims.sql
+      - db/migrations/000039_claim_decisions_grants.sql
+      - db/migrations/000040_comment_business_attribution.sql
     gen:
       go:
         package: feedback
@@ -151,5 +161,20 @@ sql:
       go:
         package: privacy
         out: db/queries/privacy
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/stationprofile
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000036_station_profiles.sql
+      - db/migrations/000037_profile_claims.sql
+      - db/migrations/000038_claim_proofs.sql
+      - db/migrations/000039_claim_decisions_grants.sql
+    gen:
+      go:
+        package: stationprofile
+        out: db/queries/stationprofile
         sql_package: pgx/v5
         emit_json_tags: true

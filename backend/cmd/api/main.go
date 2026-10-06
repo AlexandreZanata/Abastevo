@@ -23,6 +23,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
+	dbstationprofile "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/stationprofile"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accounthttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http"
 	accountkeyprover "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover"
@@ -37,6 +39,7 @@ import (
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
+	directoryintake "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
@@ -58,6 +61,8 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
+	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -196,7 +201,35 @@ func run() error {
 	stations := directoryread.NewReader(pool.Underlying())
 	prices := officialread.NewReader(pool.Underlying())
 	communityPrices := communityread.NewReader(pool.Underlying())
+	communityhttp.FeedHandler{Read: communityPrices.Feed, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	// Public station profiles (P30-T02). Same composition rule: the
+	// profile handler gets the canonical reader as a closure so
+	// modules never cross-read. Anonymous; no badge without a grant.
+	accountStore := accountadapters.NewPGStore(pool.Underlying())
+	profileadapters.Handler{
+		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
+		Representation: func(ctx context.Context, stationID, cnpj string) (bool, error) {
+			return (profileadapters.ReviewDecisions{Pool: pool.Underlying()}).HasRepresentation(ctx, stationID, cnpj, func(ctx context.Context, accountID string) (bool, error) {
+				account, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return account.Active(), nil
+			})
+		},
+		Read: func(ctx context.Context, stationID string) (string, string, *float64, *float64, error) {
+			station, err := stations.Detail(ctx, stationID)
+			if err != nil {
+				return "", "", nil, nil, err
+			}
+			var lat, lon *float64
+			if station.Coordinates != nil {
+				lat, lon = &station.Coordinates.Lat, &station.Coordinates.Lon
+			}
+			return station.DisplayName, station.LocationQuality, lat, lon, nil
+		},
+	}.RegisterRoutes(router)
 	officialhttp.Handler{
 		Prices:  prices,
 		Secrets: cfg.CursorSecret,
@@ -278,7 +311,6 @@ func run() error {
 	// The account store doubles as the social-write gate source
 	// (P13-T04D): one shared handle feeds the service and the
 	// community CheckAccount closures below.
-	accountStore := accountadapters.NewPGStore(pool.Underlying())
 	accountService := &accountapp.Service{
 		Clock:     unixClock{},
 		Hasher:    accountdomain.SHA256Hasher{},
@@ -369,6 +401,113 @@ func run() error {
 			return id, nil
 		},
 	}.RegisterRoutes(router)
+	// Private station intake (P27-T01). Only this composition root wires
+	// modules together: the intake handler gets session validation as a
+	// closure so modules never cross-read. Suspended/deleted accounts
+	// cannot write; anything else invalid is a 401 (the handler maps
+	// service verdicts itself).
+	directoryintake.Handler{
+		Service: directoryapp.IntakeService{
+			Store: directoryadapters.IntakeStore{Q: dbdirectory.New(pool.Underlying())},
+			Clock: time.Now,
+			NewID: newUUID,
+		},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, familyID, accessToken)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "account-suspended", "account-deleted":
+					return "", directoryapp.ErrAuthorForbidden
+				default:
+					return "", err
+				}
+			}
+			return id, nil
+		},
+	}.RegisterRoutes(router)
+	// Private representation claims (P30-T03). Same composition rule:
+	// session validation and the current operator link arrive as
+	// closures so modules never cross-read. No grant flows from
+	// submission, CNPJ knowledge or client flags.
+	profileStore := profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())}
+	profileClaimPorts := profileapplication.ClaimPorts{
+		Store: profileadapters.ClaimStore{Q: dbstationprofile.New(pool.Underlying())},
+		Clock: time.Now,
+		NewID: newUUID,
+		OperatorOf: func(ctx context.Context, stationID string) (string, string, bool, error) {
+			operator, found, err := profileStore.CurrentOperator(ctx, stationID)
+			if err != nil || !found {
+				return "", "", false, err
+			}
+			return operator.CNPJ, operator.Source, true, nil
+		},
+	}
+	privateProfiles := router.With(privateProfileUnavailable)
+	profileadapters.ClaimHandler{
+		Ports: profileClaimPorts,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+	}.RegisterRoutes(privateProfiles)
+	// Private proof intake (P30-T04). Object storage is unprovisioned:
+	// Bytes stays nil so intake refuses with 503 instead of any
+	// approval fallback. Wire it with the storage scope when that
+	// lands; nothing else changes.
+	profileadapters.ProofHandler{
+		Ports: profileapplication.ProofPorts{
+			Proofs: profileadapters.ProofStore{Q: dbstationprofile.New(pool.Underlying())},
+			Claims: profileadapters.ClaimStore{Q: dbstationprofile.New(pool.Underlying())},
+			Clock:  time.Now,
+			NewID:  newUUID,
+			Bytes:  nil,
+		},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+	}.RegisterRoutes(privateProfiles)
+	// Scoped business management (P31-T04). Same composition rule:
+	// grant/operator checks, feedback reply submission and business
+	// attribution arrive as closures so modules never cross-read.
+	// Every privilege enforces server-side before any app button.
+	profileManageStore := profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())}
+	profileManagePorts := func(r *http.Request) profileapplication.ManagePorts {
+		_ = r
+		return profileapplication.ManagePorts{
+			Grants:   profileadapters.ReviewDecisions{Pool: pool.Underlying()},
+			Profiles: profileManageStore,
+			OperatorOf: func(ctx context.Context, stationID string) (string, bool, error) {
+				operator, found, err := profileManageStore.CurrentOperator(ctx, stationID)
+				if err != nil || !found {
+					return "", false, err
+				}
+				return operator.CNPJ, true, nil
+			},
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				acc, found, err := accountStore.GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return acc.Active(), nil
+			},
+			SubmitReply: func(ctx context.Context, accountID, stationID, product, text string) (string, error) {
+				stored, err := feedbackService.SubmitComment(ctx, accountID, stationID, product, text)
+				if err != nil {
+					return "", err
+				}
+				return stored.ID, nil
+			},
+			Attribute: func(ctx context.Context, commentID, accountID, stationID, grantID string) error {
+				return feedbackService.AttributeBusinessComment(ctx, accountID, commentID, stationID, grantID)
+			},
+		}
+	}
+	profileadapters.ManageHandler{
+		EditPorts:  profileManagePorts,
+		ReplyPorts: profileManagePorts,
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+	}.RegisterRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// checkAccountGate refuses social writes from contributors bound

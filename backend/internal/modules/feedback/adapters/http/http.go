@@ -138,6 +138,10 @@ type commentJSON struct {
 	Revision  int     `json:"revision"`
 	CreatedAt string  `json:"created_at"`
 	UpdatedAt string  `json:"updated_at"`
+	// Business attribution is server-verified at publication
+	// (P31-T04); absent means a personal community voice.
+	BusinessStationID string `json:"business_station_id,omitempty"`
+	BusinessGrantID   string `json:"business_grant_id,omitempty"`
 }
 
 func commentJSONOf(v domain.CommentView) commentJSON {
@@ -146,16 +150,18 @@ func commentJSONOf(v domain.CommentView) commentJSON {
 		parent = &v.ParentID
 	}
 	return commentJSON{
-		ID:        v.ID,
-		Alias:     v.Alias,
-		StationID: v.StationID,
-		Product:   v.Product,
-		ParentID:  parent,
-		Depth:     v.Depth,
-		Text:      v.Text,
-		Revision:  v.Revision,
-		CreatedAt: time.Unix(v.CreatedAt, 0).UTC().Format(time.RFC3339),
-		UpdatedAt: time.Unix(v.UpdatedAt, 0).UTC().Format(time.RFC3339),
+		ID:                v.ID,
+		Alias:             v.Alias,
+		StationID:         v.StationID,
+		Product:           v.Product,
+		ParentID:          parent,
+		Depth:             v.Depth,
+		Text:              v.Text,
+		Revision:          v.Revision,
+		CreatedAt:         time.Unix(v.CreatedAt, 0).UTC().Format(time.RFC3339),
+		UpdatedAt:         time.Unix(v.UpdatedAt, 0).UTC().Format(time.RFC3339),
+		BusinessStationID: v.BusinessStationID,
+		BusinessGrantID:   v.BusinessGrantID,
 	}
 }
 

@@ -63,3 +63,7 @@ See SECURITY_PRIVACY for the authoritative proposed retention periods. Initial s
 Do not partition v1. Reassess time partitions when retention deletion/vacuum, index size or p95 queries miss budgets after indexing/tuning. A future partition design must preserve natural uniqueness, FKs and idempotency across partitions; document it in an ADR before migration. Object storage growth depends on photo rate×average bytes×retention, not MAU alone.
 
 Migrations are SQL and append-only after application. Every migration includes forward change, lock estimate, compatibility with old application version, recovery/rollback plan and tests from empty plus previous supported schema. Irreversible data transformations require backup and explicit operator review. Expand→deploy→backfill→validate→contract; rolling back a binary must not require deleting user data.
+
+## City feed read boundary (P23-CITY-FEED)
+
+Community owns `CityFeed` in its existing sqlc package. Its read-only join to directory_stations selects only public canonical id/name and exact municipality/state/active status. Existing declared directory schema and city index are reused. Append-only migration 000041 adds rebuildable partial recent/cheapest projection indexes; no private observation/media/identity fields enter the feed, and no write ownership changes. Current AVAILABLE STANDARD prices expire at query time; each filter compares one canonical fuel/unit. HMAC keyset cursors and bounded pages remain live under concurrent projection updates.

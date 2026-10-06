@@ -8,6 +8,7 @@ import com.anpfuel.data.local.dao.ContributionOutboxDao
 import com.anpfuel.data.local.dao.ImportAuditLogDao
 import com.anpfuel.data.local.dao.MunicipalityCatalogDao
 import com.anpfuel.data.local.dao.MunicipalityFtsDao
+import com.anpfuel.data.local.dao.ServerStationCacheDao
 import com.anpfuel.data.local.dao.StationPriceDao
 import com.anpfuel.data.local.dao.SurveyWeekDao
 import com.anpfuel.data.local.dao.VehicleDao
@@ -17,6 +18,8 @@ import com.anpfuel.data.local.entity.ContributionOutboxEntity
 import com.anpfuel.data.local.entity.ImportAuditLogEntity
 import com.anpfuel.data.local.entity.MunicipalityCatalogEntity
 import com.anpfuel.data.local.entity.MunicipalityFtsEntity
+import com.anpfuel.data.local.entity.ServerCatalogMetaEntity
+import com.anpfuel.data.local.entity.ServerStationCacheEntity
 import com.anpfuel.data.local.entity.StationPriceEntity
 import com.anpfuel.data.local.entity.SurveyWeekEntity
 import com.anpfuel.data.local.entity.VehicleEntity
@@ -32,8 +35,10 @@ import com.anpfuel.data.local.entity.VehicleEntity
         VehicleEntity::class,
         BackendPriceCacheEntity::class,
         ContributionOutboxEntity::class,
+        ServerStationCacheEntity::class,
+        ServerCatalogMetaEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -55,4 +60,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun backendPriceCacheDao(): BackendPriceCacheDao
 
     abstract fun contributionOutboxDao(): ContributionOutboxDao
+
+    abstract fun serverStationCacheDao(): ServerStationCacheDao
 }

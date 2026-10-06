@@ -13,6 +13,13 @@ import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.SubmitCommunityVoteUseCase
+import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
+import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
+import com.anpfuel.application.usecase.intake.CancelOwnedSuggestionUseCase
+import com.anpfuel.application.usecase.intake.GetOwnedSuggestionsUseCase
+import com.anpfuel.application.usecase.intake.GetSuggestionStatusUseCase
+import com.anpfuel.application.usecase.intake.SubmitStationSuggestionUseCase
 import com.anpfuel.application.usecase.contribution.CancelOwnedContributionUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
 import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
@@ -21,6 +28,9 @@ import com.anpfuel.application.usecase.feedback.SubmitFeedbackUseCase
 import com.anpfuel.application.usecase.identity.AnonymousDeviceFlow
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.ServerStationCache
+import com.anpfuel.domain.repository.ServerStationGateway
+import com.anpfuel.domain.repository.StationIntakeGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.FeedbackCacheRepository
@@ -467,6 +477,65 @@ object UseCaseModule {
         httpGateway = httpGateway,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetServerStationsUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+        cache: ServerStationCache,
+    ): GetServerStationsUseCase = GetServerStationsUseCase(
+        flagProvider = flagProvider,
+        gateway = gateway,
+        cache = cache,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetServerStationDetailUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+        cache: ServerStationCache,
+    ): GetServerStationDetailUseCase = GetServerStationDetailUseCase(
+        flagProvider = flagProvider,
+        gateway = gateway,
+        cache = cache,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetNearbyServerStationsUseCase(
+        flagProvider: CommunityReadsFlagProvider,
+        gateway: ServerStationGateway,
+    ): GetNearbyServerStationsUseCase =
+        GetNearbyServerStationsUseCase(
+            flagProvider = flagProvider,
+            gateway = gateway,
+        )
+
+    @Provides
+    @Singleton
+    fun provideSubmitStationSuggestionUseCase(
+        gateway: StationIntakeGateway,
+    ): SubmitStationSuggestionUseCase = SubmitStationSuggestionUseCase(gateway)
+
+    @Provides
+    @Singleton
+    fun provideGetSuggestionStatusUseCase(
+        gateway: StationIntakeGateway,
+    ): GetSuggestionStatusUseCase = GetSuggestionStatusUseCase(gateway)
+
+    @Provides
+    @Singleton
+    fun provideCancelOwnedSuggestionUseCase(
+        gateway: StationIntakeGateway,
+    ): CancelOwnedSuggestionUseCase = CancelOwnedSuggestionUseCase(gateway)
+
+    @Provides
+    @Singleton
+    fun provideGetOwnedSuggestionsUseCase(
+        gateway: StationIntakeGateway,
+    ): GetOwnedSuggestionsUseCase = GetOwnedSuggestionsUseCase(gateway)
 
     @Provides
     @Singleton

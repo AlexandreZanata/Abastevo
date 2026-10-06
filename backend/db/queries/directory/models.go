@@ -41,3 +41,63 @@ type DirectoryStation struct {
 	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
+
+type RegistryAssertion struct {
+	ID               pgtype.UUID        `json:"id"`
+	RunID            pgtype.UUID        `json:"run_id"`
+	Source           string             `json:"source"`
+	SourceKey        string             `json:"source_key"`
+	Checksum         string             `json:"checksum"`
+	StationID        pgtype.UUID        `json:"station_id"`
+	DisplayName      string             `json:"display_name"`
+	Address          []byte             `json:"address"`
+	MunicipalityCode pgtype.Text        `json:"municipality_code"`
+	State            pgtype.Text        `json:"state"`
+	AuthState        string             `json:"auth_state"`
+	Operation        string             `json:"operation"`
+	Eligibility      string             `json:"eligibility"`
+	LocationQuality  string             `json:"location_quality"`
+	SourceReference  string             `json:"source_reference"`
+	EffectiveDate    pgtype.Date        `json:"effective_date"`
+	FetchedAt        pgtype.Timestamptz `json:"fetched_at"`
+	SupersededBy     pgtype.UUID        `json:"superseded_by"`
+	Latitude         pgtype.Float8      `json:"latitude"`
+	Longitude        pgtype.Float8      `json:"longitude"`
+	Crs              string             `json:"crs"`
+}
+
+type RegistrySourceRun struct {
+	ID               pgtype.UUID        `json:"id"`
+	Source           string             `json:"source"`
+	SnapshotIdentity string             `json:"snapshot_identity"`
+	Checksum         string             `json:"checksum"`
+	ParserVersion    string             `json:"parser_version"`
+	State            string             `json:"state"`
+	Accepted         int64              `json:"accepted"`
+	Duplicates       int64              `json:"duplicates"`
+	Rejected         int64              `json:"rejected"`
+	ErrorCode        string             `json:"error_code"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+}
+
+type StationSuggestion struct {
+	ID                 pgtype.UUID        `json:"id"`
+	AccountID          pgtype.UUID        `json:"account_id"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	Proposal           []byte             `json:"proposal"`
+	EvidenceRef        string             `json:"evidence_ref"`
+	State              string             `json:"state"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	DecidedAt          pgtype.Timestamptz `json:"decided_at"`
+}
+
+type SuggestionDecision struct {
+	ID           pgtype.UUID        `json:"id"`
+	SuggestionID pgtype.UUID        `json:"suggestion_id"`
+	Decision     string             `json:"decision"`
+	Reason       string             `json:"reason"`
+	Reviewer     string             `json:"reviewer"`
+	StationID    pgtype.UUID        `json:"station_id"`
+	DecidedAt    pgtype.Timestamptz `json:"decided_at"`
+}

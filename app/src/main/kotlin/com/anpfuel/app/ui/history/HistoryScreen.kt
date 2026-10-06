@@ -29,7 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.mapper.SurveyWeekFormatter
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductIcon
@@ -99,7 +98,6 @@ private fun HistoryContent(
                 },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Column(
             modifier = Modifier

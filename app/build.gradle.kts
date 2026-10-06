@@ -126,6 +126,9 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // Same JVM org.json artifact already used by :data tests (Android
+    // framework org.json stubs throw under local JVM unit tests).
+    testImplementation("org.json:json:20240303")
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
@@ -133,6 +136,8 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:rules:1.6.1")
+    // Reuse the existing pinned runtime HTTP client for the explicit live anonymous smoke.
+    androidTestImplementation(libs.okhttp)
     androidTestImplementation(libs.kotlinx.coroutines.android)
     androidTestImplementation(libs.room.runtime)
     androidTestImplementation(libs.room.ktx)

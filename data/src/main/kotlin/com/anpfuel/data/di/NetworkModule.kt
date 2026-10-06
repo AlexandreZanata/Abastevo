@@ -3,6 +3,7 @@ package com.anpfuel.data.di
 import android.content.Context
 import com.anpfuel.data.remote.AnpFileDownloader
 import com.anpfuel.data.remote.AnpListingScraper
+import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.OkHttpClientFactory
 import com.anpfuel.data.remote.NominatimOkHttpClientFactory
 import com.anpfuel.data.remote.NominatimClient
@@ -13,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.time.Clock
 import okhttp3.OkHttpClient
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -22,6 +24,18 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClientFactory.create()
+
+    /**
+     * P34-T02 shared staging origin.
+     *
+     * Explicit staging selection for P34-P38 construction. The release target
+     * stays separate and requires its own certification; do not reuse this
+     * test origin as production without that gate.
+     */
+    @Provides
+    @Singleton
+    @Named("apiOrigin")
+    fun provideApiEnvironment(): ApiEnvironment = ApiEnvironment.STAGING
 
     @Provides
     @Singleton

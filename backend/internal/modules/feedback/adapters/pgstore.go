@@ -272,6 +272,7 @@ func toCommentView(
 	text string,
 	revision int32,
 	created, updated pgtype.Timestamptz,
+	businessStationID, businessGrantID pgtype.UUID,
 ) domain.CommentView {
 	parent := ""
 	if parentID.Valid {
@@ -279,16 +280,18 @@ func toCommentView(
 	}
 	_ = accountID
 	return domain.CommentView{
-		ID:        uuidString(id),
-		Alias:     alias,
-		StationID: uuidString(stationID),
-		Product:   product,
-		ParentID:  parent,
-		Depth:     int(depth),
-		Text:      text,
-		Revision:  int(revision),
-		CreatedAt: unix(created),
-		UpdatedAt: unix(updated),
+		ID:                uuidString(id),
+		Alias:             alias,
+		StationID:         uuidString(stationID),
+		Product:           product,
+		ParentID:          parent,
+		Depth:             int(depth),
+		Text:              text,
+		Revision:          int(revision),
+		CreatedAt:         unix(created),
+		UpdatedAt:         unix(updated),
+		BusinessStationID: uuidString(businessStationID),
+		BusinessGrantID:   uuidString(businessGrantID),
 	}
 }
 
@@ -370,6 +373,39 @@ func (s *PGStore) FlagComment(ctx context.Context, id string) error {
 	}
 	_, err = feedback.New(s.pool).FlagComment(ctx, uid)
 	return err
+}
+
+// AttributeBusinessComment stamps server-verified official-reply
+// attribution on the author's own live, unattributed comment. The
+// single guarded UPDATE makes rebinding and foreign writes affect
+// zero rows, which map to not-found (no oracle).
+func (s *PGStore) AttributeBusinessComment(ctx context.Context, id, accountID, stationID, grantID string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	acc, err := mustUUID(accountID)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	station, err := mustUUID(stationID)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	grant, err := mustUUID(grantID)
+	if err != nil {
+		return domain.ErrCommentNotFound
+	}
+	affected, err := feedback.New(s.pool).AttributeCommentBusiness(ctx, feedback.AttributeCommentBusinessParams{
+		BusinessStationID: station, BusinessGrantID: grant, ID: uid, AccountID: acc,
+	})
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return domain.ErrCommentNotFound
+	}
+	return nil
 }
 
 // SetVisibility moves one live comment along the moderator lane.
@@ -491,7 +527,7 @@ func (s *PGStore) ViewComment(ctx context.Context, id string) (domain.CommentVie
 	return toCommentView(
 		row.ID, row.AccountID, row.StationID, row.Alias, row.Product,
 		row.ParentID, row.Depth, row.Text, row.Revision,
-		row.CreatedAt, row.UpdatedAt,
+		row.CreatedAt, row.UpdatedAt, row.BusinessStationID, row.BusinessGrantID,
 	), true, nil
 }
 
@@ -523,7 +559,7 @@ func (s *PGStore) ListComments(ctx context.Context, stationID, product string, a
 		out = append(out, toCommentView(
 			r.ID, r.AccountID, r.StationID, r.Alias, r.Product,
 			r.ParentID, r.Depth, r.Text, r.Revision,
-			r.CreatedAt, r.UpdatedAt,
+			r.CreatedAt, r.UpdatedAt, r.BusinessStationID, r.BusinessGrantID,
 		))
 	}
 	return out, nil
@@ -556,7 +592,7 @@ func (s *PGStore) ListReplies(ctx context.Context, parentID string, afterUnix in
 		out = append(out, toCommentView(
 			r.ID, r.AccountID, r.StationID, r.Alias, r.Product,
 			r.ParentID, r.Depth, r.Text, r.Revision,
-			r.CreatedAt, r.UpdatedAt,
+			r.CreatedAt, r.UpdatedAt, r.BusinessStationID, r.BusinessGrantID,
 		))
 	}
 	return out, nil

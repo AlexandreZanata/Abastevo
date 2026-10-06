@@ -25,7 +25,7 @@ Scopes: `domain`, `application`, `data`, `ui`, `i18n`, `docs`, `cursor`, `sync`,
 - One logical change per commit
 - Never commit secrets, keystores, `local.properties`, or build artifacts
 - Commit/publish only within session-authorized phase delivery; reuse existing authorization. Planning-only work does not imply publication.
-- One `codex/phase-NN-slug` branch and draft PR per phase; task commits after targeted checks. Full certification only at the release checkpoint. See `docs/planning/DELIVERY_WORKFLOW.md`; activation G01-FLOW is still pending.
+- Per ADR-020, bounded task commits go to maintained `dev`, then a protected dev → main PR. Retain/synchronize dev after guarded merge; retire historical branches only after verified ancestry. Required Quick verification is active. Full release certification remains a separate checkpoint. See `docs/planning/DELIVERY_WORKFLOW.md`.
 
 ## Before committing code changes
 

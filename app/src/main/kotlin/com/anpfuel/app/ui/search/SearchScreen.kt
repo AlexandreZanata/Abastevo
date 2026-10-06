@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.DataAvailabilityI18n
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
@@ -85,7 +84,6 @@ internal fun SearchContent(
                 title = { Text(text = stringResource(R.string.nav_search)) },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Box(
             modifier = Modifier

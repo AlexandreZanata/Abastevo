@@ -1,0 +1,45 @@
+{
+  "id": "registry-api-sample",
+  "version": 1,
+  "schema": "RegistryApiPage",
+  "valid": true,
+  "provenance": "P25-T01 synthetic; owned [P25-TEST] markers; no real personal data",
+  "value": {
+    "items": [
+      {
+        "cnpj": "04218406000104",
+        "razaoSocial": "[P25-TEST] POSTO ALFA LTDA",
+        "nomeFantasia": "[P25-TEST] Posto Alfa",
+        "endereco": {"logradouro": "AV PAULISTA", "numero": "1000", "municipio": "SAO PAULO", "uf": "SP", "cep": "01310100", "codigoIbge": "3550308"},
+        "autorizacao": {"ato": "PRC-2024-0001", "publicadoEm": "2024-03-01"},
+        "situacao": "ATIVA",
+        "location_quality": "reviewed",
+        "coordenadas": {"lat": -23.561, "lon": -46.656, "crs": "WGS84", "accuracy": "rooftop"}
+      },
+      {
+        "cnpj": "12ABC34501DE35",
+        "razaoSocial": "[P25-TEST] POSTO GAMA LTDA",
+        "nomeFantasia": "[P25-TEST] Posto Gama",
+        "endereco": {"logradouro": "AV FARIA LIMA", "numero": "3000", "municipio": "SAO PAULO", "uf": "SP", "cep": "04538133", "codigoIbge": "3550308"},
+        "autorizacao": null,
+        "situacao": "DESCONHECIDA",
+        "location_quality": "unknown",
+        "coordenadas": null
+      },
+      {
+        "cnpj": "00428184000195",
+        "razaoSocial": "[P25-TEST] POSTO ZERO LTDA",
+        "nomeFantasia": "[P25-TEST] Posto Zero",
+        "endereco": {"logradouro": "RUA ZERO", "numero": "10", "municipio": "SAO PAULO", "uf": "SP", "cep": "01310900", "codigoIbge": "3550308"},
+        "autorizacao": {"ato": "PRC-2024-0003", "publicadoEm": "2024-03-01"},
+        "situacao": "ATIVA",
+        "location_quality": "city-centroid",
+        "coordenadas": {"lat": -23.55, "lon": -46.63, "crs": "WGS84", "accuracy": "city"}
+      }
+    ],
+    "page": 1,
+    "pageSize": 100,
+    "nextCursor": null,
+    "generated_at": "2026-10-05T00:00:00Z"
+  }
+}

@@ -27,6 +27,8 @@ Native iOS implementation/acceptance is parked outside this path. Preserve pure 
 
 ## Phase tasks and acceptance
 
+2026-10-05 source execution priority: [Android/VPS P34–P38](ANDROID_VPS_PLAN.md) before national catalog P25–P29 and verified profiles P30–P33. Preserve completed P19–P24 history. [ADR-019](../adr/019-android-vps-integration-first.md) owns sequence; ADR-018 moves CI/PR merge/wiki to final project closure. Device/manual rows remain owed until the end acceptance batch.
+
 Every task below has a stable ROADMAP anchor. At opening, record exact affected paths, existing commands, B-BR/BUC, fixtures and risk class. Split an oversized task into bounded letter-suffixed slices before coding. No future issues/milestones are opened by this planning publication.
 
 ### P19 — Product and identity foundation

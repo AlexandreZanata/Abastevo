@@ -39,6 +39,8 @@ import com.anpfuel.data.repository.AveragePriceRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceCacheRepositoryImpl
 import com.anpfuel.data.repository.BackendPriceHttpGatewayImpl
 import com.anpfuel.data.repository.CacheRepositoryImpl
+import com.anpfuel.data.repository.DirectoryStationGatewayImpl
+import com.anpfuel.data.repository.DirectoryStationRoomCache
 import com.anpfuel.data.repository.FeedbackCacheMemory
 import com.anpfuel.data.repository.FeedbackOutboxMemory
 import com.anpfuel.data.repository.RoomContributionOutboxRepository
@@ -57,6 +59,8 @@ import com.anpfuel.data.repository.ReverseGeocodeRepositoryImpl
 import com.anpfuel.data.repository.VehicleRepositoryImpl
 import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
+import com.anpfuel.domain.repository.ServerStationCache
+import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
@@ -223,6 +227,18 @@ abstract class RepositoryModule {
     abstract fun bindBackendPriceCacheRepository(
         impl: BackendPriceCacheRepositoryImpl,
     ): BackendPriceCacheRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindServerStationGateway(
+        impl: DirectoryStationGatewayImpl,
+    ): ServerStationGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindServerStationCache(
+        impl: DirectoryStationRoomCache,
+    ): ServerStationCache
 
     @Binds
     @Singleton

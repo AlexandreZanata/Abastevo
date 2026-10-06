@@ -284,4 +284,40 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("INSERT INTO municipality_fts(municipality_fts) VALUES('rebuild')")
         }
     }
+
+    val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // P27-T03: additive canonical catalog cache. No existing
+            // table is touched; the page set is replaced per fresh
+            // traversal so stale scopes never linger.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `server_station_cache` (
+                    `station_id` TEXT NOT NULL,
+                    `display_name` TEXT NOT NULL,
+                    `location_quality` TEXT NOT NULL,
+                    `latitude` REAL,
+                    `longitude` REAL,
+                    `cnpj_normalized` TEXT,
+                    `municipality_code` TEXT,
+                    `state` TEXT,
+                    `current_revision_id` TEXT,
+                    `position` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`station_id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `server_catalog_meta` (
+                    `key` TEXT NOT NULL,
+                    `next_cursor` TEXT,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`key`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

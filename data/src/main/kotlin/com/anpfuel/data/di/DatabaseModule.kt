@@ -11,6 +11,7 @@ import com.anpfuel.data.local.dao.ContributionOutboxDao
 import com.anpfuel.data.local.dao.ImportAuditLogDao
 import com.anpfuel.data.local.dao.MunicipalityCatalogDao
 import com.anpfuel.data.local.dao.MunicipalityFtsDao
+import com.anpfuel.data.local.dao.ServerStationCacheDao
 import com.anpfuel.data.local.dao.StationPriceDao
 import com.anpfuel.data.local.dao.SurveyWeekDao
 import com.anpfuel.data.local.dao.VehicleDao
@@ -41,6 +42,7 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_4_5,
                 AnpFuelDatabaseMigrations.MIGRATION_5_6,
                 AnpFuelDatabaseMigrations.MIGRATION_6_7,
+                AnpFuelDatabaseMigrations.MIGRATION_7_8,
             )
             .build()
 
@@ -79,4 +81,8 @@ object DatabaseModule {
     @Provides
     fun provideContributionOutboxDao(database: AnpFuelDatabase): ContributionOutboxDao =
         database.contributionOutboxDao()
+
+    @Provides
+    fun provideServerStationCacheDao(database: AnpFuelDatabase): ServerStationCacheDao =
+        database.serverStationCacheDao()
 }

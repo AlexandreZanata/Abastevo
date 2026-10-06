@@ -243,6 +243,12 @@ type CommentView struct {
 	Revision  int
 	CreatedAt int64
 	UpdatedAt int64
+	// BusinessStationID/BusinessGrantID carry the server-verified
+	// official-reply attribution (P31-T04); empty means a personal
+	// community voice. Reads never re-check liveness (at-time truth);
+	// writes always do.
+	BusinessStationID string
+	BusinessGrantID   string
 }
 
 // StoredRating is one persisted rating revision. Exactly one live

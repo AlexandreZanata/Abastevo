@@ -500,6 +500,68 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/community/feed:
+    get:
+      summary: Current community prices for one city and fuel (anonymous).
+      description: >
+        P23-CITY-FEED. Active canonical stations in the exact IBGE municipality/UF.
+        Only unexpired AVAILABLE community projections with STANDARD conditions.
+        Never includes contributor identities, coordinates, evidence or official substitutes.
+        Near-real-time foreground refresh after validation/consensus, recommended every 15 seconds.
+        Keyset pages are live; concurrent updates may move rows. Refresh resets pagination.
+      operationId: communityCityFeed
+      tags: [community]
+      security: []
+      parameters:
+        - name: state
+          in: query
+          required: true
+          description: Exact federative unit.
+          schema: {type: string, minLength: 2, maxLength: 2}
+          example: MT
+        - name: municipality_code
+          in: query
+          required: true
+          description: Exact canonical seven-digit IBGE municipality code.
+          schema: {type: string, pattern: '^[0-9]{7}$'}
+          example: '5107925'
+        - name: fuel_product
+          in: query
+          required: true
+          description: One fuel and its canonical unit; different fuels are never compared.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: ETHANOL
+        - name: sort
+          in: query
+          description: Recent anchor time descending or exact integer price ascending; station UUID breaks ties.
+          schema: {type: string, enum: [recent, cheapest], default: recent}
+          example: recent
+        - name: limit
+          in: query
+          description: Bounded page size.
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: HMAC cursor bound to all filters and page size; expires in 15 minutes.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Dated price activity page; empty items indicates no eligible coverage.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityFeedPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          description: Feed dependency unavailable; retry without discarding already displayed data.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiError'}
   /v1/stations:
     get:
       summary: Directory search (anonymous).
@@ -721,6 +783,787 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/profile:
+    get:
+      summary: Read a station public profile (anonymous).
+      operationId: readStationProfile
+      tags: [directory]
+      security: []
+      description: >
+        Public anonymous read (P30-T02, B-BR-P01/P02): station identity,
+        versioned business fields and the operator link only. No
+        private proof, personal identity, prices or grants; unclaimed
+        profiles read honestly with empty business fields and no badge.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Public profile projection.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Edit permitted business fields (signed, scoped).
+      operationId: editBusinessProfile
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated scoped edit (P31-T04, B-BR-P10/P11):
+        only the current approved `profile.edit` scope, only frozen
+        policy fields, optimistic revision match, live account and
+        operator rechecked server-side. Regulatory identity, prices,
+        locations and community facts are unreachable here. Always
+        `no-store`.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed profile.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, expected_revision, fields]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                expected_revision:
+                  type: integer
+                  minimum: 1
+                fields:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '200':
+          description: Updated projection with bumped revision.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/stations/{station_id}/profile/replies:
+    post:
+      summary: Post an official business reply (signed, scoped).
+      operationId: postOfficialReply
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated scoped reply (P31-T04, B-BR-P11/P12):
+        only the current approved `reply.official` scope with live
+        account/operator rechecked at publication; text obeys the
+        existing 280-scalar feedback rules and the grant id stamps
+        only after the comment authorship check. No vote weight,
+        ranking or criticism suppression follows. Always `no-store`.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed profile.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, product, text]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                product:
+                  type: string
+                text:
+                  type: string
+      responses:
+        '201':
+          description: Official reply recorded with business attribution.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comment_id]
+                properties:
+                  comment_id:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/stations/{station_id}/claims:
+    post:
+      summary: Open a private representation claim (signed).
+      operationId: openRepresentationClaim
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated claim intake (P30-T03, B-BR-P03/P04):
+        active free accounts open a private request bound to the
+        station UUID with a server-generated one-use declaration for
+        export. Same key plus same request replays (200); same key
+        plus changed request conflicts (409). No grant, CNPJ insight
+        or client flag creates authority; competing claims stay
+        private.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the claimed establishment.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, role, scopes, client_key]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                role:
+                  type: string
+                  enum: [administrator, manager]
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                client_key:
+                  type: string
+      responses:
+        '200':
+          description: Idempotent replay of the existing claim.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '201':
+          description: Claim opened with its first declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/profile/claims/mine:
+    post:
+      summary: List the caller's private claims.
+      operationId: listOwnedClaims
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated owner-only read (P30-T03): id, state
+        and version only. The session travels in the JSON body, never
+        the URL. Always `no-store`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Owner claim page.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/profile/claims/{id}/status:
+    post:
+      summary: Read one owned claim status with its declaration.
+      operationId: readOwnedClaim
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated owner-only read (P30-T03). Missing and
+        foreign records share one 404. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Private claim with its active declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/profile/claims/{id}/reissue:
+    post:
+      summary: Reissue a claim declaration (owner only).
+      operationId: reissueClaimDeclaration
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Versions the challenge and supersedes prior active versions
+        in one step: exactly one active declaration ever binds proof.
+        Closed claims refuse. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Claim with the new active declaration.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepresentationClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/profile/claims/{id}/proof:
+    post:
+      summary: Submit private signed proof bytes (signed).
+      operationId: submitClaimProof
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Private proof intake (P30-T04, B-BR-P05/P08): base64 PDF bytes
+        against the claim's single active declaration, validated
+        (magic, 5 MB cap, no encrypted/active content, no key
+        material) and hash-bound immutably. Identical redelivery
+        dedups; stale declarations, foreign claims and missing object
+        storage (503) never approve. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, declaration_id, filename, content_type, kind, content_base64]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+                declaration_id:
+                  type: string
+                  format: uuid
+                filename:
+                  type: string
+                content_type:
+                  type: string
+                kind:
+                  type: string
+                  enum: [authorization, mandate, scan]
+                content_base64:
+                  type: string
+      responses:
+        '200':
+          description: Idempotent redelivery of the existing proof.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimProof'
+        '201':
+          description: Proof accepted and hash-bound.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimProof'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/profile/claims/{id}/cancel:
+    post:
+      summary: Cancel one owned open claim.
+      operationId: cancelOwnedClaim
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
+        Session-authenticated owner-only cancel (P30-T03): open
+        records close; terminal records, foreign owners and unknown
+        ids fail without leaking which fired. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Claim identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Claim cancelled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: cancelled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /v1/stations/suggestions:
+    post:
+      summary: Submit a private station suggestion (signed).
+      operationId: submitStationSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated intake (P27-T01, B-BR-D07/D08): active
+        free accounts propose a missing station or correction; the
+        author derives server-side from the live session. Same
+        idempotency key plus same body replays the record (200);
+        same key plus changed body conflicts (409). Anonymous
+        contributor proof alone is insufficient (401). Suggestions
+        stay private to the submitter and reviewers until a decision;
+        knowing a public CNPJ grants nothing.
+      requestBody:
+        required: true
+        description: Live session plus idempotency key and structured proposal.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, client_submission_id, proposal]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+                client_submission_id:
+                  type: string
+                  example: 9d2c1a44-3b1f-4e5a-9c8d-7f6e5a4b3c2d1
+                proposal:
+                  $ref: '#/components/schemas/StationSuggestionProposal'
+      responses:
+        '200':
+          description: Idempotent replay of the existing suggestion.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '201':
+          description: Suggestion stored privately.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/stations/suggestions/mine:
+    post:
+      summary: List the caller's private suggestions.
+      operationId: listOwnedSuggestions
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P27-T01): newest first,
+        at most 20 per page in v1. The session travels in the JSON
+        body, never the URL. Always `no-store`; foreign owners share
+        nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Owner suggestion page.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/stations/suggestions/{id}/status:
+    post:
+      summary: Read one owned suggestion status.
+      operationId: readOwnedSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only read (P27-T01). Missing and
+        foreign records share one 404 (no ownership oracle). The
+        session travels in the JSON body, never the URL. Always
+        `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Suggestion identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                access_token:
+                  type: string
+      responses:
+        '200':
+          description: Private suggestion status.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/suggestions/{id}/cancel:
+    post:
+      summary: Cancel one owned pending suggestion.
+      operationId: cancelOwnedSuggestion
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated owner-only cancel (P27-T01): pending
+        records close; other states, foreign owners and unknown ids
+        fail without leaking which condition fired. Always `no-store`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Suggestion identifier of the caller's own record.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id:
+                  type: string
+                  format: uuid
+                  example: aac027be-d331-40e4-8d63-52ec3b8d2f41
+                access_token:
+                  type: string
+                  example: tok-access
+      responses:
+        '200':
+          description: Suggestion cancelled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: cancelled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /v1/accounts/email/codes:
     post:
       summary: Request a FREE email access code.
@@ -2007,6 +2850,42 @@ paths:
           $ref: '#/components/responses/NotFound'
 components:
   schemas:
+    CommunityFeedPage:
+      type: object
+      description: A public allowlisted city feed, not raw observation history.
+      required: [items, next_cursor, generated_at, municipality_code, state, fuel_product, sort, refresh_after_seconds]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items: {$ref: '#/components/schemas/CommunityFeedItem'}
+        next_cursor: {type: [string, 'null']}
+        generated_at: {type: string, format: date-time}
+        municipality_code: {type: string, pattern: '^[0-9]{7}$'}
+        state: {type: string, minLength: 2, maxLength: 2}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        sort: {type: string, enum: [recent, cheapest]}
+        refresh_after_seconds: {type: integer, const: 15}
+    CommunityFeedItem:
+      type: object
+      additionalProperties: false
+      description: Current comparable price facts; no media or attribution identifiers.
+      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version]
+      properties:
+        station_id: {type: string, format: uuid}
+        station_name: {type: string}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {$ref: '#/components/schemas/PriceUnit'}
+        amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        currency: {type: string, enum: [BRL]}
+        source: {type: string, enum: [COMMUNITY]}
+        condition: {type: string, enum: [STANDARD]}
+        confidence: {type: string, enum: [LOW, MEDIUM, HIGH]}
+        updated_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        supporters: {type: integer, minimum: 0}
+        confirmations: {type: integer, minimum: 0}
+        version: {type: integer, minimum: 1}
     Money:
       description: >
         Exact price in thousandths of a real. Positive integer 1..1000000
@@ -2388,6 +3267,22 @@ components:
         expires_at:
           type: string
           format: date-time
+    ClaimProof:
+      description: >
+        Private proof receipt (P30-T04): id, lifecycle state and
+        expiry only — never bytes, keys or personal data.
+      type: object
+      required: [id, status, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [received, verified, rejected, expired, deleted]
+        expires_at:
+          type: string
+          format: date-time
           example: '2026-09-28T00:05:00Z'
     PublicJWK:
       description: P-256 public key; private material never crosses the wire.
@@ -2728,6 +3623,128 @@ components:
           type: integer
           minimum: 0
           example: 21
+    StationSuggestionProposal:
+      description: >
+        Structured station suggestion body (P27-T01, B-BR-D07/D08):
+        display name plus municipality code and state; optional
+        kernel-validated CNPJ text, optional bounded coordinates and
+        an opaque private-evidence reference. Never grants ownership.
+      type: object
+      required: [display_name, municipality_code, state]
+      properties:
+        display_name:
+          type: string
+          example: Posto Novo
+        municipality_code:
+          type: string
+          example: '3550308'
+        state:
+          type: string
+          example: SP
+        cnpj_normalized:
+          type: string
+          example: '04218406000104'
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        has_coordinates:
+          type: boolean
+        evidence_ref:
+          type: string
+    StationSuggestion:
+      description: >
+        Private suggestion status (P27-T01): id, idempotency key and
+        lifecycle state only — never another owner's data and never a
+        grant of ownership.
+      type: object
+      required: [id, client_submission_id, state, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_submission_id:
+          type: string
+        state:
+          type: string
+          enum: [pending, cancelled, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
+    StationProfile:
+      description: >
+        Public station profile (P30-T02, B-BR-P01/P02): identity,
+        versioned business fields and operator link only. No badge
+        without an actual grant record; no private proof, personal
+        identity, prices or grants.
+      type: object
+      required: [station_id, display_name, location_quality, policy_version, revision, has_badge]
+      properties:
+        station_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        location_quality:
+          type: string
+          enum: [unknown, city-centroid, reviewed]
+        coordinates:
+          type: object
+          properties:
+            lat: {type: number}
+            lon: {type: number}
+        policy_version:
+          type: string
+          example: profile-v1
+        revision:
+          type: integer
+          minimum: 1
+        business:
+          type: object
+        operator:
+          type: object
+        has_badge:
+          type: boolean
+    RepresentationClaim:
+      description: >
+        Private claim with its active declaration (P30-T03,
+        B-BR-P03/P04): id, station, role, scopes, state, version,
+        exportable declaration and expiry only — never another
+        owner's data and never a grant.
+      type: object
+      required: [id, station_id, role, state, version, declaration_state, declaration_id, declaration, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        station_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [administrator, manager]
+        state:
+          type: string
+          enum: [draft, awaiting_proof, checking, needs_information, in_review, approved, denied, cancelled, expired]
+        version:
+          type: integer
+          minimum: 1
+        declaration_state:
+          type: string
+          enum: [active, superseded, consumed, expired]
+        declaration_id:
+          type: string
+          format: uuid
+          description: Active server-issued declaration identifier required for proof submission.
+        declaration:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
         mean_milli:
           type: [integer, 'null']
           description: Truncated mean in thousandths (4200 = 4.2); null with zero ratings.
@@ -2826,6 +3843,14 @@ components:
           type: string
           format: date-time
           example: 2026-10-01T00:00:00Z
+        business_station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Server-verified official-reply station (P31-T04); null for personal voices.
+        business_grant_id:
+          type: [string, 'null']
+          format: uuid
+          description: Grant verified at publication (P31-T04); null for personal voices.
     FeedbackTally:
       description: >
         Exact per-revision vote tally (P14-T04, B-BR-F05/F06): counts
@@ -3260,6 +4285,12 @@ components:
       headers:
         Retry-After:
           schema: {type: integer, example: 60}
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unavailable:
+      description: Dependency (e.g. proof object storage) not configured; retry later, never an approval.
       content:
         application/json:
           schema:

@@ -114,7 +114,7 @@ func AllowedForTarget(action, targetType string) bool {
 	case ActionReview, ActionResolve, ActionDismiss:
 		return targetType == TargetObservation || targetType == TargetDispute ||
 			targetType == TargetContributor || targetType == TargetEvidence ||
-			targetType == TargetComment
+			targetType == TargetComment || targetType == TargetStationClaim
 	default:
 		return false
 	}

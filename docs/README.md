@@ -6,6 +6,8 @@ This repository contains the preserved Android app, integrated backend phase his
 
 ## Canonical planning documents
 
+Next construction: [Android/VPS P34–P38](planning/ANDROID_VPS_PLAN.md) and [continuation prompt](planning/CONTINUE_ANDROID_VPS_PROMPT.md); subsequent [national catalog](planning/STATION_CATALOG_PLAN.md) and [station representation](planning/STATION_PROFILE_PLAN.md). Plans are not runtime proof.
+
 - [CURRENT_STATE_AUDIT](CURRENT_STATE_AUDIT.md) — source provenance, real implementation, reuse and inconsistencies.
 - [PRODUCT_CONTRACT](product/PRODUCT_CONTRACT.md) — free/community scope and revised local-backend → functional-app → real-production ordering.
 - [TARGET_ARCHITECTURE](backend/TARGET_ARCHITECTURE.md) — C4 views, modules, ownership, flows, jobs and scale.
@@ -17,7 +19,7 @@ This repository contains the preserved Android app, integrated backend phase his
 - [SECURITY_PRIVACY](security/SECURITY_PRIVACY.md) — STRIDE, identity/media security, inventory and rights.
 - [TEST_STRATEGY](backend/TEST_STRATEGY.md) — unit/integration/contracts/golden/migration/E2E/load and risk-based gates.
 - [INFRASTRUCTURE_PLAN](backend/INFRASTRUCTURE_PLAN.md) — environments, deployment, recovery, observability and cost assumptions.
-- [DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md), [FAST_EXECUTION](planning/FAST_EXECUTION.md) and [CI_PLAN](planning/CI_PLAN.md) — phase branches/PRs, task issues/commits, targeted tests, quick integration, full release and wiki synchronization.
+- [DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md), [FAST_EXECUTION](planning/FAST_EXECUTION.md) and [CI_PLAN](planning/CI_PLAN.md) — isolated phase branches/checkpoints, task issues/commits, immediate targeted tests, final project batch CI/PR merge/wiki and separate full release.
 - [Phase record](planning/templates/PHASE_RECORD.md), [task issue](planning/templates/TASK_ISSUE.md) and [phase PR](planning/templates/PHASE_PR.md) — templates for G01-FLOW helpers; no remote records are implied.
 - [AI_ENGINEERING_CONTRACT](AI_ENGINEERING_CONTRACT.md) and [AGENTS](../AGENTS.md) — bounded task workflow and DOD-1.
 - [MIGRATION_PLAN](MIGRATION_PLAN.md) — each existing feature, offline/conflict behavior and P10 integration.

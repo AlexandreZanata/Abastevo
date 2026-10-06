@@ -26,5 +26,5 @@
   "local_quick": "PASS (docs-only, run once by finish)",
   "wiki_commit": "0cf4dce",
   "cleanup": "phase branch deleted locally/remotely; worktree retained detached",
-  "post_merge_record": "Recorded on next authorized P18 branch"
+  "post_merge_record": "LOCAL_PENDING_NEXT_AUTHORIZED_BRANCH; no bookkeeping push to main"
 }

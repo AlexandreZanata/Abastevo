@@ -1,0 +1,11 @@
+# Android/VPS planning revision validation
+
+Date: 2026-10-05. Scope: Android-first next phases and an eight-line continuation prompt, with no runtime implementation or server mutation.
+
+- Source baseline: current main `b4754b2`, normal merge into local `codex/phase-34-vps-app-plan`; local ADR-018 delivery implementation retained. Existing station-catalog planning worktree preserved unchanged.
+- Added ADR-019 and P34–P38 (15 unique tasks) before P25–P33, preserving the previous 38 catalog/profile task IDs (including superseded P28-T04) and all integrated history. Copied the owned local catalog/profile rules/plans/ADR-017 and appended only their roadmap sections; no stale PROGRESS or backend/app file overwrite.
+- Updated roadmap/current state/fast card/commercial plan/AGENTS/index links. Origin is `https://teste.abastevo.com.br`; sample lat/lon is not hardcoded user location. DI `.example.invalid` origins and pending UUID/social wiring were found in current source; no claim those are fixed by a plan.
+- TLS/current data readiness remains UNVERIFIED from this agent: bounded public GETs to health/live, health/ready and the supplied nearby URL failed DNS in sandbox, then CA-chain validation with approved Python/curl network access (`curl` exit 60). No trust bypass, uploads, imports, private photo fixtures, login or deployment. Earlier successful VPS smoke remains a separate historical record.
+- Scoped planning checks PASS: local links/anchors, unique task IDs/dependency/source-vs-device states, exactly eight continuation prompt lines, tracked/untracked whitespace and redacted changed-file secret-surface review. No dependency or executable code added by this planning revision; no Go/Android/PostGIS suites needed or rerun for documentation.
+- Source construction uses immediate focused/risk tests and local phase checkpoints; owed provider/media/device evidence is explicitly separate. Per-phase CI/PR wait loops/merges/wiki are superseded by final project batch integration. iOS remains archived; real G09 and public pilot remain uncertified/unlaunched.
+- LOCAL_ONLY planning; remote issues/PR/GitHub/wiki not created or modified. Next implementation is P34-T01, not a public pilot or national importer. Any later source/server/publication action follows its actual user-authorized scope; plan existence is not completion.

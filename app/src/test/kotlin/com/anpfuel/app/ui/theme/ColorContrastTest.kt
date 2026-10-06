@@ -2,6 +2,8 @@ package com.anpfuel.app.ui.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+import com.anpfuel.app.ui.home.HomeHeroColors
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -37,6 +39,8 @@ class ColorContrastTest {
         assertAaNormalText(lightScheme.onSecondaryContainer, lightScheme.secondaryContainer)
         assertAaNormalText(lightScheme.onBackground, lightScheme.background)
         assertAaNormalText(lightScheme.onSurface, lightScheme.surface)
+        assertAaNormalText(lightScheme.onSurface, lightScheme.surfaceContainer)
+        assertAaNormalText(lightScheme.onSurfaceVariant, lightScheme.surfaceContainer)
         assertAaNormalText(lightScheme.onError, lightScheme.error)
     }
 
@@ -48,6 +52,8 @@ class ColorContrastTest {
         assertAaNormalText(darkScheme.onSecondaryContainer, darkScheme.secondaryContainer)
         assertAaNormalText(darkScheme.onBackground, darkScheme.background)
         assertAaNormalText(darkScheme.onSurface, darkScheme.surface)
+        assertAaNormalText(darkScheme.onSurface, darkScheme.surfaceContainer)
+        assertAaNormalText(darkScheme.onSurfaceVariant, darkScheme.surfaceContainer)
         assertAaNormalText(darkScheme.onError, darkScheme.error)
     }
 
@@ -57,5 +63,12 @@ class ColorContrastTest {
             ratio >= ColorContrast.AA_NORMAL_TEXT_MIN_RATIO,
             "Expected WCAG AA contrast >= ${ColorContrast.AA_NORMAL_TEXT_MIN_RATIO} but was $ratio",
         )
+    }
+
+    @Test
+    fun homeHeroTextAndActionMeetWcagAa() {
+        assertAaNormalText(Color.White, HomeHeroColors.Navy)
+        assertAaNormalText(HomeHeroColors.Mint, HomeHeroColors.Navy)
+        assertAaNormalText(HomeHeroColors.OnMint, HomeHeroColors.Mint)
     }
 }

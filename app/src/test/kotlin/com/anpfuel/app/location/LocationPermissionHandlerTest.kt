@@ -65,4 +65,13 @@ class LocationPermissionHandlerTest {
 
         assertFalse(handler.hasLocationPermission())
     }
+    @Test
+    fun revokedPermissionDuringCachedFixReturnsNoLocation() {
+        every { ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) } returns PackageManager.PERMISSION_GRANTED
+        val manager = mockk<android.location.LocationManager>()
+        every { context.getSystemService(android.location.LocationManager::class.java) } returns manager
+        every { manager.allProviders } returns listOf("gps")
+        every { manager.getLastKnownLocation("gps") } throws SecurityException("revoked")
+        org.junit.jupiter.api.Assertions.assertNull(handler.getLastKnownLocation())
+    }
 }

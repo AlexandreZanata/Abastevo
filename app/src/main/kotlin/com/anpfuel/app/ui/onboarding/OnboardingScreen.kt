@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +37,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.accessibility.headingSemantics
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.GeocodingAttributionFooter
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -145,19 +146,16 @@ private fun OnboardingContent(
         topBar = {
             AnpTopAppBar(
                 title = { Text(text = stringResource(titleRes)) },
-                navigationIcon = {
-                    if (uiState.step == OnboardingStep.WEEK_PICKER && !uiState.isLoadingCatalog) {
-                        TextButton(onClick = onBackToIntro) {
-                            Text(text = stringResource(R.string.action_back))
-                        }
-                    }
+                onNavigateUp = if (uiState.step == OnboardingStep.WEEK_PICKER && !uiState.isLoadingCatalog) {
+                    onBackToIntro
+                } else {
+                    null
                 },
             )
         },
         bottomBar = {
-            when (uiState.step) {
-                OnboardingStep.LOCATION_PROMPT -> GeocodingAttributionFooter()
-                else -> AnpAttributionFooter()
+            if (uiState.step == OnboardingStep.LOCATION_PROMPT) {
+                GeocodingAttributionFooter()
             }
         },
     ) { innerPadding ->

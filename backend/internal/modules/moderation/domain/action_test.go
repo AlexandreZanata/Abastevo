@@ -66,11 +66,17 @@ func TestAllowedForTarget(t *testing.T) {
 		t.Error("block observation allowed")
 	}
 	for _, a := range []string{ActionReview, ActionResolve, ActionDismiss} {
-		for _, target := range []string{TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment} {
+		for _, target := range []string{TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim} {
 			if !AllowedForTarget(a, target) {
 				t.Errorf("%s on %s refused", a, target)
 			}
 		}
+	}
+	if AllowedForTarget(ActionInvalidate, TargetStationClaim) {
+		t.Error("invalidate station claim allowed (reports never auto-decide)")
+	}
+	if AllowedForTarget(ActionBlock, TargetStationClaim) {
+		t.Error("block station claim allowed")
 	}
 	if !AllowedForTarget(ActionInvalidate, TargetComment) {
 		t.Error("invalidate comment refused")

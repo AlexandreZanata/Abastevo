@@ -14,7 +14,7 @@
     "guarded_merge",
     "wiki_home_explicit_adoption"
   ],
-  "state": "READY_FOR_REQUIRED_CURRENT_HEAD_INTEGRATION",
+  "state": "INTEGRATED / WIKI_SYNCED",
   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
   "release": "G09_NOT_CERTIFIED",
   "evidence": "docs/release-evidence/p00-app-icons-commercial-plan.md",
@@ -23,7 +23,14 @@
     "P00-T04": "1de6423",
     "P00-T05": "28bf779"
   },
-  "required_check": "Quick verification",
+  "required_check": "Quick verification SUCCESS",
   "tested_base": "9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96",
-  "wiki": "PENDING_MERGED_SNAPSHOT"
+  "wiki": "SYNCED",
+  "merged_sha": "bad31b79d6b83bf0fede7b456321f05846c2e06a",
+  "tested_head": "81347bff99dabccd73c589095846bc536f164609",
+  "local_quick": "full PASS once through finish, 16s",
+  "android_ci": "test SUCCESS",
+  "wiki_commit": "aac4b37fbcef3193598678ff12edeb3340d50cd9",
+  "cleanup": "phase branch deleted locally/remotely; worktree retained detached; primary edits untouched",
+  "post_merge_record": "LOCAL_PENDING_NEXT_AUTHORIZED_BRANCH; durable evidence published in PR #70 comment"
 }

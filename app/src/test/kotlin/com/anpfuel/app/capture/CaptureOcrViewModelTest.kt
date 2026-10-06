@@ -4,11 +4,21 @@ import android.content.Context
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.OcrPort
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
+import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 /**
@@ -16,6 +26,19 @@ import org.junit.jupiter.api.Test
  * auto-confirms or uploads.
  */
 class CaptureOcrViewModelTest {
+
+    private val dispatcher = StandardTestDispatcher()
+    private val enqueue = mockk<EnqueueContributionUseCase>()
+
+    @BeforeEach
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     private fun viewModel(
         enabled: Boolean,
@@ -34,7 +57,7 @@ class CaptureOcrViewModelTest {
         val permissions = CameraPermissionHandler(context)
         val handler = mockk<CameraPermissionHandler>()
         every { handler.hasCameraPermission() } returns hasPermission
-        return CaptureOcrViewModel(useCase, handler, flags)
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue)
     }
 
     @Test
@@ -92,5 +115,59 @@ class CaptureOcrViewModelTest {
         assertTrue(confirmed.candidate.manualEntry)
         assertTrue(confirmed.product == FuelProduct.ETHANOL)
         assertTrue(confirmed.conditionKind == "APP")
+    }
+
+    @Test
+    fun `valid target binds and legacy cnpj is invalid`() {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.bindTarget("d6c74c23-63db-4c24-a2e5-408cb23bad26", "GASOLINE_REGULAR")
+        assertTrue(vm.target.value?.stationId == "d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        assertTrue(!vm.targetInvalid.value)
+
+        vm.bindTarget("04218406000104", "GASOLINE_REGULAR")
+        assertTrue(vm.target.value == null)
+        assertTrue(vm.targetInvalid.value)
+
+        vm.bindTarget(null, null)
+        assertTrue(vm.target.value == null)
+        assertTrue(!vm.targetInvalid.value)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `submit without target or confirm stays NoTarget`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.submitConfirmed()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.NoTarget)
+
+        vm.onCaptureResult(cancelled = false, ocrText = "R$ 5,89")
+        vm.submitConfirmed()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.NoTarget)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `submit enqueues matching target and rejects fuel mismatch`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.onCaptureResult(cancelled = false, ocrText = "R$ 5,89")
+        val pending = vm.state.value as CaptureOcrUiState.NeedsConfirmation
+        vm.onConfirm(pending.candidates.first(), FuelProduct.GASOLINE_REGULAR, "STANDARD", true)
+        assertTrue(vm.state.value is CaptureOcrUiState.Confirmed)
+
+        vm.bindTarget("d6c74c23-63db-4c24-a2e5-408cb23bad26", "ETHANOL")
+        vm.submitConfirmed()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.FuelMismatch)
+
+        io.mockk.coEvery { enqueue.invoke(any()) } returns
+            com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome.Queued(
+                command = mockk(relaxed = true),
+                historical = false,
+            )
+        vm.bindTarget("d6c74c23-63db-4c24-a2e5-408cb23bad26", "GASOLINE_REGULAR")
+        vm.submitConfirmed()
+        advanceUntilIdle()
+        val submitted = vm.submit.value
+        assertTrue(submitted is CaptureOcrViewModel.SubmitState.Queued)
+        assertTrue(!(submitted as CaptureOcrViewModel.SubmitState.Queued).historical)
     }
 }

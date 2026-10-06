@@ -42,7 +42,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.FuelProductI18n
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
@@ -171,13 +170,7 @@ internal fun VehicleContent(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                navigationIcon = {
-                    TextButton(
-                        onClick = if (uiState.showForm) onDismissForm else onNavigateBack,
-                    ) {
-                        Text(text = stringResource(R.string.action_back))
-                    }
-                },
+                onNavigateUp = { if (uiState.showForm) onDismissForm() else onNavigateBack() },
             )
         },
         floatingActionButton = {
@@ -190,7 +183,6 @@ internal fun VehicleContent(
                 }
             }
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Column(
             modifier = Modifier

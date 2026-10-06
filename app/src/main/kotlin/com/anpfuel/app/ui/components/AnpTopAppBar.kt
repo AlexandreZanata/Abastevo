@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,7 +40,10 @@ fun AnpTopAppBar(
     },
     actions: @Composable RowScope.() -> Unit = {},
     applyStatusBarInsets: Boolean = true,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(

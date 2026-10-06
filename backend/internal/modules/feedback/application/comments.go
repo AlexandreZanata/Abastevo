@@ -25,6 +25,11 @@ type CommentStore interface {
 	FlagComment(ctx context.Context, id string) error
 	SetVisibility(ctx context.Context, id, visibility string) error
 	ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.StoredComment, error)
+	// AttributeBusinessComment stamps server-verified official-reply
+	// attribution on the author's own live comment. Author match plus
+	// null-guards make rebinding impossible; personal history stays
+	// personal.
+	AttributeBusinessComment(ctx context.Context, id, accountID, stationID, grantID string) error
 }
 
 // CommentPage is one bounded keyset page. NextCursor is empty at the
@@ -143,6 +148,20 @@ func (s *Service) DeleteComment(ctx context.Context, accountID, commentID string
 		return err
 	}
 	return s.Comments.DeleteComment(ctx, strings.TrimSpace(commentID), accountID, s.Clock.NowUnix())
+}
+
+// AttributeBusinessComment stamps server-verified official-reply
+// attribution on the author's own live, unattributed comment.
+// Rebinding, foreign authors and missing rows fail without leaking
+// which condition fired beyond not-found.
+func (s *Service) AttributeBusinessComment(ctx context.Context, accountID, commentID, stationID, grantID string) error {
+	if strings.TrimSpace(accountID) == "" || strings.TrimSpace(commentID) == "" {
+		return domain.ErrTargetInvalid
+	}
+	if err := s.authorize(ctx, accountID); err != nil {
+		return err
+	}
+	return s.Comments.AttributeBusinessComment(ctx, strings.TrimSpace(commentID), accountID, strings.TrimSpace(stationID), strings.TrimSpace(grantID))
 }
 
 // ViewComment resolves one live comment with its author alias.

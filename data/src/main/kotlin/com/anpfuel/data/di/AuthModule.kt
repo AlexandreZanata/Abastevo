@@ -12,6 +12,7 @@ import com.anpfuel.data.local.auth.AccountHttpApi
 import com.anpfuel.data.local.auth.AndroidKeystoreKeys
 import com.anpfuel.data.local.auth.KeystoreSessionStore
 import com.anpfuel.data.local.auth.SessionKeyProvider
+import com.anpfuel.data.remote.ApiEnvironment
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,19 +25,21 @@ import javax.inject.Singleton
 import okhttp3.OkHttpClient
 
 /**
- * FREE-account Hilt bindings (P13-T05B).
+ * FREE-account Hilt bindings (P13-T05B, origin shared in P34-T02).
  *
- * The base URL is an explicit preview placeholder (RFC 2606
- * `.invalid`, never resolves): codes issue nowhere until deployment
- * configuration lands, mirroring the backend memory-mail-sink
- * precedent. [AuthFlow] stays platform-free; Android owns storage
- * (Keystore), time, randomness and HTTP here.
+ * The shared [ApiEnvironment] origin selects the backend; preview
+ * (`RFC 2606 `.invalid``, never resolves) remains available as
+ * [ApiEnvironment.PREVIEW] but DI uses the explicit staging selection.
+ * [AuthFlow] stays platform-free; Android owns storage
+ * (Keystore), time, randomness and HTTP here. Environment changes never
+ * reuse sessions without re-auth: stale/foreign blobs fail closed to
+ * logged-out via [KeystoreSessionStore].
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object AuthModule {
 
-    /** Preview API base; deployment configuration replaces it. */
+    /** Preview API base; kept for reference, DI uses the shared origin. */
     const val PREVIEW_BASE_URL: String = "https://api.anpfuel.example.invalid"
 
     @Provides
@@ -59,12 +62,14 @@ object AuthModule {
 
     @Provides
     @Singleton
-    fun provideAccountApi(): AuthAccountApi {
+    fun provideAccountApi(
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): AuthAccountApi {
         val client = OkHttpClient.Builder()
             .connectTimeout(10L, TimeUnit.SECONDS)
             .readTimeout(10L, TimeUnit.SECONDS)
             .build()
-        return AccountHttpApi(client, PREVIEW_BASE_URL)
+        return AccountHttpApi(client, environment.origin)
     }
 
     @Provides

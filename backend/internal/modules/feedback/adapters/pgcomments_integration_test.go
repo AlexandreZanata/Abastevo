@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
 )
@@ -183,5 +185,66 @@ func TestPGUnsafeTextRoundTripsVerbatim(t *testing.T) {
 	}
 	if view.Text != raw {
 		t.Errorf("view text must be verbatim (no rendering server-side), got %q", view.Text)
+	}
+}
+
+func commentSetupPool(t *testing.T) (*application.Service, *pgxpool.Pool, string, string, string) {
+	t.Helper()
+	svc, pool := freshService(t)
+	svc.Comments = svc.Store.(application.CommentStore)
+	station := testUUID(9001)
+	acc1 := seedAccount(t, pool, 1, "active")
+	acc2 := seedAccount(t, pool, 2, "active")
+	return svc, pool, station, acc1, acc2
+}
+
+func seedBusinessGrant(t *testing.T, pool *pgxpool.Pool, accountID, stationID string) string {
+	t.Helper()
+	ctx := context.Background()
+	grantID := testUUID(7001)
+	claimID := testUUID(7002)
+	decisionID := testUUID(7003)
+	if _, err := pool.Exec(ctx, "INSERT INTO profile_claims (id, account_id, station_id, role, policy_version, state) VALUES ($1, $2, $3, 'administrator', 'profile-v1', 'approved')",
+		claimID, accountID, stationID); err != nil {
+		t.Fatalf("seed claim: %v", err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO claim_decisions (id, claim_id, reviewer, decision, reason, policy_version, operator_cnpj, scopes) VALUES ($1, $2, 'op-1', 'approved', 'seed', 'profile-v1', '04218406000104', 'reply.official')",
+		decisionID, claimID); err != nil {
+		t.Fatalf("seed decision: %v", err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO representation_grants (id, account_id, station_id, operator_cnpj, role, scopes, claim_id, decision_id) VALUES ($1, $2, $3, '04218406000104', 'administrator', 'reply.official', $4, $5)",
+		grantID, accountID, stationID, claimID, decisionID); err != nil {
+		t.Fatalf("seed grant: %v", err)
+	}
+	return grantID
+}
+
+func TestPGBusinessAttributionAuthorChecked(t *testing.T) {
+	svc, pool, station, acc1, acc2 := commentSetupPool(t)
+	ctx := context.Background()
+	grantID := seedBusinessGrant(t, pool, acc1, station)
+
+	top, err := svc.SubmitComment(ctx, acc1, station, "GASOLINE_REGULAR", "Resposta oficial em breve")
+	if err != nil {
+		t.Fatalf("SubmitComment: %v", err)
+	}
+	// Foreign authors cannot stamp business attribution.
+	if err := svc.AttributeBusinessComment(ctx, acc2, top.ID, station, grantID); !errors.Is(err, domain.ErrCommentNotFound) {
+		t.Fatalf("foreign attribute err = %v (must not leak)", err)
+	}
+	// Author stamps once; rebinding refuses.
+	if err := svc.AttributeBusinessComment(ctx, acc1, top.ID, station, grantID); err != nil {
+		t.Fatalf("attribute: %v", err)
+	}
+	if err := svc.AttributeBusinessComment(ctx, acc1, top.ID, station, grantID); !errors.Is(err, domain.ErrCommentNotFound) {
+		t.Fatalf("rebind err = %v", err)
+	}
+	// Threads expose the at-time attribution.
+	view, err := svc.ViewComment(ctx, top.ID)
+	if err != nil {
+		t.Fatalf("view: %v", err)
+	}
+	if view.BusinessStationID == "" || view.BusinessGrantID != grantID {
+		t.Fatalf("view = %+v", view)
 	}
 }

@@ -1,14 +1,17 @@
 package com.anpfuel.app.ui.home
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -32,9 +35,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,11 +55,9 @@ import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
 import com.anpfuel.app.navigation.Routes
-import com.anpfuel.app.ui.components.AnpAttributionFooter
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.FuelPriceCard
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SyncStatusBanner
@@ -112,7 +117,6 @@ internal fun HomeContent(
     modifier: Modifier = Modifier,
     includeSurveyWeekChip: Boolean = true,
 ) {
-    val context = LocalContext.current
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
     }
@@ -122,7 +126,13 @@ internal fun HomeContent(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AnpTopAppBar(
-                title = { Text(text = stringResource(R.string.home_title)) },
+                title = {
+                    Image(
+                        painter = painterResource(R.drawable.ic_abastevo_logo),
+                        contentDescription = stringResource(R.string.app_name),
+                        modifier = Modifier.size(32.dp),
+                    )
+                },
                 actions = {
                     if (includeSurveyWeekChip) {
                         SurveyWeekChipAction(
@@ -141,7 +151,6 @@ internal fun HomeContent(
                 },
             )
         },
-        bottomBar = { AnpAttributionFooter() },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -177,6 +186,12 @@ internal fun HomeContent(
                 }
             }
 
+            if (uiState.hasLocation) {
+                LocationHeader(uiState = uiState, onNavigate = onNavigate)
+            }
+            HomeCommunityHero(onContribute = { onNavigate(Routes.STATIONS) })
+            HomeBenefits()
+
             when {
                 uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
 
@@ -206,7 +221,6 @@ internal fun HomeContent(
                 }
 
                 uiState.isEmptyMunicipality -> {
-                    LocationHeader(uiState = uiState)
                     Br010EmptyState(
                         dataAvailability = uiState.dataAvailability ?: DataAvailability.NO_DATA_THIS_WEEK,
                         operationalNote = uiState.operationalNote,
@@ -216,8 +230,36 @@ internal fun HomeContent(
                 }
 
                 else -> {
-                    LocationHeader(uiState = uiState)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.home_reference_prices_title),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        TextButton(onClick = { onNavigate(Routes.PRICES) }) {
+                            Text(stringResource(R.string.home_view_all))
+                        }
+                    }
                     PriceMetadata(uiState = uiState)
+                    uiState.prices.forEach { price ->
+                        HomeReferencePriceCard(
+                            price = price,
+                            darkTheme = darkTheme,
+                            onClick = { onNavigate(Routes.stations(price.fuelProduct)) },
+                        )
+                    }
+                    TextButton(
+                        onClick = { onNavigate(Routes.PRICES) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.home_view_price_details))
+                    }
+                    HomeShortcuts(onNavigate = onNavigate)
                     if (uiState.tankFillCostEstimates.isEmpty()) {
                         TankFillCostPlaceholderCard(
                             onClick = { onNavigate(Routes.VEHICLES) },
@@ -227,18 +269,6 @@ internal fun HomeContent(
                             estimates = uiState.tankFillCostEstimates,
                             onNavigate = onNavigate,
                         )
-                    }
-                    uiState.prices.forEach { price ->
-                        FuelPriceCard(
-                            price = price,
-                            onClick = { onNavigate(Routes.stations(price.fuelProduct)) },
-                        )
-                    }
-                    TextButton(
-                        onClick = { onNavigate(Routes.PRICES) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.home_view_price_details))
                     }
                     RowActions(onNavigate = onNavigate)
                 }
@@ -258,7 +288,7 @@ private fun VehicleCarousel(
     val cardWidth = screenWidth * 0.85f
 
     LazyRow(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().testTag("home_vehicle_carousel"),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
@@ -287,14 +317,30 @@ private fun VehicleCarousel(
 }
 
 @Composable
-private fun LocationHeader(uiState: HomeUiState) {
+private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
     val municipality = uiState.municipality ?: return
     val state = uiState.state ?: return
-    Text(
-        text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.onBackground,
-    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            uiState.surveyWeek?.let { week ->
+                val locale = LocalConfiguration.current.locales[0]
+                Text(
+                    stringResource(R.string.prices_survey_week_label, SurveyWeekFormatter.formatRange(week, locale)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        TextButton(onClick = { onNavigate(Routes.LOCATION) }) {
+            Text(stringResource(R.string.home_change_city))
+        }
+    }
 }
 
 @Composable
@@ -303,7 +349,7 @@ private fun PriceMetadata(uiState: HomeUiState) {
         val locale = LocalConfiguration.current.locales[0]
         Text(
             text = stringResource(
-                R.string.prices_survey_week_label,
+                R.string.home_reference_period,
                 SurveyWeekFormatter.formatRange(week, locale),
             ),
             style = MaterialTheme.typography.bodyMedium,

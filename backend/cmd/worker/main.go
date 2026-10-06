@@ -19,13 +19,18 @@ import (
 	"time"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
+	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
+	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
@@ -426,6 +431,47 @@ func run() error {
 			Service: nil,
 			Batch:   25,
 		},
+		"registry-reconcile": directoryjobs.Reconcile{
+			Store: &directoryregistry.PGStore{Q: dbdirectory.New(pool.Underlying())},
+			Canon: directoryadapters.RegistryCanonicalizer{Repo: directoryRepo},
+		},
+		"suggestion-verify": directoryjobs.VerifySweep{
+			Store: &directoryadapters.IntakeStore{Q: dbdirectory.New(pool.Underlying())},
+			Resolve: func(ctx context.Context, cnpj, display string, address map[string]string) (string, string, string, error) {
+				// Exact official match only: the CNPJ must already sit
+				// in staged official assertions from a complete run.
+				// Unknown CNPJs defer to human review instead of
+				// minting stations from user input alone.
+				official, err := dbdirectory.New(pool.Underlying()).FindOfficialAssertion(ctx, cnpj)
+				if err != nil {
+					return "", "", "", directoryapp.ErrStationUnknown
+				}
+				station, err := directoryRepo.ResolveCNPJ(ctx, cnpj, display, address)
+				if err != nil {
+					return "", "", "", err
+				}
+				return station.ID, official.MunicipalityCode.String, official.State.String, nil
+			},
+			RecordPin: func(ctx context.Context, stationID string, lat, lon float64, ref string) error {
+				_, err := directoryRepo.RecordLocation(ctx, directorydomain.LocationRevision{
+					StationID:       stationID,
+					PointWKT:        fmt.Sprintf("POINT(%f %f)", lon, lat),
+					Quality:         "unknown",
+					Provider:        "suggestion",
+					SourceReference: ref,
+				})
+				return err
+			},
+			NewID: jobs.NewUUIDv4,
+			Batch: 25,
+			AccountLive: func(ctx context.Context, accountID string) (bool, error) {
+				account, found, err := accountadapters.NewPGStore(pool.Underlying()).GetAccount(ctx, accountID)
+				if err != nil || !found {
+					return false, err
+				}
+				return account.Status == accountdomain.StatusActive, nil
+			},
+		},
 		"validate-observation": communityjobs.Validate{
 			// Fresh signal bands persist after admission (P06-T01):
 			// claimant-position intake does not exist yet, so the
@@ -666,6 +712,20 @@ func run() error {
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,
 			Interval: time.Hour, Enabled: false, Reason: "D05 pending: no live provider",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "registry-reconcile-daily", Kind: "registry-reconcile", Version: 1,
+			Interval: 24 * time.Hour, Enabled: false, Reason: "P25 pending: no live source access yet; staging stays operator-triggered",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "source": "registry-csv", "snapshot": period}
+			},
+		},
+		{
+			Name: "suggestion-verify-hourly", Kind: "suggestion-verify", Version: 1,
+			Interval: time.Hour, Enabled: true, Reason: "",
+			Build: func(string) map[string]any {
+				return map[string]any{"version": 1, "batch": 25}
+			},
 		},
 		{
 			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
