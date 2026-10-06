@@ -162,6 +162,25 @@ if bash "$FLOW" finish --pr 7 --required "Quick verification" >/dev/null 2>&1; t
     if git -C "$WORK" rev-parse --verify origin/codex/phase-03-words >/dev/null 2>&1; then bad "words branch not cleaned"; else ok "words branch cleaned remotely"; fi
 else bad "multi-word required check refused"; fi
 
+echo "== maintained dev, explicit origin/main, and state-free guards =="
+git -C "$WORK" checkout -q -b dev origin/main
+HEAD_SHA="$(git -C "$WORK" rev-parse HEAD)"
+pr_json "$HEAD_SHA" > "$GH_PR_JSON"
+BEFORE="$(snapshot "$WORK")"
+if bash "$FLOW" finish --base origin/main --dry-run >/dev/null; then ok "existing dev explicit base accepted"; else bad "existing dev explicit base refused"; fi
+if [[ "$BEFORE" == "$(snapshot "$WORK")" ]]; then ok "dev dry-run zero mutations"; else bad "dev dry-run mutated"; fi
+if bash "$FLOW" finish --base HEAD --dry-run >/dev/null 2>&1; then bad "arbitrary explicit base accepted"; else ok "arbitrary explicit base refused"; fi
+printf '{"check_runs":[]}' > "$GH_CHECKS_JSON"
+: > "$GH_LOG"
+if bash "$FLOW" finish --base origin/main --pr 7 --required "Quick verification" >/dev/null 2>&1; then bad "state-free dev bypassed missing check"; else ok "state-free dev still requires check"; fi
+if [[ -s "$GH_LOG" ]]; then bad "refused dev attempted quick or merge"; else ok "refused dev zero remote mutations"; fi
+printf '{"check_runs":[{"name":"Quick verification","status":"completed","conclusion":"success"}]}' > "$GH_CHECKS_JSON"
+if bash "$FLOW" finish --base origin/main --pr 7 --required "Quick verification" >/dev/null 2>&1; then
+    if [[ "$(git -C "$WORK" branch --show-current)" == dev ]] && git -C "$WORK" show-ref --verify --quiet refs/remotes/origin/dev; then ok "dev retained locally and remotely"; else bad "maintained dev deleted"; fi
+    if [[ "$(git -C "$WORK" rev-parse dev)" == "$(git -C "$WORK" rev-parse origin/main)" ]]; then ok "dev synchronized with integrated main"; else bad "dev not synchronized"; fi
+else bad "guarded dev finish failed"; fi
+git -C "$WORK" checkout -q main
+
 echo "== linked worktree finalization preserves occupied main =="
 git -C "$WORK" worktree add -q --detach "$TMP/linked" origin/main
 export GIT_FLOW_ROOT="$TMP/linked"

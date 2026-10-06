@@ -44,10 +44,10 @@ require_phase_branch() {
     local b
     b="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
     if [[ "$b" == "main" ]]; then
-        die "refusing on main branch; use a codex/phase-NN-slug branch"
+        die "refusing on main branch; use dev or an existing codex/phase-NN-slug branch"
     fi
     case "$b" in
-        codex/phase-*) ;;
+        codex/phase-*|dev) ;;
         *) die "refusing on non-phase branch '$b'" ;;
     esac
 }
@@ -192,9 +192,10 @@ gh_json() {
 }
 
 cmd_finish() {
-    local required="Quick verification" dry_run=0 skip_quick=0 pr_num=""
+    local required="Quick verification" dry_run=0 skip_quick=0 pr_num="" explicit_base=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --base) explicit_base="$2"; shift 2 ;;
             --required) required="$2"; shift 2 ;;
             --dry-run) dry_run=1; shift ;;
             --skip-quick) skip_quick=1; shift ;;
@@ -205,11 +206,16 @@ cmd_finish() {
     check_trusted_repo
     require_phase_branch
     require_clean_tree
-    [[ -f "$STATE_FILE" ]] || die "missing phase state; start first"
     local branch head base_ref base_sha
     branch="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
-    [[ "$(read_state_field branch)" == "$branch" ]] || die "state branch mismatch"
-    base_ref="$(read_state_field base_ref)"
+    if [[ -n "$explicit_base" ]]; then
+        [[ "$explicit_base" == "origin/main" ]] || die "explicit final target must be origin/main"
+        base_ref="$explicit_base"
+    else
+        [[ -f "$STATE_FILE" ]] || die "missing phase state; use --base origin/main for existing dev/phase delivery"
+        [[ "$(read_state_field branch)" == "$branch" ]] || die "state branch mismatch; use --base origin/main for existing delivery"
+        base_ref="$(read_state_field base_ref)"
+    fi
     git -C "$ROOT" rev-parse --verify "$base_ref" >/dev/null || die "unknown base $base_ref"
     base_sha="$(git -C "$ROOT" rev-parse "$base_ref")"
     head="$(git -C "$ROOT" rev-parse HEAD)"
@@ -287,6 +293,15 @@ cmd_finish() {
     else
         git -C "$ROOT" checkout main
         git -C "$ROOT" merge --ff-only origin/main
+    fi
+    if [[ "$branch" == "dev" ]]; then
+        # dev is maintained. Fast-forward it only after proving the guarded
+        # merge contains its head; no resets or forced updates.
+        git -C "$ROOT" checkout dev
+        git -C "$ROOT" merge --ff-only origin/main
+        git -C "$ROOT" push origin dev
+        info "integrated dev as $head (PR $pr_number); dev synchronized and retained"
+        return 0
     fi
     # Always delete the merged phase branch locally and remotely, verified.
     # Safe deletion only: -d refuses unmerged work; never -D.

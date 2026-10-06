@@ -820,6 +820,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated scoped edit (P31-T04, B-BR-P10/P11):
         only the current approved `profile.edit` scope, only frozen
         policy fields, optimistic revision match, live account and
@@ -870,6 +874,16 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/stations/{station_id}/profile/replies:
     post:
       summary: Post an official business reply (signed, scoped).
@@ -877,6 +891,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated scoped reply (P31-T04, B-BR-P11/P12):
         only the current approved `reply.official` scope with live
         account/operator rechecked at publication; text obeys the
@@ -927,6 +945,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/stations/{station_id}/claims:
     post:
       summary: Open a private representation claim (signed).
@@ -934,6 +962,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated claim intake (P30-T03, B-BR-P03/P04):
         active free accounts open a private request bound to the
         station UUID with a server-generated one-use declaration for
@@ -996,6 +1028,16 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/profile/claims/mine:
     post:
       summary: List the caller's private claims.
@@ -1003,6 +1045,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated owner-only read (P30-T03): id, state
         and version only. The session travels in the JSON body, never
         the URL. Always `no-store`.
@@ -1039,6 +1085,16 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/profile/claims/{id}/status:
     post:
       summary: Read one owned claim status with its declaration.
@@ -1046,6 +1102,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated owner-only read (P30-T03). Missing and
         foreign records share one 404. Always `no-store`.
       parameters:
@@ -1083,6 +1143,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/profile/claims/{id}/reissue:
     post:
       summary: Reissue a claim declaration (owner only).
@@ -1090,6 +1160,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Versions the challenge and supersedes prior active versions
         in one step: exactly one active declaration ever binds proof.
         Closed claims refuse. Always `no-store`.
@@ -1130,6 +1204,16 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/profile/claims/{id}/proof:
     post:
       summary: Submit private signed proof bytes (signed).
@@ -1137,6 +1221,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Private proof intake (P30-T04, B-BR-P05/P08): base64 PDF bytes
         against the claim's single active declaration, validated
         (magic, 5 MB cap, no encrypted/active content, no key
@@ -1210,6 +1298,10 @@ paths:
       tags: [directory]
       security: []
       description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until contributor
+        proof/binding and private storage integration are accepted. The
+        following contract describes the retained module behavior.
         Session-authenticated owner-only cancel (P30-T03): open
         records close; terminal records, foreign owners and unknown
         ids fail without leaking which fired. Always `no-store`.
@@ -1255,6 +1347,16 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          description: Private representation integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /v1/stations/suggestions:
     post:
       summary: Submit a private station suggestion (signed).

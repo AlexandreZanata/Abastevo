@@ -442,12 +442,13 @@ func run() error {
 			return operator.CNPJ, operator.Source, true, nil
 		},
 	}
+	privateProfiles := router.With(privateProfileUnavailable)
 	profileadapters.ClaimHandler{
 		Ports: profileClaimPorts,
 		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
-	}.RegisterRoutes(router)
+	}.RegisterRoutes(privateProfiles)
 	// Private proof intake (P30-T04). Object storage is unprovisioned:
 	// Bytes stays nil so intake refuses with 503 instead of any
 	// approval fallback. Wire it with the storage scope when that
@@ -463,7 +464,7 @@ func run() error {
 		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
-	}.RegisterRoutes(router)
+	}.RegisterRoutes(privateProfiles)
 	// Scoped business management (P31-T04). Same composition rule:
 	// grant/operator checks, feedback reply submission and business
 	// attribution arrive as closures so modules never cross-read.
@@ -506,7 +507,7 @@ func run() error {
 		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
 			return accountService.ValidateAccess(ctx, familyID, accessToken)
 		},
-	}.RegisterRoutes(router)
+	}.RegisterRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
 	// checkAccountGate refuses social writes from contributors bound

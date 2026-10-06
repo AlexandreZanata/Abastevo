@@ -1,5 +1,7 @@
 # Fast execution card
 
+Current maintained-branch policy: [ADR-020](../adr/020-maintained-dev-main-delivery.md), explicitly requested 2026-10-06, supersedes the phase branch lifecycle below for future work. Develop on `dev`, integrate to protected `main` through a PR, and retain/synchronize dev after merge. For existing clean delivery or dev, use `bash scripts/git-flow.sh finish --base origin/main --pr NUMBER --required "Quick verification"`; every security/current-head/base/check guard still applies. Historical phase evidence and incomplete runtime/release obligations remain preserved. The phase commands below describe the earlier construction batch.
+
 Next source task: [P34-T01 Android/VPS connection](ANDROID_VPS_PLAN.md), under ADR-019. Staging origin is `https://teste.abastevo.com.br`; do not resume the public pilot or national importer before app-first scope.
 
 [ADR-018](../adr/018-project-batch-delivery.md), adopted 2026-10-05, supersedes per-phase PR/CI/merge waits. Read AGENTS, this card, current [PROGRESS](PROGRESS.md), selected ROADMAP task and relevant code/tests. Read [DELIVERY_WORKFLOW](DELIVERY_WORKFLOW.md) at opening/policy change; search archives by task ID.

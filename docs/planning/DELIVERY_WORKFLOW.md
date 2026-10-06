@@ -1,5 +1,7 @@
 # Project batch delivery workflow
 
+Current maintained-branch policy: [ADR-020](../adr/020-maintained-dev-main-delivery.md), explicitly requested 2026-10-06, supersedes the phase branch lifecycle below for future work. Develop on `dev`, integrate to protected `main` through a PR, and retain/synchronize dev after merge. For existing clean delivery or dev, use `bash scripts/git-flow.sh finish --base origin/main --pr NUMBER --required "Quick verification"`; every security/current-head/base/check guard still applies. Historical phase evidence and incomplete runtime/release obligations remain preserved. The phase commands below describe the earlier construction batch.
+
 Policy: [ADR-018](../adr/018-project-batch-delivery.md), explicit user request 2026-10-05. It supersedes per-phase PR/CI/merge/wiki cadence in ADR-013 and older task plans. Main protection remains required; no remote setting changes are implied by a local edit.
 
 ## Opening and isolation

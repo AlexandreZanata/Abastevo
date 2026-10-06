@@ -8,6 +8,8 @@ Product owns behavior; DOMAIN_MODEL/COMMUNITY_PRICING_SPEC own backend rules; BU
 
 Known legacy conflicts remain in CURRENT_STATE_AUDIT. ADR-014 supersedes the production-before-mobile restriction; ADR-015 defines KMP/native boundaries. ADR-013 and DELIVERY_WORKFLOW supersede the old one-PR-per-task / repeated-full-check interpretation. ADR-018 supersedes the per-phase remote cadence: tested local checkpoints advance construction; CI/PR merge/wiki happen at final project batch closure. A process plan is not proof that workflows/protection or remote publication are active.
 
+ADR-020 supersedes maintained-branch delivery: future development uses dev → protected main; historical phase records remain evidence. Explicit administrative closure of incomplete trackers preserves obligations and does not certify them.
+
 ## Per-task workflow
 
 1. Inspect status/diff, current state, selected task/dependencies and relevant implementation/tests. Identify owned scope; resume or isolate with branch/worktree without changing others' work.

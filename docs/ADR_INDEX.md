@@ -37,3 +37,5 @@ Existing Android decisions remain applicable to the imported release. New status
 
 - [ADR-017 — Station profiles and verified representation](adr/017-station-profile-and-verified-representation.md): private claims, independent corporate authority and scoped permissions.
 - [ADR-019 — Android/VPS first](adr/019-android-vps-integration-first.md): P34–P38 live app source integration before catalog/profile expansion; final project batch delivery.
+
+- [ADR-020 — Maintained dev and protected main](adr/020-maintained-dev-main-delivery.md): consolidate historical construction branches, maintain dev → main, preserve incomplete acceptance obligations.

@@ -247,6 +247,31 @@ func TestPublicProcessIdentityAndSignedWrites(t *testing.T) {
 	for _, path := range []string{"/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
 		h.call(h.req("GET", path, nil), 200)
 	}
+	// Incomplete private representation never reaches its token-only handlers.
+	claimID := "c0000000-0000-4000-8000-000000000002"
+	privatePaths := []string{
+		"/v1/stations/" + station + "/claims", "/v1/profile/claims/mine",
+		"/v1/profile/claims/" + claimID + "/status", "/v1/profile/claims/" + claimID + "/reissue",
+		"/v1/profile/claims/" + claimID + "/cancel", "/v1/profile/claims/" + claimID + "/proof",
+		"/v1/stations/" + station + "/profile", "/v1/stations/" + station + "/profile/replies",
+	}
+	privateBody := []byte(`{"family_id":"synthetic-session","access_token":"synthetic-token"}`)
+	for _, path := range privatePaths {
+		h.call(h.req("POST", path, privateBody), 503)
+		signed := h.signed(a, "POST", path, privateBody)
+		if out := h.call(signed, 503); out["error"].(map[string]any)["code"] != "profile.integration-pending" {
+			t.Fatalf("wrong private refusal: %v", out)
+		}
+		replay := h.req("POST", path, privateBody)
+		replay.Header = signed.Header.Clone()
+		h.call(replay, 503)
+	}
+	for _, table := range []string{"profile_claims", "claim_proofs"} {
+		var count int
+		if err := conn.QueryRow(ctx, "SELECT count(*) FROM "+pgx.Identifier{table}.Sanitize()).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("private containment changed %s: count=%d error=%v", table, count, err)
+		}
+	}
 	raw := []byte(fmt.Sprintf(`{"client_submission_id":"process-submit-1","station_id":%q,"fuel_product":"GASOLINE_REGULAR","price":{"amount_milli_brl":5900,"currency":"BRL","unit":"L"},"condition":{"kind":"STANDARD"}}`, station))
 	req := h.signed(a, "POST", "/v1/observations", raw)
 	req.Header.Set("Idempotency-Key", "process-key-1")

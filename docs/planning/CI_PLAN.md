@@ -1,5 +1,7 @@
 # CI cadence — local construction, final project integration, release
 
+Current maintained-branch policy: [ADR-020](../adr/020-maintained-dev-main-delivery.md), explicitly requested 2026-10-06, supersedes the phase branch lifecycle below for future work. Develop on `dev`, integrate to protected `main` through a PR, and retain/synchronize dev after merge. For existing clean delivery or dev, use `bash scripts/git-flow.sh finish --base origin/main --pr NUMBER --required "Quick verification"`; every security/current-head/base/check guard still applies. Historical phase evidence and incomplete runtime/release obligations remain preserved. The phase commands below describe the earlier construction batch.
+
 [ADR-018](../adr/018-project-batch-delivery.md) changes cadence on 2026-10-05 by explicit user request. Current local changes are not GitHub activation. Required main protection was last verified as Quick verification on 2026-09-30; this edit does not remove it. Historical G01-FLOW activation included draft runs and per-phase merges; those are superseded only after the workflow rollout.
 
 ## Level 1 — each microtask, local and specific
