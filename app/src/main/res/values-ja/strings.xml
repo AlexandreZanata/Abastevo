@@ -320,12 +320,6 @@
     <string name="capture_disabled">コミュニティキャプチャは無効です。</string>
     <string name="capture_permission_required">キャプチャにはカメラの許可が必要です。写真なしでも投稿を続けられます。</string>
     <string name="capture_cancelled">キャプチャはキャンセルされました。何も保存されませんでした。</string>
-    <string name="capture_no_price">価格が検出されませんでした。価格を手動で入力してください。</string>
-    <string name="capture_low_confidence">OCR の信頼度が低いです。価格を確認して燃料を選んでください。</string>
-    <string name="capture_check_price">検出された価格を確認して燃料を選んでください。</string>
-    <string name="capture_confirm_explicit">確認する（明示的）</string>
-    <string name="capture_confirmed_outbox">価格を確認しました：%1$s。アップロードは投稿アウトボックスからのみ行われます。</string>
-    <string name="capture_done">完了</string>
     <string name="source_badge_community">コミュニティ</string>
     <string name="source_badge_anp_dated">ANP • %1$s</string>
     <string name="source_badge_unknown">情報なし</string>
@@ -461,14 +455,8 @@
     <string name="suggest_refresh_status">状況を更新</string>
     <string name="suggest_cancel">提案を取消</string>
     <string name="suggest_open_action">未登録の給油所を提案</string>
-    <string name="capture_pick_product">燃料を選択</string>
-    <string name="capture_pick_condition">価格条件を選択</string>
-    <string name="capture_manual_price_label">または価格を入力</string>
-    <string name="capture_manual_price_placeholder">例：5,89</string>
     <string name="capture_target_label">投稿先：給油所%1$s・%2$s</string>
     <string name="capture_target_invalid">給油所の参照が無効です。戻って選び直してください。</string>
-    <string name="capture_submit">送信待ち一覧に追加</string>
-    <string name="capture_submitted">アップロード待ちです。状況、再試行、取消は自分の投稿で確認できます。</string>
     <string name="capture_submit_failed">送信待ちに追加できませんでした（%1$s）。何も送信されていません。</string>
     <string name="station_profile_title">給油所プロフィール</string>
     <string name="station_profile_unavailable">プロフィールを利用できません。接続後に再試行してください。</string>

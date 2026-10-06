@@ -320,12 +320,6 @@
     <string name="capture_disabled">Захват сообщества отключён.</string>
     <string name="capture_permission_required">Для захвата требуется разрешение камеры. Вы можете продолжать участвовать без фото.</string>
     <string name="capture_cancelled">Захват отменён. Ничего не сохранено.</string>
-    <string name="capture_no_price">Цена не обнаружена. Введите цену вручную.</string>
-    <string name="capture_low_confidence">Низкая уверенность OCR. Проверьте цену и выберите топливо.</string>
-    <string name="capture_check_price">Проверьте распознанную цену и выберите топливо.</string>
-    <string name="capture_confirm_explicit">Подтвердить (явно)</string>
-    <string name="capture_confirmed_outbox">Цена подтверждена: %1$s. Загрузка выполняется только из исходящих вкладов.</string>
-    <string name="capture_done">Готово</string>
     <string name="source_badge_community">Сообщество</string>
     <string name="source_badge_anp_dated">ANP • %1$s</string>
     <string name="source_badge_unknown">Нет данных</string>
@@ -461,14 +455,8 @@
     <string name="suggest_refresh_status">Обновить статус</string>
     <string name="suggest_cancel">Отменить предложение</string>
     <string name="suggest_open_action">Предложить отсутствующую АЗС</string>
-    <string name="capture_pick_product">Выберите топливо</string>
-    <string name="capture_pick_condition">Выберите условие цены</string>
-    <string name="capture_manual_price_label">Или введите цену</string>
-    <string name="capture_manual_price_placeholder">Например, 5,89</string>
     <string name="capture_target_label">Публикация для АЗС %1$s · %2$s</string>
     <string name="capture_target_invalid">Неверная ссылка на АЗС · вернитесь и выберите станцию снова.</string>
-    <string name="capture_submit">Добавить в очередь отправки</string>
-    <string name="capture_submitted">Добавлено в очередь. Статус, повтор и отмена доступны в ваших сообщениях.</string>
     <string name="capture_submit_failed">Не удалось добавить в очередь (%1$s). Ничего не отправлено.</string>
     <string name="station_profile_title">Профиль АЗС</string>
     <string name="station_profile_unavailable">Профиль недоступен. Повторите при наличии соединения.</string>

@@ -320,12 +320,6 @@
     <string name="capture_disabled">Community-Erfassung ist deaktiviert.</string>
     <string name="capture_permission_required">Kameraberechtigung ist für die Erfassung erforderlich. Du kannst auch ohne Foto beitragen.</string>
     <string name="capture_cancelled">Erfassung abgebrochen. Nichts wurde gespeichert.</string>
-    <string name="capture_no_price">Kein Preis erkannt. Gib den Preis manuell ein.</string>
-    <string name="capture_low_confidence">Niedrige OCR-Konfidenz. Prüfe den Preis und wähle den Kraftstoff.</string>
-    <string name="capture_check_price">Prüfe den erkannten Preis und wähle den Kraftstoff.</string>
-    <string name="capture_confirm_explicit">Bestätigen (explizit)</string>
-    <string name="capture_confirmed_outbox">Preis bestätigt: %1$s. Upload nur aus dem Beitrags-Ausgang.</string>
-    <string name="capture_done">Fertig</string>
     <string name="source_badge_community">Gemeinschaft</string>
     <string name="source_badge_anp_dated">ANP • %1$s</string>
     <string name="source_badge_unknown">Keine Angaben</string>
@@ -461,14 +455,8 @@
     <string name="suggest_refresh_status">Status aktualisieren</string>
     <string name="suggest_cancel">Vorschlag zurückziehen</string>
     <string name="suggest_open_action">Fehlende Tankstelle vorschlagen</string>
-    <string name="capture_pick_product">Kraftstoff wählen</string>
-    <string name="capture_pick_condition">Preisbedingung wählen</string>
-    <string name="capture_manual_price_label">Oder Preis eingeben</string>
-    <string name="capture_manual_price_placeholder">Z. B. 5,89</string>
     <string name="capture_target_label">Meldung für Tankstelle %1$s · %2$s</string>
     <string name="capture_target_invalid">Ungültige Tankstellenreferenz · zurückgehen und erneut wählen.</string>
-    <string name="capture_submit">Zur Ausgangswarteschlange senden</string>
-    <string name="capture_submitted">Upload vorgemerkt. Status, Wiederholung und Abbruch unter Ihren Beiträgen.</string>
     <string name="capture_submit_failed">Warteschlange nicht erstellt (%1$s). Nichts gesendet.</string>
     <string name="station_profile_title">Tankstellenprofil</string>
     <string name="station_profile_unavailable">Profil nicht verfügbar. Bei Verbindung erneut versuchen.</string>

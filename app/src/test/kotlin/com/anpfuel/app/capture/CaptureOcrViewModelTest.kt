@@ -290,4 +290,79 @@ class CaptureOcrViewModelTest {
         org.junit.jupiter.api.Assertions.assertEquals(
             FuelProduct.GASOLINE_REGULAR, slot.captured.fuelProduct)
     }
+
+    @Test
+    fun `geofence admits only the minimum station area`() {
+        org.junit.jupiter.api.Assertions.assertTrue(
+            CaptureOcrViewModel.isInsideStationArea(0.0))
+        org.junit.jupiter.api.Assertions.assertTrue(
+            CaptureOcrViewModel.isInsideStationArea(
+                CaptureOcrViewModel.MIN_STATION_AREA_METERS))
+        org.junit.jupiter.api.Assertions.assertFalse(
+            CaptureOcrViewModel.isInsideStationArea(
+                CaptureOcrViewModel.MIN_STATION_AREA_METERS + 0.5))
+        org.junit.jupiter.api.Assertions.assertFalse(
+            CaptureOcrViewModel.isInsideStationArea(null))
+    }
+
+    @Test
+    fun `fuel rows remove restore and blank means unsent`() {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "6,59")
+        vm.setFuelAmount(FuelProduct.ETHANOL, "")
+        org.junit.jupiter.api.Assertions.assertEquals(
+            "6,59", vm.fuelAmounts.value[FuelProduct.GASOLINE_REGULAR])
+        vm.removeFuel(FuelProduct.ETHANOL)
+        org.junit.jupiter.api.Assertions.assertTrue(
+            FuelProduct.ETHANOL in vm.removedFuels.value)
+        vm.restoreFuels()
+        org.junit.jupiter.api.Assertions.assertTrue(vm.removedFuels.value.isEmpty())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `submit sends one contribution per filled fuel`() = runTest(dispatcher) {
+        val vm = viewModel(
+            enabled = true,
+            hasPermission = true,
+            location = com.anpfuel.domain.valueobject.DeviceLocation.of(-12.55, -55.72),
+            nearby = NearbyServerStationsOutcome.Fresh(
+                listOf(nearbyStation("d6c74c23-63db-4c24-a2e5-408cb23bad26", "Posto A", 120.0))),
+        )
+        vm.onEntryPermissions(cameraGranted = true, locationGranted = true)
+        advanceUntilIdle()
+        vm.pickStation("d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "6,59")
+        vm.setFuelAmount(FuelProduct.ETHANOL, "4,32")
+        vm.removeFuel(FuelProduct.DIESEL_S500)
+        val fuels = mutableListOf<FuelProduct>()
+        io.mockk.coEvery { enqueue.invoke(any()) } answers {
+            fuels += firstArg<EnqueueContributionUseCase.Request>().fuelProduct
+            com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome.Queued(
+                command = mockk(relaxed = true),
+                historical = false,
+            )
+        }
+        vm.submitContributions()
+        advanceUntilIdle()
+        val submitted = vm.submit.value
+        assertTrue(submitted is CaptureOcrViewModel.SubmitState.Queued)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            2, (submitted as CaptureOcrViewModel.SubmitState.Queued).count)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            setOf(FuelProduct.GASOLINE_REGULAR, FuelProduct.ETHANOL), fuels.toSet())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `submit marks invalid rows without sending`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = true)
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "nove")
+        vm.submitContributions()
+        advanceUntilIdle()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.NoTarget)
+        org.junit.jupiter.api.Assertions.assertTrue(
+            FuelProduct.GASOLINE_REGULAR in vm.fuelErrors.value)
+        io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
 }

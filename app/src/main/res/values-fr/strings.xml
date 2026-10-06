@@ -320,12 +320,6 @@
     <string name="capture_disabled">La capture communautaire est désactivée.</string>
     <string name="capture_permission_required">L\'autorisation caméra est requise pour capturer. Vous pouvez continuer à contribuer sans photo.</string>
     <string name="capture_cancelled">Capture annulée. Rien n\'a été enregistré.</string>
-    <string name="capture_no_price">Aucun prix détecté. Saisissez le prix manuellement.</string>
-    <string name="capture_low_confidence">Confiance OCR faible. Vérifiez le prix et choisissez le carburant.</string>
-    <string name="capture_check_price">Vérifiez le prix détecté et choisissez le carburant.</string>
-    <string name="capture_confirm_explicit">Confirmer (explicite)</string>
-    <string name="capture_confirmed_outbox">Prix confirmé : %1$s. L\'envoi se fait uniquement depuis la boîte d\'envoi des contributions.</string>
-    <string name="capture_done">Terminé</string>
     <string name="source_badge_community">Communauté</string>
     <string name="source_badge_anp_dated">ANP • %1$s</string>
     <string name="source_badge_unknown">Aucune information</string>
@@ -461,14 +455,8 @@
     <string name="suggest_refresh_status">Actualiser le statut</string>
     <string name="suggest_cancel">Annuler la proposition</string>
     <string name="suggest_open_action">Proposer une station manquante</string>
-    <string name="capture_pick_product">Choisir le carburant</string>
-    <string name="capture_pick_condition">Choisir la condition du prix</string>
-    <string name="capture_manual_price_label">Ou saisir le prix</string>
-    <string name="capture_manual_price_placeholder">Ex. : 5,89</string>
     <string name="capture_target_label">Publication pour la station %1$s · %2$s</string>
     <string name="capture_target_invalid">Référence de station invalide · revenez et choisissez à nouveau.</string>
-    <string name="capture_submit">Envoyer vers la file de sortie</string>
-    <string name="capture_submitted">Téléversement en attente. Statut, reprise et annulation dans vos contributions.</string>
     <string name="capture_submit_failed">Mise en file impossible (%1$s). Rien n’a été envoyé.</string>
     <string name="station_profile_title">Profil de la station</string>
     <string name="station_profile_unavailable">Profil indisponible. Réessayez une fois connecté.</string>

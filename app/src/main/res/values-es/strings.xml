@@ -320,12 +320,6 @@
     <string name="capture_disabled">La captura de la comunidad está desactivada.</string>
     <string name="capture_permission_required">Se requiere permiso de cámara para capturar. Puedes seguir contribuyendo sin foto.</string>
     <string name="capture_cancelled">Captura cancelada. No se guardó nada.</string>
-    <string name="capture_no_price">No se detectó precio. Introduce el precio manualmente.</string>
-    <string name="capture_low_confidence">Confianza OCR baja. Revisa el precio y elige el combustible.</string>
-    <string name="capture_check_price">Revisa el precio detectado y elige el combustible.</string>
-    <string name="capture_confirm_explicit">Confirmar (explícito)</string>
-    <string name="capture_confirmed_outbox">Precio confirmado: %1$s. La subida solo ocurre desde la bandeja de contribuciones.</string>
-    <string name="capture_done">Listo</string>
     <string name="source_badge_community">Comunidad</string>
     <string name="source_badge_anp_dated">ANP • %1$s</string>
     <string name="source_badge_unknown">Sin información</string>
@@ -461,14 +455,8 @@
     <string name="suggest_refresh_status">Actualizar estado</string>
     <string name="suggest_cancel">Cancelar sugerencia</string>
     <string name="suggest_open_action">Sugerir estación que falta</string>
-    <string name="capture_pick_product">Elige el combustible</string>
-    <string name="capture_pick_condition">Elige la condición del precio</string>
-    <string name="capture_manual_price_label">O introduce el precio</string>
-    <string name="capture_manual_price_placeholder">P. ej., 5,89</string>
     <string name="capture_target_label">Publicando para estación %1$s · %2$s</string>
     <string name="capture_target_invalid">Referencia inválida; vuelve atrás y selecciona la estación de nuevo.</string>
-    <string name="capture_submit">Enviar a la bandeja de salida</string>
-    <string name="capture_submitted">En cola de subida. Estado, reintento y cancelación están en tus aportes.</string>
     <string name="capture_submit_failed">No se pudo poner en cola (%1$s). No se envió nada.</string>
     <string name="station_profile_title">Perfil de la estación</string>
     <string name="station_profile_unavailable">Perfil no disponible. Reintenta cuando haya conexión.</string>

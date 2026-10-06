@@ -106,6 +106,40 @@ class CaptureOcrViewModel @Inject constructor(
     val photoRefused: StateFlow<String?> = _photoRefused.asStateFlow()
 
     /**
+     * Multi-fuel report rows: one typed amount per fuel, blank means
+     * that fuel is not sent. [removedFuels] hides rows the contributor
+     * crossed out; [fuelErrors] marks rows that failed to parse on the
+     * last submit attempt.
+     */
+    private val _fuelAmounts = MutableStateFlow<Map<FuelProduct, String>>(emptyMap())
+    val fuelAmounts: StateFlow<Map<FuelProduct, String>> = _fuelAmounts.asStateFlow()
+
+    private val _removedFuels = MutableStateFlow<Set<FuelProduct>>(emptySet())
+    val removedFuels: StateFlow<Set<FuelProduct>> = _removedFuels.asStateFlow()
+
+    private val _fuelErrors = MutableStateFlow<Set<FuelProduct>>(emptySet())
+    val fuelErrors: StateFlow<Set<FuelProduct>> = _fuelErrors.asStateFlow()
+
+    fun setFuelAmount(product: FuelProduct, raw: String) {
+        _fuelAmounts.value = _fuelAmounts.value + (product to raw.take(16))
+        if (raw.isNotBlank()) _fuelErrors.value = _fuelErrors.value - product
+    }
+
+    fun removeFuel(product: FuelProduct) {
+        _removedFuels.value = _removedFuels.value + product
+        _fuelAmounts.value = _fuelAmounts.value - product
+        _fuelErrors.value = _fuelErrors.value - product
+    }
+
+    fun restoreFuels() {
+        _removedFuels.value = emptySet()
+    }
+
+    /** Distance of the relevant station, or null when unverifiable. */
+    fun stationDistance(stationId: String?): Double? =
+        stationId?.let { id -> _nearby.value.firstOrNull { it.station.stationId == id }?.distanceMeters }
+
+    /**
      * Entry permissions for the camera module: without camera the
      * contributor stays on the honest PermissionDenied path; without
      * location the station picker stays unavailable but manual review
@@ -171,6 +205,97 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     /**
+     * Swaps the attached shot after the contributor crops it (same
+     * budgets, same transient entry discipline). Review state is kept:
+     * only the photo pointer changes.
+     */
+    fun replacePhoto(bytes: ByteArray, mime: String) {
+        when (val prepared = photoFlow.prepare(bytes, mime)) {
+            is PhotoFlow.PhotoResult.Ready -> {
+                _photoId.value = prepared.id
+                _photoRefused.value = null
+            }
+            is PhotoFlow.PhotoResult.Refused -> _photoRefused.value = prepared.code
+        }
+    }
+
+    /**
+     * Sends one contribution per filled fuel row (blank rows are not
+     * sent, crossed-out rows are hidden). Every row carries the default
+     * STANDARD condition; payment conditions are intentionally not
+     * collected. The target resolves per row from the deep-link binding
+     * or the picked nearby station combined with that row's fuel.
+     */
+    fun submitContributions() {
+        val rows = FuelProduct.entries
+            .filter { it !in _removedFuels.value }
+            .mapNotNull { product ->
+                val raw = _fuelAmounts.value[product].orEmpty()
+                if (raw.isBlank()) null else product to raw
+            }
+        if (rows.isEmpty()) {
+            _submit.value = SubmitState.NoTarget
+            return
+        }
+        _fuelErrors.value = emptySet()
+        viewModelScope.launch {
+            var sent = 0
+            var failure: String? = null
+            val invalid = mutableSetOf<FuelProduct>()
+            for ((product, raw) in rows) {
+                val confirmed = when (val outcome =
+                    useCase.confirmManual(raw, product, DEFAULT_CONDITION, true)) {
+                    is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed -> outcome
+                    else -> null
+                }
+                if (confirmed == null) {
+                    invalid += product
+                    continue
+                }
+                val target = resolveRowTarget(product)
+                if (target == null) {
+                    invalid += product
+                    continue
+                }
+                try {
+                    enqueue.invoke(
+                        EnqueueContributionUseCase.Request(
+                            clientSubmissionId = java.util.UUID.randomUUID().toString(),
+                            stationId = target.stationId,
+                            fuelProduct = confirmed.product,
+                            amountMilliBrl = confirmed.candidate.priceMilli,
+                            conditionKind = confirmed.conditionKind,
+                            capturedAtMillis = System.currentTimeMillis(),
+                            photoId = _photoId.value,
+                        ),
+                    )
+                    sent++
+                } catch (error: Exception) {
+                    failure = error.message ?: error.javaClass.simpleName
+                    break
+                }
+            }
+            _fuelErrors.value = invalid
+            _submit.value = when {
+                sent == 0 && failure != null -> SubmitState.Failed(failure)
+                sent == 0 -> SubmitState.NoTarget
+                failure != null -> SubmitState.Partial(sent, failure)
+                else -> SubmitState.Queued(historical = false, count = sent)
+            }
+        }
+    }
+
+    private fun resolveRowTarget(product: FuelProduct): ContributionTarget? {
+        val bound = _target.value
+        if (bound != null && bound.fuelProductWire == WireFuelMapper.toWire(product)) return bound
+        if (bound != null) return null
+        val stationId = _pickedStationId.value ?: return null
+        return runCatching {
+            ContributionTarget.create(stationId, WireFuelMapper.toWire(product))
+        }.getOrNull()
+    }
+
+    /**
      * P37-T02 — submit result for the confirmed capture. `null` until
      * the first submit attempt. A transient network failure stays
      * `Failed` (outbox retry owns recovery); it never becomes accepted.
@@ -179,8 +304,18 @@ class CaptureOcrViewModel @Inject constructor(
         data object NoTarget : SubmitState
         data object FuelMismatch : SubmitState
         data object Disabled : SubmitState
-        data class Queued(val historical: Boolean) : SubmitState
+        data class Queued(val historical: Boolean, val count: Int = 1) : SubmitState
+        data class Partial(val sent: Int, val reason: String) : SubmitState
         data class Failed(val reason: String) : SubmitState
+    }
+
+    /** Minimum station area: the camera opens only inside this radius. */
+    companion object {
+        const val MIN_STATION_AREA_METERS: Double = 150.0
+        const val DEFAULT_CONDITION: String = "STANDARD"
+
+        fun isInsideStationArea(distanceMeters: Double?): Boolean =
+            distanceMeters != null && distanceMeters <= MIN_STATION_AREA_METERS
     }
 
     private val _submit = MutableStateFlow<SubmitState?>(null)
