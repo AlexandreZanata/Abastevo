@@ -71,4 +71,37 @@ class CityCommunityFeedHttpClientTest {
         assertEquals("Station {A}", CityCommunityFeedHttpClient.decode(payload.replace("Synthetic station", "Station {A}"), query).items.single().stationName)
     }
 
+    @Test fun `best and worst sorts travel and echo`() = runTest {
+        for (sort in listOf(com.anpfuel.domain.community.FeedSort.BEST to "best", com.anpfuel.domain.community.FeedSort.WORST to "worst")) {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setBody(payload.replace("\"sort\":\"recent\"", "\"sort\":\"${sort.second}\"")))
+                val page = CityCommunityFeedHttpClient(OkHttpClient(), server.url("/").toString())
+                    .read(query.copy(sort = sort.first))
+                assertEquals(sort.second, server.takeRequest().requestUrl!!.queryParameter("sort"))
+                assertEquals(1, page.items.size)
+            }
+        }
+    }
+
+    @Test fun `community star average parses and mismatched sorts fail closed`() {
+        val rated = payload
+            .replace("\"sort\":\"recent\"", "\"sort\":\"best\"")
+            .replace("\"version\":1}", "\"version\":1,\"ratings_count\":3,\"ratings_avg\":4.33}")
+        val item = CityCommunityFeedHttpClient.decode(rated, query.copy(sort = com.anpfuel.domain.community.FeedSort.BEST)).items.single()
+        assertEquals(3, item.ratingsCount)
+        assertEquals(4.33, item.ratingsAvg)
+        assertThrows(Exception::class.java) {
+            CityCommunityFeedHttpClient.decode(rated, query.copy(sort = com.anpfuel.domain.community.FeedSort.WORST))
+        }
+        assertThrows(Exception::class.java) {
+            CityCommunityFeedHttpClient.decode(
+                rated.replace("4.33", "9.99"),
+                query.copy(sort = com.anpfuel.domain.community.FeedSort.BEST),
+            )
+        }
+        val legacy = CityCommunityFeedHttpClient.decode(payload, query).items.single()
+        assertEquals(0, legacy.ratingsCount)
+        assertNull(legacy.ratingsAvg)
+    }
+
 }

@@ -619,6 +619,9 @@
     <string name="feed_auto_refresh">Standard prices · refreshes every 15 seconds</string>
     <string name="feed_recent">Most recent</string>
     <string name="feed_cheapest">Cheapest</string>
+    <string name="feed_best">Best fuel</string>
+    <string name="feed_worst">Worst fuel</string>
+    <string name="feed_rating_value">%1$.1f · %2$d community ratings</string>
     <string name="feed_unavailable">Could not update the feed</string>
     <string name="feed_unavailable_hint">Check your connection and try again.</string>
     <string name="feed_cached_hint">Previously loaded prices are shown. Check their dates before refuelling.</string>

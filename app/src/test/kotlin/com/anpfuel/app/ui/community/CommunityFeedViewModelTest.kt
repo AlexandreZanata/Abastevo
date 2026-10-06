@@ -68,6 +68,17 @@ class CommunityFeedViewModelTest {
         assertTrue(cancelled); assertEquals(FeedSort.CHEAPEST, vm.state.value.sort)
         vm.setForeground(false); runCurrent()
     }
+    @Test fun `best and worst sorts refresh with the rating order`() = runTest(dispatcher) {
+        coEvery { useCase(any(), any()) } answers { CommunityFeedPage(listOf(item()), null, at) }
+        val vm = model(); vm.setForeground(true); runCurrent()
+        vm.selectSort(FeedSort.BEST); runCurrent()
+        assertEquals(FeedSort.BEST, vm.state.value.sort)
+        coVerify { useCase(match { it.sort == FeedSort.BEST }, null) }
+        vm.selectSort(FeedSort.WORST); runCurrent()
+        assertEquals(FeedSort.WORST, vm.state.value.sort)
+        coVerify { useCase(match { it.sort == FeedSort.WORST }, null) }
+        vm.setForeground(false); runCurrent()
+    }
     @Test fun `missing city makes no network requests`() = runTest(dispatcher) {
         coEvery { useCase.city() } returns null
         val vm = model(); vm.setForeground(true); runCurrent()

@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.community
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -116,11 +117,18 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
                     FilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
                         label = { Text(stringResource(R.string.feed_recent)) }, leadingIcon = { Icon(Icons.Default.Schedule, null, Modifier.size(18.dp)) })
                     FilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
                         label = { Text(stringResource(R.string.feed_cheapest)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingDown, null, Modifier.size(18.dp)) })
+                    FilterChip(selected = state.sort == FeedSort.BEST, onClick = { onSort(FeedSort.BEST) },
+                        label = { Text(stringResource(R.string.feed_best)) }, leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(18.dp)) })
+                    FilterChip(selected = state.sort == FeedSort.WORST, onClick = { onSort(FeedSort.WORST) },
+                        label = { Text(stringResource(R.string.feed_worst)) }, leadingIcon = { Icon(Icons.Default.StarOutline, null, Modifier.size(18.dp)) })
                 }
             }
             item {
@@ -215,6 +223,14 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
                     Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
                     Text(price, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = FuelProductTint.colorFor(item.fuel, darkTheme))
                     Text(stringResource(when (item.unit) { "M3" -> R.string.feed_unit_m3; "KG_13" -> R.string.feed_unit_cylinder; else -> R.string.feed_unit_litre }),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            val avg = item.ratingsAvg
+            if (avg != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.feed_rating_value, avg, item.ratingsCount),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

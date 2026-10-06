@@ -617,6 +617,9 @@
     <string name="feed_auto_refresh">Preços padrão · atualiza a cada 15 segundos</string>
     <string name="feed_recent">Mais recentes</string>
     <string name="feed_cheapest">Mais barato</string>
+    <string name="feed_best">Melhor combustível</string>
+    <string name="feed_worst">Pior combustível</string>
+    <string name="feed_rating_value">%1$.1f · %2$d notas da comunidade</string>
     <string name="feed_unavailable">Não foi possível atualizar o feed</string>
     <string name="feed_unavailable_hint">Verifique sua conexão e tente novamente.</string>
     <string name="feed_cached_hint">Exibindo preços carregados anteriormente. Confira as datas antes de abastecer.</string>
