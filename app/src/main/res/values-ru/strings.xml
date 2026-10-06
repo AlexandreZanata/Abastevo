@@ -544,4 +544,24 @@
     <string name="station_service_restroom">Туалет</string>
     <string name="station_service_wifi">Wi-Fi</string>
     <string name="station_service_parking">Парковка</string>
+
+    <!-- Reference-inspired Home; price source and period remain explicit. -->
+    <string name="home_hero_title">Водители помогают</string>
+    <string name="home_hero_title_accent">водителям</string>
+    <string name="home_hero_description">Сравнивайте цены в городе и делитесь наблюдениями.</string>
+    <string name="home_hero_contribute">Поделиться ценой</string>
+    <string name="home_benefit_savings">Больше экономии</string>
+    <string name="home_benefit_savings_description">Сравнивайте цены в своём городе.</string>
+    <string name="home_benefit_community">Сообщество</string>
+    <string name="home_benefit_community_description">Водители делятся ценами.</string>
+    <string name="home_benefit_trust">Ясные источники</string>
+    <string name="home_benefit_trust_description">Проверяйте источник и дату.</string>
+    <string name="home_reference_prices_title">Цены в вашем городе</string>
+    <string name="home_view_all">Все цены</string>
+    <string name="home_change_city">Мой город</string>
+    <string name="home_reference_period">Ориентир ANP • %1$s</string>
+    <string name="home_shortcut_stations">Найти АЗС</string>
+    <string name="home_shortcut_stations_description">Посмотреть местные АЗС</string>
+    <string name="home_shortcut_history">История цен</string>
+    <string name="home_shortcut_history_description">Изменения цен в городе</string>
 </resources>

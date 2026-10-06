@@ -4,7 +4,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anpfuel.app.R
@@ -65,7 +70,7 @@ class HomeScreenTest {
         }
 
         composeTestRule.onNodeWithText("Curitiba, PR").assertIsDisplayed()
-        composeTestRule.onNodeWithText("R$ 3,42", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("R$ 3,42", substring = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -108,7 +113,7 @@ class HomeScreenTest {
         val fuelLabel = context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))
         val cardDescription = context.getString(R.string.a11y_fuel_price_card, fuelLabel, "R$ 3,42")
 
-        composeTestRule.onNodeWithContentDescription(cardDescription).performClick()
+        composeTestRule.onNodeWithContentDescription(cardDescription).performScrollTo().performClick()
 
         assertEquals(Routes.stations(FuelProduct.ETHANOL), navigatedRoute)
     }
@@ -134,7 +139,7 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("No fuel price data synced yet.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No fuel price data synced yet.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -164,7 +169,7 @@ class HomeScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Track your real fill-up cost").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Track your real fill-up cost").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -206,7 +211,88 @@ class HomeScreenTest {
             }
         }
 
+        composeTestRule.onNodeWithTag("home_vehicle_carousel").performScrollTo()
         composeTestRule.onNodeWithContentDescription("Gol", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("R$ 274,50", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun heroContributionSelectsAStationBeforeCapture() {
+        var route: String? = null
+        showCommercialHome(onNavigate = { route = it })
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.onNodeWithText(context.getString(R.string.home_hero_contribute)).performClick()
+        assertEquals(Routes.STATIONS, route)
+    }
+
+    @Test
+    fun citySelectorOpensExistingLocationJourney() {
+        var route: String? = null
+        showCommercialHome(onNavigate = { route = it })
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.onNodeWithText(context.getString(R.string.home_change_city)).performClick()
+        assertEquals(Routes.LOCATION, route)
+    }
+
+    @Test
+    fun darkThemeKeepsAnpSourceAndFuelNavigationExplicit() {
+        var route: String? = null
+        showCommercialHome(darkTheme = true, onNavigate = { route = it })
+        composeTestRule.onNodeWithText("ANP").performScrollTo().assertIsDisplayed()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val fuelLabel = context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))
+        val description = context.getString(R.string.a11y_fuel_price_card, fuelLabel, "R$ 3,42")
+        composeTestRule.onNodeWithContentDescription(description).performScrollTo().performClick()
+        assertEquals(Routes.stations(FuelProduct.ETHANOL), route)
+    }
+
+    @Test
+    fun largeFontKeepsContributionAndPriceCardsReachable() {
+        showCommercialHome(fontScale = 2f)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.onNodeWithText(context.getString(R.string.home_hero_contribute))
+            .performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.home_benefit_trust_description))
+            .performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("R$ 3,42").performScrollTo().assertIsDisplayed()
+    }
+
+    private fun showCommercialHome(
+        darkTheme: Boolean = false,
+        fontScale: Float = 1f,
+        onNavigate: (String) -> Unit = {},
+    ) {
+        composeTestRule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                AnpFuelTheme(darkTheme = darkTheme, dynamicColor = false) {
+                    HomeContent(
+                        uiState = HomeUiState(
+                            isLoading = false,
+                            readiness = DataReadinessState.READY,
+                            hasCachedData = true,
+                            hasLocation = true,
+                            municipality = "Curitiba",
+                            state = BrazilianState.PARANA,
+                            surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13"),
+                            prices = listOf(AveragePriceUiModel(
+                                fuelProduct = FuelProduct.ETHANOL,
+                                averageFormatted = "R$ 3,42",
+                                minimumFormatted = "R$ 3,10",
+                                maximumFormatted = "R$ 3,80",
+                                stationCount = 42,
+                            )),
+                        ),
+                        darkTheme = darkTheme,
+                        onToggleTheme = {},
+                        onNavigate = onNavigate,
+                        onRefresh = {},
+                        onRetry = {},
+                        onWeekChanged = {},
+                        includeSurveyWeekChip = false,
+                    )
+                }
+            }
+        }
     }
 }

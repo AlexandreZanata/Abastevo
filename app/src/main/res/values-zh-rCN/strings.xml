@@ -544,4 +544,24 @@
     <string name="station_service_restroom">卫生间</string>
     <string name="station_service_wifi">Wi-Fi</string>
     <string name="station_service_parking">停车场</string>
+
+    <!-- Reference-inspired Home; price source and period remain explicit. -->
+    <string name="home_hero_title">驾驶者之间</string>
+    <string name="home_hero_title_accent">互相帮助</string>
+    <string name="home_hero_description">比较城市价格，分享您的发现。</string>
+    <string name="home_hero_contribute">分享价格</string>
+    <string name="home_benefit_savings">节省更多</string>
+    <string name="home_benefit_savings_description">比较您所在城市的价格。</string>
+    <string name="home_benefit_community">社区</string>
+    <string name="home_benefit_community_description">驾驶者分享价格。</string>
+    <string name="home_benefit_trust">明确来源</string>
+    <string name="home_benefit_trust_description">查看来源和日期。</string>
+    <string name="home_reference_prices_title">您所在城市的价格</string>
+    <string name="home_view_all">查看全部</string>
+    <string name="home_change_city">我的城市</string>
+    <string name="home_reference_period">ANP参考价格 • %1$s</string>
+    <string name="home_shortcut_stations">查找加油站</string>
+    <string name="home_shortcut_stations_description">探索本地加油站</string>
+    <string name="home_shortcut_history">价格历史</string>
+    <string name="home_shortcut_history_description">查看城市价格变化</string>
 </resources>

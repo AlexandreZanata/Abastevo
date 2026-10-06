@@ -544,4 +544,24 @@
     <string name="station_service_restroom">Toilettes</string>
     <string name="station_service_wifi">Wi-Fi</string>
     <string name="station_service_parking">Parking</string>
+
+    <!-- Reference-inspired Home; price source and period remain explicit. -->
+    <string name="home_hero_title">Des conducteurs</string>
+    <string name="home_hero_title_accent">qui s’entraident</string>
+    <string name="home_hero_description">Comparez les prix de la ville et partagez vos observations.</string>
+    <string name="home_hero_contribute">Partager un prix</string>
+    <string name="home_benefit_savings">Économisez plus</string>
+    <string name="home_benefit_savings_description">Comparez les prix de votre ville.</string>
+    <string name="home_benefit_community">Communauté</string>
+    <string name="home_benefit_community_description">Les conducteurs partagent les prix.</string>
+    <string name="home_benefit_trust">Sources claires</string>
+    <string name="home_benefit_trust_description">Consultez la source et la date.</string>
+    <string name="home_reference_prices_title">Prix dans votre ville</string>
+    <string name="home_view_all">Tout voir</string>
+    <string name="home_change_city">Ma ville</string>
+    <string name="home_reference_period">Référence ANP • %1$s</string>
+    <string name="home_shortcut_stations">Voir les stations</string>
+    <string name="home_shortcut_stations_description">Explorez les stations locales</string>
+    <string name="home_shortcut_history">Historique des prix</string>
+    <string name="home_shortcut_history_description">Suivez les variations en ville</string>
 </resources>

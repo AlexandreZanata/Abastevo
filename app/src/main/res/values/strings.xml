@@ -558,4 +558,25 @@
     <string name="station_service_restroom">Restroom</string>
     <string name="station_service_wifi">Wi-Fi</string>
     <string name="station_service_parking">Parking</string>
+
+    <!-- Reference-inspired Home; price source and period remain explicit. -->
+    <string name="home_hero_title">Drivers helping</string>
+    <string name="home_hero_title_accent">drivers</string>
+    <string name="home_hero_description">Compare city prices and share what you find.</string>
+    <string name="home_hero_contribute">Contribute a price</string>
+    <string name="home_benefit_savings">Save more</string>
+    <string name="home_benefit_savings_description">Compare prices in your city.</string>
+    <string name="home_benefit_community">Community</string>
+    <string name="home_benefit_community_description">Drivers share prices.</string>
+    <string name="home_benefit_trust">Clear sources</string>
+    <string name="home_benefit_trust_description">Check the source and date.</string>
+    <string name="home_reference_prices_title">Prices in your city</string>
+    <string name="home_view_all">View all</string>
+    <string name="home_change_city">My city</string>
+    <string name="home_reference_period">ANP reference • %1$s</string>
+    <string name="home_shortcut_stations">Find stations</string>
+    <string name="home_shortcut_stations_description">Explore local stations</string>
+    <string name="home_shortcut_history">Price history</string>
+    <string name="home_shortcut_history_description">See changes in your city</string>
+    <string name="home_reference_source" translatable="false">ANP</string>
 </resources>

@@ -557,4 +557,24 @@
     <string name="station_service_restroom">Banheiro</string>
     <string name="station_service_wifi">Wi-Fi</string>
     <string name="station_service_parking">Estacionamento</string>
+
+    <!-- Reference-inspired Home; price source and period remain explicit. -->
+    <string name="home_hero_title">Motoristas ajudando</string>
+    <string name="home_hero_title_accent">motoristas</string>
+    <string name="home_hero_description">Compare preços da cidade e compartilhe o que encontrar.</string>
+    <string name="home_hero_contribute">Contribuir com um preço</string>
+    <string name="home_benefit_savings">Economize mais</string>
+    <string name="home_benefit_savings_description">Compare preços na sua cidade.</string>
+    <string name="home_benefit_community">Comunidade</string>
+    <string name="home_benefit_community_description">Motoristas compartilham preços.</string>
+    <string name="home_benefit_trust">Origem clara</string>
+    <string name="home_benefit_trust_description">Veja a fonte e a data.</string>
+    <string name="home_reference_prices_title">Preços na sua cidade</string>
+    <string name="home_view_all">Ver todos</string>
+    <string name="home_change_city">Minha cidade</string>
+    <string name="home_reference_period">Referência ANP • %1$s</string>
+    <string name="home_shortcut_stations">Ver postos</string>
+    <string name="home_shortcut_stations_description">Explore postos da cidade</string>
+    <string name="home_shortcut_history">Histórico de preços</string>
+    <string name="home_shortcut_history_description">Veja a variação na cidade</string>
 </resources>
