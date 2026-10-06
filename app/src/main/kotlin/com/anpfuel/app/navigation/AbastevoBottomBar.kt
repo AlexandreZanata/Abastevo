@@ -59,15 +59,14 @@ enum class NavigationTab(
     }
 }
 
-/** No extra space above the icons; bottom mirrors the label gap. */
-private val BarTopPadding = 0.dp
-private val BarBottomPadding = 8.dp
+/** Equal breathing room above the icons and below the labels, inside the safe area. */
+private val BarVerticalPadding = 8.dp
 
 /**
  * Fixed bottom navigation bar, shown on every screen.
  *
- * Tight layout: minimal space above the icons, the label gap below the
- * text, with the system safe area applied underneath. Item cells keep
+ * Compact layout: equal space above the icons and below the labels,
+ * with the system safe area applied underneath. Item cells keep
  * full-width touch targets; labels always stay visible.
  */
 @Composable
@@ -85,7 +84,7 @@ fun AbastevoBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(top = BarTopPadding, bottom = BarBottomPadding)
+                .padding(vertical = BarVerticalPadding)
                 .selectableGroup(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,

@@ -43,3 +43,31 @@ repository/environment configuration edits.
 inset-consumption import, modifier and comments were added. No device install,
 launch or visual verification after the code-only clarification. The inherited
 three-tab geometry/colors and system navigation safe area are preserved.
+
+## Follow-up — symmetric bottom navigation spacing
+
+2026-10-06: the user subsequently authorized ADB installation on the Poco.
+The `fa18d04` APK was installed with `install -r`, opened successfully and
+visually checked in dark mode: no Home floating action or duplicate inset strip.
+This supersedes the earlier code-only runtime limitation for that scoped check.
+
+New bounded request: add a small top gap matching the existing 8 dp gap
+between the tab group and the lower system safe area. Use one shared 8 dp
+vertical-padding value above icons and below labels; retain system insets,
+the three tabs and the Home action removal (B-BR-C01 / BUC-C01–C02).
+Checks: existing NavigationTab tests, debug APK build, lint, diff/secret review;
+install on the explicitly identified Poco and inspect the resulting Home.
+Follow-up validation: PASS / LOCAL_DONE / INTEGRATION_PENDING.
+
+`ANDROID_HOME=/data/dev/android/sdk/Sdk ./gradlew :app:testDebugUnitTest
+--tests '*NavigationTabTest' :app:assembleDebug :app:lintDebug --console=plain`
+PASS (52s), 6 tests, zero failures/errors/skips; lint zero errors, the same
+162 warnings. `git diff --check` and scoped secret-surface review PASS.
+
+Poco Android APK updated with `adb -s <identified-phone> install -r`; Success.
+Cold launch: Status ok, TotalTime 1137ms. Dark-mode Home screenshot inspected:
+small top margin added, lower margin/system safe area preserved, all three
+tabs visible, Home update action absent. Screenshot retained only in `/tmp`;
+no device data committed. Other connected surfaces were not targeted.
+APK SHA-256: `28ec8df2ba30d5b054b7487c5c277207af39df2c4b3928f4301a008eae73ec2d`.
+Light-mode runtime/full commercial acceptance were not claimed by this check.
