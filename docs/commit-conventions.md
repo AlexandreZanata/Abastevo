@@ -96,7 +96,7 @@ Refs: BR-002
 
 ## Branch and PR cadence
 
-Use one phase branch `codex/phase-NN-slug`, one task commit and one phase PR in draft until the batch is complete; e.g. `codex/phase-02-official-catalog`. A worktree isolates concurrent authorized efforts when needed. Task IDs appear in the commit footer/issue marker. Published fixes use new commits; no amend/force push. The phase PR merges with a guarded head after specialized exit/quick checks and required review, preserving commits through a merge commit. After the verified merge, always delete the merged phase branch locally and remotely and verify both deletions; never leave a merged phase branch stale.
+Per [ADR-020](adr/020-maintained-dev-main-delivery.md), use maintained `dev` for bounded task commits and a protected dev → main PR. A worktree isolates concurrent authorized efforts when needed. Existing task IDs remain in their commit/issue history; published fixes use new commits, never amend/force push. A current-head guarded merge follows affected tests, required Quick verification and applicable reviews, preserving commits through a merge commit. Retain and synchronize dev after integration. Historical construction branches are deleted only after verified main ancestry; no direct development push to main.
 
 See [DELIVERY_WORKFLOW](planning/DELIVERY_WORKFLOW.md) for issue/milestone/wiki cadence, authorization and safe cleanup. Current workflow activation is G01-FLOW, not assumed from this prose.
 
