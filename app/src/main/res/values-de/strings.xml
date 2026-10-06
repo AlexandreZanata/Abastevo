@@ -561,4 +561,34 @@
     <string name="home_shortcut_stations_description">Lokale Tankstellen entdecken</string>
     <string name="home_shortcut_history">Preisverlauf</string>
     <string name="home_shortcut_history_description">Änderungen in deiner Stadt</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">Feed aktualisieren</string>
+    <string name="feed_your_city">Deine Stadt</string>
+    <string name="feed_choose_city">Stadt auswählen</string>
+    <string name="feed_change_city">Ändern</string>
+    <string name="feed_contribute_title">Fahrer helfen Fahrern</string>
+    <string name="feed_contribute_hint">Preis gefunden? Teile ihn mit deiner Stadt.</string>
+    <string name="feed_prices_title">Preise der Community</string>
+    <string name="feed_auto_refresh">Standardpreise · Aktualisierung alle 15 Sekunden</string>
+    <string name="feed_recent">Neueste</string>
+    <string name="feed_cheapest">Günstigste</string>
+    <string name="feed_unavailable">Feed konnte nicht aktualisiert werden</string>
+    <string name="feed_unavailable_hint">Verbindung prüfen und erneut versuchen.</string>
+    <string name="feed_cached_hint">Zuvor geladene Preise werden angezeigt. Prüfe das Datum vor dem Tanken.</string>
+    <string name="feed_retry">Erneut versuchen</string>
+    <string name="feed_no_city_hint">Sieh den Feed deiner gewählten Stadt. GPS ist optional.</string>
+    <string name="feed_empty_title">Noch keine aktuellen Preise</string>
+    <string name="feed_empty_hint">Für diesen Kraftstoff gibt es keine aktuellen Community-Preise in deiner Stadt. Wähle einen anderen Kraftstoff oder teile einen Preis.</string>
+    <string name="feed_load_more">Weitere Preise anzeigen</string>
+    <string name="feed_close">Schließen</string>
+    <string name="feed_new_updates">Neue Beiträge · Feed aktualisieren</string>
+    <string name="feed_community_source">Community</string>
+    <string name="feed_station_detail">Tankstellendetails öffnen</string>
+    <string name="feed_unit_litre">Pro Liter · Standardpreis</string>
+    <string name="feed_unit_m3">Pro m³ · Standardpreis</string>
+    <string name="feed_unit_cylinder">Pro 13-kg-Flasche · Standardpreis</string>
+    <string name="feed_confidence_low">Geringe Konfidenz · Community-Meldung</string>
+    <string name="feed_confidence_medium">Mittlere Konfidenz · Community-Meldung</string>
+    <string name="feed_confidence_high">Hohe Konfidenz · Community-Meldung</string>
 </resources>

@@ -561,4 +561,34 @@
     <string name="home_shortcut_stations_description">探索本地加油站</string>
     <string name="home_shortcut_history">价格历史</string>
     <string name="home_shortcut_history_description">查看城市价格变化</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">刷新动态</string>
+    <string name="feed_your_city">你的城市</string>
+    <string name="feed_choose_city">选择城市</string>
+    <string name="feed_change_city">更改</string>
+    <string name="feed_contribute_title">司机互相帮助</string>
+    <string name="feed_contribute_hint">发现价格了吗？与本市分享。</string>
+    <string name="feed_prices_title">社区价格</string>
+    <string name="feed_auto_refresh">标准价格 · 每15秒更新</string>
+    <string name="feed_recent">最新</string>
+    <string name="feed_cheapest">最便宜</string>
+    <string name="feed_unavailable">无法更新动态</string>
+    <string name="feed_unavailable_hint">请检查网络连接并重试。</string>
+    <string name="feed_cached_hint">正在显示之前加载的价格。加油前请确认日期。</string>
+    <string name="feed_retry">重试</string>
+    <string name="feed_no_city_hint">查看所选城市的动态。GPS为可选项。</string>
+    <string name="feed_empty_title">暂无最新价格</string>
+    <string name="feed_empty_hint">本市暂无此燃料的有效社区价格。请选择其他燃料或分享价格。</string>
+    <string name="feed_load_more">查看更多价格</string>
+    <string name="feed_close">关闭</string>
+    <string name="feed_new_updates">有新动态 · 刷新</string>
+    <string name="feed_community_source">社区</string>
+    <string name="feed_station_detail">打开加油站详情</string>
+    <string name="feed_unit_litre">每升 · 标准价格</string>
+    <string name="feed_unit_m3">每立方米 · 标准价格</string>
+    <string name="feed_unit_cylinder">每13公斤气瓶 · 标准价格</string>
+    <string name="feed_confidence_low">低可信度 · 社区报告</string>
+    <string name="feed_confidence_medium">中可信度 · 社区报告</string>
+    <string name="feed_confidence_high">高可信度 · 社区报告</string>
 </resources>

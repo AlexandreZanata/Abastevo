@@ -108,7 +108,8 @@ func TestAutoVerifyApprovesExactMatchOnly(t *testing.T) {
 	}
 }
 
-func TestDecideEnforcesReviewerReasonAndPending(t *testing.T) {	store := &verifyStore{rows: map[string]SuggestionRow{
+func TestDecideEnforcesReviewerReasonAndPending(t *testing.T) {
+	store := &verifyStore{rows: map[string]SuggestionRow{
 		"s-1": storedRow("s-1", "04218406000104", "3550308"),
 	}}
 	ports := verifyPorts(store)

@@ -576,4 +576,34 @@
     <string name="home_shortcut_history">Price history</string>
     <string name="home_shortcut_history_description">See changes in your city</string>
     <string name="home_reference_source" translatable="false">ANP</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">Refresh feed</string>
+    <string name="feed_your_city">Your city</string>
+    <string name="feed_choose_city">Choose a city</string>
+    <string name="feed_change_city">Change</string>
+    <string name="feed_contribute_title">Drivers helping drivers</string>
+    <string name="feed_contribute_hint">Found a price? Share it with your city.</string>
+    <string name="feed_prices_title">Community prices</string>
+    <string name="feed_auto_refresh">Standard prices · refreshes every 15 seconds</string>
+    <string name="feed_recent">Most recent</string>
+    <string name="feed_cheapest">Cheapest</string>
+    <string name="feed_unavailable">Could not update the feed</string>
+    <string name="feed_unavailable_hint">Check your connection and try again.</string>
+    <string name="feed_cached_hint">Previously loaded prices are shown. Check their dates before refuelling.</string>
+    <string name="feed_retry">Try again</string>
+    <string name="feed_no_city_hint">Use the feed for your chosen city. GPS is optional.</string>
+    <string name="feed_empty_title">No recent prices yet</string>
+    <string name="feed_empty_hint">No current community prices for this fuel in your city. Try another fuel or share a price.</string>
+    <string name="feed_load_more">Show more prices</string>
+    <string name="feed_close">Close</string>
+    <string name="feed_new_updates">New updates · refresh feed</string>
+    <string name="feed_community_source">Community</string>
+    <string name="feed_station_detail">Open station details</string>
+    <string name="feed_unit_litre">Per litre · standard price</string>
+    <string name="feed_unit_m3">Per m³ · standard price</string>
+    <string name="feed_unit_cylinder">Per 13 kg cylinder · standard price</string>
+    <string name="feed_confidence_low">Low confidence · community report</string>
+    <string name="feed_confidence_medium">Medium confidence · community report</string>
+    <string name="feed_confidence_high">High confidence · community report</string>
 </resources>

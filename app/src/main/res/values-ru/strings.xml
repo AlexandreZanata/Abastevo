@@ -561,4 +561,34 @@
     <string name="home_shortcut_stations_description">Посмотреть местные АЗС</string>
     <string name="home_shortcut_history">История цен</string>
     <string name="home_shortcut_history_description">Изменения цен в городе</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">Обновить ленту</string>
+    <string name="feed_your_city">Ваш город</string>
+    <string name="feed_choose_city">Выберите город</string>
+    <string name="feed_change_city">Изменить</string>
+    <string name="feed_contribute_title">Водители помогают водителям</string>
+    <string name="feed_contribute_hint">Нашли цену? Поделитесь с вашим городом.</string>
+    <string name="feed_prices_title">Цены сообщества</string>
+    <string name="feed_auto_refresh">Обычные цены · обновление каждые 15 секунд</string>
+    <string name="feed_recent">Самые свежие</string>
+    <string name="feed_cheapest">Дешевле</string>
+    <string name="feed_unavailable">Не удалось обновить ленту</string>
+    <string name="feed_unavailable_hint">Проверьте подключение и попробуйте снова.</string>
+    <string name="feed_cached_hint">Показаны ранее загруженные цены. Проверьте даты перед заправкой.</string>
+    <string name="feed_retry">Повторить</string>
+    <string name="feed_no_city_hint">Смотрите ленту выбранного города. GPS не обязателен.</string>
+    <string name="feed_empty_title">Свежих цен пока нет</string>
+    <string name="feed_empty_hint">Для этого топлива в вашем городе нет актуальных цен сообщества. Выберите другое топливо или поделитесь ценой.</string>
+    <string name="feed_load_more">Показать больше цен</string>
+    <string name="feed_close">Закрыть</string>
+    <string name="feed_new_updates">Есть обновления · обновить ленту</string>
+    <string name="feed_community_source">Сообщество</string>
+    <string name="feed_station_detail">Открыть сведения о станции</string>
+    <string name="feed_unit_litre">За литр · обычная цена</string>
+    <string name="feed_unit_m3">За м³ · обычная цена</string>
+    <string name="feed_unit_cylinder">За баллон 13 кг · обычная цена</string>
+    <string name="feed_confidence_low">Низкая уверенность · сообщение сообщества</string>
+    <string name="feed_confidence_medium">Средняя уверенность · сообщение сообщества</string>
+    <string name="feed_confidence_high">Высокая уверенность · сообщение сообщества</string>
 </resources>

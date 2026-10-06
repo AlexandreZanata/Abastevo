@@ -561,4 +561,34 @@
     <string name="home_shortcut_stations_description">街の給油所を探索</string>
     <string name="home_shortcut_history">価格履歴</string>
     <string name="home_shortcut_history_description">街の価格変動を確認</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">フィードを更新</string>
+    <string name="feed_your_city">あなたの都市</string>
+    <string name="feed_choose_city">都市を選択</string>
+    <string name="feed_change_city">変更</string>
+    <string name="feed_contribute_title">ドライバー同士で助け合う</string>
+    <string name="feed_contribute_hint">価格を見つけたら、あなたの都市で共有しましょう。</string>
+    <string name="feed_prices_title">コミュニティの価格</string>
+    <string name="feed_auto_refresh">通常価格 · 15秒ごとに更新</string>
+    <string name="feed_recent">最新</string>
+    <string name="feed_cheapest">最安値</string>
+    <string name="feed_unavailable">フィードを更新できませんでした</string>
+    <string name="feed_unavailable_hint">接続を確認して、もう一度お試しください。</string>
+    <string name="feed_cached_hint">以前読み込んだ価格を表示しています。給油前に日付を確認してください。</string>
+    <string name="feed_retry">再試行</string>
+    <string name="feed_no_city_hint">選択した都市のフィードを表示します。GPSは任意です。</string>
+    <string name="feed_empty_title">最近の価格はまだありません</string>
+    <string name="feed_empty_hint">この都市では、この燃料の有効なコミュニティ価格がありません。他の燃料を選ぶか、価格を共有してください。</string>
+    <string name="feed_load_more">さらに価格を表示</string>
+    <string name="feed_close">閉じる</string>
+    <string name="feed_new_updates">新しい情報 · フィードを更新</string>
+    <string name="feed_community_source">コミュニティ</string>
+    <string name="feed_station_detail">スタンドの詳細を開く</string>
+    <string name="feed_unit_litre">1リットルあたり · 通常価格</string>
+    <string name="feed_unit_m3">1m³あたり · 通常価格</string>
+    <string name="feed_unit_cylinder">13kgボンベあたり · 通常価格</string>
+    <string name="feed_confidence_low">信頼度：低 · コミュニティの報告</string>
+    <string name="feed_confidence_medium">信頼度：中 · コミュニティの報告</string>
+    <string name="feed_confidence_high">信頼度：高 · コミュニティの報告</string>
 </resources>

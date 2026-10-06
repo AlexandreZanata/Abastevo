@@ -65,13 +65,6 @@ type IntakeService struct {
 	NewID func() (string, error)
 }
 
-func (s IntakeService) now() time.Time {
-	if s.Clock != nil {
-		return s.Clock()
-	}
-	return time.Now()
-}
-
 // Submit stores one proposal idempotently: the same key with the same
 // body returns the existing record; the same key with a changed body
 // is a conflict (never a silent overwrite); over-quota accounts are

@@ -561,4 +561,34 @@
     <string name="home_shortcut_stations_description">Explorez les stations locales</string>
     <string name="home_shortcut_history">Historique des prix</string>
     <string name="home_shortcut_history_description">Suivez les variations en ville</string>
+
+    <!-- P23 city community feed -->
+    <string name="feed_refresh">Actualiser le fil</string>
+    <string name="feed_your_city">Votre ville</string>
+    <string name="feed_choose_city">Choisir une ville</string>
+    <string name="feed_change_city">Changer</string>
+    <string name="feed_contribute_title">Des conducteurs qui s\'entraident</string>
+    <string name="feed_contribute_hint">Un prix trouvé ? Partagez-le avec votre ville.</string>
+    <string name="feed_prices_title">Prix de la communauté</string>
+    <string name="feed_auto_refresh">Prix standard · actualisation toutes les 15 secondes</string>
+    <string name="feed_recent">Plus récents</string>
+    <string name="feed_cheapest">Moins cher</string>
+    <string name="feed_unavailable">Impossible de mettre à jour le fil</string>
+    <string name="feed_unavailable_hint">Vérifiez votre connexion et réessayez.</string>
+    <string name="feed_cached_hint">Les prix chargés précédemment sont affichés. Vérifiez les dates avant de faire le plein.</string>
+    <string name="feed_retry">Réessayer</string>
+    <string name="feed_no_city_hint">Consultez le fil de la ville choisie. Le GPS est facultatif.</string>
+    <string name="feed_empty_title">Aucun prix récent pour le moment</string>
+    <string name="feed_empty_hint">Aucun prix actuel de la communauté pour ce carburant dans votre ville. Essayez un autre carburant ou partagez un prix.</string>
+    <string name="feed_load_more">Voir plus de prix</string>
+    <string name="feed_close">Fermer</string>
+    <string name="feed_new_updates">Nouveautés · actualiser le fil</string>
+    <string name="feed_community_source">Communauté</string>
+    <string name="feed_station_detail">Ouvrir les détails de la station</string>
+    <string name="feed_unit_litre">Par litre · prix standard</string>
+    <string name="feed_unit_m3">Par m³ · prix standard</string>
+    <string name="feed_unit_cylinder">Par bouteille de 13 kg · prix standard</string>
+    <string name="feed_confidence_low">Confiance faible · signalement de la communauté</string>
+    <string name="feed_confidence_medium">Confiance moyenne · signalement de la communauté</string>
+    <string name="feed_confidence_high">Confiance élevée · signalement de la communauté</string>
 </resources>

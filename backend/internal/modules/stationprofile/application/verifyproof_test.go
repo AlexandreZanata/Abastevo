@@ -201,7 +201,6 @@ func TestVerifyProofInvalidConsumesBinding(t *testing.T) {
 	// Re-store different bytes under the same key would change the
 	// hash; instead the stored object is now absent -> transport error.
 	// For a content failure, submit-then-tamper via direct store write:
-	fix.proofs.proofs[fix.proof.ID] = fix.proofs.proofs[fix.proof.ID]
 	result, err := VerifyProof(context.Background(), ports, fix.proof.ID)
 	if err == nil {
 		t.Fatalf("missing bytes must fail, got %+v", result)

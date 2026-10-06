@@ -201,6 +201,7 @@ func run() error {
 	stations := directoryread.NewReader(pool.Underlying())
 	prices := officialread.NewReader(pool.Underlying())
 	communityPrices := communityread.NewReader(pool.Underlying())
+	communityhttp.FeedHandler{Read: communityPrices.Feed, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so

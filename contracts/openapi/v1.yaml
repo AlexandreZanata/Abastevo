@@ -500,6 +500,68 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/community/feed:
+    get:
+      summary: Current community prices for one city and fuel (anonymous).
+      description: >
+        P23-CITY-FEED. Active canonical stations in the exact IBGE municipality/UF.
+        Only unexpired AVAILABLE community projections with STANDARD conditions.
+        Never includes contributor identities, coordinates, evidence or official substitutes.
+        Near-real-time foreground refresh after validation/consensus, recommended every 15 seconds.
+        Keyset pages are live; concurrent updates may move rows. Refresh resets pagination.
+      operationId: communityCityFeed
+      tags: [community]
+      security: []
+      parameters:
+        - name: state
+          in: query
+          required: true
+          description: Exact federative unit.
+          schema: {type: string, minLength: 2, maxLength: 2}
+          example: MT
+        - name: municipality_code
+          in: query
+          required: true
+          description: Exact canonical seven-digit IBGE municipality code.
+          schema: {type: string, pattern: '^[0-9]{7}$'}
+          example: '5107925'
+        - name: fuel_product
+          in: query
+          required: true
+          description: One fuel and its canonical unit; different fuels are never compared.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: ETHANOL
+        - name: sort
+          in: query
+          description: Recent anchor time descending or exact integer price ascending; station UUID breaks ties.
+          schema: {type: string, enum: [recent, cheapest], default: recent}
+          example: recent
+        - name: limit
+          in: query
+          description: Bounded page size.
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: HMAC cursor bound to all filters and page size; expires in 15 minutes.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Dated price activity page; empty items indicates no eligible coverage.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: no-store}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityFeedPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          description: Feed dependency unavailable; retry without discarding already displayed data.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiError'}
   /v1/stations:
     get:
       summary: Directory search (anonymous).
@@ -2686,6 +2748,42 @@ paths:
           $ref: '#/components/responses/NotFound'
 components:
   schemas:
+    CommunityFeedPage:
+      type: object
+      description: A public allowlisted city feed, not raw observation history.
+      required: [items, next_cursor, generated_at, municipality_code, state, fuel_product, sort, refresh_after_seconds]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items: {$ref: '#/components/schemas/CommunityFeedItem'}
+        next_cursor: {type: [string, 'null']}
+        generated_at: {type: string, format: date-time}
+        municipality_code: {type: string, pattern: '^[0-9]{7}$'}
+        state: {type: string, minLength: 2, maxLength: 2}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        sort: {type: string, enum: [recent, cheapest]}
+        refresh_after_seconds: {type: integer, const: 15}
+    CommunityFeedItem:
+      type: object
+      additionalProperties: false
+      description: Current comparable price facts; no media or attribution identifiers.
+      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version]
+      properties:
+        station_id: {type: string, format: uuid}
+        station_name: {type: string}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {$ref: '#/components/schemas/PriceUnit'}
+        amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        currency: {type: string, enum: [BRL]}
+        source: {type: string, enum: [COMMUNITY]}
+        condition: {type: string, enum: [STANDARD]}
+        confidence: {type: string, enum: [LOW, MEDIUM, HIGH]}
+        updated_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        supporters: {type: integer, minimum: 0}
+        confirmations: {type: integer, minimum: 0}
+        version: {type: integer, minimum: 1}
     Money:
       description: >
         Exact price in thousandths of a real. Positive integer 1..1000000

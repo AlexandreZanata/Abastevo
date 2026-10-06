@@ -55,6 +55,7 @@ sql:
       - db/migrations/000012_community_signals.sql
       - db/migrations/000013_community_votes.sql
       - db/migrations/000015_community_projection.sql
+      - db/migrations/000041_community_feed_indexes.sql
       - db/migrations/000030_community_location_bands.sql
     gen:
       go:

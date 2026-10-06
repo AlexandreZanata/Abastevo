@@ -34,15 +34,15 @@ type p34Case struct {
 }
 
 type p34Catalog struct {
-	ID            string      `json:"id"`
-	Version       int         `json:"version"`
-	Provenance    string      `json:"provenance"`
-	OwnershipMark string      `json:"ownership_mark"`
-	SeedMechanism string      `json:"seed_mechanism"`
-	CleanupScope  string      `json:"cleanup_scope"`
-	NoAdminAPI    bool        `json:"no_admin_api"`
-	NoGlobalReset bool        `json:"no_global_reset"`
-	NoPhotos      bool        `json:"no_private_photos"`
+	ID            string       `json:"id"`
+	Version       int          `json:"version"`
+	Provenance    string       `json:"provenance"`
+	OwnershipMark string       `json:"ownership_mark"`
+	SeedMechanism string       `json:"seed_mechanism"`
+	CleanupScope  string       `json:"cleanup_scope"`
+	NoAdminAPI    bool         `json:"no_admin_api"`
+	NoGlobalReset bool         `json:"no_global_reset"`
+	NoPhotos      bool         `json:"no_private_photos"`
 	Stations      []p34Station `json:"stations"`
 	Cases         []p34Case    `json:"cases"`
 }
