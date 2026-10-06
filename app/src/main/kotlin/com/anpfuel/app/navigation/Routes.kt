@@ -5,6 +5,7 @@ import com.anpfuel.domain.valueobject.FuelProduct
 object Routes {
     const val ONBOARDING = "onboarding"
     const val AUTH = "auth"
+    const val ACCOUNT = "account"
     const val HOME = "home"
     const val EXPLORE = "home"
     const val COMMUNITY = "community"

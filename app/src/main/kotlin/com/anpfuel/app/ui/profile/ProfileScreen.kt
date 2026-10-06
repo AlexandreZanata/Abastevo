@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -86,9 +87,6 @@ fun ProfileScreen(
         authViewModel.refreshAccount()
     }
     val signedIn = authState.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
-    LaunchedEffect(authViewModel, signedIn) {
-        if (signedIn) authViewModel.loadBackup()
-    }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -150,7 +148,9 @@ fun ProfileScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Button(
-                        onClick = { onNavigate(Routes.AUTH) },
+                        onClick = {
+                            onNavigate(if (signedIn) Routes.ACCOUNT else Routes.AUTH)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp),
@@ -165,14 +165,6 @@ fun ProfileScreen(
                             ),
                         )
                     }
-                }
-            }
-
-            // Account-key backup: the only login secret, shown for saving
-            // privately through the explicit reveal/export flow.
-            if (signedIn) {
-                authState.keyBackup?.let { backup ->
-                    com.anpfuel.app.ui.auth.AccountKeyCard(backup = backup)
                 }
             }
 
@@ -207,6 +199,15 @@ fun ProfileScreen(
                 ),
             ) {
                 Column {
+                    if (signedIn) {
+                        ProfileToolItem(
+                            icon = Icons.Default.PersonOutline,
+                            title = stringResource(R.string.profile_action_manage_account),
+                            subtitle = stringResource(R.string.profile_signed_in_title),
+                            onClick = { onNavigate(Routes.ACCOUNT) },
+                        )
+                        HorizontalDivider()
+                    }
                     ProfileToolItem(
                         icon = Icons.Default.DirectionsCar,
                         title = stringResource(R.string.profile_tool_vehicles_title),

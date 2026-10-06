@@ -44,6 +44,9 @@
     <string name="profile_guest_title">Modo visitante</string>
     <string name="profile_guest_subtitle">Pesquisa anônima de preços. Cadastro gratuito necessário para avaliações, comentários e votos.</string>
     <string name="profile_action_sign_in">Entrar ou criar conta gratuita</string>
+    <string name="account_screen_title">Gerenciar conta</string>
+    <string name="account_guest_title">Nenhuma conta neste aparelho</string>
+    <string name="account_guest_subtitle">Entre com sua chave ou crie uma conta gratuita para gerenciá-la aqui.</string>
     <string name="profile_signed_in_title">Conectado</string>
     <string name="profile_signed_in_subtitle">Conta gratuita ativa. Gerencie login, provedores e exclusão em Conta.</string>
     <string name="profile_action_manage_account">Gerenciar conta</string>

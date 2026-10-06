@@ -3,9 +3,7 @@ package com.anpfuel.app.ui.stations
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.LocationOn
@@ -244,16 +242,20 @@ internal fun StationPageContent(
         }
     }
     if (showGuide) {
-        AlertDialog(onDismissRequest = { showGuide = false }, title = { Text(stringResource(R.string.station_page_guide_title)) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        com.anpfuel.app.ui.components.AnpInfoDialog(
+            onDismiss = { showGuide = false },
+            title = stringResource(R.string.station_page_guide_title),
+            body = {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     for (label in listOf(R.string.station_page_guide_intro, R.string.station_page_guide_account,
                         R.string.station_page_guide_authority, R.string.station_page_guide_review, R.string.station_page_guide_beta)) {
                         Text(stringResource(label))
                     }
                     Text(stringResource(R.string.station_profile_representation_note), style = MaterialTheme.typography.bodySmall)
                 }
-            }, confirmButton = { TextButton(onClick = { showGuide = false }) { Text(stringResource(R.string.action_back)) } })
+            },
+            confirmLabel = stringResource(R.string.action_back),
+        )
     }
 }
 

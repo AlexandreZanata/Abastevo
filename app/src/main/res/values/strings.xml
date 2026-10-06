@@ -44,6 +44,9 @@
     <string name="profile_guest_title">Guest mode</string>
     <string name="profile_guest_subtitle">Anonymous price browsing. Free account needed for ratings, comments and votes.</string>
     <string name="profile_action_sign_in">Sign in or create free account</string>
+    <string name="account_screen_title">Manage account</string>
+    <string name="account_guest_title">No account on this device</string>
+    <string name="account_guest_subtitle">Sign in with your key or create a free account to manage it here.</string>
     <string name="profile_signed_in_title">Signed in</string>
     <string name="profile_signed_in_subtitle">Free account active. Manage sign-in, providers and deletion in Account.</string>
     <string name="profile_action_manage_account">Manage account</string>

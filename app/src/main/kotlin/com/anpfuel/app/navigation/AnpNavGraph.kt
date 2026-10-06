@@ -19,6 +19,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.anpfuel.app.capture.CaptureScreen
 import com.anpfuel.app.ui.auth.AuthRoute
+import com.anpfuel.app.ui.account.AccountScreen
 import com.anpfuel.app.ui.community.CommunityScreen
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.history.HistoryScreen
@@ -239,6 +240,12 @@ fun AnpNavGraph(
                 nonceArg = entry.arguments?.getString("nonce").orEmpty(),
                 stateArg = entry.arguments?.getString("state").orEmpty(),
                 onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.ACCOUNT) {
+            AccountScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAuth = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(Routes.SETTINGS) {
