@@ -4,12 +4,14 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.anpfuel.application.portable.AuthAccountApi
 import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.application.portable.AuthKeyStore
 import com.anpfuel.application.portable.AuthPorts
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.portable.AuthWallClock
 import com.anpfuel.application.portable.PortableNonceSource
 import com.anpfuel.data.local.auth.AccountHttpApi
 import com.anpfuel.data.local.auth.AndroidKeystoreKeys
+import com.anpfuel.data.local.auth.KeystoreAccountKey
 import com.anpfuel.data.local.auth.KeystoreSessionStore
 import com.anpfuel.data.local.auth.SessionKeyProvider
 import com.anpfuel.data.remote.ApiEnvironment
@@ -62,6 +64,13 @@ object AuthModule {
 
     @Provides
     @Singleton
+    fun provideAccountKeyStore(
+        prefs: SharedPreferences,
+        keys: SessionKeyProvider,
+    ): AuthKeyStore = KeystoreAccountKey(prefs, keys)
+
+    @Provides
+    @Singleton
     fun provideAccountApi(
         @Named("apiOrigin") environment: ApiEnvironment,
     ): AuthAccountApi {
@@ -76,10 +85,12 @@ object AuthModule {
     @Singleton
     fun provideAuthFlow(
         store: AuthSessionStore,
+        keyStore: AuthKeyStore,
         api: AuthAccountApi,
     ): AuthFlow {
         val ports = AuthPorts(
             store = store,
+            keys = keyStore,
             clock = AuthWallClock { System.currentTimeMillis() / 1000L },
             nonces = PortableNonceSource { UUID.randomUUID().toString() },
             api = api,

@@ -2,7 +2,9 @@ package com.anpfuel.data.local.auth
 
 import com.anpfuel.application.portable.AuthAccountApi
 import com.anpfuel.application.portable.AuthApiResult
+import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.ConsumeOk
+import com.anpfuel.application.portable.KeyLogin
 import com.anpfuel.domain.portable.PortableAuth
 import java.io.IOException
 import java.time.OffsetDateTime
@@ -53,7 +55,35 @@ class AccountHttpApi(
         }
     }
 
+    override fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued> {
+        val res = post("/v1/accounts/keys", JSONObject().put("username", username))
+        return when (res) {
+            is HttpResult.Err -> AuthApiResult.Err(res.verdict)
+            is HttpResult.Ok -> {
+                val name = res.body.optString("username", "")
+                val key = res.body.optString("account_key", "")
+                if (name.isEmpty() || key.isEmpty()) return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                AuthApiResult.Ok(AuthFlow.KeyIssued(name, key))
+            }
+        }
+    }
+
+    override fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin> {
+        val res = post("/v1/accounts/keys/login", JSONObject().put("account_key", accountKey))
+        return when (res) {
+            is HttpResult.Err -> AuthApiResult.Err(res.verdict)
+            is HttpResult.Ok -> {
+                val session = res.body.optJSONObject("session")?.let(::parseSession)
+                    ?: return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                val username = res.body.optJSONObject("account")?.optString("public_alias", "").orEmpty()
+                if (username.isEmpty()) return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                AuthApiResult.Ok(KeyLogin(session, username))
+            }
+        }
+    }
+
     override fun refresh(familyId: String, refreshToken: String): AuthApiResult<PortableAuth.Session> {
+
         val res = post(
             "/v1/accounts/sessions/refresh",
             JSONObject().put("family_id", familyId).put("refresh_token", refreshToken),
