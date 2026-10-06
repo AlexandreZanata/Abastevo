@@ -321,6 +321,7 @@ func run() error {
 		CodeGen:   accountdomain.GenerateCode,
 		TokenGen:  accountdomain.GenerateToken,
 		AliasGen:  accountdomain.GenerateAlias,
+		KeyGen:    accountdomain.GenerateAccountKey,
 		IDGen:     newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)

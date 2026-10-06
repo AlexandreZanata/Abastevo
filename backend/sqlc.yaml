@@ -108,6 +108,7 @@ sql:
       - db/migrations/000020_accounts.sql
       - db/migrations/000021_provider_links.sql
       - db/migrations/000022_account_bindings.sql
+      - db/migrations/000042_key_accounts.sql
     gen:
       go:
         package: account

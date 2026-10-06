@@ -1631,6 +1631,70 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /v1/accounts/keys:
+    post:
+      summary: Create an anonymous account with a server-issued key.
+      operationId: createKeyAccount
+      tags: [accounts]
+      security: []
+      description: >
+        Username plus a one-display 32-glyph account key; the key is the
+        only login secret (no email, provider or device key). Taken
+        usernames answer 409; nothing about the key persists beyond its
+        salted verifier.
+      requestBody:
+        required: true
+        description: Desired username handle.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyAccountCreate'
+      responses:
+        '201':
+          description: Account created; the key is shown exactly once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyAccountIssued'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/accounts/keys/login:
+    post:
+      summary: Open a session with the account key alone.
+      operationId: loginWithKey
+      tags: [accounts]
+      security: []
+      description: >
+        Key-only login issuing a standard rotating session. Unknown,
+        wrong and malformed keys share the key-invalid refusal.
+      requestBody:
+        required: true
+        description: The account key (separators and case tolerated).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyAccountLogin'
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /v1/accounts/sessions/refresh:
     post:
       summary: Rotate a session family with a refresh token.
@@ -3493,6 +3557,41 @@ components:
           type: string
           description: Single-use login nonce bound to this request.
           example: n-07
+    KeyAccountCreate:
+      description: Anonymous account signup handle (3-20 lowercase alphanumerics, leading letter).
+      type: object
+      required: [username]
+      example:
+        username: ana123
+      properties:
+        username:
+          type: string
+          pattern: '^[a-z][a-z0-9]{2,19}$'
+          example: ana123
+    KeyAccountIssued:
+      description: Created username plus the one-display 32-glyph account key.
+      type: object
+      required: [username, account_key]
+      properties:
+        username:
+          type: string
+          pattern: '^[a-z][a-z0-9]{2,19}$'
+          example: ana123
+        account_key:
+          type: string
+          pattern: '^[a-hj-km-np-z2-9]{32}$'
+          example: abcdefghjkmnpqrstuvwxyz23456789a
+    KeyAccountLogin:
+      description: Key-only login; separators and case tolerated client-side.
+      type: object
+      required: [account_key]
+      example:
+        account_key: abcdefghjkmnpqrstuvwxyz23456789a
+      properties:
+        account_key:
+          type: string
+          minLength: 1
+          example: abcdefghjkmnpqrstuvwxyz23456789a
     Session:
       description: Short-lived access with a rotating refresh family (absolute 30-day ceiling).
       type: object

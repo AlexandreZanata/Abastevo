@@ -39,6 +39,9 @@ type Store interface {
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
 	FindProviderOwner(ctx context.Context, provider, subject string) (string, bool, error)
+	CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error
+	FindKeyCredentialByUsername(ctx context.Context, usernameHash string) (domain.KeyCredential, bool, error)
+	FindKeyCredentialByLookup(ctx context.Context, lookup string) (domain.KeyCredential, bool, error)
 	CountAddresses(ctx context.Context, accountID string) (int, error)
 	TryConsumeNonce(ctx context.Context, nonce string, nowUnix int64) (bool, error)
 }
@@ -72,6 +75,7 @@ type Service struct {
 	CodeGen   func() (string, error)
 	TokenGen  func() (string, error)
 	AliasGen  func() (string, error)
+	KeyGen    func() (string, error)
 	IDGen     func() (string, error)
 }
 

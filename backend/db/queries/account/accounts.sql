@@ -204,3 +204,21 @@ INSERT INTO account_oidc_nonces (nonce, consumed_at)
 VALUES (@nonce, @consumed_at)
 ON CONFLICT (nonce) DO NOTHING
 RETURNING nonce;
+
+-- Key-account credentials: unique username and key lookups; the salted
+-- verifier authenticates after the lookup finds the candidate row.
+
+-- name: InsertKeyCredential :exec
+INSERT INTO account_key_credentials
+    (account_id, username_hash, key_lookup, key_salt, key_hash, created_at)
+VALUES (@account_id, @username_hash, @key_lookup, @key_salt, @key_hash, @created_at);
+
+-- name: FindKeyCredentialByUsername :one
+SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
+FROM account_key_credentials
+WHERE username_hash = @username_hash;
+
+-- name: FindKeyCredentialByLookup :one
+SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
+FROM account_key_credentials
+WHERE key_lookup = @key_lookup;

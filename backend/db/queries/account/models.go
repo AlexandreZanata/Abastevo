@@ -46,6 +46,15 @@ type AccountEmailCode struct {
 	ConsumedAt  pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AccountKeyCredential struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	UsernameHash string      `json:"username_hash"`
+	KeyLookup    string      `json:"key_lookup"`
+	KeySalt      string      `json:"key_salt"`
+	KeyHash      string      `json:"key_hash"`
+	CreatedAt    int64       `json:"created_at"`
+}
+
 type AccountOidcNonce struct {
 	Nonce      string             `json:"nonce"`
 	ConsumedAt pgtype.Timestamptz `json:"consumed_at"`
