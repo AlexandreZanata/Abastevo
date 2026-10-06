@@ -627,7 +627,6 @@
     <string name="auth_login_heading">Heureux de vous revoir</string>
     <string name="auth_key_login_copy">Collez la clé enregistrée pour accéder à votre compte sur cet appareil.</string>
     <string name="auth_brand_tagline">Votre prochain arrêt commence ici.</string>
-    <string name="auth_brand_copy">Comparez les prix des carburants et participez à la communauté.</string>
     <string name="auth_security_footer">Votre clé est privée. Gardez la sauvegarde en lieu sûr.</string>
     <string name="auth_session_retained">Votre compte reste sur cet appareil jusqu’à votre déconnexion.</string>
     <string name="auth_offline_account">Votre compte est enregistré sur cet appareil. Connectez-vous au réseau pour renouveler l’accès et participer.</string>

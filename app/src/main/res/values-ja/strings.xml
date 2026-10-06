@@ -627,7 +627,6 @@
     <string name="auth_login_heading">おかえりなさい</string>
     <string name="auth_key_login_copy">保存したキーを貼り付けて、この端末でログインしてください。</string>
     <string name="auth_brand_tagline">次の立ち寄り先を、ここから。</string>
-    <string name="auth_brand_copy">燃料価格を比較してコミュニティに参加しましょう。</string>
     <string name="auth_security_footer">アカウントキーは秘密情報です。バックアップを安全に保管してください。</string>
     <string name="auth_session_retained">ログアウトするまで、この端末にアカウントが保存されます。</string>
     <string name="auth_offline_account">この端末にアカウントが保存されています。通信を再開するとアクセスを更新して参加できます。</string>

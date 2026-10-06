@@ -645,7 +645,7 @@
     <string name="auth_login_heading">Welcome back</string>
     <string name="auth_key_login_copy">Paste the key you saved to access your account on this device.</string>
     <string name="auth_brand_tagline">A better way to choose your next stop.</string>
-    <string name="auth_brand_copy">Compare fuel prices and join the community.</string>
+    <string name="auth_brand_wordmark">Abastevo wordmark</string>
     <string name="auth_security_footer">Your account key is private. Keep your backup in a safe place.</string>
     <string name="auth_session_retained">Your account stays on this device until you sign out.</string>
     <string name="auth_offline_account">Your account is saved on this device. Reconnect to renew access and participate.</string>

@@ -1,10 +1,7 @@
 package com.anpfuel.app.ui.auth
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,25 +38,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
-import com.anpfuel.app.ui.theme.AbastevoActionBlue
-import com.anpfuel.app.ui.theme.AbastevoCommunityGreen
 import com.anpfuel.app.ui.theme.AnpFuelTheme
-import com.anpfuel.app.ui.theme.ColorTokens
 
 /**
  * FREE-account screen: anonymous key accounts (P13 key extension).
@@ -159,7 +150,7 @@ fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AccountBrandHero()
+            AbastevoBrandBanner()
             Card(
                 modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
@@ -173,12 +164,24 @@ fun AuthScreen(
                         AuthStep.USERNAME_ENTRY -> {
                             Text(stringResource(R.string.auth_signup_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(text = stringResource(R.string.auth_key_subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val usernameTaken = state.error == AuthUiError.UsernameTaken
                             OutlinedTextField(
                                 value = state.username,
                                 onValueChange = onUsernameChange,
                                 label = { Text(text = stringResource(R.string.auth_username_label)) },
                                 leadingIcon = { Icon(Icons.Default.PersonOutline, contentDescription = null) },
-                                supportingText = { Text(stringResource(R.string.auth_username_hint)) },
+                                supportingText = {
+                                    Text(
+                                        stringResource(
+                                            if (usernameTaken) {
+                                                R.string.auth_error_username_taken
+                                            } else {
+                                                R.string.auth_username_hint
+                                            },
+                                        ),
+                                    )
+                                },
+                                isError = usernameTaken,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
                                 shape = RoundedCornerShape(16.dp),
                                 singleLine = true,
@@ -312,11 +315,14 @@ fun AuthScreen(
                 }
             }
             state.error?.let { error ->
-                TextButton(onClick = onDismissError) {
-                    Text(
-                        text = errorText(error),
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                // UsernameTaken already renders inside the username field.
+                if (error != AuthUiError.UsernameTaken) {
+                    TextButton(onClick = onDismissError) {
+                        Text(
+                            text = errorText(error),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -367,58 +373,6 @@ private fun errorText(error: AuthUiError): String = stringResource(
         AuthUiError.Unknown -> R.string.auth_error_unknown
     },
 )
-
-/** SVG-derived logo paired with a typographic lowercase wordmark. */
-@Composable
-private fun AccountBrandHero() {
-    val darkSurface = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    Column(
-        modifier = Modifier
-            .widthIn(max = 520.dp)
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surface),
-                ),
-                shape = RoundedCornerShape(32.dp),
-            )
-            .padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_abastevo_logo),
-            contentDescription = null,
-            modifier = Modifier.size(88.dp),
-        )
-        Row {
-            Text(
-                text = "abaste",
-                color = if (darkSurface) ColorTokens.BlueLight else AbastevoActionBlue,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-1).sp,
-            )
-            Text(
-                text = "vo",
-                color = if (darkSurface) ColorTokens.GreenLight else AbastevoCommunityGreen,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-1).sp,
-            )
-        }
-        Text(
-            text = stringResource(R.string.auth_brand_tagline),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = stringResource(R.string.auth_brand_copy),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
 
 @Preview(showBackground = true)
 @Composable

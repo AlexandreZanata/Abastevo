@@ -627,7 +627,6 @@
     <string name="auth_login_heading">欢迎回来</string>
     <string name="auth_key_login_copy">粘贴已保存的密钥，在此设备访问账户。</string>
     <string name="auth_brand_tagline">下一站，从这里开始。</string>
-    <string name="auth_brand_copy">比较燃料价格，参与社区。</string>
     <string name="auth_security_footer">账户密钥属于私密信息，请妥善保管备份。</string>
     <string name="auth_session_retained">账户将保留在此设备，直到你主动退出登录。</string>
     <string name="auth_offline_account">账户已保存在此设备。联网后可更新访问权限并参与社区。</string>

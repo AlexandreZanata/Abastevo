@@ -627,7 +627,6 @@
     <string name="auth_login_heading">С возвращением</string>
     <string name="auth_key_login_copy">Вставьте сохранённый ключ для входа на этом устройстве.</string>
     <string name="auth_brand_tagline">Ваша следующая остановка начинается здесь.</string>
-    <string name="auth_brand_copy">Сравнивайте цены на топливо и участвуйте в сообществе.</string>
     <string name="auth_security_footer">Ваш ключ конфиденциален. Храните копию в безопасном месте.</string>
     <string name="auth_session_retained">Аккаунт остаётся на этом устройстве, пока вы не выйдете.</string>
     <string name="auth_offline_account">Аккаунт сохранён на этом устройстве. Подключитесь к сети, чтобы обновить доступ и участвовать.</string>

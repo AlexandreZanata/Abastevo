@@ -627,7 +627,6 @@
     <string name="auth_login_heading">Bienvenido de nuevo</string>
     <string name="auth_key_login_copy">Pega la clave que guardaste para acceder a tu cuenta en este dispositivo.</string>
     <string name="auth_brand_tagline">Tu próxima parada empieza aquí.</string>
-    <string name="auth_brand_copy">Compara precios de combustible y participa en la comunidad.</string>
     <string name="auth_security_footer">Tu clave es privada. Guarda la copia en un lugar seguro.</string>
     <string name="auth_session_retained">Tu cuenta permanece en este dispositivo hasta que cierres la sesión.</string>
     <string name="auth_offline_account">Tu cuenta está guardada en este dispositivo. Conéctate para renovar el acceso y participar.</string>

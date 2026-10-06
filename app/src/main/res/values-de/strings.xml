@@ -627,7 +627,6 @@
     <string name="auth_login_heading">Willkommen zurück</string>
     <string name="auth_key_login_copy">Füge deinen gespeicherten Schlüssel ein, um dein Konto auf diesem Gerät zu öffnen.</string>
     <string name="auth_brand_tagline">Dein nächster Halt beginnt hier.</string>
-    <string name="auth_brand_copy">Kraftstoffpreise vergleichen und an der Community teilnehmen.</string>
     <string name="auth_security_footer">Dein Kontoschlüssel ist privat. Bewahre die Sicherung sicher auf.</string>
     <string name="auth_session_retained">Dein Konto bleibt auf diesem Gerät, bis du dich abmeldest.</string>
     <string name="auth_offline_account">Dein Konto ist auf diesem Gerät gespeichert. Stelle eine Verbindung her, um den Zugriff zu erneuern und teilzunehmen.</string>

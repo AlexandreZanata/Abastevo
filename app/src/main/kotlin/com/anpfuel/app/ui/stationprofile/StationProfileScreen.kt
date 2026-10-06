@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.domain.profile.ProfileBadge
 import com.anpfuel.domain.profile.ProfileBadgeInput
@@ -59,6 +60,7 @@ internal fun StationProfileContent(
             OutlinedButton(onClick = onRetry, enabled = !state.loading) { Text(stringResource(R.string.action_retry)) }
         }
         state.profile?.let { profile ->
+            AbastevoBrandBanner(showTagline = false)
             Text(profile.displayName, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
             val badge = ProfileBadgeRule.resolve(ProfileBadgeInput(
                 profile.stationId, if (profile.hasBadge) "verified" else "unclaimed",

@@ -3,7 +3,6 @@ package com.anpfuel.data.local.auth
 import android.content.SharedPreferences
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthKeyStore
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -57,10 +56,11 @@ class KeystoreAccountKey(
                 .toString()
                 .toByteArray(Charsets.UTF_8)
             return try {
-                val iv = ByteArray(SessionEnvelope.IV_BYTES)
-                SecureRandom().nextBytes(iv)
                 val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(SessionEnvelope.TAG_BITS, iv))
+                // Provider-generated IV: Keystore keys with randomized
+                // encryption required reject caller IVs on device.
+                cipher.init(Cipher.ENCRYPT_MODE, key)
+                val iv = cipher.iv ?: return null
                 val ct = cipher.doFinal(plain)
                 JSONObject()
                     .put("v", VERSION)
