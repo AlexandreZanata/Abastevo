@@ -71,3 +71,35 @@ tabs visible, Home update action absent. Screenshot retained only in `/tmp`;
 no device data committed. Other connected surfaces were not targeted.
 APK SHA-256: `28ec8df2ba30d5b054b7487c5c277207af39df2c4b3928f4301a008eae73ec2d`.
 Light-mode runtime/full commercial acceptance were not claimed by this check.
+
+## Follow-up — tab touch feedback and distinct navigation surfaces
+
+2026-10-06 user scope: include the 8 dp tab margins in touch feedback and
+give the bottom navigation and standard header a slightly stronger color than
+page backgrounds in light/dark mode. Keep the symmetric spacing, three tabs,
+safe areas and Home action removal. B-BR-C01 / BUC-C01–C02 remain unchanged.
+
+Move vertical padding into each selectable tab so the entire tab cell responds
+to presses. Use Material 3 `surfaceContainer` for both navigation surfaces;
+unselected icon backgrounds stay transparent. Standard header defaults share
+the same container tone, while explicit screen overrides remain supported.
+Checks: navigation/contrast unit tests, debug APK + lint, diff/secret review;
+Poco installation and light/dark visual/touch checks. Validation: PASS;
+LOCAL_DONE / INTEGRATION_PENDING.
+
+`ANDROID_HOME=/data/dev/android/sdk/Sdk ./gradlew :app:testDebugUnitTest
+--tests '*NavigationTabTest' --tests '*ColorContrastTest' :app:assembleDebug
+:app:lintDebug --console=plain` PASS (27s). Navigation 6/6 and contrast 2/2,
+zero failures/errors/skips. Text and inactive-label contrast on the new
+container surface meet AA in both static themes. Lint: zero errors, unchanged
+162 warnings. `git diff --check` and scoped secret review PASS.
+
+Poco `install -r`: Success; cold launch Status ok (1526ms). Home inspected
+in light and dark themes. Header/bottom surfaces are visibly distinct from
+the page and match each other; inactive icons have no mismatched backdrop.
+Injected DOWN inside the top 8 dp margin, then captured fully expanded feedback
+before UP in each theme: the whole Explore cell is highlighted, including
+top/bottom padding, stopping at the adjacent tab and system safe area.
+The original light theme was restored. Screenshots remain in `/tmp` only.
+APK SHA-256: `4c66d82ac53d7b1ba1f6e250cee721abe8a11acf6c88d1bba8843706a9d7121f`.
+No device data in Git, remote publication or broader commercial acceptance.

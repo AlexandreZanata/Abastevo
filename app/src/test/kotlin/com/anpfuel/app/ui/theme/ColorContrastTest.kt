@@ -37,6 +37,8 @@ class ColorContrastTest {
         assertAaNormalText(lightScheme.onSecondaryContainer, lightScheme.secondaryContainer)
         assertAaNormalText(lightScheme.onBackground, lightScheme.background)
         assertAaNormalText(lightScheme.onSurface, lightScheme.surface)
+        assertAaNormalText(lightScheme.onSurface, lightScheme.surfaceContainer)
+        assertAaNormalText(lightScheme.onSurfaceVariant, lightScheme.surfaceContainer)
         assertAaNormalText(lightScheme.onError, lightScheme.error)
     }
 
@@ -48,6 +50,8 @@ class ColorContrastTest {
         assertAaNormalText(darkScheme.onSecondaryContainer, darkScheme.secondaryContainer)
         assertAaNormalText(darkScheme.onBackground, darkScheme.background)
         assertAaNormalText(darkScheme.onSurface, darkScheme.surface)
+        assertAaNormalText(darkScheme.onSurface, darkScheme.surfaceContainer)
+        assertAaNormalText(darkScheme.onSurfaceVariant, darkScheme.surfaceContainer)
         assertAaNormalText(darkScheme.onError, darkScheme.error)
     }
 

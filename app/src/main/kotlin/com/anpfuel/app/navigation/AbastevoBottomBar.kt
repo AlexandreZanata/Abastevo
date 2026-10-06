@@ -1,7 +1,6 @@
 package com.anpfuel.app.navigation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -77,14 +77,13 @@ fun AbastevoBottomBar(
 ) {
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(vertical = BarVerticalPadding)
                 .selectableGroup(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +105,8 @@ fun AbastevoBottomBar(
                         )
                         .semantics {
                             contentDescription = label
-                        },
+                        }
+                        .padding(vertical = BarVerticalPadding),
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -117,7 +117,7 @@ fun AbastevoBottomBar(
                                 if (isSelected) {
                                     MaterialTheme.colorScheme.secondaryContainer
                                 } else {
-                                    MaterialTheme.colorScheme.surface
+                                    Color.Transparent
                                 },
                             ),
                     ) {
