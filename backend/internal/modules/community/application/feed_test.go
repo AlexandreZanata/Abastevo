@@ -30,6 +30,35 @@ func TestFeedScopeAndComparablePrices(t *testing.T) {
 			t.Fatalf("unit %s: %+v %v", fuel, f, err)
 		}
 	}
+	for _, order := range []string{"recent", "cheapest", "best", "worst"} {
+		if _, err := ValidateFeed("MT", "5107925", "ETHANOL", order, 20, ""); err != nil {
+			t.Fatalf("order %s: %v", order, err)
+		}
+	}
+}
+
+func TestFeedRatingCursorRoundTripAndMalformed(t *testing.T) {
+	at := time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
+	avg := 4.5
+	key := FeedKeyAvg(at, "d6c74c23-63db-4c24-a2e5-408cb23bad26", 5999, &avg)
+	f, err := ValidateFeed("MT", "5107925", "GASOLINE_REGULAR", "best", 20, key)
+	if err != nil || !f.HasCursor || !f.HasAfterAvg || f.AfterAvg != 4.5 {
+		t.Fatalf("round trip %+v %v", f, err)
+	}
+	tail, err := ValidateFeed("MT", "5107925", "GASOLINE_REGULAR", "worst", 20,
+		FeedKeyAvg(at, "d6c74c23-63db-4c24-a2e5-408cb23bad26", 5999, nil))
+	if err != nil || !tail.HasCursor || tail.HasAfterAvg {
+		t.Fatalf("unrated tail %+v %v", tail, err)
+	}
+	for _, key := range []string{
+		`{"time":"2026-10-06T12:00:00Z","id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","amount":5}`,
+		`{"time":"2026-10-06T12:00:00Z","id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","amount":5,"avg":9}`,
+		`{"time":"2026-10-06T12:00:00Z","id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","amount":5,"avg":-2}`,
+	} {
+		if _, err := ValidateFeed("MT", "5107925", "ETHANOL", "best", 20, key); err == nil {
+			t.Fatalf("accepted malformed rating cursor %s", key)
+		}
+	}
 }
 
 func TestFeedKeyRoundTripAndMalformed(t *testing.T) {

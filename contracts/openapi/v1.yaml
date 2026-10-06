@@ -533,8 +533,8 @@ paths:
           example: ETHANOL
         - name: sort
           in: query
-          description: Recent anchor time descending or exact integer price ascending; station UUID breaks ties.
-          schema: {type: string, enum: [recent, cheapest], default: recent}
+          description: Recent anchor time descending, exact integer price ascending, or community star average descending/ascending (unrated stations sort last in both); station UUID breaks ties.
+          schema: {type: string, enum: [recent, cheapest, best, worst], default: recent}
           example: recent
         - name: limit
           in: query
@@ -2964,7 +2964,7 @@ components:
       type: object
       additionalProperties: false
       description: Current comparable price facts; no media or attribution identifiers.
-      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version]
+      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version, ratings_count]
       properties:
         station_id: {type: string, format: uuid}
         station_name: {type: string}
@@ -2980,6 +2980,15 @@ components:
         supporters: {type: integer, minimum: 0}
         confirmations: {type: integer, minimum: 0}
         version: {type: integer, minimum: 1}
+        ratings_count:
+          type: integer
+          minimum: 0
+          description: Community star ratings for the same station and fuel.
+        ratings_avg:
+          type: number
+          minimum: 1
+          maximum: 5
+          description: Mean community stars; absent when unrated.
     Money:
       description: >
         Exact price in thousandths of a real. Positive integer 1..1000000

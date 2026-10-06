@@ -63,10 +63,13 @@ import com.anpfuel.domain.valueobject.FuelProduct
 
 @Composable
 fun StationsScreen(
-    modifier: Modifier = Modifier,
     onNavigateBack: (() -> Unit)? = null,
+    onNavigateToUpdatePrice: () -> Unit = {},
+    onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onStationProfile: (String) -> Unit = {},
     onOpenStation: (String, FuelProduct) -> Unit = { _, _ -> },
+    modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -142,8 +145,17 @@ fun StationsScreen(
         onRetry = { viewModel.load(locale) },
         onWeekChanged = { viewModel.load(locale) },
         onStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
+        onNavigateToStation = viewModel::onNavigateToStation,
+        onDetailDismissed = viewModel::onDetailDismissed,
+        onNavigateToUpdatePrice = onNavigateToUpdatePrice,
         onServerStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
+        onServerDetailDismissed = viewModel::onServerDetailDismissed,
+        onServerStationNavigate = viewModel::onServerStationNavigate,
+        onServerUpdatePrice = { station, fuelWire ->
+            onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
+        },
         onSuggestStation = onSuggestStation,
+        onStationProfile = onStationProfile,
         modifier = modifier,
     )
 }
@@ -152,6 +164,7 @@ fun StationsScreen(
 @Composable
 private fun StationsContent(
     uiState: StationsUiState,
+    onNavigateBack: (() -> Unit)? = null,
     onFuelProductSelected: (FuelProduct) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onFindNearestStation: () -> Unit,
@@ -159,10 +172,16 @@ private fun StationsContent(
     onRetry: () -> Unit,
     onWeekChanged: () -> Unit,
     onStationSelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    onNavigateBack: (() -> Unit)? = null,
+    onNavigateToStation: (String) -> Unit,
+    onDetailDismissed: () -> Unit,
+    onNavigateToUpdatePrice: () -> Unit,
     onServerStationSelected: (String) -> Unit = {},
+    onServerDetailDismissed: () -> Unit = {},
+    onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
+    onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onStationProfile: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -410,6 +429,8 @@ private fun StationsContent(
                 )
             }
         }
+
+
     }
 }
 
@@ -473,6 +494,9 @@ private fun StationsScreenPreview() {
             onRetry = {},
             onWeekChanged = {},
             onStationSelected = {},
+            onNavigateToStation = {},
+            onDetailDismissed = {},
+            onNavigateToUpdatePrice = {},
         )
     }
 }

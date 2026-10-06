@@ -1,5 +1,5 @@
 {
-  "id": "community-feed-valid",
+  "id": "community-feed-rated-valid",
   "schema": "CommunityFeedItem",
   "valid": true,
   "value": {

@@ -1,5 +1,5 @@
 {
-  "id": "community-feed-valid",
+  "id": "community-feed-unrated-valid",
   "schema": "CommunityFeedItem",
   "valid": true,
   "value": {
@@ -17,7 +17,6 @@
     "supporters": 1,
     "confirmations": 0,
     "version": 1,
-    "ratings_count": 3,
-    "ratings_avg": 4.33
+    "ratings_count": 3
   }
 }
