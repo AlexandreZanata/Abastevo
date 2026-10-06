@@ -65,7 +65,7 @@ object AuthModule {
     @Provides
     @Singleton
     fun provideAccountKeyStore(
-        prefs: SharedPreferences,
+        @Named("auth") prefs: SharedPreferences,
         keys: SessionKeyProvider,
     ): AuthKeyStore = KeystoreAccountKey(prefs, keys)
 

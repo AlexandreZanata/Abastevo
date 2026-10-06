@@ -35,14 +35,15 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
 /**
- * FREE-account login screen (P13-T05C).
+ * FREE-account screen: anonymous key accounts (P13 key extension).
  *
- * Email access-code first (the only backend signup path), Google/Apple
- * link buttons once authenticated (the backend links verified subjects
- * onto the email-created account; equal emails never merge). Tokens
- * never render: the authenticated state shows status only. Provider
- * completion arrives via the `anpfuel://auth/callback` deep link; the
- * native SDK minting real id tokens is device-gated (release horizon).
+ * One tap on "Criar conta" plus a username mints the account and shows
+ * the server-issued key exactly once; the key alone logs in afterwards
+ * (no email, provider or device ceremony). Session tokens never render:
+ * only the account key shows, on its one-display screen and the Profile
+ * backup card. Provider completion arrives via the
+ * `anpfuel://auth/callback` deep link; the native SDK minting real id
+ * tokens is device-gated (release horizon).
  */
 @Composable
 fun AuthRoute(
@@ -67,6 +68,12 @@ fun AuthRoute(
         onRequestCode = viewModel::onRequestCode,
         onConsumeCode = viewModel::onConsumeCode,
         onBackToEmail = viewModel::onBackToEmail,
+        onUsernameChange = viewModel::onUsernameChange,
+        onKeyChange = viewModel::onKeyChange,
+        onCreateAccount = viewModel::onCreateAccount,
+        onLoginWithKey = viewModel::onLoginWithKey,
+        onGoToKeyEntry = viewModel::onGoToKeyEntry,
+        onBackToUsername = viewModel::onBackToUsername,
         onProviderClick = viewModel::onProviderClick,
         onCancelProviderLink = viewModel::onCancelProviderLink,
         onLogout = viewModel::onLogout,
@@ -85,6 +92,12 @@ fun AuthScreen(
     onRequestCode: () -> Unit,
     onConsumeCode: () -> Unit,
     onBackToEmail: () -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onKeyChange: (String) -> Unit,
+    onCreateAccount: () -> Unit,
+    onLoginWithKey: () -> Unit,
+    onGoToKeyEntry: () -> Unit,
+    onBackToUsername: () -> Unit,
     onProviderClick: (String) -> Unit,
     onCancelProviderLink: () -> Unit,
     onLogout: () -> Unit,
@@ -94,6 +107,7 @@ fun AuthScreen(
     modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -113,6 +127,75 @@ fun AuthScreen(
             when (state.step) {
                 AuthStep.CHECKING, AuthStep.BUSY -> {
                     CircularProgressIndicator()
+                }
+                AuthStep.USERNAME_ENTRY -> {
+                    Text(text = stringResource(R.string.auth_key_subtitle))
+                    OutlinedTextField(
+                        value = state.username,
+                        onValueChange = onUsernameChange,
+                        label = { Text(text = stringResource(R.string.auth_username_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = onCreateAccount,
+                        enabled = state.username.length >= 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.auth_create_account))
+                    }
+                    TextButton(onClick = onGoToKeyEntry) {
+                        Text(text = stringResource(R.string.auth_have_key))
+                    }
+                }
+                AuthStep.KEY_ISSUED -> {
+                    Text(text = stringResource(R.string.auth_key_issued_title))
+                    Text(
+                        text = groupedKey(state.issuedKey),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.auth_key_issued_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(state.issuedKey))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.auth_copy_key))
+                    }
+                    Button(
+                        onClick = onLoginWithKey,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.auth_saved_enter))
+                    }
+                    TextButton(onClick = onBackToUsername) {
+                        Text(text = stringResource(R.string.action_back))
+                    }
+                }
+                AuthStep.KEY_ENTRY -> {
+                    Text(text = stringResource(R.string.auth_key_subtitle))
+                    OutlinedTextField(
+                        value = state.accountKey,
+                        onValueChange = onKeyChange,
+                        label = { Text(text = stringResource(R.string.auth_key_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = onLoginWithKey,
+                        enabled = state.accountKey.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.auth_key_login))
+                    }
+                    TextButton(onClick = onBackToUsername) {
+                        Text(text = stringResource(R.string.action_back))
+                    }
                 }
                 AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT -> {
                     OutlinedTextField(
@@ -229,6 +312,8 @@ private fun errorText(error: AuthUiError): String = stringResource(
     when (error) {
         AuthUiError.InvalidInput -> R.string.auth_error_input
         AuthUiError.WrongCode -> R.string.auth_error_code
+        AuthUiError.WrongKey -> R.string.auth_error_key
+        AuthUiError.UsernameTaken -> R.string.auth_error_username_taken
         AuthUiError.ExpiredCode -> R.string.auth_error_expired
         AuthUiError.LockedCode -> R.string.auth_error_locked
         AuthUiError.SessionExpired -> R.string.auth_error_session
@@ -241,17 +326,27 @@ private fun errorText(error: AuthUiError): String = stringResource(
     },
 )
 
+/** Groups a raw account key in fours for transcription. */
+private fun groupedKey(raw: String): String =
+    raw.chunked(4).joinToString(" ")
+
 @Preview(showBackground = true)
 @Composable
 private fun AuthScreenEmailPreview() {
     AnpFuelTheme {
         AuthScreen(
-            state = AuthUiState(step = AuthStep.EMAIL_ENTRY, email = "case-01@example.invalid"),
+            state = AuthUiState(step = AuthStep.USERNAME_ENTRY, username = "ana123"),
             onEmailChange = {},
             onCodeChange = {},
             onRequestCode = {},
             onConsumeCode = {},
             onBackToEmail = {},
+            onUsernameChange = {},
+            onKeyChange = {},
+            onCreateAccount = {},
+            onLoginWithKey = {},
+            onGoToKeyEntry = {},
+            onBackToUsername = {},
             onProviderClick = {},
             onCancelProviderLink = {},
             onLogout = {},
@@ -273,6 +368,12 @@ private fun AuthScreenAuthenticatedPreview() {
             onRequestCode = {},
             onConsumeCode = {},
             onBackToEmail = {},
+            onUsernameChange = {},
+            onKeyChange = {},
+            onCreateAccount = {},
+            onLoginWithKey = {},
+            onGoToKeyEntry = {},
+            onBackToUsername = {},
             onProviderClick = {},
             onCancelProviderLink = {},
             onLogout = {},

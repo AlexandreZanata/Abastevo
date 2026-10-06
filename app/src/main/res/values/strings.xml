@@ -392,6 +392,26 @@
     <string name="auth_error_provider">Provider check failed, try again</string>
     <string name="auth_error_login_first">Sign in with email first</string>
     <string name="auth_error_unknown">Something went wrong</string>
+    <string name="auth_error_key">Wrong key, check and try again</string>
+    <string name="auth_error_username_taken">Username taken, pick another</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_username_label">Username</string>
+    <string name="auth_have_key">I already have a key</string>
+    <string name="auth_key_subtitle">No email needed. Your key is the only way in.</string>
+    <string name="auth_key_issued_title">Your account key — save it now</string>
+    <string name="auth_key_issued_warning">We never show it again. Lose it and the account is gone.</string>
+    <string name="auth_copy_key">Copy key</string>
+    <string name="auth_saved_enter">Saved it — sign in</string>
+    <string name="auth_key_label">Account key</string>
+    <string name="auth_key_login">Sign in with key</string>
+    <string name="profile_backup_title">Account backup</string>
+    <string name="profile_backup_subtitle">Your key is the only way back in. Send it to WhatsApp or a safe place.</string>
+    <string name="profile_backup_username">Username: %1$s</string>
+    <string name="profile_backup_show">Show</string>
+    <string name="profile_backup_hide">Hide</string>
+    <string name="profile_backup_copy">Copy</string>
+    <string name="profile_backup_share">Save elsewhere</string>
+    <string name="profile_backup_share_text">My Abastevo account\nUsername: %1$s\nKey: %2$s\nKeep it somewhere safe — it is the only way back in.</string>
 
     <!-- Community prices (P10-T06, beta, flag-gated) -->
     <string name="community_section_title">Community prices (beta)</string>

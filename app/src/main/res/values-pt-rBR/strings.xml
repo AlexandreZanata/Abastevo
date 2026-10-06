@@ -391,6 +391,26 @@
     <string name="auth_error_provider">Falha na verificação, tente de novo</string>
     <string name="auth_error_login_first">Entre com email primeiro</string>
     <string name="auth_error_unknown">Algo deu errado</string>
+    <string name="auth_error_key">Chave errada, confira e tente de novo</string>
+    <string name="auth_error_username_taken">Nome em uso, escolha outro</string>
+    <string name="auth_create_account">Criar conta</string>
+    <string name="auth_username_label">Nome de usuário</string>
+    <string name="auth_have_key">Já tenho uma chave</string>
+    <string name="auth_key_subtitle">Sem email. Sua chave é a única forma de entrar.</string>
+    <string name="auth_key_issued_title">Sua chave da conta — salve agora</string>
+    <string name="auth_key_issued_warning">Nunca mostraremos de novo. Perdeu, perdeu a conta.</string>
+    <string name="auth_copy_key">Copiar chave</string>
+    <string name="auth_saved_enter">Salvei — entrar</string>
+    <string name="auth_key_label">Chave da conta</string>
+    <string name="auth_key_login">Entrar com a chave</string>
+    <string name="profile_backup_title">Backup da conta</string>
+    <string name="profile_backup_subtitle">Sua chave é a única forma de voltar. Envie ao WhatsApp ou lugar seguro.</string>
+    <string name="profile_backup_username">Usuário: %1$s</string>
+    <string name="profile_backup_show">Mostrar</string>
+    <string name="profile_backup_hide">Ocultar</string>
+    <string name="profile_backup_copy">Copiar</string>
+    <string name="profile_backup_share">Salvar em outro lugar</string>
+    <string name="profile_backup_share_text">Minha conta Abastevo\nUsuário: %1$s\nChave: %2$s\nGuarde em lugar seguro — é a única forma de voltar.</string>
 
     <!-- Preços da comunidade (P10-T06, beta, atrás de flag) -->
     <string name="community_section_title">Preços da comunidade (beta)</string>

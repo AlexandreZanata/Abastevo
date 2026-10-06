@@ -39,6 +39,7 @@ class AuthViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
+        every { authFlow.currentKey() } returns null
         viewModel = AuthViewModel(authFlow)
     }
 
@@ -48,10 +49,10 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun startsLoggedOutAtEmailEntry() = runTest {
+    fun startsLoggedOutAtUsernameEntry() = runTest {
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertNull(state.error)
     }
 
@@ -78,7 +79,7 @@ class AuthViewModelTest {
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(null)
         viewModel = AuthViewModel(authFlow)
         advanceUntilIdle()
-        assertEquals(AuthStep.EMAIL_ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
     }
 
     @Test
@@ -166,7 +167,7 @@ class AuthViewModelTest {
         viewModel.onLogout()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertEquals("", state.email)
     }
 
@@ -177,7 +178,7 @@ class AuthViewModelTest {
         viewModel.onDeleteAccount()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertEquals(AuthUiError.Deleted, state.error)
         verify(exactly = 1) { authFlow.deleteAccount() }
     }
@@ -204,5 +205,64 @@ class AuthViewModelTest {
         )
         assertEquals(AuthUiError.Offline, AuthViewModel.mapError(PortableAuth.UNAVAILABLE))
         assertEquals(AuthUiError.Unknown, AuthViewModel.mapError("something-new"))
+        assertEquals(AuthUiError.WrongKey, AuthViewModel.mapError("key-invalid"))
+        assertEquals(AuthUiError.UsernameTaken, AuthViewModel.mapError("username-taken"))
+    }
+
+    @Test
+    fun keySignupShowsIssuedKeyOnce() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns
+            AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        viewModel.onUsernameChange("Ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.KEY_ISSUED, state.step)
+        assertEquals("ana123", state.issuedUsername)
+        assertEquals("key-for-ana123", state.issuedKey)
+    }
+
+    @Test
+    fun takenUsernameMapsError() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Err("username-taken")
+        viewModel.onUsernameChange("ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthUiError.UsernameTaken, state.error)
+    }
+
+    @Test
+    fun keyLoginNavigatesBack() = runTest {
+        advanceUntilIdle()
+        every { authFlow.loginWithKey("key-for-ana123") } returns
+            AuthApiResult.Ok(AuthFlow.Login(session(), created = false))
+        every { authFlow.currentKey() } returns AuthFlow.KeyBackup("ana123", "key-for-ana123")
+        viewModel.onGoToKeyEntry()
+        viewModel.onKeyChange("key-for-ana123")
+        viewModel.navigation.test {
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            val state = viewModel.uiState.value
+            assertEquals(AuthStep.AUTHENTICATED, state.step)
+            assertEquals("ana123", state.keyBackup?.username)
+            assertEquals(AuthNavigation.NavigateBack, awaitItem())
+        }
+    }
+
+    @Test
+    fun wrongKeyMapsError() = runTest {
+        advanceUntilIdle()
+        every { authFlow.loginWithKey(any()) } returns AuthApiResult.Err("key-invalid")
+        viewModel.onGoToKeyEntry()
+        viewModel.onKeyChange("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        viewModel.onLoginWithKey()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.KEY_ENTRY, state.step)
+        assertEquals(AuthUiError.WrongKey, state.error)
     }
 }
