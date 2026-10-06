@@ -642,4 +642,37 @@
     <string name="account_key_saved">Ключ экспортирован в выбранный файл. Храните его конфиденциально.</string>
     <string name="account_key_export_failed">Не удалось экспортировать ключ. Повторите попытку.</string>
     <string name="auth_error_secure_storage">Защищённое хранилище недоступно. Сохраните выданный ключ конфиденциально и повторите попытку.</string>
+
+    <!-- Station page and beta representation guide. -->
+    <string name="station_page_artwork_note">Стандартное оформление abastevo · Бета</string>
+    <string name="station_page_cover_tagline">Цены, впечатления и ваша следующая остановка.</string>
+    <string name="station_page_owner_title">Вы управляете этой АЗС?</string>
+    <string name="station_page_owner_copy">Узнайте, как представлять компанию в abastevo. Проверка сохраняет независимость сообщества.</string>
+    <string name="station_page_owner_action">Как это работает</string>
+    <string name="station_page_guide_title">Представляйте свою компанию</string>
+    <string name="station_page_guide_intro">Для управления профилем нужно подтвердить полномочия представителя. Знание CNPJ не предоставляет доступ.</string>
+    <string name="station_page_guide_account">1. Создайте бесплатный аккаунт abastevo.</string>
+    <string name="station_page_guide_authority">2. Подайте запрос на представительство и по инструкции предоставьте подписанное разрешение и документы.</string>
+    <string name="station_page_guide_review">3. Дождитесь независимой проверки. Отправка документов не открывает доступ к управлению.</string>
+    <string name="station_page_guide_beta">Управление АЗС пока недоступно в бета-версии. Это руководство не отправляет запросы и не собирает документы.</string>
+    <string name="station_page_experience_title">Впечатления водителей</string>
+    <string name="station_page_experience_note">Оцените свой опыт использования этого топлива. Оценки сообщества не являются лабораторными испытаниями качества.</string>
+    <string name="station_page_community_empty">Для этого топлива пока нет свежей цены от сообщества.</string>
+    <string name="station_page_participation_pending">Подключитесь для проверки АЗС, прежде чем оценивать, комментировать или обновлять цены.</string>
+    <string name="station_page_rating_save">Сохранить мою оценку</string>
+    <string name="station_page_rating_summary">%1$s ★ · %2$d оценок</string>
+    <string name="station_page_rating_empty">Оценок пока нет. Поделитесь впечатлениями.</string>
+    <string name="station_page_feedback_empty">Комментариев пока нет. Расскажите сообществу о своём опыте.</string>
+    <string name="station_page_feedback_loading">Загрузка отзывов…</string>
+    <string name="station_page_feedback_failed">Не удалось завершить действие. Проверьте подключение и повторите попытку.</string>
+    <string name="station_page_feedback_queued">Ещё не отправлено. Повторите при подключении; это не подтверждает публикацию.</string>
+    <string name="station_page_write_received">Ваш материал получен.</string>
+    <string name="station_page_report_title">Пожаловаться на комментарий</string>
+    <string name="station_page_report_copy">Выберите причину. Жалобы проверяются и не удаляют комментарий автоматически.</string>
+    <string name="station_page_report_spam">Спам или реклама</string>
+    <string name="station_page_report_abuse">Оскорбительное содержание</string>
+    <string name="station_page_report_misleading">Вводящая в заблуждение информация</string>
+    <string name="station_page_report_other">Другое недопустимое содержание</string>
+    <string name="station_page_report_send">Отправить жалобу</string>
+    <string name="station_page_report_received">Жалоба получена для проверки.</string>
 </resources>

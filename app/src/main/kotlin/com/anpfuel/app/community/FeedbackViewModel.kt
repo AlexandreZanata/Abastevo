@@ -384,7 +384,8 @@ class FeedbackViewModel @Inject constructor(
         }
     }
 
-    private suspend fun <T> runReads(call: suspend () -> T): T = call()
+    private suspend fun <T> runReads(call: suspend () -> T): T =
+        kotlinx.coroutines.withContext(ioDispatcher) { call() }
 
     private fun writeState(outcome: FeedbackWriteOutcome): FeedbackUiState {
         return when (outcome) {

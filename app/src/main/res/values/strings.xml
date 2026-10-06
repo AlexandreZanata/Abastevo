@@ -657,4 +657,37 @@
     <string name="account_key_saved">Key exported to the file you selected. Keep it private.</string>
     <string name="account_key_export_failed">Could not export the key. Try again.</string>
     <string name="auth_error_secure_storage">Secure storage is unavailable. Save your issued key privately and try again.</string>
+
+    <!-- Station page and beta representation guide. -->
+    <string name="station_page_artwork_note">Abastevo default artwork · Beta</string>
+    <string name="station_page_cover_tagline">Prices, experiences and your next stop.</string>
+    <string name="station_page_owner_title">Do you manage this station?</string>
+    <string name="station_page_owner_copy">Learn how to represent your business on abastevo. Verification keeps the community independent.</string>
+    <string name="station_page_owner_action">How it works</string>
+    <string name="station_page_guide_title">Represent your business</string>
+    <string name="station_page_guide_intro">Managing a profile requires verified authority to represent the business. Knowing its CNPJ does not grant access.</string>
+    <string name="station_page_guide_account">1. Create your free account in abastevo.</string>
+    <string name="station_page_guide_authority">2. Request representation and follow the instructions to provide signed authorization and supporting evidence.</string>
+    <string name="station_page_guide_review">3. Wait for independent review. Submitting documents does not grant management access.</string>
+    <string name="station_page_guide_beta">Station management is not yet available in the beta. This guide does not submit a request or collect documents.</string>
+    <string name="station_page_experience_title">Motorist experiences</string>
+    <string name="station_page_experience_note">Rate your experience with this fuel. Community ratings are not laboratory quality tests.</string>
+    <string name="station_page_community_empty">No recent community price is available for this fuel yet.</string>
+    <string name="station_page_participation_pending">Connect to verify this station before rating, commenting or updating prices.</string>
+    <string name="station_page_rating_save">Save my rating</string>
+    <string name="station_page_rating_summary">%1$s ★ · %2$d ratings</string>
+    <string name="station_page_rating_empty">No ratings yet. Be the first to share your experience.</string>
+    <string name="station_page_feedback_empty">No comments yet. Tell the community about your experience.</string>
+    <string name="station_page_feedback_loading">Loading experiences…</string>
+    <string name="station_page_feedback_failed">Could not complete this action. Check your connection and try again.</string>
+    <string name="station_page_feedback_queued">Not sent yet. Retry when connected; this is not a publication confirmation.</string>
+    <string name="station_page_write_received">Your contribution was received.</string>
+    <string name="station_page_report_title">Report comment</string>
+    <string name="station_page_report_copy">Choose a reason. Reports go to review and do not automatically remove a comment.</string>
+    <string name="station_page_report_spam">Spam or advertising</string>
+    <string name="station_page_report_abuse">Offensive content</string>
+    <string name="station_page_report_misleading">Misleading information</string>
+    <string name="station_page_report_other">Other inappropriate content</string>
+    <string name="station_page_report_send">Send report</string>
+    <string name="station_page_report_received">Report received for review.</string>
 </resources>

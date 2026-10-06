@@ -93,6 +93,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
+    @Provides
+    fun provideResolveStationByCnpjUseCase(
+        flags: CommunityReadsFlagProvider, gateway: ServerStationGateway, cache: ServerStationCache,
+    ) = com.anpfuel.application.usecase.directory.ResolveStationByCnpjUseCase(flags, gateway, cache)
+
 
     @Provides
     @Singleton

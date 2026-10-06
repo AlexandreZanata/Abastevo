@@ -155,7 +155,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             items(state.items, key = { it.stationId }) { item ->
-                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationProfile(item.stationId)) })
+                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationPage(item.stationId, state.fuel)) })
             }
             if (state.nextCursor != null && state.items.size < 200 && !state.loading) item {
                 OutlinedButton(onClick = onMore, enabled = !state.loadingMore, modifier = Modifier.fillMaxWidth()) {

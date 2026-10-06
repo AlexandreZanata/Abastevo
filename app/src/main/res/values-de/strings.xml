@@ -642,4 +642,37 @@
     <string name="account_key_saved">Schlüssel in die gewählte Datei exportiert. Halte sie privat.</string>
     <string name="account_key_export_failed">Schlüssel konnte nicht exportiert werden. Erneut versuchen.</string>
     <string name="auth_error_secure_storage">Sicherer Speicher ist nicht verfügbar. Sichere den ausgegebenen Schlüssel privat und versuche es erneut.</string>
+
+    <!-- Station page and beta representation guide. -->
+    <string name="station_page_artwork_note">Standardgrafik von abastevo · Beta</string>
+    <string name="station_page_cover_tagline">Preise, Erfahrungen und dein nächster Halt.</string>
+    <string name="station_page_owner_title">Verwaltest du diese Tankstelle?</string>
+    <string name="station_page_owner_copy">Erfahre, wie du dein Unternehmen auf abastevo vertreten kannst. Die Prüfung schützt die Unabhängigkeit der Community.</string>
+    <string name="station_page_owner_action">So funktioniert es</string>
+    <string name="station_page_guide_title">Dein Unternehmen vertreten</string>
+    <string name="station_page_guide_intro">Die Profilverwaltung erfordert eine geprüfte Vertretungsbefugnis. Die Kenntnis der CNPJ gewährt keinen Zugriff.</string>
+    <string name="station_page_guide_account">1. Erstelle dein kostenloses abastevo-Konto.</string>
+    <string name="station_page_guide_authority">2. Beantrage die Vertretung und reiche gemäß den Anweisungen eine unterschriebene Vollmacht und Nachweise ein.</string>
+    <string name="station_page_guide_review">3. Warte auf die unabhängige Prüfung. Eingereichte Dokumente gewähren noch keinen Verwaltungszugriff.</string>
+    <string name="station_page_guide_beta">Die Tankstellenverwaltung ist in der Beta noch nicht verfügbar. Dieser Leitfaden stellt keinen Antrag und sammelt keine Dokumente.</string>
+    <string name="station_page_experience_title">Erfahrungen der Fahrer</string>
+    <string name="station_page_experience_note">Bewerte deine Erfahrung mit diesem Kraftstoff. Community-Bewertungen sind keine Qualitätsprüfungen im Labor.</string>
+    <string name="station_page_community_empty">Für diesen Kraftstoff liegt noch kein aktueller Community-Preis vor.</string>
+    <string name="station_page_participation_pending">Verbinde dich, um diese Tankstelle vor Bewertungen, Kommentaren oder Preisaktualisierungen zu prüfen.</string>
+    <string name="station_page_rating_save">Meine Bewertung speichern</string>
+    <string name="station_page_rating_summary">%1$s ★ · %2$d Bewertungen</string>
+    <string name="station_page_rating_empty">Noch keine Bewertungen. Teile deine Erfahrung.</string>
+    <string name="station_page_feedback_empty">Noch keine Kommentare. Erzähle der Community von deiner Erfahrung.</string>
+    <string name="station_page_feedback_loading">Erfahrungen werden geladen…</string>
+    <string name="station_page_feedback_failed">Die Aktion konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="station_page_feedback_queued">Noch nicht gesendet. Versuche es mit Verbindung erneut; dies bestätigt keine Veröffentlichung.</string>
+    <string name="station_page_write_received">Dein Beitrag wurde empfangen.</string>
+    <string name="station_page_report_title">Kommentar melden</string>
+    <string name="station_page_report_copy">Wähle einen Grund. Meldungen werden geprüft und entfernen Kommentare nicht automatisch.</string>
+    <string name="station_page_report_spam">Spam oder Werbung</string>
+    <string name="station_page_report_abuse">Beleidigender Inhalt</string>
+    <string name="station_page_report_misleading">Irreführende Informationen</string>
+    <string name="station_page_report_other">Anderer unangemessener Inhalt</string>
+    <string name="station_page_report_send">Meldung senden</string>
+    <string name="station_page_report_received">Meldung zur Prüfung empfangen.</string>
 </resources>

@@ -54,6 +54,7 @@ type StationReader interface {
 	Search(ctx context.Context, f SearchFilter) ([]Station, string, error)
 	Nearby(ctx context.Context, f NearbyFilter) ([]NearbyStation, string, error)
 	Detail(ctx context.Context, id string) (Station, error)
+	ByCNPJ(ctx context.Context, cnpj string) (Station, error)
 }
 
 // SearchFilter carries validated search input. AfterID is the opaque sort

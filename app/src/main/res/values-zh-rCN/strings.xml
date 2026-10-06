@@ -642,4 +642,37 @@
     <string name="account_key_saved">密钥已导出到所选文件，请保持私密。</string>
     <string name="account_key_export_failed">无法导出密钥，请重试。</string>
     <string name="auth_error_secure_storage">安全存储不可用，请私下保存已发放的密钥后重试。</string>
+
+    <!-- Station page and beta representation guide. -->
+    <string name="station_page_artwork_note">abastevo 默认图案 · 测试版</string>
+    <string name="station_page_cover_tagline">价格、体验和您的下一站。</string>
+    <string name="station_page_owner_title">您管理这家加油站吗？</string>
+    <string name="station_page_owner_copy">了解如何在 abastevo 代表您的企业。验证可维护社区的独立性。</string>
+    <string name="station_page_owner_action">了解流程</string>
+    <string name="station_page_guide_title">代表您的企业</string>
+    <string name="station_page_guide_intro">管理资料需要验证企业代表权限。知道 CNPJ 并不授予访问权限。</string>
+    <string name="station_page_guide_account">1. 创建免费的 abastevo 账户。</string>
+    <string name="station_page_guide_authority">2. 申请代表资格，并按照说明提供签署的授权和证明文件。</string>
+    <string name="station_page_guide_review">3. 等待独立审核。提交文件并不会立即获得管理权限。</string>
+    <string name="station_page_guide_beta">测试版尚未开放加油站管理。本指南不会提交申请或收集文件。</string>
+    <string name="station_page_experience_title">驾驶者体验</string>
+    <string name="station_page_experience_note">评价您使用该燃油的体验。社区评分并非实验室质量检测。</string>
+    <string name="station_page_community_empty">该燃油暂时没有近期的社区价格。</string>
+    <string name="station_page_participation_pending">请联网验证这家加油站后再评分、评论或更新价格。</string>
+    <string name="station_page_rating_save">保存我的评分</string>
+    <string name="station_page_rating_summary">%1$s ★ · %2$d 条评分</string>
+    <string name="station_page_rating_empty">暂无评分。欢迎分享您的体验。</string>
+    <string name="station_page_feedback_empty">暂无评论。向社区分享您的体验。</string>
+    <string name="station_page_feedback_loading">正在加载体验…</string>
+    <string name="station_page_feedback_failed">无法完成此操作。请检查网络连接后重试。</string>
+    <string name="station_page_feedback_queued">尚未发送。联网后请重试；这不是发布确认。</string>
+    <string name="station_page_write_received">已收到您的投稿。</string>
+    <string name="station_page_report_title">举报评论</string>
+    <string name="station_page_report_copy">请选择原因。举报将接受审核，不会自动删除评论。</string>
+    <string name="station_page_report_spam">垃圾信息或广告</string>
+    <string name="station_page_report_abuse">冒犯性内容</string>
+    <string name="station_page_report_misleading">误导性信息</string>
+    <string name="station_page_report_other">其他不当内容</string>
+    <string name="station_page_report_send">发送举报</string>
+    <string name="station_page_report_received">已收到举报，等待审核。</string>
 </resources>

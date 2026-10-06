@@ -89,4 +89,19 @@ class DirectoryStationHttpClientTest {
             server.shutdown()
         }
     }
+    @Test
+    fun `exact cnpj lookup distinguishes not found from outage`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            assertEquals("{}", client(server).byCnpj("04218406000104"))
+            assertEquals("/v1/stations/by-cnpj/04218406000104", server.takeRequest().path)
+            server.enqueue(MockResponse().setResponseCode(404))
+            org.junit.jupiter.api.Assertions.assertNull(client(server).byCnpj("11222333000181"))
+            server.enqueue(MockResponse().setResponseCode(503))
+            assertThrows(IOException::class.java) { client(server).byCnpj("04218406000104") }
+            assertThrows(IllegalArgumentException::class.java) { client(server).byCnpj("../auth") }
+            assertEquals(3, server.requestCount)
+        } finally { server.shutdown() }
+    }
 }

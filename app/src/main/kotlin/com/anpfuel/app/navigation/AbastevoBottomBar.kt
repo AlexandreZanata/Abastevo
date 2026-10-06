@@ -55,7 +55,8 @@ enum class NavigationTab(
     ;
 
     companion object {
-        fun fromRoute(route: String?): NavigationTab? = entries.firstOrNull { it.route == route }
+        fun fromRoute(route: String?): NavigationTab? =
+            if (route == Routes.STATION_PAGE) EXPLORE else entries.firstOrNull { it.route == route }
     }
 }
 
@@ -89,7 +90,7 @@ fun AbastevoBottomBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             NavigationTab.entries.forEach { tab ->
-                val isSelected = currentRoute == tab.route
+                val isSelected = NavigationTab.fromRoute(currentRoute) == tab
                 val label = stringResource(tab.titleRes)
                 val interactionSource = remember { MutableInteractionSource() }
                 Column(

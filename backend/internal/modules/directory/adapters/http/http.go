@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/go-chi/chi/v5"
 
 	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
@@ -24,6 +25,7 @@ type Handler struct {
 func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/stations", h.search)
 	r.Get("/v1/stations/nearby", h.nearby)
+	r.Get("/v1/stations/by-cnpj/{cnpj}", h.byCNPJ)
 	r.Get("/v1/stations/{station_id}", h.detail)
 }
 
@@ -158,6 +160,26 @@ func (h Handler) detail(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		httpapi.WriteError(w, r, http.StatusInternalServerError, "station.unavailable", "try again later", nil)
+		return
+	}
+	body, _ := json.Marshal(station)
+	httpapi.WriteJSON(w, r, http.StatusOK, "public, max-age=30, s-maxage=60", body)
+}
+
+// byCNPJ binds legacy survey rows to the canonical existing station.
+func (h Handler) byCNPJ(w http.ResponseWriter, r *http.Request) {
+	cnpj, err := kernel.ParseCNPJ(chi.URLParam(r, "cnpj"))
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "station.bad-cnpj", "invalid CNPJ", nil)
+		return
+	}
+	station, err := h.Stations.ByCNPJ(r.Context(), cnpj.Normalized())
+	if err != nil {
+		if errors.Is(err, application.ErrUnknownStation) {
+			httpapi.WriteError(w, r, http.StatusNotFound, "station.not-found", "station not found", nil)
+		} else {
+			httpapi.WriteError(w, r, http.StatusInternalServerError, "station.unavailable", "try again later", nil)
+		}
 		return
 	}
 	body, _ := json.Marshal(station)

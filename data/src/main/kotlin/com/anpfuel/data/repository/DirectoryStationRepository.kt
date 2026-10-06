@@ -51,6 +51,9 @@ class DirectoryStationGatewayImpl @Inject constructor(
         return DirectoryStationJsonCodec.decodeNearby(raw)
     }
 
+    override suspend fun byCnpj(cnpj: String): ServerStation? =
+        httpClient.byCnpj(cnpj)?.let(DirectoryStationJsonCodec::decodeStation)
+
     override suspend fun detail(stationId: String): ServerStation {
         val raw = try {
             httpClient.detail(stationId)

@@ -178,6 +178,16 @@ fun AnpNavGraph(
                 onManage = { navController.navigate(Routes.stationManagement(it)) },
             )
         }
+        composable(Routes.STATION_PAGE, arguments = listOf(
+            navArgument("stationKey") { type = NavType.StringType },
+            navArgument("fuelProduct") { type = NavType.StringType; defaultValue = "GASOLINE_REGULAR" },
+        )) {
+            com.anpfuel.app.ui.stations.StationPageScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+            )
+        }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(
                 onBack = { navController.popBackStack() },
@@ -187,12 +197,8 @@ fun AnpNavGraph(
         composable(Routes.STATIONS) {
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
-                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
-                    navController.navigate(Routes.capture(stationId, fuelWire))
-                },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
-                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
+                onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
         composable(
@@ -203,12 +209,8 @@ fun AnpNavGraph(
         ) {
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
-                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
-                    navController.navigate(Routes.capture(stationId, fuelWire))
-                },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
-                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
+                onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
         composable(Routes.VEHICLES) {

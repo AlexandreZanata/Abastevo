@@ -264,3 +264,34 @@ func TestDetailEnvelope(t *testing.T) {
 		t.Fatalf("malformed = %d", w5.Code)
 	}
 }
+
+func TestByCNPJCanonicalResolution(t *testing.T) {
+	router, ids := freshRouter(t)
+	for _, tc := range []struct {
+		cnpj, id string
+		status   int
+	}{
+		{"04218406000104", ids["alfa"], 200},
+		{"12ABC34501DE35", ids["gama"], 200},
+		{"12345678000195", "", 404},
+		{"04218406000105", "", 400},
+	} {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest("GET", "/v1/stations/by-cnpj/"+tc.cnpj, nil))
+		if response.Code != tc.status {
+			t.Fatalf("%s: status %d want %d", tc.cnpj, response.Code, tc.status)
+		}
+		if tc.status == 200 {
+			var station struct {
+				ID   string `json:"station_id"`
+				CNPJ string `json:"cnpj_normalized"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &station); err != nil {
+				t.Fatal(err)
+			}
+			if station.ID != tc.id || station.CNPJ != tc.cnpj {
+				t.Fatalf("incorrect identity: %+v", station)
+			}
+		}
+	}
+}

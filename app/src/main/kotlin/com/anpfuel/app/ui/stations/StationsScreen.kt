@@ -63,12 +63,10 @@ import com.anpfuel.domain.valueobject.FuelProduct
 
 @Composable
 fun StationsScreen(
-    onNavigateBack: (() -> Unit)? = null,
-    onNavigateToUpdatePrice: () -> Unit = {},
-    onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
-    onSuggestStation: () -> Unit = {},
-    onStationProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    onNavigateBack: (() -> Unit)? = null,
+    onSuggestStation: () -> Unit = {},
+    onOpenStation: (String, FuelProduct) -> Unit = { _, _ -> },
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -143,18 +141,9 @@ fun StationsScreen(
         onDownloadStationDetail = { viewModel.downloadStationDetail(locale) },
         onRetry = { viewModel.load(locale) },
         onWeekChanged = { viewModel.load(locale) },
-        onStationSelected = viewModel::onStationSelected,
-        onNavigateToStation = viewModel::onNavigateToStation,
-        onDetailDismissed = viewModel::onDetailDismissed,
-        onNavigateToUpdatePrice = onNavigateToUpdatePrice,
-        onServerStationSelected = viewModel::onServerStationSelected,
-        onServerDetailDismissed = viewModel::onServerDetailDismissed,
-        onServerStationNavigate = viewModel::onServerStationNavigate,
-        onServerUpdatePrice = { station, fuelWire ->
-            onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
-        },
+        onStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
+        onServerStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
         onSuggestStation = onSuggestStation,
-        onStationProfile = onStationProfile,
         modifier = modifier,
     )
 }
@@ -163,7 +152,6 @@ fun StationsScreen(
 @Composable
 private fun StationsContent(
     uiState: StationsUiState,
-    onNavigateBack: (() -> Unit)? = null,
     onFuelProductSelected: (FuelProduct) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onFindNearestStation: () -> Unit,
@@ -171,16 +159,10 @@ private fun StationsContent(
     onRetry: () -> Unit,
     onWeekChanged: () -> Unit,
     onStationSelected: (String) -> Unit,
-    onNavigateToStation: (String) -> Unit,
-    onDetailDismissed: () -> Unit,
-    onNavigateToUpdatePrice: () -> Unit,
-    onServerStationSelected: (String) -> Unit = {},
-    onServerDetailDismissed: () -> Unit = {},
-    onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
-    onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
-    onSuggestStation: () -> Unit = {},
-    onStationProfile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    onNavigateBack: (() -> Unit)? = null,
+    onServerStationSelected: (String) -> Unit = {},
+    onSuggestStation: () -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -428,43 +410,6 @@ private fun StationsContent(
                 )
             }
         }
-
-        uiState.selectedDetail?.let { detail ->
-            val locationLabel =
-                if (uiState.municipality != null && uiState.state != null) {
-                    stringResource(
-                        R.string.home_location_format,
-                        uiState.municipality,
-                        uiState.state.abbreviation,
-                    )
-                } else {
-                    null
-                }
-            StationDetailSheet(
-                detail = detail,
-                fuelProduct = uiState.selectedFuelProduct,
-                locationLabel = locationLabel,
-                onDismiss = onDetailDismissed,
-                onRoute = { onNavigateToStation(detail.station.cnpjDigits) },
-                onUpdatePrice = onNavigateToUpdatePrice,
-            )
-        }
-
-        uiState.selectedServerStation?.let { serverStation ->
-            val fuelWire = com.anpfuel.data.mapper.WireFuelMapper.toWire(
-                uiState.selectedFuelProduct,
-            )
-            ServerStationDetailSheet(
-                station = serverStation,
-                fromCache = uiState.serverDetailFromCache,
-                onDismiss = onServerDetailDismissed,
-                onRoute = onServerStationNavigate,
-                onUpdatePrice = { onServerUpdatePrice(serverStation, fuelWire) },
-                fuelProductWire = fuelWire,
-                accountId = uiState.serverAccountId,
-                onProfile = { onServerDetailDismissed(); onStationProfile(serverStation.stationId) },
-            )
-        }
     }
 }
 
@@ -528,9 +473,6 @@ private fun StationsScreenPreview() {
             onRetry = {},
             onWeekChanged = {},
             onStationSelected = {},
-            onNavigateToStation = {},
-            onDetailDismissed = {},
-            onNavigateToUpdatePrice = {},
         )
     }
 }

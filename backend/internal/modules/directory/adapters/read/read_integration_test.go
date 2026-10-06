@@ -306,3 +306,33 @@ func TestNearbyUsesIndex(t *testing.T) {
 		t.Errorf("seq scan in forced-index plan:\n%s", plan)
 	}
 }
+
+func TestByCNPJDoesNotCreateOrResolveRetiredIdentifier(t *testing.T) {
+	pool := freshPool(t)
+	a, _, _ := seedCatalog(t, pool)
+	reader := NewReader(pool)
+	ctx := context.Background()
+	found, err := reader.ByCNPJ(ctx, "04218406000104")
+	if err != nil || found.ID != a {
+		t.Fatalf("resolve: %+v %v", found, err)
+	}
+	var before, after int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM directory_stations").Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.ByCNPJ(ctx, "12345678000195"); err != application.ErrUnknownStation {
+		t.Fatalf("unknown: %v", err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE directory_identifiers SET valid_to = now() WHERE normalized_value = $1", "04218406000104"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.ByCNPJ(ctx, "04218406000104"); err != application.ErrUnknownStation {
+		t.Fatalf("retired: %v", err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM directory_stations").Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatal("read created a station")
+	}
+}

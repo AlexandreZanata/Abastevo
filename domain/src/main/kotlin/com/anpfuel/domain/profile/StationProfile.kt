@@ -22,6 +22,7 @@ data class StationProfile(
     val revision: Int = 0,
     val operatorSource: String = "",
     val hasBadge: Boolean = false,
+    val artwork: StationArtwork = StationArtwork.BETA_DEFAULT,
 ) {
     companion object {
         fun projectBusiness(raw: Map<String, String>): Map<String, String> =

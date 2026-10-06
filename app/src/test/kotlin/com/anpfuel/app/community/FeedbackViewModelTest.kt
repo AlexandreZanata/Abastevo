@@ -330,4 +330,25 @@ class FeedbackViewModelTest {
         assertEquals("INVALID", (state as FeedbackUiState.Rejected).kindLabel)
         coVerify(exactly = 0) { writes.report(any(), any(), any(), any()) }
     }
+    @Test
+    fun `public stats and comments leave the main dispatcher`() = runTest(dispatcher) {
+        enabled = true
+        val readIo = StandardTestDispatcher(testScheduler, "feedback-read-io")
+        coEvery { reads.stats(any(), any()) } coAnswers {
+            org.junit.jupiter.api.Assertions.assertSame(readIo,
+                kotlinx.coroutines.currentCoroutineContext()[kotlin.coroutines.ContinuationInterceptor])
+            FeedbackStatsOutcome.Fresh(RatingStatsSnapshot("s-1", "GASOLINE", 0, 0))
+        }
+        coEvery { reads.comments(any(), any(), any(), any()) } coAnswers {
+            org.junit.jupiter.api.Assertions.assertSame(readIo,
+                kotlinx.coroutines.currentCoroutineContext()[kotlin.coroutines.ContinuationInterceptor])
+            FeedbackPageOutcome.Fresh(FeedbackPage(emptyList(), null))
+        }
+        val vm = preparedVm("").also { it.ioDispatcher = readIo }
+        vm.loadStats(); advanceUntilIdle()
+        assertTrue(vm.state.value is FeedbackUiState.StatsLoaded)
+        vm.loadFirstPage(); advanceUntilIdle()
+        assertTrue(vm.state.value is FeedbackUiState.Loaded)
+    }
+
 }

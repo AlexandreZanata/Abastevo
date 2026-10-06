@@ -655,4 +655,37 @@
     <string name="account_key_saved">Chave exportada para o arquivo escolhido. Mantenha-o privado.</string>
     <string name="account_key_export_failed">Não foi possível exportar a chave. Tente novamente.</string>
     <string name="auth_error_secure_storage">O armazenamento seguro está indisponível. Salve sua chave em um lugar privado e tente novamente.</string>
+
+    <!-- Station page and beta representation guide. -->
+    <string name="station_page_artwork_note">Arte padrão do abastevo · Beta</string>
+    <string name="station_page_cover_tagline">Preços, experiências e sua próxima parada.</string>
+    <string name="station_page_owner_title">Você administra este posto?</string>
+    <string name="station_page_owner_copy">Saiba como representar sua empresa no abastevo. A verificação preserva a independência da comunidade.</string>
+    <string name="station_page_owner_action">Entender como funciona</string>
+    <string name="station_page_guide_title">Represente sua empresa</string>
+    <string name="station_page_guide_intro">A gestão do perfil exige comprovação de poderes para representar a empresa. Conhecer o CNPJ não concede acesso.</string>
+    <string name="station_page_guide_account">1. Crie sua conta gratuita no abastevo.</string>
+    <string name="station_page_guide_authority">2. Solicite a representação e siga as instruções para apresentar autorização assinada e documentos de apoio.</string>
+    <string name="station_page_guide_review">3. Aguarde a análise independente. Enviar documentos não libera a gestão do perfil.</string>
+    <string name="station_page_guide_beta">A gestão de postos ainda não está disponível no beta. Este guia não envia uma solicitação nem coleta documentos.</string>
+    <string name="station_page_experience_title">Experiência dos motoristas</string>
+    <string name="station_page_experience_note">Avalie sua experiência com este combustível. As notas da comunidade não são testes de qualidade em laboratório.</string>
+    <string name="station_page_community_empty">Ainda não há um preço recente da comunidade para este combustível.</string>
+    <string name="station_page_participation_pending">Conecte-se para verificar este posto antes de avaliar, comentar ou atualizar preços.</string>
+    <string name="station_page_rating_save">Salvar minha avaliação</string>
+    <string name="station_page_rating_summary">%1$s ★ · %2$d avaliações</string>
+    <string name="station_page_rating_empty">Ainda sem avaliações. Seja o primeiro a contar sua experiência.</string>
+    <string name="station_page_feedback_empty">Ainda sem comentários. Conte sua experiência para a comunidade.</string>
+    <string name="station_page_feedback_loading">Carregando experiências…</string>
+    <string name="station_page_feedback_failed">Não foi possível concluir esta ação. Confira sua conexão e tente novamente.</string>
+    <string name="station_page_feedback_queued">Ainda não enviado. Tente novamente quando houver conexão; isso não confirma a publicação.</string>
+    <string name="station_page_write_received">Sua contribuição foi recebida.</string>
+    <string name="station_page_report_title">Denunciar comentário</string>
+    <string name="station_page_report_copy">Escolha um motivo. A denúncia vai para análise e não remove o comentário automaticamente.</string>
+    <string name="station_page_report_spam">Spam ou propaganda</string>
+    <string name="station_page_report_abuse">Conteúdo ofensivo</string>
+    <string name="station_page_report_misleading">Informação enganosa</string>
+    <string name="station_page_report_other">Outro conteúdo inadequado</string>
+    <string name="station_page_report_send">Enviar denúncia</string>
+    <string name="station_page_report_received">Denúncia recebida para análise.</string>
 </resources>

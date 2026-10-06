@@ -24,6 +24,9 @@ interface ServerStationGateway {
     ): List<NearbyServerStation>
 
     suspend fun detail(stationId: String): ServerStation
+
+    /** Existing active identifier only; never creates a station. */
+    suspend fun byCnpj(cnpj: String): ServerStation? = throw UnsupportedOperationException("identifier lookup unavailable")
 }
 
 interface ServerStationCache {

@@ -52,6 +52,14 @@ class DirectoryStationHttpClient(
         return get(baseUrl.trimEnd('/') + "/v1/stations/" + encoded)
     }
 
+    fun byCnpj(cnpj: String): String? {
+        require(cnpj.matches(Regex("[A-Z0-9]{12}[0-9]{2}"))) { "invalid CNPJ shape" }
+        return try { get(baseUrl.trimEnd('/') + "/v1/stations/by-cnpj/" + cnpj) }
+        catch (_: StationNotFound) { null }
+    }
+
+    private class StationNotFound : IOException("station not found")
+
     private fun get(url: String): String {
         val request = Request.Builder()
             .url(url)
@@ -60,6 +68,7 @@ class DirectoryStationHttpClient(
             .build()
         try {
             client.newCall(request).execute().use { response ->
+                if (response.code == 404) throw StationNotFound()
                 if (!response.isSuccessful) {
                     throw IOException("directory read failed: HTTP ${response.code}")
                 }

@@ -26,6 +26,12 @@ object Routes {
     fun stationClaim(stationId: String): String = "station-claim/$stationId"
     fun stationManagement(stationId: String): String = "station-management/$stationId"
 
+    const val STATION_PAGE = "station/{stationKey}?fuelProduct={fuelProduct}"
+    fun stationPage(stationKey: String, fuel: FuelProduct): String {
+        require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationKey) != null) { "invalid station identity" }
+        return "station/$stationKey?fuelProduct=${fuel.name}"
+    }
+
     const val STATION_PROFILE = "station-profile/{stationId}"
 
     fun stationProfile(stationId: String): String = "station-profile/$stationId"
