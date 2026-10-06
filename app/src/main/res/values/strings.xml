@@ -88,7 +88,6 @@
     <string name="home_no_location_message">No city selected yet.</string>
     <string name="home_no_location_hint">Search or browse by state to view fuel prices.</string>
     <string name="home_view_price_details">View full price details</string>
-    <string name="home_stale_price_table_message">Price table may be outdated; values can change. Last update: %1$s</string>
 
     <!-- Tank fill cost / Vehicles (UC-010, UC-011) -->
     <string name="home_tank_fill_cost_title">Tank fill cost</string>

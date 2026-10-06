@@ -19,7 +19,6 @@
     <string name="home_no_location_message">Город ещё не выбран.</string>
     <string name="home_no_location_hint">Ищите или просматривайте по штату, чтобы увидеть цены на топливо.</string>
     <string name="home_view_price_details">Показать полные сведения о ценах</string>
-    <string name="home_stale_price_table_message">Таблица цен может быть устаревшей; значения могут измениться. Последнее обновление: %1$s</string>
 
     <string name="home_tank_fill_cost_title">Стоимость полного бака</string>
     <string name="home_tank_fill_cost_vehicle_format">%1$s (%2$s л)</string>

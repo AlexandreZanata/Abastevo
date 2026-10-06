@@ -19,7 +19,6 @@
     <string name="home_no_location_message">都市がまだ選択されていません。</string>
     <string name="home_no_location_hint">検索するか州別に閲覧して燃料価格を表示します。</string>
     <string name="home_view_price_details">価格の詳細を表示</string>
-    <string name="home_stale_price_table_message">価格表が古い可能性があります。価格は変動する場合があります。最終更新: %1$s</string>
 
     <string name="home_tank_fill_cost_title">満タンコスト</string>
     <string name="home_tank_fill_cost_vehicle_format">%1$s（%2$s L）</string>

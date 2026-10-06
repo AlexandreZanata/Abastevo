@@ -19,7 +19,6 @@
     <string name="home_no_location_message">Aún no se ha seleccionado ninguna ciudad.</string>
     <string name="home_no_location_hint">Busque o explore por estado para ver los precios del combustible.</string>
     <string name="home_view_price_details">Ver detalles completos de precios</string>
-    <string name="home_stale_price_table_message">La tabla de precios puede estar desactualizada; los valores pueden cambiar. Última actualización: %1$s</string>
 
     <string name="home_tank_fill_cost_title">Costo de llenar el tanque</string>
     <string name="home_tank_fill_cost_vehicle_format">%1$s (%2$s L)</string>

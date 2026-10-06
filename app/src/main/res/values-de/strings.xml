@@ -19,7 +19,6 @@
     <string name="home_no_location_message">Noch keine Stadt ausgewählt.</string>
     <string name="home_no_location_hint">Suchen oder nach Bundesstaat durchsuchen, um Kraftstoffpreise anzuzeigen.</string>
     <string name="home_view_price_details">Vollständige Preisdetails anzeigen</string>
-    <string name="home_stale_price_table_message">Die Preistabelle ist möglicherweise veraltet; Werte können sich ändern. Letzte Aktualisierung: %1$s</string>
 
     <string name="home_tank_fill_cost_title">Tankfüllkosten</string>
     <string name="home_tank_fill_cost_vehicle_format">%1$s (%2$s L)</string>

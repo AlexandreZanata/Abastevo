@@ -355,23 +355,6 @@ private fun PriceMetadata(uiState: HomeUiState) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
-        val currentDate = java.time.LocalDate.now()
-        if (week.endDate.isBefore(currentDate)) {
-            val formatter = java.time.format.DateTimeFormatter
-                .ofLocalizedDate(java.time.format.FormatStyle.SHORT)
-                .withLocale(locale)
-            val formattedDate = week.endDate.format(formatter)
-            Text(
-                text = stringResource(
-                    R.string.home_stale_price_table_message,
-                    formattedDate,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
     }
 }
 

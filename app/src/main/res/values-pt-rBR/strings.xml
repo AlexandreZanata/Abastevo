@@ -88,7 +88,6 @@
     <string name="home_no_location_message">Nenhuma cidade selecionada.</string>
     <string name="home_no_location_hint">Busque ou navegue por estado para ver os preços.</string>
     <string name="home_view_price_details">Ver detalhes completos dos preços</string>
-    <string name="home_stale_price_table_message">Tabela de preços desatualizada; os valores podem mudar. Última atualização: %1$s</string>
 
     <!-- Tank fill cost / Vehicles (UC-010, UC-011) -->
     <string name="home_tank_fill_cost_title">Custo para encher o tanque</string>
