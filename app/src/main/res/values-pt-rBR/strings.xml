@@ -480,6 +480,15 @@
     <string name="capture_target_label">Publicando no posto %1$s · %2$s</string>
     <string name="capture_target_invalid">Referência de posto inválida — volte e escolha o posto de novo.</string>
     <string name="capture_submit">Enviar à caixa</string>
+    <string name="capture_take_photo">Fotografar preço</string>
+    <string name="capture_photo_attached">Foto anexada — ela vai com seu preço para a caixa.</string>
+    <string name="capture_photo_refused">Foto excedeu o limite de tamanho (%1$s) — você ainda pode digitar o preço.</string>
+    <string name="capture_pick_station">Escolha o posto deste preço</string>
+    <string name="capture_nearby_loading">Buscando postos perto de você…</string>
+    <string name="capture_nearby_failed">Não foi carregar postos próximos. Digite o preço; a lista precisa de conexão.</string>
+    <string name="capture_nearby_empty">Nenhum posto próximo encontrado ainda.</string>
+    <string name="capture_nearby_distance">a ~%1$d m</string>
+    <string name="capture_location_needed">Permita a localização para escolher o posto onde você está.</string>
     <string name="capture_submitted">Na fila de envio. Status, repetição e cancelamento ficam nas suas contribuições.</string>
     <string name="capture_submit_failed">Não foi enfileirar (%1$s). Nada foi enviado.</string>
     <string name="capture_done">Concluir</string>

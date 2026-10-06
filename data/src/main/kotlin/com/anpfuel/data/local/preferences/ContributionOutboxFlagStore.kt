@@ -8,7 +8,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * P10-T05 contribution-outbox flag (default OFF).
+ * P10-T05 contribution-outbox flag (default ON since the Community
+ * contribute entry went live: the outbox owns durable dispatch and
+ * retry; the worker still submits through the staging origin only).
  *
  * Synchronous SharedPreferences read so enqueue never blocks; enabling
  * only unlocks durable outbox dispatch and never removes ANP offline
@@ -23,7 +25,7 @@ class ContributionOutboxFlagStore @Inject constructor(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun isEnabled(): Boolean =
-        prefs.getBoolean(KEY_ENABLED, false)
+        prefs.getBoolean(KEY_ENABLED, true)
 
     fun setEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()

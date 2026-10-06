@@ -1,10 +1,17 @@
 package com.anpfuel.app.capture
 
 import android.content.Context
+import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.OcrPort
+import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
+import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
+import com.anpfuel.domain.discovery.NearbyServerStation
+import com.anpfuel.domain.discovery.ServerStation
+import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 import io.mockk.every
@@ -45,6 +52,10 @@ class CaptureOcrViewModelTest {
         hasPermission: Boolean,
         ocrText: (String) -> List<PortablePriceOcr.OcrCandidate> =
             PortablePriceOcr::parseCandidates,
+        location: com.anpfuel.domain.valueobject.DeviceLocation? = null,
+        nearby: NearbyServerStationsOutcome =
+            NearbyServerStationsOutcome.Fresh(emptyList()),
+        photo: PhotoFlow.PhotoResult = PhotoFlow.PhotoResult.Ready("photo-1", 120_000, 1),
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
             override fun isEnabled(): Boolean = enabled
@@ -57,7 +68,13 @@ class CaptureOcrViewModelTest {
         val permissions = CameraPermissionHandler(context)
         val handler = mockk<CameraPermissionHandler>()
         every { handler.hasCameraPermission() } returns hasPermission
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue)
+        val locations = mockk<LocationPermissionHandler>()
+        every { locations.getLastKnownLocation() } returns location
+        val nearbyUseCase = mockk<GetNearbyServerStationsUseCase>()
+        io.mockk.coEvery { nearbyUseCase.invoke(any(), any(), any(), any()) } returns nearby
+        val photos = mockk<PhotoFlow>()
+        every { photos.prepare(any(), any()) } returns photo
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos)
     }
 
     @Test
@@ -169,5 +186,108 @@ class CaptureOcrViewModelTest {
         val submitted = vm.submit.value
         assertTrue(submitted is CaptureOcrViewModel.SubmitState.Queued)
         assertTrue(!(submitted as CaptureOcrViewModel.SubmitState.Queued).historical)
+    }
+
+    private fun nearbyStation(id: String, name: String, meters: Double) =
+        NearbyServerStation(
+            station = ServerStation.create(
+                stationId = id,
+                displayName = name,
+                locationQuality = StationLocationQuality.UNKNOWN,
+                latitude = null,
+                longitude = null,
+                cnpjNormalized = null,
+                municipalityCode = null,
+                state = null,
+                currentRevisionId = null,
+            ),
+            distanceMeters = meters,
+        )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `entry with location loads nearby stations for picking`() = runTest(dispatcher) {
+        val rows = listOf(
+            nearbyStation("d6c74c23-63db-4c24-a2e5-408cb23bad26", "Posto A", 120.0),
+            nearbyStation("e7d85d34-74ec-5d35-b3f6-519dc44ce370", "Posto B", 340.0),
+        )
+        val vm = viewModel(
+            enabled = true,
+            hasPermission = true,
+            location = com.anpfuel.domain.valueobject.DeviceLocation.of(-12.55, -55.72),
+            nearby = NearbyServerStationsOutcome.Fresh(rows),
+        )
+        vm.onEntryPermissions(cameraGranted = true, locationGranted = true)
+        advanceUntilIdle()
+        org.junit.jupiter.api.Assertions.assertEquals(2, vm.nearby.value.size)
+        vm.pickStation("d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        org.junit.jupiter.api.Assertions.assertEquals(
+            "d6c74c23-63db-4c24-a2e5-408cb23bad26", vm.pickedStationId.value)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `entry without location marks picker denied`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = true, location = null)
+        vm.onEntryPermissions(cameraGranted = true, locationGranted = false)
+        advanceUntilIdle()
+        assertTrue(vm.locationDenied.value)
+        assertTrue(vm.nearby.value.isEmpty())
+    }
+
+    @Test
+    fun `entry without camera stays PermissionDenied`() {
+        val vm = viewModel(enabled = true, hasPermission = false)
+        vm.onEntryPermissions(cameraGranted = false, locationGranted = true)
+        assertTrue(vm.state.value is CaptureOcrUiState.PermissionDenied)
+    }
+
+    @Test
+    fun `ready photo attaches id and refused photo keeps code with review`() {
+        val ready = viewModel(enabled = true, hasPermission = true)
+        ready.preparePhoto(byteArrayOf(1, 2, 3), "image/jpeg")
+        org.junit.jupiter.api.Assertions.assertEquals("photo-1", ready.photoId.value)
+        assertTrue(ready.state.value is CaptureOcrUiState.NeedsConfirmation)
+
+        val refused = viewModel(
+            enabled = true,
+            hasPermission = true,
+            photo = PhotoFlow.PhotoResult.Refused("OVER_BUDGET"),
+        )
+        refused.preparePhoto(byteArrayOf(1, 2, 3), "image/jpeg")
+        org.junit.jupiter.api.Assertions.assertEquals("OVER_BUDGET", refused.photoRefused.value)
+        assertTrue(refused.photoId.value == null)
+        assertTrue(refused.state.value is CaptureOcrUiState.NeedsConfirmation)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `picked nearby station plus photo submit to outbox`() = runTest(dispatcher) {
+        val vm = viewModel(
+            enabled = true,
+            hasPermission = true,
+            location = com.anpfuel.domain.valueobject.DeviceLocation.of(-12.55, -55.72),
+            nearby = NearbyServerStationsOutcome.Fresh(
+                listOf(nearbyStation("d6c74c23-63db-4c24-a2e5-408cb23bad26", "Posto A", 120.0))),
+        )
+        vm.onEntryPermissions(cameraGranted = true, locationGranted = true)
+        advanceUntilIdle()
+        vm.pickStation("d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        vm.onConfirmManual("5,89", FuelProduct.GASOLINE_REGULAR, "STANDARD", true)
+        assertTrue(vm.state.value is CaptureOcrUiState.Confirmed)
+        val slot = io.mockk.slot<EnqueueContributionUseCase.Request>()
+        io.mockk.coEvery { enqueue.invoke(capture(slot)) } returns
+            com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome.Queued(
+                command = mockk(relaxed = true),
+                historical = false,
+            )
+        vm.submitConfirmed()
+        advanceUntilIdle()
+        val submitted = vm.submit.value
+        assertTrue(submitted is CaptureOcrViewModel.SubmitState.Queued)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            "d6c74c23-63db-4c24-a2e5-408cb23bad26", slot.captured.stationId)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            FuelProduct.GASOLINE_REGULAR, slot.captured.fuelProduct)
     }
 }

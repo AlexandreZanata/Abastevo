@@ -102,7 +102,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                                 Text(stringResource(R.string.feed_contribute_hint), style = MaterialTheme.typography.bodySmall)
                             }
                         }
-                        Button(onClick = { onNavigate(Routes.STATIONS) }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { onNavigate(Routes.CAPTURE) }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Add, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.community_action_contribute))
                         }

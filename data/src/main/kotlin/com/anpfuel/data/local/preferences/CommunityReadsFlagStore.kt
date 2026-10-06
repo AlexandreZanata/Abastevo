@@ -8,7 +8,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * P10-T02 community-reads flag (default OFF).
+ * P10-T02 community-reads flag (default ON since the Community tab and
+ * the contribute station picker need backend reads with Room fallback;
+ * enabling never removes ANP offline paths).
  *
  * Synchronous SharedPreferences read so the use case never blocks on
  * DataStore; enabling only adds backend reads with Room fallback and
@@ -23,7 +25,7 @@ class CommunityReadsFlagStore @Inject constructor(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun isEnabled(): Boolean =
-        prefs.getBoolean(KEY_ENABLED, false)
+        prefs.getBoolean(KEY_ENABLED, true)
 
     fun setEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()

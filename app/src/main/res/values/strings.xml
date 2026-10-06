@@ -481,6 +481,15 @@
     <string name="capture_target_label">Posting to station %1$s · %2$s</string>
     <string name="capture_target_invalid">Invalid station reference — go back and pick the station again.</string>
     <string name="capture_submit">Send to outbox</string>
+    <string name="capture_take_photo">Take price photo</string>
+    <string name="capture_photo_attached">Photo attached — it travels with your price to the outbox.</string>
+    <string name="capture_photo_refused">Photo did not fit the size budget (%1$s) — you can still type the price.</string>
+    <string name="capture_pick_station">Pick the station for this price</string>
+    <string name="capture_nearby_loading">Finding stations near you…</string>
+    <string name="capture_nearby_failed">Could not load nearby stations. Type the price; the station list needs connection.</string>
+    <string name="capture_nearby_empty">No stations found nearby yet.</string>
+    <string name="capture_nearby_distance">~%1$d m away</string>
+    <string name="capture_location_needed">Allow location to pick the station you are at.</string>
     <string name="capture_submitted">Queued for upload. Status, retry and cancel live in your contributions.</string>
     <string name="capture_submit_failed">Could not queue (%1$s). Nothing was sent.</string>
     <string name="capture_done">Done</string>

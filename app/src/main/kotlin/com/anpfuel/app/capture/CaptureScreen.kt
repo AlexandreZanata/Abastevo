@@ -1,5 +1,7 @@
 package com.anpfuel.app.capture
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -7,17 +9,22 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -25,16 +32,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.community.CommunityPriceDisplay
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
+import java.io.File
 
 /**
  * P10-T04 minimal capture/confirmation screen behind the capture flag.
@@ -55,10 +66,66 @@ fun CaptureScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val target by viewModel.target.collectAsStateWithLifecycle()
     val targetInvalid by viewModel.targetInvalid.collectAsStateWithLifecycle()
+    val nearby by viewModel.nearby.collectAsStateWithLifecycle()
+    val nearbyLoading by viewModel.nearbyLoading.collectAsStateWithLifecycle()
+    val nearbyFailed by viewModel.nearbyFailed.collectAsStateWithLifecycle()
+    val locationDenied by viewModel.locationDenied.collectAsStateWithLifecycle()
+    val pickedStationId by viewModel.pickedStationId.collectAsStateWithLifecycle()
+    val photoId by viewModel.photoId.collectAsStateWithLifecycle()
+    val photoRefused by viewModel.photoRefused.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(stationId, fuelProductWire) {
         viewModel.bindTarget(stationId, fuelProductWire)
     }
+    val context = LocalContext.current
+    var pendingPhotoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = pendingPhotoUri
+        if (success && uri != null) {
+            val bytes = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }.getOrNull()
+            if (bytes != null) viewModel.preparePhoto(bytes, "image/jpeg")
+            else viewModel.onCaptureResult(cancelled = true, ocrText = null)
+        } else {
+            viewModel.onCaptureResult(cancelled = true, ocrText = null)
+        }
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        viewModel.onEntryPermissions(
+            cameraGranted = grants[android.Manifest.permission.CAMERA] == true,
+            locationGranted = grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true,
+        )
+    }
+    LaunchedEffect(Unit) {
+        permissionLauncher.launch(
+            arrayOf(
+                android.Manifest.permission.CAMERA,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+        )
+    }
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        CaptureEntryContent(
+            nearby = nearby,
+            nearbyLoading = nearbyLoading,
+            nearbyFailed = nearbyFailed,
+            locationDenied = locationDenied,
+            pickedStationId = pickedStationId,
+            photoAttached = photoId != null,
+            photoRefused = photoRefused,
+            onPickStation = viewModel::pickStation,
+            onTakePhoto = {
+                val dir = File(context.cacheDir, "capture").apply { mkdirs() }
+                val file = File.createTempFile("price_", ".jpg", dir)
+                val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+                pendingPhotoUri = uri
+                takePicture.launch(uri)
+            },
+        )
         target?.let {
             Text(
                 text = stringResource(
@@ -151,8 +218,15 @@ fun CaptureScreen(
                         )
                     is CaptureOcrViewModel.SubmitState.Disabled, null -> Unit
                 }
-                Button(onClick = { viewModel.submitConfirmed() }) {
+                Button(onClick = { viewModel.submitConfirmed() }, enabled = target != null || pickedStationId != null) {
                     Text(stringResource(R.string.capture_submit))
+                }
+                if (target == null && pickedStationId == null) {
+                    Text(
+                        text = stringResource(R.string.capture_pick_station),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Button(onClick = onNavigateBack) { Text(stringResource(R.string.capture_done)) }
             }
@@ -163,6 +237,93 @@ fun CaptureScreen(
 private val REVIEW_CONDITIONS = listOf(
     "STANDARD", "CASH", "DEBIT", "CREDIT", "APP", "LOYALTY", "OTHER",
 )
+
+/**
+ * Camera-module entry: one explicit photo shot plus the geolocated
+ * station picker. The shot is compressed through the KiB-bounded
+ * PhotoFlow; review stays human (manual entry until on-device OCR text
+ * exists). Picking a station binds the submit target for the
+ * context-free Community entry.
+ */
+@Composable
+private fun CaptureEntryContent(
+    nearby: List<NearbyServerStation>,
+    nearbyLoading: Boolean,
+    nearbyFailed: Boolean,
+    locationDenied: Boolean,
+    pickedStationId: String?,
+    photoAttached: Boolean,
+    photoRefused: String?,
+    onPickStation: (String?) -> Unit,
+    onTakePhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = onTakePhoto, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.capture_take_photo))
+        }
+        if (photoAttached) {
+            Text(
+                text = stringResource(R.string.capture_photo_attached),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        photoRefused?.let { code ->
+            Text(
+                text = stringResource(R.string.capture_photo_refused, code),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Text(
+            text = stringResource(R.string.capture_pick_station),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        when {
+            nearbyLoading -> Text(
+                text = stringResource(R.string.capture_nearby_loading),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            locationDenied -> Text(
+                text = stringResource(R.string.capture_location_needed),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            nearbyFailed -> Text(
+                text = stringResource(R.string.capture_nearby_failed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            nearby.isEmpty() -> Text(
+                text = stringResource(R.string.capture_nearby_empty),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
+                items(nearby, key = { it.station.stationId }) { row ->
+                    val selected = row.station.stationId == pickedStationId
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .selectable(selected = selected, onClick = { onPickStation(row.station.stationId) }, role = Role.RadioButton)
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        RadioButton(selected = selected, onClick = null)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = row.station.displayName, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = stringResource(R.string.capture_nearby_distance, row.distanceMeters.toInt()),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

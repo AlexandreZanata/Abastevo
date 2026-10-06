@@ -2,12 +2,17 @@ package com.anpfuel.app.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.port.CaptureOcrFlagProvider
+import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
+import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.data.mapper.WireFuelMapper
 import com.anpfuel.domain.contribution.ContributionTarget
+import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.portable.PortablePriceOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +55,9 @@ class CaptureOcrViewModel @Inject constructor(
     private val permissionHandler: CameraPermissionHandler,
     private val flagProvider: CaptureOcrFlagProvider,
     private val enqueue: EnqueueContributionUseCase,
+    private val locationHandler: LocationPermissionHandler,
+    private val nearbyStations: GetNearbyServerStationsUseCase,
+    private val photoFlow: PhotoFlow,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<CaptureOcrUiState>(initialState())
@@ -66,6 +74,101 @@ class CaptureOcrViewModel @Inject constructor(
 
     private val _targetInvalid = MutableStateFlow(false)
     val targetInvalid: StateFlow<Boolean> = _targetInvalid.asStateFlow()
+
+    /**
+     * Community contribute entry: camera + geolocation.
+     * [nearby] holds server stations around the last-known fix for the
+     * contributor to pick as the submit target; [pickedStationId] is the
+     * explicit pick (null until the contributor taps one). [photoId] is
+     * the transient PhotoFlow entry attached to the submit, if the shot
+     * fit the KiB budgets; [photoRefused] carries the stable refusal code
+     * when it did not (the contributor can still type the price manually).
+     */
+    private val _nearby = MutableStateFlow<List<NearbyServerStation>>(emptyList())
+    val nearby: StateFlow<List<NearbyServerStation>> = _nearby.asStateFlow()
+
+    private val _nearbyLoading = MutableStateFlow(false)
+    val nearbyLoading: StateFlow<Boolean> = _nearbyLoading.asStateFlow()
+
+    private val _nearbyFailed = MutableStateFlow(false)
+    val nearbyFailed: StateFlow<Boolean> = _nearbyFailed.asStateFlow()
+
+    private val _locationDenied = MutableStateFlow(false)
+    val locationDenied: StateFlow<Boolean> = _locationDenied.asStateFlow()
+
+    private val _pickedStationId = MutableStateFlow<String?>(null)
+    val pickedStationId: StateFlow<String?> = _pickedStationId.asStateFlow()
+
+    private val _photoId = MutableStateFlow<String?>(null)
+    val photoId: StateFlow<String?> = _photoId.asStateFlow()
+
+    private val _photoRefused = MutableStateFlow<String?>(null)
+    val photoRefused: StateFlow<String?> = _photoRefused.asStateFlow()
+
+    /**
+     * Entry permissions for the camera module: without camera the
+     * contributor stays on the honest PermissionDenied path; without
+     * location the station picker stays unavailable but manual review
+     * still works. Nearby lookup starts only with a location grant.
+     */
+    fun onEntryPermissions(cameraGranted: Boolean, locationGranted: Boolean) {
+        _locationDenied.value = !locationGranted
+        if (!cameraGranted) {
+            _state.value = CaptureOcrUiState.PermissionDenied
+            return
+        }
+        if (locationGranted) loadNearby()
+    }
+
+    fun loadNearby() {
+        if (!flagProvider.isEnabled()) return
+        viewModelScope.launch {
+            _nearbyLoading.value = true
+            _nearbyFailed.value = false
+            try {
+                val fix = locationHandler.getLastKnownLocation()
+                if (fix == null) {
+                    _locationDenied.value = true
+                    return@launch
+                }
+                when (val outcome = nearbyStations(fix.latitude, fix.longitude)) {
+                    is NearbyServerStationsOutcome.Fresh -> {
+                        _nearby.value = outcome.stations
+                        if (outcome.stations.none { it.station.stationId == _pickedStationId.value }) {
+                            _pickedStationId.value = null
+                        }
+                    }
+                    is NearbyServerStationsOutcome.Disabled,
+                    is NearbyServerStationsOutcome.Unavailable,
+                    -> _nearbyFailed.value = true
+                }
+            } catch (error: Exception) {
+                _nearbyFailed.value = true
+            } finally {
+                _nearbyLoading.value = false
+            }
+        }
+    }
+
+    fun pickStation(stationId: String?) {
+        _pickedStationId.value = stationId
+    }
+
+    /**
+     * Compresses one system-camera shot through the bounded PhotoFlow and
+     * opens the existing human review (manual entry until the ML Kit
+     * engine lands behind OcrPort). A refused shot keeps the refusal code
+     * visible and still opens review so the price can be typed.
+     */
+    fun preparePhoto(bytes: ByteArray, mime: String) {
+        _photoId.value = null
+        _photoRefused.value = null
+        when (val prepared = photoFlow.prepare(bytes, mime)) {
+            is PhotoFlow.PhotoResult.Ready -> _photoId.value = prepared.id
+            is PhotoFlow.PhotoResult.Refused -> _photoRefused.value = prepared.code
+        }
+        onCaptureResult(cancelled = false, ocrText = null)
+    }
 
     /**
      * P37-T02 — submit result for the confirmed capture. `null` until
@@ -103,10 +206,19 @@ class CaptureOcrViewModel @Inject constructor(
      * cross-fuel misattribution); metadata-only when no photo is
      * attached, honestly labelled by the use case. Identity proof
      * travels at worker submit time through the contribution gateway.
+     *
+     * Community camera entry: when no station deep-link target is bound,
+     * the contributor-picked nearby station combines with the confirmed
+     * product wire by construction (no mismatch possible); the prepared
+     * PhotoFlow entry travels as photo_id when a shot fit the budgets.
      */
     fun submitConfirmed() {
         val confirmed = _state.value as? CaptureOcrUiState.Confirmed
-        val target = _target.value
+        val target = _target.value ?: _pickedStationId.value?.let { stationId ->
+            runCatching {
+                ContributionTarget.create(stationId, WireFuelMapper.toWire(confirmed?.product ?: return@let null))
+            }.getOrNull()
+        }
         if (confirmed == null || target == null) {
             _submit.value = SubmitState.NoTarget
             return
@@ -126,7 +238,7 @@ class CaptureOcrViewModel @Inject constructor(
                         amountMilliBrl = confirmed.candidate.priceMilli,
                         conditionKind = confirmed.conditionKind,
                         capturedAtMillis = System.currentTimeMillis(),
-                        photoId = null,
+                        photoId = _photoId.value,
                     ),
                 )
             } catch (error: Exception) {
