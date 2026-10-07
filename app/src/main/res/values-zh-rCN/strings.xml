@@ -630,7 +630,7 @@
     <string name="auth_security_footer">账户密钥属于私密信息，请妥善保管备份。</string>
     <string name="auth_session_retained">账户将保留在此设备，直到你主动退出登录。</string>
     <string name="auth_offline_account">账户已保存在此设备。联网后可更新访问权限并参与社区。</string>
-    <string name="account_key_save_file">将密钥导出为文件</string>
+    <string name="account_key_save_file">导出密钥</string>
     <string name="account_key_share_title">分享我的密钥</string>
     <string name="account_key_export_title">保护账户密钥</string>
     <string name="account_key_export_warning">持有此密钥的人可以访问你的账户。所选目标可以读取导出的文件和消息。建议使用密码管理器或私人存储，切勿发给其他人。</string>

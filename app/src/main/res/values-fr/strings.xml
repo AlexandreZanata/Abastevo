@@ -630,7 +630,7 @@
     <string name="auth_security_footer">Votre clé est privée. Gardez la sauvegarde en lieu sûr.</string>
     <string name="auth_session_retained">Votre compte reste sur cet appareil jusqu’à votre déconnexion.</string>
     <string name="auth_offline_account">Votre compte est enregistré sur cet appareil. Connectez-vous au réseau pour renouveler l’accès et participer.</string>
-    <string name="account_key_save_file">Exporter la clé dans un fichier</string>
+    <string name="account_key_save_file">Exporter la clé</string>
     <string name="account_key_share_title">Partager ma clé</string>
     <string name="account_key_export_title">Protégez la clé de votre compte</string>
     <string name="account_key_export_warning">Toute personne possédant cette clé peut accéder à votre compte. La destination choisie peut lire les fichiers et messages exportés. Préférez un gestionnaire de mots de passe ou un stockage privé. Ne l’envoyez jamais à d’autres personnes.</string>

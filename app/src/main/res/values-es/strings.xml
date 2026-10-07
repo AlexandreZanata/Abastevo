@@ -630,7 +630,7 @@
     <string name="auth_security_footer">Tu clave es privada. Guarda la copia en un lugar seguro.</string>
     <string name="auth_session_retained">Tu cuenta permanece en este dispositivo hasta que cierres la sesión.</string>
     <string name="auth_offline_account">Tu cuenta está guardada en este dispositivo. Conéctate para renovar el acceso y participar.</string>
-    <string name="account_key_save_file">Exportar clave a un archivo</string>
+    <string name="account_key_save_file">Exportar clave</string>
     <string name="account_key_share_title">Compartir mi clave</string>
     <string name="account_key_export_title">Protege la clave de tu cuenta</string>
     <string name="account_key_export_warning">Quien tenga esta clave puede acceder a tu cuenta. El destino elegido puede leer los archivos y mensajes exportados. Usa un gestor de contraseñas o almacenamiento privado. Nunca la envíes a otras personas.</string>

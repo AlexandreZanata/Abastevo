@@ -650,7 +650,7 @@
     <string name="auth_security_footer">Sua chave é pessoal. Guarde o backup em um lugar seguro.</string>
     <string name="auth_session_retained">Sua conta permanece neste aparelho até você sair.</string>
     <string name="auth_offline_account">Sua conta está salva neste aparelho. Conecte-se para renovar o acesso e participar.</string>
-    <string name="account_key_save_file">Exportar chave para um arquivo</string>
+    <string name="account_key_save_file">Exportar chave</string>
     <string name="account_key_share_title">Compartilhar minha chave</string>
     <string name="account_key_export_title">Proteja a chave da sua conta</string>
     <string name="account_key_export_warning">Quem possui esta chave pode acessar sua conta. O arquivo ou a mensagem exportada poderá ser lido pelo destino escolhido. Prefira um gerenciador de senhas ou armazenamento privado. Nunca envie a outras pessoas.</string>

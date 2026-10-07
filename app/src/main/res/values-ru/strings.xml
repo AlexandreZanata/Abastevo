@@ -630,7 +630,7 @@
     <string name="auth_security_footer">Ваш ключ конфиденциален. Храните копию в безопасном месте.</string>
     <string name="auth_session_retained">Аккаунт остаётся на этом устройстве, пока вы не выйдете.</string>
     <string name="auth_offline_account">Аккаунт сохранён на этом устройстве. Подключитесь к сети, чтобы обновить доступ и участвовать.</string>
-    <string name="account_key_save_file">Экспортировать ключ в файл</string>
+    <string name="account_key_save_file">Экспортировать ключ</string>
     <string name="account_key_share_title">Поделиться ключом</string>
     <string name="account_key_export_title">Защитите ключ аккаунта</string>
     <string name="account_key_export_warning">Любой обладатель ключа может войти в ваш аккаунт. Выбранное приложение может читать экспортированные файлы и сообщения. Используйте менеджер паролей или личное хранилище. Никогда не отправляйте ключ другим людям.</string>

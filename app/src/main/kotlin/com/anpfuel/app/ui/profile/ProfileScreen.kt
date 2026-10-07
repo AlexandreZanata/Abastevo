@@ -114,7 +114,9 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Account section
+            // Guest sign-in entry only; signed-in users already reach
+            // account via "Gerenciar conta" under expert tools.
+            if (!signedIn) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -127,29 +129,21 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = stringResource(
-                            if (signedIn) {
-                                R.string.profile_signed_in_title
-                            } else {
-                                R.string.profile_guest_title
-                            },
+                            R.string.profile_guest_title,
                         ),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.semantics { heading() },
                     )
                     Text(
                         text = stringResource(
-                            if (signedIn) {
-                                R.string.profile_signed_in_subtitle
-                            } else {
-                                R.string.profile_guest_subtitle
-                            },
+                            R.string.profile_guest_subtitle,
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Button(
                         onClick = {
-                            onNavigate(if (signedIn) Routes.ACCOUNT else Routes.AUTH)
+                            onNavigate(Routes.AUTH)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -157,15 +151,12 @@ fun ProfileScreen(
                     ) {
                         Text(
                             text = stringResource(
-                                if (signedIn) {
-                                    R.string.profile_action_manage_account
-                                } else {
-                                    R.string.profile_action_sign_in
-                                },
+                                R.string.profile_action_sign_in,
                             ),
                         )
                     }
                 }
+            }
             }
 
             // P21-T03 private owner status section

@@ -630,7 +630,7 @@
     <string name="auth_security_footer">Dein Kontoschlüssel ist privat. Bewahre die Sicherung sicher auf.</string>
     <string name="auth_session_retained">Dein Konto bleibt auf diesem Gerät, bis du dich abmeldest.</string>
     <string name="auth_offline_account">Dein Konto ist auf diesem Gerät gespeichert. Stelle eine Verbindung her, um den Zugriff zu erneuern und teilzunehmen.</string>
-    <string name="account_key_save_file">Schlüssel in eine Datei exportieren</string>
+    <string name="account_key_save_file">Schlüssel exportieren</string>
     <string name="account_key_share_title">Meinen Schlüssel teilen</string>
     <string name="account_key_export_title">Schütze deinen Kontoschlüssel</string>
     <string name="account_key_export_warning">Jeder mit diesem Schlüssel kann dein Konto öffnen. Das gewählte Ziel kann exportierte Dateien und Nachrichten lesen. Nutze einen Passwortmanager oder privaten Speicher. Sende ihn niemals an andere Personen.</string>

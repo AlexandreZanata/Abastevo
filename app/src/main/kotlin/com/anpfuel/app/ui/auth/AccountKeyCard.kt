@@ -21,11 +21,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -175,10 +178,10 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(stringResource(R.string.profile_backup_title), style = MaterialTheme.typography.titleLarge,
+                Text(stringResource(R.string.profile_backup_title), style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.semantics { heading() })
             }
             Text(stringResource(R.string.profile_backup_username, backup.username),
@@ -186,21 +189,41 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
             Text(stringResource(R.string.profile_backup_subtitle), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
-                Text(if (revealed) backup.accountKey.chunked(4).joinToString(" ") else "•••• •••• •••• ••••",
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
-                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        if (revealed) backup.accountKey.chunked(4).joinToString(" ") else "•••• •••• •••• ••••",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+                    IconButton(
+                        onClick = { if (revealed) revealed = false else authorize(KeyAction.REVEAL) },
+                        enabled = pending == null,
+                    ) {
+                        Icon(
+                            if (revealed) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = stringResource(
+                                if (revealed) R.string.profile_backup_hide else R.string.profile_backup_show),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
-            OutlinedButton(
-                onClick = { if (revealed) revealed = false else authorize(KeyAction.REVEAL) },
-                enabled = pending == null, modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(if (revealed) R.string.profile_backup_hide else R.string.profile_backup_show))
-            }
-            OutlinedButton(onClick = { confirmation = KeyAction.COPY }, modifier = Modifier.fillMaxWidth(), enabled = pending == null) {
-                Text(stringResource(R.string.auth_copy_key))
-            }
-            Button(onClick = { confirmation = KeyAction.SAVE }, modifier = Modifier.fillMaxWidth(), enabled = pending == null) {
-                Text(stringResource(R.string.account_key_save_file))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { confirmation = KeyAction.COPY },
+                    modifier = Modifier.weight(1f), enabled = pending == null,
+                ) {
+                    Text(stringResource(R.string.auth_copy_key))
+                }
+                Button(
+                    onClick = { confirmation = KeyAction.SAVE },
+                    modifier = Modifier.weight(1f), enabled = pending == null,
+                ) {
+                    Text(stringResource(R.string.account_key_save_file))
+                }
             }
             TextButton(onClick = { confirmation = KeyAction.SHARE }, modifier = Modifier.fillMaxWidth(), enabled = pending == null) {
                 Text(stringResource(R.string.account_key_share_title))

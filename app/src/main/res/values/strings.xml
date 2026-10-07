@@ -652,7 +652,7 @@
     <string name="auth_security_footer">Your account key is private. Keep your backup in a safe place.</string>
     <string name="auth_session_retained">Your account stays on this device until you sign out.</string>
     <string name="auth_offline_account">Your account is saved on this device. Reconnect to renew access and participate.</string>
-    <string name="account_key_save_file">Export key to a file</string>
+    <string name="account_key_save_file">Export key</string>
     <string name="account_key_share_title">Share my key</string>
     <string name="account_key_export_title">Protect your account key</string>
     <string name="account_key_export_warning">Anyone with this key can access your account. Exported files and messages are readable by the selected destination. Prefer a password manager or private storage. Never send it to other people.</string>

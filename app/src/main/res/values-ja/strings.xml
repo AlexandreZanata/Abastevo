@@ -630,7 +630,7 @@
     <string name="auth_security_footer">アカウントキーは秘密情報です。バックアップを安全に保管してください。</string>
     <string name="auth_session_retained">ログアウトするまで、この端末にアカウントが保存されます。</string>
     <string name="auth_offline_account">この端末にアカウントが保存されています。通信を再開するとアクセスを更新して参加できます。</string>
-    <string name="account_key_save_file">キーをファイルに保存</string>
+    <string name="account_key_save_file">キーをエクスポート</string>
     <string name="account_key_share_title">キーを共有</string>
     <string name="account_key_export_title">アカウントキーを保護</string>
     <string name="account_key_export_warning">このキーを持つ人はアカウントにアクセスできます。選択した保存先はファイルやメッセージを読めます。パスワード管理アプリや非公開の保存先を使い、他の人には送らないでください。</string>
