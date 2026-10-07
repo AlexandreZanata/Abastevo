@@ -43,6 +43,18 @@ func (q *Queries) BindPhotoCapture(ctx context.Context, arg BindPhotoCapturePara
 	return result.RowsAffected(), nil
 }
 
+const erasePhotoCaptures = `-- name: ErasePhotoCaptures :execrows
+DELETE FROM community_photo_captures WHERE contributor_ref = $1
+`
+
+func (q *Queries) ErasePhotoCaptures(ctx context.Context, contributorRef string) (int64, error) {
+	result, err := q.db.Exec(ctx, erasePhotoCaptures, contributorRef)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertPhotoCapture = `-- name: InsertPhotoCapture :one
 INSERT INTO community_photo_captures
 (id, contributor_ref, key_id, client_capture_id, station_id, issued_at, camera_expires_at, expires_at, policy_version)
@@ -122,11 +134,19 @@ func (q *Queries) OwnedPhotoCapture(ctx context.Context, arg OwnedPhotoCapturePa
 }
 
 const purgePhotoCaptures = `-- name: PurgePhotoCaptures :execrows
-DELETE FROM community_photo_captures WHERE expires_at <= $1
+DELETE FROM community_photo_captures AS target WHERE target.id IN (
+ SELECT receipt.id FROM community_photo_captures AS receipt WHERE receipt.expires_at <= $1
+ ORDER BY receipt.expires_at, receipt.id LIMIT $2
+)
 `
 
-func (q *Queries) PurgePhotoCaptures(ctx context.Context, expiresAt pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, purgePhotoCaptures, expiresAt)
+type PurgePhotoCapturesParams struct {
+	NowAt pgtype.Timestamptz `json:"now_at"`
+	Batch int32              `json:"batch"`
+}
+
+func (q *Queries) PurgePhotoCaptures(ctx context.Context, arg PurgePhotoCapturesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgePhotoCaptures, arg.NowAt, arg.Batch)
 	if err != nil {
 		return 0, err
 	}

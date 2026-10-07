@@ -105,6 +105,7 @@ type submitDTO struct {
 		QualifierID *string `json:"qualifier_id"`
 	} `json:"condition"`
 	EvidenceID        *string      `json:"evidence_id"`
+	PhotoCaptureID    *string      `json:"photo_capture_id"`
 	ClaimedCapturedAt *string      `json:"claimed_captured_at"`
 	SupersedesID      *string      `json:"supersedes_observation_id"`
 	Location          *locationDTO `json:"location"`
@@ -180,6 +181,12 @@ func parseSubmitBody(raw []byte) (application.SubmitDTO, error) {
 	}
 	if in.EvidenceID != nil {
 		out.EvidenceID = *in.EvidenceID
+	}
+	if in.PhotoCaptureID != nil {
+		if strings.TrimSpace(*in.PhotoCaptureID) == "" {
+			return application.SubmitDTO{}, errors.New("photo_capture_id cannot be empty")
+		}
+		out.PhotoCaptureID = *in.PhotoCaptureID
 	}
 	if in.SupersedesID != nil {
 		out.SupersedesID = *in.SupersedesID

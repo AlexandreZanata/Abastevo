@@ -186,3 +186,24 @@ func TestAuthRequired(t *testing.T) {
 		t.Errorf("anonymous reserve = %d, want 401", w.Code)
 	}
 }
+
+func TestReserveCaptureEnvelopeIsStrictAndPreservesOriginalTime(t *testing.T) {
+	base := `{"client_submission_id":"u","content_type":"image/jpeg","size_bytes":10,"sha256":"` + strings.Repeat("a", 64) + `"`
+	fields := `,"photo_capture_id":"c0000000-0000-4000-8000-000000000001","station_id":"d0000000-0000-4000-8000-000000000001","captured_at":"2026-10-07T12:00:00.123Z"`
+	got, err := parseReserveBody([]byte(base + fields + `}`))
+	if err != nil || got.PhotoCaptureID == "" || got.StationID == "" || got.CapturedAt.Nanosecond() != 123000000 {
+		t.Fatalf("envelope=%+v %v", got, err)
+	}
+	for _, suffix := range []string{`,"photo_capture_id":"c0000000-0000-4000-8000-000000000001"`, `,"station_id":"d0000000-0000-4000-8000-000000000001"`, `,"captured_at":"2026-10-07T12:00:00Z"`, strings.Replace(fields, "c0000000-0000-4000-8000-000000000001", "broken", 1), strings.Replace(fields, "2026-10-07T12:00:00.123Z", "yesterday", 1)} {
+		if _, err := parseReserveBody([]byte(base + suffix + `}`)); err == nil {
+			t.Fatalf("malformed envelope accepted: %s", suffix)
+		}
+	}
+	h := testHandler()
+	h.Reserve = func(context.Context, application.Caller, application.Intent, []byte) (application.Result, error) {
+		return application.Result{}, application.ErrPhotoCaptureIneligible
+	}
+	if got := serve(h, "POST", "/v1/uploads", base+fields+`}`); got.Code != 403 {
+		t.Fatalf("capture refusal=%d", got.Code)
+	}
+}

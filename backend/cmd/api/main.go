@@ -530,8 +530,21 @@ func run() error {
 	// review against the contributor's last site. The transient fix
 	// never persists: only bands survive the call.
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
+	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
 	communityPorts := communityapp.Ports{
 		Clock: time.Now,
+		CheckPhotoCapture: func(ctx context.Context, caller communityapp.Caller, dto communityapp.SubmitDTO) error {
+			view, err := evidenceStore.ForCommunity(ctx, dto.EvidenceID)
+			if err != nil {
+				return err
+			}
+			if !view.Found || !view.Ready || view.OwnerRef != caller.Token || view.PhotoCaptureID != dto.PhotoCaptureID {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			_, err = communityapp.ValidatePhotoCaptureUse(ctx, communityStore, caller,
+				communityapp.PhotoCaptureUse{CaptureID: dto.PhotoCaptureID, StationID: dto.StationID, CapturedAt: dto.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now())
+			return err
+		},
 		Locate: func(ctx context.Context, stationID string, lat, lon float64) (float64, communityapp.StationSite, error) {
 			st, err := directoryRepo.Station(ctx, stationID)
 			if err != nil {
@@ -684,7 +697,6 @@ func run() error {
 	// presigned issuance arrives as a narrow port built here from the
 	// configured storage identity; unset storage refuses explicitly
 	// with 503 instead of misbehaving.
-	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
 	evidencePorts := evidenceapp.Ports{
 		Clock: time.Now,
 		Enforcement: func(ctx context.Context) error {
@@ -719,15 +731,20 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
-		Presign: func(ctx context.Context, key, mime string, maxBytes int64) (string, map[string]string, time.Time, error) {
+		Presign: func(ctx context.Context, key, mime string, maxBytes int64, deadline time.Time) (string, map[string]string, time.Time, error) {
 			if cfg.R2 == nil {
 				return "", nil, time.Time{}, evidenceapp.ErrStorageUnavailable
+			}
+			now := time.Now()
+			ttl := min(5*time.Minute, deadline.Sub(now))
+			if ttl <= 0 {
+				return "", nil, time.Time{}, evidenceapp.ErrReservationFailed
 			}
 			pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
 				Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
 				Key: key, Namespace: "q/",
 				ContentType: mime, MaxBytes: maxBytes,
-				TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+				TTL: ttl, Region: cfg.R2.Region, Now: now,
 			}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
 			if err != nil {
 				return "", nil, time.Time{}, err
@@ -735,6 +752,22 @@ func run() error {
 			return pre.URL, pre.RequiredHeaders, pre.ExpiresAt, nil
 		},
 		Store: evidenceStore,
+		ValidatePhotoCapture: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent) (time.Time, error) {
+			receipt, err := communityapp.ValidatePhotoCaptureUse(ctx, communityStore,
+				communityapp.Caller{ContributorID: caller.ContributorID, Token: caller.Token, KeyID: caller.KeyID},
+				communityapp.PhotoCaptureUse{CaptureID: in.PhotoCaptureID, StationID: in.StationID, CapturedAt: in.CapturedAt}, time.Now())
+			if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
+				return time.Time{}, evidenceapp.ErrPhotoCaptureIneligible
+			}
+			return receipt.ExpiresAt, err
+		},
+		BindPhotoCapture: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent, session string, now time.Time) error {
+			err := communityStore.BindPhotoCapture(ctx, in.PhotoCaptureID, caller.Token, caller.KeyID, session, in.CapturedAt, now)
+			if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
+				return evidenceapp.ErrPhotoCaptureIneligible
+			}
+			return err
+		},
 	}
 	evidenceComplete := evidenceapp.CompletePorts{
 		Store: evidenceStore,
@@ -753,7 +786,7 @@ func run() error {
 			if err != nil {
 				return evidenceapp.Caller{}, err
 			}
-			return evidenceapp.Caller{ContributorID: id.ContributorID, Token: token}, nil
+			return evidenceapp.Caller{ContributorID: id.ContributorID, Fingerprint: id.Fingerprint, KeyID: id.KeyID, Token: token}, nil
 		},
 		Reserve: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent, _ []byte) (evidenceapp.Result, error) {
 			return evidenceapp.Reserve(ctx, evidencePorts, caller, in)

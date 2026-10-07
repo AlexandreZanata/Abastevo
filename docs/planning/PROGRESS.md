@@ -1,5 +1,7 @@
 # Current execution state
 
+- Active execution 2026-10-07: P37-PC04 IN_PROGRESS on maintained dev, parent e41936c. [PC04A backend evidence](../mobile/p37-photo-subset-backend.md): capture-bound reservation/shared evidence and per-product immutable intake LOCAL_DONE / INTEGRATION_PENDING; affected race/PostGIS/HTTP-process/static/contract checks passed. Android transactional review/signed dispatcher/owner receipts are underway. Actual private S3 media, staging profile and PC05 consent/PC06 expanded acceptance remain owed; collection stays OFF. No deployment, merge or production certification.
+
 - Active execution 2026-10-07: P37-PC03 camera/review LOCAL_DONE / INTEGRATION_PENDING on maintained dev, parent df77de6. [Behavior and evidence](../mobile/p37-camera-review.md). 42 scoped unit tests; genuine POCO four-case review suite passed normally and at 160% font; real camera/shutter/return and isolated Keystore verified. Serial lint (zero errors), release/R8/size (4,191,429 bytes), release debug-hook exclusion and static/secret/diff checks passed. Next: PC04 signed shared-photo outbox, then PC05 optional permanent training/deletion and PC06 expanded acceptance. Cellular staging TLS/directory works but the selected profile is unavailable; local host/Wi-Fi TLS chain remains untrusted. User accepted test-only contact placeholder until production. No live photo submission, collection activation, merge or production certification is claimed.
 
 

@@ -89,6 +89,7 @@ type Params struct {
 	ConditionKind      string
 	Qualifier          string
 	EvidenceID         string
+	PhotoCaptureID     string
 	ClaimedCapturedAt  time.Time
 	SupersedesID       string
 	ReceivedAt         time.Time
@@ -111,6 +112,7 @@ type Observation struct {
 	ConditionKind      string
 	QualifierKey       string
 	EvidenceID         string
+	PhotoCaptureID     string
 	ClaimedCapturedAt  time.Time
 	SupersedesID       string
 	ReceivedAt         time.Time
@@ -170,7 +172,7 @@ func NewObservation(p Params) (Observation, PriceObserved, error) {
 		ClientSubmissionID: p.ClientSubmissionID, StationID: p.StationID,
 		Product: p.Product, Unit: p.Unit, AmountMilli: p.AmountMilli,
 		RawText: p.RawText, ConditionKind: p.ConditionKind,
-		QualifierKey: qualifier, EvidenceID: p.EvidenceID,
+		QualifierKey: qualifier, EvidenceID: p.EvidenceID, PhotoCaptureID: p.PhotoCaptureID,
 		ClaimedCapturedAt: p.ClaimedCapturedAt, SupersedesID: p.SupersedesID,
 		ReceivedAt: p.ReceivedAt, PolicyVersion: p.PolicyVersion,
 		Freshness: freshness,

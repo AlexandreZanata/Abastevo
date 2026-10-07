@@ -49,6 +49,9 @@ func Complete(ctx context.Context, p CompletePorts, caller Caller, sessionID str
 	if sess.ContributorRef != caller.Token {
 		return StatusView{}, ErrSessionNotFound
 	}
+	if sess.PhotoCaptureID != "" && !time.Now().Before(sess.ExpiresAt) {
+		return view(ctx, p.Store, sess)
+	}
 	switch sess.Status {
 	case domain.StateIssued, domain.StateVerifying:
 		if err := p.Store.CompleteSession(ctx, sess.ID, func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
@@ -86,6 +89,10 @@ func view(ctx context.Context, store CompleteStore, sess domain.Session) (Status
 	v := StatusView{
 		SessionID: sess.ID, State: sess.Status,
 		ExpiresAt: sess.ExpiresAt, UpdatedAt: sess.UpdatedAt,
+	}
+	if sess.PhotoCaptureID != "" && !time.Now().Before(sess.ExpiresAt) {
+		v.State = domain.StateExpired
+		return v, nil
 	}
 	if sess.Status != domain.StateReady {
 		return v, nil

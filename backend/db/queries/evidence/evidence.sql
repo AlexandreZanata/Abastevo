@@ -9,31 +9,31 @@
 INSERT INTO evidence_sessions
     (id, contributor_ref, client_session_id, mime, declared_bytes,
      claimed_sha256, quarantine_key, status, created_at, expires_at,
-     policy_version)
+     policy_version, photo_capture_id)
 VALUES (@id, @contributor_ref, @client_session_id, @mime, @declared_bytes,
     @claimed_sha256, @quarantine_key, @status, @created_at, @expires_at,
-    @policy_version)
+    @policy_version, @photo_capture_id)
 ON CONFLICT (contributor_ref, client_session_id) DO NOTHING
 RETURNING id;
 
 -- name: GetSessionByNaturalKey :one
 SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
     claimed_sha256, quarantine_key, status, status_reason, created_at,
-    expires_at, updated_at, policy_version
+    expires_at, updated_at, policy_version, photo_capture_id
 FROM evidence_sessions
 WHERE contributor_ref = @contributor_ref AND client_session_id = @client_session_id;
 
 -- name: GetSession :one
 SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
     claimed_sha256, quarantine_key, status, status_reason, created_at,
-    expires_at, updated_at, policy_version
+    expires_at, updated_at, policy_version, photo_capture_id
 FROM evidence_sessions
 WHERE id = @id;
 
 -- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()
-WHERE id = @id AND status = 'ISSUED';
+WHERE id = @id AND status = 'ISSUED' AND (photo_capture_id IS NULL OR expires_at > now());
 
 -- name: MarkSessionReady :execrows
 UPDATE evidence_sessions
@@ -146,8 +146,8 @@ RETURNING id;
 -- name: GetObject :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
-    s.contributor_ref, s.status
+    o.bound_capture_id, o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
+    s.contributor_ref, s.status, s.expires_at, s.photo_capture_id
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.id = @id;
@@ -155,8 +155,8 @@ WHERE o.id = @id;
 -- name: GetObjectBySession :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.final_deleted_at,
-    s.contributor_ref, s.status
+    o.bound_capture_id, o.bound_observation_id, o.created_at, o.final_deleted_at,
+    s.contributor_ref, s.status, s.expires_at, s.photo_capture_id
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.session_id = @session_id;
@@ -164,7 +164,7 @@ WHERE o.session_id = @session_id;
 -- name: ClaimObjectBinding :execrows
 UPDATE evidence_objects
 SET bound_observation_id = @observation_id
-WHERE id = @id AND (bound_observation_id IS NULL OR bound_observation_id = @observation_id);
+WHERE id = @id AND bound_capture_id IS NULL AND (bound_observation_id IS NULL OR bound_observation_id = @observation_id);
 
 -- Erasure inventory (P07-T04, B-BR-016): owner sessions and objects for
 -- purge. Keys travel only into the storage-delete port, never into
@@ -189,3 +189,11 @@ LIMIT @page_limit;
 UPDATE evidence_sessions
 SET status = 'EXPIRED', updated_at = now()
 WHERE contributor_ref = @contributor_ref AND status != 'EXPIRED';
+
+-- name: ClaimPhotoObjectBinding :execrows
+UPDATE evidence_objects o SET bound_capture_id = @capture_id
+FROM evidence_sessions s
+WHERE o.id = @id AND s.id = o.session_id AND s.contributor_ref = @contributor_ref
+AND s.photo_capture_id = @capture_id AND s.status = 'READY' AND s.expires_at > @now_at
+AND o.final_deleted_at IS NULL AND o.bound_observation_id IS NULL
+AND (o.bound_capture_id IS NULL OR o.bound_capture_id = @capture_id);

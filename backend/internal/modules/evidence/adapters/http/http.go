@@ -2,10 +2,12 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -53,6 +55,8 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "evidence.auth-required", "authentication required", nil)
 	case errors.Is(err, application.ErrSessionNotFound):
 		httpapi.WriteError(w, r, http.StatusNotFound, "evidence.not-found", "upload session not found", nil)
+	case errors.Is(err, application.ErrPhotoCaptureIneligible):
+		httpapi.WriteError(w, r, http.StatusForbidden, "evidence.capture-ineligible", "photo capture not eligible", nil)
 	case errors.Is(err, application.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "evidence.conflict", "same key, different intent", nil)
 	case errors.Is(err, application.ErrStorageUnavailable):
@@ -78,6 +82,9 @@ type reserveDTO struct {
 	ContentType     string      `json:"content_type"`
 	SizeBytes       json.Number `json:"size_bytes"`
 	SHA256          string      `json:"sha256"`
+	PhotoCaptureID  string      `json:"photo_capture_id"`
+	StationID       string      `json:"station_id"`
+	CapturedAt      *time.Time  `json:"captured_at"`
 }
 
 func parseReserveBody(raw []byte) (application.Intent, error) {
@@ -101,11 +108,20 @@ func parseReserveBody(raw []byte) (application.Intent, error) {
 	if in.ClientSessionID == "" || in.ContentType == "" || in.SHA256 == "" {
 		return application.Intent{}, errors.New("client_submission_id, content_type and sha256 are required")
 	}
+	photo := in.PhotoCaptureID != "" || in.StationID != "" || in.CapturedAt != nil
+	var capturedAt time.Time
+	if photo {
+		if !isUUID(in.PhotoCaptureID) || !isUUID(in.StationID) || in.CapturedAt == nil || in.CapturedAt.IsZero() {
+			return application.Intent{}, errors.New("complete capture envelope required")
+		}
+		capturedAt = *in.CapturedAt
+	}
 	return application.Intent{
 		ClientSessionID: in.ClientSessionID,
 		MIME:            in.ContentType,
 		DeclaredBytes:   size,
 		ClaimedSHA256:   in.SHA256,
+		PhotoCaptureID:  in.PhotoCaptureID, StationID: in.StationID, CapturedAt: capturedAt,
 	}, nil
 }
 
@@ -133,9 +149,10 @@ func (h Handler) reserve(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := json.Marshal(map[string]any{
 		"upload_id": res.SessionID, "method": "PUT", "url": res.URL,
-		"required_headers": res.RequiredHeaders,
-		"expires_at":       res.URLExpiresAt.Format(time.RFC3339),
-		"max_bytes":        res.MaxBytes,
+		"required_headers":   res.RequiredHeaders,
+		"expires_at":         res.URLExpiresAt.Format(time.RFC3339),
+		"max_bytes":          res.MaxBytes,
+		"session_expires_at": res.ExpiresAt.Format(time.RFC3339),
 	})
 	httpapi.WriteJSON(w, r, http.StatusCreated, "no-store", body)
 }
@@ -195,4 +212,12 @@ func (h Handler) complete(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusAccepted
 	}
 	httpapi.WriteJSON(w, r, status, "no-store", body)
+}
+
+func isUUID(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' || value[18] != '-' || value[23] != '-' {
+		return false
+	}
+	_, err := hex.DecodeString(strings.ReplaceAll(value, "-", ""))
+	return err == nil
 }

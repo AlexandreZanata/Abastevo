@@ -65,6 +65,9 @@ func (s *Store) EraseContributor(ctx context.Context, ref, anon string, enqueue 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	tq := community.New(tx)
+	if _, err := tq.ErasePhotoCaptures(ctx, ref); err != nil {
+		return 0, 0, 0, err
+	}
 	// The anonymized reference is an opaque token: it never parses as
 	// identity and never resolves to a contributor.
 	unlinkedObs, err = tq.UnlinkObservations(ctx, community.UnlinkObservationsParams{

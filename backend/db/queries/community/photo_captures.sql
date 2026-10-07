@@ -17,4 +17,10 @@ AND sqlc.arg(captured_at) >= issued_at AND sqlc.arg(captured_at) < camera_expire
 AND (evidence_session_id IS NULL OR (evidence_session_id = sqlc.arg(session_id) AND captured_at = sqlc.arg(captured_at)));
 
 -- name: PurgePhotoCaptures :execrows
-DELETE FROM community_photo_captures WHERE expires_at <= $1;
+DELETE FROM community_photo_captures AS target WHERE target.id IN (
+ SELECT receipt.id FROM community_photo_captures AS receipt WHERE receipt.expires_at <= sqlc.arg(now_at)
+ ORDER BY receipt.expires_at, receipt.id LIMIT sqlc.arg(batch)
+);
+
+-- name: ErasePhotoCaptures :execrows
+DELETE FROM community_photo_captures WHERE contributor_ref = $1;

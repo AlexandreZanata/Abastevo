@@ -4118,6 +4118,11 @@ components:
             qualifier_id:
               type: [string, "null"]
               example: null
+        photo_capture_id:
+          type: [string, "null"]
+          format: uuid
+          description: Proven capture shared by this reviewed subset. Requires ready owner evidence and immutable claimed_captured_at; owner, key, station and evidence session must match.
+          example: c0000000-0000-4000-8000-000000000001
         evidence_id:
           type: [string, "null"]
           format: uuid
@@ -4380,6 +4385,20 @@ components:
           pattern: '^[0-9a-fA-F]{64}$'
           description: Client hash claim, verified after upload.
           example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        photo_capture_id:
+          type: string
+          format: uuid
+          description: Optional capture envelope; station_id and captured_at must accompany it. Legacy uploads omit all three fields.
+          example: c0000000-0000-4000-8000-000000000001
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        captured_at:
+          type: string
+          format: date-time
+          description: Original camera capture time inside the receipt window, immutable on retries.
+          example: '2026-10-07T12:00:00.123Z'
     UploadReservation:
       description: Reserved session with a short direct PUT authorization.
       type: object
@@ -4410,6 +4429,11 @@ components:
           type: string
           format: date-time
           example: '2026-09-30T12:05:00Z'
+        session_expires_at:
+          type: string
+          format: date-time
+          description: Immutable reservation deadline, distinct from the short PUT authorization expiry.
+          example: '2026-10-08T12:00:00Z'
         max_bytes:
           type: integer
           example: 3145728

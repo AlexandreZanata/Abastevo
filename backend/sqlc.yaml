@@ -59,6 +59,8 @@ sql:
       - db/migrations/000041_community_feed_indexes.sql
       - db/migrations/000030_community_location_bands.sql
       - db/migrations/000043_photo_captures.sql
+      - db/migrations/000044_photo_capture_session_unique.sql
+      - db/migrations/000046_photo_observation_subset.sql
     gen:
       go:
         package: community
@@ -70,6 +72,8 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000010_evidence.sql
+      - db/migrations/000045_evidence_photo_capture.sql
+      - db/migrations/000047_shared_photo_evidence.sql
       - db/migrations/000011_evidence_retention.sql
       - db/migrations/000029_evidence_received_at.sql
     gen:

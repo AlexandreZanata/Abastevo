@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -129,6 +130,10 @@ func (s *Store) Submit(ctx context.Context, obs domain.Observation, enqueue func
 	if err != nil {
 		return "", false, err
 	}
+	captureUUID, err := uuidOrNull(obs.PhotoCaptureID)
+	if err != nil {
+		return "", false, err
+	}
 	inserted, err := tq.InsertObservation(ctx, community.InsertObservationParams{
 		ID:                 uid,
 		ContributorRef:     obs.ContributorRef,
@@ -141,6 +146,7 @@ func (s *Store) Submit(ctx context.Context, obs domain.Observation, enqueue func
 		ConditionKind:      obs.ConditionKind,
 		QualifierKey:       obs.QualifierKey,
 		EvidenceID:         evidenceUUID,
+		PhotoCaptureID:     captureUUID,
 		ReceivedAt:         pgTime(obs.ReceivedAt),
 		ClaimedCapturedAt:  pgTime(obs.ClaimedCapturedAt),
 		SupersedesID:       supersedesUUID,
@@ -155,6 +161,10 @@ func (s *Store) Submit(ctx context.Context, obs domain.Observation, enqueue func
 			// Natural-key conflict: someone holds this submission.
 			_ = tx.Rollback(ctx)
 			return s.resolveConflict(ctx, obs)
+		}
+		var conflict *pgconn.PgError
+		if errors.As(err, &conflict) && conflict.Code == "23505" {
+			return "", false, domain.ErrConflict
 		}
 		return "", false, err
 	}
@@ -185,6 +195,8 @@ func (s *Store) resolveConflict(ctx context.Context, obs domain.Observation) (st
 		row.ConditionKind != obs.ConditionKind ||
 		row.QualifierKey != obs.QualifierKey ||
 		uuidString(row.EvidenceID) != obs.EvidenceID ||
+		uuidString(row.PhotoCaptureID) != obs.PhotoCaptureID ||
+		(obs.PhotoCaptureID != "" && !row.ClaimedCapturedAt.Time.Equal(obs.ClaimedCapturedAt.Truncate(time.Microsecond))) ||
 		uuidString(row.SupersedesID) != obs.SupersedesID ||
 		textValue(row.LocationVerdict) != obs.LocationVerdict ||
 		textValue(row.LocationProximity) != obs.LocationProximity ||
@@ -361,6 +373,7 @@ func mapObservation(row community.CommunityObservation) domain.Observation {
 		AmountMilli: row.AmountMilliBrl, RawText: row.RawPriceText,
 		ConditionKind: row.ConditionKind, QualifierKey: row.QualifierKey,
 		EvidenceID:        uuidString(row.EvidenceID),
+		PhotoCaptureID:    uuidString(row.PhotoCaptureID),
 		ReceivedAt:        row.ReceivedAt.Time,
 		ClaimedCapturedAt: claimed,
 		SupersedesID:      uuidString(row.SupersedesID),

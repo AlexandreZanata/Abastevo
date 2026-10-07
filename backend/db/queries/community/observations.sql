@@ -7,12 +7,12 @@ INSERT INTO community_observations
     (id, contributor_ref, client_submission_id, station_id, fuel_product,
      unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
      evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-     location_verdict, location_proximity, location_reason)
+     location_verdict, location_proximity, location_reason, photo_capture_id)
 VALUES (@id, @contributor_ref, @client_submission_id, @station_id,
     @fuel_product, @unit, @amount_milli_brl, @raw_price_text,
     @condition_kind, @qualifier_key, @evidence_id, @received_at,
     @claimed_captured_at, @supersedes_id, @policy_version,
-    @location_verdict, @location_proximity, @location_reason)
+    @location_verdict, @location_proximity, @location_reason, @photo_capture_id)
 ON CONFLICT (contributor_ref, client_submission_id) DO NOTHING
 RETURNING id;
 
@@ -20,7 +20,7 @@ RETURNING id;
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE contributor_ref = @contributor_ref AND client_submission_id = @client_submission_id;
 
@@ -28,7 +28,7 @@ WHERE contributor_ref = @contributor_ref AND client_submission_id = @client_subm
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE id = @id;
 
@@ -61,7 +61,7 @@ ORDER BY sequence ASC;
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE contributor_ref = @contributor_ref
     AND (@has_cursor::boolean = FALSE OR

@@ -30,7 +30,7 @@ func (f *fakeStore) ReserveSession(_ context.Context, s domain.Session) (domain.
 	k := naturalKey(s.ContributorRef, s.ClientSessionID)
 	if prev, ok := f.rows[k]; ok {
 		if prev.MIME != s.MIME || prev.DeclaredBytes != s.DeclaredBytes ||
-			!strings.EqualFold(prev.ClaimedSHA256, s.ClaimedSHA256) {
+			!strings.EqualFold(prev.ClaimedSHA256, s.ClaimedSHA256) || prev.PhotoCaptureID != s.PhotoCaptureID {
 			return domain.Session{}, false, domain.ErrConflict
 		}
 		return prev, true, nil
@@ -60,7 +60,7 @@ func testPorts(store *fakeStore) Ports {
 			return "q/e0000000000000000000000000000001", nil
 		},
 		CheckQuota: func(context.Context, string, string) (time.Duration, error) { return 0, nil },
-		Presign: func(_ context.Context, key, mime string, maxBytes int64) (string, map[string]string, time.Time, error) {
+		Presign: func(_ context.Context, key, mime string, maxBytes int64, _ time.Time) (string, map[string]string, time.Time, error) {
 			if key == "" || mime == "" || maxBytes < 1 {
 				return "", nil, time.Time{}, errors.New("bad presign args")
 			}
@@ -220,7 +220,7 @@ func TestReserveReplayMintsFreshBundle(t *testing.T) {
 	store := newFakeStore()
 	p := testPorts(store)
 	calls := 0
-	p.Presign = func(_ context.Context, key, mime string, maxBytes int64) (string, map[string]string, time.Time, error) {
+	p.Presign = func(_ context.Context, key, mime string, maxBytes int64, _ time.Time) (string, map[string]string, time.Time, error) {
 		calls++
 		return "https://storage.example.invalid/" + key + "?sig=" + string(rune('a'+calls)),
 			map[string]string{"Content-Type": mime},
@@ -242,7 +242,7 @@ func TestReserveReplayMintsFreshBundle(t *testing.T) {
 func TestReserveSurfacesStorageOutage(t *testing.T) {
 	store := newFakeStore()
 	p := testPorts(store)
-	p.Presign = func(context.Context, string, string, int64) (string, map[string]string, time.Time, error) {
+	p.Presign = func(context.Context, string, string, int64, time.Time) (string, map[string]string, time.Time, error) {
 		return "", nil, time.Time{}, ErrStorageUnavailable
 	}
 	if _, err := Reserve(context.Background(), p, testCaller(), testIntent()); !errors.Is(err, ErrStorageUnavailable) {

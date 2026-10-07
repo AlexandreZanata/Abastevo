@@ -70,6 +70,7 @@ type CommunityObservation struct {
 	LocationVerdict    pgtype.Text        `json:"location_verdict"`
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
 }
 
 type CommunityObservationDecision struct {

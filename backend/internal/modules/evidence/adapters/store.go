@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -96,6 +97,13 @@ func (s *Store) ReserveSession(ctx context.Context, sess domain.Session) (domain
 	if err != nil {
 		return domain.Session{}, false, err
 	}
+	var captureID pgtype.UUID
+	if sess.PhotoCaptureID != "" {
+		captureID, err = mustUUID(sess.PhotoCaptureID)
+		if err != nil {
+			return domain.Session{}, false, err
+		}
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return domain.Session{}, false, err
@@ -108,13 +116,17 @@ func (s *Store) ReserveSession(ctx context.Context, sess domain.Session) (domain
 		DeclaredBytes: sess.DeclaredBytes, ClaimedSha256: sess.ClaimedSHA256,
 		QuarantineKey: sess.QuarantineKey, Status: sess.Status,
 		CreatedAt: pgTime(sess.CreatedAt), ExpiresAt: pgTime(sess.ExpiresAt),
-		PolicyVersion: sess.PolicyVersion,
+		PolicyVersion: sess.PolicyVersion, PhotoCaptureID: captureID,
 	})
 	_ = inserted
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			_ = tx.Rollback(ctx)
 			return s.resolveConflict(ctx, sess)
+		}
+		var conflict *pgconn.PgError
+		if errors.As(err, &conflict) && conflict.Code == "23505" {
+			return domain.Session{}, false, domain.ErrConflict
 		}
 		return domain.Session{}, false, err
 	}
@@ -134,10 +146,10 @@ func (s *Store) resolveConflict(ctx context.Context, sess domain.Session) (domai
 		return domain.Session{}, false, err
 	}
 	if row.Mime != sess.MIME || row.DeclaredBytes != sess.DeclaredBytes ||
-		!strings.EqualFold(row.ClaimedSha256, sess.ClaimedSHA256) {
+		!strings.EqualFold(row.ClaimedSha256, sess.ClaimedSHA256) || uuidString(row.PhotoCaptureID) != sess.PhotoCaptureID {
 		return domain.Session{}, false, domain.ErrConflict
 	}
-	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), true, nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID), true, nil
 }
 
 // CompleteSession claims ISSUED→VERIFYING and enqueues the verify job in
@@ -288,7 +300,7 @@ func (s *Store) Session(ctx context.Context, id string) (domain.Session, error) 
 		}
 		return domain.Session{}, err
 	}
-	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID), nil
 }
 
 // SessionByNaturalKey loads one reservation by its retry key.
@@ -302,7 +314,7 @@ func (s *Store) SessionByNaturalKey(ctx context.Context, ref, client string) (do
 		}
 		return domain.Session{}, err
 	}
-	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion), nil
+	return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID), nil
 }
 
 // ObjectSignals resolves one object's duplicate-detection signals for
@@ -582,10 +594,10 @@ func (s *Store) FindByDHash(ctx context.Context, dhash uint64, since time.Time) 
 	return out, nil
 }
 
-func mapSession(id pgtype.UUID, contributorRef, clientSessionID, mime string, declaredBytes int64, claimedSha256, quarantineKey, status string, createdAt, expiresAt, updatedAt pgtype.Timestamptz, policyVersion string) domain.Session {
+func mapSession(id pgtype.UUID, contributorRef, clientSessionID, mime string, declaredBytes int64, claimedSha256, quarantineKey, status string, createdAt, expiresAt, updatedAt pgtype.Timestamptz, policyVersion string, captureID pgtype.UUID) domain.Session {
 	return domain.Session{
 		ID: uuidString(id), ContributorRef: contributorRef,
-		ClientSessionID: clientSessionID, MIME: mime,
+		ClientSessionID: clientSessionID, PhotoCaptureID: uuidString(captureID), MIME: mime,
 		DeclaredBytes: declaredBytes, MaxBytes: domain.MaxUploadBytes,
 		ClaimedSHA256: claimedSha256, QuarantineKey: quarantineKey,
 		Status: status, CreatedAt: createdAt.Time,

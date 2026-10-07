@@ -138,3 +138,22 @@ func TestCompleteReportsTerminal(t *testing.T) {
 		t.Errorf("terminal completion enqueued %d jobs", f.jobs)
 	}
 }
+
+func TestExpiredPhotoCannotCompleteOrExposeReadyObject(t *testing.T) {
+	f := newFakeCompleteStore()
+	sess := issuedFixture()
+	sess.PhotoCaptureID = "capture"
+	sess.ExpiresAt = time.Now().Add(-time.Second)
+	f.sessions[sess.ID] = sess
+	got, err := Complete(context.Background(), completePorts(f), testCaller(), sess.ID)
+	if err != nil || got.State != domain.StateExpired || f.jobs != 0 {
+		t.Fatalf("expired complete=%+v %v jobs=%d", got, err, f.jobs)
+	}
+	sess.Status = domain.StateReady
+	f.sessions[sess.ID] = sess
+	f.objects[sess.ID] = "object"
+	got, err = Status(context.Background(), f, testCaller(), sess.ID)
+	if err != nil || got.State != domain.StateExpired || got.EvidenceID != "" {
+		t.Fatalf("expired status=%+v %v", got, err)
+	}
+}

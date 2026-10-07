@@ -8,6 +8,7 @@ import (
 	community "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/community"
 	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func photoCaptureModel(row community.CommunityPhotoCapture) application.PhotoCapture {
@@ -75,10 +76,22 @@ func (s *Store) BindPhotoCapture(ctx context.Context, id, owner, key, session st
 		CapturedAt: pgTime(capturedAt), NowAt: pgTime(now),
 	})
 	if err != nil {
+		var conflict *pgconn.PgError
+		if errors.As(err, &conflict) && conflict.Code == "23505" {
+			return application.ErrPhotoCaptureIneligible
+		}
 		return err
 	}
 	if affected != 1 {
 		return application.ErrPhotoCaptureIneligible
 	}
 	return nil
+}
+
+// PurgeExpiredPhotoCaptures bounds metadata cleanup independently from byte retention.
+func (s *Store) PurgeExpiredPhotoCaptures(ctx context.Context, now time.Time, batch int) (int64, error) {
+	if batch < 1 || batch > 10000 {
+		return 0, errors.New("community: invalid retention batch")
+	}
+	return community.New(s.pool).PurgePhotoCaptures(ctx, community.PurgePhotoCapturesParams{NowAt: pgTime(now), Batch: int32(batch)})
 }

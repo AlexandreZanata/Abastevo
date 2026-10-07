@@ -76,3 +76,26 @@ func TestSubmitQuotaAndConflictMapping(t *testing.T) {
 		t.Errorf("conflict = %v", err)
 	}
 }
+
+func TestPhotoSubmitRefusesMissingEvidenceAndUnavailableAuthority(t *testing.T) {
+	p := testPorts()
+	dto := testDTO()
+	dto.PhotoCaptureID = "capture"
+	for _, evidence := range []string{"", "evidence"} {
+		dto.EvidenceID = evidence
+		if _, err := Submit(context.Background(), p, testCaller(), "POST", "/v1/observations", "row", nil, dto); !errors.Is(err, ErrPhotoCaptureIneligible) {
+			t.Fatalf("unverified photo intake=%v", err)
+		}
+	}
+	calls := 0
+	p.CheckPhotoCapture = func(_ context.Context, caller Caller, got SubmitDTO) error {
+		calls++
+		if got.PhotoCaptureID != dto.PhotoCaptureID || !got.ClaimedCapturedAt.Equal(dto.ClaimedCapturedAt) || caller.KeyID == "" {
+			t.Fatal("capture envelope changed")
+		}
+		return ErrPhotoCaptureIneligible
+	}
+	if _, err := Submit(context.Background(), p, testCaller(), "POST", "/v1/observations", "row", nil, dto); !errors.Is(err, ErrPhotoCaptureIneligible) || calls != 1 {
+		t.Fatalf("refusal=%v calls=%d", err, calls)
+	}
+}

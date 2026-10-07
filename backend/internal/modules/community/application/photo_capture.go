@@ -128,3 +128,31 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 	}
 	return receipt, out.Replayed, nil
 }
+
+// PhotoCaptureUse is the immutable capture envelope used by upload and intake.
+// EvidenceSessionID is required for observations, but absent before reservation.
+type PhotoCaptureUse struct {
+	CaptureID         string
+	StationID         string
+	CapturedAt        time.Time
+	EvidenceSessionID string
+}
+
+func ValidatePhotoCaptureUse(ctx context.Context, store PhotoCaptureStore, caller Caller, in PhotoCaptureUse, now time.Time) (PhotoCapture, error) {
+	if store == nil || caller.ContributorID == "" || caller.Token == "" || caller.KeyID == "" ||
+		in.CaptureID == "" || in.StationID == "" || in.CapturedAt.IsZero() || now.IsZero() || in.CapturedAt.After(now) {
+		return PhotoCapture{}, ErrPhotoCaptureIneligible
+	}
+	receipt, err := store.PhotoCapture(ctx, in.CaptureID, caller.Token)
+	if err != nil {
+		return PhotoCapture{}, err
+	}
+	if receipt.ID != in.CaptureID || receipt.ContributorRef != caller.Token || receipt.KeyID != caller.KeyID ||
+		receipt.StationID != in.StationID || receipt.PolicyVersion != PhotoCapturePolicy || !now.Before(receipt.ExpiresAt) ||
+		in.CapturedAt.Before(receipt.IssuedAt) || !in.CapturedAt.Before(receipt.CameraExpiresAt) ||
+		(receipt.EvidenceSessionID != "" && !receipt.CapturedAt.Equal(in.CapturedAt)) ||
+		(in.EvidenceSessionID != "" && receipt.EvidenceSessionID != in.EvidenceSessionID) {
+		return PhotoCapture{}, ErrPhotoCaptureIneligible
+	}
+	return receipt, nil
+}

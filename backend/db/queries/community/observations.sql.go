@@ -51,7 +51,7 @@ const getObservation = `-- name: GetObservation :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE id = $1
 `
@@ -78,6 +78,7 @@ func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (Community
 		&i.LocationVerdict,
 		&i.LocationProximity,
 		&i.LocationReason,
+		&i.PhotoCaptureID,
 	)
 	return i, err
 }
@@ -86,7 +87,7 @@ const getObservationByNaturalKey = `-- name: GetObservationByNaturalKey :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE contributor_ref = $1 AND client_submission_id = $2
 `
@@ -118,6 +119,7 @@ func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObserva
 		&i.LocationVerdict,
 		&i.LocationProximity,
 		&i.LocationReason,
+		&i.PhotoCaptureID,
 	)
 	return i, err
 }
@@ -128,12 +130,12 @@ INSERT INTO community_observations
     (id, contributor_ref, client_submission_id, station_id, fuel_product,
      unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
      evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-     location_verdict, location_proximity, location_reason)
+     location_verdict, location_proximity, location_reason, photo_capture_id)
 VALUES ($1, $2, $3, $4,
     $5, $6, $7, $8,
     $9, $10, $11, $12,
     $13, $14, $15,
-    $16, $17, $18)
+    $16, $17, $18, $19)
 ON CONFLICT (contributor_ref, client_submission_id) DO NOTHING
 RETURNING id
 `
@@ -157,6 +159,7 @@ type InsertObservationParams struct {
 	LocationVerdict    pgtype.Text        `json:"location_verdict"`
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
 }
 
 // Owned by community. Facts and decisions are insert-only: this file
@@ -182,6 +185,7 @@ func (q *Queries) InsertObservation(ctx context.Context, arg InsertObservationPa
 		arg.LocationVerdict,
 		arg.LocationProximity,
 		arg.LocationReason,
+		arg.PhotoCaptureID,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -215,7 +219,7 @@ const listByContributor = `-- name: ListByContributor :many
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason
+    location_verdict, location_proximity, location_reason, photo_capture_id
 FROM community_observations
 WHERE contributor_ref = $1
     AND ($2::boolean = FALSE OR
@@ -266,6 +270,7 @@ func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorPa
 			&i.LocationVerdict,
 			&i.LocationProximity,
 			&i.LocationReason,
+			&i.PhotoCaptureID,
 		); err != nil {
 			return nil, err
 		}

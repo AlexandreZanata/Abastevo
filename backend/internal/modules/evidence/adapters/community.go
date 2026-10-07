@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,9 +14,12 @@ import (
 // CommunityEvidence is the read-only view consumed by community
 // validation (B-BR-010): readiness plus owner, never bytes, keys or URLs.
 type CommunityEvidence struct {
-	Found    bool
-	Ready    bool
-	OwnerRef string
+	Found          bool
+	Ready          bool
+	OwnerRef       string
+	SessionID      string
+	PhotoCaptureID string
+	ExpiresAt      time.Time
 }
 
 // ForCommunity resolves one evidence object for community validation.
@@ -39,8 +43,9 @@ func (s *Store) ForCommunity(ctx context.Context, objectID string) (CommunityEvi
 	// sanitized bytes leave storage the fact reads unavailable while
 	// its duplicate-signal hashes survive to their bound.
 	return CommunityEvidence{
-		Found: true, Ready: !row.FinalDeletedAt.Valid,
-		OwnerRef: row.ContributorRef,
+		Found: true, Ready: row.Status == "READY" && !row.FinalDeletedAt.Valid && time.Now().Before(row.ExpiresAt.Time),
+		OwnerRef: row.ContributorRef, SessionID: uuidString(row.SessionID),
+		PhotoCaptureID: uuidString(row.PhotoCaptureID), ExpiresAt: row.ExpiresAt.Time,
 	}, nil
 }
 
@@ -67,6 +72,9 @@ func (s *Store) TryBindObject(ctx context.Context, objectID, observationID, cont
 	}
 	if row.ContributorRef != contributorRef {
 		return ErrNotOwner
+	}
+	if row.BoundCaptureID.Valid || row.PhotoCaptureID.Valid {
+		return ErrAlreadyBound
 	}
 	if row.BoundObservationID.Valid {
 		if uuidString(row.BoundObservationID) == observationID {
@@ -104,4 +112,27 @@ func (s *Store) convergeBind(ctx context.Context, uid pgtype.UUID, observationID
 		return nil
 	}
 	return ErrAlreadyBound
+}
+
+// TryBindPhotoObject converges all rows of one proven capture on one object.
+// No legacy or foreign object can enter this lane; READY never renews expiry.
+func (s *Store) TryBindPhotoObject(ctx context.Context, objectID, captureID, owner string, now time.Time) error {
+	id, err := mustUUID(objectID)
+	if err != nil {
+		return ErrUnknownObject
+	}
+	capture, err := mustUUID(captureID)
+	if err != nil {
+		return ErrAlreadyBound
+	}
+	n, err := evidence.New(s.pool).ClaimPhotoObjectBinding(ctx, evidence.ClaimPhotoObjectBindingParams{
+		ID: id, CaptureID: capture, ContributorRef: owner, NowAt: pgTime(now),
+	})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrAlreadyBound
+	}
+	return nil
 }

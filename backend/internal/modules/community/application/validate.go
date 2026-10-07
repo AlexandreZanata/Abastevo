@@ -50,9 +50,10 @@ var ErrEvidenceInUse = errors.New("community: evidence already bound to another 
 // within the deadline, timeout after it. A port error means the signal is
 // unavailable and must retry, never count as verified.
 type EvidenceState struct {
-	Found    bool
-	Ready    bool
-	OwnerRef string
+	Found     bool
+	Ready     bool
+	OwnerRef  string
+	ExpiresAt time.Time
 }
 
 // ValidateDeps declares every collaborator for validation orchestration.
@@ -75,8 +76,9 @@ type ValidateDeps struct {
 	// set-if-unbound-or-same semantics. Nil skips the claim (pre-binding
 	// behavior); the composition root injects the evidence store claim
 	// and maps its refusal onto ErrEvidenceInUse.
-	ClaimEvidence func(ctx context.Context, evidenceID, observationID, contributorRef string) error
-	Store         ValidateStore
+	ClaimPhotoEvidence func(context.Context, domain.Observation) error
+	ClaimEvidence      func(ctx context.Context, evidenceID, observationID, contributorRef string) error
+	Store              ValidateStore
 	// EnqueueConsensus persists the downstream consensus intent in the
 	// same transaction as the VALIDATED decision. It receives the open
 	// transaction as an opaque handle, mirroring Submit's EnqueueJob.
@@ -200,6 +202,9 @@ func Validate(ctx context.Context, deps ValidateDeps, observationID, commandRef 
 		if err != nil {
 			return state, err
 		}
+		if !st.ExpiresAt.IsZero() && !now.Before(st.ExpiresAt) {
+			return reject(ctx, deps, obs, []string{ReasonEvidenceTimeout}, now, seq)
+		}
 		if !st.Found || !st.Ready {
 			if now.Sub(obs.ReceivedAt) > EvidenceTimeout {
 				return reject(ctx, deps, obs, []string{ReasonEvidenceTimeout}, now, seq)
@@ -211,7 +216,17 @@ func Validate(ctx context.Context, deps ValidateDeps, observationID, commandRef 
 		}
 		// Bind exactly once: a photo backs a single observation, so a
 		// reused object rejects instead of double-counting support.
-		if deps.ClaimEvidence != nil {
+		if obs.PhotoCaptureID != "" {
+			if deps.ClaimPhotoEvidence == nil {
+				return state, errors.New("community: photo binding not configured")
+			}
+			if err := deps.ClaimPhotoEvidence(ctx, obs); err != nil {
+				if errors.Is(err, ErrEvidenceInUse) {
+					return reject(ctx, deps, obs, []string{ReasonEvidenceReused}, now, seq)
+				}
+				return state, err
+			}
+		} else if deps.ClaimEvidence != nil {
 			if err := deps.ClaimEvidence(ctx, obs.EvidenceID, obs.ID, obs.ContributorRef); err != nil {
 				if errors.Is(err, ErrEvidenceInUse) {
 					return reject(ctx, deps, obs, []string{ReasonEvidenceReused}, now, seq)
