@@ -1,0 +1,103 @@
+package com.anpfuel.domain.portable
+
+import com.anpfuel.domain.valueobject.FuelProduct
+import kotlin.math.abs
+import kotlin.math.max
+
+/** Human-review suggestions from spatial OCR. No trust, publication or minimum-price selection. */
+object FuelBoardOcr {
+    data class Token(val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int) {
+        val height get() = max(1, bottom - top)
+        val cx get() = (left + right) / 2.0
+        val cy get() = (top + bottom) / 2.0
+    }
+    data class Row(val product: FuelProduct, val amountMilli: Long)
+    data class Result(val rows: List<Row>, val conditional: Boolean, val unresolved: Boolean)
+    private val price = Regex("(?<![0-9/.-])[0-9]{1,4}[.,][0-9]{2,3}(?![0-9/])")
+
+    fun associate(input: List<Token>): Result {
+        val tokens = input.take(512).filter { it.text.length <= 256 && it.right > it.left && it.bottom > it.top }
+        val conditional = tokens.any { normalize(it.text).let { text -> listOf("VISTA", "CARTAO", "CREDITO", "DEBITO", "PIX", "APP", "CLUBE", "FIDELIDADE", "PROMOCAO").any { word -> Regex("\\b$word\\b").containsMatchIn(text) } } }
+        fun encloses(a: Token,b: Token) = a.left <= b.left+2 && a.top <= b.top+2 && a.right >= b.right-2 && a.bottom >= b.bottom-2
+        // Prefer tight element geometry over a whole line that contains both label and number.
+        val labelTokens = tokens.filter { token -> labelLike(normalize(token.text)) }
+            .filterNot { token -> tokens.any { child -> child != token && labelLike(normalize(child.text)) && encloses(token,child) && child.text.length < token.text.length && price.containsMatchIn(token.text) } }
+        val anchors = labelTokens.map { token ->
+            var text=normalize(token.text)
+            var box=token
+            if (!text.contains("ADITIV") && !text.contains("S10") && !text.contains("S500")) {
+                val suffix = labelTokens.filter { other ->
+                    other!=token && other.top>=token.top+token.height*0.35 && other.top-token.bottom <= token.height*0.65 &&
+                        abs(other.left-token.left)<=max(token.height,other.height)*1.2 &&
+                        normalize(other.text).let { n -> n.startsWith("ADITIV") || Regex("^S[ -]?(10|500)$").matches(n) }
+                }.minByOrNull { it.top }
+                if (suffix!=null) { text+=" "+normalize(suffix.text);box=Token(text,minOf(token.left,suffix.left),token.top,maxOf(token.right,suffix.right),suffix.bottom) }
+            }
+            var fuel=product(text)
+            if (text.startsWith("ADITIV") && !text.contains("GASOLINA") && !text.contains("DIESEL") && !text.contains("ETANOL")) {
+                val context=labelTokens.filter { other -> other!=token && normalize(other.text).let { it.contains("GASOLINA") || it.contains("DIESEL") || it.contains("ETANOL") } && abs(other.cy-token.cy)<=max(other.height,token.height)*2.5 && abs(other.cx-token.cx)<=max(other.right-other.left,token.right-token.left)*0.7 }.minByOrNull { abs(it.cy-token.cy) }
+                context?.let { parent ->
+                    val parentText=normalize(parent.text)
+                    fuel=if(parentText.contains("GASOLINA")) FuelProduct.GASOLINE_PREMIUM else product(parentText)
+                }
+            }
+            box to fuel
+        }.distinct().let { found ->
+            found.filterNot { (token,fuel) -> found.any { (parent,parentFuel) -> parent!=token && parentFuel!=null && parentFuel!=fuel && encloses(parent,token) && parent.text.length>token.text.length } ||
+                found.any { (parent,parentFuel) -> fuel==FuelProduct.GASOLINE_REGULAR && parentFuel==FuelProduct.GASOLINE_PREMIUM && parent.text.replace(" ", "").startsWith("GGRID") && token.height<parent.height*0.5 && token.top>=parent.top && token.top-parent.bottom<=parent.height && abs(token.left-parent.left)<=parent.height*2.5 } }
+        }
+        val values = tokens.filterNot { normalize(it.text).let { n -> n.contains("TOTAL") || n.contains("LITROS") || n.contains("VOLUME") } }
+            .filterNot { token -> tokens.any { child -> child!=token && encloses(token,child) && price.containsMatchIn(child.text) && child.text.length<token.text.length } }
+            .flatMap { token -> price.findAll(token.text.replace(Regex("([.,]) +(?=[0-9])"),"$1")).mapNotNull { match ->
+                PortablePriceOcr.parseCandidates(match.value).singleOrNull()?.let { token to it.priceMilli }
+            }.toList() }
+        val matches = mutableListOf<Row>()
+        var unresolved = anchors.any { (_, fuel) -> fuel == null }
+        for ((value, amount) in values) {
+            val ranked = anchors.mapNotNull { (label, fuel) ->
+                val h = max(label.height, value.height).toDouble()
+                val inline = label == value
+                val sameRow = abs(label.cy - value.cy) / h <= 0.75 && value.left >= label.right - h
+                val below = !price.containsMatchIn(label.text) && value.top >= label.bottom - h * 0.2 && (value.top - label.bottom) / h <= 2.0 && abs(label.cx - value.cx) <= max(label.right-label.left,value.right-value.left) * 0.7 && anchors.none { (other,_) -> other!=label && other.top>label.bottom && other.top<value.cy && abs(other.cx-label.cx)<max(other.right-other.left,label.right-label.left) }
+                val score = when {
+                    inline -> 0.0
+                    sameRow -> abs(label.cy - value.cy) / h + (value.left-label.right).coerceAtLeast(0) / (h*20)
+                    below -> 1.0 + (value.top-label.bottom).coerceAtLeast(0) / h + abs(label.cx-value.cx)/(h*10)
+                    else -> null
+                }
+                score?.let { Triple(fuel,it,label) }
+            }.sortedBy { it.second }
+            val best = ranked.firstOrNull() ?: continue
+            if (ranked.drop(1).any { it.first != best.first && abs(it.second-best.second)<0.35 }) { unresolved=true;continue }
+            val fuel=best.first
+            if(fuel==null){unresolved=true;continue}
+            matches += Row(fuel,amount)
+        }
+        val rows = matches.groupBy { it.product }.mapNotNull { (fuel, found) ->
+            val amounts=found.map{it.amountMilli}.distinct()
+            if(amounts.size==1) Row(fuel,amounts.single()) else { unresolved=true;null }
+        }
+        return Result(rows,conditional,unresolved)
+    }
+
+    private fun normalize(text: String): String = text.uppercase()
+        .replace('Á','A').replace('À','A').replace('Ã','A').replace('Â','A')
+        .replace('É','E').replace('Ê','E').replace('Í','I').replace('Ó','O').replace('Õ','O')
+        .replace('Ô','O').replace('Ú','U').replace('Ç','C')
+
+    private fun labelLike(text: String): Boolean = product(text)!=null || text.contains("DIESEL") || text.contains("PODIUM") || text.contains("PREMIUM") || Regex("\\bS[ -]?[0-9]+\\b").containsMatchIn(text)
+
+    private fun product(text: String): FuelProduct? = when {
+        text.contains("PODIUM") || text.contains("PREMIUM") || text.contains("RACING") -> null
+        text.contains("DIESEL") || Regex("\\bS\\s*[- ]?\\s*(10|500)\\b").containsMatchIn(text) -> when {
+            Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*500\\b").containsMatchIn(text) -> FuelProduct.DIESEL_S500
+            Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*10\\b").containsMatchIn(text) -> FuelProduct.DIESEL_S10
+            else -> null
+        }
+        text.contains("ETANOL") || text.contains("ALCOOL") || Regex("^E ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.ETHANOL
+        text.contains("ADITIV") || text.contains("V-POWER") || Regex("^G ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.GASOLINE_PREMIUM
+        text.contains("GASOLINA") -> FuelProduct.GASOLINE_REGULAR
+        Regex("\\bGNV\\b").containsMatchIn(text) -> FuelProduct.CNG
+        else -> null
+    }
+}
