@@ -1,5 +1,7 @@
 # Lightweight media and location integrity target
 
+Proposed user-requested amendment, 2026-10-07: [optional AI-training consent plan](AI_TRAINING_IMAGE_CONSENT_PLAN.md) defines a separate minimized training derivative with no automatic TTL for explicit consenters. This exception is NOT_IMPLEMENTED. All operational copies and non-consented images keep the 24-hour rule below; a checkbox or this planning note does not activate retention.
+
 Status: ADOPTED target, NOT IMPLEMENTED. P15 owns media; P16 owns location. Forward budgets frozen by P15-T01 (`contracts/testdata/media/budgets-v1.json`, evidence `docs/release-evidence/p15-t01-media-budgets.md`); native/backend pipelines stay NOT IMPLEMENTED until P15-T02…T05. Location risk contract frozen by P16-T01 (`contracts/testdata/location/risk-v1.json`, evidence `docs/release-evidence/p16-t01-location-risk.md`); native mock/simulation adapters and backend intake distrust stay NOT IMPLEMENTED until P16-T02…T04. Existing v1 media limits/14-day sanitized retention remain an implementation gap until forward changes pass their tests. This policy supersedes the older target; it does not claim deployed compliance.
 
 ## B-BR-M01…M06: all app-owned photos expire within 24 hours
