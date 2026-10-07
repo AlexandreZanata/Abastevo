@@ -1,9 +1,20 @@
 package com.anpfuel.app.capture
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.port.CaptureOcrFlagProvider
+import com.anpfuel.application.port.CaptureLocationSource
+import com.anpfuel.application.port.PhotoCaptureGate
+import com.anpfuel.application.port.PhotoCapturePermission
+import com.anpfuel.application.port.ImagePriceOcr
+import com.anpfuel.application.port.isEligibleForPhotoCapture
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.Job
 import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome
@@ -58,6 +69,11 @@ class CaptureOcrViewModel @Inject constructor(
     private val locationHandler: LocationPermissionHandler,
     private val nearbyStations: GetNearbyServerStationsUseCase,
     private val photoFlow: PhotoFlow,
+    private val captureLocation: CaptureLocationSource,
+    private val captureGate: PhotoCaptureGate,
+    private val imageOcr: ImagePriceOcr,
+    private val savedState: SavedStateHandle,
+
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<CaptureOcrUiState>(initialState())
@@ -99,7 +115,7 @@ class CaptureOcrViewModel @Inject constructor(
     private val _pickedStationId = MutableStateFlow<String?>(null)
     val pickedStationId: StateFlow<String?> = _pickedStationId.asStateFlow()
 
-    private val _photoId = MutableStateFlow<String?>(null)
+    private val _photoId = MutableStateFlow<String?>(savedState["photoId"])
     val photoId: StateFlow<String?> = _photoId.asStateFlow()
 
     private val _photoRefused = MutableStateFlow<String?>(null)
@@ -111,27 +127,158 @@ class CaptureOcrViewModel @Inject constructor(
      * crossed out; [fuelErrors] marks rows that failed to parse on the
      * last submit attempt.
      */
-    private val _fuelAmounts = MutableStateFlow<Map<FuelProduct, String>>(emptyMap())
+    private val _fuelAmounts = MutableStateFlow<Map<FuelProduct, String>>(
+        FuelProduct.entries.mapNotNull { product -> savedState.get<String>("amount.${product.name}")?.let { product to it } }.toMap())
     val fuelAmounts: StateFlow<Map<FuelProduct, String>> = _fuelAmounts.asStateFlow()
 
-    private val _removedFuels = MutableStateFlow<Set<FuelProduct>>(emptySet())
+    private val _removedFuels = MutableStateFlow<Set<FuelProduct>>(
+        FuelProduct.entries.filter { savedState.get<Boolean>("removed.${it.name}") == true }.toSet())
     val removedFuels: StateFlow<Set<FuelProduct>> = _removedFuels.asStateFlow()
 
     private val _fuelErrors = MutableStateFlow<Set<FuelProduct>>(emptySet())
     val fuelErrors: StateFlow<Set<FuelProduct>> = _fuelErrors.asStateFlow()
 
+    @Volatile private var generation = 0L
+    private var recognition: Job? = null
+    private val edited = FuelProduct.entries.filter { savedState.get<Boolean>("edited.${it.name}") == true }.toMutableSet()
+    private val _processing = MutableStateFlow(false)
+    val processing = _processing.asStateFlow()
+    private val _gateBusy = MutableStateFlow(false)
+    val gateBusy = _gateBusy.asStateFlow()
+    private val _gateFailure = MutableStateFlow<String?>(null)
+    val gateFailure = _gateFailure.asStateFlow()
+    private val _conditional = MutableStateFlow(savedState.get<Boolean>("conditional") ?: false)
+    val conditional = _conditional.asStateFlow()
+    private val _defaultPriceConfirmed = MutableStateFlow(false)
+    val defaultPriceConfirmed = _defaultPriceConfirmed.asStateFlow()
+    private val _reviewUri = MutableStateFlow<String?>(savedState["reviewUri"])
+    val reviewUri = _reviewUri.asStateFlow()
+    private var receipt: PhotoCapturePermission? = savedState.get<ArrayList<String>>("receipt")?.let { values ->
+        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6]) }.getOrNull()
+    }
+    private var pendingReceipt: PhotoCapturePermission? = savedState.get<ArrayList<String>>("pendingReceipt")?.let { values ->
+        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6]) }.getOrNull()
+    }
+    var pendingCaptureStartedAtMillis: Long = savedState.get<Long>("pendingCapturedAt") ?: 0L
+        private set
+    var originalCapturedAtMillis: Long = savedState.get<Long>("capturedAt") ?: 0L
+        private set
+
+    fun rememberPendingUri(uri: String?) { savedState["pendingUri"] = uri }
+    fun pendingUri(): String? = savedState["pendingUri"]
+    fun rememberReviewUri(uri: String?) { savedState["reviewUri"] = uri; _reviewUri.value = uri }
+    fun confirmDefaultPrice(confirmed: Boolean) { _defaultPriceConfirmed.value = confirmed }
+
+    /** No camera callback is delivered on a missing fix, refused receipt or changed target. */
+    fun authorizeCamera(onAuthorized: () -> Unit) {
+        if (_gateBusy.value || !flagProvider.isEnabled() || _targetInvalid.value) return
+        val station = _target.value?.stationId ?: _pickedStationId.value
+        if (station == null) { _gateFailure.value = "photo.station-required"; return }
+        val ticket = ++generation
+        _gateBusy.value = true
+        _gateFailure.value = null
+        viewModelScope.launch {
+            try {
+                val fix = captureLocation.freshFix()
+                if (fix == null || !fix.isEligibleForPhotoCapture(System.currentTimeMillis())) {
+                    _gateFailure.value = "photo.location-required"
+                    return@launch
+                }
+                val permission = captureGate.authorize(station, java.util.UUID.randomUUID().toString(), fix)
+                if (ticket != generation || station != (_target.value?.stationId ?: _pickedStationId.value)) return@launch
+                if (permission.stationId != station || !captureGate.isCurrent(permission) || System.currentTimeMillis() !in permission.issuedAtMillis until permission.cameraExpiresAtMillis) {
+                    _gateFailure.value = "photo.permission-expired"
+                    return@launch
+                }
+                pendingReceipt = permission
+                savedState["pendingReceipt"] = arrayListOf(permission.captureId, permission.stationId, permission.issuedAtMillis.toString(),
+                    permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(), permission.ownerScope, permission.origin)
+                onAuthorized()
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (ticket == generation) _gateFailure.value = "photo.authorization-unavailable" }
+            finally { if (ticket == generation) _gateBusy.value = false }
+        }
+    }
+
+    /** Recheck after Android's permission dialog; permission delay cannot extend the receipt. */
+    fun beginCamera(): Boolean {
+        val permission = pendingReceipt ?: return false
+        val now = System.currentTimeMillis()
+        if (!captureGate.isCurrent(permission) || now !in permission.issuedAtMillis until permission.cameraExpiresAtMillis ||
+            permission.stationId != (_target.value?.stationId ?: _pickedStationId.value)) {
+            _gateFailure.value = "photo.permission-expired"
+            return false
+        }
+        pendingCaptureStartedAtMillis = now
+        savedState["pendingCapturedAt"] = now
+        return true
+    }
+
+    fun acceptCameraPhoto(bytes: ByteArray, mime: String, uri: String): Boolean {
+        val permission = pendingReceipt ?: return false
+        val now = System.currentTimeMillis()
+        if (!captureGate.isCurrent(permission) || now !in permission.issuedAtMillis until permission.cameraExpiresAtMillis) {
+            _gateFailure.value = "photo.permission-expired"
+            return false
+        }
+        receipt = permission
+        savedState["receipt"] = savedState.get<ArrayList<String>>("pendingReceipt")
+        pendingReceipt = null
+        savedState.remove<ArrayList<String>>("pendingReceipt")
+        originalCapturedAtMillis = now
+        savedState["capturedAt"] = now
+        edited.clear()
+        _removedFuels.value = emptySet()
+        _fuelAmounts.value = emptyMap()
+        _conditional.value = false
+        FuelProduct.entries.forEach { product ->
+            savedState.remove<String>("amount.${product.name}")
+            savedState.remove<Boolean>("edited.${product.name}")
+            savedState.remove<Boolean>("removed.${product.name}")
+        }
+        savedState["conditional"] = false
+        rememberReviewUri(uri)
+        preparePhoto(bytes, mime)
+        return true
+    }
+
+    fun cameraCancelled() {
+        ++generation
+        recognition?.cancel()
+        _processing.value = false
+        savedState["pendingUri"] = null
+        pendingReceipt = null
+        savedState.remove<ArrayList<String>>("pendingReceipt")
+        _state.value = if (_reviewUri.value == null) CaptureOcrUiState.Cancelled else CaptureOcrUiState.NeedsConfirmation(emptyList(), true)
+    }
+
+    fun addFuel(product: FuelProduct) {
+        _removedFuels.value = _removedFuels.value - product
+        savedState["removed.${product.name}"] = false
+        setFuelAmount(product, _fuelAmounts.value[product].orEmpty())
+    }
+
     fun setFuelAmount(product: FuelProduct, raw: String) {
+        edited += product
+        savedState["edited.${product.name}"] = true
+        savedState["amount.${product.name}"] = raw.take(16)
+
         _fuelAmounts.value = _fuelAmounts.value + (product to raw.take(16))
         if (raw.isNotBlank()) _fuelErrors.value = _fuelErrors.value - product
     }
 
     fun removeFuel(product: FuelProduct) {
+        edited += product
+        savedState["edited.${product.name}"] = true
+        savedState["removed.${product.name}"] = true
+        savedState.remove<String>("amount.${product.name}")
         _removedFuels.value = _removedFuels.value + product
         _fuelAmounts.value = _fuelAmounts.value - product
         _fuelErrors.value = _fuelErrors.value - product
     }
 
     fun restoreFuels() {
+        _removedFuels.value.forEach { addFuel(it) }
         _removedFuels.value = emptySet()
     }
 
@@ -145,6 +292,11 @@ class CaptureOcrViewModel @Inject constructor(
      * location the station picker stays unavailable but manual review
      * still works. Nearby lookup starts only with a location grant.
      */
+    fun onLocationPermission(granted: Boolean) {
+        _locationDenied.value = !granted
+        if (granted) loadNearby()
+    }
+
     fun onEntryPermissions(cameraGranted: Boolean, locationGranted: Boolean) {
         _locationDenied.value = !locationGranted
         if (!cameraGranted) {
@@ -185,39 +337,77 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     fun pickStation(stationId: String?) {
+        if (_pickedStationId.value != stationId) { generation++; pendingReceipt = null; receipt = null; _gateBusy.value = false }
         _pickedStationId.value = stationId
     }
 
-    /**
-     * Compresses one system-camera shot through the bounded PhotoFlow and
-     * opens the existing human review (manual entry until the ML Kit
-     * engine lands behind OcrPort). A refused shot keeps the refusal code
-     * visible and still opens review so the price can be typed.
-     */
+    /** Pixels and encoding run outside the UI thread; edited/removed rows survive reanalysis. */
     fun preparePhoto(bytes: ByteArray, mime: String) {
-        _photoId.value = null
-        _photoRefused.value = null
-        when (val prepared = photoFlow.prepare(bytes, mime)) {
-            is PhotoFlow.PhotoResult.Ready -> _photoId.value = prepared.id
-            is PhotoFlow.PhotoResult.Refused -> _photoRefused.value = prepared.code
+        if (!flagProvider.isEnabled()) { _state.value = CaptureOcrUiState.Disabled; return }
+        if (!permissionHandler.hasCameraPermission()) { _state.value = CaptureOcrUiState.PermissionDenied; return }
+        if (originalCapturedAtMillis == 0L) {
+            originalCapturedAtMillis = System.currentTimeMillis()
+            savedState["capturedAt"] = originalCapturedAtMillis
         }
-        onCaptureResult(cancelled = false, ocrText = null)
+        processPhoto(bytes, mime)
     }
 
-    /**
-     * Swaps the attached shot after the contributor crops it (same
-     * budgets, same transient entry discipline). Review state is kept:
-     * only the photo pointer changes.
-     */
-    fun replacePhoto(bytes: ByteArray, mime: String) {
-        when (val prepared = photoFlow.prepare(bytes, mime)) {
-            is PhotoFlow.PhotoResult.Ready -> {
-                _photoId.value = prepared.id
-                _photoRefused.value = null
-            }
-            is PhotoFlow.PhotoResult.Refused -> _photoRefused.value = prepared.code
+    fun replacePhoto(bytes: ByteArray, mime: String) = processPhoto(bytes, mime)
+
+    private fun processPhoto(bytes: ByteArray, mime: String) {
+        recognition?.cancel()
+        val ticket = ++generation
+        _processing.value = true
+        _photoRefused.value = null
+        _state.value = CaptureOcrUiState.NeedsConfirmation(emptyList(), true)
+        recognition = viewModelScope.launch {
+            try {
+                val prepared = withContext(Dispatchers.Default) {
+                    photoFlow.prepareAt(bytes, mime, originalCapturedAtMillis).also { result ->
+                        if (ticket != generation && result is PhotoFlow.PhotoResult.Ready) photoFlow.discard(result.id)
+                    }
+                }
+                if (ticket != generation) {
+                    if (prepared is PhotoFlow.PhotoResult.Ready) withContext(Dispatchers.IO) { photoFlow.discard(prepared.id) }
+                    return@launch
+                }
+                when (prepared) {
+                    is PhotoFlow.PhotoResult.Ready -> {
+                        val old = _photoId.value
+                        _photoId.value = prepared.id
+                        savedState["photoId"] = prepared.id
+                        if (old != null && old != prepared.id) withContext(Dispatchers.IO) { photoFlow.discard(old) }
+                    }
+                    is PhotoFlow.PhotoResult.Refused -> {
+                        // Never send the old uncropped photo after rejecting the user's crop.
+                        _photoId.value?.let { id -> withContext(Dispatchers.IO) { photoFlow.discard(id) } }
+                        _photoId.value = null
+                        savedState.remove<String>("photoId")
+                        _photoRefused.value = prepared.code
+                    }
+                }
+                val result = withTimeout(15_000) { imageOcr.recognize(bytes) }
+                if (ticket != generation) return@launch
+                _conditional.value = _conditional.value || result.conditional
+                savedState["conditional"] = _conditional.value
+                _defaultPriceConfirmed.value = false
+                val detected = result.rows.filter { it.product !in edited && it.product !in _removedFuels.value }
+                    .associate { row -> row.product to formatMilli(row.amountMilli) }
+                // Untouched OCR values reflect this crop; no stale guesses remain.
+                _fuelAmounts.value = _fuelAmounts.value.filterKeys { it in edited } + detected
+                FuelProduct.entries.forEach { product ->
+                    _fuelAmounts.value[product]?.let { savedState["amount.${product.name}"] = it }
+                        ?: savedState.remove<String>("amount.${product.name}")
+                }
+            } catch (_: kotlinx.coroutines.TimeoutCancellationException) { if (ticket == generation) _photoRefused.value = "ocr.unavailable" }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (ticket == generation) _photoRefused.value = _photoRefused.value ?: "ocr.unavailable" }
+            finally { if (ticket == generation) _processing.value = false }
         }
     }
+
+    private fun formatMilli(amount: Long): String =
+        "${amount / 1000},${(amount % 1000).toString().padStart(3, '0')}"
 
     /**
      * Sends one contribution per filled fuel row (blank rows are not
@@ -227,6 +417,7 @@ class CaptureOcrViewModel @Inject constructor(
      * or the picked nearby station combined with that row's fuel.
      */
     fun submitContributions() {
+        if (_processing.value || (_conditional.value && !_defaultPriceConfirmed.value)) return
         val rows = FuelProduct.entries
             .filter { it !in _removedFuels.value }
             .mapNotNull { product ->
@@ -287,9 +478,7 @@ class CaptureOcrViewModel @Inject constructor(
 
     private fun resolveRowTarget(product: FuelProduct): ContributionTarget? {
         val bound = _target.value
-        if (bound != null && bound.fuelProductWire == WireFuelMapper.toWire(product)) return bound
-        if (bound != null) return null
-        val stationId = _pickedStationId.value ?: return null
+        val stationId = bound?.stationId ?: _pickedStationId.value ?: return null
         return runCatching {
             ContributionTarget.create(stationId, WireFuelMapper.toWire(product))
         }.getOrNull()
@@ -315,20 +504,21 @@ class CaptureOcrViewModel @Inject constructor(
         const val DEFAULT_CONDITION: String = "STANDARD"
 
         fun isInsideStationArea(distanceMeters: Double?): Boolean =
-            distanceMeters != null && distanceMeters <= MIN_STATION_AREA_METERS
+            distanceMeters != null && distanceMeters.isFinite() && distanceMeters in 0.0..MIN_STATION_AREA_METERS
     }
 
     private val _submit = MutableStateFlow<SubmitState?>(null)
     val submit: StateFlow<SubmitState?> = _submit.asStateFlow()
 
     fun bindTarget(stationId: String?, fuelProductWire: String?) {
-        if (stationId == null || fuelProductWire == null) {
+        if ((_target.value?.stationId ?: pendingReceipt?.stationId ?: receipt?.stationId) != stationId) { generation++; pendingReceipt = null; receipt = null; _gateBusy.value = false }
+        if (stationId == null) {
             _target.value = null
             _targetInvalid.value = false
             return
         }
         val resolved = runCatching {
-            ContributionTarget.create(stationId, fuelProductWire)
+            ContributionTarget.create(stationId, fuelProductWire ?: "GASOLINE_REGULAR")
         }.getOrNull()
         _target.value = resolved
         _targetInvalid.value = resolved == null

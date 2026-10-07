@@ -2,7 +2,6 @@ package com.anpfuel.app.capture
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,7 +63,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
@@ -71,11 +70,17 @@ import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
-import com.anpfuel.data.mapper.WireFuelMapper
+import com.anpfuel.data.local.media.BoundedPhotoBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.valueobject.FuelProduct
 import java.io.ByteArrayOutputStream
-import java.io.File
 import kotlin.math.roundToInt
 
 /**
@@ -108,46 +113,75 @@ fun CaptureScreen(
     val removedFuels by viewModel.removedFuels.collectAsStateWithLifecycle()
     val fuelErrors by viewModel.fuelErrors.collectAsStateWithLifecycle()
     val submit by viewModel.submit.collectAsStateWithLifecycle()
-    LaunchedEffect(stationId, fuelProductWire) {
-        viewModel.bindTarget(stationId, fuelProductWire)
-    }
     val context = LocalContext.current
-    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val scope = rememberCoroutineScope()
+    val files = remember(context) { PrivateCaptureFiles(context) }
+    val reviewUri by viewModel.reviewUri.collectAsStateWithLifecycle()
+    val gateBusy by viewModel.gateBusy.collectAsStateWithLifecycle()
+    val gateFailure by viewModel.gateFailure.collectAsStateWithLifecycle()
+    val processing by viewModel.processing.collectAsStateWithLifecycle()
+    val conditional by viewModel.conditional.collectAsStateWithLifecycle()
+    val defaultConfirmed by viewModel.defaultPriceConfirmed.collectAsStateWithLifecycle()
+    val reviewPhotoUri = reviewUri?.let(Uri::parse)
     var cropNonce by remember { mutableStateOf(0) }
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val uri = pendingPhotoUri
+        val uri = viewModel.pendingUri()?.let(Uri::parse)
+        viewModel.rememberPendingUri(null)
         if (success && uri != null) {
-            val bytes = runCatching {
-                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            }.getOrNull()
-            if (bytes != null) {
-                viewModel.preparePhoto(bytes, "image/jpeg")
-                reviewPhotoUri = uri
-            } else {
-                viewModel.onCaptureResult(cancelled = true, ocrText = null)
+            scope.launch {
+                val bytes = withContext(Dispatchers.IO) { files.read(uri, viewModel.pendingCaptureStartedAtMillis) }
+                if (bytes != null) {
+                    val old = viewModel.reviewUri.value?.let(Uri::parse)
+                    if (viewModel.acceptCameraPhoto(bytes, "image/jpeg", uri.toString())) {
+                        if (old != null && old != uri) withContext(Dispatchers.IO) { files.delete(old) }
+                    } else {
+                        withContext(Dispatchers.IO) { files.delete(uri) }
+                        viewModel.cameraCancelled()
+                    }
+                } else {
+                    withContext(Dispatchers.IO) { files.delete(uri) }
+                    viewModel.cameraCancelled()
+                }
             }
         } else {
-            viewModel.onCaptureResult(cancelled = true, ocrText = null)
+            scope.launch { if (uri != null) withContext(Dispatchers.IO) { files.delete(uri) } }
+            viewModel.cameraCancelled()
         }
     }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grants ->
-        viewModel.onEntryPermissions(
-            cameraGranted = grants[android.Manifest.permission.CAMERA] == true,
-            locationGranted = grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true,
-        )
+    val launchCamera: () -> Unit = {
+        if (viewModel.beginCamera()) scope.launch {
+            val uri = withContext(Dispatchers.IO) { files.create(viewModel.pendingCaptureStartedAtMillis) }
+            viewModel.rememberPendingUri(uri.toString())
+            try { takePicture.launch(uri) }
+            catch (_: Exception) {
+                withContext(Dispatchers.IO) { files.delete(uri) }
+                viewModel.cameraCancelled()
+            }
+        }
     }
-    LaunchedEffect(Unit) {
-        permissionLauncher.launch(
-            arrayOf(
-                android.Manifest.permission.CAMERA,
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-            ),
-        )
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchCamera() else viewModel.onEntryPermissions(false, true)
+    }
+    val requestCamera: () -> Unit = {
+        viewModel.authorizeCamera {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                launchCamera()
+            } else cameraPermission.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        val granted = grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        // Camera permission follows signed proximity authorization, never screen entry.
+        viewModel.onLocationPermission(granted)
+        if (granted && stationId != null && reviewUri == null && viewModel.pendingUri() == null) requestCamera()
+    }
+    LaunchedEffect(stationId) {
+        viewModel.bindTarget(stationId, fuelProductWire)
+        withContext(Dispatchers.IO) { files.sweep() }
+        if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
+            viewModel.rememberReviewUri(null)
+        }
+        if (reviewPhotoUri == null && viewModel.pendingUri() == null) locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     AnpScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -182,6 +216,7 @@ fun CaptureScreen(
                 )
                 return@Column
             }
+            if (gateFailure != null) Text(stringResource(R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
             when (state) {
                 CaptureOcrUiState.Disabled -> {
                     Text(
@@ -194,12 +229,14 @@ fun CaptureScreen(
                         stringResource(R.string.capture_permission_required),
                         style = MaterialTheme.typography.bodyLarge,
                     )
+                    Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
                 }
                 CaptureOcrUiState.Cancelled -> {
                     Text(
                         stringResource(R.string.capture_cancelled),
                         style = MaterialTheme.typography.bodyLarge,
                     )
+                    Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
                 }
                 else -> {
                     val relevantId = target?.stationId ?: pickedStationId
@@ -217,21 +254,15 @@ fun CaptureScreen(
                             distanceMeters = distance,
                             insideArea = inside,
                             photoRefused = photoRefused,
+                            gateBusy = gateBusy,
+                            gateFailure = gateFailure,
                             onPickStation = viewModel::pickStation,
-                            onTakePhoto = {
-                                val dir = File(context.cacheDir, "capture").apply { mkdirs() }
-                                val file = File.createTempFile("price_", ".jpg", dir)
-                                val uri = FileProvider.getUriForFile(
-                                    context, context.packageName + ".fileprovider", file)
-                                pendingPhotoUri = uri
-                                takePicture.launch(uri)
-                            },
+                            onTakePhoto = requestCamera,
                         )
                     } else {
                         PhotoReviewContent(
                             photoUri = photoUri,
                             cropNonce = cropNonce,
-                            targetFuelWire = target?.fuelProductWire,
                             fuelAmounts = fuelAmounts,
                             removedFuels = removedFuels,
                             fuelErrors = fuelErrors,
@@ -240,17 +271,27 @@ fun CaptureScreen(
                             submit = submit,
                             onAmount = viewModel::setFuelAmount,
                             onRemoveFuel = viewModel::removeFuel,
-                            onRestoreFuels = viewModel::restoreFuels,
-                            onCrop = { bytes ->
-                                val dir = File(context.cacheDir, "capture").apply { mkdirs() }
-                                val file = File.createTempFile("price_crop_", ".jpg", dir)
-                                file.writeBytes(bytes)
-                                val uri = FileProvider.getUriForFile(
-                                    context, context.packageName + ".fileprovider", file)
-                                viewModel.replacePhoto(bytes, "image/jpeg")
-                                reviewPhotoUri = uri
-                                cropNonce++
+                            onAddFuel = viewModel::addFuel,
+                            processing = processing,
+                            conditional = conditional,
+                            defaultPriceConfirmed = defaultConfirmed,
+                            onConfirmDefault = viewModel::confirmDefaultPrice,
+                            onReanalyze = {
+                                scope.launch {
+                                    val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
+                                    if (bytes != null) viewModel.replacePhoto(bytes, "image/jpeg")
+                                }
                             },
+                            onCrop = { bytes ->
+                                scope.launch {
+                                    val uri = withContext(Dispatchers.IO) { files.write(bytes, viewModel.originalCapturedAtMillis) }
+                                    viewModel.replacePhoto(bytes, "image/jpeg")
+                                    viewModel.rememberReviewUri(uri.toString())
+                                    cropNonce++
+                                    withContext(Dispatchers.IO) { files.delete(photoUri) }
+                                }
+                            },
+                            onRetake = requestCamera,
                             onSubmit = viewModel::submitContributions,
                         )
                     }
@@ -276,6 +317,8 @@ private fun StationGateContent(
     distanceMeters: Double?,
     insideArea: Boolean,
     photoRefused: String?,
+    gateBusy: Boolean,
+    gateFailure: String?,
     onPickStation: (String?) -> Unit,
     onTakePhoto: () -> Unit,
     modifier: Modifier = Modifier,
@@ -347,14 +390,16 @@ private fun StationGateContent(
         }
         Button(
             onClick = onTakePhoto,
-            enabled = insideArea,
+            enabled = !gateBusy && !locationDenied && (targetStationId != null || pickedStationId != null),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(stringResource(R.string.capture_take_photo))
         }
+        if (gateBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (gateFailure != null) Text(stringResource(R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
         photoRefused?.let { code ->
             Text(
-                text = stringResource(R.string.capture_photo_refused, code),
+                text = stringResource(R.string.capture_recognition_unavailable),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -440,10 +485,9 @@ private fun NearbyStationPicker(
  * the icon, a price input and a remove cross. Blank rows are not sent.
  */
 @Composable
-private fun PhotoReviewContent(
+internal fun PhotoReviewContent(
     photoUri: Uri,
     cropNonce: Int,
-    targetFuelWire: String?,
     fuelAmounts: Map<FuelProduct, String>,
     removedFuels: Set<FuelProduct>,
     fuelErrors: Set<FuelProduct>,
@@ -452,17 +496,30 @@ private fun PhotoReviewContent(
     submit: CaptureOcrViewModel.SubmitState?,
     onAmount: (FuelProduct, String) -> Unit,
     onRemoveFuel: (FuelProduct) -> Unit,
-    onRestoreFuels: () -> Unit,
+    onAddFuel: (FuelProduct) -> Unit,
+    processing: Boolean,
+    conditional: Boolean,
+    defaultPriceConfirmed: Boolean,
+    onConfirmDefault: (Boolean) -> Unit,
+    onReanalyze: () -> Unit,
+    onRetake: () -> Unit,
     onCrop: (ByteArray) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fuels = FuelProduct.entries.filter { it !in removedFuels }.filter { product ->
-        targetFuelWire == null || WireFuelMapper.toWire(product) == targetFuelWire
-    }
+    val fuels = FuelProduct.entries.filter { it in fuelAmounts && it !in removedFuels }
+    var addingFuel by remember { mutableStateOf(false) }
     val filled = fuels.count { fuelAmounts[it].orEmpty().isNotBlank() }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZoomableCropPhoto(photoUri = photoUri, cropNonce = cropNonce, onCrop = onCrop)
+        ZoomableCropPhoto(photoUri = photoUri, cropNonce = cropNonce, onCrop = onCrop, enabled = !processing)
+        if (processing) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(stringResource(R.string.capture_recognizing))
+        }
+        OutlinedButton(onClick = onReanalyze, enabled = !processing, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.capture_reanalyze))
+        }
+        TextButton(onClick = onRetake, enabled = !processing) { Text(stringResource(R.string.capture_retake)) }
         if (photoAttached) {
             Text(
                 text = stringResource(R.string.capture_photo_attached),
@@ -472,7 +529,7 @@ private fun PhotoReviewContent(
         }
         photoRefused?.let { code ->
             Text(
-                text = stringResource(R.string.capture_photo_refused, code),
+                text = stringResource(R.string.capture_recognition_unavailable),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -510,12 +567,26 @@ private fun PhotoReviewContent(
                 }
             }
         }
-        if (removedFuels.isNotEmpty()) {
-            TextButton(onClick = onRestoreFuels) {
-                Text(stringResource(R.string.capture_show_all))
+        Box {
+            TextButton(onClick = { addingFuel = true }, enabled = !processing) {
+                Text(stringResource(R.string.capture_add_fuel))
+            }
+            DropdownMenu(expanded = addingFuel, onDismissRequest = { addingFuel = false }) {
+                FuelProduct.entries.filter { it !in fuels }.forEach { product ->
+                    DropdownMenuItem(text = { Text(stringResource(FuelProductI18n.toStringRes(product))) },
+                        onClick = { addingFuel = false; onAddFuel(product) })
+                }
             }
         }
-        Button(onClick = onSubmit, enabled = filled > 0, modifier = Modifier.fillMaxWidth()) {
+        if (fuels.isEmpty() && !processing) Text(stringResource(R.string.capture_no_recognition))
+        if (conditional) {
+            Text(stringResource(R.string.capture_conditional_warning), color = MaterialTheme.colorScheme.error)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = defaultPriceConfirmed, onCheckedChange = onConfirmDefault)
+                Text(stringResource(R.string.capture_default_confirmation), modifier = Modifier.weight(1f))
+            }
+        }
+        Button(onClick = onSubmit, enabled = filled > 0 && !processing && (!conditional || defaultPriceConfirmed), modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.capture_send_prices, filled))
         }
         when (submit) {
@@ -560,14 +631,20 @@ private fun PhotoReviewContent(
  * outbox-bound transient entry.
  */
 @Composable
-private fun ZoomableCropPhoto(
+internal fun ZoomableCropPhoto(
     photoUri: Uri,
     cropNonce: Int,
     onCrop: (ByteArray) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val bitmap = remember(photoUri, cropNonce) { decodeSampled(context, photoUri, 1600) }
+    var bitmap by remember(photoUri, cropNonce) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(photoUri, cropNonce) {
+        bitmap = withContext(Dispatchers.IO) { decodeSampled(context, photoUri, 1600) }
+    }
+    val cropScope = rememberCoroutineScope()
+    var cropping by remember { mutableStateOf(false) }
     var scale by remember(photoUri, cropNonce) { mutableStateOf(1f) }
     var offset by remember(photoUri, cropNonce) { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -627,8 +704,17 @@ private fun ZoomableCropPhoto(
                 val cw = containerSize.width.toFloat()
                 val ch = containerSize.height.toFloat()
                 if (cw <= 0f || ch <= 0f) return@OutlinedButton
-                cropToFrame(bmp, cw, ch, scale, offset)?.let { bytes -> onCrop(bytes) }
+                cropping = true
+                val frozenScale = scale
+                val frozenOffset = offset
+                cropScope.launch {
+                    try {
+                        val bytes = withContext(Dispatchers.Default) { cropToFrame(bmp, cw, ch, frozenScale, frozenOffset) }
+                        if (bytes != null) onCrop(bytes)
+                    } finally { cropping = false }
+                }
             },
+            enabled = enabled && !cropping && bitmap != null,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(stringResource(R.string.capture_crop))
@@ -636,24 +722,13 @@ private fun ZoomableCropPhoto(
     }
 }
 
-private fun decodeSampled(context: Context, uri: Uri, maxSide: Int): Bitmap? {
-    return try {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, bounds)
-        }
-        var sample = 1
-        while (bounds.outWidth / (sample * 2) >= maxSide || bounds.outHeight / (sample * 2) >= maxSide) {
-            sample *= 2
-        }
-        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, opts)
-        }
-    } catch (_: Exception) {
-        null
+private fun decodeSampled(context: Context, uri: Uri, maxSide: Int): Bitmap? = try {
+    // Only the app's private provider can be read; external content is not accepted here.
+    if (uri.authority != context.packageName + ".fileprovider") null else {
+        val bytes = PrivateCaptureFiles(context).readReview(uri)
+        bytes?.let { BoundedPhotoBitmap.decode(it, maxSide) }
     }
-}
+} catch (_: Exception) { null }
 
 private fun cropToFrame(
     bitmap: Bitmap,
@@ -683,7 +758,7 @@ private fun cropToFrame(
         val cropped = Bitmap.createBitmap(bitmap, left, top, width, height)
         val out = ByteArrayOutputStream()
         cropped.compress(Bitmap.CompressFormat.JPEG, 92, out)
-        cropped.recycle()
+        if (cropped !== bitmap) cropped.recycle()
         out.toByteArray()
     } catch (_: Exception) {
         null

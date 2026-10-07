@@ -1,6 +1,17 @@
 package com.anpfuel.app.capture
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
+import com.anpfuel.application.port.CaptureFix
+import com.anpfuel.application.port.CaptureLocationSource
+import com.anpfuel.application.port.PhotoCaptureGate
+import com.anpfuel.application.port.PhotoCapturePermission
+import com.anpfuel.application.port.ImagePriceOcr
+import com.anpfuel.domain.portable.FuelBoardOcr
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.first
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.OcrPort
@@ -21,6 +32,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -56,6 +68,12 @@ class CaptureOcrViewModelTest {
         nearby: NearbyServerStationsOutcome =
             NearbyServerStationsOutcome.Fresh(emptyList()),
         photo: PhotoFlow.PhotoResult = PhotoFlow.PhotoResult.Ready("photo-1", 120_000, 1),
+        locationSource: CaptureLocationSource = CaptureLocationSource { null },
+        gate: PhotoCaptureGate = mockk(relaxed = true),
+        pixels: ImagePriceOcr = object : ImagePriceOcr {
+            override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
+        },
+        saved: SavedStateHandle = SavedStateHandle(),
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
             override fun isEnabled(): Boolean = enabled
@@ -73,8 +91,9 @@ class CaptureOcrViewModelTest {
         val nearbyUseCase = mockk<GetNearbyServerStationsUseCase>()
         io.mockk.coEvery { nearbyUseCase.invoke(any(), any(), any(), any()) } returns nearby
         val photos = mockk<PhotoFlow>()
-        every { photos.prepare(any(), any()) } returns photo
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos)
+        every { photos.prepareAt(any(), any(), any()) } returns photo
+        every { photos.discard(any()) } returns Unit
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved)
     }
 
     @Test
@@ -243,9 +262,10 @@ class CaptureOcrViewModelTest {
     }
 
     @Test
-    fun `ready photo attaches id and refused photo keeps code with review`() {
+    fun `ready photo attaches id and refused photo keeps code with review`() = runTest(dispatcher) {
         val ready = viewModel(enabled = true, hasPermission = true)
         ready.preparePhoto(byteArrayOf(1, 2, 3), "image/jpeg")
+        ready.processing.first { !it }
         org.junit.jupiter.api.Assertions.assertEquals("photo-1", ready.photoId.value)
         assertTrue(ready.state.value is CaptureOcrUiState.NeedsConfirmation)
 
@@ -255,6 +275,7 @@ class CaptureOcrViewModelTest {
             photo = PhotoFlow.PhotoResult.Refused("OVER_BUDGET"),
         )
         refused.preparePhoto(byteArrayOf(1, 2, 3), "image/jpeg")
+        refused.processing.first { !it }
         org.junit.jupiter.api.Assertions.assertEquals("OVER_BUDGET", refused.photoRefused.value)
         assertTrue(refused.photoId.value == null)
         assertTrue(refused.state.value is CaptureOcrUiState.NeedsConfirmation)
@@ -303,6 +324,9 @@ class CaptureOcrViewModelTest {
                 CaptureOcrViewModel.MIN_STATION_AREA_METERS + 0.5))
         org.junit.jupiter.api.Assertions.assertFalse(
             CaptureOcrViewModel.isInsideStationArea(null))
+        listOf(-1.0, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY).forEach {
+            assertFalse(CaptureOcrViewModel.isInsideStationArea(it))
+        }
     }
 
     @Test
@@ -365,4 +389,112 @@ class CaptureOcrViewModelTest {
             FuelProduct.GASOLINE_REGULAR in vm.fuelErrors.value)
         io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
     }
+    private val stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26"
+    private fun validReceipt() = System.currentTimeMillis().let { now ->
+        PhotoCapturePermission("589a13ba-1f78-41dc-a4ab-d63a511c73da", stationId, now - 1000, now + 119000,
+            now + 86399000, "synthetic-owner", "https://example.invalid")
+    }
+
+    @Test fun `location denial and server refusal never launch camera`() = runTest(dispatcher) {
+        val gate = mockk<PhotoCaptureGate>()
+        val missing = viewModel(true, true, gate = gate)
+        missing.bindTarget(stationId, "ETHANOL")
+        var launches = 0
+        missing.authorizeCamera { launches++ }
+        advanceUntilIdle()
+        assertEquals(0, launches)
+        io.mockk.coVerify(exactly = 0) { gate.authorize(any(), any(), any()) }
+        val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
+        val refused = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
+        refused.bindTarget(stationId, "ETHANOL")
+        io.mockk.coEvery { gate.authorize(any(), any(), any()) } throws java.io.IOException("refused")
+        refused.authorizeCamera { launches++ }
+        advanceUntilIdle()
+        assertEquals(0, launches)
+        assertFalse(refused.gateBusy.value)
+        assertEquals("photo.authorization-unavailable", refused.gateFailure.value)
+    }
+
+    @Test fun `duplicate taps and changed station cannot launch stale camera`() = runTest(dispatcher) {
+        val result = CompletableDeferred<PhotoCapturePermission>()
+        val gate = mockk<PhotoCaptureGate>()
+        io.mockk.coEvery { gate.authorize(any(), any(), any()) } coAnswers { result.await() }
+        every { gate.isCurrent(any()) } returns true
+        val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
+        val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
+        vm.bindTarget(stationId, "ETHANOL")
+        var launches = 0
+        vm.authorizeCamera { launches++ }
+        vm.authorizeCamera { launches++ }
+        runCurrent()
+        vm.bindTarget("e7d85d34-74ec-5d35-b3f6-519dc44ce370", "ETHANOL")
+        result.complete(validReceipt())
+        advanceUntilIdle()
+        assertEquals(0, launches)
+        io.mockk.coVerify(exactly = 1) { gate.authorize(any(), any(), any()) }
+    }
+
+    @Test fun `receipt is checked again after camera permission and survives saved state`() = runTest(dispatcher) {
+        val saved = SavedStateHandle()
+        val gate = mockk<PhotoCaptureGate>()
+        val receipt = validReceipt()
+        io.mockk.coEvery { gate.authorize(any(), any(), any()) } returns receipt
+        every { gate.isCurrent(any()) } returns true
+        val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
+        val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix }, saved = saved)
+        vm.bindTarget(stationId, "ETHANOL")
+        var launches = 0
+        vm.authorizeCamera { launches++ }
+        advanceUntilIdle()
+        assertEquals(1, launches)
+        val recovered = viewModel(true, true, gate = gate, saved = saved)
+        recovered.bindTarget(stationId, "ETHANOL")
+        assertTrue(recovered.beginCamera())
+        every { gate.isCurrent(any()) } returns false
+        assertFalse(recovered.beginCamera())
+        assertFalse(saved.keys().any { it.contains("latitude") || it.contains("longitude") })
+    }
+
+    @Test fun `pixel OCR edits removals crop conditions and draft survive recovery`() = runTest(dispatcher) {
+        val saved = SavedStateHandle()
+        var calls = 0
+        val delayed = CompletableDeferred<FuelBoardOcr.Result>()
+        val pixels = object : ImagePriceOcr {
+            override suspend fun recognize(bytes: ByteArray): FuelBoardOcr.Result {
+                calls++
+                return if (calls == 1) delayed.await() else FuelBoardOcr.Result(
+                    listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL, 4390), FuelBoardOcr.Row(FuelProduct.GASOLINE_REGULAR, 6990)), false, false)
+            }
+        }
+        val vm = viewModel(true, true, pixels = pixels, saved = saved)
+        vm.preparePhoto(byteArrayOf(1), "image/jpeg")
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "6,70")
+        vm.removeFuel(FuelProduct.ETHANOL)
+        delayed.complete(FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_REGULAR, 6590), FuelBoardOcr.Row(FuelProduct.ETHANOL, 4320)), true, false))
+        vm.processing.first { !it }
+        assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to "6,70"), vm.fuelAmounts.value)
+        assertTrue(vm.conditional.value)
+        vm.replacePhoto(byteArrayOf(2), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to "6,70"), vm.fuelAmounts.value)
+        assertTrue(vm.conditional.value, "cropping must not erase original payment ambiguity")
+        val recovered = viewModel(true, true, saved = saved)
+        assertEquals(vm.fuelAmounts.value, recovered.fuelAmounts.value)
+        assertEquals(vm.removedFuels.value, recovered.removedFuels.value)
+        assertEquals(vm.originalCapturedAtMillis, recovered.originalCapturedAtMillis)
+    }
+
+    @Test fun `cancelled late OCR cannot restore rows or enqueue`() = runTest(dispatcher) {
+        val delayed = CompletableDeferred<FuelBoardOcr.Result>()
+        val pixels = object : ImagePriceOcr { override suspend fun recognize(bytes: ByteArray) = delayed.await() }
+        val vm = viewModel(true, true, pixels = pixels)
+        vm.preparePhoto(byteArrayOf(1), "image/jpeg")
+        vm.cameraCancelled()
+        delayed.complete(FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL, 4320)), false, false))
+        advanceUntilIdle()
+        assertTrue(vm.fuelAmounts.value.isEmpty())
+        assertTrue(vm.state.value is CaptureOcrUiState.Cancelled)
+        io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
+
 }

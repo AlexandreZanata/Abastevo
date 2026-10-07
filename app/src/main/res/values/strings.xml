@@ -260,7 +260,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">Ethanol</string>
     <string name="fuel_product_gasoline_regular">Regular gasoline</string>
-    <string name="fuel_product_gasoline_premium">Premium gasoline</string>
+    <string name="fuel_product_gasoline_premium">Additived gasoline</string>
     <string name="fuel_product_diesel_s500">Diesel S500</string>
     <string name="fuel_product_diesel_s10">Diesel S10</string>
     <string name="fuel_product_cng">CNG</string>
@@ -696,4 +696,13 @@
     <string name="station_page_report_other">Other inappropriate content</string>
     <string name="station_page_report_send">Send report</string>
     <string name="station_page_report_received">Report received for review.</string>
+    <string name="capture_authorization_required">Stand within 150 metres of this station, allow accurate location and check your connection. Then try again.</string>
+    <string name="capture_recognizing">Reading prices from the photo…</string>
+    <string name="capture_reanalyze">Read this photo again</string>
+    <string name="capture_add_fuel">Add a fuel</string>
+    <string name="capture_no_recognition">No prices identified. Crop closer to the board, try again or add a fuel and enter its price.</string>
+    <string name="capture_conditional_warning">This photo may show a restricted price. Report only the default price available without a special payment method, app or membership.</string>
+    <string name="capture_default_confirmation">I checked that these are the default prices.</string>
+    <string name="capture_recognition_unavailable">Could not finish reading or preparing this photo. Try cropping or taking another photo. You can enter the prices manually.</string>
+    <string name="capture_retake">Take another photo</string>
 </resources>

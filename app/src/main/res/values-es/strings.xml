@@ -178,7 +178,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">Etanol</string>
     <string name="fuel_product_gasoline_regular">Gasolina regular</string>
-    <string name="fuel_product_gasoline_premium">Gasolina premium</string>
+    <string name="fuel_product_gasoline_premium">Gasolina con aditivos</string>
     <string name="fuel_product_diesel_s500">Diésel S500</string>
     <string name="fuel_product_diesel_s10">Diésel S10</string>
     <string name="fuel_product_cng">GNC</string>
@@ -678,4 +678,16 @@
     <string name="feed_worst">Peor combustible</string>
     <string name="feed_rating_value">%1$.1f · %2$d valoraciones de la comunidad</string>
     <string name="auth_brand_wordmark">Logotipo de Abastevo</string>
+    <string name="capture_authorization_required">Sitúate a menos de 150 metros de esta estación, permite la ubicación precisa y comprueba la conexión. Después, vuelve a intentarlo.</string>
+    <string name="capture_recognizing">Leyendo los precios de la foto…</string>
+    <string name="capture_reanalyze">Volver a leer esta foto</string>
+    <string name="capture_add_fuel">Añadir combustible</string>
+    <string name="capture_no_recognition">No se identificaron precios. Recorta más cerca del cartel, vuelve a intentarlo o añade un combustible e introduce su precio.</string>
+    <string name="capture_conditional_warning">Esta foto puede mostrar un precio restringido. Informa solo del precio normal disponible sin exigir una forma de pago, aplicación o registro.</string>
+    <string name="capture_default_confirmation">He comprobado que estos son los precios normales.</string>
+    <string name="capture_recognition_unavailable">No se pudo terminar de leer o preparar esta foto. Intenta recortarla o tomar otra. Puedes introducir los precios manualmente.</string>
+    <string name="capture_retake">Tomar otra foto</string>
+    <string name="account_screen_title">Gestionar cuenta</string>
+    <string name="account_guest_title">No hay ninguna cuenta en este dispositivo</string>
+    <string name="account_guest_subtitle">Inicia sesión con tu clave o crea una cuenta gratuita para gestionarla aquí.</string>
 </resources>

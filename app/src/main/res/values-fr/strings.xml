@@ -178,7 +178,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">Éthanol</string>
     <string name="fuel_product_gasoline_regular">Essence ordinaire</string>
-    <string name="fuel_product_gasoline_premium">Essence premium</string>
+    <string name="fuel_product_gasoline_premium">Essence avec additifs</string>
     <string name="fuel_product_diesel_s500">Diesel S500</string>
     <string name="fuel_product_diesel_s10">Diesel S10</string>
     <string name="fuel_product_cng">GNC</string>
@@ -678,4 +678,16 @@
     <string name="feed_worst">Pire carburant</string>
     <string name="feed_rating_value">%1$.1f · %2$d évaluations de la communauté</string>
     <string name="auth_brand_wordmark">Logo Abastevo</string>
+    <string name="capture_authorization_required">Placez-vous à moins de 150 mètres de cette station, autorisez la localisation précise et vérifiez votre connexion. Réessayez ensuite.</string>
+    <string name="capture_recognizing">Lecture des prix sur la photo…</string>
+    <string name="capture_reanalyze">Relire cette photo</string>
+    <string name="capture_add_fuel">Ajouter un carburant</string>
+    <string name="capture_no_recognition">Aucun prix identifié. Recadrez plus près du panneau, réessayez ou ajoutez un carburant et saisissez son prix.</string>
+    <string name="capture_conditional_warning">Cette photo peut afficher un prix sous conditions. Indiquez uniquement le prix habituel disponible sans mode de paiement, application ou inscription imposés.</string>
+    <string name="capture_default_confirmation">J’ai vérifié qu’il s’agit des prix habituels.</string>
+    <string name="capture_recognition_unavailable">Impossible de terminer la lecture ou la préparation de cette photo. Essayez de la recadrer ou de prendre une autre photo. Vous pouvez saisir les prix manuellement.</string>
+    <string name="capture_retake">Prendre une autre photo</string>
+    <string name="account_screen_title">Gérer le compte</string>
+    <string name="account_guest_title">Aucun compte sur cet appareil</string>
+    <string name="account_guest_subtitle">Connectez-vous avec votre clé ou créez un compte gratuit pour le gérer ici.</string>
 </resources>

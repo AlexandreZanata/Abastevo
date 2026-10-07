@@ -694,4 +694,13 @@
     <string name="station_page_report_other">Outro conteúdo inadequado</string>
     <string name="station_page_report_send">Enviar denúncia</string>
     <string name="station_page_report_received">Denúncia recebida para análise.</string>
+    <string name="capture_authorization_required">Fique a até 150 metros deste posto, permita a localização precisa e verifique sua conexão. Depois tente novamente.</string>
+    <string name="capture_recognizing">Lendo os preços da foto…</string>
+    <string name="capture_reanalyze">Ler esta foto novamente</string>
+    <string name="capture_add_fuel">Adicionar combustível</string>
+    <string name="capture_no_recognition">Nenhum preço identificado. Recorte mais perto da placa, tente novamente ou adicione um combustível e digite o preço.</string>
+    <string name="capture_conditional_warning">Esta foto pode mostrar um preço com restrições. Informe apenas o preço padrão disponível sem exigir forma de pagamento, aplicativo ou cadastro.</string>
+    <string name="capture_default_confirmation">Conferi que estes são os preços padrão.</string>
+    <string name="capture_recognition_unavailable">Não foi possível concluir a leitura ou preparar esta foto. Tente recortar ou tirar outra foto. Você pode digitar os preços manualmente.</string>
+    <string name="capture_retake">Tirar outra foto</string>
 </resources>

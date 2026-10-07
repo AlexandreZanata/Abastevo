@@ -178,7 +178,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">エタノール</string>
     <string name="fuel_product_gasoline_regular">レギュラーガソリン</string>
-    <string name="fuel_product_gasoline_premium">プレミアムガソリン</string>
+    <string name="fuel_product_gasoline_premium">添加剤入りガソリン</string>
     <string name="fuel_product_diesel_s500">ディーゼル S500</string>
     <string name="fuel_product_diesel_s10">ディーゼル S10</string>
     <string name="fuel_product_cng">天然ガス</string>
@@ -678,4 +678,16 @@
     <string name="feed_worst">評価の低い燃料</string>
     <string name="feed_rating_value">%1$.1f · コミュニティの評価 %2$d 件</string>
     <string name="auth_brand_wordmark">Abastevoのロゴ</string>
+    <string name="capture_authorization_required">この給油所から150メートル以内に移動し、正確な位置情報を許可して接続を確認してください。その後、もう一度お試しください。</string>
+    <string name="capture_recognizing">写真の価格を読み取り中…</string>
+    <string name="capture_reanalyze">この写真をもう一度読み取る</string>
+    <string name="capture_add_fuel">燃料を追加</string>
+    <string name="capture_no_recognition">価格が見つかりませんでした。価格表示に近づけて切り抜くか、再試行するか、燃料を追加して価格を入力してください。</string>
+    <string name="capture_conditional_warning">この写真には条件付きの価格が含まれる可能性があります。特定の支払方法、アプリ、登録を必要としない通常価格のみを報告してください。</string>
+    <string name="capture_default_confirmation">通常価格であることを確認しました。</string>
+    <string name="capture_recognition_unavailable">写真の読み取りまたは処理を完了できませんでした。切り抜くか、別の写真を撮ってください。価格は手動で入力できます。</string>
+    <string name="capture_retake">別の写真を撮る</string>
+    <string name="account_screen_title">アカウント管理</string>
+    <string name="account_guest_title">この端末にアカウントがありません</string>
+    <string name="account_guest_subtitle">キーでログインするか、無料アカウントを作成してここで管理してください。</string>
 </resources>

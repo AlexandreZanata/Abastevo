@@ -178,7 +178,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">Ethanol</string>
     <string name="fuel_product_gasoline_regular">Normalbenzin</string>
-    <string name="fuel_product_gasoline_premium">Superbenzin</string>
+    <string name="fuel_product_gasoline_premium">Benzin mit Additiven</string>
     <string name="fuel_product_diesel_s500">Diesel S500</string>
     <string name="fuel_product_diesel_s10">Diesel S10</string>
     <string name="fuel_product_cng">Erdgas</string>
@@ -678,4 +678,16 @@
     <string name="feed_worst">Schlechtester Kraftstoff</string>
     <string name="feed_rating_value">%1$.1f · %2$d Bewertungen der Community</string>
     <string name="auth_brand_wordmark">Abastevo-Logo</string>
+    <string name="capture_authorization_required">Bleibe im Umkreis von 150 Metern dieser Tankstelle, erlaube den genauen Standort und prüfe deine Verbindung. Versuche es danach erneut.</string>
+    <string name="capture_recognizing">Preise werden aus dem Foto gelesen…</string>
+    <string name="capture_reanalyze">Dieses Foto erneut lesen</string>
+    <string name="capture_add_fuel">Kraftstoff hinzufügen</string>
+    <string name="capture_no_recognition">Keine Preise erkannt. Schneide das Preisschild näher zu, versuche es erneut oder füge einen Kraftstoff hinzu und gib seinen Preis ein.</string>
+    <string name="capture_conditional_warning">Dieses Foto kann einen Preis mit Bedingungen zeigen. Melde nur den regulären Preis, der ohne bestimmte Zahlungsart, App oder Registrierung verfügbar ist.</string>
+    <string name="capture_default_confirmation">Ich habe geprüft, dass dies die regulären Preise sind.</string>
+    <string name="capture_recognition_unavailable">Das Foto konnte nicht vollständig gelesen oder vorbereitet werden. Versuche es zuzuschneiden oder ein neues Foto aufzunehmen. Preise können manuell eingegeben werden.</string>
+    <string name="capture_retake">Weiteres Foto aufnehmen</string>
+    <string name="account_screen_title">Konto verwalten</string>
+    <string name="account_guest_title">Kein Konto auf diesem Gerät</string>
+    <string name="account_guest_subtitle">Melde dich mit deinem Schlüssel an oder erstelle ein kostenloses Konto, um es hier zu verwalten.</string>
 </resources>

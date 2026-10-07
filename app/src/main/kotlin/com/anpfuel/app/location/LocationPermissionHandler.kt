@@ -7,7 +7,9 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Looper
+import com.anpfuel.application.port.CaptureFix
 import androidx.core.content.ContextCompat
 import com.anpfuel.domain.valueobject.DeviceLocation
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -77,8 +79,25 @@ class LocationPermissionHandler @Inject constructor(
         return DeviceLocation.of(location.latitude, location.longitude)
     }
 
+    /** Price camera eligibility keeps accuracy/time/mock metadata in one transient snapshot. */
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    suspend fun getFreshCaptureFix(): CaptureFix? {
+        if (!hasLocationPermission()) return null
+        val manager=context.getSystemService(LocationManager::class.java)
+        val location=lastKnownLocationCandidates(manager).filter { isFresh(it) }.maxByOrNull { it.time }
+            ?: withTimeoutOrNull(DEFAULT_FIX_TIMEOUT_MILLIS) { awaitSingleFix(manager) }
+            ?: return null
+        if (!isFresh(location) || !location.hasAccuracy()) return null
+        return CaptureFix(
+            location.latitude,location.longitude,location.accuracy.toDouble(),location.time,
+            hasLocationPermission(),!location.provider.isNullOrBlank(),
+            if(Build.VERSION.SDK_INT>=31) location.isMock else location.isFromMockProvider,
+        )
+    }
+
     private fun isFresh(location: Location): Boolean =
-        System.currentTimeMillis() - location.time <= FRESH_LAST_KNOWN_MAX_AGE_MILLIS
+        (System.currentTimeMillis() - location.time) in 0..FRESH_LAST_KNOWN_MAX_AGE_MILLIS
 
     private fun lastKnownLocationCandidates(locationManager: LocationManager): List<Location> =
         locationManager.allProviders

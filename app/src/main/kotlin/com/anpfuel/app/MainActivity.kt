@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.anpfuel.app.capture.PrivateCaptureFiles
 import com.anpfuel.app.locale.AppLocaleApplier
 import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.app.navigation.AnpAppNavHost
@@ -31,6 +32,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var authFlow: AuthFlow
+    @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocaleApplier.wrap(newBase, AppLocaleHolder.localeTag))
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
         // AuthFlow serializes rotations with logout; failures retain no live grant.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                withContext(Dispatchers.IO) { PrivateCaptureFiles(applicationContext).sweep(); photoFlow.sweepExpired() }
                 while (true) {
                     withContext(Dispatchers.IO) { authFlow.refreshSession() }
                     delay(30_000L)

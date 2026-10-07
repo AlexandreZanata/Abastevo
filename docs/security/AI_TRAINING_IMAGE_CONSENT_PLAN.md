@@ -33,6 +33,16 @@ Actions: `Ler os termos de uso das imagens`, `Revogar autorização` and `Solici
 
 The detailed public terms must identify the controller/contact, purpose, image/label categories, operational and training durations, recipients/operators, security/access boundaries, rights channel, withdrawal/deletion procedure/SLA and actual model-use limitations. These owner-specific details are not invented here. Publish versioned Portuguese terms and link them from review/Profile before activating collection.
 
+## Test-only controller/contact decision
+
+On 2026-10-07 the owner requested a placeholder email until production.
+Use `Abastevo — test environment` and `privacidade@abastevo.example.invalid`
+in restricted test terms/configuration. This reserved `.invalid` address is
+not a functioning rights channel. Production activation must require actual
+controller/contact details and versioned terms; a placeholder cannot satisfy
+that release gate. Local consent/deletion controls can be exercised with the
+test configuration without claiming public legal readiness.
+
 ## Required source changes and proof
 
 First freeze domain permission and deletion semantics; then backend consent receipt/current-state ports and minimal append-only schema, signed owner-only grant/revoke/list/delete APIs with OpenAPI changes, promotion worker/storage policy, privacy notice/export/erasure, finally Android unchecked checkbox/settings/review snapshot. Reuse account/proof/jobs/private S3 and Go/PostGIS conventions. No standalone speculative training platform is needed.

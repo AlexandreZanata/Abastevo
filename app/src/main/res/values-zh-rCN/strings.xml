@@ -178,7 +178,7 @@
     <!-- FuelProduct labels -->
     <string name="fuel_product_ethanol">乙醇</string>
     <string name="fuel_product_gasoline_regular">普通汽油</string>
-    <string name="fuel_product_gasoline_premium">优质汽油</string>
+    <string name="fuel_product_gasoline_premium">添加剂汽油</string>
     <string name="fuel_product_diesel_s500">柴油 S500</string>
     <string name="fuel_product_diesel_s10">柴油 S10</string>
     <string name="fuel_product_cng">压缩天然气</string>
@@ -678,4 +678,16 @@
     <string name="feed_worst">最差燃油</string>
     <string name="feed_rating_value">%1$.1f · %2$d 条社区评分</string>
     <string name="auth_brand_wordmark">Abastevo 标志</string>
+    <string name="capture_authorization_required">请移动到此加油站150米范围内，允许精确定位并检查网络连接，然后重试。</string>
+    <string name="capture_recognizing">正在读取照片中的价格…</string>
+    <string name="capture_reanalyze">重新读取这张照片</string>
+    <string name="capture_add_fuel">添加燃料</string>
+    <string name="capture_no_recognition">未识别到价格。请裁剪到更靠近价格牌的位置、重试，或添加燃料并输入价格。</string>
+    <string name="capture_conditional_warning">此照片可能显示有条件的价格。请仅报告不要求特定付款方式、应用或注册的普通价格。</string>
+    <string name="capture_default_confirmation">我已确认这些是普通价格。</string>
+    <string name="capture_recognition_unavailable">无法完成此照片的识别或处理。请尝试裁剪或拍摄另一张照片。您可以手动输入价格。</string>
+    <string name="capture_retake">拍摄另一张照片</string>
+    <string name="account_screen_title">管理账户</string>
+    <string name="account_guest_title">此设备上没有账户</string>
+    <string name="account_guest_subtitle">使用您的密钥登录或创建免费账户，即可在此管理。</string>
 </resources>
