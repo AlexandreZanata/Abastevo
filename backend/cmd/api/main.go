@@ -620,6 +620,9 @@ func run() error {
 		Store: communityStore,
 	}
 	communityhttp.Handler{
+		PhotoCapture: func(ctx context.Context, caller communityapp.Caller, key string, intent communityapp.PhotoCaptureIntent, body []byte) (communityapp.PhotoCapture, bool, error) {
+			return communityapp.AuthorizePhotoCapture(ctx, communityPorts, communityStore, caller, key, body, intent)
+		},
 		Authenticate: func(r *http.Request) (communityapp.Caller, error) {
 			id, err := authVerifier.Verify(r.Context(), r)
 			if err != nil {

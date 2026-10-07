@@ -21,6 +21,7 @@ import (
 // proof, so this package never sees keys or signatures.
 type Handler struct {
 	Authenticate func(r *http.Request) (application.Caller, error)
+	PhotoCapture func(ctx context.Context, caller application.Caller, key string, intent application.PhotoCaptureIntent, body []byte) (application.PhotoCapture, bool, error)
 	Submit       func(ctx context.Context, caller application.Caller, key string, dto application.SubmitDTO, body []byte) (application.SubmitResult, bool, error)
 	Status       func(ctx context.Context, caller application.Caller, id string) (application.StatusResult, error)
 	History      func(ctx context.Context, caller application.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]application.HistoryItem, string, error)
@@ -31,6 +32,7 @@ type Handler struct {
 
 // RegisterRoutes mounts community endpoints under /v1.
 func (h Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/v1/photo-captures", h.photoCapture)
 	r.Post("/v1/observations", h.submit)
 	r.Get("/v1/observations/{observation_id}", h.status)
 	r.Get("/v1/contributors/me/observations", h.history)
@@ -57,6 +59,8 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	switch {
+	case errors.Is(err, application.ErrPhotoCaptureIneligible):
+		httpapi.WriteError(w, r, http.StatusForbidden, "community.capture-ineligible", "a fresh eligible fix within the station area is required", nil)
 	case errors.Is(err, application.ErrUnauthorized):
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "community.auth-required", "authentication required", nil)
 	case errors.Is(err, application.ErrAccountBlocked):

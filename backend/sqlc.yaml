@@ -58,6 +58,7 @@ sql:
       - db/migrations/000023_feedback.sql
       - db/migrations/000041_community_feed_indexes.sql
       - db/migrations/000030_community_location_bands.sql
+      - db/migrations/000043_photo_captures.sql
     gen:
       go:
         package: community

@@ -193,6 +193,63 @@ paths:
                 existed: false
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/photo-captures:
+    post:
+      summary: Authorize camera capture inside the reviewed station area.
+      operationId: authorizePhotoCapture
+      tags: [community]
+      security: []
+      description: Signed proof, account gate and idempotency apply. No coordinates persist. Expired retries never renew camera permission.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Must equal client_capture_id.
+          schema: {type: string, minLength: 1, maxLength: 128}
+      requestBody:
+        required: true
+        description: Canonical station and transient fresh location claim.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [client_capture_id, station_id, location]
+              properties:
+                client_capture_id: {type: string, minLength: 1, maxLength: 128}
+                station_id: {type: string, format: uuid}
+                location:
+                  $ref: '#/components/schemas/LocationEvidence'
+      responses:
+        '201':
+          description: Owner bound authorization; camera window two minutes, submission window twenty four hours.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [capture_id, station_id, issued_at, camera_expires_at, expires_at, policy_version]
+                properties:
+                  capture_id: {type: string, format: uuid}
+                  station_id: {type: string, format: uuid}
+                  issued_at: {type: string, format: date-time}
+                  camera_expires_at: {type: string, format: date-time}
+                  expires_at: {type: string, format: date-time}
+                  policy_version: {type: string, enum: [photo-capture-v1]}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Location or account does not permit capture.
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Capture authorization is unavailable.
   /v1/observations:
     post:
       summary: Submit one observation (signed, idempotent).
