@@ -4,6 +4,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -112,7 +113,10 @@ func TestClaimIntegrationLifecycleAndPrivacy(t *testing.T) {
 	if err != nil || reissued.Version != 2 || reissued.Declaration == first.Declaration {
 		t.Fatalf("reissue = %+v, err = %v", reissued, err)
 	}
-	// Parallel identical opens converge on one claim.
+	// Parallel identical opens converge on one claim. A loser can land
+	// in the winner's publish window and get the documented retryable
+	// transient; like a real client it replays the same request until
+	// the declaration is visible, then convergence must be exact.
 	var wg sync.WaitGroup
 	type result struct {
 		id      string
@@ -124,7 +128,16 @@ func TestClaimIntegrationLifecycleAndPrivacy(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			claim, created, err := application.OpenClaim(ctx, ports, "11111111-1111-4111-8111-111111111111", stationID, "administrator", []string{"profile.edit"}, "key-race")
+			var claim application.Claim
+			var created bool
+			var err error
+			for attempt := 0; attempt < 50; attempt++ {
+				claim, created, err = application.OpenClaim(ctx, ports, "11111111-1111-4111-8111-111111111111", stationID, "administrator", []string{"profile.edit"}, "key-race")
+				if !errors.Is(err, application.ErrClaimBusy) {
+					break
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
 			results[i] = result{id: claim.ID, created: created, err: err}
 		}(i)
 	}
