@@ -31,6 +31,9 @@ import kotlinx.coroutines.withContext
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject lateinit var outbox: com.anpfuel.domain.repository.ContributionOutboxRepository
+    @Inject lateinit var contributionScope: com.anpfuel.application.port.ContributionScopeProvider
+    @Inject lateinit var contributionScheduler: com.anpfuel.data.worker.ContributionWorkScheduler
     @Inject lateinit var authFlow: AuthFlow
     @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
 
@@ -45,6 +48,17 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 withContext(Dispatchers.IO) { PrivateCaptureFiles(applicationContext).sweep(); photoFlow.sweepExpired() }
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val scope = contributionScope.currentScope()
+                        outbox.listOwned().filter { it.scope == scope &&
+                            it.phase != com.anpfuel.domain.repository.OwnedContributionPhase.CANCELLED &&
+                            it.remoteStatus !in setOf(com.anpfuel.domain.repository.ContributionRemoteStatus.VALIDATED,
+                                com.anpfuel.domain.repository.ContributionRemoteStatus.REJECTED,
+                                com.anpfuel.domain.repository.ContributionRemoteStatus.EXPIRED) }
+                            .forEach { contributionScheduler.enqueueContribution(it.commandId) }
+                    }
+                }
                 while (true) {
                     withContext(Dispatchers.IO) { authFlow.refreshSession() }
                     delay(30_000L)

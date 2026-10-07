@@ -690,4 +690,6 @@
     <string name="account_screen_title">Gestionar cuenta</string>
     <string name="account_guest_title">No hay ninguna cuenta en este dispositivo</string>
     <string name="account_guest_subtitle">Inicia sesión con tu clave o crea una cuenta gratuita para gestionarla aquí.</string>
+    <string name="capture_saving">Guardando los precios revisados…</string>
+    <string name="capture_retry_guidance">Revisa la foto, la estación y tu cuenta; toma otra foto si es necesario.</string>
 </resources>

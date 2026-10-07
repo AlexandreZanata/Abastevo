@@ -95,4 +95,24 @@ class GetOwnedContributionsUseCaseTest {
         }
         assertTrue(outbox.cancelled == listOf("cmd-1"))
     }
+    @Test fun `owner and environment filtering preserves truthful pending accepted and expired receipts`() = runTest {
+        val scope=com.anpfuel.domain.model.ContributionScope("synthetic-owner","https://example.invalid")
+        val other=scope.copy(ownerScope="other")
+        val outbox=FakeOutbox(listOf(
+            owned("pending",OwnedContributionPhase.ACKNOWLEDGED).copy(scope=scope,remoteStatus=com.anpfuel.domain.repository.ContributionRemoteStatus.RECEIVED),
+            owned("accepted",OwnedContributionPhase.ACKNOWLEDGED).copy(scope=scope,remoteStatus=com.anpfuel.domain.repository.ContributionRemoteStatus.VALIDATED),
+            owned("expired",OwnedContributionPhase.ACKNOWLEDGED).copy(scope=scope,remoteStatus=com.anpfuel.domain.repository.ContributionRemoteStatus.EXPIRED,reason="contribution.photo-expired"),
+            owned("foreign",OwnedContributionPhase.QUEUED).copy(scope=other),
+            owned("unscoped",OwnedContributionPhase.QUEUED)))
+        val provider=com.anpfuel.application.port.ContributionScopeProvider { scope }
+        val result=GetOwnedContributionsUseCase(outbox,provider).invoke()
+        assertEquals(3,result.size); assertEquals(ContributionState.Pending,result[0].state)
+        assertEquals(ContributionState.Accepted,result[1].state); assertEquals(ContributionState.Rejected,result[2].state)
+        val cancel=CancelOwnedContributionUseCase(outbox,provider)
+        for(id in listOf("foreign","unscoped","accepted")) {
+            assertThrows(DomainException::class.java) { kotlinx.coroutines.runBlocking { cancel.invoke(id) } }
+        }
+        assertTrue(outbox.cancelled.isEmpty())
+    }
+
 }

@@ -5,13 +5,10 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
-import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.io.IOException
-import java.util.UUID
 
 /**
  * P10-T05 durable contribution dispatcher (BUC-003/004, B-BR-005).
@@ -36,42 +33,11 @@ class ContributionWorker @AssistedInject constructor(
         if (!flagProvider.isEnabled()) {
             return Result.success()
         }
-        val now = System.currentTimeMillis()
-        val pending = outbox.listDispatchable(now)
-        if (pending.isEmpty()) {
-            return Result.success()
-        }
-        val requestedId = inputData.getString(KEY_COMMAND_ID)
-        val next = if (requestedId.isNullOrBlank()) {
-            pending.first()
-        } else {
-            pending.firstOrNull { it.commandId == requestedId } ?: pending.first()
-        }
-        val payload = outbox.loadPayload(next.commandId) ?: return Result.success()
-        val nonce = UUID.randomUUID().toString()
-        return try {
-            outbox.markDispatched(next.commandId, nonce)
-            gateway.submit(next.commandId, next.revision, payload, nonce)
-            outbox.markAcknowledged(next.commandId, next.revision)
-            Result.success()
-        } catch (_: DomainException) {
-            try {
-                outbox.markFailed(next.commandId, System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
-            Result.failure()
-        } catch (_: IOException) {
-            try {
-                outbox.markFailed(next.commandId, System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
-            Result.retry()
-        } catch (_: Exception) {
-            try {
-                outbox.markFailed(next.commandId, System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
-            Result.retry()
+        return when (com.anpfuel.application.usecase.contribution.DispatchContributionUseCase(outbox, gateway)
+            .invoke(inputData.getString(KEY_COMMAND_ID))) {
+            com.anpfuel.application.usecase.contribution.DispatchOutcome.DONE -> Result.success()
+            com.anpfuel.application.usecase.contribution.DispatchOutcome.RETRY -> Result.retry()
+            com.anpfuel.application.usecase.contribution.DispatchOutcome.REFUSED -> Result.failure()
         }
     }
 

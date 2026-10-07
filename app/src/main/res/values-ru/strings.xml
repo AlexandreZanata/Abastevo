@@ -690,4 +690,6 @@
     <string name="account_screen_title">Управление аккаунтом</string>
     <string name="account_guest_title">На этом устройстве нет аккаунта</string>
     <string name="account_guest_subtitle">Войдите с помощью своего ключа или создайте бесплатный аккаунт для управления здесь.</string>
+    <string name="capture_saving">Сохранение проверенных цен…</string>
+    <string name="capture_retry_guidance">Проверьте фото, АЗС и аккаунт; при необходимости сделайте новое фото.</string>
 </resources>

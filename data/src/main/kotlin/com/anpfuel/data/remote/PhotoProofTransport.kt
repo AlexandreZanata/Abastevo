@@ -35,7 +35,7 @@ class PhotoProofTransport internal constructor(
     ): this(keys, identity, auth, environment.origin, OkHttpClientFactory.create(maxRetries=0))
 
     private val client=httpClient.newBuilder()
-        .followRedirects(false).followSslRedirects(false).callTimeout(20,TimeUnit.SECONDS).build()
+        .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).callTimeout(20,TimeUnit.SECONDS).build()
     private var registeredFingerprint: String?=null
 
     fun ownerScope(): String? = keys.fingerprint()?.let { fingerprint ->
@@ -50,9 +50,37 @@ class PhotoProofTransport internal constructor(
         }
     }
 
-    suspend fun post(path: String, key: String, doc: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+    suspend fun localScope(): String = withContext(Dispatchers.IO) {
+        if (!keys.ensureKey()) throw IOException("photo.identity-unavailable")
+        ownerScope() ?: throw IOException("photo.identity-unavailable")
+    }
+
+    suspend fun get(path: String, expectedScope: String? = null): JSONObject = withContext(Dispatchers.IO) {
+        require(path.startsWith("/v1/") && !path.contains('?') && !path.contains('#'))
+        synchronized(this@PhotoProofTransport) {
+            if (expectedScope != null && ownerScope() != expectedScope) throw IOException("photo.identity-changed")
+            ensureRegistered()
+            val scope = ownerScope() ?: throw IOException("photo.identity-unavailable")
+            val fingerprint = keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
+            val challenge = identity.requestChallenge(fingerprint, "SIGN")
+            val now = System.currentTimeMillis() / 1000
+            val lines = PortableAnonymousProof.buildBaseLines("GET", authority(), path, "", null, null, now, now + 120, fingerprint, challenge.nonce)
+            val request = Request.Builder().url(origin.trimEnd('/') + path).get()
+                .header("Accept", "application/json").header("Cache-Control", "no-store")
+                .header("Signature", sign(lines)).header("Signature-Created", now.toString())
+                .header("Signature-Expires", (now + 120).toString()).header("Signature-Keyid", fingerprint)
+                .header("Signature-Nonce", challenge.nonce).build()
+            if (ownerScope() != scope) throw IOException("photo.identity-changed")
+            val result = execute(request)
+            if (ownerScope() != scope) throw IOException("photo.identity-changed")
+            result
+        }
+    }
+
+    suspend fun post(path: String, key: String, doc: JSONObject, expectedScope: String? = null): JSONObject = withContext(Dispatchers.IO) {
         require(path.startsWith("/v1/") && !path.contains('?') && key.length in 1..128)
         synchronized(this@PhotoProofTransport) {
+            if (expectedScope != null && ownerScope() != expectedScope) throw IOException("photo.identity-changed")
             ensureRegistered()
             val scope=ownerScope() ?: throw IOException("photo.identity-unavailable")
             val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
@@ -68,6 +96,7 @@ class PhotoProofTransport internal constructor(
                 .header("Signature",signature).header("Signature-Created",now.toString())
                 .header("Signature-Expires",(now+120).toString()).header("Signature-Keyid",fingerprint)
                 .header("Signature-Nonce",challenge.nonce).build()
+            if (ownerScope()!=scope) throw IOException("photo.identity-changed")
             val result=execute(request)
             if(ownerScope()!=scope) throw IOException("photo.identity-changed")
             result

@@ -690,4 +690,6 @@
     <string name="account_screen_title">アカウント管理</string>
     <string name="account_guest_title">この端末にアカウントがありません</string>
     <string name="account_guest_subtitle">キーでログインするか、無料アカウントを作成してここで管理してください。</string>
+    <string name="capture_saving">確認済みの価格を保存中…</string>
+    <string name="capture_retry_guidance">写真、給油所、アカウントを確認し、必要なら撮り直してください。</string>
 </resources>

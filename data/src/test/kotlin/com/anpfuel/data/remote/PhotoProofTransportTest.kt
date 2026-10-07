@@ -55,6 +55,22 @@ class PhotoProofTransportTest {
             try { transport.post("/v1/photo-captures", "stable-client-id", JSONObject()); fail<Unit>("redirect accepted") }
             catch (failure: PhotoOperationRefused) { assertEquals(307, failure.status) }
             assertEquals(2, server.requestCount)
+            server.enqueue(MockResponse().setBody("{\"validation_state\":\"RECEIVED\"}"))
+            transport.get("/v1/observations/123e4567-e89b-12d3-a456-426614174010", "anonymous:$fp")
+            val read = server.takeRequest() // Drain the preceding refused POST.
+            assertEquals("POST", read.method)
+            val status = server.takeRequest()
+            assertEquals("GET", status.method)
+            assertNull(status.getHeader("Content-Type"))
+            assertNull(status.getHeader("Idempotency-Key"))
+            val readLines = PortableAnonymousProof.buildBaseLines("GET", java.net.URI(origin).rawAuthority,
+                status.path!!, "", null, null, status.getHeader("Signature-Created")!!.toLong(),
+                status.getHeader("Signature-Expires")!!.toLong(), fp, signNonce)
+            assertArrayEquals(MessageDigest.getInstance("SHA-512").digest(PortableAnonymousProof.buildBase(readLines).toByteArray()), digests.last())
+            try { transport.post("/v1/observations", "row", JSONObject(), "different-owner"); fail<Unit>("owner changed") }
+            catch (_: java.io.IOException) { }
+            assertEquals(3, server.requestCount)
+            verify(exactly = 3) { identity.requestChallenge(fp, "SIGN") }
             verify(exactly = 1) { identity.register(any(), any(), any(), any()) }
         }
     }

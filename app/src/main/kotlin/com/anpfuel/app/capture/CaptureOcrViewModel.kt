@@ -19,6 +19,8 @@ import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome
+import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.data.mapper.WireFuelMapper
@@ -140,6 +142,8 @@ class CaptureOcrViewModel @Inject constructor(
 
     @Volatile private var generation = 0L
     private var recognition: Job? = null
+    private var submitting = false
+    private val queuedPhotoIds = savedState.get<ArrayList<String>>("queuedPhotoIds")?.toMutableSet() ?: mutableSetOf()
     private val edited = FuelProduct.entries.filter { savedState.get<Boolean>("edited.${it.name}") == true }.toMutableSet()
     private val _processing = MutableStateFlow(false)
     val processing = _processing.asStateFlow()
@@ -171,6 +175,7 @@ class CaptureOcrViewModel @Inject constructor(
 
     /** No camera callback is delivered on a missing fix, refused receipt or changed target. */
     fun authorizeCamera(onAuthorized: () -> Unit) {
+        if (submitting) return
         if (_gateBusy.value || !flagProvider.isEnabled() || _targetInvalid.value) return
         val station = _target.value?.stationId ?: _pickedStationId.value
         if (station == null) { _gateFailure.value = "photo.station-required"; return }
@@ -221,6 +226,8 @@ class CaptureOcrViewModel @Inject constructor(
             _gateFailure.value = "photo.permission-expired"
             return false
         }
+        _submit.value = null
+        savedState.remove<Int>("queuedCount")
         receipt = permission
         savedState["receipt"] = savedState.get<ArrayList<String>>("pendingReceipt")
         pendingReceipt = null
@@ -253,12 +260,14 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     fun addFuel(product: FuelProduct) {
+        if (submitting || _submit.value is SubmitState.Queued) return
         _removedFuels.value = _removedFuels.value - product
         savedState["removed.${product.name}"] = false
         setFuelAmount(product, _fuelAmounts.value[product].orEmpty())
     }
 
     fun setFuelAmount(product: FuelProduct, raw: String) {
+        if (submitting || _submit.value is SubmitState.Queued) return
         edited += product
         savedState["edited.${product.name}"] = true
         savedState["amount.${product.name}"] = raw.take(16)
@@ -268,6 +277,7 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     fun removeFuel(product: FuelProduct) {
+        if (submitting || _submit.value is SubmitState.Queued) return
         edited += product
         savedState["edited.${product.name}"] = true
         savedState["removed.${product.name}"] = true
@@ -355,6 +365,7 @@ class CaptureOcrViewModel @Inject constructor(
     fun replacePhoto(bytes: ByteArray, mime: String) = processPhoto(bytes, mime)
 
     private fun processPhoto(bytes: ByteArray, mime: String) {
+        if (submitting || _submit.value is SubmitState.Queued) return
         recognition?.cancel()
         val ticket = ++generation
         _processing.value = true
@@ -376,11 +387,11 @@ class CaptureOcrViewModel @Inject constructor(
                         val old = _photoId.value
                         _photoId.value = prepared.id
                         savedState["photoId"] = prepared.id
-                        if (old != null && old != prepared.id) withContext(Dispatchers.IO) { photoFlow.discard(old) }
+                        if (old != null && old != prepared.id && old !in queuedPhotoIds) withContext(Dispatchers.IO) { photoFlow.discard(old) }
                     }
                     is PhotoFlow.PhotoResult.Refused -> {
                         // Never send the old uncropped photo after rejecting the user's crop.
-                        _photoId.value?.let { id -> withContext(Dispatchers.IO) { photoFlow.discard(id) } }
+                        _photoId.value?.takeIf { it !in queuedPhotoIds }?.let { id -> withContext(Dispatchers.IO) { photoFlow.discard(id) } }
                         _photoId.value = null
                         savedState.remove<String>("photoId")
                         _photoRefused.value = prepared.code
@@ -417,62 +428,55 @@ class CaptureOcrViewModel @Inject constructor(
      * or the picked nearby station combined with that row's fuel.
      */
     fun submitContributions() {
-        if (_processing.value || (_conditional.value && !_defaultPriceConfirmed.value)) return
-        val rows = FuelProduct.entries
-            .filter { it !in _removedFuels.value }
-            .mapNotNull { product ->
-                val raw = _fuelAmounts.value[product].orEmpty()
-                if (raw.isBlank()) null else product to raw
-            }
-        if (rows.isEmpty()) {
-            _submit.value = SubmitState.NoTarget
+        if (submitting || _submit.value is SubmitState.Queued || _processing.value ||
+            (_conditional.value && !_defaultPriceConfirmed.value)) return
+        val invalid = mutableSetOf<FuelProduct>()
+        val selected = FuelProduct.entries.filter { it !in _removedFuels.value }.mapNotNull { product ->
+            val raw = _fuelAmounts.value[product].orEmpty()
+            if (raw.isBlank()) return@mapNotNull null
+            val confirmed = useCase.confirmManual(raw, product, DEFAULT_CONDITION, true)
+                as? ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed
+            val target = resolveRowTarget(product)
+            if (confirmed == null || target == null) { invalid += product; null }
+            else Triple(confirmed, target, product)
+        }
+        _fuelErrors.value = invalid
+        if (invalid.isNotEmpty() || selected.isEmpty()) { _submit.value = SubmitState.NoTarget; return }
+        val permission = receipt
+        val photo = _photoId.value
+        val now = System.currentTimeMillis()
+        if (permission == null || photo == null || !captureGate.isCurrent(permission) ||
+            now >= permission.expiresAtMillis || originalCapturedAtMillis !in permission.issuedAtMillis until permission.cameraExpiresAtMillis ||
+            selected.any { it.second.stationId != permission.stationId }) {
+            _submit.value = SubmitState.Failed("photo.review-unavailable")
             return
         }
-        _fuelErrors.value = emptySet()
+        val context = PhotoContributionContext(permission.captureId, permission.expiresAtMillis, permission.ownerScope, permission.origin)
+        val requests = selected.map { (confirmed, target, product) ->
+            EnqueueContributionUseCase.Request(
+                clientSubmissionId = "${permission.captureId}:${WireFuelMapper.toWire(product)}",
+                stationId = target.stationId, fuelProduct = confirmed.product,
+                amountMilliBrl = confirmed.candidate.priceMilli, conditionKind = confirmed.conditionKind,
+                capturedAtMillis = originalCapturedAtMillis, photoId = photo, photoContext = context,
+                unit = when (product) { FuelProduct.CNG -> "M3"; FuelProduct.LPG_P13 -> "KG_13"; else -> "L" },
+            )
+        }
+        submitting = true
+        _submit.value = SubmitState.Submitting
         viewModelScope.launch {
-            var sent = 0
-            var failure: String? = null
-            val invalid = mutableSetOf<FuelProduct>()
-            for ((product, raw) in rows) {
-                val confirmed = when (val outcome =
-                    useCase.confirmManual(raw, product, DEFAULT_CONDITION, true)) {
-                    is ConfirmPriceCaptureUseCase.ConfirmOutcome.Confirmed -> outcome
-                    else -> null
+            try {
+                _submit.value = when (val result = enqueue.invokeReview(requests)) {
+                    EnqueueReviewOutcome.Disabled -> SubmitState.Disabled
+                    is EnqueueReviewOutcome.Queued -> {
+                        queuedPhotoIds += photo
+                        savedState["queuedPhotoIds"] = ArrayList(queuedPhotoIds)
+                        savedState["queuedCount"] = result.commands.size
+                        SubmitState.Queued(result.historical, result.commands.size)
+                    }
                 }
-                if (confirmed == null) {
-                    invalid += product
-                    continue
-                }
-                val target = resolveRowTarget(product)
-                if (target == null) {
-                    invalid += product
-                    continue
-                }
-                try {
-                    enqueue.invoke(
-                        EnqueueContributionUseCase.Request(
-                            clientSubmissionId = java.util.UUID.randomUUID().toString(),
-                            stationId = target.stationId,
-                            fuelProduct = confirmed.product,
-                            amountMilliBrl = confirmed.candidate.priceMilli,
-                            conditionKind = confirmed.conditionKind,
-                            capturedAtMillis = System.currentTimeMillis(),
-                            photoId = _photoId.value,
-                        ),
-                    )
-                    sent++
-                } catch (error: Exception) {
-                    failure = error.message ?: error.javaClass.simpleName
-                    break
-                }
-            }
-            _fuelErrors.value = invalid
-            _submit.value = when {
-                sent == 0 && failure != null -> SubmitState.Failed(failure)
-                sent == 0 -> SubmitState.NoTarget
-                failure != null -> SubmitState.Partial(sent, failure)
-                else -> SubmitState.Queued(historical = false, count = sent)
-            }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { _submit.value = SubmitState.Failed("photo.review-unavailable") }
+            finally { submitting = false }
         }
     }
 
@@ -493,6 +497,7 @@ class CaptureOcrViewModel @Inject constructor(
         data object NoTarget : SubmitState
         data object FuelMismatch : SubmitState
         data object Disabled : SubmitState
+        data object Submitting : SubmitState
         data class Queued(val historical: Boolean, val count: Int = 1) : SubmitState
         data class Partial(val sent: Int, val reason: String) : SubmitState
         data class Failed(val reason: String) : SubmitState
@@ -507,7 +512,7 @@ class CaptureOcrViewModel @Inject constructor(
             distanceMeters != null && distanceMeters.isFinite() && distanceMeters in 0.0..MIN_STATION_AREA_METERS
     }
 
-    private val _submit = MutableStateFlow<SubmitState?>(null)
+    private val _submit = MutableStateFlow<SubmitState?>(savedState.get<Int>("queuedCount")?.let { SubmitState.Queued(false, it) })
     val submit: StateFlow<SubmitState?> = _submit.asStateFlow()
 
     fun bindTarget(stationId: String?, fuelProductWire: String?) {

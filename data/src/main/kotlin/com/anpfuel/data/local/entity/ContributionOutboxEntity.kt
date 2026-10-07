@@ -25,4 +25,7 @@ data class ContributionOutboxEntity(
     @ColumnInfo(name = "attempts") val attempts: Int,
     @ColumnInfo(name = "next_eligible_tick") val nextEligibleTick: Long,
     @ColumnInfo(name = "nonce") val nonce: String,
+    @ColumnInfo(name = "observation_id", defaultValue = "NULL") val observationId: String? = null,
+    @ColumnInfo(name = "remote_status", defaultValue = "NULL") val remoteStatus: String? = null,
+    @ColumnInfo(name = "failure_reason", defaultValue = "NULL") val failureReason: String? = null,
 )

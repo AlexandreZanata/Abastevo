@@ -705,4 +705,6 @@
     <string name="capture_default_confirmation">I checked that these are the default prices.</string>
     <string name="capture_recognition_unavailable">Could not finish reading or preparing this photo. Try cropping or taking another photo. You can enter the prices manually.</string>
     <string name="capture_retake">Take another photo</string>
+    <string name="capture_saving">Saving reviewed prices…</string>
+    <string name="capture_retry_guidance">Check the photo, station and account; take another photo if needed.</string>
 </resources>

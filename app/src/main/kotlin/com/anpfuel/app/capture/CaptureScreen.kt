@@ -510,16 +510,17 @@ internal fun PhotoReviewContent(
     val fuels = FuelProduct.entries.filter { it in fuelAmounts && it !in removedFuels }
     var addingFuel by remember { mutableStateOf(false) }
     val filled = fuels.count { fuelAmounts[it].orEmpty().isNotBlank() }
+    val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZoomableCropPhoto(photoUri = photoUri, cropNonce = cropNonce, onCrop = onCrop, enabled = !processing)
+        ZoomableCropPhoto(photoUri = photoUri, cropNonce = cropNonce, onCrop = onCrop, enabled = editable)
         if (processing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(R.string.capture_recognizing))
         }
-        OutlinedButton(onClick = onReanalyze, enabled = !processing, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onReanalyze, enabled = editable, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.capture_reanalyze))
         }
-        TextButton(onClick = onRetake, enabled = !processing) { Text(stringResource(R.string.capture_retake)) }
+        TextButton(onClick = onRetake, enabled = !processing && submit !is CaptureOcrViewModel.SubmitState.Submitting) { Text(stringResource(R.string.capture_retake)) }
         if (photoAttached) {
             Text(
                 text = stringResource(R.string.capture_photo_attached),
@@ -554,6 +555,7 @@ internal fun PhotoReviewContent(
                     placeholder = { Text("0,00") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
+                    enabled = editable,
                     isError = error,
                     supportingText = if (error) {
                         { Text(stringResource(R.string.capture_fuel_invalid)) }
@@ -562,13 +564,13 @@ internal fun PhotoReviewContent(
                     },
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { onRemoveFuel(product) }) {
+                IconButton(onClick = { onRemoveFuel(product) }, enabled = editable) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.capture_remove_fuel))
                 }
             }
         }
         Box {
-            TextButton(onClick = { addingFuel = true }, enabled = !processing) {
+            TextButton(onClick = { addingFuel = true }, enabled = editable) {
                 Text(stringResource(R.string.capture_add_fuel))
             }
             DropdownMenu(expanded = addingFuel, onDismissRequest = { addingFuel = false }) {
@@ -586,10 +588,11 @@ internal fun PhotoReviewContent(
                 Text(stringResource(R.string.capture_default_confirmation), modifier = Modifier.weight(1f))
             }
         }
-        Button(onClick = onSubmit, enabled = filled > 0 && !processing && (!conditional || defaultPriceConfirmed), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onSubmit, enabled = filled > 0 && editable && (!conditional || defaultPriceConfirmed), modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.capture_send_prices, filled))
         }
         when (submit) {
+            CaptureOcrViewModel.SubmitState.Submitting -> Text(stringResource(R.string.capture_saving))
             is CaptureOcrViewModel.SubmitState.Queued ->
                 Text(
                     text = stringResource(R.string.capture_sent_count, submit.count),
@@ -603,7 +606,7 @@ internal fun PhotoReviewContent(
                 )
             is CaptureOcrViewModel.SubmitState.Failed ->
                 Text(
-                    text = stringResource(R.string.capture_submit_failed, submit.reason),
+                    text = stringResource(R.string.capture_submit_failed, stringResource(R.string.capture_retry_guidance)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -619,7 +622,8 @@ internal fun PhotoReviewContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
-            is CaptureOcrViewModel.SubmitState.Disabled, null -> Unit
+            is CaptureOcrViewModel.SubmitState.Disabled -> Text(stringResource(R.string.capture_disabled))
+            null -> Unit
         }
     }
 }

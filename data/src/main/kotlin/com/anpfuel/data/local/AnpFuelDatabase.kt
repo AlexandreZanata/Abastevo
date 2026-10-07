@@ -1,5 +1,7 @@
 package com.anpfuel.data.local
 
+import com.anpfuel.data.local.dao.PhotoUploadSessionDao
+import com.anpfuel.data.local.entity.PhotoUploadSessionEntity
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.anpfuel.data.local.dao.AveragePriceDao
@@ -35,10 +37,11 @@ import com.anpfuel.data.local.entity.VehicleEntity
         VehicleEntity::class,
         BackendPriceCacheEntity::class,
         ContributionOutboxEntity::class,
+        PhotoUploadSessionEntity::class,
         ServerStationCacheEntity::class,
         ServerCatalogMetaEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -60,6 +63,8 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun backendPriceCacheDao(): BackendPriceCacheDao
 
     abstract fun contributionOutboxDao(): ContributionOutboxDao
+
+    abstract fun photoUploadSessionDao(): PhotoUploadSessionDao
 
     abstract fun serverStationCacheDao(): ServerStationCacheDao
 }

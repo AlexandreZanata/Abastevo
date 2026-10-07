@@ -6,6 +6,7 @@ import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.port.CommunityVoteFlagProvider
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
+import com.anpfuel.application.port.ContributionScopeProvider
 import com.anpfuel.application.port.FeedbackFlagProvider
 import com.anpfuel.application.port.OcrPort
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
@@ -567,22 +568,26 @@ object UseCaseModule {
     fun provideEnqueueContributionUseCase(
         flagProvider: ContributionOutboxFlagProvider,
         outbox: ContributionOutboxRepository,
+        scopeProvider: ContributionScopeProvider,
     ): EnqueueContributionUseCase = EnqueueContributionUseCase(
         flagProvider = flagProvider,
         outbox = outbox,
+        scopeProvider = scopeProvider,
     )
 
     @Provides
     @Singleton
     fun provideGetOwnedContributionsUseCase(
         outbox: ContributionOutboxRepository,
-    ): GetOwnedContributionsUseCase = GetOwnedContributionsUseCase(outbox)
+        scopeProvider: ContributionScopeProvider,
+    ): GetOwnedContributionsUseCase = GetOwnedContributionsUseCase(outbox, scopeProvider)
 
     @Provides
     @Singleton
     fun provideCancelOwnedContributionUseCase(
         outbox: ContributionOutboxRepository,
-    ): CancelOwnedContributionUseCase = CancelOwnedContributionUseCase(outbox)
+        scopeProvider: ContributionScopeProvider,
+    ): CancelOwnedContributionUseCase = CancelOwnedContributionUseCase(outbox, scopeProvider)
 
     @Provides
     @Singleton

@@ -343,38 +343,56 @@ class CaptureOcrViewModelTest {
         org.junit.jupiter.api.Assertions.assertTrue(vm.removedFuels.value.isEmpty())
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Test
-    fun `submit sends one contribution per filled fuel`() = runTest(dispatcher) {
-        val vm = viewModel(
-            enabled = true,
-            hasPermission = true,
-            location = com.anpfuel.domain.valueobject.DeviceLocation.of(-12.55, -55.72),
-            nearby = NearbyServerStationsOutcome.Fresh(
-                listOf(nearbyStation("d6c74c23-63db-4c24-a2e5-408cb23bad26", "Posto A", 120.0))),
-        )
-        vm.onEntryPermissions(cameraGranted = true, locationGranted = true)
-        advanceUntilIdle()
-        vm.pickStation("d6c74c23-63db-4c24-a2e5-408cb23bad26")
-        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "6,59")
-        vm.setFuelAmount(FuelProduct.ETHANOL, "4,32")
+    private fun reviewedState(): SavedStateHandle {
+        val permission = validReceipt()
+        return SavedStateHandle(mapOf("receipt" to arrayListOf(permission.captureId, permission.stationId,
+            permission.issuedAtMillis.toString(), permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(),
+            permission.ownerScope, permission.origin), "capturedAt" to (permission.issuedAtMillis + 500), "photoId" to "photo-1"))
+    }
+    @Test fun `review queues one atomic subset with stable IDs and original time even on double tap`() = runTest(dispatcher) {
+        val saved = reviewedState()
+        val gate = mockk<PhotoCaptureGate>()
+        every { gate.isCurrent(any()) } returns true
+        val vm = viewModel(true,true,gate=gate,saved=saved)
+        vm.bindTarget(stationId,"ETHANOL")
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR,"6,59")
+        vm.setFuelAmount(FuelProduct.ETHANOL,"4,32")
+        vm.setFuelAmount(FuelProduct.DIESEL_S10,"")
+        vm.setFuelAmount(FuelProduct.DIESEL_S500,"5,99")
         vm.removeFuel(FuelProduct.DIESEL_S500)
-        val fuels = mutableListOf<FuelProduct>()
-        io.mockk.coEvery { enqueue.invoke(any()) } answers {
-            fuels += firstArg<EnqueueContributionUseCase.Request>().fuelProduct
-            com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome.Queued(
-                command = mockk(relaxed = true),
-                historical = false,
-            )
+        val requests = io.mockk.slot<List<EnqueueContributionUseCase.Request>>()
+        io.mockk.coEvery { enqueue.invokeReview(capture(requests)) } answers {
+            com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome.Queued(firstArg<List<EnqueueContributionUseCase.Request>>().map {
+                com.anpfuel.domain.repository.QueuedContribution(it.clientSubmissionId,1,"synthetic",false)
+            },false)
         }
-        vm.submitContributions()
+        vm.submitContributions(); vm.submitContributions()
         advanceUntilIdle()
-        val submitted = vm.submit.value
-        assertTrue(submitted is CaptureOcrViewModel.SubmitState.Queued)
-        org.junit.jupiter.api.Assertions.assertEquals(
-            2, (submitted as CaptureOcrViewModel.SubmitState.Queued).count)
-        org.junit.jupiter.api.Assertions.assertEquals(
-            setOf(FuelProduct.GASOLINE_REGULAR, FuelProduct.ETHANOL), fuels.toSet())
+        assertEquals(2,(vm.submit.value as CaptureOcrViewModel.SubmitState.Queued).count)
+        assertEquals(setOf(FuelProduct.GASOLINE_REGULAR,FuelProduct.ETHANOL),requests.captured.map { it.fuelProduct }.toSet())
+        assertTrue(requests.captured.all { it.capturedAtMillis == saved.get<Long>("capturedAt") && it.photoId == "photo-1" && it.unit == "L" })
+        assertTrue(requests.captured.all { it.clientSubmissionId.startsWith(validReceipt().captureId+":") })
+        vm.submitContributions()
+        val restored = viewModel(true,true,gate=gate,saved=saved)
+        restored.bindTarget(stationId,"ETHANOL"); restored.submitContributions()
+        assertEquals(2,(restored.submit.value as CaptureOcrViewModel.SubmitState.Queued).count)
+        io.mockk.coVerify(exactly=1) { enqueue.invokeReview(any()) }
+        io.mockk.coVerify(exactly=0) { enqueue.invoke(any()) }
+    }
+    @Test fun `disabled and failed review do not claim queued and invalid sibling queues nothing`() = runTest(dispatcher) {
+        val gate=mockk<PhotoCaptureGate>(); every { gate.isCurrent(any()) } returns true
+        val vm=viewModel(true,true,gate=gate,saved=reviewedState()); vm.bindTarget(stationId,"ETHANOL")
+        vm.setFuelAmount(FuelProduct.ETHANOL,"4,32"); vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR,"invalid")
+        vm.submitContributions(); advanceUntilIdle()
+        io.mockk.coVerify(exactly=0) { enqueue.invokeReview(any()) }
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.NoTarget)
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR,"")
+        io.mockk.coEvery { enqueue.invokeReview(any()) } returns com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome.Disabled
+        vm.submitContributions(); advanceUntilIdle()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.Disabled)
+        io.mockk.coEvery { enqueue.invokeReview(any()) } throws java.io.IOException("synthetic")
+        vm.submitContributions(); advanceUntilIdle()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.Failed)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

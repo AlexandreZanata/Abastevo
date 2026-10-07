@@ -690,4 +690,6 @@
     <string name="account_screen_title">Gérer le compte</string>
     <string name="account_guest_title">Aucun compte sur cet appareil</string>
     <string name="account_guest_subtitle">Connectez-vous avec votre clé ou créez un compte gratuit pour le gérer ici.</string>
+    <string name="capture_saving">Enregistrement des prix vérifiés…</string>
+    <string name="capture_retry_guidance">Vérifiez la photo, la station et votre compte ; reprenez une photo si nécessaire.</string>
 </resources>

@@ -690,4 +690,6 @@
     <string name="account_screen_title">Konto verwalten</string>
     <string name="account_guest_title">Kein Konto auf diesem Gerät</string>
     <string name="account_guest_subtitle">Melde dich mit deinem Schlüssel an oder erstelle ein kostenloses Konto, um es hier zu verwalten.</string>
+    <string name="capture_saving">Geprüfte Preise werden gespeichert…</string>
+    <string name="capture_retry_guidance">Prüfe Foto, Tankstelle und Konto; mache bei Bedarf ein neues Foto.</string>
 </resources>

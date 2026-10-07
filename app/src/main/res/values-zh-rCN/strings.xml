@@ -690,4 +690,6 @@
     <string name="account_screen_title">管理账户</string>
     <string name="account_guest_title">此设备上没有账户</string>
     <string name="account_guest_subtitle">使用您的密钥登录或创建免费账户，即可在此管理。</string>
+    <string name="capture_saving">正在保存已核对的价格…</string>
+    <string name="capture_retry_guidance">请检查照片、加油站和账户，必要时重新拍照。</string>
 </resources>

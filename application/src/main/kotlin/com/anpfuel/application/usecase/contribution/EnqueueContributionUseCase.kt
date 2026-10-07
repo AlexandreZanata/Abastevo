@@ -1,10 +1,14 @@
 package com.anpfuel.application.usecase.contribution
 
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
+import com.anpfuel.application.port.ContributionScopeProvider
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import com.anpfuel.domain.model.ContributionScope
+import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.QueuedContribution
+import com.anpfuel.domain.repository.PendingContribution
 import com.anpfuel.domain.rule.ContributionStalenessRule
 import com.anpfuel.domain.valueobject.FuelProduct
 
@@ -29,10 +33,16 @@ sealed interface EnqueueContributionOutcome {
     ) : EnqueueContributionOutcome
 }
 
+sealed interface EnqueueReviewOutcome {
+    data object Disabled : EnqueueReviewOutcome
+    data class Queued(val commands: List<QueuedContribution>, val historical: Boolean) : EnqueueReviewOutcome
+}
+
 class EnqueueContributionUseCase(
     private val flagProvider: ContributionOutboxFlagProvider,
     private val outbox: ContributionOutboxRepository,
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
+    private val scopeProvider: ContributionScopeProvider? = null,
 ) {
     data class Request(
         val clientSubmissionId: String,
@@ -45,12 +55,23 @@ class EnqueueContributionUseCase(
         val supersedesObservationId: String? = null,
         val unit: String = "BRL/L",
         val currency: String = "BRL",
+        val photoContext: PhotoContributionContext? = null,
     )
 
     suspend fun invoke(request: Request): EnqueueContributionOutcome {
         if (!flagProvider.isEnabled()) {
             return EnqueueContributionOutcome.Disabled
         }
+        val draft = validate(request)
+        val now = nowMillis()
+        val historical = ContributionStalenessRule.isHistorical(draft.capturedAtMillis, now)
+        val scope = resolveScope(request.photoContext)
+        val payload = encodePayload(draft, historical, scope, request.photoContext)
+        val queued = outbox.enqueue(draft, payload)
+        return EnqueueContributionOutcome.Queued(queued, historical)
+    }
+
+    private fun validate(request: Request): ContributionDraft {
         if (request.clientSubmissionId.isBlank()) {
             throw DomainException("client_submission_id is blank")
         }
@@ -66,14 +87,41 @@ class EnqueueContributionUseCase(
             photoId = request.photoId,
             supersedesObservationId = request.supersedesObservationId,
         )
-        val now = nowMillis()
-        val historical = ContributionStalenessRule.isHistorical(draft.capturedAtMillis, now)
-        val payload = encodePayload(draft, historical)
-        val queued = outbox.enqueue(draft, payload)
-        return EnqueueContributionOutcome.Queued(queued, historical)
+        return draft
     }
 
-    internal fun encodePayload(draft: ContributionDraft, historical: Boolean): String {
+    private suspend fun resolveScope(context: PhotoContributionContext?): ContributionScope? {
+        val current = scopeProvider?.currentScope()
+        if (context != null && current != null && context.scope != current) {
+            throw DomainException("photo owner or environment changed")
+        }
+        return current ?: context?.scope
+    }
+
+    suspend fun invokeReview(requests: List<Request>): EnqueueReviewOutcome {
+        if (!flagProvider.isEnabled()) return EnqueueReviewOutcome.Disabled
+        if (requests.isEmpty() || requests.size > FuelProduct.entries.size ||
+            requests.map { it.clientSubmissionId }.distinct().size != requests.size ||
+            requests.map { it.fuelProduct }.distinct().size != requests.size) {
+            throw DomainException("review must contain distinct fuel rows")
+        }
+        val first = requests.first()
+        val context = first.photoContext
+        val now = nowMillis()
+        if (first.photoId == null || context == null || now >= context.expiresAtMillis ||
+            first.capturedAtMillis > now || now - first.capturedAtMillis >= 86_400_000L ||
+            requests.any { it.stationId != first.stationId || it.photoId != first.photoId ||
+                it.photoContext != context || it.capturedAtMillis != first.capturedAtMillis || it.conditionKind != "STANDARD" }) {
+            throw DomainException("photo review expired or inconsistent")
+        }
+        val drafts = requests.map(::validate)
+        val scope = resolveScope(context)
+        val historical = ContributionStalenessRule.isHistorical(first.capturedAtMillis, now)
+        val commands = drafts.map { PendingContribution(it, encodePayload(it, historical, scope, context)) }
+        return EnqueueReviewOutcome.Queued(outbox.enqueueReview(commands), historical)
+    }
+
+    internal fun encodePayload(draft: ContributionDraft, historical: Boolean, scope: ContributionScope? = null, context: PhotoContributionContext? = null): String {
         fun esc(value: String): String = value
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
@@ -85,6 +133,8 @@ class EnqueueContributionUseCase(
         } else {
             "\"${esc(supersedesId)}\""
         }
+        val scopeJson = scope?.let { "{\"owner_scope\":\"${esc(it.ownerScope)}\",\"origin\":\"${esc(it.origin)}\"}" } ?: "null"
+        val captureJson = context?.let { "{\"capture_id\":\"${it.captureId}\",\"expires_at_millis\":${it.expiresAtMillis}}" } ?: "null"
         val freshness = if (historical) "historical" else "fresh"
         return "{\"client_submission_id\":\"${esc(draft.clientSubmissionId)}\"," +
             "\"station_id\":\"${esc(draft.stationId)}\"," +
@@ -96,6 +146,6 @@ class EnqueueContributionUseCase(
             "\"captured_at_millis\":${draft.capturedAtMillis}," +
             "\"freshness\":\"$freshness\"," +
             "\"photo_id\":$photo," +
-            "\"supersedes_observation_id\":$supersedes}"
+            "\"supersedes_observation_id\":$supersedes,\"scope\":$scopeJson,\"photo_capture\":$captureJson}"
     }
 }
