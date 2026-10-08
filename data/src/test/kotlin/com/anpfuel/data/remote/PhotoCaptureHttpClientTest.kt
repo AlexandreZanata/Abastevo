@@ -49,6 +49,24 @@ class PhotoCaptureHttpClientTest {
         every { transport.origin } returns "https://other.invalid"
         assertFalse(client.isCurrent(permission))
     }
+    @Test fun `server clock slightly ahead of phone still yields a usable development receipt`() = runTest {
+        val at = System.currentTimeMillis()
+        val skewed = receipt().put("policy_version", "photo-capture-ui-test-v1")
+            .put("issued_at", Instant.ofEpochMilli(at + 5000).toString())
+            .put("camera_expires_at", Instant.ofEpochMilli(at + 125000).toString())
+            .put("expires_at", Instant.ofEpochMilli(at + 86405000).toString())
+        every { transport.origin } returns ApiEnvironment.STAGING.origin
+        every { transport.ownerScope() } returns "anonymous:synthetic"
+        coEvery { transport.identityScope() } returns "anonymous:synthetic"
+        coEvery { transport.post(any(), any(), any()) } returns skewed
+        assertTrue(PhotoCaptureHttpClient(transport).authorizeDevelopmentPreview(station, "capture").developmentPreview)
+        val forged = receipt().put("policy_version", "photo-capture-ui-test-v1")
+            .put("issued_at", Instant.ofEpochMilli(at + 61000).toString())
+            .put("camera_expires_at", Instant.ofEpochMilli(at + 181000).toString())
+            .put("expires_at", Instant.ofEpochMilli(at + 86461000).toString())
+        coEvery { transport.post(any(), any(), any()) } returns forged
+        assertThrows(java.io.IOException::class.java) { kotlinx.coroutines.runBlocking { PhotoCaptureHttpClient(transport).authorizeDevelopmentPreview(station, "capture") } }
+    }
     @Test fun `cross station stale longer deadlines changed identity and wrong policy are refused`() = runTest {
         listOf(
             receipt().put("station_id", "e7d85d34-74ec-5d35-b3f6-519dc44ce370"),

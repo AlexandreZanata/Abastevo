@@ -12,6 +12,16 @@ import org.json.JSONObject
 
 @Singleton
 class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoProofTransport): PhotoCaptureGate {
+    companion object {
+        /**
+         * Phones may trail the server clock by seconds (observed ~2s on
+         * device while staging had just issued the receipt). Without
+         * leeway a valid server-signed receipt is refused as invalid and
+         * the UI reports a misleading proximity block. 60s mirrors JWT
+         * issuance leeway; expiry and currency checks stay strict.
+         */
+        const val ISSUED_AT_LEEWAY_MILLIS = 60_000L
+    }
     override fun isCurrent(permission: PhotoCapturePermission): Boolean =
         permission.origin == transport.origin && permission.ownerScope == transport.ownerScope()
 
@@ -44,7 +54,8 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
             receipt.cameraExpiresAtMillis-receipt.issuedAtMillis !in 1..120000 ||
             receipt.expiresAtMillis-receipt.issuedAtMillis !in 1..86400000 ||
             receipt.expiresAtMillis < receipt.cameraExpiresAtMillis ||
-            receipt.issuedAtMillis > System.currentTimeMillis() ||
+            receipt.expiresAtMillis < receipt.cameraExpiresAtMillis ||
+            receipt.issuedAtMillis - System.currentTimeMillis() > ISSUED_AT_LEEWAY_MILLIS ||
             System.currentTimeMillis()>=receipt.cameraExpiresAtMillis) throw IOException("photo.invalid-permission")
         UUID.fromString(receipt.captureId)
         return receipt
