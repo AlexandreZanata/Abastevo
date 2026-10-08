@@ -71,6 +71,12 @@
     <string name="profile_tool_settings_subtitle">Cache offline, sincronização Wi-Fi, notificações e tema</string>
     <string name="profile_tool_help_title">Ajuda e regras da comunidade</string>
     <string name="profile_tool_help_subtitle">Orientações de colaboração, denúncias, moderação e privacidade</string>
+    <string name="profile_tool_contributions_title">Minhas contribuições</string>
+    <string name="profile_tool_contributions_subtitle">Acompanhe envios, fila e cancelamentos</string>
+    <string name="contributions_screen_subtitle">Somente neste aparelho — nada aqui é público.</string>
+    <string name="contributions_summary_total">%1$d no total</string>
+    <string name="contributions_summary_queued">%1$d na fila</string>
+    <string name="contributions_summary_cancelled">%1$d canceladas</string>
     <string name="help_screen_title">Ajuda e regras da comunidade</string>
     <string name="help_contribute_title">Colabore bem</string>
     <string name="help_contribute_body">Fotografe painéis de preço só de locais públicos seguros e mantenha os valores legíveis. Escolha a condição exata do preço. Nunca invente preços, postos ou pessoas.</string>

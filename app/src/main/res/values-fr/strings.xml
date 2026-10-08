@@ -370,6 +370,12 @@
     <string name="profile_tool_settings_subtitle">Cache hors ligne, synchronisation Wi-Fi, notifications et thème</string>
     <string name="profile_tool_help_title">Aide et règles communautaires</string>
     <string name="profile_tool_help_subtitle">Guide de contribution, signalement, modération et confidentialité</string>
+    <string name="profile_tool_contributions_title">Mes contributions</string>
+    <string name="profile_tool_contributions_subtitle">Suivre envois, file et annulations</string>
+    <string name="contributions_screen_subtitle">Cet appareil uniquement — rien n’est public ici.</string>
+    <string name="contributions_summary_total">%1$d au total</string>
+    <string name="contributions_summary_queued">%1$d en attente</string>
+    <string name="contributions_summary_cancelled">%1$d annulées</string>
     <string name="help_screen_title">Aide et règles communautaires</string>
     <string name="help_contribute_title">Bien contribuer</string>
     <string name="help_contribute_body">Photographiez les panneaux depuis des lieux publics sûrs, avec des montants lisibles. Choisissez la condition exacte. N’inventez ni prix, ni stations, ni personnes.</string>

@@ -370,6 +370,12 @@
     <string name="profile_tool_settings_subtitle">Caché sin conexión, sincronización Wi-Fi, avisos y tema</string>
     <string name="profile_tool_help_title">Ayuda y reglas de la comunidad</string>
     <string name="profile_tool_help_subtitle">Guía para aportar, denunciar, moderación y privacidad</string>
+    <string name="profile_tool_contributions_title">Mis aportes</string>
+    <string name="profile_tool_contributions_subtitle">Sigue subidas, cola y cancelaciones</string>
+    <string name="contributions_screen_subtitle">Solo este dispositivo — nada aquí es público.</string>
+    <string name="contributions_summary_total">%1$d en total</string>
+    <string name="contributions_summary_queued">%1$d en cola</string>
+    <string name="contributions_summary_cancelled">%1$d cancelados</string>
     <string name="help_screen_title">Ayuda y reglas de la comunidad</string>
     <string name="help_contribute_title">Aporta correctamente</string>
     <string name="help_contribute_body">Fotografía paneles desde lugares públicos seguros y conserva los importes legibles. Elige la condición exacta. No inventes precios, estaciones ni personas.</string>

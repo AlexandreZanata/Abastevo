@@ -268,6 +268,12 @@ fun AnpNavGraph(
                 },
             )
         }
+        composable(Routes.CONTRIBUTIONS) {
+            com.anpfuel.app.ui.profile.MyContributionsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onContribute = { navController.navigate(Routes.CAPTURE) },
+            )
+        }
         composable(Routes.CAPTURE) {
             CaptureScreen(onNavigateBack = { navController.popBackStack() }, onReturnCommunity = returnToCommunity)
         }

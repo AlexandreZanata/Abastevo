@@ -370,6 +370,12 @@
     <string name="profile_tool_settings_subtitle">オフライン保存、Wi-Fi同期、通知、テーマ</string>
     <string name="profile_tool_help_title">ヘルプとコミュニティルール</string>
     <string name="profile_tool_help_subtitle">投稿案内、通報、管理、プライバシー</string>
+    <string name="profile_tool_contributions_title">自分の投稿</string>
+    <string name="profile_tool_contributions_subtitle">送信・キュー・キャンセルを確認</string>
+    <string name="contributions_screen_subtitle">この端末のみ — 公開されません。</string>
+    <string name="contributions_summary_total">合計 %1$d 件</string>
+    <string name="contributions_summary_queued">キュー %1$d 件</string>
+    <string name="contributions_summary_cancelled">キャンセル %1$d 件</string>
     <string name="help_screen_title">ヘルプとコミュニティルール</string>
     <string name="help_contribute_title">適切に投稿する</string>
     <string name="help_contribute_body">安全な公共の場所から価格表示を撮影し、金額が読めるようにしてください。正確な価格条件を選び、価格、給油所、人を捏造しないでください。</string>

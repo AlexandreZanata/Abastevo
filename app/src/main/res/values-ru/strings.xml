@@ -370,6 +370,12 @@
     <string name="profile_tool_settings_subtitle">Офлайн-кэш, синхронизация по Wi-Fi, уведомления и тема</string>
     <string name="profile_tool_help_title">Помощь и правила сообщества</string>
     <string name="profile_tool_help_subtitle">Правила публикаций, жалобы, модерация и приватность</string>
+    <string name="profile_tool_contributions_title">Мои вклады</string>
+    <string name="profile_tool_contributions_subtitle">Отслеживайте отправки, очередь и отмены</string>
+    <string name="contributions_screen_subtitle">Только это устройство — здесь ничего публичного.</string>
+    <string name="contributions_summary_total">Всего: %1$d</string>
+    <string name="contributions_summary_queued">В очереди: %1$d</string>
+    <string name="contributions_summary_cancelled">Отменено: %1$d</string>
     <string name="help_screen_title">Помощь и правила сообщества</string>
     <string name="help_contribute_title">Публикуйте правильно</string>
     <string name="help_contribute_body">Снимайте табло из безопасных общественных мест, сохраняя читаемость сумм. Выбирайте точное условие цены. Не выдумывайте цены, станции или людей.</string>

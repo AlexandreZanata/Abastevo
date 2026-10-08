@@ -38,6 +38,11 @@ class RoutesTest {
     }
 
     @Test
+    fun contributionsRouteIsRegisteredConstant() {
+        assertEquals("contributions", Routes.CONTRIBUTIONS)
+    }
+
+    @Test
     fun stationsRouteIncludesFuelProductName() {
         assertEquals(
             "stations/GASOLINE_REGULAR",

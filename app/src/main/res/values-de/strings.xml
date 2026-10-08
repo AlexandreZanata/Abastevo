@@ -370,6 +370,12 @@
     <string name="profile_tool_settings_subtitle">Offline-Cache, WLAN-Synchronisierung, Hinweise und Design</string>
     <string name="profile_tool_help_title">Hilfe und Gemeinschaftsregeln</string>
     <string name="profile_tool_help_subtitle">Beitragsleitfaden, Meldungen, Moderation und Datenschutz</string>
+    <string name="profile_tool_contributions_title">Meine Beiträge</string>
+    <string name="profile_tool_contributions_subtitle">Uploads, Warteschlange und Abbrüche verfolgen</string>
+    <string name="contributions_screen_subtitle">Nur dieses Gerät — nichts ist hier öffentlich.</string>
+    <string name="contributions_summary_total">%1$d gesamt</string>
+    <string name="contributions_summary_queued">%1$d in Warteschlange</string>
+    <string name="contributions_summary_cancelled">%1$d abgebrochen</string>
     <string name="help_screen_title">Hilfe und Gemeinschaftsregeln</string>
     <string name="help_contribute_title">Richtig beitragen</string>
     <string name="help_contribute_body">Preistafeln nur von sicheren öffentlichen Orten fotografieren; Zahlen lesbar halten. Genaue Preisbedingung wählen. Keine Preise, Tankstellen oder Personen erfinden.</string>

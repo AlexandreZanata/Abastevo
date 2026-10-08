@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
@@ -34,7 +35,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,13 +73,8 @@ fun ProfileScreen(
     onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
-    statusViewModel: ContributionStatusViewModel = hiltViewModel(),
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
-    val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(statusViewModel) {
-        statusViewModel.load()
-    }
     // P22-T01: same shared session store as the auth flow; rehydrate runs
     // again on resume so Perfil reflects shared sign-in/logout changes.
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
@@ -159,21 +154,8 @@ fun ProfileScreen(
             }
             }
 
-            // P21-T03 private owner status section
-            Text(
-                text = stringResource(R.string.profile_contributions_section),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.semantics { heading() },
-            )
-            ContributionStatusCard(
-                state = statusState,
-                onRetry = statusViewModel::load,
-                onCancel = statusViewModel::onCancel,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            // Preserved Expert Tools section
+            // Preserved Expert Tools section (contributions now live here
+            // as a dedicated page instead of an inline card).
             Text(
                 text = stringResource(R.string.profile_expert_tools_section),
                 style = MaterialTheme.typography.titleSmall,
@@ -190,6 +172,13 @@ fun ProfileScreen(
                 ),
             ) {
                 Column {
+                    ProfileToolItem(
+                        icon = Icons.Default.AssignmentTurnedIn,
+                        title = stringResource(R.string.profile_tool_contributions_title),
+                        subtitle = stringResource(R.string.profile_tool_contributions_subtitle),
+                        onClick = { onNavigate(Routes.CONTRIBUTIONS) },
+                    )
+                    HorizontalDivider()
                     if (signedIn) {
                         ProfileToolItem(
                             icon = Icons.Default.PersonOutline,

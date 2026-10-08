@@ -21,6 +21,7 @@ object Routes {
     const val VEHICLES = "vehicles"
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"
+    const val CONTRIBUTIONS = "contributions"
     const val CAPTURE_WITH_TARGET = "capture?stationId={stationId}&fuel={fuel}"
     const val STATION_CLAIM = "station-claim/{stationId}"
     const val STATION_MANAGEMENT = "station-management/{stationId}"
