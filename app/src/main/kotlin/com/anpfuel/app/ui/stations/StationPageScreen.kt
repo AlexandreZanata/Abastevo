@@ -32,6 +32,8 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.PriceSourceKind
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SourceTimeBadge
 import com.anpfuel.data.mapper.WireFuelMapper
 import com.anpfuel.domain.discovery.StationLocationQuality
@@ -144,11 +146,18 @@ internal fun StationPageContent(
             }
             item {
                 StationSectionCard(stringResource(R.string.community_section_title)) {
-                    Text(stringResource(when {
-                        state.loading -> R.string.station_page_feedback_loading
-                        state.priceUnavailable -> R.string.community_unavailable_retry
-                        else -> R.string.station_page_community_empty
-                    }))
+                    if (state.loading) {
+                        StationDetailLoadingSkeleton()
+                    } else {
+                        Text(
+                            stringResource(
+                                when {
+                                    state.priceUnavailable -> R.string.community_unavailable_retry
+                                    else -> R.string.station_page_community_empty
+                                },
+                            ),
+                        )
+                    }
                     if (state.priceUnavailable && !state.loading) TextButton(onClick = onRetry) {
                         Text(stringResource(R.string.action_retry))
                     }
@@ -174,7 +183,11 @@ internal fun StationPageContent(
                         if (local.isStale) Text(stringResource(R.string.station_detail_stale_badge), color = MaterialTheme.colorScheme.error)
                     } else {
                         val groups = state.officialGroups.filter { it.official != null }
-                        if (groups.isEmpty()) Text(stringResource(if (state.loading) R.string.station_page_feedback_loading else R.string.community_official_empty))
+                        if (state.loading && groups.isEmpty()) {
+                            StationDetailLoadingSkeleton()
+                        } else if (groups.isEmpty()) {
+                            Text(stringResource(R.string.community_official_empty))
+                        }
                         groups.forEach { group ->
                             val official = checkNotNull(group.official)
                             Text(CommunityPriceDisplay.formatMilliBrl(official.amountMilliBrl) + " / " + group.unit,
@@ -256,6 +269,15 @@ internal fun StationPageContent(
             },
             confirmLabel = stringResource(R.string.action_back),
         )
+    }
+}
+
+@Composable
+private fun StationDetailLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 180.dp, height = 32.dp)
+        SkeletonLine(width = 140.dp)
+        SkeletonLine(width = 200.dp)
     }
 }
 

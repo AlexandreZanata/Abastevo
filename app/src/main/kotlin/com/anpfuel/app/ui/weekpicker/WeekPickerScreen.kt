@@ -38,6 +38,8 @@ import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
 import com.anpfuel.domain.valueobject.SurveyWeek
@@ -148,10 +150,7 @@ fun WeekPickerContent(
             }
 
             uiState.isLoadingCatalog -> {
-                LoadingState(
-                    message = stringResource(R.string.sync_progress_discovering),
-                    modifier = Modifier.fillMaxSize(),
-                )
+                WeekPickerLoadingSkeleton()
             }
 
             uiState.catalogError != null -> {
@@ -227,6 +226,13 @@ fun WeekPickerContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WeekPickerLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        repeat(4) { SkeletonCard(height = 60.dp) }
     }
 }
 
