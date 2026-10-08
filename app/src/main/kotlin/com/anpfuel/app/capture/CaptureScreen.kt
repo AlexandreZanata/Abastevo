@@ -98,6 +98,7 @@ fun CaptureScreen(
     viewModel: CaptureOcrViewModel = hiltViewModel(),
     stationId: String? = null,
     fuelProductWire: String? = null,
+    onReturnCommunity: () -> Unit = onNavigateBack,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previewEnabled by viewModel.previewEnabled.collectAsStateWithLifecycle()
@@ -293,7 +294,7 @@ fun CaptureScreen(
                             },
                             onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
                             onRetake = requestCamera,
-                            onNavigateBack = onNavigateBack,
+                            onNavigateBack = onReturnCommunity,
                             onSubmit = viewModel::submitContributions,
                         )
                     }
@@ -517,6 +518,7 @@ internal fun PhotoReviewContent(
     var assigningIndex by remember { mutableStateOf<Int?>(null) }
     val filled = fuels.count { fuelAmounts[it].orEmpty().isNotBlank() }
     val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting && submit !is CaptureOcrViewModel.SubmitState.Sent
+    PhotoSubmissionFeedback(submit, onNavigateBack)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable)
         if (processing) {

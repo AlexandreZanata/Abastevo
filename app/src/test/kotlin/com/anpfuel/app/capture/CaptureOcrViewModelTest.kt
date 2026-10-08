@@ -388,6 +388,36 @@ class CaptureOcrViewModelTest {
             permission.issuedAtMillis.toString(), permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(),
             permission.ownerScope, permission.origin), "capturedAt" to (permission.issuedAtMillis + 500), "photoId" to "photo-1"))
     }
+
+    private fun queuedState() = SavedStateHandle(mapOf(
+        "queuedCount" to 1, "submittedIds" to arrayListOf("mine"), "reviewUri" to "private-review"))
+
+    @Test fun `restored server received review confirms sent immediately without waiting for validation`() = runTest(dispatcher) {
+        val owned = mockk<GetOwnedContributionsUseCase>()
+        io.mockk.coEvery { owned.invoke() } returns listOf(
+            com.anpfuel.application.usecase.contribution.OwnedContributionStatus("mine",1,1,
+                com.anpfuel.domain.contribution.ContributionState.Pending))
+        val vm = viewModel(true,true,saved=queuedState(),owned=owned)
+        runCurrent()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.Sent)
+        assertEquals(1,(vm.submit.value as CaptureOcrViewModel.SubmitState.Sent).count)
+        io.mockk.coVerify(exactly=0) { enqueue.invokeReview(any()) }
+    }
+
+    @Test fun `retrying and missing owner receipts never confirm sent or enqueue again`() = runTest(dispatcher) {
+        for (statuses in listOf(emptyList(),listOf(
+            com.anpfuel.application.usecase.contribution.OwnedContributionStatus("mine",1,3,
+                com.anpfuel.domain.contribution.ContributionState.Queued(true))),listOf(
+            com.anpfuel.application.usecase.contribution.OwnedContributionStatus("foreign",1,1,
+                com.anpfuel.domain.contribution.ContributionState.Accepted)))) {
+            val owned = mockk<GetOwnedContributionsUseCase>()
+            io.mockk.coEvery { owned.invoke() } returns statuses
+            val vm = viewModel(true,true,saved=queuedState(),owned=owned)
+            advanceUntilIdle()
+            assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.Queued)
+        }
+        io.mockk.coVerify(exactly=0) { enqueue.invokeReview(any()) }
+    }
     @Test fun `review queues one atomic subset with stable IDs and original time even on double tap`() = runTest(dispatcher) {
         val saved = reviewedState()
         val gate = mockk<PhotoCaptureGate>()

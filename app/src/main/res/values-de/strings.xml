@@ -614,7 +614,7 @@
     <string name="capture_sent_count">%1$d Preise für den Upload vorgemerkt.</string>
     <string name="capture_sent">%1$d Preise gesendet. Danke!</string>
     <string name="capture_back_community">Zurück zur Community</string>
-    <string name="capture_partial">%1$d gesendet, dann fehlgeschlagen (%2$s). Bereits gesendete Preise bleiben vorgemerkt.</string>
+    <string name="capture_partial">%1$d Preise vom Server empfangen; die übrigen wurden abgelehnt (%2$s).</string>
     <string name="capture_take_photo">Preisschild fotografieren</string>
     <string name="capture_photo_attached">Foto angehängt. Es wird mit dem Preis im Postausgang gespeichert.</string>
     <string name="capture_photo_refused">Foto überschreitet das Größenlimit (%1$s). Der Preis kann weiterhin eingegeben werden.</string>
@@ -704,4 +704,10 @@
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">Station wechseln</string>
+    <string name="capture_saved_title">Preise gespeichert</string>
+    <string name="capture_sent_title">Preise gesendet</string>
+    <string name="capture_partial_title">Einige Preise wurden abgelehnt</string>
+    <string name="capture_queue_background">Der Versand läuft automatisch weiter. Du kannst zur Community zurückkehren.</string>
+    <string name="capture_queue_retrying">Der Versand steht noch aus. Wir versuchen es automatisch erneut; du kannst zur Community zurückkehren.</string>
+    <string name="capture_sent_pending_validation">Vom Server empfangen. Die Prüfung läuft noch.</string>
 </resources>

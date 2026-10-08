@@ -614,7 +614,7 @@
     <string name="capture_sent_count">Цены (%1$d) поставлены в очередь загрузки.</string>
     <string name="capture_sent">Отправлено цен: %1$d. Спасибо!</string>
     <string name="capture_back_community">Назад к сообществу</string>
-    <string name="capture_partial">Отправлено %1$d, затем ошибка (%2$s). Уже отправленные цены остаются в очереди.</string>
+    <string name="capture_partial">Сервер получил %1$d цен; остальные отклонены (%2$s).</string>
     <string name="capture_take_photo">Сфотографировать цены</string>
     <string name="capture_photo_attached">Фото прикреплено и сохранено вместе с ценой в очереди отправки.</string>
     <string name="capture_photo_refused">Фото превышает допустимый размер (%1$s). Цену можно ввести вручную.</string>
@@ -704,4 +704,10 @@
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">Сменить станцию</string>
+    <string name="capture_saved_title">Цены сохранены</string>
+    <string name="capture_sent_title">Цены отправлены</string>
+    <string name="capture_partial_title">Некоторые цены отклонены</string>
+    <string name="capture_queue_background">Отправка продолжится автоматически. Можно вернуться в сообщество.</string>
+    <string name="capture_queue_retrying">Отправка ещё ожидается. Мы автоматически повторим попытку; можно вернуться в сообщество.</string>
+    <string name="capture_sent_pending_validation">Получено сервером. Проверка ещё продолжается.</string>
 </resources>

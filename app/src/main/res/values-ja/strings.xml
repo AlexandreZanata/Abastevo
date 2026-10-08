@@ -614,7 +614,7 @@
     <string name="capture_sent_count">%1$d件の価格がアップロード待ちです。</string>
     <string name="capture_sent">%1$d件の価格を送信しました。ありがとうございます！</string>
     <string name="capture_back_community">コミュニティに戻る</string>
-    <string name="capture_partial">%1$d件送信後に失敗しました（%2$s）。送信済みの価格は待機列に残ります。</string>
+    <string name="capture_partial">サーバーが%1$d件の価格を受信しました。残りは拒否されました（%2$s）。</string>
     <string name="capture_take_photo">価格を撮影</string>
     <string name="capture_photo_attached">写真を添付しました。価格と一緒に送信待ちとして保存されます。</string>
     <string name="capture_photo_refused">写真がサイズ上限を超えています（%1$s）。価格は手入力できます。</string>
@@ -704,4 +704,10 @@
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">スタンドを変更する</string>
+    <string name="capture_saved_title">価格を保存しました</string>
+    <string name="capture_sent_title">価格を送信しました</string>
+    <string name="capture_partial_title">一部の価格が拒否されました</string>
+    <string name="capture_queue_background">送信は自動的に続行されます。コミュニティに戻れます。</string>
+    <string name="capture_queue_retrying">送信はまだ保留中です。自動的に再試行します。コミュニティに戻れます。</string>
+    <string name="capture_sent_pending_validation">サーバーが受信しました。検証はまだ進行中です。</string>
 </resources>

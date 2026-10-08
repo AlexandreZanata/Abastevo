@@ -614,7 +614,7 @@
     <string name="capture_sent_count">%1$d prix en attente d’envoi.</string>
     <string name="capture_sent">%1$d prix envoyés. Merci !</string>
     <string name="capture_back_community">Retour à la communauté</string>
-    <string name="capture_partial">%1$d envoyés, puis échec (%2$s). Les prix déjà envoyés restent en attente.</string>
+    <string name="capture_partial">%1$d prix reçus par le serveur ; les autres ont été refusés (%2$s).</string>
     <string name="capture_take_photo">Photographier les prix</string>
     <string name="capture_photo_attached">Photo jointe : elle accompagne le prix dans la boîte d’envoi.</string>
     <string name="capture_photo_refused">La photo dépasse la taille maximale (%1$s). Vous pouvez toujours saisir le prix.</string>
@@ -704,4 +704,10 @@
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">Changer de station</string>
+    <string name="capture_saved_title">Prix enregistrés</string>
+    <string name="capture_sent_title">Prix envoyés</string>
+    <string name="capture_partial_title">Certains prix ont été refusés</string>
+    <string name="capture_queue_background">L’envoi continue automatiquement. Vous pouvez revenir à la communauté.</string>
+    <string name="capture_queue_retrying">L’envoi est toujours en attente. Nous réessaierons automatiquement ; vous pouvez revenir à la communauté.</string>
+    <string name="capture_sent_pending_validation">Reçus par le serveur. La validation est toujours en cours.</string>
 </resources>

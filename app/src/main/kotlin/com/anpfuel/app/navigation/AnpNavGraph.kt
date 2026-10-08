@@ -70,6 +70,12 @@ fun AnpNavGraph(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val returnToCommunity: () -> Unit = {
+        navController.navigate(Routes.COMMUNITY) {
+            popUpTo(navController.graph.findStartDestination().id)
+            launchSingleTop = true
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -263,7 +269,7 @@ fun AnpNavGraph(
             )
         }
         composable(Routes.CAPTURE) {
-            CaptureScreen(onNavigateBack = { navController.popBackStack() })
+            CaptureScreen(onNavigateBack = { navController.popBackStack() }, onReturnCommunity = returnToCommunity)
         }
         composable(Routes.SUGGEST) {
             com.anpfuel.app.ui.suggest.SuggestStationScreen(
@@ -278,6 +284,7 @@ fun AnpNavGraph(
             ),
         ) { entry ->
             CaptureScreen(
+                onReturnCommunity = returnToCommunity,
                 onNavigateBack = { navController.popBackStack() },
                 stationId = entry.arguments?.getString("stationId")?.takeIf { it.isNotEmpty() },
                 fuelProductWire = entry.arguments?.getString("fuel")?.takeIf { it.isNotEmpty() },

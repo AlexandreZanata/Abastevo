@@ -638,10 +638,10 @@ class CaptureOcrViewModel @Inject constructor(
         data object FuelMismatch : SubmitState
         data object Disabled : SubmitState
         data object Submitting : SubmitState
-        data class Queued(val historical: Boolean, val count: Int = 1) : SubmitState
+        data class Queued(val historical: Boolean, val count: Int = 1, val retrying: Boolean = false) : SubmitState
         data class Partial(val sent: Int, val reason: String) : SubmitState
         data class Failed(val reason: String) : SubmitState
-        data class Sent(val count: Int) : SubmitState
+        data class Sent(val count: Int, val pendingValidation: Boolean = false) : SubmitState
     }
 
     /** Minimum station area: the camera opens only inside this radius. */
@@ -658,8 +658,8 @@ class CaptureOcrViewModel @Inject constructor(
 
     /**
      * Command ids of the last submitted review, watched until every row
-     * reaches a terminal server state. Survives process death so the
-     * success feedback appears even when validation lands later.
+     * has a server receipt or rejection. Receipt is distinct from validation.
+     * Survives process death without resubmitting the review.
      */
     private var submittedIds: List<String> =
         savedState.get<ArrayList<String>>("submittedIds")?.toList() ?: emptyList()
@@ -672,20 +672,18 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     /**
-     * Watches the durable outbox until every submitted command is
-     * accepted (success feedback) or terminally refused. Polls on a
-     * bounded schedule only while this review is still queued; any new
-     * photo or submit replaces the watch.
+     * Watches local durable receipts immediately, then on a bounded schedule.
+     * Returning to the community never cancels the durable upload worker.
      */
     private fun watchSubmitted(ids: List<String>) {
         if (ids.isEmpty()) return
         statusPoller?.cancel()
         val uri = _reviewUri.value
         statusPoller = viewModelScope.launch {
-            repeat(30) {
-                kotlinx.coroutines.delay(20_000)
+            repeat(300) {
                 if (_submit.value !is SubmitState.Queued || _reviewUri.value != uri) return@launch
                 if (refreshSubmitted(ids)) return@launch
+                kotlinx.coroutines.delay(2_000)
             }
         }
     }
@@ -695,13 +693,20 @@ class CaptureOcrViewModel @Inject constructor(
         val statuses = runCatching { ownedContributions.invoke() }.getOrNull() ?: return false
         val mine = statuses.filter { it.commandId in ids }
         if (mine.size < ids.size) return false
-        val accepted = mine.count { it.state == com.anpfuel.domain.contribution.ContributionState.Accepted }
+        val received = mine.count { it.state == com.anpfuel.domain.contribution.ContributionState.Accepted ||
+            it.state == com.anpfuel.domain.contribution.ContributionState.Pending }
         val rejected = mine.filter { it.state == com.anpfuel.domain.contribution.ContributionState.Rejected }
         _submit.value = when {
-            accepted == ids.size -> SubmitState.Sent(ids.size)
-            rejected.isNotEmpty() && accepted + rejected.size == ids.size ->
-                SubmitState.Partial(accepted, rejected.firstNotNullOfOrNull { it.reason } ?: "contribution.rejected")
-            else -> return false
+            received == ids.size -> SubmitState.Sent(ids.size,
+                mine.any { it.state == com.anpfuel.domain.contribution.ContributionState.Pending })
+            rejected.isNotEmpty() && received + rejected.size == ids.size ->
+                SubmitState.Partial(received, rejected.firstNotNullOfOrNull { it.reason } ?: "contribution.rejected")
+            else -> {
+                val queued = _submit.value as? SubmitState.Queued ?: return false
+                _submit.value = queued.copy(retrying = mine.any {
+                    (it.state as? com.anpfuel.domain.contribution.ContributionState.Queued)?.retryable == true })
+                return false
+            }
         }
         return true
     }

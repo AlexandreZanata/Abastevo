@@ -614,7 +614,7 @@
     <string name="capture_sent_count">%1$d个价格已加入上传队列。</string>
     <string name="capture_sent">已发送 %1$d 个价格。谢谢！</string>
     <string name="capture_back_community">返回社区</string>
-    <string name="capture_partial">已发送%1$d个，随后失败（%2$s）。已发送的价格仍在队列中。</string>
+    <string name="capture_partial">服务器已收到%1$d个价格；其余价格被拒绝（%2$s）。</string>
     <string name="capture_take_photo">拍摄价格照片</string>
     <string name="capture_photo_attached">已附加照片，将随价格一起保存在待发送队列中。</string>
     <string name="capture_photo_refused">照片超出大小限制（%1$s），仍可手动填写价格。</string>
@@ -704,4 +704,10 @@
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">更换油站</string>
+    <string name="capture_saved_title">价格已保存</string>
+    <string name="capture_sent_title">价格已发送</string>
+    <string name="capture_partial_title">部分价格被拒绝</string>
+    <string name="capture_queue_background">发送将自动继续。您可以返回社区。</string>
+    <string name="capture_queue_retrying">发送仍在等待中。我们将自动重试；您可以返回社区。</string>
+    <string name="capture_sent_pending_validation">服务器已收到。验证仍在进行中。</string>
 </resources>

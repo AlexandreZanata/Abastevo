@@ -509,8 +509,14 @@
     <string name="capture_send_prices">Send %1$d prices</string>
     <string name="capture_sent_count">%1$d prices queued for upload.</string>
     <string name="capture_sent">%1$d prices sent. Thank you!</string>
+    <string name="capture_saved_title">Prices saved</string>
+    <string name="capture_sent_title">Prices sent</string>
+    <string name="capture_partial_title">Some prices were refused</string>
+    <string name="capture_queue_background">Sending continues automatically. You can return to the community.</string>
+    <string name="capture_queue_retrying">Sending is still pending. We will retry automatically; you can return to the community.</string>
+    <string name="capture_sent_pending_validation">Received by the server. Validation is still in progress.</string>
     <string name="capture_back_community">Back to community</string>
-    <string name="capture_partial">%1$d sent, then failed (%2$s). Already-sent prices stay queued.</string>
+    <string name="capture_partial">%1$d prices received by the server; the remaining prices were refused (%2$s).</string>
     <string name="capture_take_photo">Take price photo</string>
     <string name="capture_photo_attached">Photo attached — it travels with your price to the outbox.</string>
     <string name="capture_photo_refused">Photo did not fit the size budget (%1$s) — you can still type the price.</string>
