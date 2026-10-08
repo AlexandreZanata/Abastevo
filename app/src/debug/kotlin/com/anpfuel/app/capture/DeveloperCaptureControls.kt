@@ -4,8 +4,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -77,15 +82,28 @@ internal fun DeveloperCaptureControls(viewModel: CaptureOcrViewModel, onGallery:
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(city?.let { stringResource(R.string.developer_capture_city, it.name, it.state.abbreviation) }
                     ?: stringResource(R.string.developer_capture_city_missing))
-                OutlinedTextField(value = query, onValueChange = viewModel::searchPreviewStation,
-                    label = { Text(stringResource(R.string.developer_capture_station)) }, singleLine = true,
-                    enabled = city != null && review == null && !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (failed) Text(stringResource(R.string.developer_capture_search_failed), color = MaterialTheme.colorScheme.error)
-                if (!loading && !failed && query.trim().length >= 2 && stations.isEmpty()) Text(stringResource(R.string.developer_capture_no_station))
-                stations.forEach { station ->
-                    FilterChip(selected = picked == station.stationId, enabled = review == null && !busy,
-                        onClick = { viewModel.pickPreviewStation(station.stationId) }, label = { Text(station.displayName) })
+                val selected = stations.firstOrNull { it.stationId == picked }
+                if (selected != null) {
+                    SelectedStationCard(
+                        name = selected.displayName,
+                        cityLabel = city?.let { stringResource(R.string.developer_capture_city, it.name, it.state.abbreviation) },
+                        onChange = { viewModel.pickStation(null) },
+                    )
+                } else {
+                    OutlinedTextField(value = query, onValueChange = viewModel::searchPreviewStation,
+                        label = { Text(stringResource(R.string.developer_capture_station)) }, singleLine = true,
+                        enabled = city != null && review == null && !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                    if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (failed) Text(stringResource(R.string.developer_capture_search_failed), color = MaterialTheme.colorScheme.error)
+                    if (city != null && !loading && !failed && stations.isEmpty() &&
+                        (query.trim().isEmpty() || query.trim().length >= 2)) Text(stringResource(R.string.developer_capture_no_station))
+                    stations.forEach { station ->
+                        StationResultRow(
+                            name = station.displayName,
+                            enabled = review == null && !busy,
+                            onPick = { viewModel.pickPreviewStation(station.stationId) },
+                        )
+                    }
                 }
                 OutlinedButton(onClick = {
                     viewModel.authorizeCamera { if (viewModel.beginCamera()) picker.launch("image/*") }
@@ -95,6 +113,54 @@ internal fun DeveloperCaptureControls(viewModel: CaptureOcrViewModel, onGallery:
                 if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (importFailed) Text(stringResource(R.string.capture_recognition_unavailable), color = MaterialTheme.colorScheme.error)
             }
+        }
+    }
+}
+
+/**
+ * Professional single-select result row: store icon, name and chevron
+ * in an outlined card. Tapping selects the station and collapses the
+ * list (see [SelectedStationCard]).
+ */
+@Composable
+private fun StationResultRow(name: String, enabled: Boolean, onPick: () -> Unit) {
+    OutlinedCard(onClick = onPick, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Default.Store, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * Confirmation card for the chosen station: the search field and the
+ * other results stay hidden while a station is selected, leaving only
+ * the gallery/camera actions visible. "Change station" restores the
+ * search with the previous query and results intact.
+ */
+@Composable
+private fun SelectedStationCard(name: String, cityLabel: String?, onChange: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Card(modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(name, style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    cityLabel?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onChange, modifier = Modifier.align(Alignment.End)) {
+            Text(stringResource(R.string.developer_capture_change_station))
         }
     }
 }

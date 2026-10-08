@@ -110,19 +110,29 @@ class CaptureOcrViewModel @Inject constructor(
         _gateFailure.value = null; _state.value = initialState(); _previewEnabled.value = enabled
         if (enabled) viewModelScope.launch {
             _previewCity.value = runCatching { cityFeed.city() }.getOrNull()
+            if (_previewEnabled.value && _reviewUri.value == null && _previewCity.value != null) {
+                searchPreviewStation("")
+            }
         }
     }
 
+    /**
+     * Developer station search scoped to the manually selected Home city.
+     * A blank query lists every station in the city (first page); typing
+     * 2+ characters filters by station name. A single character waits for
+     * more input because the server requires 2..100 characters for `q`.
+     */
     fun searchPreviewStation(query: String) {
         if (!DeveloperCaptureMode.available || !_previewEnabled.value || _reviewUri.value != null) return
         _previewQuery.value = query.take(100); _previewStations.value = emptyList(); pickStation(null)
         stationSearch?.cancel(); _previewSearchBusy.value = false; _previewSearchFailed.value = false
         val city = _previewCity.value ?: return
-        if (query.trim().length < 2) return
+        val trimmed = query.trim()
+        if (trimmed.length == 1) return
         stationSearch = viewModelScope.launch {
-            kotlinx.coroutines.delay(300)
             _previewSearchBusy.value = true
-            try { _previewStations.value = withContext(Dispatchers.IO) { stationGateway.search(city.code, query.trim(), 20).items } }
+            kotlinx.coroutines.delay(300)
+            try { _previewStations.value = withContext(Dispatchers.IO) { stationGateway.search(city.code, trimmed, 20).items } }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { _previewSearchFailed.value = true }
             finally { _previewSearchBusy.value = false }

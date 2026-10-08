@@ -140,6 +140,19 @@ class CaptureOcrViewModelTest {
     }
 
     @Test
+    fun `enabling preview lists every city station and single character waits for more input`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate())
+        vm.setPreviewEnabled(true); advanceUntilIdle()
+        val listed = kotlinx.coroutines.withContext(Dispatchers.Default) {
+            kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } }
+        }
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", listed.first().stationId)
+        assertEquals("", vm.previewQuery.value)
+        vm.searchPreviewStation("a"); advanceUntilIdle()
+        assertTrue(vm.previewStations.value.isEmpty())
+    }
+
+    @Test
     fun `late normal location response cannot clear the developer station selection`() = runTest(dispatcher) {
         val delayed = CompletableDeferred<NearbyServerStationsOutcome>()
         val vm = viewModel(true, false, location = com.anpfuel.domain.valueobject.DeviceLocation.of(0.0, 0.0), nearbyDeferred = delayed)

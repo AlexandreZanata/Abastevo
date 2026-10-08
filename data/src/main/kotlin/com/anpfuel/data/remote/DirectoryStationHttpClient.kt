@@ -31,10 +31,23 @@ class DirectoryStationHttpClient(
         return get(url)
     }
 
+    /**
+     * City-scoped station search. A blank query lists every station in
+     * the city (the `q` parameter is omitted); a non-blank query needs
+     * at least 2 characters and filters `display_name` server-side.
+     */
     fun search(municipalityCode: String, query: String, limit: Int): String {
-        require(municipalityCode.matches(Regex("[0-9]{7}")) && query.trim().length in 2..100 && limit in 1..100)
-        return get(baseUrl.trimEnd('/') + "/v1/stations?limit=" + limit + "&municipality_code=" + municipalityCode +
-            "&q=" + URLEncoder.encode(query.trim(), Charsets.UTF_8.name()))
+        val trimmed = query.trim()
+        require(municipalityCode.matches(Regex("[0-9]{7}")) && (trimmed.isEmpty() || trimmed.length in 2..100) && limit in 1..100)
+        val url = buildString {
+            append(baseUrl.trimEnd('/'))
+            append("/v1/stations?limit=").append(limit)
+            append("&municipality_code=").append(municipalityCode)
+            if (trimmed.isNotEmpty()) {
+                append("&q=").append(URLEncoder.encode(trimmed, Charsets.UTF_8.name()))
+            }
+        }
+        return get(url)
     }
 
     fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {

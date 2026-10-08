@@ -38,6 +38,20 @@ class DirectoryStationHttpClientTest {
     }
 
     @Test
+    fun `blank query lists every city station without q param`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": []}"""))
+            client(server).search("5107925", "   ", 20)
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("5107925", url.queryParameter("municipality_code"))
+            assertEquals(null, url.queryParameter("q"))
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5107925", "a", 20) }
+            assertEquals(1, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
+    @Test
     fun `lists stations without double v1`() {
         val server = MockWebServer()
         try {

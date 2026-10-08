@@ -715,4 +715,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">Change station</string>
 </resources>
