@@ -22,6 +22,18 @@ class PhotoCaptureHttpClientTest {
         coEvery { transport.identityScope() } returns "anonymous:synthetic"
         coEvery { transport.post(any(), any(), any()) } returns response
     }
+    @Test fun `development authorization restricted to owned staging has no GPS and distinct policy`() = runTest {
+        prepare(receipt().put("policy_version", "photo-capture-ui-test-v1"))
+        val client = PhotoCaptureHttpClient(transport)
+        assertThrows(IllegalArgumentException::class.java) { kotlinx.coroutines.runBlocking { client.authorizeDevelopmentPreview(station, "capture") } }
+        every { transport.origin } returns ApiEnvironment.STAGING.origin
+        val body = slot<JSONObject>()
+        coEvery { transport.post(any(), any(), capture(body)) } returns receipt().put("policy_version", "photo-capture-ui-test-v1")
+        assertTrue(client.authorizeDevelopmentPreview(station, "capture").developmentPreview)
+        assertTrue(body.captured.getBoolean("development_preview")); assertFalse(body.captured.has("location"))
+        coEvery { transport.post(any(), any(), any()) } returns receipt()
+        assertThrows(java.io.IOException::class.java) { kotlinx.coroutines.runBlocking { client.authorizeDevelopmentPreview(station, "capture") } }
+    }
     @Test fun `strict signed receipt and transient fix are bound to current owner station origin`() = runTest {
         prepare(receipt())
         val body = slot<JSONObject>()

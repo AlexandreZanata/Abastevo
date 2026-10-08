@@ -44,6 +44,7 @@ import org.junit.jupiter.api.Test
  * P10-T04: ViewModel gates on flag/permission/cancel and never
  * auto-confirms or uploads.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class CaptureOcrViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
@@ -74,6 +75,7 @@ class CaptureOcrViewModelTest {
             override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
         },
         saved: SavedStateHandle = SavedStateHandle(),
+        nearbyDeferred: CompletableDeferred<NearbyServerStationsOutcome>? = null,
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
             override fun isEnabled(): Boolean = enabled
@@ -89,11 +91,110 @@ class CaptureOcrViewModelTest {
         val locations = mockk<LocationPermissionHandler>()
         every { locations.getLastKnownLocation() } returns location
         val nearbyUseCase = mockk<GetNearbyServerStationsUseCase>()
-        io.mockk.coEvery { nearbyUseCase.invoke(any(), any(), any(), any()) } returns nearby
+        io.mockk.coEvery { nearbyUseCase.invoke(any(), any(), any(), any()) } coAnswers { nearbyDeferred?.await() ?: nearby }
         val photos = mockk<PhotoFlow>()
         every { photos.prepareAt(any(), any(), any()) } returns photo
         every { photos.discard(any()) } returns Unit
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved)
+        val city = mockk<com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase>()
+        io.mockk.coEvery { city.city() } returns com.anpfuel.domain.community.FeedCity("5103403", com.anpfuel.domain.valueobject.BrazilianState.MATO_GROSSO, "Test City")
+        val stationGateway = mockk<com.anpfuel.domain.repository.ServerStationGateway>()
+        io.mockk.coEvery { stationGateway.search(any(), any(), any()) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
+            ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway)
+    }
+
+    private fun developmentGate(): PhotoCaptureGate {
+        val gate = mockk<PhotoCaptureGate>()
+        val now = System.currentTimeMillis()
+        io.mockk.coEvery { gate.authorizeDevelopmentPreview(any(), any()) } answers {
+            PhotoCapturePermission("10000000-0000-4000-8000-000000000001", firstArg(), now - 1000, now + 119000, now + 86399000, "owner", "https://teste.abastevo.com.br", true)
+        }
+        every { gate.isCurrent(any()) } returns true
+        return gate
+    }
+
+    private suspend fun prepareDevelopment(vm: CaptureOcrViewModel) {
+        vm.setPreviewEnabled(true)
+        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
+        vm.searchPreviewStation("Test")
+        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } } }
+        vm.pickPreviewStation("123e4567-e89b-12d3-a456-426614174000")
+    }
+
+    @Test
+    fun `preview off by default needs canonical station and signed server authorization without GPS`() = runTest(dispatcher) {
+        val gate = developmentGate()
+        val vm = viewModel(enabled = true, hasPermission = false, gate = gate)
+        assertFalse(vm.previewEnabled.value)
+        assertFalse(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private"))
+        vm.setPreviewEnabled(true); advanceUntilIdle()
+        var opens = 0
+        vm.authorizeCamera { opens++ }; advanceUntilIdle(); assertEquals(0, opens)
+        vm.pickPreviewStation("unknown"); assertEquals(null, vm.pickedStationId.value)
+        prepareDevelopment(vm)
+        vm.authorizeCamera { opens++ }; advanceUntilIdle()
+        assertEquals(1, opens); assertTrue(vm.beginCamera())
+        io.mockk.coVerify(exactly = 1) { gate.authorizeDevelopmentPreview(any(), any()) }
+        io.mockk.coVerify(exactly = 0) { gate.authorize(any(), any(), any()) }
+    }
+
+    @Test
+    fun `late normal location response cannot clear the developer station selection`() = runTest(dispatcher) {
+        val delayed = CompletableDeferred<NearbyServerStationsOutcome>()
+        val vm = viewModel(true, false, location = com.anpfuel.domain.valueobject.DeviceLocation.of(0.0, 0.0), nearbyDeferred = delayed)
+        vm.loadNearby(); runCurrent()
+        assertTrue(vm.nearbyLoading.value)
+        prepareDevelopment(vm)
+        val selected = "123e4567-e89b-12d3-a456-426614174000"
+        assertEquals(selected, vm.pickedStationId.value)
+        delayed.complete(NearbyServerStationsOutcome.Fresh(emptyList()))
+        advanceUntilIdle()
+        assertEquals(selected, vm.pickedStationId.value)
+        vm.loadNearby(); advanceUntilIdle()
+        assertEquals(selected, vm.pickedStationId.value)
+    }
+
+    @Test
+    fun `gallery preview requires signed receipt and queues real reviewed subset without camera permission`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate())
+        prepareDevelopment(vm)
+        assertFalse(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private"))
+        vm.authorizeCamera { }; advanceUntilIdle()
+        assertTrue(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private")); advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.processing.first { !it } } }
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "5,899")
+        vm.setFuelAmount(FuelProduct.ETHANOL, "")
+        io.mockk.coEvery { enqueue.invokeReview(any()) } returns com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome.Queued(emptyList(), false)
+        vm.submitContributions(); advanceUntilIdle()
+        assertTrue(vm.submit.value is CaptureOcrViewModel.SubmitState.Queued)
+        io.mockk.coVerify(exactly = 1) { enqueue.invokeReview(match { it.size == 1 && it[0].photoContext?.captureId == "10000000-0000-4000-8000-000000000001" && it[0].stationId == "123e4567-e89b-12d3-a456-426614174000" }) }
+        vm.submitConfirmed()
+        io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
+
+    @Test
+    fun `preview overprecision refused and toggling invalidates imported photo and proof`() = runTest(dispatcher) {
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate())
+        prepareDevelopment(vm); vm.authorizeCamera { }; advanceUntilIdle()
+        vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private"); advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.processing.first { !it } } }
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "5,8999"); vm.submitContributions()
+        assertTrue(FuelProduct.GASOLINE_REGULAR in vm.fuelErrors.value)
+        vm.setPreviewEnabled(false)
+        assertEquals(null, vm.reviewUri.value); assertEquals(null, vm.photoId.value)
+        vm.submitContributions(); io.mockk.coVerify(exactly = 0) { enqueue.invokeReview(any()) }
+    }
+
+    @Test
+    fun `restored preview draft cannot use normal submission or forged receipt`() = runTest(dispatcher) {
+        val saved = SavedStateHandle(mapOf("previewPhoto" to true, "photoId" to "local-photo",
+            "capturedAt" to System.currentTimeMillis(), "amount.GASOLINE_REGULAR" to "5,899"))
+        val vm = viewModel(enabled = true, hasPermission = true, saved = saved)
+        vm.bindTarget("123e4567-e89b-12d3-a456-426614174000", "GASOLINE_REGULAR")
+        vm.submitContributions(); vm.submitConfirmed()
+        io.mockk.coVerify(exactly = 0) { enqueue.invokeReview(any()) }
+        io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
     }
 
     @Test

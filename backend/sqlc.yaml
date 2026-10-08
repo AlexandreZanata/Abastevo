@@ -61,6 +61,7 @@ sql:
       - db/migrations/000043_photo_captures.sql
       - db/migrations/000044_photo_capture_session_unique.sql
       - db/migrations/000046_photo_observation_subset.sql
+      - db/migrations/000048_development_photo_capture_policy.sql
     gen:
       go:
         package: community

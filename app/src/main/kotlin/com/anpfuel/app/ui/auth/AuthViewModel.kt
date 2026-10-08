@@ -149,6 +149,7 @@ class AuthViewModel @Inject constructor(
                     }
                 }
                 is AuthFlow.AuthState.LoggedOut -> {
+                    AccountKeyUnlockSession.grant.reset()
                     if (_uiState.value.step in listOf(AuthStep.CHECKING, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) {
                         _uiState.update { AuthUiState(step = AuthStep.USERNAME_ENTRY) }
                     }
@@ -177,6 +178,7 @@ class AuthViewModel @Inject constructor(
 
     /** Create, sign in, then keep the issued-key backup step visible. */
     fun onCreateAccount() {
+        AccountKeyUnlockSession.grant.reset()
         if (_uiState.value.step != AuthStep.USERNAME_ENTRY) return
         refreshGeneration++
         val username = _uiState.value.username
@@ -208,6 +210,7 @@ class AuthViewModel @Inject constructor(
     fun onLoginWithKey() {
         val snapshot = _uiState.value
         if (snapshot.step !in listOf(AuthStep.KEY_ENTRY, AuthStep.KEY_ISSUED)) return
+        AccountKeyUnlockSession.grant.reset()
         refreshGeneration++
         val key = snapshot.accountKey.ifEmpty { snapshot.issuedKey }
         _uiState.update { it.copy(step = AuthStep.BUSY, error = null) }
@@ -352,6 +355,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun onLogout() {
+        AccountKeyUnlockSession.grant.reset()
         refreshGeneration++
         _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {
@@ -371,6 +375,7 @@ class AuthViewModel @Inject constructor(
      * Definitive auth denials clear the displayed authority.
      */
     fun onDeleteAccount() {
+        AccountKeyUnlockSession.grant.reset()
         refreshGeneration++
         _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {

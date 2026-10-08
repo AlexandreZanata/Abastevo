@@ -23,10 +23,13 @@ data class PhotoCapturePermission(
     val expiresAtMillis: Long,
     val ownerScope: String,
     val origin: String,
+    val developmentPreview: Boolean = false,
 )
 
 interface PhotoCaptureGate {
     fun isCurrent(permission: PhotoCapturePermission): Boolean
+    suspend fun authorizeDevelopmentPreview(stationId: String, clientCaptureId: String): PhotoCapturePermission =
+        throw UnsupportedOperationException("development capture unavailable")
     suspend fun authorize(stationId: String, clientCaptureId: String, fix: CaptureFix): PhotoCapturePermission
 }
 

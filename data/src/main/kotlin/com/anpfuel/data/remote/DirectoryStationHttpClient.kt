@@ -31,6 +31,12 @@ class DirectoryStationHttpClient(
         return get(url)
     }
 
+    fun search(municipalityCode: String, query: String, limit: Int): String {
+        require(municipalityCode.matches(Regex("[0-9]{7}")) && query.trim().length in 2..100 && limit in 1..100)
+        return get(baseUrl.trimEnd('/') + "/v1/stations?limit=" + limit + "&municipality_code=" + municipalityCode +
+            "&q=" + URLEncoder.encode(query.trim(), Charsets.UTF_8.name()))
+    }
+
     fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {
         require(lat in -90.0..90.0) { "lat out of range" }
         require(lon in -180.0..180.0) { "lon out of range" }

@@ -705,4 +705,12 @@
     <string name="capture_retake">Tirar outra foto</string>
     <string name="capture_saving">Salvando os preços revisados…</string>
     <string name="capture_retry_guidance">Confira a foto, o posto e sua conta; se necessário, tire outra foto.</string>
+    <string name="developer_capture_title">Modo desenvolvedor temporário</string>
+    <string name="developer_capture_notice">Apenas no servidor de testes: sem proximidade e com fotos da galeria. Os envios ficam identificados como teste; a permissão do servidor expira automaticamente.</string>
+    <string name="developer_capture_city">Cidade: %1$s · %2$s</string>
+    <string name="developer_capture_city_missing">Escolha sua cidade manualmente no Início e abra esta tela novamente.</string>
+    <string name="developer_capture_station">Nome do posto</string>
+    <string name="developer_capture_gallery">Escolher da galeria</string>
+    <string name="developer_capture_search_failed">Não foi possível buscar postos. Confira a conexão e tente novamente.</string>
+    <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
 </resources>

@@ -145,6 +145,13 @@ func (h apiHarness) signed(k apiKey, method, path string, body []byte) *http.Req
 }
 
 func TestPublicProcessIdentityAndSignedWrites(t *testing.T) {
+	testPublicProcessIdentityAndSignedWrites(t, false)
+}
+func TestPublicProcessDevelopmentPhotoPreview(t *testing.T) {
+	testPublicProcessIdentityAndSignedWrites(t, true)
+}
+
+func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 	ctx := context.Background()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -198,6 +205,9 @@ func TestPublicProcessIdentityAndSignedWrites(t *testing.T) {
 		}
 	}
 	cmd.Env = append(cmd.Env, "ANPFUEL_ANP_DISCOVERY_ENABLED=false", "ANPFUEL_API_HELPER=1", "ANPFUEL_ENV=development", "ANPFUEL_DATABASE_URL="+testDSN, "ANPFUEL_HTTP_ADDR="+addr, "ANPFUEL_METRICS_ADDR=", "ANPFUEL_CANONICAL_HOST=test.invalid", "ANPFUEL_CURSOR_SECRET="+strings.Repeat("synthetic", 8))
+	if development {
+		cmd.Env = append(cmd.Env, "ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL="+time.Now().UTC().Add(time.Hour).Format(time.RFC3339))
+	}
 	log, err := os.Create(filepath.Join(t.TempDir(), "api.log"))
 	if err != nil {
 		t.Fatal(err)
@@ -387,6 +397,48 @@ func TestPublicProcessIdentityAndSignedWrites(t *testing.T) {
 		photoID := h.call(photoReq, 201)["id"].(string)
 		waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", photoID)
 		h.call(h.signed(b, "POST", "/v1/observations/"+photoID+"/disputes", []byte(`{"client_submission_id":"process-dispute","reason":"PRICE_CHANGED"}`)), 201)
+		if development {
+			// A distinct photo must not reuse evidence already bound above.
+			img.Reset()
+			if err := jpeg.Encode(&img, image.NewRGBA(image.Rect(0, 0, 6, 6)), &jpeg.Options{Quality: 85}); err != nil {
+				t.Fatal(err)
+			}
+			captureBody := []byte(fmt.Sprintf(`{"client_capture_id":"development-camera","station_id":%q,"development_preview":true}`, station))
+			captureRequest := h.signed(a, "POST", "/v1/photo-captures", captureBody)
+			captureRequest.Header.Set("Idempotency-Key", "development-camera")
+			capture := h.call(captureRequest, 201)
+			if capture["policy_version"] != "photo-capture-ui-test-v1" {
+				t.Fatal("wrong development provenance")
+			}
+			captureID := capture["capture_id"].(string)
+			capturedAt := time.Now().UTC().Truncate(time.Millisecond).Format(time.RFC3339Nano)
+			sum := sha256.Sum256(img.Bytes())
+			intent := []byte(fmt.Sprintf(`{"client_submission_id":"development-upload","content_type":"image/jpeg","size_bytes":%d,"sha256":"%x","photo_capture_id":%q,"station_id":%q,"captured_at":%q}`, img.Len(), sum, captureID, station, capturedAt))
+			up := h.call(h.signed(a, "POST", "/v1/uploads", intent), 201)
+			put, _ := http.NewRequest("PUT", up["url"].(string), bytes.NewReader(img.Bytes()))
+			put.Header.Set("Content-Type", "image/jpeg")
+			response, err := h.client.Do(put)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response.Body.Close()
+			if response.StatusCode != 200 {
+				t.Fatal("development PUT", response.StatusCode)
+			}
+			uploadID := up["upload_id"].(string)
+			h.call(h.signed(b, "GET", "/v1/uploads/"+uploadID, nil), 404)
+			h.call(h.signed(a, "POST", "/v1/uploads/"+uploadID+"/complete", []byte(`{}`)), 202)
+			waitSQL("SELECT EXISTS(SELECT 1 FROM evidence_sessions WHERE id=$1 AND status='READY')", uploadID)
+			ev := h.call(h.signed(a, "GET", "/v1/uploads/"+uploadID, nil), 200)["evidence_id"].(string)
+			for _, product := range []string{"GASOLINE_REGULAR", "ETHANOL"} {
+				row := []byte(fmt.Sprintf(`{"client_submission_id":%q,"station_id":%q,"fuel_product":%q,"price":{"amount_milli_brl":5899,"currency":"BRL","unit":"L"},"condition":{"kind":"STANDARD"},"evidence_id":%q,"photo_capture_id":%q,"claimed_captured_at":%q}`, "development-"+product, station, product, ev, captureID, capturedAt))
+				request := h.signed(a, "POST", "/v1/observations", row)
+				request.Header.Set("Idempotency-Key", "development-"+product)
+				observation := h.call(request, 201)["id"].(string)
+				waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", observation)
+				h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
+			}
+		}
 		badSession, _ := reserve("malformed-jpeg", []byte("not a JPEG"))
 		waitSQL("SELECT EXISTS(SELECT 1 FROM evidence_sessions WHERE id=$1 AND status='REJECTED')", badSession)
 		badView := h.call(h.signed(a, "GET", "/v1/uploads/"+badSession, nil), 200)

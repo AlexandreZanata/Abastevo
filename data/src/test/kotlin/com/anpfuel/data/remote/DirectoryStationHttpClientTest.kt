@@ -22,6 +22,22 @@ class DirectoryStationHttpClientTest {
         )
 
     @Test
+    fun `city scoped station name search encodes input and rejects malformed bounds`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": []}"""))
+            client(server).search("5103403", "Posto & Centro", 20)
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("5103403", url.queryParameter("municipality_code"))
+            assertEquals("Posto & Centro", url.queryParameter("q"))
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("invalid", "Posto", 20) }
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5103403", "x", 20) }
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5103403", "Posto", 101) }
+            assertEquals(1, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
+    @Test
     fun `lists stations without double v1`() {
         val server = MockWebServer()
         try {

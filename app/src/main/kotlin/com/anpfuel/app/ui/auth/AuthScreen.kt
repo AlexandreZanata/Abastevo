@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material3.AlertDialog
@@ -27,7 +26,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -156,10 +154,28 @@ fun AuthScreen(
                 .padding(padding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal = if (state.step in listOf(AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) 16.dp else 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (state.step == AuthStep.KEY_ISSUED) {
+                Text(stringResource(R.string.profile_account_section), style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth())
+                com.anpfuel.app.ui.account.AccountStatusCard(
+                    stringResource(R.string.auth_key_issued_title), stringResource(R.string.auth_key_issued_warning))
+                AccountKeyCard(com.anpfuel.application.portable.AuthFlow.KeyBackup(state.issuedUsername, state.issuedKey))
+                Button(onClick = onLoginWithKey, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.auth_saved_enter))
+                }
+                state.error?.let { error -> TextButton(onClick = onDismissError) { Text(errorText(error), color = MaterialTheme.colorScheme.error) } }
+                return@Column
+            }
+            if (state.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)) {
+                com.anpfuel.app.ui.account.SignedInAccountContent(state, onLogout, { showDeleteConfirm = true })
+                Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.auth_continue)) }
+                state.error?.let { error -> TextButton(onClick = onDismissError) { Text(errorText(error), color = MaterialTheme.colorScheme.error) } }
+                return@Column
+            }
             AbastevoBrandBanner()
             Card(
                 modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
@@ -207,17 +223,6 @@ fun AuthScreen(
                             }
                             TextButton(onClick = onGoToKeyEntry) {
                                 Text(text = stringResource(R.string.auth_have_key))
-                            }
-                        }
-                        AuthStep.KEY_ISSUED -> {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                            Text(stringResource(R.string.auth_key_issued_title), style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold)
-                            Text(stringResource(R.string.auth_key_issued_warning), style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            AccountKeyCard(com.anpfuel.application.portable.AuthFlow.KeyBackup(state.issuedUsername, state.issuedKey))
-                            Button(onClick = onLoginWithKey, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.auth_saved_enter))
                             }
                         }
                         AuthStep.KEY_ENTRY -> {
@@ -292,39 +297,7 @@ fun AuthScreen(
                                 Text(text = stringResource(R.string.action_cancel))
                             }
                         }
-                        AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                            Text(text = stringResource(R.string.auth_logged_in), style = MaterialTheme.typography.headlineSmall)
-                            Text(stringResource(if (state.step == AuthStep.OFFLINE_ACCOUNT) R.string.auth_offline_account else R.string.auth_session_retained),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            state.keyBackup?.let { AccountKeyCard(it) }
-                            if (state.step == AuthStep.AUTHENTICATED && state.keyBackup == null) {
-                                OutlinedButton(
-                                    onClick = { onProviderClick("google") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(text = stringResource(R.string.auth_google))
-                                }
-                                OutlinedButton(
-                                    onClick = { onProviderClick("apple") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(text = stringResource(R.string.auth_apple))
-                                }
-                            }
-                            Button(
-                                onClick = onLogout,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(text = stringResource(R.string.auth_logout))
-                            }
-                            OutlinedButton(
-                                onClick = { showDeleteConfirm = true },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(text = stringResource(R.string.auth_delete_account))
-                            }
-                        }
+                        AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> Unit
                     }
                 }
             }

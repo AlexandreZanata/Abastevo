@@ -100,6 +100,7 @@ fun CaptureScreen(
     fuelProductWire: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val previewEnabled by viewModel.previewEnabled.collectAsStateWithLifecycle()
     val target by viewModel.target.collectAsStateWithLifecycle()
     val targetInvalid by viewModel.targetInvalid.collectAsStateWithLifecycle()
     val nearby by viewModel.nearby.collectAsStateWithLifecycle()
@@ -175,13 +176,13 @@ fun CaptureScreen(
         viewModel.onLocationPermission(granted)
         if (granted && stationId != null && reviewUri == null && viewModel.pendingUri() == null) requestCamera()
     }
-    LaunchedEffect(stationId) {
-        viewModel.bindTarget(stationId, fuelProductWire)
+    LaunchedEffect(stationId, previewEnabled) {
+        viewModel.bindTarget(if (previewEnabled) null else stationId, fuelProductWire)
         withContext(Dispatchers.IO) { files.sweep() }
         if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
             viewModel.rememberReviewUri(null)
         }
-        if (reviewPhotoUri == null && viewModel.pendingUri() == null) locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+        if (!previewEnabled && reviewPhotoUri == null && viewModel.pendingUri() == null) locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     AnpScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -197,6 +198,7 @@ fun CaptureScreen(
                 .verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            DeveloperCaptureMode.Controls(viewModel, requestCamera)
             target?.let {
                 Text(
                     text = stringResource(
@@ -244,7 +246,12 @@ fun CaptureScreen(
                     val inside = CaptureOcrViewModel.isInsideStationArea(distance)
                     val photoUri = reviewPhotoUri
                     if (photoUri == null) {
-                        StationGateContent(
+                        if (previewEnabled) {
+                            Button(onClick = requestCamera, enabled = pickedStationId != null && !gateBusy,
+                                modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
+                            if (gateBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            photoRefused?.let { Text(stringResource(R.string.capture_recognition_unavailable)) }
+                        } else StationGateContent(
                             targetStationId = target?.stationId,
                             nearby = nearby,
                             nearbyLoading = nearbyLoading,

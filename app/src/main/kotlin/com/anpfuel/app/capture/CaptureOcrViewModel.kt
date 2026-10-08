@@ -75,8 +75,68 @@ class CaptureOcrViewModel @Inject constructor(
     private val captureGate: PhotoCaptureGate,
     private val imageOcr: ImagePriceOcr,
     private val savedState: SavedStateHandle,
+    private val cityFeed: com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase,
+    private val stationGateway: com.anpfuel.domain.repository.ServerStationGateway,
 
 ) : ViewModel() {
+
+    private val _previewEnabled = MutableStateFlow(false)
+    val previewEnabled = _previewEnabled.asStateFlow()
+    private val _previewCity = MutableStateFlow<com.anpfuel.domain.community.FeedCity?>(null)
+    val previewCity = _previewCity.asStateFlow()
+    private val _previewQuery = MutableStateFlow("")
+    val previewQuery = _previewQuery.asStateFlow()
+    private val _previewStations = MutableStateFlow<List<com.anpfuel.domain.discovery.ServerStation>>(emptyList())
+    val previewStations = _previewStations.asStateFlow()
+    private val _previewSearchBusy = MutableStateFlow(false)
+    val previewSearchBusy = _previewSearchBusy.asStateFlow()
+    private val _previewSearchFailed = MutableStateFlow(false)
+    val previewSearchFailed = _previewSearchFailed.asStateFlow()
+    private var stationSearch: Job? = null
+    private var previewPhoto = savedState.get<Boolean>("previewPhoto") ?: false
+
+    fun setPreviewEnabled(enabled: Boolean) {
+        if (!DeveloperCaptureMode.available || submitting || _processing.value || _gateBusy.value || enabled == _previewEnabled.value) return
+        ++generation; stationSearch?.cancel(); recognition?.cancel()
+        pendingReceipt = null; receipt = null
+        savedState.remove<ArrayList<String>>("pendingReceipt"); savedState.remove<ArrayList<String>>("receipt")
+        _photoId.value?.takeIf { it !in queuedPhotoIds }?.let { id -> viewModelScope.launch(Dispatchers.IO) { photoFlow.discard(id) } }
+        _photoId.value = null; savedState.remove<String>("photoId")
+        rememberReviewUri(null); _fuelAmounts.value = emptyMap(); _removedFuels.value = emptySet(); edited.clear()
+        FuelProduct.entries.forEach { savedState.remove<String>("amount.${it.name}"); savedState.remove<Boolean>("edited.${it.name}"); savedState.remove<Boolean>("removed.${it.name}") }
+        _submit.value = null; savedState.remove<Int>("queuedCount")
+        _pickedStationId.value = null; _previewStations.value = emptyList(); _previewQuery.value = ""
+        previewPhoto = false; savedState["previewPhoto"] = false
+        _gateFailure.value = null; _state.value = initialState(); _previewEnabled.value = enabled
+        if (enabled) viewModelScope.launch {
+            _previewCity.value = runCatching { cityFeed.city() }.getOrNull()
+        }
+    }
+
+    fun searchPreviewStation(query: String) {
+        if (!DeveloperCaptureMode.available || !_previewEnabled.value || _reviewUri.value != null) return
+        _previewQuery.value = query.take(100); _previewStations.value = emptyList(); pickStation(null)
+        stationSearch?.cancel(); _previewSearchBusy.value = false; _previewSearchFailed.value = false
+        val city = _previewCity.value ?: return
+        if (query.trim().length < 2) return
+        stationSearch = viewModelScope.launch {
+            kotlinx.coroutines.delay(300)
+            _previewSearchBusy.value = true
+            try { _previewStations.value = withContext(Dispatchers.IO) { stationGateway.search(city.code, query.trim(), 20).items } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { _previewSearchFailed.value = true }
+            finally { _previewSearchBusy.value = false }
+        }
+    }
+
+    fun pickPreviewStation(id: String) {
+        if (DeveloperCaptureMode.available && _previewEnabled.value && _previewStations.value.any { it.stationId == id }) pickStation(id)
+    }
+
+    fun acceptPreviewPhoto(bytes: ByteArray, mime: String, uri: String): Boolean {
+        if (!DeveloperCaptureMode.available || !_previewEnabled.value || pendingReceipt?.developmentPreview != true) return false
+        return acceptCameraPhoto(bytes, mime, uri)
+    }
 
     private val _state = MutableStateFlow<CaptureOcrUiState>(initialState())
     val state: StateFlow<CaptureOcrUiState> = _state.asStateFlow()
@@ -158,10 +218,10 @@ class CaptureOcrViewModel @Inject constructor(
     private val _reviewUri = MutableStateFlow<String?>(savedState["reviewUri"])
     val reviewUri = _reviewUri.asStateFlow()
     private var receipt: PhotoCapturePermission? = savedState.get<ArrayList<String>>("receipt")?.let { values ->
-        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6]) }.getOrNull()
+        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6], values.getOrNull(7) == "true") }.getOrNull()
     }
     private var pendingReceipt: PhotoCapturePermission? = savedState.get<ArrayList<String>>("pendingReceipt")?.let { values ->
-        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6]) }.getOrNull()
+        runCatching { PhotoCapturePermission(values[0], values[1], values[2].toLong(), values[3].toLong(), values[4].toLong(), values[5], values[6], values.getOrNull(7) == "true") }.getOrNull()
     }
     var pendingCaptureStartedAtMillis: Long = savedState.get<Long>("pendingCapturedAt") ?: 0L
         private set
@@ -184,12 +244,17 @@ class CaptureOcrViewModel @Inject constructor(
         _gateFailure.value = null
         viewModelScope.launch {
             try {
-                val fix = captureLocation.freshFix()
-                if (fix == null || !fix.isEligibleForPhotoCapture(System.currentTimeMillis())) {
-                    _gateFailure.value = "photo.location-required"
-                    return@launch
+                val preview = DeveloperCaptureMode.available && _previewEnabled.value
+                val clientId = java.util.UUID.randomUUID().toString()
+                val permission = if (preview) captureGate.authorizeDevelopmentPreview(station, clientId) else {
+                    val fix = captureLocation.freshFix()
+                    if (fix == null || !fix.isEligibleForPhotoCapture(System.currentTimeMillis())) {
+                        _gateFailure.value = "photo.location-required"
+                        return@launch
+                    }
+                    captureGate.authorize(station, clientId, fix)
                 }
-                val permission = captureGate.authorize(station, java.util.UUID.randomUUID().toString(), fix)
+                if (permission.developmentPreview != preview) { _gateFailure.value = "photo.permission-invalid"; return@launch }
                 if (ticket != generation || station != (_target.value?.stationId ?: _pickedStationId.value)) return@launch
                 if (permission.stationId != station || !captureGate.isCurrent(permission) || System.currentTimeMillis() !in permission.issuedAtMillis until permission.cameraExpiresAtMillis) {
                     _gateFailure.value = "photo.permission-expired"
@@ -197,7 +262,7 @@ class CaptureOcrViewModel @Inject constructor(
                 }
                 pendingReceipt = permission
                 savedState["pendingReceipt"] = arrayListOf(permission.captureId, permission.stationId, permission.issuedAtMillis.toString(),
-                    permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(), permission.ownerScope, permission.origin)
+                    permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(), permission.ownerScope, permission.origin, permission.developmentPreview.toString())
                 onAuthorized()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { if (ticket == generation) _gateFailure.value = "photo.authorization-unavailable" }
@@ -226,6 +291,9 @@ class CaptureOcrViewModel @Inject constructor(
             _gateFailure.value = "photo.permission-expired"
             return false
         }
+        if (permission.developmentPreview && (!DeveloperCaptureMode.available || !_previewEnabled.value)) return false
+        previewPhoto = permission.developmentPreview
+        savedState["previewPhoto"] = previewPhoto
         _submit.value = null
         savedState.remove<Int>("queuedCount")
         receipt = permission
@@ -245,7 +313,7 @@ class CaptureOcrViewModel @Inject constructor(
         }
         savedState["conditional"] = false
         rememberReviewUri(uri)
-        preparePhoto(bytes, mime)
+        if (previewPhoto) processPhoto(bytes, mime) else preparePhoto(bytes, mime)
         return true
     }
 
@@ -317,7 +385,7 @@ class CaptureOcrViewModel @Inject constructor(
     }
 
     fun loadNearby() {
-        if (!flagProvider.isEnabled()) return
+        if (!flagProvider.isEnabled() || _previewEnabled.value) return
         viewModelScope.launch {
             _nearbyLoading.value = true
             _nearbyFailed.value = false
@@ -327,7 +395,9 @@ class CaptureOcrViewModel @Inject constructor(
                     _locationDenied.value = true
                     return@launch
                 }
-                when (val outcome = nearbyStations(fix.latitude, fix.longitude)) {
+                val outcome = nearbyStations(fix.latitude, fix.longitude)
+                if (_previewEnabled.value) return@launch
+                when (outcome) {
                     is NearbyServerStationsOutcome.Fresh -> {
                         _nearby.value = outcome.stations
                         if (outcome.stations.none { it.station.stationId == _pickedStationId.value }) {
@@ -428,6 +498,9 @@ class CaptureOcrViewModel @Inject constructor(
      * or the picked nearby station combined with that row's fuel.
      */
     fun submitContributions() {
+        if (previewPhoto && (!DeveloperCaptureMode.available || !_previewEnabled.value || receipt?.developmentPreview != true)) {
+            _submit.value = SubmitState.Failed("photo.development-disabled"); return
+        }
         if (submitting || _submit.value is SubmitState.Queued || _processing.value ||
             (_conditional.value && !_defaultPriceConfirmed.value)) return
         val invalid = mutableSetOf<FuelProduct>()
@@ -543,6 +616,7 @@ class CaptureOcrViewModel @Inject constructor(
      * PhotoFlow entry travels as photo_id when a shot fit the budgets.
      */
     fun submitConfirmed() {
+        if (previewPhoto || _previewEnabled.value) { _submit.value = SubmitState.Failed("photo.review-required"); return }
         val confirmed = _state.value as? CaptureOcrUiState.Confirmed
         val target = _target.value ?: _pickedStationId.value?.let { stationId ->
             runCatching {

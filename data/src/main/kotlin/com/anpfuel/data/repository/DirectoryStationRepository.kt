@@ -35,6 +35,9 @@ class DirectoryStationGatewayImpl @Inject constructor(
         return DirectoryStationJsonCodec.decodeList(raw)
     }
 
+    override suspend fun search(municipalityCode: String, query: String, limit: Int): ServerStationPage =
+        DirectoryStationJsonCodec.decodeList(httpClient.search(municipalityCode, query, limit))
+
     override suspend fun nearby(
         lat: Double,
         lon: Double,

@@ -214,10 +214,22 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [client_capture_id, station_id, location]
+              required: [client_capture_id, station_id]
+              oneOf:
+                - required: [location]
+                  properties:
+                    development_preview: {const: false}
+                - required: [development_preview]
+                  properties:
+                    development_preview: {const: true}
+                  not: {required: [location]}
               properties:
                 client_capture_id: {type: string, minLength: 1, maxLength: 128}
                 station_id: {type: string, format: uuid}
+                development_preview:
+                  type: boolean
+                  default: false
+                  description: Temporary debug UI validation; denied unless explicitly enabled with a bounded non-production server deadline. Gallery import is not a verified shutter or location claim.
                 location:
                   $ref: '#/components/schemas/LocationEvidence'
       responses:
@@ -237,7 +249,7 @@ paths:
                   issued_at: {type: string, format: date-time}
                   camera_expires_at: {type: string, format: date-time}
                   expires_at: {type: string, format: date-time}
-                  policy_version: {type: string, enum: [photo-capture-v1]}
+                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1]}
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

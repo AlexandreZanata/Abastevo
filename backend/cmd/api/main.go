@@ -66,6 +66,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
@@ -532,6 +533,13 @@ func run() error {
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
 	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
 	communityPorts := communityapp.Ports{
+		DevelopmentPhotoPreviewUntil: cfg.DevelopmentPhotoPreviewUntil,
+		CheckDevelopmentStation: func(ctx context.Context, id string) error {
+			if _, err := directoryRepo.Station(ctx, id); err != nil {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			return nil
+		},
 		Clock: time.Now,
 		CheckPhotoCapture: func(ctx context.Context, caller communityapp.Caller, dto communityapp.SubmitDTO) error {
 			view, err := evidenceStore.ForCommunity(ctx, dto.EvidenceID)
@@ -542,7 +550,7 @@ func run() error {
 				return communityapp.ErrPhotoCaptureIneligible
 			}
 			_, err = communityapp.ValidatePhotoCaptureUse(ctx, communityStore, caller,
-				communityapp.PhotoCaptureUse{CaptureID: dto.PhotoCaptureID, StationID: dto.StationID, CapturedAt: dto.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now())
+				communityapp.PhotoCaptureUse{CaptureID: dto.PhotoCaptureID, StationID: dto.StationID, CapturedAt: dto.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now(), cfg.DevelopmentPhotoPreviewUntil)
 			return err
 		},
 		Locate: func(ctx context.Context, stationID string, lat, lon float64) (float64, communityapp.StationSite, error) {
@@ -755,7 +763,7 @@ func run() error {
 		ValidatePhotoCapture: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent) (time.Time, error) {
 			receipt, err := communityapp.ValidatePhotoCaptureUse(ctx, communityStore,
 				communityapp.Caller{ContributorID: caller.ContributorID, Token: caller.Token, KeyID: caller.KeyID},
-				communityapp.PhotoCaptureUse{CaptureID: in.PhotoCaptureID, StationID: in.StationID, CapturedAt: in.CapturedAt}, time.Now())
+				communityapp.PhotoCaptureUse{CaptureID: in.PhotoCaptureID, StationID: in.StationID, CapturedAt: in.CapturedAt}, time.Now(), cfg.DevelopmentPhotoPreviewUntil)
 			if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
 				return time.Time{}, evidenceapp.ErrPhotoCaptureIneligible
 			}
@@ -798,6 +806,9 @@ func run() error {
 			return evidenceapp.Status(ctx, evidenceStore, caller, id)
 		},
 	}.RegisterRoutes(router)
+	if !cfg.DevelopmentPhotoPreviewUntil.IsZero() && cfg.R2 != nil && cfg.R2.Bucket == "abastevo-dev-photos" {
+		router.Handle("/abastevo-dev-photos/*", httpapi.DevelopmentStorageProxy(cfg.R2.Bucket))
+	}
 	server, err := httpserver.New(httpserver.Options{
 		Addr:              cfg.HTTPAddr,
 		ReadTimeout:       httpserver.DefaultReadTimeout,

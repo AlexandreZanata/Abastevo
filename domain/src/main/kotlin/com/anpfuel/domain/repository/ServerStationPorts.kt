@@ -15,6 +15,8 @@ import com.anpfuel.domain.discovery.ServerStationPage
  */
 interface ServerStationGateway {
     suspend fun list(limit: Int, cursor: String?): ServerStationPage
+    suspend fun search(municipalityCode: String, query: String, limit: Int = 20): ServerStationPage =
+        throw UnsupportedOperationException("station search unavailable")
 
     suspend fun nearby(
         lat: Double,

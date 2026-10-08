@@ -124,70 +124,11 @@ fun AccountScreen(
                 }
                 return@Column
             }
-            Text(
-                text = stringResource(R.string.profile_account_section),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.semantics { heading() },
+            SignedInAccountContent(
+                state = authState,
+                onLogout = { authViewModel.onLogout(); onNavigateBack() },
+                onDelete = { showDeleteConfirm = true },
             )
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(
-                            Icons.Default.PersonOutline,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_signed_in_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.profile_signed_in_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            authState.keyBackup?.let { backup ->
-                AccountKeyCard(backup = backup)
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            ) {
-                Column {
-                    AccountActionRow(
-                        icon = Icons.Default.Logout,
-                        title = stringResource(R.string.auth_logout),
-                        onClick = {
-                            authViewModel.onLogout()
-                            onNavigateBack()
-                        },
-                    )
-                    HorizontalDivider()
-                    AccountActionRow(
-                        icon = Icons.Default.DeleteOutline,
-                        title = stringResource(R.string.auth_delete_account),
-                        subtitle = stringResource(R.string.auth_delete_copy),
-                        destructive = true,
-                        onClick = { showDeleteConfirm = true },
-                    )
-                }
-            }
         }
     }
     if (showDeleteConfirm) {
@@ -213,6 +154,78 @@ fun AccountScreen(
             },
         )
     }
+}
+
+/** Shared by account details and login completion; one source for their UI. */
+@Composable
+internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, onLogout: () -> Unit, onDelete: () -> Unit) {
+    Text(
+        text = stringResource(R.string.profile_account_section),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.semantics { heading() },
+    )
+    AccountStatusCard(stringResource(R.string.profile_signed_in_title), stringResource(R.string.profile_signed_in_subtitle))
+    state.keyBackup?.let { backup ->
+        AccountKeyCard(backup = backup)
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column {
+            AccountActionRow(
+                icon = Icons.Default.Logout,
+                title = stringResource(R.string.auth_logout),
+                onClick = onLogout,
+            )
+            HorizontalDivider()
+            AccountActionRow(
+                icon = Icons.Default.DeleteOutline,
+                title = stringResource(R.string.auth_delete_account),
+                subtitle = stringResource(R.string.auth_delete_copy),
+                destructive = true,
+                onClick = onDelete,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun AccountStatusCard(title: String, subtitle: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(
+                    Icons.Default.PersonOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { heading() },
+                )
+            }
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
 }
 
 @Composable

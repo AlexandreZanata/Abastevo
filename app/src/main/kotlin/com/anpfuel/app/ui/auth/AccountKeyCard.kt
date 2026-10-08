@@ -68,6 +68,13 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
     var revealed by remember(backup) { mutableStateOf(false) }
     var confirmation by remember(backup) { mutableStateOf<KeyAction?>(null) }
     var pending by remember(backup) { mutableStateOf<KeyAction?>(null) }
+    var unlockAttempt by remember(backup) { mutableStateOf<KeyUnlockSession.Attempt?>(null) }
+    val grant = AccountKeyUnlockSession.grant
+    val accountScope = remember(backup) {
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest((backup.username + ":" + backup.accountKey).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }
     var copied by remember(backup) { mutableStateOf(false) }
     var notice by remember(backup) { mutableStateOf<Int?>(null) }
     var needsDeviceLock by remember { mutableStateOf(false) }
@@ -121,10 +128,13 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
 
     val unlock = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val action = pending
+        val attempt = unlockAttempt
         pending = null
-        if (result.resultCode == Activity.RESULT_OK && action != null) perform(action)
+        unlockAttempt = null
+        if (attempt != null && grant.complete(attempt, result.resultCode == Activity.RESULT_OK) && action != null) perform(action)
     }
     fun authorize(action: KeyAction) {
+        if (grant.isAuthorized(accountScope)) { perform(action); return }
         val manager = context.getSystemService(KeyguardManager::class.java)
         if (!manager.isDeviceSecure) {
             needsDeviceLock = true
@@ -140,10 +150,13 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
             return
         }
         pending = action
+        unlockAttempt = grant.begin(accountScope)
         try {
             unlock.launch(intent)
         } catch (_: Exception) {
             pending = null
+            unlockAttempt?.let { grant.complete(it, false) }
+            unlockAttempt = null
             notice = R.string.account_key_export_failed
         }
     }

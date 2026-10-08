@@ -11,6 +11,7 @@ import (
 
 const PhotoCaptureRadiusM = 150.0
 const PhotoCapturePolicy = "photo-capture-v1"
+const DevelopmentPhotoCapturePolicy = "photo-capture-ui-test-v1"
 
 var ErrPhotoCaptureIneligible = errors.New("community: photo capture not eligible")
 
@@ -36,9 +37,10 @@ type PhotoCaptureStore interface {
 }
 
 type PhotoCaptureIntent struct {
-	ClientCaptureID string
-	StationID       string
-	Location        *LocationEvidence
+	ClientCaptureID    string
+	StationID          string
+	Location           *LocationEvidence
+	DevelopmentPreview bool
 }
 
 // CheckPhotoCaptureLocation reuses the frozen location classification and
@@ -98,8 +100,20 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 	}
 	out, err := p.Idempotent(ctx, IdempotencyKey{ContributorID: caller.ContributorID, Method: "POST", Route: "/v1/photo-captures", Key: key}, body, func(ctx context.Context) (Outcome, error) {
 		now := p.Clock()
-		if err := CheckPhotoCaptureLocation(ctx, p, in.StationID, in.Location, now); err != nil {
-			return Outcome{}, err
+		policy := PhotoCapturePolicy
+		if in.DevelopmentPreview {
+			if p.DevelopmentPhotoPreviewUntil.IsZero() || !now.Before(p.DevelopmentPhotoPreviewUntil) || p.CheckDevelopmentStation == nil {
+				return Outcome{}, ErrPhotoCaptureIneligible
+			}
+			if err := p.CheckDevelopmentStation(ctx, in.StationID); err != nil {
+				return Outcome{}, err
+			}
+			policy = DevelopmentPhotoCapturePolicy
+		}
+		if !in.DevelopmentPreview {
+			if err := CheckPhotoCaptureLocation(ctx, p, in.StationID, in.Location, now); err != nil {
+				return Outcome{}, err
+			}
 		}
 		id, err := p.NewID()
 		if err != nil {
@@ -108,7 +122,7 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 		receipt, err := store.InsertPhotoCapture(ctx, PhotoCapture{
 			ID: id, ContributorRef: caller.Token, KeyID: caller.KeyID, ClientCaptureID: in.ClientCaptureID,
 			StationID: in.StationID, IssuedAt: now, CameraExpiresAt: now.Add(2 * time.Minute),
-			ExpiresAt: now.Add(24 * time.Hour), PolicyVersion: PhotoCapturePolicy,
+			ExpiresAt: now.Add(24 * time.Hour), PolicyVersion: policy,
 		})
 		if err != nil {
 			return Outcome{}, err
@@ -122,6 +136,10 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 	var receipt PhotoCapture
 	if err := json.Unmarshal(out.Body, &receipt); err != nil {
 		return PhotoCapture{}, false, err
+	}
+	if receipt.PolicyVersion == DevelopmentPhotoCapturePolicy &&
+		(p.DevelopmentPhotoPreviewUntil.IsZero() || !p.Clock().Before(p.DevelopmentPhotoPreviewUntil)) {
+		return PhotoCapture{}, false, ErrPhotoCaptureIneligible
 	}
 	if !p.Clock().Before(receipt.CameraExpiresAt) {
 		return PhotoCapture{}, false, ErrPhotoCaptureIneligible
@@ -138,7 +156,7 @@ type PhotoCaptureUse struct {
 	EvidenceSessionID string
 }
 
-func ValidatePhotoCaptureUse(ctx context.Context, store PhotoCaptureStore, caller Caller, in PhotoCaptureUse, now time.Time) (PhotoCapture, error) {
+func ValidatePhotoCaptureUse(ctx context.Context, store PhotoCaptureStore, caller Caller, in PhotoCaptureUse, now time.Time, developmentUntil ...time.Time) (PhotoCapture, error) {
 	if store == nil || caller.ContributorID == "" || caller.Token == "" || caller.KeyID == "" ||
 		in.CaptureID == "" || in.StationID == "" || in.CapturedAt.IsZero() || now.IsZero() || in.CapturedAt.After(now) {
 		return PhotoCapture{}, ErrPhotoCaptureIneligible
@@ -147,8 +165,12 @@ func ValidatePhotoCaptureUse(ctx context.Context, store PhotoCaptureStore, calle
 	if err != nil {
 		return PhotoCapture{}, err
 	}
+	allowedPolicy := receipt.PolicyVersion == PhotoCapturePolicy
+	if receipt.PolicyVersion == DevelopmentPhotoCapturePolicy && len(developmentUntil) == 1 {
+		allowedPolicy = !developmentUntil[0].IsZero() && now.Before(developmentUntil[0])
+	}
 	if receipt.ID != in.CaptureID || receipt.ContributorRef != caller.Token || receipt.KeyID != caller.KeyID ||
-		receipt.StationID != in.StationID || receipt.PolicyVersion != PhotoCapturePolicy || !now.Before(receipt.ExpiresAt) ||
+		receipt.StationID != in.StationID || !allowedPolicy || !now.Before(receipt.ExpiresAt) ||
 		in.CapturedAt.Before(receipt.IssuedAt) || !in.CapturedAt.Before(receipt.CameraExpiresAt) ||
 		(receipt.EvidenceSessionID != "" && !receipt.CapturedAt.Equal(in.CapturedAt)) ||
 		(in.EvidenceSessionID != "" && receipt.EvidenceSessionID != in.EvidenceSessionID) {

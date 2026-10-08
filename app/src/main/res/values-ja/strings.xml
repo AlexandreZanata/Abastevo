@@ -692,4 +692,12 @@
     <string name="account_guest_subtitle">キーでログインするか、無料アカウントを作成してここで管理してください。</string>
     <string name="capture_saving">確認済みの価格を保存中…</string>
     <string name="capture_retry_guidance">写真、給油所、アカウントを確認し、必要なら撮り直してください。</string>
+    <string name="developer_capture_title">Temporary developer mode</string>
+    <string name="developer_capture_notice">Test server only: location is waived and gallery photos are allowed. Submissions keep a test origin; the server permission expires automatically.</string>
+    <string name="developer_capture_city">City: %1$s · %2$s</string>
+    <string name="developer_capture_city_missing">Choose your city manually on Home, then reopen this screen.</string>
+    <string name="developer_capture_station">Station name</string>
+    <string name="developer_capture_gallery">Choose from gallery</string>
+    <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
+    <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
 </resources>

@@ -37,6 +37,11 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var authFlow: AuthFlow
     @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
 
+    override fun onDestroy() {
+        if (!isChangingConfigurations) com.anpfuel.app.ui.auth.AccountKeyUnlockSession.grant.reset()
+        super.onDestroy()
+    }
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocaleApplier.wrap(newBase, AppLocaleHolder.localeTag))
     }

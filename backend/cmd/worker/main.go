@@ -582,7 +582,7 @@ func run() error {
 						}
 						_, err = communityapp.ValidatePhotoCaptureUse(ctx, store,
 							communityapp.Caller{ContributorID: "validation-worker", Token: obs.ContributorRef, KeyID: receipt.KeyID},
-							communityapp.PhotoCaptureUse{CaptureID: obs.PhotoCaptureID, StationID: obs.StationID, CapturedAt: obs.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now())
+							communityapp.PhotoCaptureUse{CaptureID: obs.PhotoCaptureID, StationID: obs.StationID, CapturedAt: obs.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now(), cfg.DevelopmentPhotoPreviewUntil)
 						if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
 							return communityapp.ErrEvidenceInUse
 						}

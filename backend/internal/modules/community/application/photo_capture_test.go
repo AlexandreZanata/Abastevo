@@ -149,3 +149,60 @@ func TestPhotoCaptureUseRejectsChangedScopeTimeSessionAndExpiry(t *testing.T) {
 		t.Fatal("future capture accepted")
 	}
 }
+
+type previewCaptureStore struct {
+	noCaptureStore
+	receipt PhotoCapture
+}
+
+func (s *previewCaptureStore) InsertPhotoCapture(_ context.Context, in PhotoCapture) (PhotoCapture, error) {
+	s.receipt = in
+	return in, nil
+}
+
+func TestDevelopmentPhotoPreviewRequiresOptInDeadlineCanonicalStationAndProof(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	p := testPorts()
+	p.Clock = func() time.Time { return now }
+	p.Idempotent = func(ctx context.Context, _ IdempotencyKey, _ []byte, run func(context.Context) (Outcome, error)) (Outcome, error) {
+		return run(ctx)
+	}
+	in := PhotoCaptureIntent{ClientCaptureID: "preview", StationID: testDTO().StationID, DevelopmentPreview: true}
+	store := &previewCaptureStore{}
+	if _, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("default bypass", err)
+	}
+	p.DevelopmentPhotoPreviewUntil = now.Add(time.Hour)
+	p.CheckDevelopmentStation = func(context.Context, string) error { return nil }
+	got, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in)
+	if err != nil || got.PolicyVersion != DevelopmentPhotoCapturePolicy {
+		t.Fatal("preview refusal", err)
+	}
+	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, Caller{}, "preview", nil, in); !errors.Is(err, ErrUnauthorized) {
+		t.Fatal("unsigned allowed")
+	}
+	p.CheckDevelopmentStation = func(context.Context, string) error { return ErrPhotoCaptureIneligible }
+	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("unknown station allowed")
+	}
+	p.CheckDevelopmentStation = func(context.Context, string) error { return nil }
+	p.Clock = func() time.Time { return p.DevelopmentPhotoPreviewUntil }
+	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("expired opt-in allowed")
+	}
+	p.Clock = func() time.Time { return now }
+	in.DevelopmentPreview = false
+	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("normal flow bypassed location")
+	}
+	receipt := store.receipt
+	receipt.ContributorRef = testCaller().Token
+	receipt.KeyID = testCaller().KeyID
+	use := PhotoCaptureUse{CaptureID: receipt.ID, StationID: receipt.StationID, CapturedAt: now.Add(time.Second)}
+	if _, err = ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, testCaller(), use, now.Add(time.Second)); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("preview receipt admitted without explicit policy")
+	}
+	if _, err = ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, testCaller(), use, now.Add(time.Second), p.DevelopmentPhotoPreviewUntil); err != nil {
+		t.Fatal(err)
+	}
+}
