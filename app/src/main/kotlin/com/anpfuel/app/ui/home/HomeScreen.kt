@@ -278,6 +278,7 @@ internal fun HomeContent(
 private fun HomeLoadingSkeleton() {
     SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
         SkeletonLine(width = 200.dp, height = 24.dp)
+        SkeletonLine(width = 260.dp)
         SkeletonCard(height = 104.dp)
         SkeletonCard(height = 104.dp)
         SkeletonButton()
@@ -328,22 +329,13 @@ private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
     val municipality = uiState.municipality ?: return
     val state = uiState.state ?: return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            uiState.surveyWeek?.let { week ->
-                val locale = LocalConfiguration.current.locales[0]
-                Text(
-                    stringResource(R.string.prices_survey_week_label, SurveyWeekFormatter.formatRange(week, locale)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        Text(
+            text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
         TextButton(onClick = { onNavigate(Routes.LOCATION) }) {
             Text(stringResource(R.string.home_change_city))
         }
