@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -24,6 +23,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.profile.ProfileBadge
 import com.anpfuel.domain.profile.ProfileBadgeInput
 import com.anpfuel.domain.profile.ProfileBadgeRule
@@ -54,7 +55,14 @@ internal fun StationProfileContent(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (state.loading) CircularProgressIndicator()
+        if (state.loading) {
+            SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                SkeletonLine(width = 240.dp, height = 28.dp)
+                SkeletonLine()
+                SkeletonLine()
+                SkeletonLine(width = 180.dp)
+            }
+        }
         if (state.unavailable) {
             Text(stringResource(R.string.station_profile_unavailable))
             OutlinedButton(onClick = onRetry, enabled = !state.loading) { Text(stringResource(R.string.action_retry)) }

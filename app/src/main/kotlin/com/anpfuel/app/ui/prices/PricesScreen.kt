@@ -31,7 +31,9 @@ import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.MunicipalityPriceDetailRow
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SyncStatusBanner
@@ -106,7 +108,7 @@ private fun PricesContent(
             }
 
             when {
-                uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
+                uiState.isLoading -> PricesLoadingSkeleton()
 
                 uiState.error != null -> {
                     ErrorState(
@@ -179,6 +181,15 @@ private fun PricesContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PricesLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 220.dp, height = 28.dp)
+        SkeletonLine(width = 150.dp)
+        repeat(4) { SkeletonCard(height = 140.dp) }
     }
 }
 

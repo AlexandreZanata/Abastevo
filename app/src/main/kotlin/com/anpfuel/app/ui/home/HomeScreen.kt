@@ -58,11 +58,13 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.components.SkeletonButton
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SyncStatusBanner
 import com.anpfuel.app.ui.components.TankFillCostCard
-import com.anpfuel.app.ui.components.TankFillCostPlaceholderCard
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
@@ -189,11 +191,11 @@ internal fun HomeContent(
             if (uiState.hasLocation) {
                 LocationHeader(uiState = uiState, onNavigate = onNavigate)
             }
-            HomeCommunityHero(onContribute = { onNavigate(Routes.STATIONS) })
+            HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
             HomeBenefits()
 
             when {
-                uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
+                uiState.isLoading -> HomeLoadingSkeleton()
 
                 uiState.error != null -> {
                     ErrorState(
@@ -259,12 +261,7 @@ internal fun HomeContent(
                     ) {
                         Text(text = stringResource(R.string.home_view_price_details))
                     }
-                    HomeShortcuts(onNavigate = onNavigate)
-                    if (uiState.tankFillCostEstimates.isEmpty()) {
-                        TankFillCostPlaceholderCard(
-                            onClick = { onNavigate(Routes.VEHICLES) },
-                        )
-                    } else {
+                    if (uiState.tankFillCostEstimates.isNotEmpty()) {
                         VehicleCarousel(
                             estimates = uiState.tankFillCostEstimates,
                             onNavigate = onNavigate,
@@ -274,6 +271,16 @@ internal fun HomeContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 200.dp, height = 24.dp)
+        SkeletonCard(height = 104.dp)
+        SkeletonCard(height = 104.dp)
+        SkeletonButton()
     }
 }
 

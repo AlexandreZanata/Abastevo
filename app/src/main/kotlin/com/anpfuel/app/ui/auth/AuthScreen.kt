@@ -51,6 +51,10 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.SkeletonButton
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
 /**
@@ -184,7 +188,10 @@ fun AuthScreen(
             ) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     when (state.step) {
-                        AuthStep.CHECKING, AuthStep.BUSY -> {
+                        AuthStep.CHECKING -> {
+                            AuthFormLoadingSkeleton()
+                        }
+                        AuthStep.BUSY -> {
                             CircularProgressIndicator()
                         }
                         AuthStep.USERNAME_ENTRY -> {
@@ -338,6 +345,17 @@ fun AuthScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun AuthFormLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 200.dp, height = 28.dp)
+        SkeletonLine()
+        SkeletonCard(height = 56.dp)
+        SkeletonCard(height = 56.dp)
+        SkeletonButton()
     }
 }
 

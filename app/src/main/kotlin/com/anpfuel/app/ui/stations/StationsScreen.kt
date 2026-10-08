@@ -52,8 +52,10 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.StationsNavigateHintBanner
 import com.anpfuel.app.ui.components.FuelProductLabel
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.StationPriceRow
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.StationPriceUiModel
@@ -262,9 +264,7 @@ private fun StationsContent(
                 // P20-T02: a failed refresh keeps cached stations, so loading
                 // and error replace the list only when there is nothing cached.
                 (uiState.isLoading || uiState.isDownloading) && uiState.stations.isEmpty() -> {
-                    LoadingState(
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    StationsLoadingSkeleton()
                 }
 
                 uiState.error != null && uiState.stations.isEmpty() -> {
@@ -462,6 +462,14 @@ private fun NearestStationButton(
             text = stringResource(R.string.stations_nearest_action),
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+@Composable
+private fun StationsLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 220.dp, height = 28.dp)
+        repeat(4) { SkeletonCard(height = 96.dp) }
     }
 }
 

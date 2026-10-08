@@ -33,6 +33,8 @@ import com.anpfuel.app.mapper.DataAvailabilityI18n
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.MunicipalitySearchResult
 
@@ -120,7 +122,9 @@ internal fun SearchContent(
                     }
 
                     uiState.isSearching -> {
-                        LoadingState(modifier = Modifier.fillMaxWidth())
+                        SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                            repeat(4) { SkeletonCard(height = 64.dp) }
+                        }
                     }
 
                     uiState.showNoResults -> {

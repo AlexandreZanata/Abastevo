@@ -18,9 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -28,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
-import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.theme.FuelProductTint
@@ -79,47 +75,6 @@ internal fun HomeReferencePriceCard(price: AveragePriceUiModel, darkTheme: Boole
                 )
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-        }
-    }
-}
-
-@Composable
-internal fun HomeShortcuts(onNavigate: (String) -> Unit) {
-    if (LocalDensity.current.fontScale > 1.3f) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            HomeShortcut(R.drawable.ic_home_stations, R.string.home_shortcut_stations, R.string.home_shortcut_stations_description,
-                Modifier.fillMaxWidth()) { onNavigate(Routes.STATIONS) }
-            HomeShortcut(R.drawable.ic_home_history, R.string.home_shortcut_history, R.string.home_shortcut_history_description,
-                Modifier.fillMaxWidth()) { onNavigate(Routes.HISTORY) }
-        }
-    } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HomeShortcut(R.drawable.ic_home_stations, R.string.home_shortcut_stations, R.string.home_shortcut_stations_description,
-                Modifier.weight(1f)) { onNavigate(Routes.STATIONS) }
-            HomeShortcut(R.drawable.ic_home_history, R.string.home_shortcut_history, R.string.home_shortcut_history_description,
-                Modifier.weight(1f)) { onNavigate(Routes.HISTORY) }
-        }
-    }
-}
-
-@Composable
-private fun HomeShortcut(icon: Int, title: Int, description: Int, modifier: Modifier, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(painterResource(icon), contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(28.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                Text(stringResource(description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
     }
 }
