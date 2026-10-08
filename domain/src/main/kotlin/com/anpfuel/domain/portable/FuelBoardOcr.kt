@@ -14,6 +14,9 @@ object FuelBoardOcr {
     data class Row(val product: FuelProduct, val amountMilli: Long)
     data class Result(val rows: List<Row>, val conditional: Boolean, val unresolved: Boolean, val orphans: List<Long> = emptyList())
     private val price = Regex("(?<![0-9/.-])[0-9]{1,4}[.,][0-9]{2,3}(?![0-9/])")
+    private val integerFragment = Regex("^[1-9][.,]?$")
+    private val fractionFragment = Regex("^[0-9]{2,3}$")
+    private val numericFragment = Regex("^[0-9]{1,3}[.,]?$")
     /** Board-only price recovery (NOT part of the frozen PortablePriceOcr grammar):
      * LED boards often lose the decimal separator ("4 35", "675").
      * Spaces between digits become a comma; a bare 3-digit token becomes
@@ -22,7 +25,14 @@ object FuelBoardOcr {
     private const val MAX_ORPHANS = 5
 
     fun associate(input: List<Token>): Result {
-        val tokens = input.take(512).filter { it.text.length <= 256 && it.right > it.left && it.bottom > it.top }
+        val original = input.take(512).filter { it.text.length <= 256 && it.right > it.left && it.bottom > it.top }.distinct()
+        val recovered = recoverSplitPrices(original)
+        // A three-digit fraction must not also become a standalone D,DD price.
+        val tokens = original.filterNot { token ->
+            recovered.any { joined -> joined.left <= token.left && joined.top <= token.top &&
+                joined.right >= token.right && joined.bottom >= token.bottom } &&
+                numericFragment.matches(token.text.trim())
+        } + recovered
         val conditional = tokens.any { normalize(it.text).let { text -> listOf("VISTA", "CARTAO", "CREDITO", "DEBITO", "PIX", "APP", "CLUBE", "FIDELIDADE", "PROMOCAO").any { word -> Regex("\\b$word\\b").containsMatchIn(text) } } }
         fun encloses(a: Token,b: Token) = a.left <= b.left+2 && a.top <= b.top+2 && a.right >= b.right-2 && a.bottom >= b.bottom-2
         // Prefer tight element geometry over a whole line that contains both label and number.
@@ -117,6 +127,41 @@ object FuelBoardOcr {
             if(amounts.size==1) Row(fuel,amounts.single()) else { unresolved=true;null }
         }
         return Result(rows,conditional,unresolved,orphans)
+    }
+
+    /** Some physical boards put integer and fraction in separate OCR lines. */
+    private fun recoverSplitPrices(tokens: List<Token>): List<Token> {
+        val labels = tokens.filter { labelLike(normalize(it.text)) && !price.containsMatchIn(it.text) }
+        if (labels.isEmpty()) return emptyList()
+        val integers = tokens.filter { integerFragment.matches(it.text.trim()) }
+        val fractions = tokens.filter { fractionFragment.matches(it.text.trim()) }
+        val completePrices = tokens.filter { price.containsMatchIn(it.text) }
+        val pairs = integers.flatMap { integer ->
+            fractions.mapNotNull { fraction ->
+                val h = max(integer.height, fraction.height).toDouble()
+                val gap = fraction.left - integer.right
+                val aligned = abs(integer.cy - fraction.cy) <= h * 0.25 &&
+                    minOf(integer.height, fraction.height) >= h * 0.6 && gap >= 0 && gap <= h * 1.25
+                if (!aligned) return@mapNotNull null
+                val labeled = labels.any { label ->
+                    abs(label.cy - integer.cy) <= max(label.height, integer.height) * 0.75 &&
+                        integer.left >= label.right && integer.left - label.right <= h * 4
+                }
+                if (!labeled) return@mapNotNull null
+                val complete = completePrices.any { token ->
+                    token.left <= integer.left + 2 &&
+                        token.top <= minOf(integer.top, fraction.top) + 2 &&
+                        token.right >= fraction.right - 2 && token.bottom >= maxOf(integer.bottom, fraction.bottom) - 2
+                }
+                if (!complete) integer to fraction else null
+            }
+        }
+        return pairs.filter { (integer, fraction) ->
+            pairs.count { it.first == integer } == 1 && pairs.count { it.second == fraction } == 1
+        }.map { (integer, fraction) ->
+            Token(integer.text.trim().take(1) + "," + fraction.text.trim(), integer.left,
+                minOf(integer.top, fraction.top), fraction.right, maxOf(integer.bottom, fraction.bottom))
+        }
     }
 
     private fun normalize(text: String): String = text.uppercase()

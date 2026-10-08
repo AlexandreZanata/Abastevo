@@ -7,6 +7,51 @@ import org.junit.jupiter.api.Test
 class FuelBoardOcrTest {
     private fun box(text: String, x: Int, y: Int, w: Int = 100) = FuelBoardOcr.Token(text, x, y, x + w, y + 30)
 
+    @Test fun `separate integer and fraction blocks recover all aligned fuel rows`() {
+        val tokens = listOf(
+            box("ETANOL", 0, 0), box("4. 44", 150, 0, 130),
+            box("GASOLINA", 0, 60), box("6.", 150, 60, 25), box("91", 195, 60, 45),
+            box("DIESEL", 0, 120), box("6", 150, 120, 25), box("35", 195, 120, 45),
+            box("DIESEL S10", 0, 180), box("6", 150, 180, 25), box("45", 195, 180, 45),
+        )
+        val result = FuelBoardOcr.associate(tokens)
+        assertEquals(mapOf(FuelProduct.ETHANOL to 4440L, FuelProduct.GASOLINE_REGULAR to 6910L,
+            FuelProduct.DIESEL_S500 to 6350L, FuelProduct.DIESEL_S10 to 6450L),
+            result.rows.associate { it.product to it.amountMilli })
+        assertFalse(result.unresolved)
+        assertTrue(result.orphans.isEmpty())
+    }
+
+    @Test fun `split fragments require a unique nearby same-row labeled partner`() {
+        val cases = listOf(
+            listOf(box("6",150,0,25),box("91",195,0,45)),
+            listOf(box("GASOLINA",0,0),box("6",150,0,25),box("91",195,60,45)),
+            listOf(box("GASOLINA",0,0),box("6",150,0,25),box("91",400,0,45)),
+            listOf(box("GASOLINA",0,0),box("6",150,0,25),box("91",195,0,10),box("35",210,0,20)),
+            listOf(box("GASOLINA",0,0),box("6",150,0,25),FuelBoardOcr.Token("91",195,10,210,20)),
+            listOf(box("GASOLINA",0,0),box("0",150,0,25),box("91",195,0,45)),
+            listOf(box("GASOLINA",0,0),box("6",150,0,10),box("7",165,0,10),box("91",195,0,45)),
+        )
+        for (tokens in cases) {
+            val result = FuelBoardOcr.associate(tokens)
+            assertTrue(result.rows.isEmpty(), tokens.toString())
+            assertTrue(result.orphans.isEmpty(), tokens.toString())
+        }
+    }
+
+    @Test fun `complete price geometry takes precedence over split child elements`() {
+        val result = FuelBoardOcr.associate(listOf(box("GASOLINA",0,0),
+            box("6,920",150,0,120),box("6",150,0,25),box("91",195,0,45)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_REGULAR,6920L)),result.rows)
+        assertFalse(result.unresolved)
+    }
+
+    @Test fun `split comma and three fractional digits retain milli precision`() {
+        val result = FuelBoardOcr.associate(listOf(box("ETANOL",0,0),
+            box("4,",150,0,25),box("321",195,0,55)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL,4321L)),result.rows)
+    }
+
     @Test fun `associates rows and preserves different variants without choosing minimum`() {
         val result = FuelBoardOcr.associate(listOf(box("GASOLINA",0,0),box("6,59",200,0),box("ADITIVADA",0,50),box("6.74",200,50),box("ETANOL",0,100),box("4,32",200,100)))
         assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to 6590L,FuelProduct.GASOLINE_PREMIUM to 6740L,FuelProduct.ETHANOL to 4320L),result.rows.associate{it.product to it.amountMilli})
