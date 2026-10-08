@@ -612,6 +612,8 @@
     <string name="capture_show_all">Mostrar todos los combustibles</string>
     <string name="capture_send_prices">Enviar %1$d precios</string>
     <string name="capture_sent_count">%1$d precios en cola para subir.</string>
+    <string name="capture_sent">¡%1$d precios enviados. Gracias!</string>
+    <string name="capture_back_community">Volver a la comunidad</string>
     <string name="capture_partial">%1$d enviados, luego falló (%2$s). Los precios ya enviados siguen en cola.</string>
     <string name="capture_take_photo">Fotografiar precios</string>
     <string name="capture_photo_attached">Foto adjunta: se guarda con el precio en la bandeja de salida.</string>

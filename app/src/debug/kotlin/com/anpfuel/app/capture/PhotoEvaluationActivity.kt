@@ -134,6 +134,7 @@ class PhotoEvaluationActivity : ComponentActivity() {
                                     recognize(bytes)
                                 } },
                                 onRetake = openCamera,
+                                onNavigateBack = { finish() },
                                 onSubmit = {
                                     reviewedCount = rows.count { (product, value) -> product !in removed && value.isNotBlank() }
                                     queuedLocally = true

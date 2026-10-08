@@ -507,6 +507,8 @@
     <string name="capture_show_all">Mostrar todos os combustíveis</string>
     <string name="capture_send_prices">Enviar %1$d preços</string>
     <string name="capture_sent_count">%1$d preços na fila de envio.</string>
+    <string name="capture_sent">%1$d preços enviados. Obrigado!</string>
+    <string name="capture_back_community">Voltar para a comunidade</string>
     <string name="capture_partial">%1$d enviados, depois falhou (%2$s). Os já enviados continuam na fila.</string>
     <string name="capture_take_photo">Fotografar preço</string>
     <string name="capture_photo_attached">Foto anexada — ela vai com seu preço para a caixa.</string>

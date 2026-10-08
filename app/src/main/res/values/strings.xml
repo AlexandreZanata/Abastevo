@@ -508,6 +508,8 @@
     <string name="capture_show_all">Show all fuels</string>
     <string name="capture_send_prices">Send %1$d prices</string>
     <string name="capture_sent_count">%1$d prices queued for upload.</string>
+    <string name="capture_sent">%1$d prices sent. Thank you!</string>
+    <string name="capture_back_community">Back to community</string>
     <string name="capture_partial">%1$d sent, then failed (%2$s). Already-sent prices stay queued.</string>
     <string name="capture_take_photo">Take price photo</string>
     <string name="capture_photo_attached">Photo attached — it travels with your price to the outbox.</string>

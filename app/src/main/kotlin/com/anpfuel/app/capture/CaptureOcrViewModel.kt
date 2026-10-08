@@ -20,6 +20,7 @@ import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionOutcome
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome
+import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
 import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
@@ -78,6 +79,7 @@ class CaptureOcrViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
     private val cityFeed: com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase,
     private val stationGateway: com.anpfuel.domain.repository.ServerStationGateway,
+    private val ownedContributions: GetOwnedContributionsUseCase,
 
 ) : ViewModel() {
 
@@ -107,6 +109,7 @@ class CaptureOcrViewModel @Inject constructor(
         _unassignedAmounts.value = emptyList(); savedState.remove<ArrayList<String>>("unassigned")
         FuelProduct.entries.forEach { savedState.remove<String>("amount.${it.name}"); savedState.remove<Boolean>("edited.${it.name}"); savedState.remove<Boolean>("removed.${it.name}") }
         _submit.value = null; savedState.remove<Int>("queuedCount")
+        submittedIds = emptyList(); savedState.remove<ArrayList<String>>("submittedIds")
         _pickedStationId.value = null; _previewStations.value = emptyList(); _previewQuery.value = ""
         previewPhoto = false; savedState["previewPhoto"] = false
         _gateFailure.value = null; _state.value = initialState(); _previewEnabled.value = enabled
@@ -327,6 +330,8 @@ class CaptureOcrViewModel @Inject constructor(
         savedState["previewPhoto"] = previewPhoto
         _submit.value = null
         savedState.remove<Int>("queuedCount")
+        submittedIds = emptyList()
+        savedState.remove<ArrayList<String>>("submittedIds")
         receipt = permission
         savedState["receipt"] = savedState.get<ArrayList<String>>("pendingReceipt")
         pendingReceipt = null
@@ -603,6 +608,9 @@ class CaptureOcrViewModel @Inject constructor(
                         queuedPhotoIds += photo
                         savedState["queuedPhotoIds"] = ArrayList(queuedPhotoIds)
                         savedState["queuedCount"] = result.commands.size
+                        submittedIds = result.commands.map { it.commandId }
+                        savedState["submittedIds"] = ArrayList(submittedIds)
+                        watchSubmitted(submittedIds)
                         SubmitState.Queued(result.historical, result.commands.size)
                     }
                 }
@@ -633,6 +641,7 @@ class CaptureOcrViewModel @Inject constructor(
         data class Queued(val historical: Boolean, val count: Int = 1) : SubmitState
         data class Partial(val sent: Int, val reason: String) : SubmitState
         data class Failed(val reason: String) : SubmitState
+        data class Sent(val count: Int) : SubmitState
     }
 
     /** Minimum station area: the camera opens only inside this radius. */
@@ -646,6 +655,56 @@ class CaptureOcrViewModel @Inject constructor(
 
     private val _submit = MutableStateFlow<SubmitState?>(savedState.get<Int>("queuedCount")?.let { SubmitState.Queued(false, it) })
     val submit: StateFlow<SubmitState?> = _submit.asStateFlow()
+
+    /**
+     * Command ids of the last submitted review, watched until every row
+     * reaches a terminal server state. Survives process death so the
+     * success feedback appears even when validation lands later.
+     */
+    private var submittedIds: List<String> =
+        savedState.get<ArrayList<String>>("submittedIds")?.toList() ?: emptyList()
+    private var statusPoller: kotlinx.coroutines.Job? = null
+
+    init {
+        if (_submit.value is SubmitState.Queued && submittedIds.isNotEmpty() && _reviewUri.value != null) {
+            watchSubmitted(submittedIds)
+        }
+    }
+
+    /**
+     * Watches the durable outbox until every submitted command is
+     * accepted (success feedback) or terminally refused. Polls on a
+     * bounded schedule only while this review is still queued; any new
+     * photo or submit replaces the watch.
+     */
+    private fun watchSubmitted(ids: List<String>) {
+        if (ids.isEmpty()) return
+        statusPoller?.cancel()
+        val uri = _reviewUri.value
+        statusPoller = viewModelScope.launch {
+            repeat(30) {
+                kotlinx.coroutines.delay(20_000)
+                if (_submit.value !is SubmitState.Queued || _reviewUri.value != uri) return@launch
+                if (refreshSubmitted(ids)) return@launch
+            }
+        }
+    }
+
+    /** Returns true once a terminal feedback state was published. */
+    private suspend fun refreshSubmitted(ids: List<String>): Boolean {
+        val statuses = runCatching { ownedContributions.invoke() }.getOrNull() ?: return false
+        val mine = statuses.filter { it.commandId in ids }
+        if (mine.size < ids.size) return false
+        val accepted = mine.count { it.state == com.anpfuel.domain.contribution.ContributionState.Accepted }
+        val rejected = mine.filter { it.state == com.anpfuel.domain.contribution.ContributionState.Rejected }
+        _submit.value = when {
+            accepted == ids.size -> SubmitState.Sent(ids.size)
+            rejected.isNotEmpty() && accepted + rejected.size == ids.size ->
+                SubmitState.Partial(accepted, rejected.firstNotNullOfOrNull { it.reason } ?: "contribution.rejected")
+            else -> return false
+        }
+        return true
+    }
 
     fun bindTarget(stationId: String?, fuelProductWire: String?) {
         if ((_target.value?.stationId ?: pendingReceipt?.stationId ?: receipt?.stationId) != stationId) { generation++; pendingReceipt = null; receipt = null; _gateBusy.value = false }

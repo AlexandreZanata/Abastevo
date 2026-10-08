@@ -612,6 +612,8 @@
     <string name="capture_show_all">Показать все виды топлива</string>
     <string name="capture_send_prices">Отправить %1$d цен</string>
     <string name="capture_sent_count">Цены (%1$d) поставлены в очередь загрузки.</string>
+    <string name="capture_sent">Отправлено цен: %1$d. Спасибо!</string>
+    <string name="capture_back_community">Назад к сообществу</string>
     <string name="capture_partial">Отправлено %1$d, затем ошибка (%2$s). Уже отправленные цены остаются в очереди.</string>
     <string name="capture_take_photo">Сфотографировать цены</string>
     <string name="capture_photo_attached">Фото прикреплено и сохранено вместе с ценой в очереди отправки.</string>

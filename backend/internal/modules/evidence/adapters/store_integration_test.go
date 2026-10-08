@@ -249,7 +249,7 @@ func TestRecordVerifiedBindsFactAtomically(t *testing.T) {
 	}
 }
 
-func TestRecordVerifiedRollsBackDuplicateKey(t *testing.T) {
+func TestRecordVerifiedConvergesDuplicateContentKey(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	first := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
@@ -261,14 +261,32 @@ func TestRecordVerifiedRollsBackDuplicateKey(t *testing.T) {
 	if err := s.CompleteSession(ctx, sess.ID, enqueueStub(&jobs)); err != nil {
 		t.Fatal(err)
 	}
+	// Byte-identical resubmission converges on the existing object
+	// instead of dying on the unique constraint; the session is READY.
 	clash := testObject(sess.ID)
 	clash.FinalKey = first.FinalKey
-	if _, err := s.RecordVerified(ctx, sess.ID, clash); err == nil {
-		t.Fatal("duplicate final key accepted")
+	clash.SourceSHA256 = first.SourceSHA256
+	id, err := s.RecordVerified(ctx, sess.ID, clash)
+	if err != nil || id != first.ID {
+		t.Fatalf("converged verified = %q, %v", id, err)
 	}
 	got, err := s.Session(ctx, sess.ID)
-	if err != nil || got.Status != domain.StateVerifying {
-		t.Errorf("status after rollback = %+v, %v (want VERIFYING)", got, err)
+	if err != nil || got.Status != domain.StateReady {
+		t.Errorf("status after converge = %+v, %v (want READY)", got, err)
+	}
+	// Same key with divergent bytes refuses instead of forking history.
+	sess2 := testSession("e0000000-0000-4000-8000-000000000003", "upl-3")
+	if _, _, err := s.ReserveSession(ctx, sess2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteSession(ctx, sess2.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	divergent := testObject(sess2.ID)
+	divergent.FinalKey = first.FinalKey
+	divergent.SourceSHA256 = strings.Repeat("c", 64)
+	if _, err := s.RecordVerified(ctx, sess2.ID, divergent); !errors.Is(err, domain.ErrBadTransition) {
+		t.Errorf("divergent outcome = %v, want bad transition", err)
 	}
 }
 

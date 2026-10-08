@@ -271,6 +271,42 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 	return i, err
 }
 
+const getObjectByFinalKey = `-- name: GetObjectByFinalKey :one
+SELECT id, session_id, final_key, source_sha256, sanitized_sha256,
+    width, height, dhash, created_at
+FROM evidence_objects
+WHERE final_key = $1
+`
+
+type GetObjectByFinalKeyRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	FinalKey        string             `json:"final_key"`
+	SourceSha256    string             `json:"source_sha256"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	Width           int32              `json:"width"`
+	Height          int32              `json:"height"`
+	Dhash           int64              `json:"dhash"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetObjectByFinalKey(ctx context.Context, finalKey string) (GetObjectByFinalKeyRow, error) {
+	row := q.db.QueryRow(ctx, getObjectByFinalKey, finalKey)
+	var i GetObjectByFinalKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.FinalKey,
+		&i.SourceSha256,
+		&i.SanitizedSha256,
+		&i.Width,
+		&i.Height,
+		&i.Dhash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getObjectBySession = `-- name: GetObjectBySession :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,

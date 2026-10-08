@@ -243,12 +243,44 @@ func (s *Store) RecordVerified(ctx context.Context, sessionID string, obj Object
 		Dhash: int64(obj.DHash), CreatedAt: pgTime(time.Now()),
 		ReceivedAt: pgTime(obj.ReceivedAt),
 	}); err != nil {
+		var conflict *pgconn.PgError
+		if errors.As(err, &conflict) && conflict.Code == "23505" {
+			_ = tx.Rollback(ctx)
+			return s.convergeDuplicate(ctx, sessionUUID, obj)
+		}
 		return "", err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
 	return obj.ID, nil
+}
+
+// convergeDuplicate replays a byte-identical resubmission: the content
+// key already exists, so this session converges on the existing object
+// instead of dying toward DEAD on the unique constraint. Anything else
+// refuses instead of forking history. Downstream capture binding still
+// decides per capture, so a reused photo cannot double-count support.
+func (s *Store) convergeDuplicate(ctx context.Context, sessionUUID pgtype.UUID, obj ObjectData) (string, error) {
+	q := evidence.New(s.pool)
+	row, err := q.GetObjectByFinalKey(ctx, obj.FinalKey)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", domain.ErrBadTransition
+		}
+		return "", err
+	}
+	if !strings.EqualFold(row.SourceSha256, obj.SourceSHA256) {
+		return "", domain.ErrBadTransition
+	}
+	n, err := q.MarkSessionReady(ctx, sessionUUID)
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return s.convergeVerified(ctx, sessionUUID, obj)
+	}
+	return uuidString(row.ID), nil
 }
 
 // convergeVerified replays a lost READY race: same outcome converges with

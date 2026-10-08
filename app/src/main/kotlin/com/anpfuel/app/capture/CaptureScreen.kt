@@ -293,6 +293,7 @@ fun CaptureScreen(
                             },
                             onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
                             onRetake = requestCamera,
+                            onNavigateBack = onNavigateBack,
                             onSubmit = viewModel::submitContributions,
                         )
                     }
@@ -506,6 +507,7 @@ internal fun PhotoReviewContent(
     onConfirmDefault: (Boolean) -> Unit,
     onReanalyze: () -> Unit,
     onRetake: () -> Unit,
+    onNavigateBack: () -> Unit,
     onCrop: (ByteArray) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -514,7 +516,7 @@ internal fun PhotoReviewContent(
     var addingFuel by remember { mutableStateOf(false) }
     var assigningIndex by remember { mutableStateOf<Int?>(null) }
     val filled = fuels.count { fuelAmounts[it].orEmpty().isNotBlank() }
-    val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting
+    val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting && submit !is CaptureOcrViewModel.SubmitState.Sent
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable)
         if (processing) {
@@ -633,6 +635,16 @@ internal fun PhotoReviewContent(
                     text = stringResource(R.string.capture_sent_count, submit.count),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+            is CaptureOcrViewModel.SubmitState.Sent -> {
+                Text(
+                    text = stringResource(R.string.capture_sent, submit.count),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.capture_back_community))
+                }
+            }
             is CaptureOcrViewModel.SubmitState.Partial ->
                 Text(
                     text = stringResource(R.string.capture_partial, submit.sent, submit.reason),

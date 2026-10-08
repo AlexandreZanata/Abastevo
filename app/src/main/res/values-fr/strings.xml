@@ -612,6 +612,8 @@
     <string name="capture_show_all">Afficher tous les carburants</string>
     <string name="capture_send_prices">Envoyer %1$d prix</string>
     <string name="capture_sent_count">%1$d prix en attente d’envoi.</string>
+    <string name="capture_sent">%1$d prix envoyés. Merci !</string>
+    <string name="capture_back_community">Retour à la communauté</string>
     <string name="capture_partial">%1$d envoyés, puis échec (%2$s). Les prix déjà envoyés restent en attente.</string>
     <string name="capture_take_photo">Photographier les prix</string>
     <string name="capture_photo_attached">Photo jointe : elle accompagne le prix dans la boîte d’envoi.</string>

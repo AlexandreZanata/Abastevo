@@ -18,6 +18,7 @@ import com.anpfuel.application.port.OcrPort
 import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.domain.discovery.NearbyServerStation
@@ -75,6 +76,7 @@ class CaptureOcrViewModelTest {
             override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
         },
         saved: SavedStateHandle = SavedStateHandle(),
+        owned: GetOwnedContributionsUseCase = mockk(relaxed = true),
         nearbyDeferred: CompletableDeferred<NearbyServerStationsOutcome>? = null,
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
@@ -100,7 +102,7 @@ class CaptureOcrViewModelTest {
         val stationGateway = mockk<com.anpfuel.domain.repository.ServerStationGateway>()
         io.mockk.coEvery { stationGateway.search(any(), any(), any()) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
             ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway)
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
     }
 
     private fun developmentGate(): PhotoCaptureGate {

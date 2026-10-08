@@ -612,6 +612,8 @@
     <string name="capture_show_all">Alle Kraftstoffe anzeigen</string>
     <string name="capture_send_prices">%1$d Preise senden</string>
     <string name="capture_sent_count">%1$d Preise für den Upload vorgemerkt.</string>
+    <string name="capture_sent">%1$d Preise gesendet. Danke!</string>
+    <string name="capture_back_community">Zurück zur Community</string>
     <string name="capture_partial">%1$d gesendet, dann fehlgeschlagen (%2$s). Bereits gesendete Preise bleiben vorgemerkt.</string>
     <string name="capture_take_photo">Preisschild fotografieren</string>
     <string name="capture_photo_attached">Foto angehängt. Es wird mit dem Preis im Postausgang gespeichert.</string>

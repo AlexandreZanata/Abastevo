@@ -612,6 +612,8 @@
     <string name="capture_show_all">すべての燃料を表示</string>
     <string name="capture_send_prices">%1$d件の価格を送信</string>
     <string name="capture_sent_count">%1$d件の価格がアップロード待ちです。</string>
+    <string name="capture_sent">%1$d件の価格を送信しました。ありがとうございます！</string>
+    <string name="capture_back_community">コミュニティに戻る</string>
     <string name="capture_partial">%1$d件送信後に失敗しました（%2$s）。送信済みの価格は待機列に残ります。</string>
     <string name="capture_take_photo">価格を撮影</string>
     <string name="capture_photo_attached">写真を添付しました。価格と一緒に送信待ちとして保存されます。</string>

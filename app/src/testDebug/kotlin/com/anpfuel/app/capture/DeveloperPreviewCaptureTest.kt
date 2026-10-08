@@ -12,6 +12,11 @@ import com.anpfuel.application.port.OcrPort
 import com.anpfuel.application.portable.PhotoFlow
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.contribution.EnqueueContributionUseCase
+import com.anpfuel.application.usecase.contribution.EnqueueReviewOutcome
+import com.anpfuel.application.usecase.contribution.GetOwnedContributionsUseCase
+import com.anpfuel.application.usecase.contribution.OwnedContributionStatus
+import com.anpfuel.domain.contribution.ContributionState
+import com.anpfuel.domain.repository.QueuedContribution
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.domain.discovery.ServerStation
@@ -76,6 +81,7 @@ class DeveloperPreviewCaptureTest {
             override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
         },
         saved: SavedStateHandle = SavedStateHandle(),
+        owned: GetOwnedContributionsUseCase = mockk(relaxed = true),
         nearbyDeferred: CompletableDeferred<NearbyServerStationsOutcome>? = null,
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
@@ -101,7 +107,7 @@ class DeveloperPreviewCaptureTest {
         val stationGateway = mockk<com.anpfuel.domain.repository.ServerStationGateway>()
         io.mockk.coEvery { stationGateway.search(any(), any(), any()) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
             ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway)
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
     }
 
     private fun developmentGate(): PhotoCaptureGate {
@@ -219,6 +225,43 @@ class DeveloperPreviewCaptureTest {
         io.mockk.coVerify(exactly = 1) { enqueue.invokeReview(match { it.size == 1 && it[0].photoContext?.captureId == "10000000-0000-4000-8000-000000000001" && it[0].stationId == "123e4567-e89b-12d3-a456-426614174000" }) }
         vm.submitConfirmed()
         io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
+
+    @Test
+    fun `validated queue shows sent feedback`() = runTest(dispatcher) {
+        val owned = mockk<GetOwnedContributionsUseCase>()
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate(), owned = owned)
+        prepareDevelopment(vm)
+        vm.authorizeCamera { }; advanceUntilIdle()
+        assertTrue(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private")); advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.processing.first { !it } } }
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "5,899")
+        val cmd = QueuedContribution("cmd-1", 1, "{}", false)
+        io.mockk.coEvery { enqueue.invokeReview(any()) } returns EnqueueReviewOutcome.Queued(listOf(cmd), false)
+        io.mockk.coEvery { owned.invoke() } returns listOf(OwnedContributionStatus("cmd-1", 1, 1, ContributionState.Accepted))
+        vm.submitContributions(); advanceUntilIdle()
+        val sent = vm.submit.value as? CaptureOcrViewModel.SubmitState.Sent
+        assertEquals(1, sent?.count)
+    }
+
+    @Test
+    fun `partially rejected queue surfaces partial feedback`() = runTest(dispatcher) {
+        val owned = mockk<GetOwnedContributionsUseCase>()
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate(), owned = owned)
+        prepareDevelopment(vm)
+        vm.authorizeCamera { }; advanceUntilIdle()
+        assertTrue(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private")); advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.processing.first { !it } } }
+        vm.setFuelAmount(FuelProduct.GASOLINE_REGULAR, "5,899")
+        vm.setFuelAmount(FuelProduct.ETHANOL, "4,350")
+        val cmds = listOf(QueuedContribution("cmd-1", 1, "{}", false), QueuedContribution("cmd-2", 1, "{}", false))
+        io.mockk.coEvery { enqueue.invokeReview(any()) } returns EnqueueReviewOutcome.Queued(cmds, false)
+        io.mockk.coEvery { owned.invoke() } returns listOf(
+            OwnedContributionStatus("cmd-1", 1, 1, ContributionState.Accepted),
+            OwnedContributionStatus("cmd-2", 1, 3, ContributionState.Rejected, "contribution.rejected"))
+        vm.submitContributions(); advanceUntilIdle()
+        val partial = vm.submit.value as? CaptureOcrViewModel.SubmitState.Partial
+        assertEquals(1, partial?.sent)
     }
 
     @Test

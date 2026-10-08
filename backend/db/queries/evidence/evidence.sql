@@ -152,6 +152,12 @@ FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.id = @id;
 
+-- name: GetObjectByFinalKey :one
+SELECT id, session_id, final_key, source_sha256, sanitized_sha256,
+    width, height, dhash, created_at
+FROM evidence_objects
+WHERE final_key = @final_key;
+
 -- name: GetObjectBySession :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
