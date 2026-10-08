@@ -65,6 +65,15 @@ class ContributionUploadHttpClientTest {
         .put("photo_capture",if(photo) JSONObject().put("capture_id",capture).put("expires_at_millis",now+86399000) else JSONObject.NULL)
         .put("scope",JSONObject().put("owner_scope",owner).put("origin",origin)).toString()
 
+    @Test fun `configured upload origin must match signed proof before any network request`() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            ContributionUploadHttpClient(proof, cache, sessions, client, origin = "https://other.example.invalid")
+        }
+        assertEquals("contribution.origin-mismatch", error.message)
+        coVerify(exactly = 0) { proof.post(any(), any(), any(), any()) }
+        assertTrue(puts.isEmpty())
+    }
+
     @Test fun `unscoped legacy payload never leaves device`() = runTest {
         val doc = JSONObject(payload()).also { it.remove("scope") }
         assertThrows(DomainException::class.java) { kotlinx.coroutines.runBlocking { gateway().submit("row",1,doc.toString(),"attempt") } }

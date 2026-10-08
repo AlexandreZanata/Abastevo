@@ -2,8 +2,9 @@
 
 Scope: user request 2026-10-07; P37-T01/T02 and P36-T01/T03.
 Opened at ce04ba1 in an isolated checkout because maintained dev was occupied.
-Final local integration preserves the existing UI commits through 4fa7298 and
-the separately committed rollout plan 523be92; no edits were overwritten.
+Combined source preserves the existing UI commits through 4fa7298, rollout
+plan 523be92, upload-origin fix abfc9a6 and dependency/auth-test fix 60a3fd7;
+no edits were overwritten.
 
 B-BR-DEV01: an explicit, default-off debug-only UI preview allows camera or
 gallery without location. The existing manually selected Home city is reused;
@@ -53,7 +54,51 @@ Behavior fingerprint (sorted changed/untracked non-doc paths + NUL + bytes +
 NUL, SHA-256): `acfbe9362ddc567f0e775c90fba7dcebdb94ac2e3724994d60efb16117bc7ff5`
 (48 behavior/test/contract files; parent ce04ba1).
 
-## Final combined checkpoint
+## Current combined checkpoint
+
+Behavior merge e26d546 retains maintained dev 60a3fd7 and the previously
+validated UI/session/preview changes. A further negative upload-origin test
+refuses a configured origin that differs from the signed proof before network
+I/O. Current behavior/test fingerprint: 71 files,
+`9c7c4460d48c2fde18fb81091a6990934fa55cd2914181d2360f746f0773c82b`.
+Debug APK SHA-256:
+`cbda350bdcb0042151e1775201756b2ac7ba05c8a60ebd04c1aa23e9ec880a9f`.
+
+Affected origin build: debug APK/instrumentation APK and lint passed. The first
+release invocation had a wrong test-class filter; correcting it to
+ReleaseDevelopmentPhotoCaptureTest passed. Eight ContributionUploadHttpClient
+cases, release transport refusal, R8/size passed (BUILD SUCCESSFUL in 2m 43s,
+126 tasks; 4,224,869 bytes). The combined focused evidence now covers 73
+Android unit cases, with prior unchanged selections retained rather than
+repeated. Release DEX still excludes developer controls/evaluation activities.
+POCO reconnected with a new ADB transport: final APK installed with -r and the
+correct fully qualified AuthAccountContinuityDeviceTest passed (one test),
+without clearing user data. Native credential entry remains owner QA.
+
+Backend dependency refresh: affected race suites and vet passed; key HTTP
+suite passed 20 repetitions and real PostGIS key login/parallel signup passed.
+Updated govulncheck: no vulnerabilities found. Mobile/security static checks,
+secret scan and diff whitespace checks passed. No aggregate or remote gate
+acceptance is inferred.
+
+Actual commands (same serial/offline/JVM arguments recorded below):
+
+```sh
+./gradlew --offline --no-daemon --no-parallel --max-workers=1 \
+  -Dorg.gradle.jvmargs='-Xmx2g -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  :data:testDebugUnitTest --tests '*ContributionUploadHttpClientTest' \
+  :data:testReleaseUnitTest --tests '*ReleaseDevelopmentPhotoCaptureTest' \
+  :app:verifyReleaseApkSize --console=plain
+# backend; ANPFUEL_TEST_DATABASE_URL names the disposable local PostGIS only
+go test -race -count=20 ./internal/modules/account/adapters/http
+go test -race -count=1 -tags=integration ./internal/modules/account/adapters \
+  -run 'TestPG(KeyAccountRoundTrip|ParallelKeySignupAdmitsExactlyOne)'
+govulncheck ./...
+go vet ./...
+```
+
+## Prior combined UI checkpoint
 
 Owned feature commit: 16f3a07. UI-preserving merge b2cad57 was tested after
 combining maintained dev 4fa7298; later 523be92 changes only the rollout plan.
@@ -175,13 +220,30 @@ go test -race -count=1 -tags=integration \
 - Private media is temporary: 5GiB emptyDir, lost on pod replacement; no
   production durability/certification claim. After initial startup OOM, MinIO
   limit is 1GiB with GOMEMLIMIT=384MiB. Rollout maxSurge=0/maxUnavailable=1
-  respects the existing namespace CPU quota. Latest pod: 3/3 ready, zero
-  restarts across ten hours, HTTPS health ready.
-- Images (same tested backend source, revision label ce04ba1-dev-preview-20261007):
+  respects the existing namespace CPU quota. Prior pod stayed ready for ten hours. Current dependency-refreshed pod:
+  abastevo-temp-api-64d8ddbd44-xcn4k, 3/3 ready, zero restarts, HTTPS health ready.
+- Initial images (revision label ce04ba1-dev-preview-20261007):
   API 80a423f225618ac743bba7a2b3f9763cddb76f7e2065a49d426134a927c23af2;
   worker 43948beaea782e28cd1bf6dd31f1fcb789edfff7454298a36751fce038034583;
   migrate 23f288048834f6b2f71702431eccda16e91edbaf52672443c19bdd6f307e8367;
   storage 359182bc95e9029cbf11886c20944f9f8173a93aed83faa226cb795adf711792.
+- Current API/worker tags: dev-preview-20261008, revision
+  e26d546-dev-preview-20261008, with corrected x/text/x/sync dependencies.
+  API 4f1e525fb970c18b18c3de5abc0c09c813af9b6147d51160582fbb67a746dfdb;
+  worker 455e96dbe1fb2779b424ad683a61b9365c1704f6479719e798ba02cba22398e3.
+  Migration/storage images remain the above owned images. Before the rollout,
+  the existing private object was copied into a mode-0700 owned backup; after
+  rollout its bytes/hash/MIME were verified and the transient copy removed.
+- Repeated smoke initially reused a content-addressed image already bound to
+  a different session, triggering the existing duplicate-key refusal. Fresh
+  random synthetic pixels avoided that fixture collision. Repeated signed
+  status polling exhausted the public peer challenge quota (60/hour), which
+  was preserved: the observed window renews 2026-10-08T12:00:00Z (08:00 Cuiaba).
+  The updated runtime passed via an owned loopback API port-forward plus
+  verified public HTTPS private media: READY, two fuel rows VALIDATED,
+  idempotency, anonymous denial and normal location requirement. Public HTTPS
+  health is ready; full public HTTPS pipeline evidence is the earlier run.
+  No quota reset, edge/auth weakening or duplicate-policy change was made.
 - Storage uses the existing project MinIO dependency (AGPLv3), cached
   RELEASE.2025-04-22T22-12-26Z because the project-pinned upstream image could
   not be pulled. Original notices preserved; no MinIO source change. Bounded
@@ -218,7 +280,8 @@ remain owner QA; local/backend/device results above must not impersonate them.
 The temporary staging deployment does not accept PC05/expanded PC06, G09,
 production release, public pilot, iOS, merge or wiki gates.
 
-Integration: current maintained dev is clean after its UI/plan commits and can
-consume this checked branch by fast-forward, preserving all existing commits.
+Integration: maintained dev 60a3fd7 was clean at the final read and is an
+ancestor of this combined branch. Guarded local fast-forward preserves all
+commits; an occupied or advanced checkout must be reconciled first.
 Main integration remains INTEGRATION_PENDING. Subsequent publication must use
 protected dev -> main batch delivery. No GitHub push/PR/merge/wiki in this task.
