@@ -1,6 +1,14 @@
 package com.anpfuel.data.local.ocr
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
+import android.graphics.Rect
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.google.android.gms.common.moduleinstall.ModuleInstall
@@ -26,12 +34,67 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val context: Context) : ImagePriceOcr {
     override suspend fun recognize(bytes: ByteArray): FuelBoardOcr.Result =
-        FuelBoardOcr.associate(recognizeTokens(bytes))
+        FuelBoardOcr.reconcile(recognizeViews(bytes))
+
+    /** Private instrumentation provenance; no views are logged or uploaded. */
+    internal suspend fun recognizeViews(bytes: ByteArray): List<FuelBoardOcr.Result> = withContext(Dispatchers.Default) {
+        val original = recognizeTokens(bytes)
+        val views = mutableListOf(FuelBoardOcr.associate(original))
+        val upright = BoundedPhotoBitmap.decode(bytes)
+        try {
+            val region = boardRegion(original, upright.width, upright.height)
+            if (region != null) {
+                for (grayscale in listOf(false, true)) {
+                    val view = enlargedBoard(upright, region, grayscale)
+                    // Cancellation belongs to the task's bitmap lifetime, not fallback.
+                    views += FuelBoardOcr.associate(recognizeBitmap(view))
+                }
+            }
+        } finally { upright.recycle() }
+        views
+    }
+
+    private fun boardRegion(tokens: List<FuelBoardOcr.Token>, width: Int, height: Int): Rect? {
+        val labels = tokens.filter { labelPattern.containsMatchIn(it.text.uppercase()) }
+        if (labels.isEmpty()) return null
+        val prices = tokens.filter { wholePrice.matches(it.text.trim()) }.filter { value ->
+            labels.any { label -> abs(value.cy - label.cy) <= maxOf(label.height, value.height) * 3 &&
+                abs(value.cx - label.cx) <= width * 0.65 }
+        }
+        if (prices.isEmpty()) return null
+        val board = labels + prices
+        val margin = maxOf(24, board.maxOf { it.height })
+        val region = Rect((board.minOf { it.left } - margin).coerceAtLeast(0),
+            (board.minOf { it.top } - margin).coerceAtLeast(0),
+            (board.maxOf { it.right } + margin).coerceAtMost(width),
+            (board.maxOf { it.bottom } + margin).coerceAtMost(height))
+        return region.takeIf { it.width() > 0 && it.height() > 0 &&
+            it.width().toLong() * it.height() < width.toLong() * height * 0.9 }
+    }
+
+    private fun enlargedBoard(source: Bitmap, region: Rect, grayscale: Boolean): Bitmap {
+        val scale = minOf(if (grayscale) 3.0 else 2.0, 2048.0 / maxOf(region.width(), region.height()))
+        val output = Bitmap.createBitmap((region.width() * scale).roundToInt().coerceAtLeast(1),
+            (region.height() * scale).roundToInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        try {
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            if (grayscale) paint.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
+            Canvas(output).drawBitmap(source, region, Rect(0, 0, output.width, output.height), paint)
+            return output
+        } catch (error: Exception) { output.recycle(); throw error }
+    }
+
+    private val labelPattern = Regex("ETANOL|ALCOOL|GASOLINA|DIESEL|GRID|ADITIV|\\bS[ -]?(10|500)\\b|\\bGNV\\b")
+    private val wholePrice = Regex("[0-9]{1,2}[., ][0-9]{2,3}")
 
     // Transient geometry only; used by private device evaluation, never logs or uploads.
     suspend fun recognizeTokens(bytes: ByteArray): List<FuelBoardOcr.Token> = withContext(Dispatchers.Default) {
         require(bytes.isNotEmpty() && bytes.size <= 32 * 1024 * 1024) { "ocr.input-size" }
-        val bitmap = BoundedPhotoBitmap.decode(bytes)
+        recognizeBitmap(BoundedPhotoBitmap.decode(bytes))
+    }
+
+    /** Owns its bitmap until ML Kit completes, including cancellation. */
+    private suspend fun recognizeBitmap(bitmap: Bitmap): List<FuelBoardOcr.Token> {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             val modules=ModuleInstall.getClient(context)
@@ -44,7 +107,7 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
             bitmap.recycle();recognizer.close()
             throw IllegalStateException(if(error.message=="ocr.model-pending") "ocr.model-pending" else "ocr.unavailable")
         }
-        suspendCancellableCoroutine { continuation ->
+        return suspendCancellableCoroutine { continuation ->
             try {
                 recognizer.process(InputImage.fromBitmap(bitmap, 0)).addOnCompleteListener { task ->
                     // Task processing owns the bitmap until completion, even after cancellation.

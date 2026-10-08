@@ -11,6 +11,7 @@ import com.anpfuel.domain.portable.FuelBoardOcr
 import com.anpfuel.domain.valueobject.FuelProduct
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -34,10 +35,18 @@ class RealImageOcrDeviceTest {
             val start = android.os.SystemClock.elapsedRealtime()
             val record = JSONObject().put("file", file.name)
             try {
-                val tokens = withTimeout(45000) { engine.recognizeTokens(file.readBytes()) }
-                val result = FuelBoardOcr.associate(tokens)
+                val bytes = file.readBytes()
+                record.put("input_sha256", MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
+                val tokens = withTimeout(15000) { engine.recognizeTokens(bytes) }
+                val recognitionStart = android.os.SystemClock.elapsedRealtime()
+                val views = withTimeout(15000) { engine.recognizeViews(bytes) }
+                record.put("recognition_ms",android.os.SystemClock.elapsedRealtime()-recognitionStart)
+                val result = FuelBoardOcr.reconcile(views)
+                record.put("views",JSONArray(views.map { view -> JSONObject()
+                    .put("rows",JSONArray(view.rows.map { JSONObject().put("fuel",it.product.name).put("milli_brl",it.amountMilli) }))
+                    .put("orphans",JSONArray(view.orphans)).put("conflicts",JSONArray(view.conflictingProducts.map { it.name })) }))
                 record.put("status", "recognized").put("conditional",result.conditional).put("unresolved",result.unresolved)
-                    .put("rows",JSONArray(result.rows.map { JSONObject().put("fuel",it.product.name).put("milli_brl",it.amountMilli) }))
+                    .put("orphans",JSONArray(result.orphans)).put("rows",JSONArray(result.rows.map { JSONObject().put("fuel",it.product.name).put("milli_brl",it.amountMilli) }))
                 // Diagnostics remain in the private, ignored evaluation artifact only.
                 record.put("tokens",JSONArray(tokens.map { JSONObject().put("text",it.text).put("box",JSONArray(listOf(it.left,it.top,it.right,it.bottom))) }))
             } catch (error: Exception) {

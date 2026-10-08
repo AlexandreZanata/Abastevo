@@ -7,6 +7,125 @@ import org.junit.jupiter.api.Test
 class FuelBoardOcrTest {
     private fun box(text: String, x: Int, y: Int, w: Int = 100) = FuelBoardOcr.Token(text, x, y, x + w, y + 30)
 
+    @Test fun `real board typo retains ethanol conflict without stealing additive gasoline`() {
+        fun t(text: String,l: Int,top: Int,r: Int,b: Int)=FuelBoardOcr.Token(text,l,top,r,b)
+        val result=FuelBoardOcr.associate(listOf(t("Etanol",404,591,466,621),t("omom3.99",388,602,678,658),
+            t("Efcnnol",388,674,467,700),t("Adtivado",385,701,506,734),t("Gasolina",391,762,493,790),
+            t("Aditivada",390,795,500,824),t("4.11",530,680,667,750),t("|7.12",532,765,671,835)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_PREMIUM,7120L)),result.rows)
+        assertEquals(setOf(3990L,4110L),result.orphans.toSet())
+        assertEquals(setOf(FuelProduct.ETHANOL),result.conflictingProducts)
+    }
+
+    @Test fun `low-confidence label can withhold a conflicting product but never assign it`() {
+        val uncertain = listOf(box("EFCNNOL",0,80),box("ADTIVADO",0,105,130),box("4,11",200,80))
+        val alone = FuelBoardOcr.associate(uncertain)
+        assertTrue(alone.rows.isEmpty())
+        assertEquals(listOf(4110L),alone.orphans)
+        val conflict = FuelBoardOcr.associate(listOf(box("ETANOL",0,0),box("3,99",200,0)) + uncertain)
+        assertTrue(conflict.rows.isEmpty())
+        assertEquals(setOf(3990L,4110L),conflict.orphans.toSet())
+        assertEquals(setOf(FuelProduct.ETHANOL),conflict.conflictingProducts)
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_REGULAR,6980L)),
+            FuelBoardOcr.associate(listOf(box("GASOLINA",0,0),box("6,98",200,0)) + uncertain).rows)
+    }
+
+    @Test fun `same amount across pixel views cannot invent a second fuel association`() {
+        val specific = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10,6750L)),false,false)
+        val generic = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S500,6750L)),false,false)
+        val ambiguous = FuelBoardOcr.reconcile(listOf(specific,generic,generic))
+        assertTrue(ambiguous.rows.isEmpty())
+        assertEquals(listOf(6750L),ambiguous.orphans)
+        val shared = FuelBoardOcr.Result(specific.rows+generic.rows,false,false)
+        assertEquals(shared.rows,FuelBoardOcr.reconcile(listOf(shared,shared)).rows)
+    }
+
+    @Test fun `separate ethanol icon and dotted-I brand label form one fuel heading`() {
+        val result = FuelBoardOcr.associate(listOf(box("E",0,0,25),box("GRİD",50,0,80),box("4,34",180,0)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL,4340L)),result.rows)
+    }
+
+    @Test fun `inline diesel specification never joins the price integer`() {
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10,7750L)),
+            FuelBoardOcr.associate(listOf(box("D DIESELS10 7,75",0,0,350))).rows)
+    }
+
+    @Test fun `total and volume parent context excludes numeric child elements`() {
+        val result = FuelBoardOcr.associate(listOf(box("TOTAL R$ 549,60",0,0,350),box("549,60",220,0,100),
+            box("VOLUME 74,270 LITROS",0,80,400),box("74,270",200,80,100)))
+        assertTrue(result.rows.isEmpty())
+        assertTrue(result.orphans.isEmpty())
+    }
+
+    @Test fun `pixel view consensus corrects a lone disagreeing reading without averaging money`() {
+        fun view(amount: Long) = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10, amount)), false, false)
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10, 7570L)),
+            FuelBoardOcr.reconcile(listOf(view(17570L), view(7570L), view(7570L))).rows)
+    }
+
+    @Test fun `explicit conflicting product in any pixel view cannot be hidden by missed rows`() {
+        val single = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL,3990L)), false, false)
+        val conflict = FuelBoardOcr.Result(emptyList(),false,true,listOf(3990L,4110L),setOf(FuelProduct.ETHANOL))
+        val result = FuelBoardOcr.reconcile(listOf(single,single,conflict))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(3990L,4110L),result.orphans)
+        assertEquals(setOf(FuelProduct.ETHANOL),result.conflictingProducts)
+    }
+
+    @Test fun `disagreeing pixel views stay manual and retain conditions`() {
+        val first = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL, 4060L)), true, false)
+        val second = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL, 4050L)), false, false)
+        val result = FuelBoardOcr.reconcile(listOf(first, second, FuelBoardOcr.Result(emptyList(), false, true)))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(4060L, 4050L), result.orphans)
+        assertTrue(result.unresolved)
+        assertTrue(result.conditional)
+    }
+
+    @Test fun `consistent pixel views preserve precision and one-view fallback remains a suggestion`() {
+        val result = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.CNG, 4321L)), false, true, listOf(7400L))
+        assertEquals(result, FuelBoardOcr.reconcile(listOf(result)))
+        assertEquals(result, FuelBoardOcr.reconcile(listOf(result, result)))
+        assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(emptyList()) }
+        assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(List(4) { result }) }
+    }
+
+    @Test fun `brand sublabel inherits ethanol instead of creating gasoline ambiguity`() {
+        val result = FuelBoardOcr.associate(listOf(box("ETANOL", 0, 0),
+            box("GRID", 20, 25, 60), box("4,32", 180, 0)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL, 4320L)), result.rows)
+    }
+
+    @Test fun `small generic caption cannot override mixed-case additive brand heading`() {
+        val result = FuelBoardOcr.associate(listOf(box("GGRiD", 0, 0, 140),
+            FuelBoardOcr.Token("GASOLINA", 5, 35, 65, 43), box("7,19", 180, 0)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_PREMIUM, 7190L)), result.rows)
+    }
+
+    @Test fun `offset multiline diesel spec and additive caption preserve explicit S10`() {
+        val result = FuelBoardOcr.associate(listOf(box("I Diesel", 0, 0, 100),
+            FuelBoardOcr.Token("Diesel", 50, 0, 100, 30), box("S10", 45, 32, 35),
+            box("ADITIVADO", 45, 60, 70), FuelBoardOcr.Token("6,83", 180, 0, 280, 80)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10, 6830L)), result.rows)
+    }
+
+    @Test fun `unknown explicit diesel specifications never default to S500`() {
+        for (spec in listOf("S50", "S5", "S100", "S1O", "S-50", "SIO")) {
+            val result = FuelBoardOcr.associate(listOf(box("DIESEL $spec", 0, 0, 150), box("7,40", 200, 0)))
+            assertTrue(result.rows.isEmpty(), spec)
+            assertEquals(listOf(7400L), result.orphans, spec)
+            assertTrue(result.unresolved, spec)
+        }
+    }
+
+    @Test fun `competing normalized prices remain manual without choosing the cheapest`() {
+        val result = FuelBoardOcr.associate(listOf(box("ETANOL COMUM", 0, 0, 150), box("3,99", 200, 0),
+            box("ETANOL ADITIVADO", 0, 80, 150), box("4,11", 200, 80)))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(3990L, 4110L), result.orphans)
+        assertTrue(result.unresolved)
+    }
+
     @Test fun `separate integer and fraction blocks recover all aligned fuel rows`() {
         val tokens = listOf(
             box("ETANOL", 0, 0), box("4. 44", 150, 0, 130),
@@ -56,10 +175,10 @@ class FuelBoardOcrTest {
         val result = FuelBoardOcr.associate(listOf(box("GASOLINA",0,0),box("6,59",200,0),box("ADITIVADA",0,50),box("6.74",200,50),box("ETANOL",0,100),box("4,32",200,100)))
         assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to 6590L,FuelProduct.GASOLINE_PREMIUM to 6740L,FuelProduct.ETHANOL to 4320L),result.rows.associate{it.product to it.amountMilli})
     }
-    @Test fun `rejects total dates zero diesel ambiguity and true premium`() {
+    @Test fun `rejects totals dates zero and unknown specs while preserving bare diesel`() {
         val result = FuelBoardOcr.associate(listOf(box("Diesel S50",0,0),box("7.400",200,0),box("DIESEL",0,50),box("6,15",200,50),box("PODIUM",0,100),box("9,19",200,100),box("DIESEL S500",0,150),box("0,00",200,150),box("TOTAL R$ 549,60",0,200),box("07/10/2026",0,250)))
-        assertTrue(result.rows.isEmpty())
-        assertEquals(listOf(9190L),result.orphans)
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S500,6150L)),result.rows)
+        assertEquals(listOf(7400L,9190L),result.orphans)
         assertTrue(result.unresolved)
     }
     @Test fun `conditional and conflicting prices require review`() {
@@ -145,9 +264,9 @@ class FuelBoardOcrTest {
         )
         val result=FuelBoardOcr.associate(tokens)
         assertEquals(
-            mapOf(FuelProduct.ETHANOL to 4660L,FuelProduct.GASOLINE_REGULAR to 6840L,FuelProduct.GASOLINE_PREMIUM to 6890L,FuelProduct.DIESEL_S500 to 6770L),
+            mapOf(FuelProduct.ETHANOL to 4660L,FuelProduct.GASOLINE_REGULAR to 6840L,FuelProduct.GASOLINE_PREMIUM to 6890L,FuelProduct.DIESEL_S500 to 6770L,FuelProduct.DIESEL_S10 to 6830L),
             result.rows.associate{it.product to it.amountMilli})
-        assertEquals(listOf(6830L),result.orphans)
-        assertTrue(result.unresolved)
+        assertTrue(result.orphans.isEmpty())
+        assertFalse(result.unresolved)
     }
 }
