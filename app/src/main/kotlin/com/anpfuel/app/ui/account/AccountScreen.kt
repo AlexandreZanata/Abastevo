@@ -46,6 +46,8 @@ import com.anpfuel.app.ui.auth.AuthStep
 import com.anpfuel.app.ui.auth.AuthViewModel
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 
 /**
  * Dedicated account management page: status, key backup (export) and
@@ -88,6 +90,13 @@ fun AccountScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (authState.step == AuthStep.CHECKING) {
+                SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                    SkeletonCard(height = 96.dp)
+                    SkeletonCard(height = 220.dp)
+                }
+                return@Column
+            }
             if (!signedIn) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

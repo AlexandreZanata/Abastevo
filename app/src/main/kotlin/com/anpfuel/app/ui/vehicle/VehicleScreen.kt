@@ -44,7 +44,8 @@ import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.Vehicle
 import com.anpfuel.domain.valueobject.DomainId
@@ -191,7 +192,7 @@ internal fun VehicleContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             when {
-                uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
+                uiState.isLoading -> VehicleLoadingSkeleton()
 
                 uiState.error != null && !uiState.showForm -> {
                     ErrorState(
@@ -253,6 +254,13 @@ internal fun VehicleContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun VehicleLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        repeat(2) { SkeletonCard(height = 150.dp) }
     }
 }
 
