@@ -12,8 +12,14 @@ object FuelBoardOcr {
         val cy get() = (top + bottom) / 2.0
     }
     data class Row(val product: FuelProduct, val amountMilli: Long)
-    data class Result(val rows: List<Row>, val conditional: Boolean, val unresolved: Boolean)
+    data class Result(val rows: List<Row>, val conditional: Boolean, val unresolved: Boolean, val orphans: List<Long> = emptyList())
     private val price = Regex("(?<![0-9/.-])[0-9]{1,4}[.,][0-9]{2,3}(?![0-9/])")
+    /** Board-only price recovery (NOT part of the frozen PortablePriceOcr grammar):
+     * LED boards often lose the decimal separator ("4 35", "675").
+     * Spaces between digits become a comma; a bare 3-digit token becomes
+     * D,DD. Only whole-token values near a fuel label survive: matching
+     * still requires anchor proximity and the review screen confirms. */
+    private const val MAX_ORPHANS = 5
 
     fun associate(input: List<Token>): Result {
         val tokens = input.take(512).filter { it.text.length <= 256 && it.right > it.left && it.bottom > it.top }
@@ -48,10 +54,25 @@ object FuelBoardOcr {
         }
         val values = tokens.filterNot { normalize(it.text).let { n -> n.contains("TOTAL") || n.contains("LITROS") || n.contains("VOLUME") } }
             .filterNot { token -> tokens.any { child -> child!=token && encloses(token,child) && price.containsMatchIn(child.text) && child.text.length<token.text.length } }
-            .flatMap { token -> price.findAll(token.text.replace(Regex("([.,]) +(?=[0-9])"),"$1")).mapNotNull { match ->
-                PortablePriceOcr.parseCandidates(match.value).singleOrNull()?.let { token to it.priceMilli }
-            }.toList() }
+            .flatMap { token ->
+                val text = token.text
+                    .replace(Regex("(?<=[0-9]) +(?=[0-9])"), ",")
+                    .replace(Regex("([.,]) +(?=[0-9])"), "$1")
+                val raws = price.findAll(text).map { it.value }.toMutableList()
+                if (raws.isEmpty()) {
+                    // Bare 3-digit whole token only ("675" -> "6,75"). Never
+                    // a fragment: S500/S10 specs and years stay untouched.
+                    val trimmed = text.trim()
+                    if (trimmed.length == 3 && trimmed.all { it in '0'..'9' }) {
+                        raws += trimmed.substring(0, 1) + "," + trimmed.substring(1)
+                    }
+                }
+                raws.mapNotNull { raw ->
+                    PortablePriceOcr.parseCandidates(raw).singleOrNull()?.let { token to it.priceMilli }
+                }
+            }
         val matches = mutableListOf<Row>()
+        val orphans = mutableListOf<Long>()
         var unresolved = anchors.any { (_, fuel) -> fuel == null }
         for ((value, amount) in values) {
             val ranked = anchors.mapNotNull { (label, fuel) ->
@@ -70,14 +91,18 @@ object FuelBoardOcr {
             val best = ranked.firstOrNull() ?: continue
             if (ranked.drop(1).any { it.first != best.first && abs(it.second-best.second)<0.35 }) { unresolved=true;continue }
             val fuel=best.first
-            if(fuel==null){unresolved=true;continue}
+            if(fuel==null){
+                unresolved=true
+                if (amount !in orphans && orphans.size < MAX_ORPHANS) orphans += amount
+                continue
+            }
             matches += Row(fuel,amount)
         }
         val rows = matches.groupBy { it.product }.mapNotNull { (fuel, found) ->
             val amounts=found.map{it.amountMilli}.distinct()
             if(amounts.size==1) Row(fuel,amounts.single()) else { unresolved=true;null }
         }
-        return Result(rows,conditional,unresolved)
+        return Result(rows,conditional,unresolved,orphans)
     }
 
     private fun normalize(text: String): String = text.uppercase()

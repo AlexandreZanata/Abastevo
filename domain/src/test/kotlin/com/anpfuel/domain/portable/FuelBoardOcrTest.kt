@@ -35,4 +35,19 @@ class FuelBoardOcrTest {
         val result=FuelBoardOcr.associate(listOf(box("DIESEL S500",0,0),box("0.00",150,0),box("DIESEL",0,80),box("7.98",150,80)))
         assertTrue(result.rows.isEmpty())
     }
+    @Test fun `recovers board prices missing the decimal separator`() {
+        val result=FuelBoardOcr.associate(listOf(box("ETANOL",0,0),box("4 35",200,0),box("GASOLINA",0,50),box("675",200,50)))
+        assertEquals(mapOf(FuelProduct.ETHANOL to 4350L,FuelProduct.GASOLINE_REGULAR to 6750L),result.rows.associate{it.product to it.amountMilli})
+    }
+    @Test fun `unrecognized label keeps the value as an orphan for manual choice`() {
+        val result=FuelBoardOcr.associate(listOf(box("DIESEL COMUM",0,0,150),box("6,15",200,0)))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(6150L),result.orphans)
+        assertTrue(result.unresolved)
+    }
+    @Test fun `years and address numbers never become prices`() {
+        val result=FuelBoardOcr.associate(listOf(box("11 DE JULHO DE 2025",0,0,200),box("20 RUA 8",0,50,150)))
+        assertTrue(result.rows.isEmpty())
+        assertTrue(result.orphans.isEmpty())
+    }
 }
