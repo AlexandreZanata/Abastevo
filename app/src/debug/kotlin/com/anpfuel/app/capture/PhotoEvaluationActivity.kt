@@ -161,12 +161,21 @@ class PhotoEvaluationActivity : ComponentActivity() {
     }
 
     fun loadEvaluationImage(name: String) {
-        require(name.matches(Regex("ocr-[0-9]{4}\\.jpeg")))
+        if (!name.matches(Regex("ocr-[0-9]{4}\\.jpeg"))) {
+            message = "Imagem de avaliação inválida"
+            return
+        }
         lifecycleScope.launch {
             val file = File(filesDir, "ocr-evaluation/$name")
             val bytes = withContext(Dispatchers.IO) {
-                require(file.isFile && file.length() in 1..PrivateCaptureFiles.MAX_BYTES.toLong())
-                file.readBytes()
+                if (!file.isFile || file.length() !in 1..PrivateCaptureFiles.MAX_BYTES.toLong()) {
+                    // Missing evaluation asset (e.g. cleaned corpus) must
+                    // never crash app open when the task is recreated.
+                    null
+                } else file.readBytes()
+            } ?: run {
+                message = "Imagem de avaliação ausente"
+                return@launch
             }
             capturedAt = System.currentTimeMillis() // Local evaluation age; never an observation timestamp.
             val uri = withContext(Dispatchers.IO) { media.write(bytes, capturedAt) }
