@@ -91,6 +91,16 @@ func TestCreateKeyAccountConflicts(t *testing.T) {
 	}
 }
 
+// wrongKey flips the last glyph to a different alphabet glyph so the
+// mutated key is deterministically wrong even when the minted key ends in
+// the replacement glyph (a 1-in-31 flake otherwise).
+func wrongKey(key string) string {
+	if key[:31]+"x" == key {
+		return key[:31] + "y"
+	}
+	return key[:31] + "x"
+}
+
 func TestLoginWithKeyNoOracle(t *testing.T) {
 	h := testKeyHandler()
 	rec := call(t, h, "POST", "/v1/accounts/keys", `{"username":"zezinho"}`)
@@ -102,7 +112,7 @@ func TestLoginWithKeyNoOracle(t *testing.T) {
 	}
 	bodies := []string{
 		`{"account_key":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`,
-		`{"account_key":"` + created.AccountKey[:31] + `x"}`,
+		`{"account_key":"` + wrongKey(created.AccountKey) + `"}`,
 		`{"account_key":"short"}`,
 		`{}`,
 	}

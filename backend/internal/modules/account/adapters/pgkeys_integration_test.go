@@ -29,7 +29,11 @@ func TestPGKeyAccountRoundTrip(t *testing.T) {
 	if logged.Account.ID != created.Account.ID || logged.Session.AccessToken == "" {
 		t.Fatalf("login must return the account session: %+v", logged)
 	}
-	if _, err := svc.LoginWithKey(ctx, created.Key[:31]+"q"); err != domain.ErrKeyInvalid {
+	wrong := created.Key[:31] + "q"
+	if wrong == created.Key {
+		wrong = created.Key[:31] + "w"
+	}
+	if _, err := svc.LoginWithKey(ctx, wrong); err != domain.ErrKeyInvalid {
 		t.Fatalf("wrong key must fail closed, got %v", err)
 	}
 }
