@@ -280,8 +280,8 @@ remain owner QA; local/backend/device results above must not impersonate them.
 The temporary staging deployment does not accept PC05/expanded PC06, G09,
 production release, public pilot, iOS, merge or wiki gates.
 
-Integration: maintained dev 60a3fd7 was clean at the final read and is an
-ancestor of this combined branch. Guarded local fast-forward preserves all
-commits; an occupied or advanced checkout must be reconciled first.
+Integration: maintained dev was clean at 60a3fd7. Guarded local fast-forward
+completed to d95b189, preserving every existing UI/plan/upload/security commit.
+The checkout is locally integrated; main acceptance remains pending.
 Main integration remains INTEGRATION_PENDING. Subsequent publication must use
 protected dev -> main batch delivery. No GitHub push/PR/merge/wiki in this task.
