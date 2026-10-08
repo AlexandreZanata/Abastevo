@@ -12,6 +12,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import com.anpfuel.data.local.dao.PhotoUploadSessionDao
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -35,6 +36,7 @@ object ContributionModule {
     @Provides
     @Singleton
     fun provideContributionUploadHttpClient(
+        @Named("apiOrigin") environment: ApiEnvironment,
         photoCache: PhotoCache,
         proof: PhotoProofTransport,
         sessions: PhotoUploadSessionDao,
@@ -43,5 +45,6 @@ object ContributionModule {
         proof = proof,
         sessions = sessions,
         photoCache = photoCache,
+        origin = environment.origin,
     )
 }

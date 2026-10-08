@@ -33,8 +33,12 @@ class ContributionUploadHttpClient(
     private val photoCache: PhotoCache,
     private val sessions: PhotoUploadSessionDao,
     client: OkHttpClient,
+    origin: String = proof.origin,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : ContributionSubmissionGateway {
+    init {
+        require(origin == proof.origin) { "contribution.origin-mismatch" }
+    }
     private val mediaMutex = Mutex()
     private val privateClient = client.newBuilder().followRedirects(false).followSslRedirects(false)
         .retryOnConnectionFailure(false).callTimeout(20, java.util.concurrent.TimeUnit.SECONDS).cookieJar(okhttp3.CookieJar.NO_COOKIES)
