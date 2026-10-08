@@ -40,6 +40,26 @@ class FuelBoardOcrTest {
         val result=FuelBoardOcr.associate(listOf(box("ETANOL",0,0),box("4 35",200,0),box("GASOLINA",0,50),box("675",200,50)))
         assertEquals(mapOf(FuelProduct.ETHANOL to 4350L,FuelProduct.GASOLINE_REGULAR to 6750L),result.rows.associate{it.product to it.amountMilli})
     }
+    @Test fun `distributor and spelled-out variants map without guessing premium`() {
+        val result=FuelBoardOcr.associate(listOf(
+            box("GRID",0,0),box("6,59",200,0),
+            box("GAS NATURAL",0,50,150),box("4,99",200,50),
+            box("GASOLINA COMUN",0,100,150),box("5,99",200,100),
+            box("DISEL",0,150),box("6,15",200,150)))
+        assertEquals(
+            mapOf(FuelProduct.GASOLINE_PREMIUM to 6590L,FuelProduct.CNG to 4990L,FuelProduct.GASOLINE_REGULAR to 5990L,FuelProduct.DIESEL_S500 to 6150L),
+            result.rows.associate{it.product to it.amountMilli})
+        assertTrue(result.orphans.isEmpty())
+    }
+    @Test fun `true premium grades stay manual instead of vanishing`() {
+        val result=FuelBoardOcr.associate(listOf(
+            box("GASOLINA PREMIUM",0,0,150),box("7,99",200,0),
+            box("PODIUM",0,50),box("9,19",200,50),
+            box("OCTAPRO",0,100),box("8,19",200,100)))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(7990L,9190L,8190L),result.orphans)
+        assertTrue(result.unresolved)
+    }
     @Test fun `common diesel wording maps directly to S500`() {
         val result=FuelBoardOcr.associate(listOf(box("DIESEL COMUM",0,0,150),box("6,15",200,0)))
         assertEquals(mapOf(FuelProduct.DIESEL_S500 to 6150L),result.rows.associate{it.product to it.amountMilli})

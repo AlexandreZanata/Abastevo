@@ -135,17 +135,19 @@ object FuelBoardOcr {
             else -> FuelProduct.DIESEL_S500
         }
         text.contains("ETANOL") || text.contains("ALCOOL") || Regex("^E ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.ETHANOL
-        text.contains("ADITIV") || text.contains("V-POWER") || Regex("^G ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.GASOLINE_PREMIUM
+        text.contains("ADITIV") || text.contains("V-POWER") || Regex("\\bGRID\\b").containsMatchIn(text) ||
+            Regex("^G ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.GASOLINE_PREMIUM
         text.contains("GASOLINA") -> FuelProduct.GASOLINE_REGULAR
-        Regex("\\bGNV\\b").containsMatchIn(text) -> FuelProduct.CNG
+        Regex("\\bGNV\\b").containsMatchIn(text) || Regex("\\bGAS NATURAL\\b").containsMatchIn(text) -> FuelProduct.CNG
         else -> fuzzyProduct(text)
     }
 
     /**
      * Near-miss label recovery for single-word OCR misreads ("ETONOL",
-     * "GOSOLINO"). Small edit distance against known fuel words only;
-     * diesel specs are excluded (S50 is not S500) and multi-word tokens
-     * keep the exact contains-rules above. A merged longer anchor still
+     * "GOSOLINO", "DISEL"). Small edit distance against known fuel words
+     * only; diesel specs are excluded (S50 is not S500) while a bare
+     * "DIESEL" typo follows the common-S500 rule. Multi-word tokens keep
+     * the exact contains-rules above. A merged longer anchor still
      * filters the standalone token via the enclosure rule, so this never
      * splits an already-associated row.
      */
@@ -164,6 +166,8 @@ object FuelBoardOcr {
         "GASOLINA" to FuelProduct.GASOLINE_REGULAR,
         "ADITIVADA" to FuelProduct.GASOLINE_PREMIUM,
         "ADITIVADO" to FuelProduct.GASOLINE_PREMIUM,
+        // OCR/board typo of bare Diesel, which is common S500.
+        "DIESEL" to FuelProduct.DIESEL_S500,
     )
 
     private fun levenshtein(a: String, b: String): Int {
