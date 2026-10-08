@@ -17,7 +17,7 @@ is not verified shutter time. Private copies retain bounded size and 24h TTL.
 The user subsequently required real local/server submission and explicitly
 authorized deployment, private S3 storage and a worker only in abastevo-temp.
 The server flag defaults OFF, is forbidden in production and foreign staging
-hosts, and expires automatically (configured at deployment for 24 hours).
+hosts, and expires automatically (initially configured for 24 hours, extended to seven days by the owner on 2026-10-08).
 Signed nonce/account/quota/owner/idempotency checks remain. Receipts persist a
 distinct photo-capture-ui-test-v1 provenance; normal policy refuses those
 receipts. Turning off debug mode/restoring into normal mode blocks their use.
@@ -53,6 +53,30 @@ Validation: PASS
 Behavior fingerprint (sorted changed/untracked non-doc paths + NUL + bytes +
 NUL, SHA-256): `acfbe9362ddc567f0e775c90fba7dcebdb94ac2e3724994d60efb16117bc7ff5`
 (48 behavior/test/contract files; parent ce04ba1).
+
+## Seven-day developer window extension
+
+B-BR-DEV01 duration amendment: the owner explicitly requested seven days on
+2026-10-08 and confirmed this is a developer-only environment. The deadline
+is now 2026-10-15T11:45:50Z (2026-10-15 07:45:50 America/Cuiaba), seven days
+from the request verification. Only the existing owned secret deadline and
+Abastevo deployment restart were changed; no application source or quota
+policy changed. Photo retention and individual receipt limits remain 24 hours.
+
+Before restart, owned secret/deployment snapshots and all five private objects
+were preserved privately. After restart, all object bytes/hash/MIME matched;
+the transient media copy was removed. API/worker/storage pod
+abastevo-temp-api-5b87fcdf79-k5fsb: 3/3 ready, zero restarts; public HTTPS health
+ready. Focused config race tests passed, including production/foreign host and
+more-than-seven-day refusal. A real signed loopback request accepted the
+no-GPS development receipt; normal capture still refused missing location.
+The public peer quota was preserved.
+
+The already verified current-source APK (SHA-256 below) was reinstalled on the
+POCO through adb install -r and MainActivity reopened successfully. Account
+and app data were preserved. No APK rebuild was needed for this server-only
+configuration change. Native credential/gallery walkthrough remains owner QA.
+No GitHub publication or other VPS application change.
 
 ## Current combined checkpoint
 
@@ -214,14 +238,14 @@ go test -race -count=1 -tags=integration \
   abastevo-dev-photos is reachable only through signed S3 requests on this
   origin; MinIO binds loopback, console/browser disabled, anonymous denied,
   bucket-only app credentials, one-day object expiry. No edge/NodePort change.
-- Automatic capture/submit cutoff: 2026-10-08T23:44:21Z
-  (2026-10-08 19:44:21 America/Cuiaba). Defaults remain OFF elsewhere. Deadline
+- Automatic capture/submit cutoff: 2026-10-15T11:45:50Z
+  (2026-10-15 07:45:50 America/Cuiaba; explicit seven-day extension). Defaults remain OFF elsewhere. Deadline
   expiry is a server refusal, not a claim that the sidecars remove themselves.
 - Private media is temporary: 5GiB emptyDir, lost on pod replacement; no
   production durability/certification claim. After initial startup OOM, MinIO
   limit is 1GiB with GOMEMLIMIT=384MiB. Rollout maxSurge=0/maxUnavailable=1
   respects the existing namespace CPU quota. Prior pod stayed ready for ten hours. Current dependency-refreshed pod:
-  abastevo-temp-api-64d8ddbd44-xcn4k, 3/3 ready, zero restarts, HTTPS health ready.
+  abastevo-temp-api-5b87fcdf79-k5fsb, 3/3 ready, zero restarts, HTTPS health ready.
 - Initial images (revision label ce04ba1-dev-preview-20261007):
   API 80a423f225618ac743bba7a2b3f9763cddb76f7e2065a49d426134a927c23af2;
   worker 43948beaea782e28cd1bf6dd31f1fcb789edfff7454298a36751fce038034583;
