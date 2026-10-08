@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -660,10 +664,11 @@ internal fun PhotoReviewContent(
 }
 
 /**
- * Static photo with a fixed crop frame. The view never zooms or pans:
- * "Crop to frame" maps the frame onto the original bitmap and hands the
- * JPEG bytes over for recognition/upload, while the display keeps
- * showing the original photo unchanged.
+ * Photo with a fixed crop frame and pinch-to-zoom positioning. The user
+ * zooms (1-5x) and drags to frame the price board, double-tap resets,
+ * and "Crop to frame" maps the frame onto the original bitmap for
+ * recognition/upload — then the view returns to the static full photo
+ * on its own, so zoom can never get stuck.
  */
 @Composable
 internal fun StaticCropPhoto(
@@ -679,13 +684,37 @@ internal fun StaticCropPhoto(
     }
     val cropScope = rememberCoroutineScope()
     var cropping by remember { mutableStateOf(false) }
+    var scale by remember(photoUri) { mutableStateOf(1f) }
+    var offset by remember(photoUri) { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .onSizeChanged { containerSize = it },
+                .onSizeChanged { containerSize = it }
+                .pointerInput(photoUri) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val next = (scale * zoom).coerceIn(1f, 5f)
+                        scale = next
+                        offset = if (next <= 1f) {
+                            Offset.Zero
+                        } else {
+                            val maxX = (size.width * next - size.width) / 2f
+                            val maxY = (size.height * next - size.height) / 2f
+                            Offset(
+                                (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                (offset.y + pan.y).coerceIn(-maxY, maxY),
+                            )
+                        }
+                    }
+                }
+                .pointerInput(photoUri) {
+                    detectTapGestures(onDoubleTap = {
+                        scale = 1f
+                        offset = Offset.Zero
+                    })
+                },
             contentAlignment = Alignment.Center,
         ) {
             bitmap?.let {
@@ -693,7 +722,8 @@ internal fun StaticCropPhoto(
                     bitmap = it.asImageBitmap(),
                     contentDescription = stringResource(R.string.capture_photo_content),
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
+                        .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y),
                 )
             }
             // Fixed crop frame: 85% width, 4:3, centered (matches cropToFrame).
@@ -714,10 +744,16 @@ internal fun StaticCropPhoto(
                 val ch = containerSize.height.toFloat()
                 if (cw <= 0f || ch <= 0f) return@OutlinedButton
                 cropping = true
+                val frozenScale = scale
+                val frozenOffset = offset
                 cropScope.launch {
                     try {
-                        val bytes = withContext(Dispatchers.Default) { cropToFrame(bmp, cw, ch, 1f, Offset.Zero) }
-                        if (bytes != null) onCrop(bytes)
+                        val bytes = withContext(Dispatchers.Default) { cropToFrame(bmp, cw, ch, frozenScale, frozenOffset) }
+                        if (bytes != null) {
+                            onCrop(bytes)
+                            scale = 1f
+                            offset = Offset.Zero
+                        }
                     } finally { cropping = false }
                 }
             },
