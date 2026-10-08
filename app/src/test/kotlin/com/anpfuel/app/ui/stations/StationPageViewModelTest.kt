@@ -6,6 +6,7 @@ import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.usecase.directory.*
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
+import com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.CommunityPriceGroupsOutcome
 import com.anpfuel.application.usecase.profile.GetStationProfileUseCase
@@ -29,6 +30,7 @@ class StationPageViewModelTest {
     private val detail = mockk<GetServerStationDetailUseCase>()
     private val prices = mockk<GetCommunityPriceGroupsUseCase>()
     private val profile = mockk<GetStationProfileUseCase>()
+    private val cityFeed = mockk<GetCityCommunityFeedUseCase>()
     private val auth = mockk<AuthFlow>()
     private val id = "d6c74c23-63db-4c24-a2e5-408cb23bad26"
     private val station = ServerStation.create(id, "Central", StationLocationQuality.UNKNOWN,
@@ -39,12 +41,13 @@ class StationPageViewModelTest {
         coEvery { prices(any(), any()) } returns CommunityPriceGroupsOutcome.Fresh(
             com.anpfuel.domain.model.BackendPriceGroups.create(id, null, emptyList(), 1L, 2L))
         coEvery { profile(any()) } returns StationProfileOutcome.Unclaimed
+        coEvery { cityFeed.city() } returns null
         every { auth.refreshSession() } returns AuthApiResult.Ok(null)
     }
     @AfterEach fun after() { Dispatchers.resetMain() }
     private fun vm(key: String = id, fuel: String = "ETHANOL") = StationPageViewModel(
         SavedStateHandle(mapOf("stationKey" to key, "fuelProduct" to fuel)), local, resolve, detail,
-        prices, profile, auth).also { it.ioDispatcher = dispatcher }
+        prices, profile, cityFeed, auth).also { it.ioDispatcher = dispatcher }
 
     @Test fun malformedRouteDoesNotReadOrInventStation() = runTest(dispatcher) {
         val vm = vm("../auth"); vm.load(Locale.US); advanceUntilIdle()
@@ -92,6 +95,31 @@ class StationPageViewModelTest {
         val vm = vm(); vm.load(Locale.US); advanceUntilIdle()
         assertTrue(vm.state.value.unavailable)
         assertFalse(vm.state.value.loading)
+    }
+    @Test fun communityFeedPriceAppearsWhenStationMatches() = runTest(dispatcher) {
+        coEvery { detail(id) } returns ServerStationDetailOutcome.Fresh(station)
+        val city = com.anpfuel.domain.community.FeedCity("3550308",
+            com.anpfuel.domain.valueobject.BrazilianState.SAO_PAULO, "São Paulo")
+        val now = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        val item = com.anpfuel.domain.community.CommunityFeedItem(id, "Central",
+            FuelProduct.ETHANOL, 4440L, now, now.plusSeconds(3600), 3, 2, "LOW", 1L)
+        coEvery { cityFeed.city() } returns city
+        coEvery { cityFeed(any(), any()) } returns com.anpfuel.domain.community.CommunityFeedPage(
+            listOf(item), null, now)
+        val vm = vm(); vm.load(Locale.US); advanceUntilIdle()
+        assertEquals(4440L, vm.state.value.communityItem?.amountMilliBrl)
+        assertEquals(3, vm.state.value.communityItem?.supporters)
+    }
+    @Test fun communityFeedMissKeepsHonestEmptyState() = runTest(dispatcher) {
+        coEvery { detail(id) } returns ServerStationDetailOutcome.Fresh(station)
+        val city = com.anpfuel.domain.community.FeedCity("3550308",
+            com.anpfuel.domain.valueobject.BrazilianState.SAO_PAULO, "São Paulo")
+        val now = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        coEvery { cityFeed.city() } returns city
+        coEvery { cityFeed(any(), any()) } returns com.anpfuel.domain.community.CommunityFeedPage(
+            emptyList(), null, now)
+        val vm = vm(); vm.load(Locale.US); advanceUntilIdle()
+        assertNull(vm.state.value.communityItem)
     }
     @Test fun offlineResolutionPreservesDatedAnpButNeverEnablesSocialWrites() = runTest(dispatcher) {
         val week = com.anpfuel.domain.valueobject.SurveyWeek.fromIsoDates("2026-09-27", "2026-10-03")

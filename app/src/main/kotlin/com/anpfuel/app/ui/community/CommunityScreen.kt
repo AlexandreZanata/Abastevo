@@ -33,6 +33,7 @@ import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.BouncyToggleIcon
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -217,6 +218,55 @@ private fun CommunityFilterChip(
     )
 }
 
+/**
+ * Frontend-only approve/contest/report toggles.
+ *
+ * The city feed exposes exact [CommunityFeedItem.supporters] but no
+ * dispute tally and no observation id, so the dislike icon carries no
+ * invented count. Taps only flip local state with a spring pulse —
+ * they never navigate and never reach the backend. The confirmation
+ * count travels with the check badge next to the fuel name.
+ */
+@Composable
+private fun FeedVoteActions(item: CommunityFeedItem) {
+    var liked by remember { mutableStateOf(false) }
+    var disliked by remember { mutableStateOf(false) }
+    var reported by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BouncyToggleIcon(
+            selected = liked,
+            onToggle = {
+                liked = !liked
+                if (liked) disliked = false
+            },
+            icon = Icons.Default.ThumbUp,
+            contentDescription = stringResource(R.string.station_feedback_vote_valid),
+        )
+        Text("${item.supporters + if (liked) 1 else 0}",
+            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(4.dp))
+        BouncyToggleIcon(
+            selected = disliked,
+            onToggle = {
+                disliked = !disliked
+                if (disliked) liked = false
+            },
+            icon = Icons.Default.ThumbDown,
+            contentDescription = stringResource(R.string.station_feedback_vote_invalid),
+            selectedTint = MaterialTheme.colorScheme.error,
+        )
+        Spacer(Modifier.weight(1f))
+        BouncyToggleIcon(
+            selected = reported,
+            onToggle = { reported = !reported },
+            icon = Icons.Default.Flag,
+            contentDescription = stringResource(R.string.station_page_report_title),
+            selectedTint = MaterialTheme.colorScheme.error,
+            unselectedTint = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
 @Composable
 private fun FeedMessage(title: String, description: String, action: @Composable () -> Unit) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
@@ -241,7 +291,6 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(painterResource(R.drawable.ic_home_community), null, tint = Color.Unspecified, modifier = Modifier.size(24.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.stationName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("${stringResource(R.string.feed_community_source)} · $timestamp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -252,7 +301,13 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FuelProductIcon(item.fuel, size = 44.dp, contentDescription = null)
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
+                        Icon(Icons.Default.Verified, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Text("${item.confirmations}", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Text(price, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = FuelProductTint.colorFor(item.fuel, darkTheme))
                     Text(stringResource(when (item.unit) { "M3" -> R.string.feed_unit_m3; "KG_13" -> R.string.feed_unit_cylinder; else -> R.string.feed_unit_litre }),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -266,8 +321,7 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(stringResource(when (item.confidence) { "HIGH" -> R.string.feed_confidence_high; "MEDIUM" -> R.string.feed_confidence_medium; else -> R.string.feed_confidence_low }),
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FeedVoteActions(item)
         }
     }
 }

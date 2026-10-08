@@ -9,8 +9,12 @@ import com.anpfuel.app.ui.model.StationDetailUiModel
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.usecase.community.CommunityPriceGroupsOutcome
+import com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
+import com.anpfuel.domain.community.CommunityFeedItem
+import com.anpfuel.domain.community.FeedQuery
+import com.anpfuel.domain.community.FeedSort
 import com.anpfuel.application.usecase.directory.ResolveStationByCnpjUseCase
 import com.anpfuel.application.usecase.directory.ServerStationDetailOutcome
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
@@ -50,6 +54,7 @@ data class StationPageState(
     val canonical: ServerStation? = null,
     val profile: StationProfile? = null,
     val officialGroups: List<BackendPriceGroup> = emptyList(),
+    val communityItem: CommunityFeedItem? = null,
     val loading: Boolean = true,
     val unavailable: Boolean = false,
     val identityStale: Boolean = false,
@@ -69,6 +74,7 @@ class StationPageViewModel @Inject constructor(
     private val directory: GetServerStationDetailUseCase,
     private val prices: GetCommunityPriceGroupsUseCase,
     private val profiles: GetStationProfileUseCase,
+    private val cityFeed: GetCityCommunityFeedUseCase,
     private val auth: AuthFlow,
 ) : ViewModel() {
     private val identity = StationPageIdentity.parse(saved.get<String>("stationKey") ?: saved.get<String>("stationId").orEmpty())
@@ -83,7 +89,7 @@ class StationPageViewModel @Inject constructor(
     fun selectFuel(fuel: FuelProduct, locale: Locale) {
         if (fuel == mutable.value.fuel) return
         saved["fuelProduct"] = fuel.name
-        mutable.update { it.copy(fuel = fuel, localDetail = null, officialGroups = emptyList()) }
+        mutable.update { it.copy(fuel = fuel, localDetail = null, officialGroups = emptyList(), communityItem = null) }
         load(locale)
     }
 
@@ -104,7 +110,7 @@ class StationPageViewModel @Inject constructor(
         loadJob?.cancel()
         val fuel = mutable.value.fuel
         mutable.update { it.copy(loading = true, unavailable = false, localDetail = null,
-            officialGroups = emptyList(), profile = null, priceUnavailable = false, pricesStale = false) }
+            officialGroups = emptyList(), communityItem = null, profile = null, priceUnavailable = false, pricesStale = false) }
         if (identity == null) {
             mutable.update { it.copy(loading = false, unavailable = true, canonical = null) }
             return
@@ -176,6 +182,20 @@ class StationPageViewModel @Inject constructor(
                     officialGroups = found?.groups.orEmpty().filter { g -> g.stationId == station.stationId && g.fuelProductWire == com.anpfuel.data.mapper.WireFuelMapper.toWire(fuel) },
                     pricesStale = groups is CommunityPriceGroupsOutcome.StaleCache,
                     priceUnavailable = groups is CommunityPriceGroupsOutcome.Unavailable || groups is CommunityPriceGroupsOutcome.Disabled) }
+                // Public city feed carries the actual community price (amount +
+                // supporters/confirmations) for this station+fuel when available.
+                // The backend price-groups community section stays null (P04),
+                // so this lookup is the only honest community source here.
+                val community = withContext(ioDispatcher) {
+                    try {
+                        val city = cityFeed.city() ?: return@withContext null
+                        val page = cityFeed(FeedQuery(city, fuel, FeedSort.RECENT))
+                        page.items.firstOrNull { it.stationId == station.stationId && it.fuel == fuel }
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { null }
+                }
+                if (request != generation) return@launch
+                if (community != null) mutable.update { it.copy(communityItem = community) }
             }
             if (request == generation) mutable.update { it.copy(loading = false) }
         }
