@@ -8,8 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,8 +51,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -113,6 +109,7 @@ fun CaptureScreen(
     val fuelAmounts by viewModel.fuelAmounts.collectAsStateWithLifecycle()
     val removedFuels by viewModel.removedFuels.collectAsStateWithLifecycle()
     val fuelErrors by viewModel.fuelErrors.collectAsStateWithLifecycle()
+    val unassignedAmounts by viewModel.unassignedAmounts.collectAsStateWithLifecycle()
     val submit by viewModel.submit.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -124,7 +121,6 @@ fun CaptureScreen(
     val conditional by viewModel.conditional.collectAsStateWithLifecycle()
     val defaultConfirmed by viewModel.defaultPriceConfirmed.collectAsStateWithLifecycle()
     val reviewPhotoUri = reviewUri?.let(Uri::parse)
-    var cropNonce by remember { mutableStateOf(0) }
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = viewModel.pendingUri()?.let(Uri::parse)
         viewModel.rememberPendingUri(null)
@@ -269,16 +265,18 @@ fun CaptureScreen(
                     } else {
                         PhotoReviewContent(
                             photoUri = photoUri,
-                            cropNonce = cropNonce,
                             fuelAmounts = fuelAmounts,
                             removedFuels = removedFuels,
                             fuelErrors = fuelErrors,
+                            unassigned = unassignedAmounts,
                             photoAttached = photoId != null,
                             photoRefused = photoRefused,
                             submit = submit,
                             onAmount = viewModel::setFuelAmount,
                             onRemoveFuel = viewModel::removeFuel,
                             onAddFuel = viewModel::addFuel,
+                            onAssignUnassigned = viewModel::assignUnassigned,
+                            onDismissUnassigned = viewModel::dismissUnassigned,
                             processing = processing,
                             conditional = conditional,
                             defaultPriceConfirmed = defaultConfirmed,
@@ -289,15 +287,7 @@ fun CaptureScreen(
                                     if (bytes != null) viewModel.replacePhoto(bytes, "image/jpeg")
                                 }
                             },
-                            onCrop = { bytes ->
-                                scope.launch {
-                                    val uri = withContext(Dispatchers.IO) { files.write(bytes, viewModel.originalCapturedAtMillis) }
-                                    viewModel.replacePhoto(bytes, "image/jpeg")
-                                    viewModel.rememberReviewUri(uri.toString())
-                                    cropNonce++
-                                    withContext(Dispatchers.IO) { files.delete(photoUri) }
-                                }
-                            },
+                            onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
                             onRetake = requestCamera,
                             onSubmit = viewModel::submitContributions,
                         )
@@ -487,23 +477,25 @@ private fun NearbyStationPicker(
 }
 
 /**
- * Photo review: the shot large with pinch-zoom inspection and a crop
- * frame (pre-processing before the outbox), then one row per fuel with
- * the icon, a price input and a remove cross. Blank rows are not sent.
+ * Photo review: the shot large with a fixed crop frame (pre-processing
+ * before the outbox), then one row per fuel with the icon, a price
+ * input and a remove cross. Blank rows are not sent.
  */
 @Composable
 internal fun PhotoReviewContent(
     photoUri: Uri,
-    cropNonce: Int,
     fuelAmounts: Map<FuelProduct, String>,
     removedFuels: Set<FuelProduct>,
     fuelErrors: Set<FuelProduct>,
+    unassigned: List<String>,
     photoAttached: Boolean,
     photoRefused: String?,
     submit: CaptureOcrViewModel.SubmitState?,
     onAmount: (FuelProduct, String) -> Unit,
     onRemoveFuel: (FuelProduct) -> Unit,
     onAddFuel: (FuelProduct) -> Unit,
+    onAssignUnassigned: (Int, FuelProduct) -> Unit,
+    onDismissUnassigned: (Int) -> Unit,
     processing: Boolean,
     conditional: Boolean,
     defaultPriceConfirmed: Boolean,
@@ -516,10 +508,11 @@ internal fun PhotoReviewContent(
 ) {
     val fuels = FuelProduct.entries.filter { it in fuelAmounts && it !in removedFuels }
     var addingFuel by remember { mutableStateOf(false) }
+    var assigningIndex by remember { mutableStateOf<Int?>(null) }
     val filled = fuels.count { fuelAmounts[it].orEmpty().isNotBlank() }
     val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ZoomableCropPhoto(photoUri = photoUri, cropNonce = cropNonce, onCrop = onCrop, enabled = editable)
+        StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable)
         if (processing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(R.string.capture_recognizing))
@@ -587,6 +580,37 @@ internal fun PhotoReviewContent(
                 }
             }
         }
+        unassigned.forEachIndexed { index, amount ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = amount,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Box {
+                    OutlinedButton(
+                        onClick = { assigningIndex = index },
+                        enabled = editable && FuelProduct.entries.any { it !in fuels },
+                    ) {
+                        Text(stringResource(R.string.capture_choose_fuel))
+                    }
+                    DropdownMenu(expanded = assigningIndex == index, onDismissRequest = { assigningIndex = null }) {
+                        FuelProduct.entries.filter { it !in fuels }.forEach { product ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(FuelProductI18n.toStringRes(product))) },
+                                onClick = { assigningIndex = null; onAssignUnassigned(index, product) },
+                            )
+                        }
+                    }
+                }
+                IconButton(onClick = { onDismissUnassigned(index) }, enabled = editable) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.capture_remove_fuel))
+                }
+            }
+        }
         if (fuels.isEmpty() && !processing) Text(stringResource(R.string.capture_no_recognition))
         if (conditional) {
             Text(stringResource(R.string.capture_conditional_warning), color = MaterialTheme.colorScheme.error)
@@ -636,57 +660,32 @@ internal fun PhotoReviewContent(
 }
 
 /**
- * Large zoomable photo with a fixed crop frame. Pinch zooms (1-5x),
- * drag pans, double-tap resets; "Crop to frame" maps the frame back
- * onto the original bitmap and hands the JPEG bytes over for the
- * outbox-bound transient entry.
+ * Static photo with a fixed crop frame. The view never zooms or pans:
+ * "Crop to frame" maps the frame onto the original bitmap and hands the
+ * JPEG bytes over for recognition/upload, while the display keeps
+ * showing the original photo unchanged.
  */
 @Composable
-internal fun ZoomableCropPhoto(
+internal fun StaticCropPhoto(
     photoUri: Uri,
-    cropNonce: Int,
     onCrop: (ByteArray) -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var bitmap by remember(photoUri, cropNonce) { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(photoUri, cropNonce) {
+    var bitmap by remember(photoUri) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(photoUri) {
         bitmap = withContext(Dispatchers.IO) { decodeSampled(context, photoUri, 1600) }
     }
     val cropScope = rememberCoroutineScope()
     var cropping by remember { mutableStateOf(false) }
-    var scale by remember(photoUri, cropNonce) { mutableStateOf(1f) }
-    var offset by remember(photoUri, cropNonce) { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .onSizeChanged { containerSize = it }
-                .pointerInput(photoUri, cropNonce) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        val next = (scale * zoom).coerceIn(1f, 5f)
-                        scale = next
-                        offset = if (next <= 1f) {
-                            Offset.Zero
-                        } else {
-                            val maxX = (size.width * next - size.width) / 2f
-                            val maxY = (size.height * next - size.height) / 2f
-                            Offset(
-                                (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                (offset.y + pan.y).coerceIn(-maxY, maxY),
-                            )
-                        }
-                    }
-                }
-                .pointerInput(photoUri, cropNonce) {
-                    detectTapGestures(onDoubleTap = {
-                        scale = 1f
-                        offset = Offset.Zero
-                    })
-                },
+                .onSizeChanged { containerSize = it },
             contentAlignment = Alignment.Center,
         ) {
             bitmap?.let {
@@ -694,8 +693,7 @@ internal fun ZoomableCropPhoto(
                     bitmap = it.asImageBitmap(),
                     contentDescription = stringResource(R.string.capture_photo_content),
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                        .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y),
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
             // Fixed crop frame: 85% width, 4:3, centered (matches cropToFrame).
@@ -716,11 +714,9 @@ internal fun ZoomableCropPhoto(
                 val ch = containerSize.height.toFloat()
                 if (cw <= 0f || ch <= 0f) return@OutlinedButton
                 cropping = true
-                val frozenScale = scale
-                val frozenOffset = offset
                 cropScope.launch {
                     try {
-                        val bytes = withContext(Dispatchers.Default) { cropToFrame(bmp, cw, ch, frozenScale, frozenOffset) }
+                        val bytes = withContext(Dispatchers.Default) { cropToFrame(bmp, cw, ch, 1f, Offset.Zero) }
                         if (bytes != null) onCrop(bytes)
                     } finally { cropping = false }
                 }

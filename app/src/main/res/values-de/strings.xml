@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">~%1$d m · du bist hier</string>
     <string name="capture_crop">Auf den Rahmen zuschneiden</string>
     <string name="capture_photo_content">Preisfoto zur Prüfung</string>
-    <string name="capture_review_hint">Mit zwei Fingern vergrößern und auf die Preise zuschneiden. Nur Kraftstoffe auf dem Foto ausfüllen; leere Felder werden nicht gesendet.</string>
+    <string name="capture_review_hint">Auf die Preise zuschneiden und nur die Kraftstoffe auf dem Foto ausfüllen — Leeres wird nicht gesendet.</string>
     <string name="capture_fuel_invalid">Wert prüfen (z. B. 5,89)</string>
     <string name="capture_remove_fuel">Kraftstoff aus der Meldung entfernen</string>
     <string name="capture_show_all">Alle Kraftstoffe anzeigen</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">Preise werden aus dem Foto gelesen…</string>
     <string name="capture_reanalyze">Dieses Foto erneut lesen</string>
     <string name="capture_add_fuel">Kraftstoff hinzufügen</string>
+    <string name="capture_choose_fuel">Kraftstoff wählen</string>
     <string name="capture_no_recognition">Keine Preise erkannt. Schneide das Preisschild näher zu, versuche es erneut oder füge einen Kraftstoff hinzu und gib seinen Preis ein.</string>
     <string name="capture_conditional_warning">Dieses Foto kann einen Preis mit Bedingungen zeigen. Melde nur den regulären Preis, der ohne bestimmte Zahlungsart, App oder Registrierung verfügbar ist.</string>
     <string name="capture_default_confirmation">Ich habe geprüft, dass dies die regulären Preise sind.</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">Station wechseln</string>
 </resources>

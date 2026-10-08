@@ -169,6 +169,24 @@ class CaptureOcrViewModelTest {
     }
 
     @Test
+    fun `unrecognized OCR values wait for manual fuel choice`() = runTest(dispatcher) {
+        val pixels = object : ImagePriceOcr {
+            override suspend fun recognize(bytes: ByteArray) =
+                com.anpfuel.domain.portable.FuelBoardOcr.Result(emptyList(), false, true, listOf(6150L, 4350L))
+        }
+        val vm = viewModel(enabled = true, hasPermission = false, gate = developmentGate(), pixels = pixels)
+        prepareDevelopment(vm)
+        vm.authorizeCamera { }; advanceUntilIdle()
+        assertTrue(vm.acceptPreviewPhoto(byteArrayOf(1), "image/jpeg", "private")); advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.processing.first { !it } } }
+        assertEquals(listOf("6,150", "4,350"), vm.unassignedAmounts.value)
+        vm.dismissUnassigned(0); assertEquals(listOf("4,350"), vm.unassignedAmounts.value)
+        vm.assignUnassigned(0, FuelProduct.ETHANOL)
+        assertEquals(emptyList<String>(), vm.unassignedAmounts.value)
+        assertEquals("4,350", vm.fuelAmounts.value[FuelProduct.ETHANOL])
+    }
+
+    @Test
     fun `late normal location response cannot clear the developer station selection`() = runTest(dispatcher) {
         val delayed = CompletableDeferred<NearbyServerStationsOutcome>()
         val vm = viewModel(true, false, location = com.anpfuel.domain.valueobject.DeviceLocation.of(0.0, 0.0), nearbyDeferred = delayed)

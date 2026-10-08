@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">~%1$d м · вы здесь</string>
     <string name="capture_crop">Обрезать по рамке</string>
     <string name="capture_photo_content">Фото цен для проверки</string>
-    <string name="capture_review_hint">Увеличьте двумя пальцами и обрежьте до области цен. Укажите только топливо с фото; пустые поля не отправляются.</string>
+    <string name="capture_review_hint">Обрежьте до области цен и укажите только топливо с фото — пустые поля не отправляются.</string>
     <string name="capture_fuel_invalid">Проверьте значение (например, 5,89)</string>
     <string name="capture_remove_fuel">Удалить топливо из сообщения</string>
     <string name="capture_show_all">Показать все виды топлива</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">Чтение цен с фотографии…</string>
     <string name="capture_reanalyze">Прочитать эту фотографию снова</string>
     <string name="capture_add_fuel">Добавить топливо</string>
+    <string name="capture_choose_fuel">Выбрать топливо</string>
     <string name="capture_no_recognition">Цены не распознаны. Обрежьте фото ближе к табло, повторите попытку или добавьте топливо и введите цену.</string>
     <string name="capture_conditional_warning">На фото может быть цена с особыми условиями. Указывайте только обычную цену, доступную без обязательного способа оплаты, приложения или регистрации.</string>
     <string name="capture_default_confirmation">Я проверил, что это обычные цены.</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">Сменить станцию</string>
 </resources>

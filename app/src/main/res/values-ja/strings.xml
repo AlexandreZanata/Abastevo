@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">約%1$d m · 現在地</string>
     <string name="capture_crop">枠に合わせて切り抜く</string>
     <string name="capture_photo_content">確認用の価格写真</string>
-    <string name="capture_review_hint">指2本で拡大し、価格部分を切り抜いてください。写真にある燃料だけ入力します。空欄は送信されません。</string>
+    <string name="capture_review_hint">価格部分を切り取り、写真にある燃料だけ入力してください — 空白は送信されません。</string>
     <string name="capture_fuel_invalid">値を確認してください（例：5,89）</string>
     <string name="capture_remove_fuel">報告から燃料を削除</string>
     <string name="capture_show_all">すべての燃料を表示</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">写真の価格を読み取り中…</string>
     <string name="capture_reanalyze">この写真をもう一度読み取る</string>
     <string name="capture_add_fuel">燃料を追加</string>
+    <string name="capture_choose_fuel">燃料を選択</string>
     <string name="capture_no_recognition">価格が見つかりませんでした。価格表示に近づけて切り抜くか、再試行するか、燃料を追加して価格を入力してください。</string>
     <string name="capture_conditional_warning">この写真には条件付きの価格が含まれる可能性があります。特定の支払方法、アプリ、登録を必要としない通常価格のみを報告してください。</string>
     <string name="capture_default_confirmation">通常価格であることを確認しました。</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">スタンドを変更する</string>
 </resources>

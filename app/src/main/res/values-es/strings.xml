@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">~%1$d m · estás aquí</string>
     <string name="capture_crop">Recortar al encuadre</string>
     <string name="capture_photo_content">Foto de precios para revisar</string>
-    <string name="capture_review_hint">Amplía con dos dedos y recorta para centrar los precios. Completa solo los combustibles de la foto; los campos vacíos no se envían.</string>
+    <string name="capture_review_hint">Recorta para centrar los precios y completa solo los combustibles de la foto; los vacíos no se envían.</string>
     <string name="capture_fuel_invalid">Revisa este valor (p. ej., 5,89)</string>
     <string name="capture_remove_fuel">Quitar combustible del informe</string>
     <string name="capture_show_all">Mostrar todos los combustibles</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">Leyendo los precios de la foto…</string>
     <string name="capture_reanalyze">Volver a leer esta foto</string>
     <string name="capture_add_fuel">Añadir combustible</string>
+    <string name="capture_choose_fuel">Elegir combustible</string>
     <string name="capture_no_recognition">No se identificaron precios. Recorta más cerca del cartel, vuelve a intentarlo o añade un combustible e introduce su precio.</string>
     <string name="capture_conditional_warning">Esta foto puede mostrar un precio restringido. Informa solo del precio normal disponible sin exigir una forma de pago, aplicación o registro.</string>
     <string name="capture_default_confirmation">He comprobado que estos son los precios normales.</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">Cambiar de estación</string>
 </resources>

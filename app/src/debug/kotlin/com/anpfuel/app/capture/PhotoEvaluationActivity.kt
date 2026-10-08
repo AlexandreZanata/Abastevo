@@ -35,6 +35,7 @@ class PhotoEvaluationActivity : ComponentActivity() {
     private var photoUri by mutableStateOf<Uri?>(null)
     private var rows by mutableStateOf<Map<FuelProduct, String>>(emptyMap())
     private var removed by mutableStateOf<Set<FuelProduct>>(emptySet())
+    private var orphans by mutableStateOf<List<String>>(emptyList())
     private val edited = mutableSetOf<FuelProduct>()
     var processing by mutableStateOf(false)
         private set
@@ -110,11 +111,19 @@ class PhotoEvaluationActivity : ComponentActivity() {
                         if (message.isNotEmpty()) Text(message)
                         photoUri?.let { uri ->
                             PhotoReviewContent(
-                                photoUri = uri, cropNonce = generation, fuelAmounts = rows, removedFuels = removed,
-                                fuelErrors = emptySet(), photoAttached = true, photoRefused = null, submit = null,
+                                photoUri = uri, fuelAmounts = rows, removedFuels = removed,
+                                fuelErrors = emptySet(), unassigned = orphans,
+                                photoAttached = true, photoRefused = null, submit = null,
                                 onAmount = { product, value -> edited += product; rows = rows + (product to value) },
                                 onRemoveFuel = { product -> edited += product; removed = removed + product; rows = rows - product },
                                 onAddFuel = { product -> edited += product; removed = removed - product; rows = rows + (product to "") },
+                                onAssignUnassigned = { index, product ->
+                                    orphans.getOrNull(index)?.let { amount ->
+                                        edited += product; rows = rows + (product to amount)
+                                        orphans = orphans.filterIndexed { i, _ -> i != index }
+                                    }
+                                },
+                                onDismissUnassigned = { index -> orphans = orphans.filterIndexed { i, _ -> i != index } },
                                 processing = processing, conditional = conditional, defaultPriceConfirmed = approved,
                                 onConfirmDefault = { approved = it },
                                 onReanalyze = { lifecycleScope.launch { withContext(Dispatchers.IO) { media.read(uri, capturedAt) }?.let { recognize(it) } } },
@@ -178,6 +187,10 @@ class PhotoEvaluationActivity : ComponentActivity() {
                 conditional = conditional || result.conditional
                 rows = rows.filterKeys { it in edited } + result.rows.filter { it.product !in edited && it.product !in removed }
                     .associate { it.product to "${it.amountMilli / 1000},${(it.amountMilli % 1000).toString().padStart(3, '0')}" }
+                val assigned = rows.values.toSet()
+                orphans = result.orphans
+                    .map { "${it / 1000},${(it % 1000).toString().padStart(3, '0')}" }
+                    .filter { it !in assigned }.distinct()
             } catch (_: Exception) { if (ticket == generation) message = "Leitura indisponível. Recorte ou digite os preços." }
             finally { if (ticket == generation) processing = false }
         }

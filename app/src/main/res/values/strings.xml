@@ -502,7 +502,7 @@
     <string name="capture_area_row_inside">~%1$d m · you are here</string>
     <string name="capture_crop">Crop to frame</string>
     <string name="capture_photo_content">Price photo for review</string>
-    <string name="capture_review_hint">Pinch to inspect, crop to focus on the prices. Fill only the fuels on the photo — blanks are not sent.</string>
+    <string name="capture_review_hint">Crop to focus on the prices, then fill only the fuels on the photo — blanks are not sent.</string>
     <string name="capture_fuel_invalid">Check this value (e.g. 5,89)</string>
     <string name="capture_remove_fuel">Remove fuel from report</string>
     <string name="capture_show_all">Show all fuels</string>
@@ -700,6 +700,7 @@
     <string name="capture_recognizing">Reading prices from the photo…</string>
     <string name="capture_reanalyze">Read this photo again</string>
     <string name="capture_add_fuel">Add a fuel</string>
+    <string name="capture_choose_fuel">Choose fuel</string>
     <string name="capture_no_recognition">No prices identified. Crop closer to the board, try again or add a fuel and enter its price.</string>
     <string name="capture_conditional_warning">This photo may show a restricted price. Report only the default price available without a special payment method, app or membership.</string>
     <string name="capture_default_confirmation">I checked that these are the default prices.</string>

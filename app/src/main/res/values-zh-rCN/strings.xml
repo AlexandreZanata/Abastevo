@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">约%1$d米 · 你在这里</string>
     <string name="capture_crop">裁剪至画框</string>
     <string name="capture_photo_content">待确认的价格照片</string>
-    <string name="capture_review_hint">双指放大并裁剪价格区域。仅填写照片中的燃料，空白项不会发送。</string>
+    <string name="capture_review_hint">裁剪价格区域，仅填写照片中的燃料 — 空白项不会发送。</string>
     <string name="capture_fuel_invalid">请检查此数值（例如5,89）</string>
     <string name="capture_remove_fuel">从报告中移除此燃料</string>
     <string name="capture_show_all">显示所有燃料</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">正在读取照片中的价格…</string>
     <string name="capture_reanalyze">重新读取这张照片</string>
     <string name="capture_add_fuel">添加燃料</string>
+    <string name="capture_choose_fuel">选择燃油</string>
     <string name="capture_no_recognition">未识别到价格。请裁剪到更靠近价格牌的位置、重试，或添加燃料并输入价格。</string>
     <string name="capture_conditional_warning">此照片可能显示有条件的价格。请仅报告不要求特定付款方式、应用或注册的普通价格。</string>
     <string name="capture_default_confirmation">我已确认这些是普通价格。</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">更换油站</string>
 </resources>

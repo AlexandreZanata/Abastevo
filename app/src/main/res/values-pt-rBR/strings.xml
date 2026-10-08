@@ -501,7 +501,7 @@
     <string name="capture_area_row_inside">~%1$d m · você está aqui</string>
     <string name="capture_crop">Recortar na moldura</string>
     <string name="capture_photo_content">Foto do preço para revisão</string>
-    <string name="capture_review_hint">Aproxime para conferir, recorte para focar nos preços. Preencha só os combustíveis da foto — em branco não é enviado.</string>
+    <string name="capture_review_hint">Recorte para focar nos preços e preencha só os combustíveis da foto — em branco não é enviado.</string>
     <string name="capture_fuel_invalid">Confira este valor (ex.: 5,89)</string>
     <string name="capture_remove_fuel">Remover combustível do reporte</string>
     <string name="capture_show_all">Mostrar todos os combustíveis</string>
@@ -698,6 +698,7 @@
     <string name="capture_recognizing">Lendo os preços da foto…</string>
     <string name="capture_reanalyze">Ler esta foto novamente</string>
     <string name="capture_add_fuel">Adicionar combustível</string>
+    <string name="capture_choose_fuel">Escolher combustível</string>
     <string name="capture_no_recognition">Nenhum preço identificado. Recorte mais perto da placa, tente novamente ou adicione um combustível e digite o preço.</string>
     <string name="capture_conditional_warning">Esta foto pode mostrar um preço com restrições. Informe apenas o preço padrão disponível sem exigir forma de pagamento, aplicativo ou cadastro.</string>
     <string name="capture_default_confirmation">Conferi que estes são os preços padrão.</string>
@@ -713,4 +714,5 @@
     <string name="developer_capture_gallery">Escolher da galeria</string>
     <string name="developer_capture_search_failed">Não foi possível buscar postos. Confira a conexão e tente novamente.</string>
     <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
+    <string name="developer_capture_change_station">Trocar de posto</string>
 </resources>

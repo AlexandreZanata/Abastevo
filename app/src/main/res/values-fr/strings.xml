@@ -606,7 +606,7 @@
     <string name="capture_area_row_inside">~%1$d m · vous êtes ici</string>
     <string name="capture_crop">Recadrer</string>
     <string name="capture_photo_content">Photo des prix à vérifier</string>
-    <string name="capture_review_hint">Agrandissez avec deux doigts et recadrez sur les prix. Remplissez seulement les carburants présents sur la photo ; les champs vides ne sont pas envoyés.</string>
+    <string name="capture_review_hint">Recadrez sur les prix, puis renseignez uniquement les carburants de la photo ; les vides ne sont pas envoyés.</string>
     <string name="capture_fuel_invalid">Vérifiez cette valeur (ex. 5,89)</string>
     <string name="capture_remove_fuel">Retirer ce carburant du signalement</string>
     <string name="capture_show_all">Afficher tous les carburants</string>
@@ -682,6 +682,7 @@
     <string name="capture_recognizing">Lecture des prix sur la photo…</string>
     <string name="capture_reanalyze">Relire cette photo</string>
     <string name="capture_add_fuel">Ajouter un carburant</string>
+    <string name="capture_choose_fuel">Choisir le carburant</string>
     <string name="capture_no_recognition">Aucun prix identifié. Recadrez plus près du panneau, réessayez ou ajoutez un carburant et saisissez son prix.</string>
     <string name="capture_conditional_warning">Cette photo peut afficher un prix sous conditions. Indiquez uniquement le prix habituel disponible sans mode de paiement, application ou inscription imposés.</string>
     <string name="capture_default_confirmation">J’ai vérifié qu’il s’agit des prix habituels.</string>
@@ -700,4 +701,5 @@
     <string name="developer_capture_gallery">Choose from gallery</string>
     <string name="developer_capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
+    <string name="developer_capture_change_station">Changer de station</string>
 </resources>

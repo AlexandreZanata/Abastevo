@@ -104,6 +104,7 @@ class CaptureOcrViewModel @Inject constructor(
         _photoId.value?.takeIf { it !in queuedPhotoIds }?.let { id -> viewModelScope.launch(Dispatchers.IO) { photoFlow.discard(id) } }
         _photoId.value = null; savedState.remove<String>("photoId")
         rememberReviewUri(null); _fuelAmounts.value = emptyMap(); _removedFuels.value = emptySet(); edited.clear()
+        _unassignedAmounts.value = emptyList(); savedState.remove<ArrayList<String>>("unassigned")
         FuelProduct.entries.forEach { savedState.remove<String>("amount.${it.name}"); savedState.remove<Boolean>("edited.${it.name}"); savedState.remove<Boolean>("removed.${it.name}") }
         _submit.value = null; savedState.remove<Int>("queuedCount")
         _pickedStationId.value = null; _previewStations.value = emptyList(); _previewQuery.value = ""
@@ -210,6 +211,15 @@ class CaptureOcrViewModel @Inject constructor(
 
     private val _fuelErrors = MutableStateFlow<Set<FuelProduct>>(emptySet())
     val fuelErrors: StateFlow<Set<FuelProduct>> = _fuelErrors.asStateFlow()
+
+    /**
+     * OCR values with no recognized fuel label (e.g. "Diesel Comum").
+     * They are never sent as-is: the contributor assigns each one to a
+     * fuel (or dismisses it) before submit.
+     */
+    private val _unassignedAmounts = MutableStateFlow(
+        savedState.get<ArrayList<String>>("unassigned")?.toList() ?: emptyList())
+    val unassignedAmounts: StateFlow<List<String>> = _unassignedAmounts.asStateFlow()
 
     @Volatile private var generation = 0L
     private var recognition: Job? = null
@@ -326,6 +336,8 @@ class CaptureOcrViewModel @Inject constructor(
         edited.clear()
         _removedFuels.value = emptySet()
         _fuelAmounts.value = emptyMap()
+        _unassignedAmounts.value = emptyList()
+        savedState.remove<ArrayList<String>>("unassigned")
         _conditional.value = false
         FuelProduct.entries.forEach { product ->
             savedState.remove<String>("amount.${product.name}")
@@ -379,6 +391,27 @@ class CaptureOcrViewModel @Inject constructor(
     fun restoreFuels() {
         _removedFuels.value.forEach { addFuel(it) }
         _removedFuels.value = emptySet()
+    }
+
+    /**
+     * Assigns an OCR value with no recognized fuel to the
+     * contributor-chosen product: it becomes a normal editable row (kept
+     * across reanalysis) and leaves the unassigned list.
+     */
+    fun assignUnassigned(index: Int, product: FuelProduct) {
+        if (submitting || _submit.value is SubmitState.Queued) return
+        val amount = _unassignedAmounts.value.getOrNull(index) ?: return
+        setFuelAmount(product, amount)
+        _unassignedAmounts.value = _unassignedAmounts.value.filterIndexed { i, _ -> i != index }
+        savedState["unassigned"] = ArrayList(_unassignedAmounts.value)
+    }
+
+    /** Dismisses an unrecognized OCR value without assigning it. */
+    fun dismissUnassigned(index: Int) {
+        if (submitting || _submit.value is SubmitState.Queued) return
+        if (index !in _unassignedAmounts.value.indices) return
+        _unassignedAmounts.value = _unassignedAmounts.value.filterIndexed { i, _ -> i != index }
+        savedState["unassigned"] = ArrayList(_unassignedAmounts.value)
     }
 
     /** Distance of the relevant station, or null when unverifiable. */
@@ -497,6 +530,10 @@ class CaptureOcrViewModel @Inject constructor(
                     .associate { row -> row.product to formatMilli(row.amountMilli) }
                 // Untouched OCR values reflect this crop; no stale guesses remain.
                 _fuelAmounts.value = _fuelAmounts.value.filterKeys { it in edited } + detected
+                val assigned = _fuelAmounts.value.values.toSet()
+                val fresh = result.orphans.map(::formatMilli).filter { it !in assigned }.distinct()
+                _unassignedAmounts.value = fresh
+                savedState["unassigned"] = ArrayList(fresh)
                 FuelProduct.entries.forEach { product ->
                     _fuelAmounts.value[product]?.let { savedState["amount.${product.name}"] = it }
                         ?: savedState.remove<String>("amount.${product.name}")
