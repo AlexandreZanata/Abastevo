@@ -24,6 +24,7 @@ import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.NearbyServerStationsOutcome
 import com.anpfuel.data.mapper.WireFuelMapper
+import com.anpfuel.data.remote.PhotoCaptureHttpClient
 import com.anpfuel.domain.contribution.ContributionTarget
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.portable.PortablePriceOcr
@@ -243,6 +244,15 @@ class CaptureOcrViewModel @Inject constructor(
     fun rememberReviewUri(uri: String?) { savedState["reviewUri"] = uri; _reviewUri.value = uri }
     fun confirmDefaultPrice(confirmed: Boolean) { _defaultPriceConfirmed.value = confirmed }
 
+    /**
+     * Server-issued receipt camera window with issuance leeway: phones
+     * may trail the server clock by seconds, so a receipt that starts
+     * "in the future" is still usable. Same leeway as receipt decode
+     * (see [PhotoCaptureHttpClient]); expiry stays strict.
+     */
+    private fun receiptCameraWindowOpen(now: Long, issuedAtMillis: Long, cameraExpiresAtMillis: Long): Boolean =
+        now >= issuedAtMillis - PhotoCaptureHttpClient.ISSUED_AT_LEEWAY_MILLIS && now < cameraExpiresAtMillis
+
     /** No camera callback is delivered on a missing fix, refused receipt or changed target. */
     fun authorizeCamera(onAuthorized: () -> Unit) {
         if (submitting) return
@@ -266,7 +276,8 @@ class CaptureOcrViewModel @Inject constructor(
                 }
                 if (permission.developmentPreview != preview) { _gateFailure.value = "photo.permission-invalid"; return@launch }
                 if (ticket != generation || station != (_target.value?.stationId ?: _pickedStationId.value)) return@launch
-                if (permission.stationId != station || !captureGate.isCurrent(permission) || System.currentTimeMillis() !in permission.issuedAtMillis until permission.cameraExpiresAtMillis) {
+                if (permission.stationId != station || !captureGate.isCurrent(permission) ||
+                    !receiptCameraWindowOpen(System.currentTimeMillis(), permission.issuedAtMillis, permission.cameraExpiresAtMillis)) {
                     _gateFailure.value = "photo.permission-expired"
                     return@launch
                 }
@@ -284,7 +295,7 @@ class CaptureOcrViewModel @Inject constructor(
     fun beginCamera(): Boolean {
         val permission = pendingReceipt ?: return false
         val now = System.currentTimeMillis()
-        if (!captureGate.isCurrent(permission) || now !in permission.issuedAtMillis until permission.cameraExpiresAtMillis ||
+        if (!captureGate.isCurrent(permission) || !receiptCameraWindowOpen(now, permission.issuedAtMillis, permission.cameraExpiresAtMillis) ||
             permission.stationId != (_target.value?.stationId ?: _pickedStationId.value)) {
             _gateFailure.value = "photo.permission-expired"
             return false
@@ -297,7 +308,7 @@ class CaptureOcrViewModel @Inject constructor(
     fun acceptCameraPhoto(bytes: ByteArray, mime: String, uri: String): Boolean {
         val permission = pendingReceipt ?: return false
         val now = System.currentTimeMillis()
-        if (!captureGate.isCurrent(permission) || now !in permission.issuedAtMillis until permission.cameraExpiresAtMillis) {
+        if (!captureGate.isCurrent(permission) || !receiptCameraWindowOpen(now, permission.issuedAtMillis, permission.cameraExpiresAtMillis)) {
             _gateFailure.value = "photo.permission-expired"
             return false
         }
@@ -529,7 +540,8 @@ class CaptureOcrViewModel @Inject constructor(
         val photo = _photoId.value
         val now = System.currentTimeMillis()
         if (permission == null || photo == null || !captureGate.isCurrent(permission) ||
-            now >= permission.expiresAtMillis || originalCapturedAtMillis !in permission.issuedAtMillis until permission.cameraExpiresAtMillis ||
+            now >= permission.expiresAtMillis ||
+            !receiptCameraWindowOpen(originalCapturedAtMillis, permission.issuedAtMillis, permission.cameraExpiresAtMillis) ||
             selected.any { it.second.stationId != permission.stationId }) {
             _submit.value = SubmitState.Failed("photo.review-unavailable")
             return

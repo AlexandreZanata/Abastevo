@@ -153,6 +153,22 @@ class CaptureOcrViewModelTest {
     }
 
     @Test
+    fun `server receipt issued seconds in the future still authorizes preview gallery`() = runTest(dispatcher) {
+        val gate = mockk<PhotoCaptureGate>()
+        val now = System.currentTimeMillis()
+        io.mockk.coEvery { gate.authorizeDevelopmentPreview(any(), any()) } answers {
+            PhotoCapturePermission("10000000-0000-4000-8000-000000000001", firstArg(), now + 5000, now + 125000, now + 86405000, "owner", "https://teste.abastevo.com.br", true)
+        }
+        every { gate.isCurrent(any()) } returns true
+        val vm = viewModel(enabled = true, hasPermission = false, gate = gate)
+        prepareDevelopment(vm)
+        var opens = 0
+        vm.authorizeCamera { opens++ }; advanceUntilIdle()
+        assertEquals(1, opens)
+        assertEquals(null, vm.gateFailure.value)
+    }
+
+    @Test
     fun `late normal location response cannot clear the developer station selection`() = runTest(dispatcher) {
         val delayed = CompletableDeferred<NearbyServerStationsOutcome>()
         val vm = viewModel(true, false, location = com.anpfuel.domain.valueobject.DeviceLocation.of(0.0, 0.0), nearbyDeferred = delayed)
