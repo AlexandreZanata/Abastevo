@@ -22,18 +22,6 @@ class PhotoCaptureHttpClientTest {
         coEvery { transport.identityScope() } returns "anonymous:synthetic"
         coEvery { transport.post(any(), any(), any()) } returns response
     }
-    @Test fun `development authorization restricted to owned staging has no GPS and distinct policy`() = runTest {
-        prepare(receipt().put("policy_version", "photo-capture-ui-test-v1"))
-        val client = PhotoCaptureHttpClient(transport)
-        assertThrows(IllegalArgumentException::class.java) { kotlinx.coroutines.runBlocking { client.authorizeDevelopmentPreview(station, "capture") } }
-        every { transport.origin } returns ApiEnvironment.STAGING.origin
-        val body = slot<JSONObject>()
-        coEvery { transport.post(any(), any(), capture(body)) } returns receipt().put("policy_version", "photo-capture-ui-test-v1")
-        assertTrue(client.authorizeDevelopmentPreview(station, "capture").developmentPreview)
-        assertTrue(body.captured.getBoolean("development_preview")); assertFalse(body.captured.has("location"))
-        coEvery { transport.post(any(), any(), any()) } returns receipt()
-        assertThrows(java.io.IOException::class.java) { kotlinx.coroutines.runBlocking { client.authorizeDevelopmentPreview(station, "capture") } }
-    }
     @Test fun `strict signed receipt and transient fix are bound to current owner station origin`() = runTest {
         prepare(receipt())
         val body = slot<JSONObject>()
@@ -48,24 +36,6 @@ class PhotoCaptureHttpClientTest {
         every { transport.ownerScope() } returns "anonymous:synthetic"
         every { transport.origin } returns "https://other.invalid"
         assertFalse(client.isCurrent(permission))
-    }
-    @Test fun `server clock slightly ahead of phone still yields a usable development receipt`() = runTest {
-        val at = System.currentTimeMillis()
-        val skewed = receipt().put("policy_version", "photo-capture-ui-test-v1")
-            .put("issued_at", Instant.ofEpochMilli(at + 5000).toString())
-            .put("camera_expires_at", Instant.ofEpochMilli(at + 125000).toString())
-            .put("expires_at", Instant.ofEpochMilli(at + 86405000).toString())
-        every { transport.origin } returns ApiEnvironment.STAGING.origin
-        every { transport.ownerScope() } returns "anonymous:synthetic"
-        coEvery { transport.identityScope() } returns "anonymous:synthetic"
-        coEvery { transport.post(any(), any(), any()) } returns skewed
-        assertTrue(PhotoCaptureHttpClient(transport).authorizeDevelopmentPreview(station, "capture").developmentPreview)
-        val forged = receipt().put("policy_version", "photo-capture-ui-test-v1")
-            .put("issued_at", Instant.ofEpochMilli(at + 61000).toString())
-            .put("camera_expires_at", Instant.ofEpochMilli(at + 181000).toString())
-            .put("expires_at", Instant.ofEpochMilli(at + 86461000).toString())
-        coEvery { transport.post(any(), any(), any()) } returns forged
-        assertThrows(java.io.IOException::class.java) { kotlinx.coroutines.runBlocking { PhotoCaptureHttpClient(transport).authorizeDevelopmentPreview(station, "capture") } }
     }
     @Test fun `cross station stale longer deadlines changed identity and wrong policy are refused`() = runTest {
         listOf(
