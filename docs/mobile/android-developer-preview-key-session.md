@@ -1,7 +1,9 @@
 # Temporary Android UI preview and account-key session
 
 Scope: user request 2026-10-07; P37-T01/T02 and P36-T01/T03.
-Parent: ce04ba1. Isolated checkout because maintained dev contains other edits.
+Opened at ce04ba1 in an isolated checkout because maintained dev was occupied.
+Final local integration preserves the existing UI commits through 4fa7298 and
+the separately committed rollout plan 523be92; no edits were overwritten.
 
 B-BR-DEV01: an explicit, default-off debug-only UI preview allows camera or
 gallery without location. The existing manually selected Home city is reused;
@@ -51,7 +53,28 @@ Behavior fingerprint (sorted changed/untracked non-doc paths + NUL + bytes +
 NUL, SHA-256): `acfbe9362ddc567f0e775c90fba7dcebdb94ac2e3724994d60efb16117bc7ff5`
 (48 behavior/test/contract files; parent ce04ba1).
 
-## Local verification
+## Final combined checkpoint
+
+Owned feature commit: 16f3a07. UI-preserving merge b2cad57 was tested after
+combining maintained dev 4fa7298; later 523be92 changes only the rollout plan.
+The behavior diff after retaining that plan is empty. Final Android invocation:
+serial/offline Gradle, 1GiB metaspace, selected 54 debug unit tests, debug APK,
+instrumentation APK, lint (zero errors), release availability test, R8 and size:
+BUILD SUCCESSFUL in 5m 40s (233 tasks), release 4,224,869 bytes. Unchanged data
+and backend evidence below remains applicable. Release DEX excludes developer
+UI and evaluation activities. Combined existing-behavior-file fingerprint:
+4908b7475c5f15e93f98861d5b5820b8a001ad1e9a8b4ea930b12832385f3f7e
+(64 files; the removed placeholder card is recorded by b2cad57).
+Final debug APK SHA-256: 0d6dd80be65ccb0e2504c9058e7d7d721a0a88850771762a76d383f07a01c2a9.
+
+Combined debug APK installed with `adb install -r`. Repeated only the affected
+AuthAccountContinuityDeviceTest on POCO/API36: OK (1 test); no data/account wipe.
+The earlier two synthetic media cases below are unchanged. Local disposable
+PostGIS/MinIO fixtures and temporary local credential files were cleaned up;
+authorized VPS sidecars remain available until operator teardown. The preview
+flag still expires automatically at the recorded deadline.
+
+## Initial isolated verification
 
 - RED: the new backend flag/policy and Android APIs were absent before the
   change. The additional delayed-nearby test reproduced a lost manual station;
@@ -195,7 +218,7 @@ remain owner QA; local/backend/device results above must not impersonate them.
 The temporary staging deployment does not accept PC05/expanded PC06, G09,
 production release, public pilot, iOS, merge or wiki gates.
 
-Integration: isolated codex/android-dev-preview-key preserves the occupied dev
-checkout and its unrelated UI work. Integrate the owned commit when dev is
-available, then use protected dev -> main batch delivery if publication is
-subsequently authorized. No GitHub push/PR/merge/wiki publication in this task.
+Integration: current maintained dev is clean after its UI/plan commits and can
+consume this checked branch by fast-forward, preserving all existing commits.
+Main integration remains INTEGRATION_PENDING. Subsequent publication must use
+protected dev -> main batch delivery. No GitHub push/PR/merge/wiki in this task.
