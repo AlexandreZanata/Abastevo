@@ -124,6 +124,28 @@ class ContributionUploadHttpClientTest {
         coVerify(exactly=0) { proof.post("/v1/observations",any(),any(),any()) }
         assertEquals(1,puts.size)
     }
+    @Test fun `server canonical header casing and small clock skew pass upload validation`() = runTest {
+        // Exactly what staging mints: "Content-Type" and a 5-minute TTL
+        // observed from a phone seconds behind the server.
+        coEvery { proof.post("/v1/uploads", any(), any(), owner) } returns reservation()
+            .put("required_headers", JSONObject().put("Content-Type", "image/jpeg"))
+            .put("expires_at", Instant.ofEpochMilli(now + 302000).toString())
+        val receipt = kotlinx.coroutines.runBlocking { gateway().submit("row", 1, payload(), "a") }
+        assertEquals(ContributionRemoteStatus.RECEIVED, receipt.status)
+        assertEquals(1, puts.size)
+    }
+    @Test fun `wrong header and overlong authorization stay refused`() = runTest {
+        coEvery { proof.get("/v1/uploads/$upload", owner) } returns status("ISSUED")
+        coEvery { proof.post("/v1/uploads", any(), any(), owner) } returns reservation()
+            .put("required_headers", JSONObject().put("Content-Type", "text/plain"))
+        val wrong = assertThrows(IOException::class.java) { kotlinx.coroutines.runBlocking { gateway().submit("row", 1, payload(), "a") } }
+        assertEquals("contribution.invalid-upload-authorization", wrong.message)
+        coEvery { proof.post("/v1/uploads", any(), any(), owner) } returns reservation()
+            .put("expires_at", Instant.ofEpochMilli(now + 400000).toString())
+        val overlong = assertThrows(IOException::class.java) { kotlinx.coroutines.runBlocking { gateway().submit("row", 1, payload(), "b") } }
+        assertEquals("contribution.invalid-upload-authorization", overlong.message)
+        assertTrue(puts.isEmpty())
+    }
     @Test fun `fractional money malicious upload and fabricated validation are refused`() = runTest {
         val fractional=JSONObject(payload(photo=false)).put("client_submission_id","row").put("amount_milli_brl",5890.5)
         assertThrows(DomainException::class.java) { kotlinx.coroutines.runBlocking { gateway().submit("row",1,fractional.toString(),"a") } }

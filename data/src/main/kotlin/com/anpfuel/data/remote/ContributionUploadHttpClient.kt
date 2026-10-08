@@ -92,6 +92,17 @@ class ContributionUploadHttpClient(
 
     override suspend fun submit(commandId: String, revision: Int, payloadJson: String, nonce: String): ContributionReceipt {
         require(revision > 0 && nonce.isNotBlank())
+        try {
+            return submitInner(commandId, revision, payloadJson, nonce)
+        } catch (error: Exception) {
+            // Logcat-only diagnostic: error codes carry no PII (e.g. contribution.invalid-or-unscoped).
+            // Guarded: android.util.Log throws on plain JVM unit tests.
+            runCatching { android.util.Log.w("ContributionUpload", "submit failed for $commandId: ${error.message}") }
+            throw error
+        }
+    }
+
+    private suspend fun submitInner(commandId: String, revision: Int, payloadJson: String, nonce: String): ContributionReceipt {
         val intent = intent(payloadJson, commandId)
         val evidence = if (intent.photoId == null) null else mediaMutex.withLock { upload(intent) }
         checkScope(intent)
@@ -182,10 +193,13 @@ class ContributionUploadHttpClient(
         val uri = java.net.URI(url)
         val expiry = Instant.parse(reserve.getString("expires_at")).toEpochMilli()
         val headers = reserve.getJSONObject("required_headers")
+        // S3 canonical casing is "Content-Type": match case-insensitively.
+        val headerName = (0 until headers.length()).map { headers.names().getString(it) }.singleOrNull()
         if (reserve.getString("method") != "PUT" || url.length > 8192 || uri.scheme != "https" || uri.host.isNullOrBlank() ||
             uri.rawUserInfo != null || uri.rawFragment != null || uri.rawQuery.isNullOrBlank() || expiry <= nowMillis() ||
-            expiry > nowMillis() + 300_000 || expiry > deadline || integer(reserve, "max_bytes") < bytes.size ||
-            headers.length() != 1 || headers.optString("content-type") != "image/jpeg") {
+            expiry > nowMillis() + UPLOAD_URL_TTL_MILLIS + PhotoCaptureHttpClient.ISSUED_AT_LEEWAY_MILLIS || expiry > deadline ||
+            integer(reserve, "max_bytes") < bytes.size || headerName == null ||
+            !headerName.equals("content-type", ignoreCase = true) || headers.optString(headerName) != "image/jpeg") {
             throw IOException("contribution.invalid-upload-authorization")
         }
         val request = Request.Builder().url(url).put(bytes.toRequestBody("image/jpeg".toMediaType())).build()
@@ -193,6 +207,12 @@ class ContributionUploadHttpClient(
     }
 
     companion object {
+        /**
+         * Server upload authorizations live 5 minutes. Phones trailing the
+         * server clock would otherwise refuse every authorization as
+         * over-long, so the shared issuance leeway applies here too.
+         */
+        private const val UPLOAD_URL_TTL_MILLIS = 300_000L
         private fun requireUuid(value: String) { require(value.matches(Regex("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"))) { "invalid identifier" } }
         private fun integer(doc: JSONObject, key: String): Long = when (val value = doc.get(key)) {
             is Int -> value.toLong()
