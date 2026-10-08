@@ -88,8 +88,22 @@ object FuelBoardOcr {
                 }
                 score?.let { Triple(fuel,it,label) }
             }.sortedBy { it.second }
-            val best = ranked.firstOrNull() ?: continue
-            if (ranked.drop(1).any { it.first != best.first && abs(it.second-best.second)<0.35 }) { unresolved=true;continue }
+            val best = ranked.firstOrNull()
+            if (best == null) {
+                // Priced value with no recognizable label nearby (the name
+                // itself was misread beyond recovery): keep it for manual
+                // fuel choice instead of silently dropping it.
+                unresolved = true
+                if (amount !in orphans && orphans.size < MAX_ORPHANS) orphans += amount
+                continue
+            }
+            // Ambiguous geometry never auto-assigns — but the value is
+            // kept for manual choice instead of being dropped.
+            if (ranked.drop(1).any { it.first != best.first && abs(it.second-best.second)<0.35 }) {
+                unresolved = true
+                if (amount !in orphans && orphans.size < MAX_ORPHANS) orphans += amount
+                continue
+            }
             val fuel=best.first
             if(fuel==null){
                 unresolved=true
@@ -123,6 +137,45 @@ object FuelBoardOcr {
         text.contains("ADITIV") || text.contains("V-POWER") || Regex("^G ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.GASOLINE_PREMIUM
         text.contains("GASOLINA") -> FuelProduct.GASOLINE_REGULAR
         Regex("\\bGNV\\b").containsMatchIn(text) -> FuelProduct.CNG
-        else -> null
+        else -> fuzzyProduct(text)
+    }
+
+    /**
+     * Near-miss label recovery for single-word OCR misreads ("ETONOL",
+     * "GOSOLINO"). Small edit distance against known fuel words only;
+     * diesel specs are excluded (S50 is not S500) and multi-word tokens
+     * keep the exact contains-rules above. A merged longer anchor still
+     * filters the standalone token via the enclosure rule, so this never
+     * splits an already-associated row.
+     */
+    private fun fuzzyProduct(text: String): FuelProduct? {
+        if (' ' in text || text.length !in 4..10 || text.any { it !in 'A'..'Z' }) return null
+        val threshold = if (text.length <= 6) 1 else 2
+        return FUZZY_FUELS.asSequence()
+            .map { (word, fuel) -> levenshtein(text, word) to fuel }
+            .filter { (distance, _) -> distance in 1..threshold }
+            .minByOrNull { (distance, _) -> distance }?.second
+    }
+
+    private val FUZZY_FUELS = listOf(
+        "ETANOL" to FuelProduct.ETHANOL,
+        "ALCOOL" to FuelProduct.ETHANOL,
+        "GASOLINA" to FuelProduct.GASOLINE_REGULAR,
+        "ADITIVADA" to FuelProduct.GASOLINE_PREMIUM,
+        "ADITIVADO" to FuelProduct.GASOLINE_PREMIUM,
+    )
+
+    private fun levenshtein(a: String, b: String): Int {
+        if (a == b) return 0
+        var prev = IntArray(b.length + 1) { it }
+        var curr = IntArray(b.length + 1)
+        for (i in 1..a.length) {
+            curr[0] = i
+            for (j in 1..b.length) {
+                curr[j] = minOf(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            }
+            val tmp = prev; prev = curr; curr = tmp
+        }
+        return prev[b.length]
     }
 }
