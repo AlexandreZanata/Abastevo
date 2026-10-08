@@ -34,6 +34,8 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.FuelProductTint
 import com.anpfuel.domain.community.CommunityFeedItem
 import com.anpfuel.domain.community.FeedSort
@@ -121,20 +123,20 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                 ) {
-                    FilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
+                    CommunityFilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
                         label = { Text(stringResource(R.string.feed_recent)) }, leadingIcon = { Icon(Icons.Default.Schedule, null, Modifier.size(18.dp)) })
-                    FilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
+                    CommunityFilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
                         label = { Text(stringResource(R.string.feed_cheapest)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingDown, null, Modifier.size(18.dp)) })
-                    FilterChip(selected = state.sort == FeedSort.BEST, onClick = { onSort(FeedSort.BEST) },
+                    CommunityFilterChip(selected = state.sort == FeedSort.BEST, onClick = { onSort(FeedSort.BEST) },
                         label = { Text(stringResource(R.string.feed_best)) }, leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(18.dp)) })
-                    FilterChip(selected = state.sort == FeedSort.WORST, onClick = { onSort(FeedSort.WORST) },
+                    CommunityFilterChip(selected = state.sort == FeedSort.WORST, onClick = { onSort(FeedSort.WORST) },
                         label = { Text(stringResource(R.string.feed_worst)) }, leadingIcon = { Icon(Icons.Default.StarOutline, null, Modifier.size(18.dp)) })
                 }
             }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(FuelProduct.entries, key = { it.name }) { fuel ->
-                        FilterChip(selected = state.fuel == fuel, onClick = { onFuel(fuel) },
+                        CommunityFilterChip(selected = state.fuel == fuel, onClick = { onFuel(fuel) },
                             label = { Text(stringResource(FuelProductI18n.toStringRes(fuel))) },
                             leadingIcon = { FuelProductIcon(fuel, size = 20.dp, contentDescription = null) })
                     }
@@ -154,7 +156,11 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             when {
-                state.loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                state.loading -> item {
+                    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                        repeat(3) { SkeletonCard(height = 190.dp) }
+                    }
+                }
                 state.noCity -> item { FeedMessage(stringResource(R.string.feed_choose_city), stringResource(R.string.feed_no_city_hint)) {
                     TextButton(onClick = { onNavigate(Routes.LOCATION) }) { Text(stringResource(R.string.feed_choose_city)) }
                 } }
@@ -183,6 +189,32 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.community_rules_body)); Text(stringResource(R.string.community_moderation_body)); Text(stringResource(R.string.community_moderation_appeal))
         } }, confirmButton = { TextButton(onClick = { showRules = false }) { Text(stringResource(R.string.feed_close)) } })
+}
+
+/**
+ * Community filter with a distinct active treatment: elevated surface plus
+ * the app primary container when selected, matching the rounded-card language
+ * used across home and profile.
+ */
+@Composable
+private fun CommunityFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    leadingIcon: @Composable () -> Unit,
+) {
+    ElevatedFilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = label,
+        leadingIcon = leadingIcon,
+        colors = FilterChipDefaults.elevatedFilterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    )
 }
 
 @Composable
