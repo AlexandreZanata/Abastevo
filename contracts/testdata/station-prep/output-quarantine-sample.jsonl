@@ -1,0 +1,10 @@
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"registry-13col-sample.csv:5","reason":"unknown_city","detail":"municipality VILLE INCONNUE has no reference entry","source_key":"37123456000159"}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"registry-13col-sample.csv:8","reason":"invalid_cnpj","detail":"identifier fails checksum vector","source_key":null}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"registry-13col-sample.csv:9","reason":"invalid_cnpj","detail":"identifier fails checksum vector","source_key":null}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"registry-13col-sample.csv:10","reason":"date_reversal","detail":"DATAVINCULACAO 2024-04-01 precedes DATAPUBLICACAO 2024-05-01; never auto-correct","source_key":"11222333000181"}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"registry-13col-header-variant.csv:header","reason":"header_mismatch","detail":"missing RAZAOSOCIAL; unknown RAZAO_SOCIAL, EXTRA_COL; run quarantined","source_key":null}
+{"schema_version":"station-quarantine-v1","source":"pmqc","row_locator":"pmqc-sample.csv:6","reason":"invalid_point","detail":"zero coordinates are placeholders, not a site","source_key":"12ABC34501DE35"}
+{"schema_version":"station-quarantine-v1","source":"pmqc","row_locator":"pmqc-sample.csv:7","reason":"suspect_swap","detail":"latitude outside Brazil with mirrored values; never auto-swap","source_key":"37123456000159"}
+{"schema_version":"station-quarantine-v1","source":"pmqc","row_locator":"pmqc-sample.csv:8","reason":"out_of_brazil","detail":"point outside national bounds","source_key":"11222333000181"}
+{"schema_version":"station-quarantine-v1","source":"pmqc","row_locator":"pmqc-sample.csv:9","reason":"invalid_point","detail":"non-finite coordinates","source_key":"77215333000162"}
+{"schema_version":"station-quarantine-v1","source":"pmqc","row_locator":"pmqc-sample.csv:12","reason":"invalid_cnpj","detail":"identifier fails checksum vector","source_key":null}
