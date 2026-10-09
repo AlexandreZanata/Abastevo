@@ -1,0 +1,72 @@
+{
+  "format_version": "station-batch-v1",
+  "run_id": "55555555-5555-4333-8555-555555555555",
+  "parser_version": "station-prep-v0.2.0",
+  "policy_version": "station-policy-v1",
+  "municipality_reference": {
+    "reference": "bench-aliases",
+    "reference_hash": "f3b3f527b825b753129508f6f272ccd0eed2f57e851ceba697756232eb45ac34"
+  },
+  "started_at": "2026-10-09T00:00:00Z",
+  "ended_at": "2026-10-09T00:00:00Z",
+  "inputs": [
+    {
+      "key": "registry-13col",
+      "reference": "/tmp/rst14-tiny-delta1.csv",
+      "edition": "bench-edition",
+      "edition_seq": 1,
+      "sha256": "94d2bc79b2918f10e59ad38b531b9fcadb192fa5239e7a0ece02eb77c5bb0b62",
+      "bytes": 4975,
+      "rows": 30,
+      "encoding": "UTF-8 without BOM"
+    },
+    {
+      "key": "pmqc",
+      "reference": "bench-pmqc.csv",
+      "edition": "bench-edition",
+      "edition_seq": 1,
+      "sha256": "b7b9bc7c27732727f9ff531b7f67a38e922c5a130030954b6adebf4880832ade",
+      "bytes": 1418,
+      "rows": 24,
+      "encoding": "UTF-8 without BOM"
+    }
+  ],
+  "counts": {
+    "pmqc": {
+      "input": 24,
+      "accepted": 24,
+      "duplicates": 0,
+      "quarantined": 0
+    },
+    "registry-13col": {
+      "input": 30,
+      "accepted": 24,
+      "duplicates": 2,
+      "quarantined": 4
+    }
+  },
+  "completeness": {
+    "eof_validated": true,
+    "expected_manifest": true
+  },
+  "outputs": [
+    {
+      "path": "assertions.jsonl",
+      "sha256": "17823907f0948386def318b6e9000b987b7bc52b32bfc3c8e1c238f8ee6aae25",
+      "bytes": 23062,
+      "rows": 26
+    },
+    {
+      "path": "candidates.jsonl",
+      "sha256": "1685f41e1d6fa09ad45834b926e4eecd588e7e695405721883ef659a2b83ebb3",
+      "bytes": 7673,
+      "rows": 24
+    },
+    {
+      "path": "quarantine.jsonl",
+      "sha256": "2e1d1ce833159e0bd56bf4b93a1b61eeb39bf9a7fa4fcf6f54b3ce79ee0c02e7",
+      "bytes": 863,
+      "rows": 4
+    }
+  ]
+}

@@ -266,8 +266,11 @@ fn merge_runs(runs: &[PathBuf], writer: &mut dyn Write) -> std::io::Result<usize
 
 /// Emit one run combining an optional registry batch and an optional
 /// PMQC batch. Quarantine rows merge into a single stream ordered by
-/// `(source, locator)`. Accepted rows keep their parse-time stable
-/// order and are re-sorted here only to prove spill equivalence.
+/// `(source, locator)`. Assertion/candidate streams carry the full
+/// accepted+duplicate multiset (duplicate lines byte-equal their
+/// accepted twins) so the loader independently re-verifies dedup
+/// against manifest accounting; accepted rows keep their parse-time
+/// stable order and are re-sorted here only to prove spill equivalence.
 #[allow(clippy::too_many_arguments)]
 pub fn emit_run(
     registry: Option<(&SourceMeta, &RegistryBatch)>,
@@ -311,6 +314,7 @@ pub fn emit_run(
         let pairs: Vec<(String, String)> = batch
             .accepted
             .iter()
+            .chain(batch.duplicates.iter())
             .map(|row| {
                 (
                     format!("{}\x1f{}", row.source_key, row.checksum),
@@ -344,6 +348,7 @@ pub fn emit_run(
         let pairs: Vec<(String, String)> = batch
             .candidates
             .iter()
+            .chain(batch.duplicates.iter())
             .map(|row| {
                 (
                     format!(

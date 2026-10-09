@@ -44,12 +44,17 @@ const (
 	FormatBatch      = "station-batch-v1"
 )
 
-// BatchManifest mirrors station-batch-v1 (loader subset).
+// BatchManifest mirrors station-batch-v1 (loader subset). StartedAt
+// and EndedAt are recorded run provenance (RST-13 emitters always set
+// them); they stay optional so pre-existing manifests keep loading,
+// and no staging decision reads them.
 type BatchManifest struct {
 	FormatVersion         string `json:"format_version"`
 	RunID                 string `json:"run_id"`
 	ParserVersion         string `json:"parser_version"`
 	PolicyVersion         string `json:"policy_version"`
+	StartedAt             string `json:"started_at"`
+	EndedAt               string `json:"ended_at"`
 	MunicipalityReference struct {
 		Reference     string `json:"reference"`
 		ReferenceHash string `json:"reference_hash"`

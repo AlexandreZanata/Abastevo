@@ -6,7 +6,7 @@
 use crate::cnpj::normalize_cnpj;
 use crate::types::{reason, sha256_hex, Counts, Limits, QuarantineRow, RunState};
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Row source label for `station-coordinate-candidate-v1` output.
 pub const PMQC_SOURCE: &str = "pmqc";
@@ -68,6 +68,9 @@ pub struct PmqcBatch {
     pub error_code: String,
     pub counts: Counts,
     pub candidates: Vec<PmqcCandidate>,
+    /// One retained repeat per within-run exact repeat (repeat order),
+    /// so emission carries the full multiset the manifest accounts for.
+    pub duplicates: Vec<PmqcCandidate>,
     pub quarantine: Vec<QuarantineRow>,
 }
 
@@ -124,6 +127,7 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
             error_code: "header_mismatch".to_string(),
             counts: Counts::default(),
             candidates: Vec::new(),
+            duplicates: Vec::new(),
             quarantine: vec![QuarantineRow {
                 schema_version: "station-quarantine-v1",
                 source: PMQC_SOURCE,
@@ -157,6 +161,7 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
     let mut candidates = Vec::new();
     let mut quarantine = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
+    let mut dup_checksums: Vec<String> = Vec::new();
 
     for (offset, next) in reader.records().enumerate() {
         let logical_row = offset + 2;
@@ -263,8 +268,9 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
             _ => String::new(),
         };
         let checksum = candidate_checksum(&sample, &cnpj, &observed, &point);
-        if !seen.insert(checksum) {
+        if !seen.insert(checksum.clone()) {
             counts.duplicates += 1;
+            dup_checksums.push(checksum);
             continue;
         }
         counts.accepted += 1;
@@ -291,11 +297,39 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
             .then_with(|| a.sample_ref.cmp(&b.sample_ref))
     });
 
+    // Resolve repeats to byte-identical candidate twins so the emitted
+    // multiset stays order-independent.
+    let point_of = |candidate: &PmqcCandidate| match (candidate.latitude, candidate.longitude) {
+        (Some(lat), Some(lon)) => format!("{lat:.6},{lon:.6}"),
+        _ => String::new(),
+    };
+    let mut by_checksum: HashMap<String, &PmqcCandidate> = HashMap::new();
+    for candidate in &candidates {
+        by_checksum
+            .entry(candidate_checksum(
+                &candidate.sample_ref,
+                &candidate.source_key,
+                &candidate.observed_at,
+                &point_of(candidate),
+            ))
+            .or_insert(candidate);
+    }
+    let mut duplicates = Vec::with_capacity(dup_checksums.len());
+    for checksum in &dup_checksums {
+        duplicates.push(
+            (*by_checksum
+                .get(checksum)
+                .expect("duplicate checksum was accepted"))
+            .clone(),
+        );
+    }
+
     Ok(PmqcBatch {
         state: RunState::Complete,
         error_code: String::new(),
         counts,
         candidates,
+        duplicates,
         quarantine,
     })
 }

@@ -119,6 +119,28 @@ fn clean_pipeline_reconciles_and_replays_to_noop() {
     );
     assert_eq!(first.emitted.spill_runs, 0);
     assert_eq!(first.emitted.spill_bytes, 0);
+    // Streams carry the full accepted+duplicate multiset the manifest
+    // accounts for, so the loader re-verifies dedup independently.
+    assert_eq!(first.batch.duplicates.len(), first.batch.counts.duplicates);
+    let twins: std::collections::HashSet<String> = first
+        .batch
+        .accepted
+        .iter()
+        .map(|row| row.to_jsonl())
+        .collect();
+    for dup in &first.batch.duplicates {
+        assert!(twins.contains(&dup.to_jsonl()), "dup has an accepted twin");
+    }
+    let assertion_lines = first
+        .emitted
+        .assertions
+        .iter()
+        .filter(|b| **b == b'\n')
+        .count();
+    assert_eq!(
+        assertion_lines,
+        first.batch.counts.accepted + first.batch.counts.duplicates
+    );
     // Unchanged replay: identical bytes, Noop decision, publish round-trips.
     let second = run_pipeline(&generated.csv, &generated.aliases_json, usize::MAX, &dir);
     assert_eq!(first.emitted.assertions, second.emitted.assertions);

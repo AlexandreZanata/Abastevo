@@ -119,11 +119,17 @@ impl RegistryRow {
 
 /// Parsed registry batch with reconciled counts.
 #[derive(Debug)]
+/// Parsed registry batch. `accepted` holds unique rows; `duplicates`
+/// retains one byte-identical repeat per within-run exact repeat (in
+/// repeat order) so emission carries the full accepted+duplicate
+/// multiset the manifest accounts for and the Go loader
+/// independently re-verifies. Quarantined rows never enter either.
 pub struct RegistryBatch {
     pub state: RunState,
     pub error_code: String,
     pub counts: Counts,
     pub accepted: Vec<RegistryRow>,
+    pub duplicates: Vec<RegistryRow>,
     pub quarantine: Vec<QuarantineRow>,
 }
 
@@ -201,6 +207,7 @@ pub fn parse_registry(
             error_code: "header_mismatch".to_string(),
             counts: Counts::default(),
             accepted: Vec::new(),
+            duplicates: Vec::new(),
             quarantine: vec![QuarantineRow {
                 schema_version: "station-quarantine-v1",
                 source: REGISTRY_SOURCE,
@@ -219,6 +226,10 @@ pub fn parse_registry(
     let mut accepted = Vec::new();
     let mut quarantine = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
+    // Checksums of exact repeats, in repeat order; resolved to
+    // byte-identical accepted twins after succession linking so the
+    // emitted multiset stays order-independent.
+    let mut dup_checksums: Vec<String> = Vec::new();
 
     for (offset, next) in reader.records().enumerate() {
         // Logical record number: the header is record 1.
@@ -355,6 +366,7 @@ pub fn parse_registry(
         ]);
         if !seen.insert(checksum.clone()) {
             counts.duplicates += 1;
+            dup_checksums.push(checksum);
             continue;
         }
         let (street, number) = split_street_number(&address_raw);
@@ -436,11 +448,29 @@ pub fn parse_registry(
             .then_with(|| a.checksum.cmp(&b.checksum))
     });
 
+    // Resolve repeats to their accepted twins (post-link, so twins
+    // carry identical succession links and the multiset is
+    // order-independent).
+    let mut by_checksum: HashMap<&str, &RegistryRow> = HashMap::new();
+    for row in &accepted {
+        by_checksum.entry(row.checksum.as_str()).or_insert(row);
+    }
+    let mut duplicates = Vec::with_capacity(dup_checksums.len());
+    for checksum in &dup_checksums {
+        duplicates.push(
+            (*by_checksum
+                .get(checksum.as_str())
+                .expect("duplicate checksum was accepted"))
+            .clone(),
+        );
+    }
+
     Ok(RegistryBatch {
         state: RunState::Complete,
         error_code: String::new(),
         counts,
         accepted,
+        duplicates,
         quarantine,
     })
 }
