@@ -203,6 +203,8 @@ fun AuthScreen(
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Pure crossfade: no positional slide, so texts and inputs
                     // never sit displaced on top of each other mid-transition.
+                    // Single Column child: AnimatedContent stacks multiple
+                    // children, so each step renders exactly one Column.
                     AnimatedContent(
                         targetState = state.step,
                         transitionSpec = {
@@ -210,6 +212,11 @@ fun AuthScreen(
                         },
                         label = "auth-step",
                     ) { step ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
                     when (step) {
                         AuthStep.CHECKING -> {
                             AuthFormLoadingSkeleton()
@@ -328,6 +335,7 @@ fun AuthScreen(
                             }
                         }
                         AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> Unit
+                    }
                     }
                     }
                 }
