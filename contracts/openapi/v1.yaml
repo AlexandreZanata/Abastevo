@@ -3216,6 +3216,32 @@ components:
           type: [string, "null"]
           format: uuid
           example: null
+        official:
+          type: [object, "null"]
+          description: >
+            Latest complete official anchor for this establishment, or
+            null for community-only stations. Official rows never absorb
+            community reports and community stations never borrow
+            official trust; finished_at is the freshness signal.
+          properties:
+            source:
+              type: string
+              example: registry-csv
+            display_name:
+              type: string
+              example: Posto Central LTDA
+            municipality_code:
+              type: [string, "null"]
+              example: '3550308'
+            state:
+              type: [string, "null"]
+              minLength: 2
+              maxLength: 2
+              example: SP
+            finished_at:
+              type: [string, "null"]
+              format: date-time
+              example: '2026-09-28T00:00:00Z'
     StationList:
       description: Paginated station search page.
       type: object

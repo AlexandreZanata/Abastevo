@@ -212,8 +212,8 @@ func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionPara
 }
 
 const findOfficialAssertion = `-- name: FindOfficialAssertion :one
-SELECT a.source_key, a.display_name, a.municipality_code, a.state,
-    a.auth_state, a.eligibility
+SELECT a.source, a.source_key, a.display_name, a.municipality_code, a.state,
+    a.auth_state, a.eligibility, r.finished_at AS run_finished_at
 FROM registry_assertions AS a
 JOIN registry_source_runs AS r ON r.id = a.run_id
 WHERE a.source_key = $1
@@ -224,24 +224,28 @@ LIMIT 1
 `
 
 type FindOfficialAssertionRow struct {
-	SourceKey        string      `json:"source_key"`
-	DisplayName      string      `json:"display_name"`
-	MunicipalityCode pgtype.Text `json:"municipality_code"`
-	State            pgtype.Text `json:"state"`
-	AuthState        string      `json:"auth_state"`
-	Eligibility      string      `json:"eligibility"`
+	Source           string             `json:"source"`
+	SourceKey        string             `json:"source_key"`
+	DisplayName      string             `json:"display_name"`
+	MunicipalityCode pgtype.Text        `json:"municipality_code"`
+	State            pgtype.Text        `json:"state"`
+	AuthState        string             `json:"auth_state"`
+	Eligibility      string             `json:"eligibility"`
+	RunFinishedAt    pgtype.Timestamptz `json:"run_finished_at"`
 }
 
 func (q *Queries) FindOfficialAssertion(ctx context.Context, sourceKey string) (FindOfficialAssertionRow, error) {
 	row := q.db.QueryRow(ctx, findOfficialAssertion, sourceKey)
 	var i FindOfficialAssertionRow
 	err := row.Scan(
+		&i.Source,
 		&i.SourceKey,
 		&i.DisplayName,
 		&i.MunicipalityCode,
 		&i.State,
 		&i.AuthState,
 		&i.Eligibility,
+		&i.RunFinishedAt,
 	)
 	return i, err
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Bounds from API_PLAN.
@@ -35,6 +36,23 @@ type Station struct {
 	LocationQuality   string         `json:"location_quality"`
 	Coordinates       *LatLon        `json:"coordinates"`
 	CurrentRevisionID *string        `json:"current_revision_id"`
+	// Official carries the latest complete official anchor for this
+	// establishment, or nil when none exists. Community-only stations
+	// stay distinguishable: a nil here never borrows official trust,
+	// and official rows never absorb community reports.
+	Official *OfficialAnchor `json:"official"`
+}
+
+// OfficialAnchor is the source-separated official provenance of a
+// station: which official source last evidenced it, and when. The
+// timestamp is the freshness signal; readers must not infer liveness
+// beyond it.
+type OfficialAnchor struct {
+	Source           string     `json:"source"`
+	DisplayName      string     `json:"display_name"`
+	MunicipalityCode *string    `json:"municipality_code"`
+	State            *string    `json:"state"`
+	FinishedAt       *time.Time `json:"finished_at"`
 }
 
 // LatLon is a public reviewed position.

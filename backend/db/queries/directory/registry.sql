@@ -84,8 +84,8 @@ SET superseded_by = @superseded_by
 WHERE id = @id AND superseded_by IS NULL;
 
 -- name: FindOfficialAssertion :one
-SELECT a.source_key, a.display_name, a.municipality_code, a.state,
-    a.auth_state, a.eligibility
+SELECT a.source, a.source_key, a.display_name, a.municipality_code, a.state,
+    a.auth_state, a.eligibility, r.finished_at AS run_finished_at
 FROM registry_assertions AS a
 JOIN registry_source_runs AS r ON r.id = a.run_id
 WHERE a.source_key = @source_key
