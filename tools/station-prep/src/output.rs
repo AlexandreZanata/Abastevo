@@ -141,12 +141,17 @@ pub struct EmitOptions {
 }
 
 /// One emitted run: stream bytes plus the manifest describing them.
+/// `spill_runs` counts temporary sort runs written during emission and
+/// `spill_bytes` their framed bytes (both zero on the in-memory path);
+/// together they bound temporary disk for the RST-13 campaign.
 #[derive(Debug, Clone)]
 pub struct EmittedRun {
     pub assertions: Vec<u8>,
     pub candidates: Vec<u8>,
     pub quarantine: Vec<u8>,
     pub manifest: Manifest,
+    pub spill_runs: usize,
+    pub spill_bytes: u64,
 }
 
 impl EmittedRun {
@@ -157,14 +162,15 @@ impl EmittedRun {
 
 /// Write `(sort key, JSONL line)` pairs in key order. Past `spill_rows`
 /// pairs, sorted runs spill to `scratch` and merge back; otherwise the
-/// whole stream sorts in memory with no files touched.
+/// whole stream sorts in memory with no files touched. Returns
+/// `(written rows, spill run files, framed spill bytes)`.
 fn write_sorted(
     pairs: Vec<(String, String)>,
     writer: &mut dyn Write,
     spill_rows: usize,
     scratch: &Path,
     stream: &str,
-) -> std::io::Result<usize> {
+) -> std::io::Result<(usize, usize, u64)> {
     if pairs.len() <= spill_rows {
         let mut pairs = pairs;
         pairs.sort();
@@ -172,10 +178,11 @@ fn write_sorted(
             writer.write_all(line.as_bytes())?;
             writer.write_all(b"\n")?;
         }
-        return Ok(pairs.len());
+        return Ok((pairs.len(), 0, 0));
     }
     std::fs::create_dir_all(scratch)?;
     let mut runs: Vec<PathBuf> = Vec::new();
+    let mut spill_bytes: u64 = 0;
     for (index, chunk) in pairs.chunks(spill_rows).enumerate() {
         let mut run: Vec<(String, String)> = chunk.to_vec();
         run.sort();
@@ -190,13 +197,14 @@ fn write_sorted(
             file.write_all(b"\n")?;
         }
         file.flush()?;
+        spill_bytes += std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
         runs.push(path);
     }
-    let result = merge_runs(&runs, writer);
+    let written = merge_runs(&runs, writer)?;
     for path in &runs {
         let _ = std::fs::remove_file(path);
     }
-    result
+    Ok((written, runs.len(), spill_bytes))
 }
 
 /// K-way merge of spilled length-prefixed runs in key order.
@@ -292,6 +300,8 @@ pub fn emit_run(
     let mut assertions: Vec<u8> = Vec::new();
     let mut candidates: Vec<u8> = Vec::new();
     let mut quarantine_pairs: Vec<(String, String)> = Vec::new();
+    let mut spill_runs = 0usize;
+    let mut spill_bytes = 0u64;
 
     if let Some((meta, batch)) = registry {
         manifest.inputs.push(meta.clone());
@@ -314,7 +324,11 @@ pub fn emit_run(
             options.spill_rows,
             scratch,
             "assertions",
-        )?;
+        )
+        .map(|(_, runs, bytes)| {
+            spill_runs += runs;
+            spill_bytes += bytes;
+        })?;
         for row in &batch.quarantine {
             quarantine_pairs.push((
                 format!("{}\x1f{}", row.source, row.row_locator),
@@ -346,7 +360,11 @@ pub fn emit_run(
             options.spill_rows,
             scratch,
             "candidates",
-        )?;
+        )
+        .map(|(_, runs, bytes)| {
+            spill_runs += runs;
+            spill_bytes += bytes;
+        })?;
         for row in &batch.quarantine {
             quarantine_pairs.push((
                 format!("{}\x1f{}", row.source, row.row_locator),
@@ -361,7 +379,11 @@ pub fn emit_run(
         options.spill_rows,
         scratch,
         "quarantine",
-    )?;
+    )
+    .map(|(_, runs, bytes)| {
+        spill_runs += runs;
+        spill_bytes += bytes;
+    })?;
 
     for (path, bytes) in [
         (ASSERTIONS_FILE, &assertions),
@@ -380,6 +402,8 @@ pub fn emit_run(
         candidates,
         quarantine,
         manifest,
+        spill_runs,
+        spill_bytes,
     })
 }
 
