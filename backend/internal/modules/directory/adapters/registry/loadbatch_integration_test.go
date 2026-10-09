@@ -313,3 +313,21 @@ func TestLoadBatchIntegrationRestrictedRole(t *testing.T) {
 		t.Fatalf("unexpected canonical write error: %v", err)
 	}
 }
+
+// TestRegistryRunSourceEnumCoversLineage pins the full CHECK lineage
+// (000031/000033/000049/000050/000052): every historical source stages,
+// anything else violates the constraint. Added after 000049 dropped the
+// DOU values by evolving from the creating migration instead of the
+// latest definition.
+func TestRegistryRunSourceEnumCoversLineage(t *testing.T) {
+	store := freshStore(t)
+	ctx := context.Background()
+	for _, source := range []string{"registry-csv", "registry-api", "dou-editions", "dou-acts", "station-prep", "review"} {
+		if _, created, err := store.CreateRun(ctx, newUUID(), source, "snap-enum-"+source, "x"); err != nil || !created {
+			t.Fatalf("source %q: created=%v err=%v", source, created, err)
+		}
+	}
+	if _, _, err := store.CreateRun(ctx, newUUID(), "invented-source", "snap-bogus", "x"); err == nil {
+		t.Fatal("bogus source accepted, want CHECK violation")
+	}
+}
