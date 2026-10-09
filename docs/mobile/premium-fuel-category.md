@@ -93,10 +93,31 @@ are recorded in [the asset workflow](../assets/fuel-icons/README.md). Final ruby
 silhouette IoU 99.7754%, ink 99.4679%, white details 99.3403%; six SVG paths, no
 embedded raster, 128x128 Android export. Final color resources/APK were rebuilt.
 
-LOCAL_DONE / INTEGRATION_PENDING: backend deployment and main-app installation
-were not performed in this isolated slice. The service must accept the new wire
+LOCAL_DONE / INTEGRATION_PENDING: backend deployment was not performed. Main-app installation
+was subsequently verified on the combined maintained-dev candidate below. The service must accept the new wire
 grade before a client can successfully send it; no live premium receipt or
 availability inventory is claimed. Keep the tested APK as a reviewable artifact.
 Existing independent PC06/consent/release acceptance remains OWED.
 
 Behavior/asset/contract source fingerprint: `cd50642f9ea76ef6cd6480c8b16e2c69a66ad452eda9202bc1a9da2929be017a` over 32 paths.
+
+## Combined maintained-dev candidate
+
+Validated behavior head `333c5f2` integrates premium `85c3260`, Rust planning
+`d82fef2` and the completed login fix `6535929`, preserving all histories.
+Affected combined app unit suite: 249 cases, zero failures/errors/skips; debug
+lint and both APKs passed. APK installed with ADB `install -r` on the connected
+POCO without account/data wipe. Three existing native icon/resource/layout
+cases passed in 5.102s on this final APK, including all eight fuels in light
+and dark themes. Together with the four data OCR/Room cases, seven native cases
+passed; these layout tests are not a perceptual pixel-comparison certification.
+No price submission was performed. Native test helper from the previous recovery
+is absent from the final instrumentation APK.
+
+Reproducible built APKs are retained outside Git under `.local/premium-fuel/`;
+the final app APK SHA256 is recorded below. Main-app category/UI/OCR is installed;
+**the test service still needs backend publication before premium submissions
+can receive a real receipt**. No backend deployment, remote Git push, protected
+main merge, wiki or production certification was performed by this slice.
+
+Installed app APK SHA256: `109a588f2293a30a8fa2f83e0a2c9193ce00eda619a2224a2c2dede393d95147`.
