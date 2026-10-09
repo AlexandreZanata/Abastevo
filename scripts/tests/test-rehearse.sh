@@ -20,7 +20,7 @@ export REHEARSE_API_ADDR=127.0.0.1:18093
 BIN="$ROOT/backend/.tmp-rehearse-api"
 (
     cd backend
-    GOTOOLCHAIN=go1.27.1 go build -o "$BIN" ./cmd/api
+    GOTOOLCHAIN=go1.27.2 go build -o "$BIN" ./cmd/api
 )
 export REHEARSE_API_BIN="$BIN"
 trap 'rm -f "$BIN" /tmp/rehearse-body.json' EXIT

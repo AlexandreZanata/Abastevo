@@ -21,7 +21,7 @@ require_tool() {
     fi
 }
 
-require_tool go "toolchain go1.27.1 via backend/go.mod"
+require_tool go "toolchain go1.27.2 via backend/go.mod"
 require_tool sqlc "go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1"
 require_tool staticcheck "GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@v0.8.1"
 require_tool vacuum "go install github.com/daveshanley/vacuum@v0.30.6"

@@ -53,7 +53,7 @@ done
 # --- Go dependency pins (reviewed set; additions need license review) ---
 if [[ -f "$GOMOD" ]]; then
     grep -q '^go 1\.27$' "$GOMOD" || refuse "go.mod must pin go 1.27"
-    grep -q '^toolchain go1\.27\.1$' "$GOMOD" || refuse "go.mod must pin toolchain go1.27.1"
+    grep -q '^toolchain go1\.27\.2$' "$GOMOD" || refuse "go.mod must pin toolchain go1.27.2"
     grep -q 'github.com/go-chi/chi/v5 v5\.3\.2' "$GOMOD" || refuse "go.mod must pin chi v5.3.2"
     grep -q 'github.com/jackc/pgx/v5 v5\.11\.0' "$GOMOD" || refuse "go.mod must pin pgx v5.11.0"
     grep -q 'github.com/getkin/kin-openapi v0\.149\.0' "$GOMOD" || refuse "go.mod must pin kin-openapi v0.149.0"
