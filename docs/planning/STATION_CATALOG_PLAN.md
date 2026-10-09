@@ -155,3 +155,7 @@ Local planning branch: `codex/phase-25-station-catalog-plan`; base `b4f664e6b12c
 Original catalog next implementation action: complete/reconcile P24, then open P25-T01 on a fresh verified base, freeze representative registry fixtures and publication/resource policy. Recheck source access before automation and decide P28 only from measured gaps. Publication of this planning branch is a separate action; GitHub/wiki availability must not be inferred from local files.
 
 Profile extension 2026-10-02: [STATION_PROFILE_PLAN](STATION_PROFILE_PLAN.md) owns the new scope and final planning validation; earlier 20-task/173-link results above describe the pre-extension planning tree, not its updated task count.
+
+## Rust preparation overlay (2026-10-09, planning only)
+
+The user requested a [bounded Rust preparation and location-quality plan](RUST_STATION_INGESTION_PLAN.md) and [economical-agent handoff](RUST_STATION_INGESTION_PROMPT.md). It reuses existing Directory/Profile identity, staging and reconciliation after app-first checkpoints; it adds no second catalog or runtime acceptance. The observed ANP registry header lacks COD_IBGE/SITUACAO, and PMQC coordinates are optional EPSG:4674 candidates with unmeasured accuracy. Freeze source adapters and location review before national camera eligibility.
