@@ -56,6 +56,7 @@ type Store interface {
 	StageAssertion(ctx context.Context, a Assertion) (accepted bool, err error)
 	ListAssertions(ctx context.Context, runID string) ([]Assertion, error)
 	SetAssertionStation(ctx context.Context, assertionID, stationID string) error
+	SetAssertionSuperseded(ctx context.Context, assertionID, supersededBy string) error
 }
 
 // Assertion is one validated source row ready for staging.
@@ -245,6 +246,25 @@ func (s *PGStore) SetAssertionStation(ctx context.Context, assertionID, stationI
 	_, err = s.Q.SetAssertionStation(ctx, directory.SetAssertionStationParams{
 		ID:        assertionUID,
 		StationID: stationUID,
+	})
+	return err
+}
+
+// SetAssertionSuperseded links staged succession history: an older
+// assertion points at its superseding checksum identity. History stays
+// auditable; newer evidence never deletes older rows.
+func (s *PGStore) SetAssertionSuperseded(ctx context.Context, assertionID, supersededBy string) error {
+	assertionUID, err := mustUUID(assertionID)
+	if err != nil {
+		return err
+	}
+	supersededUID, err := mustUUID(supersededBy)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.SetAssertionSuperseded(ctx, directory.SetAssertionSupersededParams{
+		ID:           assertionUID,
+		SupersededBy: supersededUID,
 	})
 	return err
 }

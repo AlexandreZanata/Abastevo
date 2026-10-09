@@ -41,6 +41,10 @@ func (f *fakeStore) SetAssertionStation(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (f *fakeStore) SetAssertionSuperseded(_ context.Context, _, _ string) error {
+	return nil
+}
+
 type fakeCanon struct {
 	station string
 	err     error

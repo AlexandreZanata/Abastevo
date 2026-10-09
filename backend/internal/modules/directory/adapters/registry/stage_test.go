@@ -70,6 +70,10 @@ func (f *fakeStore) SetAssertionStation(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (f *fakeStore) SetAssertionSuperseded(_ context.Context, _, _ string) error {
+	return nil
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
