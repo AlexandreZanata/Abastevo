@@ -13,6 +13,7 @@
 //! and no automatic promotion of coordinate candidates.
 
 pub mod cnpj;
+pub mod datasets;
 pub mod join;
 pub mod municipality;
 pub mod output;
@@ -22,6 +23,12 @@ pub mod replay;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
+pub use datasets::{
+    alias_table_json, delta_edition, generate, ibge_for, representative_profile, request_trace,
+    stratum, stress_100k_profile, stress_1m_profile, tiny_profile, CityWeight, DatasetOracle,
+    DatasetProfile, DeltaEdition, GeneratedDataset, RequestTrace, StrataSummary, SyntheticLocation,
+    TraceDistribution, DATASETS_VERSION, EMPTY_CITIES, UNIVERSE_CITIES,
+};
 pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};
 pub use output::{

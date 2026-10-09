@@ -1,0 +1,21 @@
+{
+  "workload_id": "W-tiny-uniform",
+  "profile": "tiny",
+  "distribution": "uniform",
+  "total_requests": 1000,
+  "seed": 11,
+  "hot_ibge": null,
+  "strata": {"empty_cities": 5, "empty_requests": 500, "tiny_cities": 5, "tiny_requests": 500, "small_cities": 0, "small_requests": 0, "large_cities": 0, "large_requests": 0},
+  "cities": [
+    {"ibge": "3550000", "stations": 4, "stratum": "tiny-1-10", "requests": 100},
+    {"ibge": "3550001", "stations": 5, "stratum": "tiny-1-10", "requests": 100},
+    {"ibge": "3550002", "stations": 6, "stratum": "tiny-1-10", "requests": 100},
+    {"ibge": "3550003", "stations": 4, "stratum": "tiny-1-10", "requests": 100},
+    {"ibge": "3550004", "stations": 5, "stratum": "tiny-1-10", "requests": 100},
+    {"ibge": "3559900", "stations": 0, "stratum": "empty", "requests": 100},
+    {"ibge": "3559901", "stations": 0, "stratum": "empty", "requests": 100},
+    {"ibge": "3559902", "stations": 0, "stratum": "empty", "requests": 100},
+    {"ibge": "3559903", "stations": 0, "stratum": "empty", "requests": 100},
+    {"ibge": "3559904", "stations": 0, "stratum": "empty", "requests": 100}
+  ]
+}
