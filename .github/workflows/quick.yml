@@ -23,6 +23,7 @@ env:
   # Pinned exact (matches backend/go.mod toolchain); see backend.yml for why
   # this must not float via go-version-file.
   GO_VERSION: '1.27.2'
+  RUST_VERSION: '1.99.0'
   SQLC_VERSION: v1.31.1
   STATICCHECK_VERSION: v0.8.1
   VACUUM_VERSION: v0.30.6
@@ -43,6 +44,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal --component rustfmt,clippy
+          rustup default ${{ env.RUST_VERSION }}
+          cargo --version
       - name: Install pinned tools
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}
