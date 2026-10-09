@@ -14,12 +14,20 @@
 
 pub mod cnpj;
 pub mod municipality;
+pub mod output;
 pub mod pmqc;
 pub mod registry;
+pub mod replay;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};
+pub use output::{
+    emit_run, write_outputs, EmitOptions, EmittedRun, Manifest, ManifestCounts, SourceMeta,
+    ASSERTIONS_FILE, CANDIDATES_FILE, MANIFEST_FILE, PARSER_VERSION, POLICY_VERSION,
+    QUARANTINE_FILE,
+};
 pub use pmqc::{parse_pmqc, PmqcBatch, PmqcCandidate, PmqcError};
 pub use registry::{parse_registry, RegistryBatch, RegistryError, RegistryRow};
+pub use replay::{replay_decision, ReplayDecision};
 pub use types::{Counts, Limits, QuarantineRow, RunState};

@@ -4,9 +4,8 @@
 //! a candidate to `reviewed` or feeds the 150m capture rule.
 
 use crate::cnpj::normalize_cnpj;
-use crate::types::{reason, Counts, Limits, QuarantineRow, RunState};
+use crate::types::{reason, sha256_hex, Counts, Limits, QuarantineRow, RunState};
 use serde::Serialize;
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 /// Row source label for `station-coordinate-candidate-v1` output.
@@ -77,13 +76,7 @@ fn in_brazil(latitude: f64, longitude: f64) -> bool {
 }
 
 fn candidate_checksum(sample: &str, cnpj: &str, observed: &str, point: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update([sample, cnpj, observed, point].join("\x1f"));
-    hasher
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    sha256_hex([sample, cnpj, observed, point].join("\x1f").as_bytes())
 }
 
 /// Parse one PMQC extract. `file` names the input for row locators and

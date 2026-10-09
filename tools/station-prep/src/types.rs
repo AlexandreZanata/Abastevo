@@ -4,6 +4,20 @@
 
 use serde::Serialize;
 
+/// SHA256 hex over bytes. Single canonical-hash helper for row checksums,
+/// alias-reference digests and manifest hashes.
+pub(crate) fn sha256_hex(data: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(data);
+    const TABLE: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        out.push(TABLE[(byte >> 4) as usize] as char);
+        out.push(TABLE[(byte & 0x0F) as usize] as char);
+    }
+    out
+}
+
 /// Bounds for one local-file parse. Past the caps the run is refused so a
 /// corrupt snapshot cannot exhaust memory. The full spill/merge strategy
 /// for larger snapshots belongs to RST-03.

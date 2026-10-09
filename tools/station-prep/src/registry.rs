@@ -6,9 +6,8 @@
 
 use crate::cnpj::normalize_cnpj;
 use crate::municipality::{AliasTable, MunicipalityError};
-use crate::types::{reason, Counts, Limits, QuarantineRow, RunState};
+use crate::types::{reason, sha256_hex, Counts, Limits, QuarantineRow, RunState};
 use serde::Serialize;
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
 /// Row source label for `station-assertion-v1` output.
@@ -66,11 +65,11 @@ fn collapse_whitespace(raw: &str) -> String {
 
 /// Canonical row checksum: SHA256 over typed values joined with `\x1f`.
 /// Whitespace-only differences outside typed values cannot churn it;
-/// byte-identical rows always collide.
+/// byte-identical rows always collide. The form is frozen: changing it
+/// changes every checksum, so the golden test in `tests/deltas.rs` pins
+/// one production-shaped vector.
 fn row_checksum(fields: &[&str]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(fields.join("\x1f"));
-    hex::encode(hasher.finalize())
+    sha256_hex(fields.join("\x1f").as_bytes())
 }
 
 /// Normalized address projection of one accepted row.
@@ -126,21 +125,6 @@ pub struct RegistryBatch {
     pub counts: Counts,
     pub accepted: Vec<RegistryRow>,
     pub quarantine: Vec<QuarantineRow>,
-}
-
-/// Tiny hex helper so `sha2` stays the only hash dependency.
-mod hex {
-    const TABLE: &[u8; 16] = b"0123456789abcdef";
-
-    pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        let bytes = bytes.as_ref();
-        let mut out = String::with_capacity(bytes.len() * 2);
-        for byte in bytes {
-            out.push(TABLE[(byte >> 4) as usize] as char);
-            out.push(TABLE[(byte & 0x0F) as usize] as char);
-        }
-        out
-    }
 }
 
 fn quarantine_row(

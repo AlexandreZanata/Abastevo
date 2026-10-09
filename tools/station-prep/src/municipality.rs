@@ -67,10 +67,21 @@ enum Entry {
     Ambiguous,
 }
 
-/// Versioned alias table: normalized `(name, uf)` to IBGE code.
-#[derive(Debug, Default)]
+/// Versioned alias table: normalized `(name, uf)` to IBGE code, with the
+/// SHA256 digest of the loaded reference for manifest provenance.
+#[derive(Debug)]
 pub struct AliasTable {
     map: HashMap<(String, String), Entry>,
+    digest: String,
+}
+
+impl Default for AliasTable {
+    fn default() -> Self {
+        Self {
+            map: HashMap::new(),
+            digest: crate::types::sha256_hex(b""),
+        }
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -95,7 +106,10 @@ impl AliasTable {
     pub fn from_json(raw: &str) -> Result<Self, AliasError> {
         let file: AliasFile =
             serde_json::from_str(raw).map_err(|err| AliasError(err.to_string()))?;
-        let mut table = Self::default();
+        let mut table = Self {
+            digest: crate::types::sha256_hex(raw.as_bytes()),
+            ..Self::default()
+        };
         for entry in file.entries {
             let uf = normalize_uf(&entry.uf);
             for alias in entry.aliases {
@@ -121,6 +135,11 @@ impl AliasTable {
             Some(Entry::Ambiguous) => Err(MunicipalityError::Ambiguous),
             None => Err(MunicipalityError::Unknown),
         }
+    }
+
+    /// Digest of the loaded alias reference for manifest provenance.
+    pub fn digest(&self) -> &str {
+        &self.digest
     }
 }
 
