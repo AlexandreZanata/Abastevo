@@ -55,6 +55,7 @@ type Store interface {
 	FinishRun(ctx context.Context, runID, state string, accepted, duplicates, rejected int64, errorCode string) error
 	StageAssertion(ctx context.Context, a Assertion) (accepted bool, err error)
 	ListAssertions(ctx context.Context, runID string) ([]Assertion, error)
+	GetAssertion(ctx context.Context, id string) (Assertion, string, error)
 	SetAssertionStation(ctx context.Context, assertionID, stationID string) error
 	SetAssertionSuperseded(ctx context.Context, assertionID, supersededBy string) error
 }
@@ -248,6 +249,43 @@ func (s *PGStore) SetAssertionStation(ctx context.Context, assertionID, stationI
 		StationID: stationUID,
 	})
 	return err
+}
+
+// GetAssertion fetches one staged assertion plus its run state for
+// evidence-gated decisions. Unknown ids fail; states gate promotion.
+func (s *PGStore) GetAssertion(ctx context.Context, id string) (Assertion, string, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return Assertion{}, "", err
+	}
+	row, err := s.Q.GetReviewEvidence(ctx, uid)
+	if err != nil {
+		return Assertion{}, "", err
+	}
+	address := map[string]string{}
+	if len(row.Address) > 0 {
+		_ = json.Unmarshal(row.Address, &address)
+	}
+	return Assertion{
+		ID:               uuidString(row.ID),
+		Source:           row.Source,
+		SourceKey:        row.SourceKey,
+		Checksum:         row.Checksum,
+		DisplayName:      row.DisplayName,
+		Address:          address,
+		MunicipalityCode: row.MunicipalityCode.String,
+		State:            row.State.String,
+		AuthState:        row.AuthState,
+		Eligibility:      row.Eligibility,
+		LocationQuality:  row.LocationQuality,
+		SourceReference:  row.SourceReference,
+		Latitude:         row.Latitude.Float64,
+		Longitude:        row.Longitude.Float64,
+		HasCoords:        row.Latitude.Valid && row.Longitude.Valid,
+		CRS:              row.Crs,
+		EffectiveDate:    row.EffectiveDate,
+		runID:            uuidString(row.RunID),
+	}, row.RunState, nil
 }
 
 // SetAssertionSuperseded links staged succession history: an older
