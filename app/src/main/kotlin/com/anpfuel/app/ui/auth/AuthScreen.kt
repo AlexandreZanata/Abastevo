@@ -15,6 +15,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PersonOutline
@@ -25,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -139,6 +145,14 @@ fun AuthScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val canCreate = state.username.length in 3..20 && state.username.firstOrNull() in 'a'..'z'
+    // Originating form for BUSY: keeps the loading skeleton shaped like the
+    // form the user just submitted, so the card never collapses or flashes.
+    var busyOrigin by remember { mutableStateOf(AuthStep.USERNAME_ENTRY) }
+    LaunchedEffect(state.step) {
+        if (state.step in listOf(AuthStep.USERNAME_ENTRY, AuthStep.KEY_ENTRY, AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT)) {
+            busyOrigin = state.step
+        }
+    }
     LaunchedEffect(state.step) {
         if (state.step !in listOf(AuthStep.USERNAME_ENTRY, AuthStep.KEY_ENTRY, AuthStep.EMAIL_ENTRY, AuthStep.CODE_SENT)) {
             focusManager.clearFocus()
@@ -187,12 +201,21 @@ fun AuthScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
             ) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    when (state.step) {
+                    // Pure crossfade: no positional slide, so texts and inputs
+                    // never sit displaced on top of each other mid-transition.
+                    AnimatedContent(
+                        targetState = state.step,
+                        transitionSpec = {
+                            fadeIn(tween(220)) togetherWith fadeOut(tween(220))
+                        },
+                        label = "auth-step",
+                    ) { step ->
+                    when (step) {
                         AuthStep.CHECKING -> {
                             AuthFormLoadingSkeleton()
                         }
                         AuthStep.BUSY -> {
-                            CircularProgressIndicator()
+                            AuthBusySkeleton(origin = busyOrigin)
                         }
                         AuthStep.USERNAME_ENTRY -> {
                             Text(stringResource(R.string.auth_signup_heading), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -306,6 +329,7 @@ fun AuthScreen(
                         }
                         AuthStep.KEY_ISSUED, AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT -> Unit
                     }
+                    }
                 }
             }
             state.error?.let { error ->
@@ -355,6 +379,25 @@ private fun AuthFormLoadingSkeleton() {
         SkeletonLine()
         SkeletonCard(height = 56.dp)
         SkeletonCard(height = 56.dp)
+        SkeletonButton()
+    }
+}
+
+/**
+ * Busy skeleton shaped like the submitted form (username or key login):
+ * the card keeps its size while a linear bar shows progress, so login
+ * never collapses into a lone spinner or flashes empty containers.
+ */
+@Composable
+private fun AuthBusySkeleton(origin: AuthStep) {
+    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 200.dp, height = 28.dp)
+        SkeletonLine()
+        SkeletonCard(height = 64.dp)
+        if (origin == AuthStep.USERNAME_ENTRY) {
+            SkeletonCard(height = 56.dp)
+        }
         SkeletonButton()
     }
 }
