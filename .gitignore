@@ -93,3 +93,6 @@ combustiveis.zip
 # Build-time Python asset tools
 __pycache__/
 *.py[cod]
+
+# Rust station-prep build artifacts (never commit; Cargo.lock stays tracked)
+tools/station-prep/target/

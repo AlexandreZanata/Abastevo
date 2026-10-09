@@ -1,0 +1,18 @@
+[package]
+name = "station-prep"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.99"
+description = "Offline preparation of official fuel-station records into versioned batches (RST-02 local-file parser; no network or database)"
+license = "MIT"
+repository = "https://github.com/AlexandreZanata/brazil-fuel-prices"
+
+[lib]
+name = "station_prep"
+path = "src/lib.rs"
+
+[dependencies]
+csv = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
