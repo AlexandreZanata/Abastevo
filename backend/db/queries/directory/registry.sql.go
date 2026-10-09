@@ -336,6 +336,71 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (Regis
 	return i, err
 }
 
+const getReviewEvidence = `-- name: GetReviewEvidence :one
+
+SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
+    a.address, a.municipality_code, a.state, a.auth_state, a.operation,
+    a.eligibility, a.location_quality, a.source_reference, a.latitude,
+    a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state
+FROM registry_assertions AS a
+JOIN registry_source_runs AS r ON r.id = a.run_id
+WHERE a.id = $1
+`
+
+type GetReviewEvidenceRow struct {
+	ID               pgtype.UUID   `json:"id"`
+	RunID            pgtype.UUID   `json:"run_id"`
+	Source           string        `json:"source"`
+	SourceKey        string        `json:"source_key"`
+	Checksum         string        `json:"checksum"`
+	DisplayName      string        `json:"display_name"`
+	Address          []byte        `json:"address"`
+	MunicipalityCode pgtype.Text   `json:"municipality_code"`
+	State            pgtype.Text   `json:"state"`
+	AuthState        string        `json:"auth_state"`
+	Operation        string        `json:"operation"`
+	Eligibility      string        `json:"eligibility"`
+	LocationQuality  string        `json:"location_quality"`
+	SourceReference  string        `json:"source_reference"`
+	Latitude         pgtype.Float8 `json:"latitude"`
+	Longitude        pgtype.Float8 `json:"longitude"`
+	Crs              string        `json:"crs"`
+	StationID        pgtype.UUID   `json:"station_id"`
+	EffectiveDate    pgtype.Date   `json:"effective_date"`
+	RunState         string        `json:"run_state"`
+}
+
+// Owned by directory (location review, RST-06). The CRS transform stays
+// inside PostGIS/PROJ: Go plumbs coordinates, never math. Unknown CRS
+// names fail at the Go gate before reaching SQL.
+func (q *Queries) GetReviewEvidence(ctx context.Context, id pgtype.UUID) (GetReviewEvidenceRow, error) {
+	row := q.db.QueryRow(ctx, getReviewEvidence, id)
+	var i GetReviewEvidenceRow
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.Source,
+		&i.SourceKey,
+		&i.Checksum,
+		&i.DisplayName,
+		&i.Address,
+		&i.MunicipalityCode,
+		&i.State,
+		&i.AuthState,
+		&i.Operation,
+		&i.Eligibility,
+		&i.LocationQuality,
+		&i.SourceReference,
+		&i.Latitude,
+		&i.Longitude,
+		&i.Crs,
+		&i.StationID,
+		&i.EffectiveDate,
+		&i.RunState,
+	)
+	return i, err
+}
+
 const getSuggestion = `-- name: GetSuggestion :one
 SELECT id, account_id, client_submission_id, proposal, evidence_ref,
     state, created_at, decided_at
@@ -667,6 +732,29 @@ func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryA
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const transformPoint = `-- name: TransformPoint :one
+SELECT ST_Y(ST_Transform(ST_SetSRID(ST_MakePoint($1::float8, $2::float8), $3::int), 4326))::float8 AS latitude,
+    ST_X(ST_Transform(ST_SetSRID(ST_MakePoint($1::float8, $2::float8), $3::int), 4326))::float8 AS longitude
+`
+
+type TransformPointParams struct {
+	Lon  float64 `json:"lon"`
+	Lat  float64 `json:"lat"`
+	Srid int32   `json:"srid"`
+}
+
+type TransformPointRow struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+func (q *Queries) TransformPoint(ctx context.Context, arg TransformPointParams) (TransformPointRow, error) {
+	row := q.db.QueryRow(ctx, transformPoint, arg.Lon, arg.Lat, arg.Srid)
+	var i TransformPointRow
+	err := row.Scan(&i.Latitude, &i.Longitude)
+	return i, err
 }
 
 const updateStationStatus = `-- name: UpdateStationStatus :execrows
