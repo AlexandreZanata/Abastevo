@@ -13,6 +13,7 @@
 //! and no automatic promotion of coordinate candidates.
 
 pub mod cnpj;
+pub mod join;
 pub mod municipality;
 pub mod output;
 pub mod pmqc;
@@ -21,6 +22,7 @@ pub mod replay;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
+pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};
 pub use output::{
     emit_run, write_outputs, EmitOptions, EmittedRun, Manifest, ManifestCounts, SourceMeta,
