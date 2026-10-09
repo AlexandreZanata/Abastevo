@@ -166,4 +166,16 @@ class ContributionUploadHttpClientTest {
         verify(exactly=0) { cache.get(any()) }
         assertTrue(puts.isEmpty())
     }
+    @Test fun `true premium grade keeps exact money and distinct signed wire product`() = runTest {
+        val payload=JSONObject(payload("premium")).put("fuel_product","GASOLINE_PREMIUM_GRADE").put("amount_milli_brl",9190).toString()
+        val receipt=gateway().submit("premium",1,payload,"attempt")
+        assertEquals(ContributionRemoteStatus.RECEIVED,receipt.status)
+        val bodies=mutableListOf<JSONObject>()
+        coVerify(exactly=1) { proof.post("/v1/observations","premium",capture(bodies),owner) }
+        assertEquals("GASOLINE_PREMIUM_GRADE",bodies.single().getString("fuel_product"))
+        assertEquals(9190,bodies.single().getJSONObject("price").getInt("amount_milli_brl"))
+        assertEquals("L",bodies.single().getJSONObject("price").getString("unit"))
+        assertEquals(1,puts.size)
+    }
+
 }

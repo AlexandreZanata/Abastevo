@@ -729,4 +729,5 @@
     <string name="developer_capture_search_failed">Não foi possível buscar postos. Confira a conexão e tente novamente.</string>
     <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
     <string name="developer_capture_change_station">Trocar de posto</string>
+    <string name="fuel_product_gasoline_premium_grade">Gasolina premium</string>
 </resources>

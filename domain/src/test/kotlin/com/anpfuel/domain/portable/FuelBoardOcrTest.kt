@@ -215,9 +215,9 @@ class FuelBoardOcrTest {
             result.rows.associate{it.product to it.amountMilli})
         assertTrue(result.orphans.isEmpty())
     }
-    @Test fun `true premium grades stay manual instead of vanishing`() {
+    @Test fun `unqualified premium brands stay manual instead of vanishing`() {
         val result=FuelBoardOcr.associate(listOf(
-            box("GASOLINA PREMIUM",0,0,150),box("7,99",200,0),
+            box("PREMIUM",0,0,150),box("7,99",200,0),
             box("PODIUM",0,50),box("9,19",200,50),
             box("OCTAPRO",0,100),box("8,19",200,100)))
         assertTrue(result.rows.isEmpty())
@@ -269,4 +269,43 @@ class FuelBoardOcrTest {
         assertTrue(result.orphans.isEmpty())
         assertFalse(result.unresolved)
     }
+    @Test fun `explicit premium gasoline has its own grade and ambiguous brands stay manual`() {
+        val grade = FuelProduct.valueOf("GASOLINE_PREMIUM_GRADE")
+        for (label in listOf("GASOLINA PREMIUM", "Gasolina Podium", "GASOLINA PREMIUM ADITIVADA", "GASOLINA OCTAPRO", "GASOLINA V-POWER RACING")) {
+            val result = FuelBoardOcr.associate(listOf(box(label,0,0,180),box("9,19",220,0)))
+            assertEquals(listOf(FuelBoardOcr.Row(grade,9190L)), result.rows, label)
+        }
+        for (label in listOf("PODIUM", "PREMIUM", "RACING", "OCTAPRO", "GASOLINA DIESEL PODIUM")) {
+            val result = FuelBoardOcr.associate(listOf(box(label,0,0,180),box("9,19",220,0)))
+            assertTrue(result.rows.isEmpty(), label)
+            assertEquals(listOf(9190L),result.orphans,label)
+        }
+    }
+    @Test fun `premium brands never convert explicit diesel to gasoline`() {
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10,7190L)),
+            FuelBoardOcr.associate(listOf(box("DIESEL S10 PODIUM",0,0,180),box("7,19",220,0))).rows)
+        assertTrue(FuelBoardOcr.associate(listOf(box("DIESEL PREMIUM",0,0,180),box("7,19",220,0))).rows.isEmpty())
+    }
+
+    @Test fun `premium caption joins only its immediate gasoline heading`() {
+        val grade=FuelProduct.GASOLINE_PREMIUM_GRADE
+        val result=FuelBoardOcr.associate(listOf(box("GASOLINA",0,0,160),box("PODIUM",0,24,160),box("9,19",220,0)))
+        assertEquals(listOf(FuelBoardOcr.Row(grade,9190L)),result.rows)
+        val distant=FuelBoardOcr.associate(listOf(box("GASOLINA COMUM",0,0,180),box("5,99",220,0),box("PODIUM",0,70,160),box("9,19",220,70)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_REGULAR,5990L)),distant.rows)
+        assertEquals(listOf(9190L),distant.orphans)
+    }
+    @Test fun `mixed gasoline board preserves three separate products and conflicting premium prices`() {
+        val result=FuelBoardOcr.associate(listOf(box("GASOLINA COMUM",0,0,180),box("5,99",220,0),box("GASOLINA ADITIVADA",0,70,180),box("6,19",220,70),box("GASOLINA PODIUM",0,140,180),box("9,19",220,140)))
+        assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to 5990L,FuelProduct.GASOLINE_PREMIUM to 6190L,FuelProduct.GASOLINE_PREMIUM_GRADE to 9190L),result.rows.associate { it.product to it.amountMilli })
+        val conflict=FuelBoardOcr.associate(listOf(box("GASOLINA PREMIUM",0,0,180),box("9,19",220,0),box("GASOLINA PODIUM",0,70,180),box("9,39",220,70)))
+        assertTrue(conflict.rows.isEmpty())
+        assertTrue(FuelProduct.GASOLINE_PREMIUM_GRADE in conflict.conflictingProducts)
+    }
+
+    @Test fun `premium horizontal elements override their enclosing common gasoline element`() {
+        val input=listOf(box("GASOLINA PODIUM 9,19",0,0,300),box("GASOLINA",0,0,100),box("PODIUM",110,0,85),box("9,19",220,0))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.GASOLINE_PREMIUM_GRADE,9190L)),FuelBoardOcr.associate(input).rows)
+    }
+
 }

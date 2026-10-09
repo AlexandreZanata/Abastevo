@@ -64,7 +64,7 @@ object FuelBoardOcr {
             recovered.any { joined -> joined.left <= token.left && joined.top <= token.top &&
                 joined.right >= token.right && joined.bottom >= token.bottom } &&
                 numericFragment.matches(token.text.trim())
-        } + recovered + recoverBrandHeadings(original)
+        } + recovered + recoverBrandHeadings(original) + recoverPremiumHeadings(original)
         val conditional = tokens.any { normalize(it.text).let { text -> listOf("VISTA", "CARTAO", "CREDITO", "DEBITO", "PIX", "APP", "CLUBE", "FIDELIDADE", "PROMOCAO").any { word -> Regex("\\b$word\\b").containsMatchIn(text) } } }
         fun encloses(a: Token,b: Token) = a.left <= b.left+2 && a.top <= b.top+2 && a.right >= b.right-2 && a.bottom >= b.bottom-2
         // Prefer tight element geometry over a whole line that contains both label and number.
@@ -77,15 +77,15 @@ object FuelBoardOcr {
                 val suffix = labelTokens.filter { other ->
                     other!=token && other.top>=token.top+token.height*0.35 && other.top-token.bottom <= token.height*0.65 &&
                         abs(other.cx-token.cx)<=max(other.right-other.left,token.right-token.left)*0.7 &&
-                        normalize(other.text).let { n -> n.startsWith("ADITIV") || Regex("^S[ -]?(10|500)$").matches(n) }
+                        normalize(other.text).let { n -> n.startsWith("ADITIV") || premiumMarker(n) || Regex("^S[ -]?(10|500)$").matches(n) }
                 }.minByOrNull { it.top }
                 if (suffix!=null) { text+=" "+normalize(suffix.text);box=Token(text,minOf(token.left,suffix.left),token.top,maxOf(token.right,suffix.right),suffix.bottom) }
             }
             var fuel=product(text)
             val additiveCaption = text.length in 7..10 && text.all { it in 'A'..'Z' } &&
                 minOf(levenshtein(text,"ADITIVADO"),levenshtein(text,"ADITIVADA"))<=1
-            if ((text.startsWith("ADITIV") || additiveCaption || text == "GRID") && !text.contains("GASOLINA") && !text.contains("DIESEL") && !text.contains("ETANOL")) {
-                val context=labelTokens.filter { other -> other!=token && other.top <= token.top && normalize(other.text).let { it.contains("GASOLINA") || it.contains("DIESEL") || it.contains("ETANOL") || Regex("^E ?GRID(?:\\b|$)").containsMatchIn(it) || uncertainProduct(it)!=null } && abs(other.cy-token.cy)<=max(other.height,token.height)*2.5 && abs(other.cx-token.cx)<=max(other.right-other.left,token.right-token.left)*0.7 }.minByOrNull { abs(it.cy-token.cy) }
+            if ((text.startsWith("ADITIV") || additiveCaption || text == "GRID" || premiumMarker(text)) && !text.contains("GASOLINA") && !text.contains("DIESEL") && !text.contains("ETANOL")) {
+                val context=labelTokens.filter { other -> other!=token && other.top <= token.top && (!premiumMarker(text) || token.top-other.bottom <= other.height*0.65) && normalize(other.text).let { it.contains("GASOLINA") || it.contains("DIESEL") || it.contains("ETANOL") || Regex("^E ?GRID(?:\\b|$)").containsMatchIn(it) || uncertainProduct(it)!=null } && abs(other.cy-token.cy)<=max(other.height,token.height)*2.5 && abs(other.cx-token.cx)<=max(other.right-other.left,token.right-token.left)*0.7 }.minByOrNull { abs(it.cy-token.cy) }
                 context?.let { parent ->
                     var parentText=normalize(parent.text)
                     if (parentText.contains("DIESEL")) {
@@ -96,7 +96,12 @@ object FuelBoardOcr {
                         }.minByOrNull { abs(it.cy-parent.cy) }
                         spec?.let { parentText += " " + normalize(it.text) }
                     }
-                    fuel=if(parentText.contains("GASOLINA")) FuelProduct.GASOLINE_PREMIUM else product(parentText)
+                    fuel=when {
+                        premiumMarker(text) -> product(parentText+" "+text)
+                        product(parentText)==FuelProduct.GASOLINE_PREMIUM_GRADE -> FuelProduct.GASOLINE_PREMIUM_GRADE
+                        parentText.contains("GASOLINA") -> FuelProduct.GASOLINE_PREMIUM
+                        else -> product(parentText)
+                    }
                     if (uncertainProduct(parentText)!=null) box=box.copy(text=parentText)
                 }
             }
@@ -188,6 +193,28 @@ object FuelBoardOcr {
         return Result(rows,conditional,unresolved,orphans,conflicts)
     }
 
+
+    /** Premium names may be separate same-line elements or a tight caption. */
+    private fun recoverPremiumHeadings(tokens: List<Token>): List<Token> = tokens.filter { token ->
+        val text=normalize(token.text.trim())
+        premiumMarker(text) && !text.contains("GASOLINA") && !text.contains("DIESEL") &&
+            !text.contains("ETANOL") && !price.containsMatchIn(text) && text.length<=24
+    }.mapNotNull { brand ->
+        val headings=tokens.filter { heading ->
+            val text=normalize(heading.text.trim())
+            text.startsWith("GASOLINA") && !premiumMarker(text) && !text.contains("DIESEL") &&
+                !price.containsMatchIn(text) && text.length<=32 && (
+                (brand.left>=heading.right-2 && brand.left-heading.right<=max(heading.height,brand.height)*2 &&
+                    abs(brand.cy-heading.cy)<=max(heading.height,brand.height)*0.65) ||
+                (brand.top>=heading.bottom-2 && brand.top-heading.bottom<=heading.height*0.65 &&
+                    abs(brand.cx-heading.cx)<=max(brand.right-brand.left,heading.right-heading.left)*0.7))
+        }.distinctBy { listOf(it.left,it.top,it.right,it.bottom) }
+        if(headings.size!=1) null else headings.single().let { heading ->
+            Token(heading.text+" "+brand.text,minOf(heading.left,brand.left),minOf(heading.top,brand.top),
+                maxOf(heading.right,brand.right),maxOf(heading.bottom,brand.bottom))
+        }
+    }
+
     /** Distributor boards can place the E/G icon in a separate text element. */
     private fun recoverBrandHeadings(tokens: List<Token>): List<Token> = tokens.filter {
         normalize(it.text.trim()) == "GRID"
@@ -243,7 +270,7 @@ object FuelBoardOcr {
         .replace('É','E').replace('Ê','E').replace('Í','I').replace('Ó','O').replace('Õ','O')
         .replace('Ô','O').replace('Ú','U').replace('Ç','C').replace('Ī','I').replace('İ','I')
 
-    private fun labelLike(text: String): Boolean = product(text)!=null || uncertainProduct(text)!=null || text.contains("DIESEL") || text.contains("PODIUM") || text.contains("PREMIUM") || Regex("\\bS[ -]?[0-9]+\\b").containsMatchIn(text)
+    private fun labelLike(text: String): Boolean = product(text)!=null || uncertainProduct(text)!=null || text.contains("DIESEL") || premiumMarker(text) || Regex("\\bS[ -]?[0-9]+\\b").containsMatchIn(text)
 
     /** One step beyond assignment tolerance may withhold a conflict, never assign a fuel. */
     private fun uncertainProduct(text: String): FuelProduct? {
@@ -255,17 +282,23 @@ object FuelBoardOcr {
         return ranked.filter { it.first==best }.map { it.second }.distinct().singleOrNull()
     }
 
+    private fun premiumMarker(text: String): Boolean =
+        Regex("\\b(PODIUM|PREMIUM|OCTAPRO|RACING)\\b").containsMatchIn(text)
+
     private fun product(text: String): FuelProduct? = when {
-        text.contains("PODIUM") || text.contains("PREMIUM") || text.contains("RACING") -> null
+        text.contains("GASOLINA") && text.contains("DIESEL") -> null
         text.contains("DIESEL") || Regex("\\bS\\s*[- ]?\\s*(10|500)\\b").containsMatchIn(text) -> when {
             Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*500\\b").containsMatchIn(text) -> FuelProduct.DIESEL_S500
             Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*10\\b").containsMatchIn(text) -> FuelProduct.DIESEL_S10
             // An explicit unknown/truncated specification must not become bare Diesel.
             Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*[0-9IO][A-Z0-9]*\\b").containsMatchIn(text) -> null
+            // A commercial premium name alone cannot establish the diesel specification.
+            premiumMarker(text) -> null
             // Bare "Diesel" follows the existing common-S500 review contract.
             else -> FuelProduct.DIESEL_S500
         }
         text.contains("ETANOL") || text.contains("ALCOOL") || Regex("^E ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.ETHANOL
+        premiumMarker(text) -> if (text.contains("GASOLINA")) FuelProduct.GASOLINE_PREMIUM_GRADE else null
         text.contains("ADITIV") || text.contains("V-POWER") || Regex("\\bGRID\\b").containsMatchIn(text) ||
             Regex("^G ?GRID(?:\\b|$)").containsMatchIn(text) -> FuelProduct.GASOLINE_PREMIUM
         text.contains("GASOLINA") -> FuelProduct.GASOLINE_REGULAR

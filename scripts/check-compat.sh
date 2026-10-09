@@ -29,7 +29,7 @@ import json
 d = json.load(open('contracts/testdata/compat/legacy-deltas.json'))
 assert d['id'] == 'legacy-deltas-v1', d.get('id')
 wire = d['fuel_vocabulary']['wire_enum']
-assert wire == ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"], wire
+assert wire == ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13", "GASOLINE_PREMIUM_GRADE"], wire
 assert d['fuel_vocabulary']['legacy_map'] == {"GASOLINE_PREMIUM": "GASOLINE_ADDITIVED"}
 print('deltas fixture ok')
 PY
@@ -40,7 +40,7 @@ text = open('contracts/openapi/v1.yaml').read()
 m = re.search(r'enum:\s*\[(ETHANOL[^\]]+)\]', text)
 assert m, 'FuelProduct enum not found'
 wire = [x.strip() for x in m.group(1).split(',')]
-assert wire == ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"], wire
+assert wire == ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13", "GASOLINE_PREMIUM_GRADE"], wire
 assert 'GASOLINE_PREMIUM' not in text.split('Legacy Android')[0] or 'never appears on the wire' in text, 'premium guard missing'
 print('wire enum ok (GASOLINE_PREMIUM never on wire)')
 PY

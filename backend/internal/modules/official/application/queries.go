@@ -10,7 +10,7 @@ import (
 
 // Wire fuel vocabulary (mirrors the OpenAPI FuelProduct enum).
 var wireProducts = map[string]bool{
-	"ETHANOL": true, "GASOLINE_REGULAR": true, "GASOLINE_ADDITIVED": true,
+	"ETHANOL": true, "GASOLINE_REGULAR": true, "GASOLINE_ADDITIVED": true, "GASOLINE_PREMIUM_GRADE": true,
 	"DIESEL_S500": true, "DIESEL_S10": true, "CNG": true, "LPG_P13": true,
 }
 

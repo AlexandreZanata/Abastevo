@@ -8,6 +8,7 @@ object FuelProductI18n {
 
     @StringRes
     fun toStringRes(product: FuelProduct): Int = when (product) {
+        FuelProduct.GASOLINE_PREMIUM_GRADE -> R.string.fuel_product_gasoline_premium_grade
         FuelProduct.ETHANOL -> R.string.fuel_product_ethanol
         FuelProduct.GASOLINE_REGULAR -> R.string.fuel_product_gasoline_regular
         FuelProduct.GASOLINE_PREMIUM -> R.string.fuel_product_gasoline_premium

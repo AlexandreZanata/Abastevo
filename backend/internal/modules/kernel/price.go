@@ -5,17 +5,18 @@ import (
 	"strings"
 )
 
-// Wire product vocabulary. Exactly the seven OpenAPI FuelProduct values.
+// Wire product vocabulary. The supported OpenAPI FuelProduct values; ANP source labels are a subset.
 type Product string
 
 const (
-	Ethanol           Product = "ETHANOL"
-	GasolineRegular   Product = "GASOLINE_REGULAR"
-	GasolineAdditived Product = "GASOLINE_ADDITIVED"
-	DieselS500        Product = "DIESEL_S500"
-	DieselS10         Product = "DIESEL_S10"
-	CNG               Product = "CNG"
-	LPGP13            Product = "LPG_P13"
+	Ethanol              Product = "ETHANOL"
+	GasolineRegular      Product = "GASOLINE_REGULAR"
+	GasolineAdditived    Product = "GASOLINE_ADDITIVED"
+	GasolinePremiumGrade Product = "GASOLINE_PREMIUM_GRADE"
+	DieselS500           Product = "DIESEL_S500"
+	DieselS10            Product = "DIESEL_S10"
+	CNG                  Product = "CNG"
+	LPGP13               Product = "LPG_P13"
 )
 
 // Physical unit. Fixed per product in v1 (A04).
@@ -87,7 +88,7 @@ func ParseProduct(label string) (Product, error) {
 // Unit returns the fixed v1 unit for a product.
 func (p Product) Unit() (Unit, error) {
 	switch p {
-	case Ethanol, GasolineRegular, GasolineAdditived, DieselS500, DieselS10:
+	case Ethanol, GasolineRegular, GasolineAdditived, GasolinePremiumGrade, DieselS500, DieselS10:
 		return Liter, nil
 	case CNG:
 		return CubicMetre, nil

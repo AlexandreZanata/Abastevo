@@ -102,8 +102,8 @@ func TestFuelProductVocabularyBridge(t *testing.T) {
 	if slices.Contains(names, "GASOLINE_PREMIUM") {
 		t.Errorf("legacy GASOLINE_PREMIUM must not appear on the wire (A05): %v", names)
 	}
-	if len(names) != 7 {
-		t.Errorf("want exactly 7 fuel products, got %v", names)
+	if len(names) != 8 {
+		t.Errorf("want exactly 8 fuel products, got %v", names)
 	}
 }
 

@@ -8,7 +8,7 @@ import com.anpfuel.domain.valueobject.FuelProduct
  * The backend wire enum uses GASOLINE_ADDITIVED; the legacy Android enum
  * keeps GASOLINE_PREMIUM. This adapter owns the bridge in one place:
  * [toWire] maps the legacy premium to the wire name, [fromWire] accepts
- * only the seven wire values and refuses the legacy name plus unknown
+ * the supported wire values and refuses the legacy name plus unknown
  * enums without coercion. No package moves, no enum renames.
  */
 object WireFuelMapper {
@@ -21,6 +21,7 @@ object WireFuelMapper {
         FuelProduct.DIESEL_S10 to "DIESEL_S10",
         FuelProduct.CNG to "CNG",
         FuelProduct.LPG_P13 to "LPG_P13",
+        FuelProduct.GASOLINE_PREMIUM_GRADE to "GASOLINE_PREMIUM_GRADE",
     )
 
     private val fromWireMap: Map<String, FuelProduct> =

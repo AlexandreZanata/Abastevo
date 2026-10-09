@@ -169,8 +169,34 @@ func TestPhotoSubsetStoresDistinctProductsAndRejectsDuplicateFacts(t *testing.T)
 	if err != nil || loaded.PhotoCaptureID != capture || !loaded.ClaimedCapturedAt.Equal(captured) {
 		t.Fatalf("loaded=%+v %v", loaded, err)
 	}
+	// The new premium grade shares this evidence, never the common/additive key.
+	premium := obs
+	premium.ID = "d0000000-0000-4000-8000-000000000054"
+	premium.ClientSubmissionID = "stable-premium-row"
+	premium.Product, premium.AmountMilli, premium.RawText = "GASOLINE_PREMIUM_GRADE", 9190, "9,190"
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, _, err := s.Submit(ctx, premium, enqueue); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	loadedPremium, err := s.Observation(ctx, premium.ID)
+	if err != nil || loadedPremium.Product != premium.Product || loadedPremium.AmountMilli != 9190 || loadedPremium.RawText != "9,190" {
+		t.Fatalf("premium receipt: %+v %v", loadedPremium, err)
+	}
+	premium.AmountMilli = 9390
+	if _, _, err := s.Submit(ctx, premium, enqueue); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("premium divergent retry: %v", err)
+	}
+	if jobs.Load() != 3 {
+		t.Fatalf("expected one job per distinct product, got %d", jobs.Load())
+	}
 	var count int
-	if err := pool.QueryRow(ctx, "SELECT count(*) FROM community_observations WHERE photo_capture_id=$1", capture).Scan(&count); err != nil || count != 2 {
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM community_observations WHERE photo_capture_id=$1", capture).Scan(&count); err != nil || count != 3 {
 		t.Fatalf("subset count=%d err=%v", count, err)
 	}
 }

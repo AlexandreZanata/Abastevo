@@ -716,4 +716,5 @@
     <string name="capture_queue_background">Отправка продолжится автоматически. Можно вернуться в сообщество.</string>
     <string name="capture_queue_retrying">Отправка ещё ожидается. Мы автоматически повторим попытку; можно вернуться в сообщество.</string>
     <string name="capture_sent_pending_validation">Получено сервером. Проверка ещё продолжается.</string>
+    <string name="fuel_product_gasoline_premium_grade">Премиальный бензин</string>
 </resources>

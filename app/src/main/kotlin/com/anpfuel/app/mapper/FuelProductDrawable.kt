@@ -8,6 +8,7 @@ object FuelProductDrawable {
 
     @DrawableRes
     fun toDrawableRes(product: FuelProduct): Int = when (product) {
+        FuelProduct.GASOLINE_PREMIUM_GRADE -> R.drawable.ic_fuel_gasoline_premium_grade
         FuelProduct.ETHANOL -> R.drawable.ic_fuel_ethanol
         FuelProduct.GASOLINE_REGULAR -> R.drawable.ic_fuel_gasoline_regular
         FuelProduct.GASOLINE_PREMIUM -> R.drawable.ic_fuel_gasoline_premium

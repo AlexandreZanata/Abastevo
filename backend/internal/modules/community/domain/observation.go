@@ -32,7 +32,7 @@ const (
 // Wire vocabularies mirror kernel constants and the OpenAPI enums. A
 // cross-check test pins them together; edit both sides or neither.
 var wireProducts = map[string]string{
-	"ETHANOL": "L", "GASOLINE_REGULAR": "L", "GASOLINE_ADDITIVED": "L",
+	"ETHANOL": "L", "GASOLINE_REGULAR": "L", "GASOLINE_ADDITIVED": "L", "GASOLINE_PREMIUM_GRADE": "L",
 	"DIESEL_S500": "L", "DIESEL_S10": "L", "CNG": "M3", "LPG_P13": "KG_13",
 }
 

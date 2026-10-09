@@ -716,4 +716,5 @@
     <string name="capture_queue_background">El envío continúa automáticamente. Puedes volver a la comunidad.</string>
     <string name="capture_queue_retrying">El envío sigue pendiente. Lo intentaremos de nuevo automáticamente; puedes volver a la comunidad.</string>
     <string name="capture_sent_pending_validation">Recibidos por el servidor. La validación sigue en curso.</string>
+    <string name="fuel_product_gasoline_premium_grade">Gasolina prémium</string>
 </resources>

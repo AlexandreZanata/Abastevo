@@ -115,4 +115,28 @@ class OcrFormatMatrixDeviceTest {
         assertTrue(result.rows.isEmpty())
         assertTrue(result.orphans.isEmpty())
     }
+    @Test fun premiumGasolinePixelsStayDistinctFromAdditiveAndAmbiguousPodium() = runBlocking {
+        val engine=MlKitImagePriceOcr(context)
+        assertTrue(engine.prepareModel())
+        for (premium in listOf("GASOLINA PREMIUM", "GASOLINA PODIUM", "GASOLINA OCTAPRO", "GASOLINA V-POWER RACING")) {
+            val bitmap=Bitmap.createBitmap(1800,750,Bitmap.Config.ARGB_8888)
+            val canvas=Canvas(bitmap);canvas.drawColor(Color.WHITE)
+            val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.BLACK;textSize=64f }
+            canvas.drawText("GASOLINA COMUM",40f,150f,paint);canvas.drawText("5,99",1400f,150f,paint)
+            canvas.drawText("GASOLINA ADITIVADA",40f,350f,paint);canvas.drawText("6,19",1400f,350f,paint)
+            canvas.drawText(premium,40f,550f,paint);canvas.drawText("9,19",1400f,550f,paint)
+            val bytes=try { encoded(bitmap) } finally { bitmap.recycle() }
+            val result=withTimeout(15000) { engine.recognize(bytes) }
+            assertEquals(premium,mapOf(FuelProduct.GASOLINE_REGULAR to 5990L,FuelProduct.GASOLINE_PREMIUM to 6190L,FuelProduct.GASOLINE_PREMIUM_GRADE to 9190L),result.rows.associate { it.product to it.amountMilli })
+        }
+        val bitmap=Bitmap.createBitmap(1200,350,Bitmap.Config.ARGB_8888)
+        val canvas=Canvas(bitmap);canvas.drawColor(Color.WHITE)
+        val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=Color.BLACK;textSize=72f }
+        canvas.drawText("PODIUM",40f,150f,paint);canvas.drawText("9,19",850f,150f,paint)
+        val bytes=try { encoded(bitmap) } finally { bitmap.recycle() }
+        val result=withTimeout(15000) { engine.recognize(bytes) }
+        assertTrue(result.rows.isEmpty())
+        assertTrue(9190L in result.orphans)
+    }
+
 }

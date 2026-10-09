@@ -49,6 +49,9 @@ func TestVocabularyMatchesKernel(t *testing.T) {
 	// on drift instead of letting the lists diverge silently.
 	for p, unit := range wireProducts {
 		kp, err := kernel.ParseProduct(labelFor(p))
+		if p == "GASOLINE_PREMIUM_GRADE" {
+			kp, err = kernel.Product(p), nil
+		} // Community-only grade; not an invented ANP label.
 		if err != nil {
 			t.Errorf("kernel rejects %s: %v", p, err)
 			continue
@@ -58,8 +61,8 @@ func TestVocabularyMatchesKernel(t *testing.T) {
 			t.Errorf("%s unit = %q, kernel %q", p, unit, ku)
 		}
 	}
-	if len(wireProducts) != 7 {
-		t.Errorf("products = %d, want 7", len(wireProducts))
+	if len(wireProducts) != 8 {
+		t.Errorf("products = %d, want 8", len(wireProducts))
 	}
 }
 

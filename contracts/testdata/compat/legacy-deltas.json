@@ -3,11 +3,21 @@
   "version": "v1",
   "provenance": "CURRENT_STATE_AUDIT A01-A13 + BASELINE_VALIDATION 2026-09-28; frozen for P10 Android adapters, backend wire unchanged",
   "fuel_vocabulary": {
-    "wire_enum": ["ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"],
+    "wire_enum": [
+      "ETHANOL",
+      "GASOLINE_REGULAR",
+      "GASOLINE_ADDITIVED",
+      "DIESEL_S500",
+      "DIESEL_S10",
+      "CNG",
+      "LPG_P13",
+      "GASOLINE_PREMIUM_GRADE"
+    ],
     "legacy_map": {
       "GASOLINE_PREMIUM": "GASOLINE_ADDITIVED"
     },
-    "rule": "GASOLINE_PREMIUM never appears on the wire (A05); P10 maps it only through a named Android adapter"
+    "rule": "GASOLINE_PREMIUM never appears on the wire (A05); P10 maps it only through a named Android adapter",
+    "premium_extension": "2026-10-09: GASOLINE_PREMIUM_GRADE is true premium, unit L, independently appended; the legacy additive bridge is unchanged."
   },
   "units_precision": {
     "rule": "milli-BRL integers 1..1000000, no floats (B-BR-002, A04)",

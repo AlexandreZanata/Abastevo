@@ -21,6 +21,7 @@ class WireFuelMapperTest {
 
     @Test
     fun otherProductsMapToOwnWireName() {
+        assertEquals("GASOLINE_PREMIUM_GRADE", WireFuelMapper.toWire(FuelProduct.GASOLINE_PREMIUM_GRADE))
         assertEquals("ETHANOL", WireFuelMapper.toWire(FuelProduct.ETHANOL))
         assertEquals("GASOLINE_REGULAR", WireFuelMapper.toWire(FuelProduct.GASOLINE_REGULAR))
         assertEquals("DIESEL_S500", WireFuelMapper.toWire(FuelProduct.DIESEL_S500))

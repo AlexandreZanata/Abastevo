@@ -3091,9 +3091,11 @@ components:
       description: >
         Backend wire vocabulary per D04. Legacy Android GASOLINE_PREMIUM
         (GASOLINA ADITIVADA) maps only through a named Android adapter in
-        P10 and never appears on the wire (A05).
+        P10 and never appears on the wire (A05). GASOLINE_PREMIUM_GRADE
+        is the distinct true premium gasoline grade (unit L), added for community
+        contributions; it does not imply an ANP survey observation.
       type: string
-      enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+      enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, GASOLINE_PREMIUM_GRADE]
       example: GASOLINE_ADDITIVED
     PriceCondition:
       description: >

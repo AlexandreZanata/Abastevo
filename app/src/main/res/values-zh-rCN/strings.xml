@@ -716,4 +716,5 @@
     <string name="capture_queue_background">发送将自动继续。您可以返回社区。</string>
     <string name="capture_queue_retrying">发送仍在等待中。我们将自动重试；您可以返回社区。</string>
     <string name="capture_sent_pending_validation">服务器已收到。验证仍在进行中。</string>
+    <string name="fuel_product_gasoline_premium_grade">高标号汽油</string>
 </resources>

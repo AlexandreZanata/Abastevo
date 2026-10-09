@@ -716,4 +716,5 @@
     <string name="capture_queue_background">送信は自動的に続行されます。コミュニティに戻れます。</string>
     <string name="capture_queue_retrying">送信はまだ保留中です。自動的に再試行します。コミュニティに戻れます。</string>
     <string name="capture_sent_pending_validation">サーバーが受信しました。検証はまだ進行中です。</string>
+    <string name="fuel_product_gasoline_premium_grade">プレミアムガソリン</string>
 </resources>

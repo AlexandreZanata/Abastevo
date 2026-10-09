@@ -26,7 +26,7 @@ var feedCity = regexp.MustCompile(`^[0-9]{7}$`)
 var feedID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 func ValidateFeed(state, city, fuel, order string, limit int, key string) (FeedFilter, error) {
-	units := map[string]string{"ETHANOL": "L", "GASOLINE_REGULAR": "L", "GASOLINE_ADDITIVED": "L", "DIESEL_S500": "L", "DIESEL_S10": "L", "CNG": "M3", "LPG_P13": "KG_13"}
+	units := map[string]string{"ETHANOL": "L", "GASOLINE_REGULAR": "L", "GASOLINE_ADDITIVED": "L", "GASOLINE_PREMIUM_GRADE": "L", "DIESEL_S500": "L", "DIESEL_S10": "L", "CNG": "M3", "LPG_P13": "KG_13"}
 	states := "|AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO|"
 	if len(state) != 2 || !strings.Contains(states, "|"+state+"|") || !feedCity.MatchString(city) || units[fuel] == "" || (order != "recent" && order != "cheapest" && order != "best" && order != "worst") || limit < 1 || limit > 50 {
 		return FeedFilter{}, ErrFeedFilter

@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test
 class FuelProductTest {
 
     @Test
-    fun enumContainsSevenGlossaryValues() {
-        assertEquals(7, FuelProduct.entries.size)
+    fun enumContainsEightDistinctValues() {
+        assertEquals(8, FuelProduct.entries.size)
         assertEquals(
             setOf(
                 FuelProduct.ETHANOL,
@@ -17,6 +17,7 @@ class FuelProductTest {
                 FuelProduct.DIESEL_S10,
                 FuelProduct.CNG,
                 FuelProduct.LPG_P13,
+                FuelProduct.GASOLINE_PREMIUM_GRADE,
             ),
             FuelProduct.entries.toSet(),
         )
