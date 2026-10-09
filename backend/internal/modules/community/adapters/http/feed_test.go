@@ -47,10 +47,16 @@ func TestFeedAnonymousScopeCursorAndFailures(t *testing.T) {
 	if request(query+"&cursor="+page.Next).Code != 200 {
 		t.Fatal("valid pagination refused")
 	}
-	for _, path := range []string{strings.Replace(query, "5107925", "5103403", 1) + "&cursor=" + page.Next, query + "&sort=cheapest&cursor=" + page.Next, query + "&cursor=bad", strings.Replace(query, "limit=1", "limit=51", 1), strings.Replace(query, "ETHANOL", "OTHER", 1), "/v1/community/feed"} {
+	for _, path := range []string{strings.Replace(query, "5107925", "5103403", 1) + "&cursor=" + page.Next, query + "&sort=cheapest&cursor=" + page.Next, query + "&cursor=bad", strings.Replace(query, "limit=1", "limit=51", 1), strings.Replace(query, "ETHANOL", "OTHER", 1), query + "&sort=popular", "/v1/community/feed"} {
 		before := called
 		if request(path).Code != 400 || called != before {
 			t.Fatalf("invalid request reached read: %s", path)
+		}
+	}
+	for _, order := range []string{"best", "worst"} {
+		w := request(query + "&sort=" + order)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `"sort":"`+order+`"`) {
+			t.Fatalf("order %s not echoed: %d %s", order, w.Code, w.Body.String())
 		}
 	}
 	fh := httpapi.FilterHash("community-feed-v1", "MT", "5107925", "ETHANOL", "recent", "1")

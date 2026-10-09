@@ -6,6 +6,8 @@ import com.anpfuel.domain.model.ContributionDraft
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.QueuedContribution
+import com.anpfuel.domain.repository.PendingContribution
+import com.anpfuel.domain.model.PhotoContributionContext
 import com.anpfuel.domain.valueobject.FuelProduct
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -44,6 +46,17 @@ class EnqueueContributionUseCaseTest {
                 payloadJson,
                 payloadJson.contains("\"freshness\":\"historical\""),
             )
+        }
+
+        override suspend fun enqueueReview(commands: List<PendingContribution>): List<QueuedContribution> {
+            calls += 1
+            return commands.map { command ->
+                val id = command.draft.clientSubmissionId
+                if (payloads[id] != null && payloads[id] != command.payloadJson) throw DomainException("changed review")
+                payloads[id] = command.payloadJson
+                revisions[id] = 1
+                QueuedContribution(id, 1, command.payloadJson, false)
+            }
         }
 
         override suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution> =
@@ -156,4 +169,39 @@ class EnqueueContributionUseCaseTest {
             assertTrue(!payload.contains("\"$key\""), "payload leaks $key")
         }
     }
+    @Test
+    fun `review validates every row before one atomic enqueue and preserves time scope and ids`() = runTest {
+        val outbox = InMemoryOutbox()
+        val useCase = EnqueueContributionUseCase(FakeFlags(true), outbox, nowMillis = { 2_000_000L })
+        val context = PhotoContributionContext("c0000000-0000-4000-8000-000000000001", 3_000_000L, "synthetic-owner", "https://example.invalid")
+        val one = request(capturedAt = 1_900_000L).copy(photoId = "photo", photoContext = context)
+        val invalid = one.copy(clientSubmissionId = "cmd-2", fuelProduct = FuelProduct.ETHANOL, amountMilliBrl = 0)
+        try { useCase.invokeReview(listOf(one, invalid)); throw AssertionError("invalid review accepted") }
+        catch (_: DomainException) { }
+        assertEquals(0, outbox.calls)
+        val two = invalid.copy(amountMilliBrl = 3990)
+        val first = useCase.invokeReview(listOf(one, two)) as EnqueueReviewOutcome.Queued
+        val retry = useCase.invokeReview(listOf(one, two)) as EnqueueReviewOutcome.Queued
+        assertEquals(listOf("cmd-1", "cmd-2"), first.commands.map { it.commandId })
+        assertEquals(first.commands, retry.commands)
+        assertEquals(2, outbox.payloads.size)
+        assertTrue(outbox.payloads.values.all { it.contains("\"captured_at_millis\":1900000") && it.contains("synthetic-owner") && it.contains(context.captureId) })
+    }
+
+    @Test
+    fun `expired or mixed photo review and disabled collection enqueue nothing`() = runTest {
+        val outbox = InMemoryOutbox()
+        val context = PhotoContributionContext("c0000000-0000-4000-8000-000000000001", 2_000_000L, "synthetic-owner", "https://example.invalid")
+        val one = request(capturedAt = 1_900_000L).copy(photoId = "photo", photoContext = context)
+        val useCase = EnqueueContributionUseCase(FakeFlags(true), outbox, nowMillis = { 2_000_000L })
+        try { useCase.invokeReview(listOf(one)); throw AssertionError("expired capture accepted") }
+        catch (_: DomainException) { }
+        val fresh = one.copy(photoContext = context.copy(expiresAtMillis = 3_000_000L))
+        try { useCase.invokeReview(listOf(fresh, fresh.copy(clientSubmissionId = "cmd-2", photoId = "other"))); throw AssertionError("mixed photos accepted") }
+        catch (_: DomainException) { }
+        val disabled = EnqueueContributionUseCase(FakeFlags(false), outbox)
+        assertEquals(EnqueueReviewOutcome.Disabled, disabled.invokeReview(listOf(fresh)))
+        assertEquals(0, outbox.calls)
+    }
+
 }

@@ -53,7 +53,8 @@ object ContributionStateRule {
         }
         return when (remote) {
             ContributionRemoteStatus.VALIDATED -> ContributionState.Accepted
-            ContributionRemoteStatus.RECEIVED -> ContributionState.Pending
+            ContributionRemoteStatus.REJECTED, ContributionRemoteStatus.EXPIRED -> ContributionState.Rejected
+            ContributionRemoteStatus.RECEIVED, ContributionRemoteStatus.VALIDATING -> ContributionState.Pending
             ContributionRemoteStatus.QUEUED, null -> ContributionState.Queued(
                 retryable = local == ContributionLocalPhase.TRANSPORT_FAILED,
             )

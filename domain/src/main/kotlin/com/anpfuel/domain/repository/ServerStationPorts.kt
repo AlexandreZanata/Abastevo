@@ -15,6 +15,8 @@ import com.anpfuel.domain.discovery.ServerStationPage
  */
 interface ServerStationGateway {
     suspend fun list(limit: Int, cursor: String?): ServerStationPage
+    suspend fun search(municipalityCode: String, query: String, limit: Int = 20): ServerStationPage =
+        throw UnsupportedOperationException("station search unavailable")
 
     suspend fun nearby(
         lat: Double,
@@ -24,6 +26,9 @@ interface ServerStationGateway {
     ): List<NearbyServerStation>
 
     suspend fun detail(stationId: String): ServerStation
+
+    /** Existing active identifier only; never creates a station. */
+    suspend fun byCnpj(cnpj: String): ServerStation? = throw UnsupportedOperationException("identifier lookup unavailable")
 }
 
 interface ServerStationCache {

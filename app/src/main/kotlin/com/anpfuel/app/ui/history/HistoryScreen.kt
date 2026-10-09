@@ -33,8 +33,10 @@ import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.FuelProductLabel
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.PriceHistoryEntryRow
 import com.anpfuel.app.ui.components.PriceHistoryTrendChart
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
@@ -139,7 +141,7 @@ private fun HistoryContent(
             }
 
             when {
-                uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
+                uiState.isLoading -> HistoryLoadingSkeleton()
 
                 uiState.errorMessage != null -> {
                     ErrorState(
@@ -197,6 +199,15 @@ private fun HistoryContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HistoryLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 220.dp, height = 28.dp)
+        SkeletonCard(height = 180.dp)
+        repeat(4) { SkeletonLine() }
     }
 }
 

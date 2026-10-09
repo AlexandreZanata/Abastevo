@@ -55,8 +55,13 @@ sql:
       - db/migrations/000012_community_signals.sql
       - db/migrations/000013_community_votes.sql
       - db/migrations/000015_community_projection.sql
+      - db/migrations/000023_feedback.sql
       - db/migrations/000041_community_feed_indexes.sql
       - db/migrations/000030_community_location_bands.sql
+      - db/migrations/000043_photo_captures.sql
+      - db/migrations/000044_photo_capture_session_unique.sql
+      - db/migrations/000046_photo_observation_subset.sql
+      - db/migrations/000048_development_photo_capture_policy.sql
     gen:
       go:
         package: community
@@ -68,6 +73,8 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000010_evidence.sql
+      - db/migrations/000045_evidence_photo_capture.sql
+      - db/migrations/000047_shared_photo_evidence.sql
       - db/migrations/000011_evidence_retention.sql
       - db/migrations/000029_evidence_received_at.sql
     gen:
@@ -108,6 +115,7 @@ sql:
       - db/migrations/000020_accounts.sql
       - db/migrations/000021_provider_links.sql
       - db/migrations/000022_account_bindings.sql
+      - db/migrations/000042_key_accounts.sql
     gen:
       go:
         package: account

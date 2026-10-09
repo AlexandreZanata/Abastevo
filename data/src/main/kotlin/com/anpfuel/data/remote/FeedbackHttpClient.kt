@@ -1,5 +1,7 @@
 package com.anpfuel.data.remote
 
+import com.anpfuel.application.portable.AuthApiResult
+import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.repository.CommentWriteReceipt
@@ -41,13 +43,17 @@ class FeedbackHttpClient(
     private val baseUrl: String,
     private val sessions: AuthSessionStore,
     private val nowEpochSeconds: () -> Long = { System.currentTimeMillis() / 1000L },
+    private val auth: AuthFlow? = null,
 ) : FeedbackGateway {
 
     private data class Session(val familyId: String, val accessToken: String)
 
     private fun liveSession(): Session {
         val stored = try {
-            sessions.load()
+            if (auth == null) sessions.load() else when (val result = auth.refreshSession()) {
+                is AuthApiResult.Ok -> result.value
+                is AuthApiResult.Err -> null
+            }
         } catch (_: Exception) {
             null
         }

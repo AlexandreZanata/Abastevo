@@ -155,6 +155,7 @@ func freshService(t *testing.T) (*application.Service, *integClock, *integMail) 
 		CodeGen:  nextCode,
 		TokenGen: nextToken,
 		AliasGen: nextAlias,
+		KeyGen:   domain.GenerateAccountKey,
 		IDGen:    nextID,
 	}
 	return svc, clock, mail

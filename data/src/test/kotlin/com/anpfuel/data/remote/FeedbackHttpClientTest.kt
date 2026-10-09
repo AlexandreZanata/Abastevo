@@ -1,5 +1,9 @@
 package com.anpfuel.data.remote
 
+import com.anpfuel.application.portable.AuthApiResult
+import com.anpfuel.application.portable.AuthFlow
+import io.mockk.every
+import io.mockk.mockk
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.repository.FeedbackException
@@ -245,4 +249,40 @@ class FeedbackHttpClientTest {
             server.shutdown()
         }
     }
+    @Test
+    fun staleSessionRenewsBeforeAuthenticatedWrite() = runTest {
+        val server = MockWebServer()
+        val auth = mockk<AuthFlow>()
+        val renewed = session.copy(accessToken = "rotated-access")
+        every { auth.refreshSession() } returns AuthApiResult.Ok(renewed)
+        try {
+            server.enqueue(MockResponse().setResponseCode(201).setBody(commentBody("c-1", 1)))
+            val gateway = FeedbackHttpClient(OkHttpClient(), server.url("/").toString(),
+                FakeSessions(session.copy(accessExpiresAt = 1L)), { 1_700_000_000L }, auth)
+            gateway.submitComment("acc-1", "s-1", "GASOLINE", "good fuel")
+            val body = JSONObject(server.takeRequest().body.readUtf8())
+            assertEquals("rotated-access", body.getString("access_token"))
+        } finally { server.shutdown() }
+    }
+
+    @Test
+    fun renewalRefusalNeverSendsPrivateWrite() = runTest {
+        for (verdict in listOf(PortableAuth.UNAVAILABLE, PortableAuth.Verdict.SESSION_REVOKED)) {
+            val server = MockWebServer()
+            val auth = mockk<AuthFlow>()
+            every { auth.refreshSession() } returns AuthApiResult.Err(verdict)
+            try {
+                val gateway = FeedbackHttpClient(OkHttpClient(), server.url("/").toString(),
+                    FakeSessions(session.copy(accessExpiresAt = 1L)), { 1_700_000_000L }, auth)
+                try {
+                    gateway.submitComment("acc-1", "s-1", "GASOLINE", "good fuel")
+                    fail("renewal refusal must block the write")
+                } catch (error: FeedbackException) {
+                    assertEquals(FeedbackRejectKind.GATE_REQUIRED, error.kind)
+                }
+                assertEquals(0, server.requestCount)
+            } finally { server.shutdown() }
+        }
+    }
+
 }

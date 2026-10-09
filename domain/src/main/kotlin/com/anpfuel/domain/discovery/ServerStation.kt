@@ -37,6 +37,8 @@ class ServerStation private constructor(
     val state: String?,
     val currentRevisionId: String?,
 ) {
+    val artwork = com.anpfuel.domain.profile.StationArtwork.BETA_DEFAULT
+
     companion object {
         fun create(
             stationId: String,

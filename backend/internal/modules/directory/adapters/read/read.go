@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
@@ -221,4 +223,28 @@ func page[T any](items []T, limit int, key func(T) string) ([]T, string, error) 
 		return items, "", nil
 	}
 	return items[:limit], key(items[limit-1]), nil
+}
+
+// ByCNPJ resolves only an existing active identifier; it never runs intake.
+func (r *Reader) ByCNPJ(ctx context.Context, raw string) (application.Station, error) {
+	cnpj, err := kernel.ParseCNPJ(raw)
+	if err != nil {
+		return application.Station{}, application.ErrInvalidFilter
+	}
+	q := directory.New(r.pool)
+	row, err := q.ResolveActiveIdentifier(ctx, directory.ResolveActiveIdentifierParams{Kind: "CNPJ", Value: cnpj.Normalized()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return application.Station{}, application.ErrUnknownStation
+	}
+	if err != nil {
+		return application.Station{}, err
+	}
+	station, err := r.Detail(ctx, uuidString(row.ID))
+	if err != nil {
+		return application.Station{}, err
+	}
+	if station.CNPJNormalized == nil || *station.CNPJNormalized != cnpj.Normalized() {
+		return application.Station{}, application.ErrUnknownStation
+	}
+	return station, nil
 }

@@ -1,182 +1,224 @@
 package com.anpfuel.data.remote
 
 import com.anpfuel.application.portable.PhotoCache
+import com.anpfuel.data.local.dao.PhotoUploadSessionDao
+import com.anpfuel.data.local.entity.PhotoUploadSessionEntity
+import com.anpfuel.data.mapper.WireFuelMapper
+import com.anpfuel.domain.exception.DomainException
+import com.anpfuel.domain.exception.ContributionPhotoExpired
+import com.anpfuel.domain.exception.ContributionPhotoRejected
+import com.anpfuel.domain.model.ContributionDraft
+import com.anpfuel.domain.model.ContributionScope
 import com.anpfuel.domain.portable.PortablePhoto
 import com.anpfuel.domain.repository.ContributionReceipt
 import com.anpfuel.domain.repository.ContributionRemoteStatus
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
+import com.anpfuel.domain.valueobject.FuelProduct
 import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
+import java.security.MessageDigest
+import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
-/**
- * P10-T05 bounded direct-media submission client (BUC-004, B-BR-010/011).
- *
- * Network-only: transport failures, non-2xx responses and empty bodies
- * throw [IOException]; retry/backoff lives in the worker, never here.
- * Direct media flow is reserve → presigned PUT → complete → observation
- * submit with the same stable `client_submission_id` and a fresh `nonce`
- * per send (headers `Idempotency-Key` / `X-Nonce`). Object success with
- * finalize failure throws so the command stays FAILED and retries the
- * same id with a new nonce (never a duplicate observation). An expired or
- * missing transient photo falls back to metadata-only with the payload's
- * own historical label intact — an old photo is never relabelled as fresh.
- * No contributor id, GPS, EXIF or signed URL is logged (B-BR-011); HTTPS
- * only and the preview base URL never resolves until deployment config.
- */
-@Singleton
-class ContributionUploadHttpClient @Inject constructor(
-    private val client: OkHttpClient,
+/** Signed immutable row commands share one durable media negotiation. No expired-photo fallback. */
+class ContributionUploadHttpClient(
+    private val proof: PhotoProofTransport,
     private val photoCache: PhotoCache,
+    private val sessions: PhotoUploadSessionDao,
+    client: OkHttpClient,
+    origin: String = proof.origin,
+    private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : ContributionSubmissionGateway {
-
-    var baseUrl: String = PREVIEW_BASE_URL
-        internal set
-
-    constructor(
-        client: OkHttpClient,
-        baseUrl: String,
-        photoCache: PhotoCache,
-    ) : this(client, photoCache) {
-        this.baseUrl = baseUrl
+    init {
+        require(origin == proof.origin) { "contribution.origin-mismatch" }
     }
+    private val mediaMutex = Mutex()
+    private val privateClient = client.newBuilder().followRedirects(false).followSslRedirects(false)
+        .retryOnConnectionFailure(false).callTimeout(20, java.util.concurrent.TimeUnit.SECONDS).cookieJar(okhttp3.CookieJar.NO_COOKIES)
+        .authenticator(okhttp3.Authenticator.NONE).proxyAuthenticator(okhttp3.Authenticator.NONE).build()
 
-    override suspend fun submit(
-        commandId: String,
-        revision: Int,
-        payloadJson: String,
-        nonce: String,
-    ): ContributionReceipt {
-        require(commandId.isNotBlank()) { "command_id is blank" }
-        require(nonce.isNotBlank()) { "nonce is blank" }
-        val photoId = parsePhotoId(payloadJson)
-        val evidenceId = if (photoId == null) {
-            null
-        } else {
-            uploadPhoto(photoId, nonce)
-        }
-        val status = postObservation(commandId, payloadJson, nonce, evidenceId)
-        return ContributionReceipt(commandId, revision, status)
-    }
-
-    private fun uploadPhoto(photoId: String, nonce: String): String? {
-        val bytes = photoCache.get(photoId) ?: return null
-        if (!PortablePhoto.fitsWireCap(bytes.size.toLong())) {
-            throw IOException("photo over wire cap")
-        }
-        val uploadId = reserveUpload(nonce)
-        putBytes(uploadId, bytes)
-        completeUpload(uploadId, bytes.size.toLong(), nonce)
-        return uploadId
-    }
-
-    private fun reserveUpload(nonce: String): String {
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/v1/uploads")
-            .post("{}".toRequestBody(JSON_MEDIA))
-            .header("Accept", "application/json")
-            .header("X-Nonce", nonce)
-            .build()
-        val body = execute(request)
-        val id = try {
-            JSONObject(body).optString("upload_id", "")
-        } catch (_: Exception) {
-            ""
-        }
-        if (id.isBlank()) throw IOException("upload reserve failed: empty id")
-        return id
-    }
-
-    private fun putBytes(uploadId: String, bytes: ByteArray) {
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/v1/uploads/" + encode(uploadId) + "/bytes")
-            .put(bytes.toRequestBody(JPEG_MEDIA))
-            .header("Accept", "application/json")
-            .build()
-        execute(request)
-    }
-
-    private fun completeUpload(uploadId: String, bytes: Long, nonce: String) {
-        val payload = JSONObject()
-            .put("bytes", bytes)
-            .toString()
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/v1/uploads/" + encode(uploadId) + "/complete")
-            .post(payload.toRequestBody(JSON_MEDIA))
-            .header("Accept", "application/json")
-            .header("X-Nonce", nonce)
-            .build()
-        execute(request)
-    }
-
-    private fun postObservation(
-        commandId: String,
-        payloadJson: String,
-        nonce: String,
-        evidenceId: String?,
-    ): ContributionRemoteStatus {
-        val doc = try {
-            JSONObject(payloadJson)
-        } catch (error: Exception) {
-            throw IOException("malformed contribution payload", error)
-        }
-        if (evidenceId != null) {
-            doc.put("evidence_id", evidenceId)
-        }
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/v1/observations")
-            .post(doc.toString().toRequestBody(JSON_MEDIA))
-            .header("Accept", "application/json")
-            .header("Idempotency-Key", commandId)
-            .header("X-Nonce", nonce)
-            .build()
-        val body = execute(request)
-        return if (body.contains("\"VALIDATED\"")) {
-            ContributionRemoteStatus.VALIDATED
-        } else {
-            ContributionRemoteStatus.RECEIVED
-        }
-    }
-
-    private fun execute(request: Request): String {
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IOException("contribution submit failed: HTTP ${response.code}")
-                }
-                val body = response.body?.string()
-                if (body.isNullOrBlank()) {
-                    throw IOException("contribution submit failed: empty body")
-                }
-                return body
+    private data class Intent(val doc: JSONObject, val scope: ContributionScope, val product: FuelProduct,
+        val captureId: String?, val expiresAt: Long?, val photoId: String?, val capturedAt: Long) {
+        fun wire(evidenceId: String?): JSONObject = JSONObject()
+            .put("client_submission_id", doc.getString("client_submission_id"))
+            .put("station_id", doc.getString("station_id")).put("fuel_product", WireFuelMapper.toWire(product))
+            .put("price", JSONObject().put("amount_milli_brl", doc.getLong("amount_milli_brl"))
+                .put("currency", "BRL").put("unit", unit(product)))
+            .put("condition", JSONObject().put("kind", doc.getString("condition_kind")))
+            .put("claimed_captured_at", Instant.ofEpochMilli(capturedAt).toString()).also {
+                if (evidenceId != null) it.put("evidence_id", evidenceId).put("photo_capture_id", captureId)
+                if (!doc.isNull("supersedes_observation_id")) it.put("supersedes_observation_id", doc.getString("supersedes_observation_id"))
             }
-        } catch (error: IOException) {
-            throw error
+    }
+
+    private suspend fun intent(payload: String, commandId: String): Intent {
+        val value = try {
+            val doc = JSONObject(payload)
+            val scoped = doc.getJSONObject("scope")
+            val scope = ContributionScope(scoped.getString("owner_scope"), scoped.getString("origin"))
+            val product = FuelProduct.valueOf(doc.getString("fuel_product"))
+            val amount = integer(doc, "amount_milli_brl")
+            val capturedAt = integer(doc, "captured_at_millis")
+            val photo = if (doc.isNull("photo_id")) null else doc.getString("photo_id").also { require(it.length in 1..128) }
+            val context = if (doc.isNull("photo_capture")) null else doc.getJSONObject("photo_capture")
+            require((photo == null) == (context == null))
+            val captureId = context?.getString("capture_id")?.also { requireUuid(it) }
+            val deadline = context?.let { integer(it, "expires_at_millis") }
+            require(doc.getString("client_submission_id") == commandId && commandId.length in 1..128)
+            require(doc.getString("currency") == "BRL" && doc.getString("unit") in setOf(unit(product), "BRL/${unit(product)}"))
+            require(doc.getString("condition_kind") in setOf("STANDARD", "CASH", "DEBIT", "CREDIT", "APP", "LOYALTY", "OTHER"))
+            if (photo != null) require(doc.getString("condition_kind") == "STANDARD")
+            ContributionDraft.create(commandId, doc.getString("station_id"), product, amount, "BRL", unit(product),
+                doc.getString("condition_kind"), capturedAt, photo,
+                if (doc.isNull("supersedes_observation_id")) null else doc.getString("supersedes_observation_id"))
+            Intent(doc, scope, product, captureId, deadline, photo, capturedAt)
+        } catch (_: Exception) { throw DomainException("contribution.invalid-or-unscoped") }
+        checkScope(value)
+        return value
+    }
+
+    private suspend fun checkScope(intent: Intent) {
+        if (intent.scope.origin != proof.origin || intent.scope.ownerScope != proof.localScope()) {
+            throw DomainException("contribution.owner-or-origin-changed")
+        }
+    }
+
+    override suspend fun submit(commandId: String, revision: Int, payloadJson: String, nonce: String): ContributionReceipt {
+        require(revision > 0 && nonce.isNotBlank())
+        try {
+            return submitInner(commandId, revision, payloadJson, nonce)
         } catch (error: Exception) {
-            throw IOException("contribution submit failed", error)
+            // Logcat-only diagnostic: error codes carry no PII (e.g. contribution.invalid-or-unscoped).
+            // Guarded: android.util.Log throws on plain JVM unit tests.
+            runCatching { android.util.Log.w("ContributionUpload", "submit failed for $commandId: ${error.message}") }
+            throw error
         }
     }
 
-    private fun parsePhotoId(payloadJson: String): String? {
-        return try {
-            val id = JSONObject(payloadJson).optString("photo_id", "")
-            id.ifBlank { null }
-        } catch (_: Exception) {
-            null
+    private suspend fun submitInner(commandId: String, revision: Int, payloadJson: String, nonce: String): ContributionReceipt {
+        val intent = intent(payloadJson, commandId)
+        val evidence = if (intent.photoId == null) null else mediaMutex.withLock { upload(intent) }
+        checkScope(intent)
+        val received = proof.post("/v1/observations", commandId, intent.wire(evidence), intent.scope.ownerScope)
+        val id = received.getString("id").also(::requireUuid)
+        // Intake acknowledges only RECEIVED. A substring in an error/decision is never validation.
+        if (received.getString("validation_state") != "RECEIVED") throw IOException("contribution.invalid-receipt")
+        return ContributionReceipt(commandId, revision, ContributionRemoteStatus.RECEIVED, id)
+    }
+
+    override suspend fun refresh(receipt: ContributionReceipt, payloadJson: String): ContributionReceipt {
+        val intent = intent(payloadJson, receipt.commandId)
+        val id = receipt.observationId?.also(::requireUuid) ?: throw DomainException("contribution.missing-receipt")
+        val response = proof.get("/v1/observations/$id", intent.scope.ownerScope)
+        val observation = response.getJSONObject("observation")
+        if (observation.getString("id") != id || observation.getString("station_id") != intent.doc.getString("station_id") ||
+            observation.getString("fuel_product") != WireFuelMapper.toWire(intent.product) ||
+            observation.getString("unit") != unit(intent.product) || integer(observation, "amount_milli_brl") != integer(intent.doc,"amount_milli_brl") ||
+            observation.getJSONObject("condition").getString("kind") != intent.doc.getString("condition_kind")) {
+            throw IOException("contribution.receipt-mismatch")
+        }
+        val status = when (response.getString("validation_state")) {
+            "RECEIVED" -> ContributionRemoteStatus.RECEIVED
+            "VALIDATING" -> ContributionRemoteStatus.VALIDATING
+            "VALIDATED" -> ContributionRemoteStatus.VALIDATED
+            "REJECTED" -> ContributionRemoteStatus.REJECTED
+            else -> throw IOException("contribution.invalid-status")
+        }
+        if (observation.getString("validation_state") != status.name) throw IOException("contribution.status-mismatch")
+        return receipt.copy(status = status, reason = if (status == ContributionRemoteStatus.REJECTED) "contribution.rejected" else null)
+    }
+
+    private suspend fun upload(intent: Intent): String {
+        checkScope(intent)
+        val capture = requireNotNull(intent.captureId)
+        var saved = sessions.find(capture)
+        saved?.let {
+            if (it.photoId != intent.photoId || it.ownerScope != intent.scope.ownerScope || it.origin != intent.scope.origin ||
+                it.capturedAtMillis != intent.capturedAt || it.expiresAtMillis > requireNotNull(intent.expiresAt)) {
+                throw DomainException("contribution.media-intent-changed")
+            }
+            // Replay a previously READY observation after a lost acknowledgement, without another upload.
+            it.evidenceId?.let { evidence -> requireUuid(evidence); return evidence }
+        }
+        if (nowMillis() >= requireNotNull(intent.expiresAt) || nowMillis() - intent.capturedAt >= 86_400_000L) throw ContributionPhotoExpired()
+        if (saved != null) {
+            readyOrPending(intent, saved, proof.get("/v1/uploads/${saved.sessionId}", intent.scope.ownerScope))?.let { return it }
+        }
+        val bytes = withContext(Dispatchers.IO) { photoCache.get(requireNotNull(intent.photoId)) } ?: throw ContributionPhotoExpired()
+        if (!PortablePhoto.fitsWireCap(bytes.size.toLong())) throw DomainException("contribution.photo-size")
+        val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        if (saved != null && saved.sha256 != hash) throw DomainException("contribution.photo-changed")
+        val doc = JSONObject().put("client_submission_id", "photo:$capture").put("content_type", "image/jpeg")
+            .put("size_bytes", bytes.size).put("sha256", hash).put("photo_capture_id", capture)
+            .put("station_id", intent.doc.getString("station_id")).put("captured_at", Instant.ofEpochMilli(intent.capturedAt).toString())
+        val reserve = proof.post("/v1/uploads", "photo:$capture", doc, intent.scope.ownerScope)
+        val sessionId = reserve.getString("upload_id").also(::requireUuid)
+        val deadline = Instant.parse(reserve.getString("session_expires_at")).toEpochMilli()
+        if (deadline <= nowMillis() || deadline > intent.expiresAt) throw IOException("contribution.invalid-media-deadline")
+        saved = sessions.remember(PhotoUploadSessionEntity(capture, sessionId, requireNotNull(intent.photoId),
+            intent.scope.ownerScope, intent.scope.origin, intent.capturedAt, deadline, hash))
+        checkScope(intent)
+        put(reserve, bytes, deadline)
+        checkScope(intent)
+        val status = proof.post("/v1/uploads/$sessionId/complete", "complete:$capture", JSONObject(), intent.scope.ownerScope)
+        return readyOrPending(intent, saved, status) ?: throw IOException("contribution.media-not-ready")
+    }
+
+    private suspend fun readyOrPending(intent: Intent, saved: PhotoUploadSessionEntity, result: JSONObject): String? {
+        if (result.getString("upload_id") != saved.sessionId) throw IOException("contribution.media-receipt-mismatch")
+        return when (result.getString("state")) {
+            "READY" -> {
+                val evidence = result.getString("evidence_id").also(::requireUuid)
+                checkScope(intent)
+                if (sessions.ready(saved.captureId, saved.sessionId, evidence) != 1) throw DomainException("contribution.media-receipt-changed")
+                evidence
+            }
+            "ISSUED" -> null
+            "VERIFYING" -> throw IOException("contribution.media-verifying")
+            "EXPIRED" -> throw ContributionPhotoExpired()
+            "REJECTED" -> throw ContributionPhotoRejected()
+            else -> throw IOException("contribution.invalid-media-status")
         }
     }
 
-    private fun encode(value: String): String =
-        java.net.URLEncoder.encode(value, Charsets.UTF_8.name())
+    private suspend fun put(reserve: JSONObject, bytes: ByteArray, deadline: Long) = withContext(Dispatchers.IO) {
+        val url = reserve.getString("url")
+        val uri = java.net.URI(url)
+        val expiry = Instant.parse(reserve.getString("expires_at")).toEpochMilli()
+        val headers = reserve.getJSONObject("required_headers")
+        // S3 canonical casing is "Content-Type": match case-insensitively.
+        val headerName = (0 until headers.length()).map { headers.names().getString(it) }.singleOrNull()
+        if (reserve.getString("method") != "PUT" || url.length > 8192 || uri.scheme != "https" || uri.host.isNullOrBlank() ||
+            uri.rawUserInfo != null || uri.rawFragment != null || uri.rawQuery.isNullOrBlank() || expiry <= nowMillis() ||
+            expiry > nowMillis() + UPLOAD_URL_TTL_MILLIS + PhotoCaptureHttpClient.ISSUED_AT_LEEWAY_MILLIS || expiry > deadline ||
+            integer(reserve, "max_bytes") < bytes.size || headerName == null ||
+            !headerName.equals("content-type", ignoreCase = true) || headers.optString(headerName) != "image/jpeg") {
+            throw IOException("contribution.invalid-upload-authorization")
+        }
+        val request = Request.Builder().url(url).put(bytes.toRequestBody("image/jpeg".toMediaType())).build()
+        privateClient.newCall(request).execute().use { if (!it.isSuccessful) throw IOException("contribution.media-put-failed:${it.code}") }
+    }
 
     companion object {
-        const val PREVIEW_BASE_URL = "https://api.anpfuel.example.invalid"
-        private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-        private val JPEG_MEDIA = "image/jpeg".toMediaType()
+        /**
+         * Server upload authorizations live 5 minutes. Phones trailing the
+         * server clock would otherwise refuse every authorization as
+         * over-long, so the shared issuance leeway applies here too.
+         */
+        private const val UPLOAD_URL_TTL_MILLIS = 300_000L
+        private fun requireUuid(value: String) { require(value.matches(Regex("[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"))) { "invalid identifier" } }
+        private fun integer(doc: JSONObject, key: String): Long = when (val value = doc.get(key)) {
+            is Int -> value.toLong()
+            is Long -> value
+            else -> throw DomainException("contribution.non-integer")
+        }
+        private fun unit(product: FuelProduct) = when(product) { FuelProduct.CNG -> "M3"; FuelProduct.LPG_P13 -> "KG_13"; else -> "L" }
     }
 }

@@ -83,7 +83,15 @@ func IfNoneMatch(r *http.Request, etag string) bool {
 // WriteJSON renders a body with ETag handling: matching If-None-Match
 // short-circuits to 304 without a body. cacheControl is explicit per route.
 func WriteJSON(w http.ResponseWriter, r *http.Request, status int, cacheControl string, body []byte) {
-	etag := ETag(body)
+	WriteJSONWithETag(w, r, status, cacheControl, body, ETag(body))
+}
+
+// WriteJSONWithETag renders body but keys conditional handling off etag,
+// which must summarize the stable content. Use it when the envelope carries
+// volatile fields (timestamps, minted page cursors) that must not defeat
+// shared caching: identical stable content revalidates to 304 even though
+// the wire bytes differ.
+func WriteJSONWithETag(w http.ResponseWriter, r *http.Request, status int, cacheControl string, body []byte, etag string) {
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", cacheControl)

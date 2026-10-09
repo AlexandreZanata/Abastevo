@@ -32,8 +32,8 @@ class AccountHttpApiTest {
         {"family_id":"aaaaaaaa-1111-4111-8111-111111111111",
          "account_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26",
          "access_token":"tok-access","refresh_token":"tok-refresh",
-         "access_expires_at":"2026-10-01T00:15:00Z",
-         "absolute_expires_at":"2026-10-31T00:00:00Z"}
+         "access_expires_at":"1970-01-12T14:01:40Z",
+         "absolute_expires_at":"1970-02-19T07:06:40Z"}
     """.trimIndent()
 
     @Test
@@ -137,4 +137,81 @@ class AccountHttpApiTest {
         check(down is AuthApiResult.Err)
         assertEquals(PortableAuth.UNAVAILABLE, down.verdict)
     }
+
+    @Test
+    fun createKeyAccountParsesIssuedKey() {
+        server.enqueue(
+            MockResponse().setResponseCode(201)
+                .setBody("""{"username":"ana123","account_key":"key-for-ana123"}"""),
+        )
+        val res = api.createKeyAccount("ana123")
+        check(res is AuthApiResult.Ok)
+        assertEquals("ana123", res.value.username)
+        assertEquals("key-for-ana123", res.value.accountKey)
+    }
+
+    @Test
+    fun loginWithKeyParsesSessionAndUsername() {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"account":{"account_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26",
+                    "public_alias":"ana123","status":"active"},
+                    "session":${sessionJson()},"created":false}""",
+            ),
+        )
+        val res = api.loginWithKey("key-for-ana123")
+        check(res is AuthApiResult.Ok)
+        assertEquals(session(), res.value.session)
+        assertEquals("ana123", res.value.username)
+    }
+
+    @Test
+    fun keyVerdictsPassThroughVerbatim() {
+        server.enqueue(
+            MockResponse().setResponseCode(409)
+                .setBody("""{"error":{"code":"account.username-taken","message":"x"}}"""),
+        )
+        val taken = api.createKeyAccount("ana123")
+        check(taken is AuthApiResult.Err)
+        assertEquals("username-taken", taken.verdict)
+        server.enqueue(
+            MockResponse().setResponseCode(401)
+                .setBody("""{"error":{"code":"account.key-invalid","message":"x"}}"""),
+        )
+        val refused = api.loginWithKey("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        check(refused is AuthApiResult.Err)
+        assertEquals("key-invalid", refused.verdict)
+    }
+    @Test
+    fun accountKeyNeverFollowsRedirectToAnotherDestination() {
+        val destination = MockWebServer()
+        try {
+            destination.start()
+            server.enqueue(MockResponse().setResponseCode(307).setHeader("Location", destination.url("/capture")))
+            destination.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            val result = api.loginWithKey("synthetic-account-key")
+            assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), result)
+            assertEquals(0, destination.requestCount)
+        } finally {
+            destination.shutdown()
+        }
+    }
+
+    @Test
+    fun oversizedResponseFailsClosed() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session":${sessionJson()},"padding":"${"x".repeat(70_000)}"}"""))
+        assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), api.refresh("family-1", "synthetic-refresh"))
+    }
+
+    @Test
+    fun emptyTokensAndInvertedSessionLifetimesRefuse() {
+        for (invalid in listOf(
+            sessionJson().replace("tok-access", ""),
+            sessionJson().replace("1970-02-19T07:06:40Z", "1970-01-01T00:00:00Z"),
+        )) {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session":$invalid}"""))
+            assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), api.refresh("family-1", "synthetic-refresh"))
+        }
+    }
+
 }

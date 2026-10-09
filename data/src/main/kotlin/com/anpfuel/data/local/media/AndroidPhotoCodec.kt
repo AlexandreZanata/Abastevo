@@ -42,11 +42,11 @@ fun qualityForAttempt(attempt: Int): Int =
 class AndroidPhotoCodec : PhotoDecoder, PhotoEncoder {
 
     override fun probeDims(bytes: ByteArray): PhotoFlow.Dims? {
-        if (bytes.isEmpty()) return null
+        if (bytes.isEmpty() || bytes.size > 32 * 1024 * 1024) return null
         return try {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth.toLong() * bounds.outHeight > 100_000_000) {
                 null
             } else {
                 PhotoFlow.Dims(bounds.outWidth, bounds.outHeight)
@@ -59,8 +59,7 @@ class AndroidPhotoCodec : PhotoDecoder, PhotoEncoder {
     override fun encode(source: ByteArray, request: PhotoFlow.EncodeRequest): ByteArray? {
         if (source.isEmpty() || request.sampleSize < 1) return null
         return try {
-            val opts = BitmapFactory.Options().apply { inSampleSize = request.sampleSize }
-            val bitmap = BitmapFactory.decodeByteArray(source, 0, source.size, opts) ?: return null
+            val bitmap = BoundedPhotoBitmap.decode(source, PortablePhoto.MAX_EDGE_PIXELS, request.sampleSize)
             val out = ByteArrayOutputStream()
             try {
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, qualityForAttempt(request.attempt), out)) {

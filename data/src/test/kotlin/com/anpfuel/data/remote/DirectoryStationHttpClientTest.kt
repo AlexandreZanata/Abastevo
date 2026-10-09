@@ -22,6 +22,36 @@ class DirectoryStationHttpClientTest {
         )
 
     @Test
+    fun `city scoped station name search encodes input and rejects malformed bounds`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": []}"""))
+            client(server).search("5103403", "Posto & Centro", 20)
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("5103403", url.queryParameter("municipality_code"))
+            assertEquals("Posto & Centro", url.queryParameter("q"))
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("invalid", "Posto", 20) }
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5103403", "x", 20) }
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5103403", "Posto", 101) }
+            assertEquals(1, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
+    @Test
+    fun `blank query lists every city station without q param`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": []}"""))
+            client(server).search("5107925", "   ", 20)
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("5107925", url.queryParameter("municipality_code"))
+            assertEquals(null, url.queryParameter("q"))
+            assertThrows(IllegalArgumentException::class.java) { client(server).search("5107925", "a", 20) }
+            assertEquals(1, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
+    @Test
     fun `lists stations without double v1`() {
         val server = MockWebServer()
         try {
@@ -88,5 +118,20 @@ class DirectoryStationHttpClientTest {
         } finally {
             server.shutdown()
         }
+    }
+    @Test
+    fun `exact cnpj lookup distinguishes not found from outage`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+            assertEquals("{}", client(server).byCnpj("04218406000104"))
+            assertEquals("/v1/stations/by-cnpj/04218406000104", server.takeRequest().path)
+            server.enqueue(MockResponse().setResponseCode(404))
+            org.junit.jupiter.api.Assertions.assertNull(client(server).byCnpj("11222333000181"))
+            server.enqueue(MockResponse().setResponseCode(503))
+            assertThrows(IOException::class.java) { client(server).byCnpj("04218406000104") }
+            assertThrows(IllegalArgumentException::class.java) { client(server).byCnpj("../auth") }
+            assertEquals(3, server.requestCount)
+        } finally { server.shutdown() }
     }
 }

@@ -5,6 +5,7 @@ import com.anpfuel.data.local.entity.ContributionOutboxEntity
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
 import com.anpfuel.domain.repository.OwnedContributionPhase
+import com.anpfuel.domain.repository.PendingContribution
 import com.anpfuel.domain.valueobject.FuelProduct
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,6 +35,40 @@ class RoomContributionOutboxRepositoryTest {
             rows[entity.commandId] = entity
         }
 
+        override suspend fun insertReview(newRows: List<ContributionOutboxEntity>) {
+            if (newRows.any { rows.containsKey(it.commandId) } || newRows.map { it.commandId }.distinct().size != newRows.size) throw DomainException("duplicate review")
+            newRows.forEach { rows[it.commandId] = it }
+        }
+
+        override suspend fun claim(commandId: String, revision: Int, nonce: String, nowMillis: Long, leaseUntil: Long): Int {
+            val row = rows[commandId] ?: return 0
+            val eligible = row.state == "QUEUED" || (row.state in setOf("FAILED", "IN_FLIGHT") && row.nextEligibleTick <= nowMillis) ||
+                (row.state == "ACKED" && row.remoteStatus in setOf("RECEIVED", "VALIDATING") && row.nextEligibleTick <= nowMillis)
+            if (row.revision != revision || !eligible) return 0
+            rows[commandId] = row.copy(state = "IN_FLIGHT", nonce = nonce, nextEligibleTick = leaseUntil)
+            return 1
+        }
+
+        override suspend fun saveReceipt(commandId: String, revision: Int, observationId: String?, status: String, reason: String?, nextPoll: Long): Int {
+            val row = rows[commandId] ?: return 0
+            if (row.state == "CANCELLED" || (row.observationId != null && row.observationId != observationId) || row.revision != revision || (row.remoteStatus != null && row.remoteStatus !in setOf("RECEIVED", "VALIDATING", status))) return 0
+            rows[commandId] = row.copy(state = "ACKED", observationId = observationId, remoteStatus = status, failureReason = reason, nextEligibleTick = nextPoll)
+            return 1
+        }
+
+        override suspend fun failClaim(commandId: String, revision: Int, nonce: String, attempts: Int, nextTick: Long): Int {
+            val row = rows[commandId] ?: return 0
+            if (row.revision != revision || row.nonce != nonce || row.state != "IN_FLIGHT") return 0
+            rows[commandId] = row.copy(state = "FAILED", attempts = attempts, nextEligibleTick = nextTick)
+            return 1
+        }
+
+        override suspend fun cancelPending(commandId: String): Int {
+            val row = rows[commandId] ?: return 0
+            if (row.state !in setOf("QUEUED", "FAILED") || row.remoteStatus != null) return 0
+            rows[commandId] = row.copy(state = "CANCELLED")
+            return 1
+        }
         override suspend fun deleteById(commandId: String) {
             rows.remove(commandId)
         }
@@ -144,4 +179,18 @@ class RoomContributionOutboxRepositoryTest {
         assertEquals("nonce-1", dao.rows.getValue("cmd-1").nonce)
         assertTrue(dao.rows.getValue("cmd-1").payload.contains("historical"))
     }
+    @Test
+    fun `frozen review retry keeps ids and revisions and changed batch writes nothing`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        val rows = listOf(PendingContribution(draft("row-1"), "one"), PendingContribution(draft("row-2"), "two"))
+        val first = repo.enqueueReview(rows)
+        assertEquals(first, repo.enqueueReview(rows))
+        assertEquals(2, dao.rows.size)
+        val changed = listOf(PendingContribution(draft("row-3"), "three"), rows[1].copy(payloadJson = "different"))
+        try { repo.enqueueReview(changed); throw AssertionError("changed frozen review accepted") }
+        catch (_: DomainException) { }
+        assertEquals(setOf("row-1", "row-2"), dao.rows.keys)
+    }
+
 }

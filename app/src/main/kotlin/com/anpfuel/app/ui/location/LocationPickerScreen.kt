@@ -48,6 +48,8 @@ import com.anpfuel.application.usecase.location.CatalogMunicipalityItem
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.valueobject.BrazilianState
 
@@ -164,7 +166,7 @@ internal fun LocationPickerContent(
                 }
 
                 uiState.isLoading && uiState.states.isEmpty() -> {
-                    LoadingState(modifier = Modifier.align(Alignment.Center))
+                    LocationLoadingSkeleton(rows = 5)
                 }
 
                 step is LocationPickerStep.StateList -> {
@@ -202,6 +204,14 @@ internal fun LocationPickerContent(
                 LoadingState(modifier = Modifier.align(Alignment.Center))
             }
         }
+    }
+}
+
+@Composable
+private fun LocationLoadingSkeleton(rows: Int) {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonCard(height = 56.dp)
+        repeat(rows) { SkeletonCard(height = 60.dp) }
     }
 }
 
@@ -367,7 +377,7 @@ internal fun MunicipalityListContent(
             }
 
             isLoading -> {
-                LoadingState(modifier = Modifier.fillMaxWidth())
+                LocationLoadingSkeleton(rows = 4)
             }
 
             isEmpty -> {

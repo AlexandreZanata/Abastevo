@@ -9,7 +9,7 @@ import java.util.UUID
 data class FeedCity(val code: String, val state: BrazilianState, val name: String) {
     init { require(code.matches(Regex("[0-9]{7}"))); require(name.isNotBlank()) }
 }
-enum class FeedSort { RECENT, CHEAPEST }
+enum class FeedSort { RECENT, CHEAPEST, BEST, WORST }
 data class FeedQuery(val city: FeedCity, val fuel: FuelProduct, val sort: FeedSort = FeedSort.RECENT)
 data class CommunityFeedItem(
     val stationId: String,
@@ -22,6 +22,8 @@ data class CommunityFeedItem(
     val confirmations: Int,
     val confidence: String,
     val version: Long,
+    val ratingsCount: Int = 0,
+    val ratingsAvg: Double? = null,
 ) {
     init {
         require(UUID.fromString(stationId).toString() == stationId)
@@ -30,6 +32,9 @@ data class CommunityFeedItem(
         require(expiresAt > updatedAt)
         require(supporters >= 0 && confirmations >= 0 && version > 0)
         require(confidence in setOf("LOW", "MEDIUM", "HIGH"))
+        require(ratingsCount >= 0)
+        require(ratingsAvg == null || ratingsAvg in 1.0..5.0)
+        require((ratingsAvg == null) == (ratingsCount == 0))
     }
     val unit: String get() = when (fuel) {
         FuelProduct.CNG -> "M3"

@@ -19,6 +19,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.anpfuel.app.capture.CaptureScreen
 import com.anpfuel.app.ui.auth.AuthRoute
+import com.anpfuel.app.ui.account.AccountScreen
 import com.anpfuel.app.ui.community.CommunityScreen
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.history.HistoryScreen
@@ -69,6 +70,12 @@ fun AnpNavGraph(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val returnToCommunity: () -> Unit = {
+        navController.navigate(Routes.COMMUNITY) {
+            popUpTo(navController.graph.findStartDestination().id)
+            launchSingleTop = true
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -178,6 +185,16 @@ fun AnpNavGraph(
                 onManage = { navController.navigate(Routes.stationManagement(it)) },
             )
         }
+        composable(Routes.STATION_PAGE, arguments = listOf(
+            navArgument("stationKey") { type = NavType.StringType },
+            navArgument("fuelProduct") { type = NavType.StringType; defaultValue = "GASOLINE_REGULAR" },
+        )) {
+            com.anpfuel.app.ui.stations.StationPageScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+            )
+        }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(
                 onBack = { navController.popBackStack() },
@@ -187,12 +204,8 @@ fun AnpNavGraph(
         composable(Routes.STATIONS) {
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
-                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
-                    navController.navigate(Routes.capture(stationId, fuelWire))
-                },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
-                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
+                onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
         composable(
@@ -203,12 +216,8 @@ fun AnpNavGraph(
         ) {
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToUpdatePrice = { navController.navigate(Routes.CAPTURE) },
-                onNavigateToUpdatePriceWithTarget = { stationId, fuelWire ->
-                    navController.navigate(Routes.capture(stationId, fuelWire))
-                },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
-                onStationProfile = { navController.navigate(Routes.stationProfile(it)) },
+                onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
         composable(Routes.VEHICLES) {
@@ -239,6 +248,12 @@ fun AnpNavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
+        composable(Routes.ACCOUNT) {
+            AccountScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAuth = { navController.navigate(Routes.AUTH) },
+            )
+        }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -253,8 +268,14 @@ fun AnpNavGraph(
                 },
             )
         }
+        composable(Routes.CONTRIBUTIONS) {
+            com.anpfuel.app.ui.profile.MyContributionsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onContribute = { navController.navigate(Routes.CAPTURE) },
+            )
+        }
         composable(Routes.CAPTURE) {
-            CaptureScreen(onNavigateBack = { navController.popBackStack() })
+            CaptureScreen(onNavigateBack = { navController.popBackStack() }, onReturnCommunity = returnToCommunity)
         }
         composable(Routes.SUGGEST) {
             com.anpfuel.app.ui.suggest.SuggestStationScreen(
@@ -269,6 +290,7 @@ fun AnpNavGraph(
             ),
         ) { entry ->
             CaptureScreen(
+                onReturnCommunity = returnToCommunity,
                 onNavigateBack = { navController.popBackStack() },
                 stationId = entry.arguments?.getString("stationId")?.takeIf { it.isNotEmpty() },
                 fuelProductWire = entry.arguments?.getString("fuel")?.takeIf { it.isNotEmpty() },

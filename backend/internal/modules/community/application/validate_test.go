@@ -372,3 +372,41 @@ func TestValidateRejectsReusedEvidence(t *testing.T) {
 		t.Fatalf("rejected observation enqueued consensus: %v", store.jobs)
 	}
 }
+
+func TestValidateSharedPhotoUsesCaptureLaneAndExpiredReadyRejects(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	for _, expired := range []bool{false, true} {
+		store := newFakeValidateStore()
+		obs := validateObs("station", "photo", "", now)
+		obs.PhotoCaptureID = "capture"
+		store.obs[obs.ID] = obs
+		deps := validateDeps(store, now)
+		deadline := now.Add(time.Hour)
+		if expired {
+			deadline = now
+		}
+		deps.Evidence = func(context.Context, string) (EvidenceState, error) {
+			return EvidenceState{Found: true, Ready: true, OwnerRef: obs.ContributorRef, ExpiresAt: deadline}, nil
+		}
+		deps.ClaimEvidence = func(context.Context, string, string, string) error {
+			t.Fatal("shared photo entered legacy claim lane")
+			return nil
+		}
+		claims := 0
+		deps.ClaimPhotoEvidence = func(_ context.Context, got domain.Observation) error {
+			claims++
+			if got.PhotoCaptureID != "capture" {
+				t.Fatal("lost capture")
+			}
+			return nil
+		}
+		state, err := Validate(context.Background(), deps, obs.ID, "job")
+		if expired {
+			if err != nil || state != domain.StateRejected || claims != 0 {
+				t.Fatalf("expired state=%s err=%v claims=%d", state, err, claims)
+			}
+		} else if err != nil || state != domain.StateValidated || claims != 1 {
+			t.Fatalf("shared state=%s err=%v claims=%d", state, err, claims)
+		}
+	}
+}

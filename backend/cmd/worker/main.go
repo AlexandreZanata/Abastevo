@@ -298,6 +298,10 @@ func run() error {
 	// cascade design lands. Rate windows self-clean on check and
 	// evidence media purges on its hourly sweeper.
 	retentionPurges := []privacyapp.NamedPurge{
+		{Name: "community-photo-captures", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			count, err := communityStore.PurgeExpiredPhotoCaptures(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: count}, err
+		}},
 		{Name: "identity-challenges", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
 			purged, oldest, err := identityRegistrar.PurgeExpiredChallenges(ctx, time.Now(), privacyapp.RetentionBatch)
 			return privacyapp.CategoryReport{Purged: purged, OldestOverdue: oldest}, err
@@ -556,11 +560,41 @@ func run() error {
 						if err != nil {
 							return communityapp.EvidenceState{}, err
 						}
-						return communityapp.EvidenceState{Found: view.Found, Ready: view.Ready, OwnerRef: view.OwnerRef}, nil
+						return communityapp.EvidenceState{Found: view.Found, Ready: view.Ready, OwnerRef: view.OwnerRef, ExpiresAt: view.ExpiresAt}, nil
 					},
 					// Exactly-once photo binding (P05-T04): set-if-unbound-
 					// or-same converges replays, reuse across observations
 					// maps onto the stable reused refusal.
+					ClaimPhotoEvidence: func(ctx context.Context, obs communitydomain.Observation) error {
+						view, err := evidenceStore.ForCommunity(ctx, obs.EvidenceID)
+						if err != nil {
+							return err
+						}
+						receipt, err := store.PhotoCapture(ctx, obs.PhotoCaptureID, obs.ContributorRef)
+						if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
+							return communityapp.ErrEvidenceInUse
+						}
+						if err != nil {
+							return err
+						}
+						if !view.Ready || view.OwnerRef != obs.ContributorRef || view.PhotoCaptureID != obs.PhotoCaptureID {
+							return communityapp.ErrEvidenceInUse
+						}
+						_, err = communityapp.ValidatePhotoCaptureUse(ctx, store,
+							communityapp.Caller{ContributorID: "validation-worker", Token: obs.ContributorRef, KeyID: receipt.KeyID},
+							communityapp.PhotoCaptureUse{CaptureID: obs.PhotoCaptureID, StationID: obs.StationID, CapturedAt: obs.ClaimedCapturedAt, EvidenceSessionID: view.SessionID}, time.Now(), cfg.DevelopmentPhotoPreviewUntil)
+						if errors.Is(err, communityapp.ErrPhotoCaptureIneligible) {
+							return communityapp.ErrEvidenceInUse
+						}
+						if err != nil {
+							return err
+						}
+						err = evidenceStore.TryBindPhotoObject(ctx, obs.EvidenceID, obs.PhotoCaptureID, obs.ContributorRef, time.Now())
+						if errors.Is(err, evidenceadapters.ErrAlreadyBound) {
+							return communityapp.ErrEvidenceInUse
+						}
+						return err
+					},
 					ClaimEvidence: func(ctx context.Context, evidenceID, observationID, contributorRef string) error {
 						err := evidenceStore.TryBindObject(ctx, evidenceID, observationID, contributorRef)
 						if errors.Is(err, evidenceadapters.ErrAlreadyBound) {

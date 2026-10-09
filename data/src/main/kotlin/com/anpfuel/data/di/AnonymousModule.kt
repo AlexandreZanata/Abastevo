@@ -30,7 +30,8 @@ object AnonymousModule {
         @Named("apiOrigin") environment: ApiEnvironment,
     ): AnonymousProofHttpClient =
         AnonymousProofHttpClient(
-            client = OkHttpClientFactory.create(),
+            client = OkHttpClientFactory.create(maxRetries = 0).newBuilder()
+                .followRedirects(false).followSslRedirects(false).build(),
             baseUrl = environment.origin,
         )
 }

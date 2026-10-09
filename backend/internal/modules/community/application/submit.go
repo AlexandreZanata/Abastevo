@@ -68,11 +68,14 @@ type Ports struct {
 	// contributors keep the anonymous baseline. Nil skips the check
 	// (pre-account behavior); the composition root injects the
 	// account-owned gate and maps refusals onto ErrAccountBlocked.
-	CheckAccount func(ctx context.Context, contributorID string) error
-	Idempotent   func(ctx context.Context, key IdempotencyKey, body []byte, run func(ctx context.Context) (Outcome, error)) (Outcome, error)
-	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
-	Resolve      func(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
-	Store        Store
+	CheckAccount                 func(ctx context.Context, contributorID string) error
+	CheckPhotoCapture            func(context.Context, Caller, SubmitDTO) error
+	DevelopmentPhotoPreviewUntil time.Time
+	CheckDevelopmentStation      func(context.Context, string) error
+	Idempotent                   func(ctx context.Context, key IdempotencyKey, body []byte, run func(ctx context.Context) (Outcome, error)) (Outcome, error)
+	EnqueueJob                   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
+	Resolve                      func(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
+	Store                        Store
 	// Locate measures the PostGIS distance from a precise station
 	// point to a transient fix and reports the station site. Nil
 	// skips the location intake entirely (pre-location behavior);
@@ -108,6 +111,7 @@ type SubmitDTO struct {
 	ConditionKind      string
 	Qualifier          string
 	EvidenceID         string
+	PhotoCaptureID     string
 	ClaimedCapturedAt  time.Time
 	SupersedesID       string
 	Location           *LocationEvidence
@@ -158,6 +162,14 @@ func Submit(ctx context.Context, p Ports, caller Caller, method, route, key stri
 
 func execute(ctx context.Context, p Ports, caller Caller, dto SubmitDTO) (Outcome, error) {
 	now := p.Clock()
+	if dto.PhotoCaptureID != "" {
+		if dto.EvidenceID == "" || dto.ClaimedCapturedAt.IsZero() || p.CheckPhotoCapture == nil {
+			return Outcome{}, ErrPhotoCaptureIneligible
+		}
+		if err := p.CheckPhotoCapture(ctx, caller, dto); err != nil {
+			return Outcome{}, err
+		}
+	}
 	id, err := p.NewID()
 	if err != nil {
 		return Outcome{}, err
@@ -167,7 +179,7 @@ func execute(ctx context.Context, p Ports, caller Caller, dto SubmitDTO) (Outcom
 		ClientSubmissionID: dto.ClientSubmissionID, StationID: dto.StationID,
 		Product: dto.Product, Unit: dto.Unit, AmountMilli: dto.AmountMilli,
 		RawText: dto.RawText, ConditionKind: dto.ConditionKind,
-		Qualifier: dto.Qualifier, EvidenceID: dto.EvidenceID,
+		Qualifier: dto.Qualifier, EvidenceID: dto.EvidenceID, PhotoCaptureID: dto.PhotoCaptureID,
 		ClaimedCapturedAt: dto.ClaimedCapturedAt, SupersedesID: dto.SupersedesID,
 		ReceivedAt: now, PolicyVersion: domain.PolicyV1,
 	})

@@ -14,7 +14,7 @@ import (
 const claimObjectBinding = `-- name: ClaimObjectBinding :execrows
 UPDATE evidence_objects
 SET bound_observation_id = $1
-WHERE id = $2 AND (bound_observation_id IS NULL OR bound_observation_id = $1)
+WHERE id = $2 AND bound_capture_id IS NULL AND (bound_observation_id IS NULL OR bound_observation_id = $1)
 `
 
 type ClaimObjectBindingParams struct {
@@ -30,10 +30,39 @@ func (q *Queries) ClaimObjectBinding(ctx context.Context, arg ClaimObjectBinding
 	return result.RowsAffected(), nil
 }
 
+const claimPhotoObjectBinding = `-- name: ClaimPhotoObjectBinding :execrows
+UPDATE evidence_objects o SET bound_capture_id = $1
+FROM evidence_sessions s
+WHERE o.id = $2 AND s.id = o.session_id AND s.contributor_ref = $3
+AND s.photo_capture_id = $1 AND s.status = 'READY' AND s.expires_at > $4
+AND o.final_deleted_at IS NULL AND o.bound_observation_id IS NULL
+AND (o.bound_capture_id IS NULL OR o.bound_capture_id = $1)
+`
+
+type ClaimPhotoObjectBindingParams struct {
+	CaptureID      pgtype.UUID        `json:"capture_id"`
+	ID             pgtype.UUID        `json:"id"`
+	ContributorRef string             `json:"contributor_ref"`
+	NowAt          pgtype.Timestamptz `json:"now_at"`
+}
+
+func (q *Queries) ClaimPhotoObjectBinding(ctx context.Context, arg ClaimPhotoObjectBindingParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimPhotoObjectBinding,
+		arg.CaptureID,
+		arg.ID,
+		arg.ContributorRef,
+		arg.NowAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimVerifying = `-- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()
-WHERE id = $1 AND status = 'ISSUED'
+WHERE id = $1 AND status = 'ISSUED' AND (photo_capture_id IS NULL OR expires_at > now())
 `
 
 func (q *Queries) ClaimVerifying(ctx context.Context, id pgtype.UUID) (int64, error) {
@@ -190,8 +219,8 @@ func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]Fin
 const getObject = `-- name: GetObject :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
-    s.contributor_ref, s.status
+    o.bound_capture_id, o.bound_observation_id, o.created_at, o.received_at, o.final_deleted_at,
+    s.contributor_ref, s.status, s.expires_at, s.photo_capture_id
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.id = $1
@@ -206,12 +235,15 @@ type GetObjectRow struct {
 	Width              int32              `json:"width"`
 	Height             int32              `json:"height"`
 	Dhash              int64              `json:"dhash"`
+	BoundCaptureID     pgtype.UUID        `json:"bound_capture_id"`
 	BoundObservationID pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
 	FinalDeletedAt     pgtype.Timestamptz `json:"final_deleted_at"`
 	ContributorRef     string             `json:"contributor_ref"`
 	Status             string             `json:"status"`
+	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
 }
 
 func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, error) {
@@ -226,12 +258,51 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 		&i.Width,
 		&i.Height,
 		&i.Dhash,
+		&i.BoundCaptureID,
 		&i.BoundObservationID,
 		&i.CreatedAt,
 		&i.ReceivedAt,
 		&i.FinalDeletedAt,
 		&i.ContributorRef,
 		&i.Status,
+		&i.ExpiresAt,
+		&i.PhotoCaptureID,
+	)
+	return i, err
+}
+
+const getObjectByFinalKey = `-- name: GetObjectByFinalKey :one
+SELECT id, session_id, final_key, source_sha256, sanitized_sha256,
+    width, height, dhash, created_at
+FROM evidence_objects
+WHERE final_key = $1
+`
+
+type GetObjectByFinalKeyRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	FinalKey        string             `json:"final_key"`
+	SourceSha256    string             `json:"source_sha256"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	Width           int32              `json:"width"`
+	Height          int32              `json:"height"`
+	Dhash           int64              `json:"dhash"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetObjectByFinalKey(ctx context.Context, finalKey string) (GetObjectByFinalKeyRow, error) {
+	row := q.db.QueryRow(ctx, getObjectByFinalKey, finalKey)
+	var i GetObjectByFinalKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.FinalKey,
+		&i.SourceSha256,
+		&i.SanitizedSha256,
+		&i.Width,
+		&i.Height,
+		&i.Dhash,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -239,8 +310,8 @@ func (q *Queries) GetObject(ctx context.Context, id pgtype.UUID) (GetObjectRow, 
 const getObjectBySession = `-- name: GetObjectBySession :one
 SELECT o.id, o.session_id, o.final_key, o.source_sha256,
     o.sanitized_sha256, o.width, o.height, o.dhash,
-    o.bound_observation_id, o.created_at, o.final_deleted_at,
-    s.contributor_ref, s.status
+    o.bound_capture_id, o.bound_observation_id, o.created_at, o.final_deleted_at,
+    s.contributor_ref, s.status, s.expires_at, s.photo_capture_id
 FROM evidence_objects o
 JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.session_id = $1
@@ -255,11 +326,14 @@ type GetObjectBySessionRow struct {
 	Width              int32              `json:"width"`
 	Height             int32              `json:"height"`
 	Dhash              int64              `json:"dhash"`
+	BoundCaptureID     pgtype.UUID        `json:"bound_capture_id"`
 	BoundObservationID pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	FinalDeletedAt     pgtype.Timestamptz `json:"final_deleted_at"`
 	ContributorRef     string             `json:"contributor_ref"`
 	Status             string             `json:"status"`
+	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
 }
 
 func (q *Queries) GetObjectBySession(ctx context.Context, sessionID pgtype.UUID) (GetObjectBySessionRow, error) {
@@ -274,11 +348,14 @@ func (q *Queries) GetObjectBySession(ctx context.Context, sessionID pgtype.UUID)
 		&i.Width,
 		&i.Height,
 		&i.Dhash,
+		&i.BoundCaptureID,
 		&i.BoundObservationID,
 		&i.CreatedAt,
 		&i.FinalDeletedAt,
 		&i.ContributorRef,
 		&i.Status,
+		&i.ExpiresAt,
+		&i.PhotoCaptureID,
 	)
 	return i, err
 }
@@ -286,7 +363,7 @@ func (q *Queries) GetObjectBySession(ctx context.Context, sessionID pgtype.UUID)
 const getSession = `-- name: GetSession :one
 SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
     claimed_sha256, quarantine_key, status, status_reason, created_at,
-    expires_at, updated_at, policy_version
+    expires_at, updated_at, policy_version, photo_capture_id
 FROM evidence_sessions
 WHERE id = $1
 `
@@ -305,6 +382,7 @@ type GetSessionRow struct {
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	PolicyVersion   string             `json:"policy_version"`
+	PhotoCaptureID  pgtype.UUID        `json:"photo_capture_id"`
 }
 
 func (q *Queries) GetSession(ctx context.Context, id pgtype.UUID) (GetSessionRow, error) {
@@ -324,6 +402,7 @@ func (q *Queries) GetSession(ctx context.Context, id pgtype.UUID) (GetSessionRow
 		&i.ExpiresAt,
 		&i.UpdatedAt,
 		&i.PolicyVersion,
+		&i.PhotoCaptureID,
 	)
 	return i, err
 }
@@ -331,7 +410,7 @@ func (q *Queries) GetSession(ctx context.Context, id pgtype.UUID) (GetSessionRow
 const getSessionByNaturalKey = `-- name: GetSessionByNaturalKey :one
 SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
     claimed_sha256, quarantine_key, status, status_reason, created_at,
-    expires_at, updated_at, policy_version
+    expires_at, updated_at, policy_version, photo_capture_id
 FROM evidence_sessions
 WHERE contributor_ref = $1 AND client_session_id = $2
 `
@@ -355,6 +434,7 @@ type GetSessionByNaturalKeyRow struct {
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	PolicyVersion   string             `json:"policy_version"`
+	PhotoCaptureID  pgtype.UUID        `json:"photo_capture_id"`
 }
 
 func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNaturalKeyParams) (GetSessionByNaturalKeyRow, error) {
@@ -374,6 +454,7 @@ func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNa
 		&i.ExpiresAt,
 		&i.UpdatedAt,
 		&i.PolicyVersion,
+		&i.PhotoCaptureID,
 	)
 	return i, err
 }
@@ -423,10 +504,10 @@ const insertSession = `-- name: InsertSession :one
 INSERT INTO evidence_sessions
     (id, contributor_ref, client_session_id, mime, declared_bytes,
      claimed_sha256, quarantine_key, status, created_at, expires_at,
-     policy_version)
+     policy_version, photo_capture_id)
 VALUES ($1, $2, $3, $4, $5,
     $6, $7, $8, $9, $10,
-    $11)
+    $11, $12)
 ON CONFLICT (contributor_ref, client_session_id) DO NOTHING
 RETURNING id
 `
@@ -443,6 +524,7 @@ type InsertSessionParams struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
 	PolicyVersion   string             `json:"policy_version"`
+	PhotoCaptureID  pgtype.UUID        `json:"photo_capture_id"`
 }
 
 // Owned by evidence. Sessions mutate only through guarded conditional
@@ -464,6 +546,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (p
 		arg.CreatedAt,
 		arg.ExpiresAt,
 		arg.PolicyVersion,
+		arg.PhotoCaptureID,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

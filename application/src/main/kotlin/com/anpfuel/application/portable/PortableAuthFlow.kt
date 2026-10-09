@@ -23,6 +23,7 @@ class AuthFlow(private val ports: AuthPorts) {
     /** Local-hint refusal code; never sent, never a backend verdict. */
     companion object {
         const val CLIENT_INVALID: String = "client-invalid"
+        const val SECURE_STORAGE_UNAVAILABLE: String = "secure-storage-unavailable"
 
         /** Backend bodies cap at 8KiB; proofs must fit comfortably inside. */
         const val MAX_PROOF_CHARS: Int = 8192
@@ -34,9 +35,22 @@ class AuthFlow(private val ports: AuthPorts) {
         val created: Boolean,
     )
 
+    /** One-display account key issued at key-account signup. */
+    data class KeyIssued(
+        val username: String,
+        val accountKey: String,
+    )
+
+    /** Stored key backup: username plus the only login secret. */
+    data class KeyBackup(
+        val username: String,
+        val accountKey: String,
+    )
+
     /** Rehydrated state after start or process death. */
     sealed interface AuthState {
         data object LoggedOut : AuthState
+        data class PendingKeyAccount(val backup: KeyBackup) : AuthState
         data class Active(val session: PortableAuth.Session) : AuthState
         data class NeedsRefresh(val session: PortableAuth.Session) : AuthState
     }
@@ -53,18 +67,82 @@ class AuthFlow(private val ports: AuthPorts) {
      * without burning the code (server-side, mirrored here by exact
      * verdict passthrough).
      */
-    fun consumeEmailCode(email: String, code: String): AuthApiResult<Login> {
+    fun consumeEmailCode(email: String, code: String): AuthApiResult<Login> = ports.lock.withLock {
+        // Export and explicitly log out before switching away from a key account.
+        // A legacy email ceremony must not overwrite its only recovery key.
+        if (ports.keys.loadKey() != null) return@withLock AuthApiResult.Err(CLIENT_INVALID)
         if (!isEmailHint(email) || !PortableAuth.isCodeShape(code)) {
-            return AuthApiResult.Err(CLIENT_INVALID)
+            return@withLock AuthApiResult.Err(CLIENT_INVALID)
         }
-        return when (val res = ports.api.consumeCode(email.trim(), code)) {
+        return@withLock when (val res = ports.api.consumeCode(email.trim(), code)) {
             is AuthApiResult.Err -> res
             is AuthApiResult.Ok -> {
-                ports.store.save(res.value.session)
-                AuthApiResult.Ok(Login(res.value.session, res.value.created))
+                if (persistSession(res.value.session)) AuthApiResult.Ok(Login(res.value.session, res.value.created))
+                else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
             }
         }
     }
+
+    /**
+     * Creates an anonymous key account for username and persists the
+     * one-display key for backup. Creation alone logs nothing in: the
+     * contributor enters with the key via [loginWithKey], so the backup
+     * moment cannot be skipped.
+     */
+    fun createKeyAccount(username: String): AuthApiResult<KeyIssued> = ports.lock.withLock {
+        val name = username.trim().lowercase()
+        if (!isUsernameHint(name)) return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        return@withLock when (val res = ports.api.createKeyAccount(name)) {
+            is AuthApiResult.Err -> res
+            is AuthApiResult.Ok -> {
+                // Always return the only issued key, including storage failure,
+                // so the UI can retain/reveal it for recovery rather than lose it.
+                try {
+                    ports.keys.saveKey(KeyBackup(res.value.username, res.value.accountKey))
+                } catch (_: Exception) {
+                    // loginWithKey verifies durable custody and reports failure.
+                }
+                res
+            }
+        }
+    }
+
+    /**
+     * Key-only login: the account key is the single credential (no
+     * email, provider or device key). Persists the session and the key
+     * backup together; unknown and wrong keys share the server
+     * `key-invalid` refusal.
+     */
+    fun loginWithKey(rawKey: String): AuthApiResult<Login> = ports.lock.withLock {
+        if (rawKey.isBlank()) return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        return@withLock when (val res = ports.api.loginWithKey(rawKey.trim())) {
+            is AuthApiResult.Err -> res
+            is AuthApiResult.Ok -> {
+                val backup = KeyBackup(res.value.username, rawKey.trim())
+                val previousBackup = ports.keys.loadKey()
+                val previousSession = ports.store.load()
+                val savedKey = try {
+                    ports.keys.saveKey(backup)
+                    ports.keys.loadKey() == backup
+                } catch (_: Exception) {
+                    false
+                }
+                if (!savedKey || !persistSession(res.value.session)) {
+                    // Preserve a previously issued recovery key on write failure.
+                    try {
+                        if (previousBackup != null) ports.keys.saveKey(previousBackup)
+                        if (previousSession != null) ports.store.save(previousSession)
+                    } catch (_: Exception) {
+                        // The storage failure is reported; never grant navigation.
+                    }
+                    AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
+                } else AuthApiResult.Ok(Login(res.value.session, created = false))
+            }
+        }
+    }
+
+    /** Stored key backup for the Profile backup screen, or null. */
+    fun currentKey(): KeyBackup? = ports.keys.loadKey()
 
     /** Live session or null (expired sessions need [refreshSession]). */
     fun currentSession(): PortableAuth.Session? {
@@ -77,35 +155,88 @@ class AuthFlow(private val ports: AuthPorts) {
      * Returns a live session, rotating first when only the refresh
      * family survives. Null means re-login: no usable session remains.
      */
-    fun refreshSession(): AuthApiResult<PortableAuth.Session?> {
-        val session = ports.store.load() ?: return AuthApiResult.Ok(null)
+    fun refreshSession(): AuthApiResult<PortableAuth.Session?> = ports.lock.withLock {
+        val session = ports.store.load() ?: return@withLock AuthApiResult.Ok(null)
         val now = ports.clock.nowEpochSeconds()
-        if (PortableAuth.isAccessLive(session, now)) {
-            return AuthApiResult.Ok(session)
+        if (PortableAuth.isAccessLive(session, now) && session.accessExpiresAt - now > 60L) {
+            return@withLock AuthApiResult.Ok(session)
         }
-        if (!PortableAuth.isRefreshLive(session, now)) {
-            ports.store.clear()
-            return AuthApiResult.Ok(null)
+        val backup = ports.keys.loadKey()
+        if (!PortableAuth.isRefreshLive(session, now) && backup == null) {
+            clearLocalAuth()
+            return@withLock AuthApiResult.Ok(null)
         }
-        return when (val res = ports.api.refresh(session.familyId, session.refreshToken)) {
-            is AuthApiResult.Err -> res
+        return@withLock when (val res = ports.api.refresh(session.familyId, session.refreshToken)) {
+            is AuthApiResult.Err -> {
+                if (res.verdict == PortableAuth.Verdict.SESSION_EXPIRED && backup != null) {
+                    // Ask the old family first: a revoked/reused family must
+                    // never silently regain authority through the saved key.
+                    when (val login = ports.api.loginWithKey(backup.accountKey)) {
+                        is AuthApiResult.Err -> {
+                            if (isAuthDenial(login.verdict)) clearLocalAuth()
+                            login
+                        }
+                        is AuthApiResult.Ok -> {
+                            if (login.value.session.accountId != session.accountId) {
+                                clearLocalAuth()
+                                AuthApiResult.Err(CLIENT_INVALID)
+                            } else {
+                                if (persistSession(login.value.session)) AuthApiResult.Ok(login.value.session)
+                                else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
+                            }
+                        }
+                    }
+                } else {
+                    if (isAuthDenial(res.verdict)) clearLocalAuth()
+                    res
+                }
+            }
             is AuthApiResult.Ok -> {
-                ports.store.save(res.value)
-                AuthApiResult.Ok(res.value)
+                if (res.value.accountId != session.accountId) {
+                    clearLocalAuth()
+                    AuthApiResult.Err(CLIENT_INVALID)
+                } else {
+                    if (persistSession(res.value)) AuthApiResult.Ok(res.value)
+                    else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
+                }
             }
         }
+    }
+
+    private fun persistSession(session: PortableAuth.Session): Boolean {
+        return try {
+            ports.store.save(session)
+            ports.store.load() == session
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isAuthDenial(verdict: String): Boolean = verdict in listOf(
+        PortableAuth.Verdict.SESSION_REVOKED, PortableAuth.Verdict.SESSION_REUSE,
+        PortableAuth.Verdict.SESSION_EXPIRED, PortableAuth.Verdict.ACCOUNT_SUSPENDED,
+        PortableAuth.Verdict.ACCOUNT_DELETED, PortableAuth.Verdict.CODE_UNKNOWN,
+        "key-invalid", "account-not-found", CLIENT_INVALID,
+    )
+
+    private fun clearLocalAuth() {
+        ports.store.clear()
+        ports.keys.clearKey()
     }
 
     /**
      * Logs out everywhere. Local storage always clears — even when the
      * revoke call fails offline — so the device never stays stuck; the
      * server family expires on its own. The API outcome still reports.
+     * The stored key backup clears too: after logout only the
+     * contributor-held copy can log back in.
      */
-    fun logout(): AuthApiResult<Unit> {
+    fun logout(): AuthApiResult<Unit> = ports.lock.withLock {
         val session = ports.store.load()
         ports.store.clear()
-        if (session == null) return AuthApiResult.Ok(Unit)
-        return ports.api.revokeAll(session.familyId, session.accessToken)
+        ports.keys.clearKey()
+        if (session == null) return@withLock AuthApiResult.Ok(Unit)
+        return@withLock ports.api.revokeAll(session.familyId, session.accessToken)
     }
 
     /**
@@ -113,7 +244,9 @@ class AuthFlow(private val ports: AuthPorts) {
      * alone: no I/O, only shape and expiry math.
      */
     fun rehydrate(): AuthState {
-        val session = ports.store.load() ?: return AuthState.LoggedOut
+        val session = ports.store.load() ?: return ports.keys.loadKey()?.let {
+            AuthState.PendingKeyAccount(it)
+        } ?: AuthState.LoggedOut
         if (session.familyId.isEmpty() || session.accessToken.isEmpty() ||
             session.refreshToken.isEmpty() || session.accountId.isEmpty()
         ) {
@@ -121,7 +254,9 @@ class AuthFlow(private val ports: AuthPorts) {
         }
         val now = ports.clock.nowEpochSeconds()
         if (PortableAuth.isAccessLive(session, now)) return AuthState.Active(session)
-        if (PortableAuth.isRefreshLive(session, now)) return AuthState.NeedsRefresh(session)
+        if (PortableAuth.isRefreshLive(session, now) || ports.keys.loadKey() != null) {
+            return AuthState.NeedsRefresh(session)
+        }
         return AuthState.LoggedOut
     }
 
@@ -179,11 +314,17 @@ class AuthFlow(private val ports: AuthPorts) {
         }
     }
 
-    /** Self-deletes the account and always clears local storage. */
-    fun deleteAccount(): AuthApiResult<Unit> {
-        val session = ports.store.load() ?: return AuthApiResult.Err(CLIENT_INVALID)
-        ports.store.clear()
-        return ports.api.deleteAccount(session)
+    /** Preserve recovery credentials until deletion succeeds or authority is denied. */
+    fun deleteAccount(): AuthApiResult<Unit> = ports.lock.withLock {
+        val session = when (val renewed = refreshSession()) {
+            is AuthApiResult.Err -> return@withLock renewed
+            is AuthApiResult.Ok -> renewed.value ?: return@withLock AuthApiResult.Err(CLIENT_INVALID)
+        }
+        val result = ports.api.deleteAccount(session)
+        if (result is AuthApiResult.Ok || (result is AuthApiResult.Err && isAuthDenial(result.verdict))) {
+            clearLocalAuth()
+        }
+        return@withLock result
     }
 
     private val spentNonces: MutableSet<String> = mutableSetOf()
@@ -194,14 +335,22 @@ class AuthFlow(private val ports: AuthPorts) {
         val at = trimmed.indexOf('@')
         return at > 0 && at < trimmed.length - 1 && !trimmed.contains(' ')
     }
+
+    private fun isUsernameHint(name: String): Boolean {
+        if (name.length < 3 || name.length > 20) return false
+        if (name[0] !in 'a'..'z') return false
+        return name.all { it in 'a'..'z' || it in '0'..'9' }
+    }
 }
 
 /** Narrow collaborators behind the portable auth flows. */
 data class AuthPorts(
     val store: AuthSessionStore,
+    val keys: AuthKeyStore,
     val clock: AuthWallClock,
     val nonces: PortableNonceSource,
     val api: AuthAccountApi,
+    val lock: AuthOperationLock = DirectAuthOperationLock,
 )
 
 /** Opaque secure-storage port (Keystore/Keychain adapters own it). */
@@ -209,6 +358,13 @@ interface AuthSessionStore {
     fun save(session: PortableAuth.Session)
     fun load(): PortableAuth.Session?
     fun clear()
+}
+
+/** Opaque account-key backup port; sealed exactly like sessions. */
+interface AuthKeyStore {
+    fun saveKey(backup: AuthFlow.KeyBackup)
+    fun loadKey(): AuthFlow.KeyBackup?
+    fun clearKey()
 }
 
 /** Wall-clock seconds for expiry math (monotonic tick stays in PortableClock). */
@@ -220,6 +376,8 @@ fun interface AuthWallClock {
 interface AuthAccountApi {
     fun requestCode(email: String): AuthApiResult<Unit>
     fun consumeCode(email: String, code: String): AuthApiResult<ConsumeOk>
+    fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued>
+    fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin>
     fun refresh(familyId: String, refreshToken: String): AuthApiResult<PortableAuth.Session>
     fun revokeAll(familyId: String, accessToken: String): AuthApiResult<Unit>
     fun linkProvider(
@@ -237,8 +395,24 @@ data class ConsumeOk(
     val created: Boolean,
 )
 
+/** Key-only login: the session plus the username it belongs to. */
+data class KeyLogin(
+    val session: PortableAuth.Session,
+    val username: String,
+)
+
 /** API outcome: success value or stable backend verdict, never thrown. */
 sealed interface AuthApiResult<out T> {
     data class Ok<T>(val value: T) : AuthApiResult<T>
     data class Err(val verdict: String) : AuthApiResult<Nothing>
+}
+
+/** Serializes load/network/save against logout; Android supplies a reentrant lock. */
+interface AuthOperationLock {
+    fun <T> withLock(operation: () -> T): T
+}
+
+/** Deterministic single-thread default for portable consumers and tests. */
+object DirectAuthOperationLock : AuthOperationLock {
+    override fun <T> withLock(operation: () -> T): T = operation()
 }

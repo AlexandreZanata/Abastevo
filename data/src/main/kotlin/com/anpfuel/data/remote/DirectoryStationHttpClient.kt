@@ -31,6 +31,25 @@ class DirectoryStationHttpClient(
         return get(url)
     }
 
+    /**
+     * City-scoped station search. A blank query lists every station in
+     * the city (the `q` parameter is omitted); a non-blank query needs
+     * at least 2 characters and filters `display_name` server-side.
+     */
+    fun search(municipalityCode: String, query: String, limit: Int): String {
+        val trimmed = query.trim()
+        require(municipalityCode.matches(Regex("[0-9]{7}")) && (trimmed.isEmpty() || trimmed.length in 2..100) && limit in 1..100)
+        val url = buildString {
+            append(baseUrl.trimEnd('/'))
+            append("/v1/stations?limit=").append(limit)
+            append("&municipality_code=").append(municipalityCode)
+            if (trimmed.isNotEmpty()) {
+                append("&q=").append(URLEncoder.encode(trimmed, Charsets.UTF_8.name()))
+            }
+        }
+        return get(url)
+    }
+
     fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {
         require(lat in -90.0..90.0) { "lat out of range" }
         require(lon in -180.0..180.0) { "lon out of range" }
@@ -52,6 +71,14 @@ class DirectoryStationHttpClient(
         return get(baseUrl.trimEnd('/') + "/v1/stations/" + encoded)
     }
 
+    fun byCnpj(cnpj: String): String? {
+        require(cnpj.matches(Regex("[A-Z0-9]{12}[0-9]{2}"))) { "invalid CNPJ shape" }
+        return try { get(baseUrl.trimEnd('/') + "/v1/stations/by-cnpj/" + cnpj) }
+        catch (_: StationNotFound) { null }
+    }
+
+    private class StationNotFound : IOException("station not found")
+
     private fun get(url: String): String {
         val request = Request.Builder()
             .url(url)
@@ -60,6 +87,7 @@ class DirectoryStationHttpClient(
             .build()
         try {
             client.newCall(request).execute().use { response ->
+                if (response.code == 404) throw StationNotFound()
                 if (!response.isSuccessful) {
                     throw IOException("directory read failed: HTTP ${response.code}")
                 }

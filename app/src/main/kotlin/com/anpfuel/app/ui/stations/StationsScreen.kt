@@ -52,8 +52,10 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.StationsNavigateHintBanner
 import com.anpfuel.app.ui.components.FuelProductLabel
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.StationPriceRow
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.StationPriceUiModel
@@ -68,6 +70,7 @@ fun StationsScreen(
     onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
+    onOpenStation: (String, FuelProduct) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
 ) {
@@ -143,11 +146,11 @@ fun StationsScreen(
         onDownloadStationDetail = { viewModel.downloadStationDetail(locale) },
         onRetry = { viewModel.load(locale) },
         onWeekChanged = { viewModel.load(locale) },
-        onStationSelected = viewModel::onStationSelected,
+        onStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
         onNavigateToStation = viewModel::onNavigateToStation,
         onDetailDismissed = viewModel::onDetailDismissed,
         onNavigateToUpdatePrice = onNavigateToUpdatePrice,
-        onServerStationSelected = viewModel::onServerStationSelected,
+        onServerStationSelected = { onOpenStation(it, uiState.selectedFuelProduct) },
         onServerDetailDismissed = viewModel::onServerDetailDismissed,
         onServerStationNavigate = viewModel::onServerStationNavigate,
         onServerUpdatePrice = { station, fuelWire ->
@@ -261,9 +264,7 @@ private fun StationsContent(
                 // P20-T02: a failed refresh keeps cached stations, so loading
                 // and error replace the list only when there is nothing cached.
                 (uiState.isLoading || uiState.isDownloading) && uiState.stations.isEmpty() -> {
-                    LoadingState(
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    StationsLoadingSkeleton()
                 }
 
                 uiState.error != null && uiState.stations.isEmpty() -> {
@@ -429,42 +430,7 @@ private fun StationsContent(
             }
         }
 
-        uiState.selectedDetail?.let { detail ->
-            val locationLabel =
-                if (uiState.municipality != null && uiState.state != null) {
-                    stringResource(
-                        R.string.home_location_format,
-                        uiState.municipality,
-                        uiState.state.abbreviation,
-                    )
-                } else {
-                    null
-                }
-            StationDetailSheet(
-                detail = detail,
-                fuelProduct = uiState.selectedFuelProduct,
-                locationLabel = locationLabel,
-                onDismiss = onDetailDismissed,
-                onRoute = { onNavigateToStation(detail.station.cnpjDigits) },
-                onUpdatePrice = onNavigateToUpdatePrice,
-            )
-        }
 
-        uiState.selectedServerStation?.let { serverStation ->
-            val fuelWire = com.anpfuel.data.mapper.WireFuelMapper.toWire(
-                uiState.selectedFuelProduct,
-            )
-            ServerStationDetailSheet(
-                station = serverStation,
-                fromCache = uiState.serverDetailFromCache,
-                onDismiss = onServerDetailDismissed,
-                onRoute = onServerStationNavigate,
-                onUpdatePrice = { onServerUpdatePrice(serverStation, fuelWire) },
-                fuelProductWire = fuelWire,
-                accountId = uiState.serverAccountId,
-                onProfile = { onServerDetailDismissed(); onStationProfile(serverStation.stationId) },
-            )
-        }
     }
 }
 
@@ -496,6 +462,14 @@ private fun NearestStationButton(
             text = stringResource(R.string.stations_nearest_action),
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+@Composable
+private fun StationsLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 220.dp, height = 28.dp)
+        repeat(4) { SkeletonCard(height = 96.dp) }
     }
 }
 

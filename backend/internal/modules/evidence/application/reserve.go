@@ -14,17 +14,19 @@ import (
 type Caller struct {
 	ContributorID string
 	Fingerprint   string
+	KeyID         string
 	Token         string
 }
 
 var (
-	ErrUnauthorized         = errors.New("evidence: authentication required")
-	ErrQuotaDenied          = errors.New("evidence: quota exceeded")
-	ErrStorageUnavailable   = errors.New("evidence: storage not configured")
-	ErrConflict             = errors.New("evidence: same key, different intent")
-	ErrSessionNotFound      = errors.New("evidence: unknown session")
-	ErrReservationFailed    = errors.New("evidence: reservation failed")
-	ErrEnforcementUnhealthy = errors.New("evidence: retention enforcement unhealthy")
+	ErrPhotoCaptureIneligible = errors.New("evidence: photo capture not eligible")
+	ErrUnauthorized           = errors.New("evidence: authentication required")
+	ErrQuotaDenied            = errors.New("evidence: quota exceeded")
+	ErrStorageUnavailable     = errors.New("evidence: storage not configured")
+	ErrConflict               = errors.New("evidence: same key, different intent")
+	ErrSessionNotFound        = errors.New("evidence: unknown session")
+	ErrReservationFailed      = errors.New("evidence: reservation failed")
+	ErrEnforcementUnhealthy   = errors.New("evidence: retention enforcement unhealthy")
 )
 
 // MaxReservesPerDay bounds photo reservations per contributor per UTC day
@@ -51,13 +53,15 @@ func (e *QuotaDeniedError) Unwrap() error { return ErrQuotaDenied }
 // port refusing means overdue copies exist and intake stops until the
 // sweeper catches up.
 type Ports struct {
-	Clock       func() time.Time
-	NewID       func() (string, error)
-	NewKey      func() (string, error)
-	CheckQuota  func(ctx context.Context, subject, operation string) (time.Duration, error)
-	Presign     func(ctx context.Context, key, mime string, maxBytes int64) (url string, headers map[string]string, expires time.Time, err error)
-	Store       Store
-	Enforcement func(ctx context.Context) error
+	Clock                func() time.Time
+	NewID                func() (string, error)
+	NewKey               func() (string, error)
+	CheckQuota           func(ctx context.Context, subject, operation string) (time.Duration, error)
+	Presign              func(ctx context.Context, key, mime string, maxBytes int64, deadline time.Time) (url string, headers map[string]string, expires time.Time, err error)
+	Store                Store
+	Enforcement          func(ctx context.Context) error
+	ValidatePhotoCapture func(context.Context, Caller, Intent) (time.Time, error)
+	BindPhotoCapture     func(context.Context, Caller, Intent, string, time.Time) error
 }
 
 // Store is the owned persistence port for reservations: one atomic
@@ -76,6 +80,9 @@ type Intent struct {
 	MIME            string
 	DeclaredBytes   int64
 	ClaimedSHA256   string
+	PhotoCaptureID  string
+	StationID       string
+	CapturedAt      time.Time
 }
 
 // Result is the safe reservation acknowledgment: identifiers, bounds
@@ -100,6 +107,22 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 	}
 	if strings.TrimSpace(in.ClientSessionID) == "" {
 		return Result{}, domain.ErrInvalidSession
+	}
+	photo := in.PhotoCaptureID != "" || in.StationID != "" || !in.CapturedAt.IsZero()
+	var captureDeadline time.Time
+	if photo {
+		if in.PhotoCaptureID == "" || in.StationID == "" || in.CapturedAt.IsZero() || caller.KeyID == "" ||
+			p.ValidatePhotoCapture == nil || p.BindPhotoCapture == nil {
+			return Result{}, ErrPhotoCaptureIneligible
+		}
+		var err error
+		captureDeadline, err = p.ValidatePhotoCapture(ctx, caller, in)
+		if err != nil {
+			return Result{}, err
+		}
+		if !p.Clock().Before(captureDeadline) {
+			return Result{}, ErrPhotoCaptureIneligible
+		}
 	}
 	// Intake breaker before quota burn: overdue copies mean the
 	// enforcement loop is behind, so no new bytes enter storage.
@@ -133,9 +156,13 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 		ClientSessionID: in.ClientSessionID, MIME: in.MIME,
 		DeclaredBytes: in.DeclaredBytes, ClaimedSHA256: in.ClaimedSHA256,
 		QuarantineKey: key, CreatedAt: now, PolicyVersion: domain.PolicyV1,
+		PhotoCaptureID: in.PhotoCaptureID,
 	})
 	if err != nil {
 		return Result{}, err
+	}
+	if photo && captureDeadline.Before(built.ExpiresAt) {
+		built.ExpiresAt = captureDeadline
 	}
 	stored, replayed, err := p.Store.ReserveSession(ctx, built)
 	if err != nil {
@@ -144,9 +171,26 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 		}
 		return Result{}, err
 	}
-	bundleURL, headers, urlExpires, err := p.Presign(ctx, stored.QuarantineKey, stored.MIME, stored.MaxBytes)
+	if !now.Before(stored.ExpiresAt) || stored.Status != domain.StateIssued {
+		return Result{}, domain.ErrBadTransition
+	}
+	if stored.PhotoCaptureID != in.PhotoCaptureID {
+		return Result{}, ErrConflict
+	}
+	if photo {
+		if stored.ExpiresAt.After(captureDeadline) {
+			return Result{}, ErrPhotoCaptureIneligible
+		}
+		if err := p.BindPhotoCapture(ctx, caller, in, stored.ID, now); err != nil {
+			return Result{}, err
+		}
+	}
+	bundleURL, headers, urlExpires, err := p.Presign(ctx, stored.QuarantineKey, stored.MIME, stored.MaxBytes, stored.ExpiresAt)
 	if err != nil {
 		return Result{}, err
+	}
+	if !urlExpires.After(now) || urlExpires.After(stored.ExpiresAt) {
+		return Result{}, ErrReservationFailed
 	}
 	return Result{
 		SessionID: stored.ID, ExpiresAt: stored.ExpiresAt, MaxBytes: stored.MaxBytes,

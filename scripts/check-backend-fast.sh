@@ -14,7 +14,7 @@ require_tool() {
     fi
 }
 
-require_tool go "toolchain go1.27.1 via go.mod"
+require_tool go "toolchain go1.27.2 via go.mod"
 require_tool sqlc "go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1"
 require_tool staticcheck "GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@v0.8.1"
 require_tool vacuum "go install github.com/daveshanley/vacuum@v0.30.6"
@@ -36,7 +36,10 @@ go test -count=1 ./...
 cd "$ROOT"
 
 echo "== staticcheck =="
-(cd backend && staticcheck ./...)
+# The pinned staticcheck predates the go1.27.2 compiler export format, so it
+# type-checks under go1.27.1 (same language version, older export data) while
+# the build, tests and vulnerability scan run on the declared toolchain.
+(cd backend && GOTOOLCHAIN=go1.27.1 staticcheck ./...)
 
 echo "== sqlc vet + drift =="
 (cd backend && sqlc vet)

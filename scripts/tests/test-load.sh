@@ -20,7 +20,7 @@ export LOAD_CONCURRENCY=8
 BIN="$ROOT/backend/.tmp-load-api"
 (
     cd backend
-    GOTOOLCHAIN=go1.27.1 go build -o "$BIN" ./cmd/api
+    GOTOOLCHAIN=go1.27.2 go build -o "$BIN" ./cmd/api
 )
 export LOAD_API_BIN="$BIN"
 trap 'rm -f "$BIN"' EXIT

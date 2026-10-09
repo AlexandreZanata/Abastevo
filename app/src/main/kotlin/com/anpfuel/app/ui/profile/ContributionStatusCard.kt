@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.usecase.contribution.OwnedContributionStatus
 import com.anpfuel.domain.contribution.ContributionState
@@ -50,7 +51,10 @@ fun ContributionStatusCard(
         ) {
             when (state) {
                 ContributionStatusUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                        SkeletonLine()
+                        SkeletonLine(width = 160.dp)
+                    }
                 }
                 ContributionStatusUiState.Empty -> {
                     Text(

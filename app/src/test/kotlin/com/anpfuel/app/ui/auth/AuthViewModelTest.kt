@@ -39,7 +39,9 @@ class AuthViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
-        viewModel = AuthViewModel(authFlow)
+        every { authFlow.currentKey() } returns null
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel.ioDispatcher = dispatcher
     }
 
     @AfterEach
@@ -48,17 +50,17 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun startsLoggedOutAtEmailEntry() = runTest {
+    fun startsLoggedOutAtUsernameEntry() = runTest {
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertNull(state.error)
     }
 
     @Test
     fun rehydratesActiveSession() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -67,7 +69,7 @@ class AuthViewModelTest {
     fun rotatesStaleSessionOnStart() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(session())
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -76,9 +78,9 @@ class AuthViewModelTest {
     fun deadSessionReturnsToEmailEntry() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(null)
-        viewModel = AuthViewModel(authFlow)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
-        assertEquals(AuthStep.EMAIL_ENTRY, viewModel.uiState.value.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
     }
 
     @Test
@@ -166,7 +168,7 @@ class AuthViewModelTest {
         viewModel.onLogout()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertEquals("", state.email)
     }
 
@@ -177,19 +179,21 @@ class AuthViewModelTest {
         viewModel.onDeleteAccount()
         advanceUntilIdle()
         val state = viewModel.uiState.value
-        assertEquals(AuthStep.EMAIL_ENTRY, state.step)
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
         assertEquals(AuthUiError.Deleted, state.error)
         verify(exactly = 1) { authFlow.deleteAccount() }
     }
 
     @Test
-    fun failedDeleteKeepsSessionWithMappedError() = runTest {
+    fun deniedDeletionClearsDisplayedAuthority() = runTest {
         advanceUntilIdle()
         every { authFlow.deleteAccount() } returns
             AuthApiResult.Err(PortableAuth.Verdict.ACCOUNT_SUSPENDED)
         viewModel.onDeleteAccount()
         advanceUntilIdle()
         assertEquals(AuthUiError.Suspended, viewModel.uiState.value.error)
+        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
+        assertNull(viewModel.uiState.value.keyBackup)
     }
 
     @Test
@@ -204,5 +208,165 @@ class AuthViewModelTest {
         )
         assertEquals(AuthUiError.Offline, AuthViewModel.mapError(PortableAuth.UNAVAILABLE))
         assertEquals(AuthUiError.Unknown, AuthViewModel.mapError("something-new"))
+        assertEquals(AuthUiError.WrongKey, AuthViewModel.mapError("key-invalid"))
+        assertEquals(AuthUiError.UsernameTaken, AuthViewModel.mapError("username-taken"))
     }
+
+    @Test
+    fun keySignupSignsInAndKeepsBackupStepVisible() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns
+            AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Ok(AuthFlow.Login(session(), true))
+        viewModel.onUsernameChange("Ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.KEY_ISSUED, state.step)
+        assertEquals("ana123", state.issuedUsername)
+        assertEquals("key-for-ana123", state.issuedKey)
+        verify(exactly = 1) { authFlow.loginWithKey("key-for-ana123") }
+    }
+
+    @Test
+    fun continueAfterAutomaticSignupLoginDoesNotIssueAnotherSession() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Ok(AuthFlow.Login(session(), true))
+        every { authFlow.currentSession() } returns session()
+        viewModel.onUsernameChange("ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        viewModel.navigation.test {
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
+            assertEquals("", viewModel.uiState.value.issuedKey)
+            assertEquals(AuthNavigation.NavigateBack, awaitItem())
+        }
+        verify(exactly = 1) { authFlow.loginWithKey("key-for-ana123") }
+    }
+
+    @Test
+    fun signupStorageFailureKeepsRecoveryKeyAndDoesNotNavigate() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
+        every { authFlow.currentSession() } returns null
+        viewModel.onUsernameChange("ana123")
+        viewModel.navigation.test {
+            viewModel.onCreateAccount()
+            advanceUntilIdle()
+            assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+            assertEquals(AuthUiError.SecureStorage, viewModel.uiState.value.error)
+            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            expectNoEvents()
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+            assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun takenUsernameMapsError() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Err("username-taken")
+        viewModel.onUsernameChange("ana123")
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthUiError.UsernameTaken, state.error)
+    }
+
+    @Test
+    fun keyLoginNavigatesBack() = runTest {
+        advanceUntilIdle()
+        every { authFlow.loginWithKey("key-for-ana123") } returns
+            AuthApiResult.Ok(AuthFlow.Login(session(), created = false))
+        every { authFlow.currentKey() } returns AuthFlow.KeyBackup("ana123", "key-for-ana123")
+        viewModel.onGoToKeyEntry()
+        viewModel.onKeyChange("key-for-ana123")
+        viewModel.navigation.test {
+            viewModel.onLoginWithKey()
+            advanceUntilIdle()
+            val state = viewModel.uiState.value
+            assertEquals(AuthStep.AUTHENTICATED, state.step)
+            assertEquals("ana123", state.keyBackup?.username)
+            assertEquals(AuthNavigation.NavigateBack, awaitItem())
+        }
+    }
+
+    @Test
+    fun wrongKeyMapsError() = runTest {
+        advanceUntilIdle()
+        every { authFlow.loginWithKey(any()) } returns AuthApiResult.Err("key-invalid")
+        viewModel.onGoToKeyEntry()
+        viewModel.onKeyChange("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        viewModel.onLoginWithKey()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.KEY_ENTRY, state.step)
+        assertEquals(AuthUiError.WrongKey, state.error)
+    }
+    @Test
+    fun offlineRefreshKeepsLocalAccountInsteadOfSignup() = runTest {
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
+        every { authFlow.refreshSession() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        every { authFlow.currentKey() } returns AuthFlow.KeyBackup("ana123", "key-for-ana123")
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        advanceUntilIdle()
+        assertEquals(AuthStep.OFFLINE_ACCOUNT, viewModel.uiState.value.step)
+        assertEquals(AuthUiError.Offline, viewModel.uiState.value.error)
+        assertEquals("ana123", viewModel.uiState.value.keyBackup?.username)
+    }
+
+    @Test
+    fun signupLoginOutageKeepsIssuedKeyForRetry() = runTest {
+        advanceUntilIdle()
+        every { authFlow.createKeyAccount("ana123") } returns AuthApiResult.Ok(AuthFlow.KeyIssued("ana123", "key-for-ana123"))
+        every { authFlow.loginWithKey("key-for-ana123") } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        every { authFlow.currentSession() } returns null
+        viewModel.onUsernameChange("ana123")
+        viewModel.onCreateAccount()
+        viewModel.onCreateAccount()
+        advanceUntilIdle()
+        assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+        assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+        viewModel.onLoginWithKey()
+        advanceUntilIdle()
+        assertEquals(AuthStep.KEY_ISSUED, viewModel.uiState.value.step)
+        assertEquals("key-for-ana123", viewModel.uiState.value.issuedKey)
+        verify(exactly = 1) { authFlow.createKeyAccount(any()) }
+    }
+
+    @Test
+    fun resumeReflectsLogoutFromAnotherDestination() = runTest {
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        advanceUntilIdle()
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
+        viewModel.refreshAccount()
+        advanceUntilIdle()
+        assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
+        assertNull(viewModel.uiState.value.keyBackup)
+    }
+
+    @Test
+    fun deletionOutageKeepsSignedInStateAndBackup() = runTest {
+        val backup = AuthFlow.KeyBackup("ana123", "key-for-ana123")
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
+        every { authFlow.currentKey() } returns backup
+        every { authFlow.deleteAccount() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        advanceUntilIdle()
+        viewModel.onDeleteAccount()
+        advanceUntilIdle()
+        assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
+        assertEquals(backup, viewModel.uiState.value.keyBackup)
+        assertEquals(AuthUiError.Offline, viewModel.uiState.value.error)
+    }
+
 }

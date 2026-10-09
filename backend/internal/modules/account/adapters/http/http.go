@@ -28,6 +28,8 @@ import (
 type Service interface {
 	RequestCode(ctx context.Context, address string) error
 	ConsumeCode(ctx context.Context, address, code string) (application.AuthResult, error)
+	CreateKeyAccount(ctx context.Context, username string) (application.KeyAccount, error)
+	LoginWithKey(ctx context.Context, rawKey string) (application.AuthResult, error)
 	Refresh(ctx context.Context, familyID, refreshToken string) (application.Session, error)
 	ValidateAccess(ctx context.Context, familyID, accessToken string) (string, error)
 	RevokeAll(ctx context.Context, accountID string) error
@@ -52,6 +54,8 @@ type Handler struct {
 func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/accounts/email/codes", h.requestCode)
 	r.Post("/v1/accounts/email/consume", h.consumeCode)
+	r.Post("/v1/accounts/keys", h.createKeyAccount)
+	r.Post("/v1/accounts/keys/login", h.loginWithKey)
 	r.Post("/v1/accounts/sessions/refresh", h.refresh)
 	r.Post("/v1/accounts/sessions/revoke", h.revoke)
 	r.Post("/v1/accounts/providers/link", h.linkProvider)
@@ -133,6 +137,14 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusServiceUnavailable, "account.key-unavailable", "key verifier unavailable"
 	case "key-proof-denied":
 		status, code, msg = http.StatusUnauthorized, "account.key-proof-denied", "key proof denied"
+	case "username-taken":
+		status, code, msg = http.StatusConflict, "account.username-taken", "username already taken"
+	case "username-invalid":
+		status, code, msg = http.StatusBadRequest, "account.username-invalid", "invalid username"
+	case "key-invalid":
+		status, code, msg = http.StatusUnauthorized, "account.key-invalid", "valid account key required"
+	case "key-collision":
+		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	}
@@ -212,6 +224,50 @@ func (h Handler) consumeCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	got, err := h.Service.ConsumeCode(r.Context(), dto.Email, dto.Code)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusOK, map[string]any{
+		"account": accountJSON{AccountID: got.Account.ID, Alias: got.Account.Alias, Status: got.Account.Status},
+		"session": sessionJSONOf(got.Session),
+		"created": got.Created,
+	})
+}
+
+// createKeyAccount mints an anonymous account for a username and returns
+// the account key exactly once. The key never persists server-side beyond
+// its salted verifier; the response is no-store like every account reply.
+func (h Handler) createKeyAccount(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		Username string `json:"username"`
+	}
+	if err := read(r, &dto); err != nil || !domain.ValidUsername(dto.Username) {
+		bad(w, r)
+		return
+	}
+	got, err := h.Service.CreateKeyAccount(r.Context(), dto.Username)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, http.StatusCreated, map[string]any{
+		"username":    got.Account.Alias,
+		"account_key": got.Key,
+	})
+}
+
+// loginWithKey opens a standard rotating session for the account key
+// alone. Unknown, wrong and malformed keys share one 401 with no oracle.
+func (h Handler) loginWithKey(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		AccountKey string `json:"account_key"`
+	}
+	if err := read(r, &dto); err != nil || dto.AccountKey == "" {
+		bad(w, r)
+		return
+	}
+	got, err := h.Service.LoginWithKey(r.Context(), dto.AccountKey)
 	if err != nil {
 		fail(w, r, err)
 		return

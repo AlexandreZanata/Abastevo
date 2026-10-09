@@ -131,7 +131,15 @@ func TestCapacityStageThroughputAndHeap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stage: %v", err)
 	}
-	growth := heapBytes() - before
+	after := heapBytes()
+	// A concurrent GC between the two reads shrinks the heap and would
+	// wrap the unsigned subtraction into a near-2^64 false over-budget
+	// failure; retained growth is then zero. The 512 MiB budget still
+	// binds every positive measurement.
+	var growth uint64
+	if after > before {
+		growth = after - before
+	}
 	t.Logf("staged %d+%d+%d rows in %v (%.0f rows/s), heap growth %d bytes",
 		report.Accepted, report.Duplicates, report.Rejected, elapsed,
 		float64(report.Accepted)/elapsed.Seconds(), growth)

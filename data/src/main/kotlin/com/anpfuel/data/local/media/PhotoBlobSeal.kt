@@ -2,7 +2,6 @@ package com.anpfuel.data.local.media
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
@@ -55,13 +54,12 @@ object PhotoBlobSeal {
 
     /**
      * Seals [entry] under [key]. Empty photo bytes refuse to null (no
-     * empty cache entries). Randomness comes from [random] (a
-     * [SecureRandom] on device) so tests stay deterministic.
+     * empty cache entries). The IV comes from the crypto provider
+     * (Keystore-owned on device).
      */
     fun seal(
         entry: Entry,
         key: SecretKey,
-        random: SecureRandom = SecureRandom(),
     ): String? {
         if (entry.bytes.isEmpty()) return null
         val plain = ByteBuffer
@@ -70,10 +68,11 @@ object PhotoBlobSeal {
             .putLong(entry.capturedAtMillis)
             .put(entry.bytes)
             .array()
-        val iv = ByteArray(IV_BYTES)
-        random.nextBytes(iv)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+        // Provider-generated IV: Keystore keys with randomized
+        // encryption required reject caller IVs on device.
+        cipher.init(Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv ?: return null
         val ct = cipher.doFinal(plain)
         val envelope = JSONObject()
             .put("v", VERSION)

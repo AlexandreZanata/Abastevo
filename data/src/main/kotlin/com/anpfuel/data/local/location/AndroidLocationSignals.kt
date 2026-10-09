@@ -113,8 +113,9 @@ class AndroidLocationSignals(
             // denied; any other provider failure skips that provider.
             val candidate = try {
                 manager.getLastKnownLocation(provider)
-            } catch (e: Exception) {
-                if (e is SecurityException) throw e
+            } catch (denied: SecurityException) {
+                throw denied
+            } catch (_: Exception) {
                 continue
             } ?: continue
             if (best == null || candidate.elapsedRealtimeNanos > best.elapsedRealtimeNanos) {

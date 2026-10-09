@@ -1,5 +1,6 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.FeedbackHttpClient
@@ -26,11 +27,13 @@ object FeedbackModule {
     @Singleton
     fun provideFeedbackHttpClient(
         sessions: AuthSessionStore,
+        auth: AuthFlow,
         @Named("apiOrigin") environment: ApiEnvironment,
     ): FeedbackHttpClient =
         FeedbackHttpClient(
             client = OkHttpClientFactory.create(),
             baseUrl = environment.origin,
             sessions = sessions,
+            auth = auth,
         )
 }

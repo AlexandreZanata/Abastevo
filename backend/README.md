@@ -7,12 +7,15 @@ production infrastructure remain ahead. See [current state](../docs/planning/PRO
 and [prior task evidence](../docs/planning/history/P01_FOUNDATION_EVIDENCE.md);
 this documentation revision does not rerun those suites or verify remote CI.
 
-Tooling pins: Go toolchain `go1.27.1` (`go.mod`); `sqlc v1.31.1`
+Tooling pins: Go toolchain `go1.27.2` (`go.mod`); `sqlc v1.31.1`
 (`sqlc vet && sqlc generate` from `backend/`; generated packages committed).
 `chi v5.3.2`, `pgx v5.11.0` (both MIT, permissive transitives only).
 `staticcheck v0.8.1` (MIT), `govulncheck v1.8.0`, `vacuum v0.30.6` (MIT).
 Static binaries must be built with Go ≥1.27 or typechecking fails; install
-with `GOTOOLCHAIN=go1.27.1 go install <tool>@<version>`.
+with `GOTOOLCHAIN=go1.27.2 go install <tool>@<version>`. The pinned
+staticcheck predates the go1.27.2 export format, so the fast gate runs
+`staticcheck` itself under `GOTOOLCHAIN=go1.27.1` (see
+`scripts/check-backend-fast.sh`).
 
 ## Verification entry points (P01-T13)
 

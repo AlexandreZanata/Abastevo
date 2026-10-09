@@ -56,6 +56,10 @@ class CommunityVoteViewModel @Inject constructor(
     private val flagProvider: CommunityVoteFlagProvider,
 ) : ViewModel() {
 
+    /** Test seam for the IO context (unit tests inject the test dispatcher). */
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher =
+        kotlinx.coroutines.Dispatchers.IO
+
     private sealed interface LastAction {
         data object Confirm : LastAction
         data class Dispute(
@@ -117,14 +121,16 @@ class CommunityVoteViewModel @Inject constructor(
         _state.value = CommunityVoteUiState.Submitting
         viewModelScope.launch {
             val outcome = try {
-                useCase.confirm(
-                    SubmitCommunityVoteUseCase.ConfirmRequest(
-                        observationId = target.observationId,
-                        clientSubmissionId = target.clientSubmissionId,
-                        shownConditionKind = target.shownConditionKind,
-                        shownUnit = target.shownUnit,
-                    ),
-                )
+                kotlinx.coroutines.withContext(ioDispatcher) {
+                    useCase.confirm(
+                        SubmitCommunityVoteUseCase.ConfirmRequest(
+                            observationId = target.observationId,
+                            clientSubmissionId = target.clientSubmissionId,
+                            shownConditionKind = target.shownConditionKind,
+                            shownUnit = target.shownUnit,
+                        ),
+                    )
+                }
             } catch (error: Exception) {
                 _state.value = CommunityVoteUiState.Rejected(
                     kindLabel = CommunityVoteDisplay.rejectKindLabel(
@@ -162,16 +168,18 @@ class CommunityVoteViewModel @Inject constructor(
         _state.value = CommunityVoteUiState.Submitting
         viewModelScope.launch {
             val outcome = try {
-                useCase.dispute(
-                    SubmitCommunityVoteUseCase.DisputeRequest(
-                        targetObservationId = target.observationId,
-                        clientSubmissionId = target.clientSubmissionId,
-                        reasonWire = reasonWire,
-                        detail = detail,
-                        replacementObservationId = replacementObservationId,
-                        shownConditionKind = target.shownConditionKind,
-                    ),
-                )
+                kotlinx.coroutines.withContext(ioDispatcher) {
+                    useCase.dispute(
+                        SubmitCommunityVoteUseCase.DisputeRequest(
+                            targetObservationId = target.observationId,
+                            clientSubmissionId = target.clientSubmissionId,
+                            reasonWire = reasonWire,
+                            detail = detail,
+                            replacementObservationId = replacementObservationId,
+                            shownConditionKind = target.shownConditionKind,
+                        ),
+                    )
+                }
             } catch (error: Exception) {
                 _state.value = CommunityVoteUiState.Rejected(
                     kindLabel = CommunityVoteDisplay.rejectKindLabel(

@@ -3,6 +3,10 @@ package com.anpfuel.data.local.auth
 import com.anpfuel.domain.portable.PortableAuth
 import java.security.SecureRandom
 import javax.crypto.KeyGenerator
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import org.json.JSONObject
+import java.util.Base64
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -21,6 +25,24 @@ class SessionEnvelopeTest {
         val gen = KeyGenerator.getInstance("AES")
         gen.init(256, SecureRandom())
         return gen.generateKey()
+    }
+
+    @Test
+    fun opensExistingVersionOneEnvelopeWithCallerGeneratedIv() {
+        val k = key()
+        val iv = ByteArray(SessionEnvelope.IV_BYTES) { it.toByte() }
+        val body = JSONObject()
+            .put("family_id", "family-1").put("account_id", "account-1")
+            .put("access_token", "access-1").put("refresh_token", "refresh-1")
+            .put("access_expires_at", 1_000_900L).put("absolute_expires_at", 4_259_200L)
+            .toString().toByteArray(Charsets.UTF_8)
+        val legacyCipher = Cipher.getInstance("AES/GCM/NoPadding")
+        legacyCipher.init(Cipher.ENCRYPT_MODE, k, GCMParameterSpec(SessionEnvelope.TAG_BITS, iv))
+        val encoder = Base64.getUrlEncoder().withoutPadding()
+        val envelope = JSONObject().put("v", 1)
+            .put("iv", encoder.encodeToString(iv))
+            .put("ct", encoder.encodeToString(legacyCipher.doFinal(body))).toString()
+        assertEquals(session(), SessionEnvelope.open(envelope, k))
     }
 
     @Test

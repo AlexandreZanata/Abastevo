@@ -26,7 +26,7 @@ docker compose -f infra/compose.dev.yml stop db # stop (keeps volume)
 
 ## Process images (P01-T10)
 
-One pinned builder (`golang:1.27.1-bookworm` by digest) compiles the `api`,
+One pinned builder (`golang:1.27.2-bookworm` by digest) compiles the `api`,
 `worker` and `migrate` roles; each target ships only its static binary on a
 non-root distroless runtime with the same revision label (release provenance).
 Secrets travel at runtime env, never in layers. The repo-root `.dockerignore`

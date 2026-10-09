@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -248,7 +249,7 @@ func TestRecordVerifiedBindsFactAtomically(t *testing.T) {
 	}
 }
 
-func TestRecordVerifiedRollsBackDuplicateKey(t *testing.T) {
+func TestRecordVerifiedConvergesDuplicateContentKey(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	first := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
@@ -260,14 +261,32 @@ func TestRecordVerifiedRollsBackDuplicateKey(t *testing.T) {
 	if err := s.CompleteSession(ctx, sess.ID, enqueueStub(&jobs)); err != nil {
 		t.Fatal(err)
 	}
+	// Byte-identical resubmission converges on the existing object
+	// instead of dying on the unique constraint; the session is READY.
 	clash := testObject(sess.ID)
 	clash.FinalKey = first.FinalKey
-	if _, err := s.RecordVerified(ctx, sess.ID, clash); err == nil {
-		t.Fatal("duplicate final key accepted")
+	clash.SourceSHA256 = first.SourceSHA256
+	id, err := s.RecordVerified(ctx, sess.ID, clash)
+	if err != nil || id != first.ID {
+		t.Fatalf("converged verified = %q, %v", id, err)
 	}
 	got, err := s.Session(ctx, sess.ID)
-	if err != nil || got.Status != domain.StateVerifying {
-		t.Errorf("status after rollback = %+v, %v (want VERIFYING)", got, err)
+	if err != nil || got.Status != domain.StateReady {
+		t.Errorf("status after converge = %+v, %v (want READY)", got, err)
+	}
+	// Same key with divergent bytes refuses instead of forking history.
+	sess2 := testSession("e0000000-0000-4000-8000-000000000003", "upl-3")
+	if _, _, err := s.ReserveSession(ctx, sess2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CompleteSession(ctx, sess2.ID, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	divergent := testObject(sess2.ID)
+	divergent.FinalKey = first.FinalKey
+	divergent.SourceSHA256 = strings.Repeat("c", 64)
+	if _, err := s.RecordVerified(ctx, sess2.ID, divergent); !errors.Is(err, domain.ErrBadTransition) {
+		t.Errorf("divergent outcome = %v, want bad transition", err)
 	}
 }
 
@@ -339,7 +358,7 @@ func TestCountSinceScopesContributor(t *testing.T) {
 
 func TestNoDestructivePaths(t *testing.T) {
 	// Sessions mutate only through guarded conditional updates; objects
-	// stay insert-only apart from the single-column bind claim, the
+	// stay insert-only apart from the exclusive observation/capture bind claims, the
 	// final-deleted marker and the 90-day hash purge. Any TRUNCATE,
 	// session DELETE or further objects mutation fails this test.
 	_, file, _, ok := runtime.Caller(0)
@@ -357,8 +376,18 @@ func TestNoDestructivePaths(t *testing.T) {
 	if strings.Contains(upper, "DELETE FROM EVIDENCE_SESSIONS") {
 		t.Error("destructive statement present: session deletes")
 	}
-	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 2 {
-		t.Errorf("objects updates = %d, want exactly bind claim plus final-deleted marker", n)
+	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 3 {
+		t.Errorf("objects updates = %d, want exactly the two exclusive bind claims plus final-deleted marker", n)
+	}
+	for _, guard := range []string{
+		"BOUND_CAPTURE_ID IS NULL AND (BOUND_OBSERVATION_ID IS NULL",
+		"S.PHOTO_CAPTURE_ID = @CAPTURE_ID AND S.STATUS = 'READY' AND S.EXPIRES_AT > @NOW_AT",
+		"O.FINAL_DELETED_AT IS NULL AND O.BOUND_OBSERVATION_ID IS NULL",
+		"(O.BOUND_CAPTURE_ID IS NULL OR O.BOUND_CAPTURE_ID = @CAPTURE_ID)",
+	} {
+		if !strings.Contains(upper, guard) {
+			t.Errorf("missing exclusive owner/capture/expiry guard: %s", guard)
+		}
 	}
 	if n := strings.Count(upper, "DELETE FROM EVIDENCE_OBJECTS"); n != 1 {
 		t.Errorf("objects deletes = %d, want exactly the 90-day purge", n)
@@ -556,5 +585,55 @@ func TestObjectSignalsResolveDHash(t *testing.T) {
 	missing, _ := newUUIDv4()
 	if _, _, err := s.ObjectSignals(ctx, missing); !errors.Is(err, ErrNoObject) {
 		t.Errorf("missing = %v, want no-object", err)
+	}
+}
+
+func TestPhotoSessionIntentReplayAndOwnerBoundSharing(t *testing.T) {
+	s, pool := freshStore(t)
+	ctx := context.Background()
+	id := "e0000000-0000-4000-8000-000000000041"
+	capture := "c0000000-0000-4000-8000-000000000041"
+	sess := testSession(id, "photo-41")
+	sess.PhotoCaptureID = capture
+	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+		t.Fatal(err)
+	}
+	changed := sess
+	changed.PhotoCaptureID = ""
+	if _, _, err := s.ReserveSession(ctx, changed); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("stripped capture replay=%v", err)
+	}
+	var jobs [][]byte
+	if err := s.CompleteSession(ctx, id, enqueueStub(&jobs)); err != nil {
+		t.Fatal(err)
+	}
+	obj := testObject(id)
+	if _, err := s.RecordVerified(ctx, id, obj); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []struct{ owner, capture string }{{"other", capture}, {"tok-c1", "c0000000-0000-4000-8000-000000000042"}} {
+		if err := s.TryBindPhotoObject(ctx, obj.ID, bad.capture, bad.owner, time.Now()); err == nil {
+			t.Fatal("foreign photo bound")
+		}
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.TryBindPhotoObject(ctx, obj.ID, capture, "tok-c1", time.Now()); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if err := s.TryBindObject(ctx, obj.ID, "d0000000-0000-4000-8000-000000000041", "tok-c1"); !errors.Is(err, ErrAlreadyBound) {
+		t.Fatalf("legacy lane reused shared photo: %v", err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE evidence_sessions SET expires_at=now()-interval '1 second' WHERE id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.TryBindPhotoObject(ctx, obj.ID, capture, "tok-c1", time.Now()); err == nil {
+		t.Fatal("expired ready photo bound")
 	}
 }

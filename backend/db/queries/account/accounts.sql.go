@@ -159,6 +159,46 @@ func (q *Queries) FindBindingOwner(ctx context.Context, contributorID string) (A
 	return i, err
 }
 
+const findKeyCredentialByLookup = `-- name: FindKeyCredentialByLookup :one
+SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
+FROM account_key_credentials
+WHERE key_lookup = $1
+`
+
+func (q *Queries) FindKeyCredentialByLookup(ctx context.Context, keyLookup string) (AccountKeyCredential, error) {
+	row := q.db.QueryRow(ctx, findKeyCredentialByLookup, keyLookup)
+	var i AccountKeyCredential
+	err := row.Scan(
+		&i.AccountID,
+		&i.UsernameHash,
+		&i.KeyLookup,
+		&i.KeySalt,
+		&i.KeyHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const findKeyCredentialByUsername = `-- name: FindKeyCredentialByUsername :one
+SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
+FROM account_key_credentials
+WHERE username_hash = $1
+`
+
+func (q *Queries) FindKeyCredentialByUsername(ctx context.Context, usernameHash string) (AccountKeyCredential, error) {
+	row := q.db.QueryRow(ctx, findKeyCredentialByUsername, usernameHash)
+	var i AccountKeyCredential
+	err := row.Scan(
+		&i.AccountID,
+		&i.UsernameHash,
+		&i.KeyLookup,
+		&i.KeySalt,
+		&i.KeyHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const findProviderOwner = `-- name: FindProviderOwner :one
 SELECT account_id, provider, issuer, subject, email, linked_at
 FROM account_provider_links
@@ -426,6 +466,36 @@ func (q *Queries) InsertFamily(ctx context.Context, arg InsertFamilyParams) erro
 		arg.AccessHash,
 		arg.AccessExpires,
 		arg.IssuedAt,
+	)
+	return err
+}
+
+const insertKeyCredential = `-- name: InsertKeyCredential :exec
+
+INSERT INTO account_key_credentials
+    (account_id, username_hash, key_lookup, key_salt, key_hash, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertKeyCredentialParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	UsernameHash string      `json:"username_hash"`
+	KeyLookup    string      `json:"key_lookup"`
+	KeySalt      string      `json:"key_salt"`
+	KeyHash      string      `json:"key_hash"`
+	CreatedAt    int64       `json:"created_at"`
+}
+
+// Key-account credentials: unique username and key lookups; the salted
+// verifier authenticates after the lookup finds the candidate row.
+func (q *Queries) InsertKeyCredential(ctx context.Context, arg InsertKeyCredentialParams) error {
+	_, err := q.db.Exec(ctx, insertKeyCredential,
+		arg.AccountID,
+		arg.UsernameHash,
+		arg.KeyLookup,
+		arg.KeySalt,
+		arg.KeyHash,
+		arg.CreatedAt,
 	)
 	return err
 }

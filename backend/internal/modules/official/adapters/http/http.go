@@ -175,7 +175,9 @@ func (h Handler) groups(w http.ResponseWriter, r *http.Request) {
 		wire = append(wire, wg)
 	}
 	body, _ := json.Marshal(map[string]any{"items": wire, "generated_at": generatedNow()})
-	httpapi.WriteJSON(w, r, http.StatusOK, "public, max-age=60", body)
+	// The ETag covers the stable content only: generated_at is per-response
+	// noise and must not defeat conditional caching.
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body, httpapi.ETag(mustMarshal(map[string]any{"items": wire})))
 }
 
 type wireEntry struct {
@@ -261,5 +263,16 @@ func (h Handler) history(w http.ResponseWriter, r *http.Request) {
 	body, _ := json.Marshal(map[string]any{
 		"items": wire, "next_cursor": next, "generated_at": generatedNow(),
 	})
-	httpapi.WriteJSON(w, r, http.StatusOK, "public, max-age=60", body)
+	// The ETag covers the stable content (entries plus the unsealed page
+	// position) so back-to-back reads revalidate deterministically. The
+	// sealed cursor and generated_at stay per-response volatile. A 304 keeps
+	// the client's cached cursor, which still expires after CursorTTL and
+	// then fails closed with 400; clients refetch without a cursor.
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey})))
+}
+
+func mustMarshal(v any) []byte {
+	body, _ := json.Marshal(v)
+	return body
 }

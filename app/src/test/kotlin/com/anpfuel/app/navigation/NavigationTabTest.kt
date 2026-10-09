@@ -44,6 +44,11 @@ class NavigationTabTest {
     }
 
     @Test
+    fun stationPageKeepsExploreSelected() {
+        assertEquals(NavigationTab.EXPLORE, NavigationTab.fromRoute(Routes.STATION_PAGE))
+    }
+
+    @Test
     fun fromRouteReturnsNullForNonTopLevelRoutes() {
         assertNull(NavigationTab.fromRoute(Routes.SEARCH))
         assertNull(NavigationTab.fromRoute(Routes.LOCATION))

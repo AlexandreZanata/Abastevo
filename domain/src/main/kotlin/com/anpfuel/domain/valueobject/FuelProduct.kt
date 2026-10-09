@@ -8,4 +8,6 @@ enum class FuelProduct {
     DIESEL_S10,
     CNG,
     LPG_P13,
+    // True premium grade; GASOLINE_PREMIUM remains the persisted additive legacy.
+    GASOLINE_PREMIUM_GRADE,
 }

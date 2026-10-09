@@ -85,3 +85,11 @@ uploads/
 # Landing build artifacts & dependencies
 landing/dist/
 landing/node_modules/
+
+# Local real-station photo reference set (geolocated, Sorriso MT) — never commit
+/combustiveis/
+combustiveis.zip
+
+# Build-time Python asset tools
+__pycache__/
+*.py[cod]

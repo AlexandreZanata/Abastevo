@@ -52,7 +52,7 @@ func TestValidateStationIDAndFuel(t *testing.T) {
 	if f, err := ValidateFuel(""); err != nil || f != "" {
 		t.Errorf("empty fuel = %q, %v", f, err)
 	}
-	for _, fuel := range []string{"ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"} {
+	for _, fuel := range []string{"ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13", "GASOLINE_PREMIUM_GRADE"} {
 		if _, err := ValidateFuel(fuel); err != nil {
 			t.Errorf("wire fuel %s rejected: %v", fuel, err)
 		}

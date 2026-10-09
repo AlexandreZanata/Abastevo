@@ -58,11 +58,13 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.components.SkeletonButton
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SyncStatusBanner
 import com.anpfuel.app.ui.components.TankFillCostCard
-import com.anpfuel.app.ui.components.TankFillCostPlaceholderCard
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
@@ -189,11 +191,11 @@ internal fun HomeContent(
             if (uiState.hasLocation) {
                 LocationHeader(uiState = uiState, onNavigate = onNavigate)
             }
-            HomeCommunityHero(onContribute = { onNavigate(Routes.STATIONS) })
+            HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
             HomeBenefits()
 
             when {
-                uiState.isLoading -> LoadingState(modifier = Modifier.fillMaxWidth())
+                uiState.isLoading -> HomeLoadingSkeleton()
 
                 uiState.error != null -> {
                     ErrorState(
@@ -259,12 +261,7 @@ internal fun HomeContent(
                     ) {
                         Text(text = stringResource(R.string.home_view_price_details))
                     }
-                    HomeShortcuts(onNavigate = onNavigate)
-                    if (uiState.tankFillCostEstimates.isEmpty()) {
-                        TankFillCostPlaceholderCard(
-                            onClick = { onNavigate(Routes.VEHICLES) },
-                        )
-                    } else {
+                    if (uiState.tankFillCostEstimates.isNotEmpty()) {
                         VehicleCarousel(
                             estimates = uiState.tankFillCostEstimates,
                             onNavigate = onNavigate,
@@ -274,6 +271,17 @@ internal fun HomeContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeLoadingSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonLine(width = 200.dp, height = 24.dp)
+        SkeletonLine(width = 260.dp)
+        SkeletonCard(height = 104.dp)
+        SkeletonCard(height = 104.dp)
+        SkeletonButton()
     }
 }
 
@@ -321,22 +329,13 @@ private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
     val municipality = uiState.municipality ?: return
     val state = uiState.state ?: return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            uiState.surveyWeek?.let { week ->
-                val locale = LocalConfiguration.current.locales[0]
-                Text(
-                    stringResource(R.string.prices_survey_week_label, SurveyWeekFormatter.formatRange(week, locale)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        Text(
+            text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
         TextButton(onClick = { onNavigate(Routes.LOCATION) }) {
             Text(stringResource(R.string.home_change_city))
         }
@@ -355,23 +354,6 @@ private fun PriceMetadata(uiState: HomeUiState) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-
-        val currentDate = java.time.LocalDate.now()
-        if (week.endDate.isBefore(currentDate)) {
-            val formatter = java.time.format.DateTimeFormatter
-                .ofLocalizedDate(java.time.format.FormatStyle.SHORT)
-                .withLocale(locale)
-            val formattedDate = week.endDate.format(formatter)
-            Text(
-                text = stringResource(
-                    R.string.home_stale_price_table_message,
-                    formattedDate,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
     }
 }
 

@@ -25,6 +25,9 @@ type MemStore struct {
 	bindings      map[string]map[string]domain.ContributorBinding
 	byContributor map[string]string
 	audit         map[string][]domain.BindingAudit
+	keyCreds      map[string]domain.KeyCredential
+	keyByUsername map[string]string
+	keyByLookup   map[string]string
 }
 
 // NewMemStore returns an empty memory store.
@@ -41,6 +44,9 @@ func NewMemStore() *MemStore {
 		bindings:      map[string]map[string]domain.ContributorBinding{},
 		byContributor: map[string]string{},
 		audit:         map[string][]domain.BindingAudit{},
+		keyCreds:      map[string]domain.KeyCredential{},
+		keyByUsername: map[string]string{},
+		keyByLookup:   map[string]string{},
 	}
 }
 
@@ -487,4 +493,47 @@ func (m *MemStore) ListBindingAudit(_ context.Context, accountID string) ([]doma
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return append([]domain.BindingAudit(nil), m.audit[accountID]...), nil
+}
+
+// CreateKeyAccount stores the account and its key credential under one
+// lock. Username races refuse with ErrUsernameTaken, key races with
+// ErrKeyCollision so the caller mints a fresh key and retries.
+func (m *MemStore) CreateKeyAccount(_ context.Context, acc domain.Account, cred domain.KeyCredential) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if owner, ok := m.keyByUsername[cred.UsernameHash]; ok && owner != acc.ID {
+		return domain.ErrUsernameTaken
+	}
+	if owner, ok := m.keyByLookup[cred.KeyLookup]; ok && owner != acc.ID {
+		return domain.ErrKeyCollision
+	}
+	m.accountsByID[acc.ID] = acc
+	m.keyCreds[acc.ID] = cred
+	m.keyByUsername[cred.UsernameHash] = acc.ID
+	m.keyByLookup[cred.KeyLookup] = acc.ID
+	return nil
+}
+
+// FindKeyCredentialByUsername returns the credential for a username hash,
+// or false when no account uses it.
+func (m *MemStore) FindKeyCredentialByUsername(_ context.Context, usernameHash string) (domain.KeyCredential, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok := m.keyByUsername[usernameHash]
+	if !ok {
+		return domain.KeyCredential{}, false, nil
+	}
+	return m.keyCreds[id], true, nil
+}
+
+// FindKeyCredentialByLookup returns the credential for a key lookup, or
+// false when no account holds it.
+func (m *MemStore) FindKeyCredentialByLookup(_ context.Context, lookup string) (domain.KeyCredential, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok := m.keyByLookup[lookup]
+	if !ok {
+		return domain.KeyCredential{}, false, nil
+	}
+	return m.keyCreds[id], true, nil
 }

@@ -14,9 +14,12 @@ import (
 const cityFeed = `-- name: CityFeed :many
 SELECT p.station_id, s.display_name, p.fuel_product, p.unit,
  p.amount_milli_brl, p.confidence, p.independent_supporters,
- p.confirmation_count, p.anchor_received_at, p.expires_at, p.projection_version
+ p.confirmation_count, p.anchor_received_at, p.expires_at, p.projection_version,
+ COALESCE(rs.ratings_count, 0)::bigint AS ratings_count,
+ COALESCE(rs.stars_sum, 0)::bigint AS stars_sum
 FROM directory_stations s
 JOIN community_current_prices p ON p.station_id = s.id
+LEFT JOIN feedback_rating_stats rs ON rs.station_id = p.station_id AND rs.product = p.fuel_product
 WHERE s.state = $1 AND s.municipality_code = $2 AND s.status = 'active'
  AND p.fuel_product = $3 AND p.unit = $4
  AND p.condition_kind = 'STANDARD' AND p.qualifier_key = 'STANDARD'
@@ -27,10 +30,19 @@ WHERE s.state = $1 AND s.municipality_code = $2 AND s.status = 'active'
   ($7::text = 'recent' AND (p.anchor_received_at < $8 OR
     (p.anchor_received_at = $8 AND p.station_id::text > $9::text))) OR
   ($7::text = 'cheapest' AND (p.amount_milli_brl > $10::bigint OR
-    (p.amount_milli_brl = $10::bigint AND p.station_id::text > $9::text))))
+    (p.amount_milli_brl = $10::bigint AND p.station_id::text > $9::text))) OR
+  ($7::text = 'best' AND (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) < NULLIF($11::double precision, -1) OR
+    (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) = NULLIF($11::double precision, -1) AND p.station_id::text > $9::text) OR
+    (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) IS NULL AND (NULLIF($11::double precision, -1) IS NULL AND p.station_id::text > $9::text OR NULLIF($11::double precision, -1) IS NOT NULL)))) OR
+  ($7::text = 'worst' AND (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) > NULLIF($11::double precision, -1) OR
+    (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) = NULLIF($11::double precision, -1) AND p.station_id::text > $9::text) OR
+    (((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) IS NULL AND (NULLIF($11::double precision, -1) IS NULL AND p.station_id::text > $9::text OR NULLIF($11::double precision, -1) IS NOT NULL)))))
 ORDER BY CASE WHEN $7::text = 'cheapest' THEN p.amount_milli_brl END ASC,
- CASE WHEN $7::text = 'recent' THEN p.anchor_received_at END DESC, p.station_id ASC
-LIMIT $11::int
+ CASE WHEN $7::text = 'recent' THEN p.anchor_received_at END DESC,
+ CASE WHEN $7::text = 'best' THEN ((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) END DESC NULLS LAST,
+ CASE WHEN $7::text = 'worst' THEN ((rs.stars_sum::double precision / NULLIF(rs.ratings_count, 0))::double precision) END ASC NULLS LAST,
+ p.station_id ASC
+LIMIT $12::int
 `
 
 type CityFeedParams struct {
@@ -44,6 +56,7 @@ type CityFeedParams struct {
 	AfterTime        pgtype.Timestamptz `json:"after_time"`
 	AfterID          string             `json:"after_id"`
 	AfterAmount      int64              `json:"after_amount"`
+	AfterAvg         float64            `json:"after_avg"`
 	LimitPlusOne     int32              `json:"limit_plus_one"`
 }
 
@@ -59,10 +72,14 @@ type CityFeedRow struct {
 	AnchorReceivedAt      pgtype.Timestamptz `json:"anchor_received_at"`
 	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
 	ProjectionVersion     int64              `json:"projection_version"`
+	RatingsCount          int64              `json:"ratings_count"`
+	StarsSum              int64              `json:"stars_sum"`
 }
 
 // Owned public community read: the explicitly declared directory join reads
 // only canonical public identity/city fields, never another module's private data.
+// Best/worst orders rank by the community star average of the same
+// station+fuel (feedback_rating_stats); unrated rows sort last in both.
 func (q *Queries) CityFeed(ctx context.Context, arg CityFeedParams) ([]CityFeedRow, error) {
 	rows, err := q.db.Query(ctx, cityFeed,
 		arg.State,
@@ -75,6 +92,7 @@ func (q *Queries) CityFeed(ctx context.Context, arg CityFeedParams) ([]CityFeedR
 		arg.AfterTime,
 		arg.AfterID,
 		arg.AfterAmount,
+		arg.AfterAvg,
 		arg.LimitPlusOne,
 	)
 	if err != nil {
@@ -96,6 +114,8 @@ func (q *Queries) CityFeed(ctx context.Context, arg CityFeedParams) ([]CityFeedR
 			&i.AnchorReceivedAt,
 			&i.ExpiresAt,
 			&i.ProjectionVersion,
+			&i.RatingsCount,
+			&i.StarsSum,
 		); err != nil {
 			return nil, err
 		}

@@ -26,6 +26,22 @@ private class FakeClock(var now: Long) : AuthWallClock {
     override fun nowEpochSeconds(): Long = now
 }
 
+private class FakeKeys : AuthKeyStore {
+    var saved: AuthFlow.KeyBackup? = null
+    var clears: Int = 0
+
+    override fun saveKey(backup: AuthFlow.KeyBackup) {
+        saved = backup
+    }
+
+    override fun loadKey(): AuthFlow.KeyBackup? = saved
+
+    override fun clearKey() {
+        saved = null
+        clears += 1
+    }
+}
+
 private class FakeNonces(vararg values: String) : PortableNonceSource {
     private val queue = values.toMutableList()
     var calls: Int = 0
@@ -41,6 +57,10 @@ private class FakeApi : AuthAccountApi {
     var linkCalls: Int = 0
     var lastLinkedNonce: String? = null
     var verdict: String? = null
+    var refreshVerdict: String? = null
+    var keyLoginCalls: Int = 0
+    var loginAccount: String = "account-1"
+    var deletionSession: PortableAuth.Session? = null
 
     private fun session(): PortableAuth.Session {
         sessions += 1
@@ -59,6 +79,7 @@ private class FakeApi : AuthAccountApi {
     }
 
     override fun refresh(familyId: String, refreshToken: String): AuthApiResult<PortableAuth.Session> {
+        refreshVerdict?.let { return AuthApiResult.Err(it) }
         verdict?.let { return AuthApiResult.Err(it) }
         return AuthApiResult.Ok(session())
     }
@@ -81,8 +102,20 @@ private class FakeApi : AuthAccountApi {
     }
 
     override fun deleteAccount(session: PortableAuth.Session): AuthApiResult<Unit> {
+        deletionSession = session
         verdict?.let { return AuthApiResult.Err(it) }
         return AuthApiResult.Ok(Unit)
+    }
+
+    override fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued> {
+        verdict?.let { return AuthApiResult.Err(it) }
+        return AuthApiResult.Ok(AuthFlow.KeyIssued(username, "key-for-$username"))
+    }
+
+    override fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin> {
+        keyLoginCalls += 1
+        verdict?.let { return AuthApiResult.Err(it) }
+        return AuthApiResult.Ok(KeyLogin(session().copy(accountId = loginAccount), "ana123"))
     }
 }
 
@@ -91,8 +124,9 @@ private fun flow(
     nonces: FakeNonces = FakeNonces(),
     api: FakeApi = FakeApi(),
     store: FakeStore = FakeStore(),
+    keys: FakeKeys = FakeKeys(),
 ): AuthFlow {
-    return AuthFlow(AuthPorts(store, FakeClock(now), nonces, api))
+    return AuthFlow(AuthPorts(store, keys, FakeClock(now), nonces, api))
 }
 
 private fun signup(flow: AuthFlow, email: String = "case-01@example.invalid"): PortableAuth.Session {
@@ -102,6 +136,76 @@ private fun signup(flow: AuthFlow, email: String = "case-01@example.invalid"): P
 }
 
 class PortableAuthFlowTest {
+
+    @Test
+    fun failedEmailSessionWriteReportsStorageErrorWithoutGrantingLogin() {
+        val store = object : AuthSessionStore {
+            override fun save(session: PortableAuth.Session) { error("disk unavailable") }
+            override fun load(): PortableAuth.Session? = null
+            override fun clear() = Unit
+        }
+        val f = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.consumeEmailCode("test@example.invalid", "482916"))
+        assertNull(f.currentSession())
+    }
+
+    @Test
+    fun failedDurableSessionWriteReturnsStorageErrorAndRetainsIssuedKey() {
+        val keys = FakeKeys()
+        val store = object : AuthSessionStore {
+            override fun save(session: PortableAuth.Session) { error("disk unavailable") }
+            override fun load(): PortableAuth.Session? = null
+            override fun clear() = Unit
+        }
+        val f = AuthFlow(AuthPorts(store, keys, FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        val issued = f.createKeyAccount("ana123") as AuthApiResult.Ok
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.loginWithKey(issued.value.accountKey))
+        assertEquals(AuthFlow.KeyBackup("ana123", issued.value.accountKey), f.currentKey())
+        assertNull(f.currentSession())
+    }
+
+    @Test
+    fun keyStorageFailureStillReturnsOnlyIssuedRecoveryCredential() {
+        val keys = object : AuthKeyStore {
+            override fun saveKey(backup: AuthFlow.KeyBackup) { error("disk unavailable") }
+            override fun loadKey(): AuthFlow.KeyBackup? = null
+            override fun clearKey() = Unit
+        }
+        val f = AuthFlow(AuthPorts(FakeStore(), keys, FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        val issued = f.createKeyAccount("ana123") as AuthApiResult.Ok
+        assertEquals("key-for-ana123", issued.value.accountKey)
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.loginWithKey(issued.value.accountKey))
+        assertNull(f.currentSession())
+    }
+
+    @Test
+    fun deletionRenewsExpiredAccessBeforeSendingProof() {
+        val store = FakeStore()
+        val api = FakeApi()
+        val f = flow(store = store, api = api)
+        val initial = signup(f)
+        val expired = flow(now = initial.accessExpiresAt, store = store, api = api)
+
+        assertEquals(AuthApiResult.Ok(Unit), expired.deleteAccount())
+        assertEquals("access-2", api.deletionSession?.accessToken)
+        assertNull(store.saved)
+    }
+
+    @Test
+    fun deletionRenewalOutagePreservesKeyAndDoesNotSubmitExpiredProof() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        val f = flow(store = store, keys = keys, api = api)
+        val login = f.loginWithKey("synthetic-key") as AuthApiResult.Ok
+        api.refreshVerdict = PortableAuth.UNAVAILABLE
+        val expired = flow(now = login.value.session.accessExpiresAt, store = store, keys = keys, api = api)
+
+        assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), expired.deleteAccount())
+        assertNull(api.deletionSession)
+        assertEquals(login.value.session, store.saved)
+        assertEquals("synthetic-key", keys.saved?.accountKey)
+    }
 
     @Test
     fun emailSignupPersistsSession() {
@@ -152,7 +256,7 @@ class PortableAuthFlowTest {
         val rotated = f.refreshSession()
         check(rotated is AuthApiResult.Ok)
         assertEquals(first, rotated.value)
-        val late = AuthFlow(AuthPorts(store, FakeClock(1_000_901L), FakeNonces(), api))
+        val late = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(1_000_901L), FakeNonces(), api))
         val res = late.refreshSession()
         check(res is AuthApiResult.Ok)
         assertTrue(res.value != null && res.value != first)
@@ -164,7 +268,7 @@ class PortableAuthFlowTest {
         val store = FakeStore()
         val f = flow(now = 1_000_000L, store = store)
         signup(f)
-        val late = AuthFlow(AuthPorts(store, FakeClock(9_999_999L), FakeNonces(), FakeApi()))
+        val late = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(9_999_999L), FakeNonces(), FakeApi()))
         assertNull(late.currentSession())
         val res = late.refreshSession()
         check(res is AuthApiResult.Ok)
@@ -195,10 +299,10 @@ class PortableAuthFlowTest {
         val state = restarted.rehydrate()
         check(state is AuthFlow.AuthState.Active)
         assertEquals(session, state.session)
-        val expired = AuthFlow(AuthPorts(store, FakeClock(1_000_901L), FakeNonces(), FakeApi()))
+        val expired = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(1_000_901L), FakeNonces(), FakeApi()))
         val needsRefresh = expired.rehydrate()
         check(needsRefresh is AuthFlow.AuthState.NeedsRefresh)
-        val dead = AuthFlow(AuthPorts(store, FakeClock(9_999_999L), FakeNonces(), FakeApi()))
+        val dead = AuthFlow(AuthPorts(store, FakeKeys(), FakeClock(9_999_999L), FakeNonces(), FakeApi()))
         assertTrue(dead.rehydrate() is AuthFlow.AuthState.LoggedOut)
     }
 
@@ -257,4 +361,193 @@ class PortableAuthFlowTest {
         assertNull(store.saved)
         assertTrue(f.rehydrate() is AuthFlow.AuthState.LoggedOut)
     }
+
+    @Test
+    fun keySignupPersistsBackupWithoutSession() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val f = flow(store = store, keys = keys)
+        val res = f.createKeyAccount("Ana123")
+        check(res is AuthApiResult.Ok)
+        assertEquals("ana123", res.value.username)
+        assertEquals("key-for-ana123", res.value.accountKey)
+        assertEquals(res.value.username, keys.saved?.username)
+        assertEquals(res.value.accountKey, keys.saved?.accountKey)
+        assertNull(store.saved)
+        assertEquals(keys.saved, f.currentKey())
+    }
+
+    @Test
+    fun malformedUsernamesRefuseLocally() {
+        val f = flow()
+        for (bad in listOf("", "ab", "1abc", "ana!", "ana sorriso", "averylongusernamethatexceeds")) {
+            val res = f.createKeyAccount(bad)
+            check(res is AuthApiResult.Err)
+            assertEquals(AuthFlow.CLIENT_INVALID, res.verdict)
+        }
+        val blank = f.loginWithKey("   ")
+        check(blank is AuthApiResult.Err)
+        assertEquals(AuthFlow.CLIENT_INVALID, blank.verdict)
+    }
+
+    @Test
+    fun keyLoginPersistsSessionAndBackup() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val f = flow(store = store, keys = keys)
+        val res = f.loginWithKey("key-for-ana123")
+        check(res is AuthApiResult.Ok)
+        assertEquals(res.value.session, store.saved)
+        assertEquals("ana123", keys.saved?.username)
+        assertEquals("key-for-ana123", keys.saved?.accountKey)
+    }
+
+    @Test
+    fun keyVerdictsPassThroughAndLogoutClearsKey() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        val f = flow(store = store, keys = keys, api = api)
+        api.verdict = "key-invalid"
+        val res = f.loginWithKey("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        check(res is AuthApiResult.Err)
+        assertEquals("key-invalid", res.verdict)
+        assertNull(store.saved)
+        api.verdict = null
+        f.loginWithKey("key-for-ana123")
+        f.logout()
+        assertNull(store.saved)
+        assertNull(keys.saved)
+        assertEquals(1, keys.clears)
+    }
+    @Test
+    fun verifiedAbsoluteExpiryUsesSavedKeyAndPreservesAccount() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        flow(store = store, keys = keys, api = api).loginWithKey("key-for-ana123")
+        val late = flow(now = 9_999_999L, store = store, keys = keys, api = api)
+        assertTrue(late.rehydrate() is AuthFlow.AuthState.NeedsRefresh)
+        api.refreshVerdict = PortableAuth.Verdict.SESSION_EXPIRED
+        val result = late.refreshSession()
+        check(result is AuthApiResult.Ok)
+        assertEquals("account-1", result.value?.accountId)
+        assertEquals(2, api.keyLoginCalls)
+        assertEquals(result.value, store.saved)
+    }
+
+    @Test
+    fun deniedRefreshNeverUsesKeyAndClearsLocalAuthority() {
+        for (verdict in listOf(PortableAuth.Verdict.SESSION_REVOKED,
+            PortableAuth.Verdict.SESSION_REUSE, PortableAuth.Verdict.ACCOUNT_SUSPENDED,
+            PortableAuth.Verdict.ACCOUNT_DELETED, PortableAuth.Verdict.CODE_UNKNOWN)) {
+            val store = FakeStore()
+            val keys = FakeKeys()
+            val api = FakeApi()
+            flow(store = store, keys = keys, api = api).loginWithKey("key-for-ana123")
+            api.refreshVerdict = verdict
+            val result = flow(now = 9_999_999L, store = store, keys = keys, api = api).refreshSession()
+            assertEquals(AuthApiResult.Err(verdict), result)
+            assertEquals(1, api.keyLoginCalls)
+            assertNull(store.saved)
+            assertNull(keys.saved)
+        }
+    }
+
+    @Test
+    fun offlineExpiryRetainsCredentialsWithoutGrantingLiveSession() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        flow(store = store, keys = keys, api = api).loginWithKey("key-for-ana123")
+        val original = store.saved
+        api.refreshVerdict = PortableAuth.UNAVAILABLE
+        val late = flow(now = 9_999_999L, store = store, keys = keys, api = api)
+        assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), late.refreshSession())
+        assertEquals(original, store.saved)
+        assertEquals("key-for-ana123", keys.saved?.accountKey)
+        assertNull(late.currentSession())
+        assertEquals(1, api.keyLoginCalls)
+    }
+
+    @Test
+    fun expiryWithoutBackupStillRequiresExplicitLogin() {
+        val store = FakeStore()
+        val api = FakeApi()
+        signup(flow(store = store, api = api))
+        api.refreshVerdict = PortableAuth.Verdict.SESSION_EXPIRED
+        val late = flow(now = 9_999_999L, store = store, api = api)
+        assertEquals(AuthApiResult.Ok<PortableAuth.Session?>(null), late.refreshSession())
+        assertNull(store.saved)
+        assertEquals(0, api.keyLoginCalls)
+    }
+
+    @Test
+    fun expiredFamilyCannotSwitchToAccountFromForeignBackup() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        flow(store = store, keys = keys, api = api).loginWithKey("key-for-ana123")
+        api.refreshVerdict = PortableAuth.Verdict.SESSION_EXPIRED
+        api.loginAccount = "account-2"
+        val late = flow(now = 9_999_999L, store = store, keys = keys, api = api)
+        assertEquals(AuthApiResult.Err(AuthFlow.CLIENT_INVALID), late.refreshSession())
+        assertNull(store.saved)
+        assertNull(keys.saved)
+    }
+
+    @Test
+    fun rejectedKeyReauthenticationClearsAuthorityWithoutRetry() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        flow(store = store, keys = keys, api = api).loginWithKey("key-for-ana123")
+        api.refreshVerdict = PortableAuth.Verdict.SESSION_EXPIRED
+        api.verdict = "key-invalid"
+        val late = flow(now = 9_999_999L, store = store, keys = keys, api = api)
+        assertEquals(AuthApiResult.Err("key-invalid"), late.refreshSession())
+        assertEquals(AuthApiResult.Ok<PortableAuth.Session?>(null), late.refreshSession())
+        assertEquals(2, api.keyLoginCalls)
+        assertNull(keys.saved)
+    }
+
+    @Test
+    fun silentSessionWriteFailurePreservesPreviouslyIssuedKey() {
+        val keys = FakeKeys().apply { saved = AuthFlow.KeyBackup("ana123", "key-for-ana123") }
+        val unavailableStore = object : AuthSessionStore {
+            override fun save(session: PortableAuth.Session) = Unit
+            override fun load(): PortableAuth.Session? = null
+            override fun clear() = Unit
+        }
+        val f = AuthFlow(AuthPorts(unavailableStore, keys, FakeClock(1_000_000L), FakeNonces(), FakeApi()))
+        assertEquals(AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE), f.loginWithKey("key-for-ana123"))
+        assertEquals("key-for-ana123", keys.saved?.accountKey)
+        assertTrue(f.rehydrate() is AuthFlow.AuthState.PendingKeyAccount)
+    }
+
+    @Test
+    fun legacyEmailLoginCannotOverwriteKeyAccountBackup() {
+        val keys = FakeKeys().apply { saved = AuthFlow.KeyBackup("ana123", "key-for-ana123") }
+        val store = FakeStore()
+        val f = flow(store = store, keys = keys)
+        assertEquals(AuthApiResult.Err(AuthFlow.CLIENT_INVALID), f.consumeEmailCode("case-01@example.invalid", "482916"))
+        assertEquals("key-for-ana123", keys.saved?.accountKey)
+        assertNull(store.saved)
+    }
+
+    @Test
+    fun deletionOutagePreservesAccountAndRecoveryKey() {
+        val store = FakeStore()
+        val keys = FakeKeys()
+        val api = FakeApi()
+        val f = flow(store = store, keys = keys, api = api)
+        f.loginWithKey("key-for-ana123")
+        val originalSession = store.saved
+        api.verdict = PortableAuth.UNAVAILABLE
+        assertEquals(AuthApiResult.Err(PortableAuth.UNAVAILABLE), f.deleteAccount())
+        assertEquals(originalSession, store.saved)
+        assertEquals("key-for-ana123", keys.saved?.accountKey)
+        assertTrue(f.rehydrate() is AuthFlow.AuthState.Active)
+    }
+
 }

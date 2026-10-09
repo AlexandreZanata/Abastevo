@@ -70,6 +70,10 @@ class FeedbackViewModel @Inject constructor(
     private val flagProvider: FeedbackFlagProvider,
 ) : ViewModel() {
 
+    /** Test seam for the IO context (unit tests inject the test dispatcher). */
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher =
+        kotlinx.coroutines.Dispatchers.IO
+
     private sealed interface LastWrite {
         data class Rating(val stars: Int, val opId: String) : LastWrite
         data class DeleteRating(val opId: String) : LastWrite
@@ -368,7 +372,9 @@ class FeedbackViewModel @Inject constructor(
 
     private suspend fun runWrites(call: suspend () -> FeedbackWriteOutcome): FeedbackWriteOutcome {
         return try {
-            call()
+            // Blocking write HTTP runs on IO: Main-thread network throws
+            // NetworkOnMainThreadException, misread as a transport refusal.
+            kotlinx.coroutines.withContext(ioDispatcher) { call() }
         } catch (invalid: DomainException) {
             FeedbackWriteOutcome.Rejected(FeedbackRejectKind.TARGET_INVALID, invalid.message ?: "invalid")
         } catch (refused: FeedbackException) {
@@ -378,7 +384,8 @@ class FeedbackViewModel @Inject constructor(
         }
     }
 
-    private suspend fun <T> runReads(call: suspend () -> T): T = call()
+    private suspend fun <T> runReads(call: suspend () -> T): T =
+        kotlinx.coroutines.withContext(ioDispatcher) { call() }
 
     private fun writeState(outcome: FeedbackWriteOutcome): FeedbackUiState {
         return when (outcome) {

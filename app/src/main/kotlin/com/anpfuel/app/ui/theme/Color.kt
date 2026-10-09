@@ -45,6 +45,7 @@ internal object ColorTokens {
 object FuelProductTint {
 
     fun colorFor(product: FuelProduct, darkTheme: Boolean): Color = when (product) {
+        FuelProduct.GASOLINE_PREMIUM_GRADE -> if (darkTheme) Color(0xFFF48FB1) else Color(0xFFC2185B)
         FuelProduct.ETHANOL -> if (darkTheme) ColorTokens.GreenLight else AnpGreen
         FuelProduct.GASOLINE_REGULAR -> if (darkTheme) ColorTokens.BlueLight else AnpBlue
         FuelProduct.GASOLINE_PREMIUM -> if (darkTheme) ColorTokens.BlueLight else AnpBlueDark

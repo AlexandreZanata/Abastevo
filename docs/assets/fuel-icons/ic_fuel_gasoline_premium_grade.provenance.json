@@ -1,0 +1,23 @@
+{
+  "source_sha256": "be0393abf9ce50c0077a4edabddd95f753debefd04e0fc98588f23ed74415bab",
+  "category_ink": "#C2185B",
+  "neutral_detail": "#FFFFFF",
+  "svg_paths": 6,
+  "master_size": [
+    1351,
+    1351
+  ],
+  "android_size": [
+    128,
+    128
+  ],
+  "silhouette_iou": 0.997754,
+  "embedded_raster": false,
+  "ink_iou": 0.994679,
+  "white_iou": 0.993403,
+  "tool_versions": {
+    "Pillow": "12.2.0",
+    "numpy": "2.4.6",
+    "vtracer": "0.6.15"
+  }
+}

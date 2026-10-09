@@ -1,0 +1,570 @@
+{
+  "schema_version": 1,
+  "purpose": "Targeted regression corpus; photos and raw text remain private. Manually checked visible values, not independent population acceptance. Legacy GASOLINE_PREMIUM means additivated, never true premium. Bare Diesel follows the existing common-S500 contract. Conflicting normalized product prices remain manual.",
+  "samples": [
+    {
+      "file": "ocr-0001.jpeg",
+      "sha256": "9f153d94a13409d0bf865a51681432d11faa18306424dc35bf441ac304f96cb9",
+      "tags": [
+        "multi_fuel",
+        "watermark",
+        "generic_diesel"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6590
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6740
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4320
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6540
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6590
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0006.jpeg",
+      "sha256": "d77dc1405eeeefa419527779962f475fb1c1ad99438b1c824f6a72ff191f634e",
+      "tags": [
+        "multi_fuel",
+        "premium_unsupported",
+        "watermark"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6650
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6890
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4350
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6590
+        }
+      ],
+      "manual_prices": [
+        8390
+      ],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0008.jpeg",
+      "sha256": "faf7dfb75771ecf98440fcc759c375e2bfa411e24f02e36f2de00cba63a5c422",
+      "tags": [
+        "dot_decimal",
+        "generic_diesel",
+        "watermark"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4440
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6910
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6350
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6450
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0012.jpeg",
+      "sha256": "a6d87b7692b4bdff5ffa62ff0b77f1068c636157401303de03e856c5745f4f11",
+      "tags": [
+        "shadow",
+        "generic_diesel",
+        "additive"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4350
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6750
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6150
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6200
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6870
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0014.jpeg",
+      "sha256": "bb9d981f07e34d8a6a3140772387d2d45891ce71aba682a8c047e8f6bb9909d3",
+      "tags": [
+        "led",
+        "conditional_cash",
+        "angle"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4060
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6110
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6090
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6190
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": true
+    },
+    {
+      "file": "ocr-0199.jpeg",
+      "sha256": "1f03ccd8c54991b70e03280974db36892b6d2cd44c248cfec1d1b9283ea46cab",
+      "tags": [
+        "brand_sublabel",
+        "multi_fuel"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6590
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6790
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4340
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6690
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0342.jpeg",
+      "sha256": "324d5b160cbe2d24a2706db5f10850262a58c73f7ca15a3c3868aa15b9e89dfc",
+      "tags": [
+        "missing_separator",
+        "worn_digits",
+        "shadow"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6590
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3790
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6190
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6290
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0450.jpeg",
+      "sha256": "013b532ad048c22079ae378f0a43f6eacf4492f425e5c85cf05f497b949ee2fa",
+      "tags": [
+        "split_digits",
+        "multi_fuel",
+        "generic_diesel"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4440
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6910
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6490
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6590
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0600.jpeg",
+      "sha256": "943c755673bfc0750dc166bfe5321d0eac292ac8f772e528580ad9d069179a5f",
+      "tags": [
+        "brand_sublabel",
+        "multi_fuel"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6670
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6840
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4570
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6750
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0698.jpeg",
+      "sha256": "66fdd55eb4726645da90ceb34ec0c841c495d656cf1f9f667d2b91651dc35121",
+      "tags": [
+        "multi_fuel",
+        "narrow_image",
+        "watermark"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4660
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6840
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6890
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 6770
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 6830
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0800.jpeg",
+      "sha256": "f72cfa001317ddbf5effd029871815c771f434eb9222440fbce4b2b8184e791a",
+      "tags": [
+        "multiline_variant",
+        "angle"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4590
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6690
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6790
+        },
+        {
+          "fuel": "DIESEL_S500",
+          "milli_brl": 7190
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7390
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-0901.jpeg",
+      "sha256": "c60cbc48de93a8d5dde730453c4b0c7294aa9e3a91272365f34bcd894aaa7ddb",
+      "tags": [
+        "zero_price",
+        "multi_fuel",
+        "watermark"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4640
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 7070
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7170
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7980
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1000.jpeg",
+      "sha256": "b56ab99a6750e615f7ab9d05441b03b882596cf559dbaba96e1410c4225f5009",
+      "tags": [
+        "distant_sign",
+        "zero_price"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 4520
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 7070
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7170
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7750
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1200.jpeg",
+      "sha256": "3b8e40f41595eaae0aa03d56bb085ffd8a19f7bf579b2d387ba2345e421d4820",
+      "tags": [
+        "conflicting_normalized_product",
+        "shadow"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7120
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6980
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7570
+        }
+      ],
+      "manual_prices": [
+        3990,
+        4110
+      ],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1349.jpeg",
+      "sha256": "8b752c6e3ffaeb28829c3f86816bc41ed6a87d4e5564f3b090e83fcdfbdc2e19",
+      "tags": [
+        "multiline_variant",
+        "reflection"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3790
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6990
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 6990
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7350
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1408.jpeg",
+      "sha256": "ad510de14c833c0e7129a066d473b0f7192237bb7da3dbbda93f42e9e0ecd644",
+      "tags": [
+        "one_fuel",
+        "large_digits"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3180
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1497.jpeg",
+      "sha256": "7613ec6a98215e80d4bd693af8d406115900cbc17c965aa41b45ec6fafe1ebeb",
+      "tags": [
+        "pump_display",
+        "three_decimals",
+        "reflection",
+        "total_not_unit_price"
+      ],
+      "expected_rows": [],
+      "manual_prices": [
+        7400
+      ],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1498.jpeg",
+      "sha256": "6685b57341e74601d70ac7cd5fe867201371fcaef5bf15a89c4eb9cad2b6e3b5",
+      "tags": [
+        "premium_unsupported",
+        "multi_fuel"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6990
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7190
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3990
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7690
+        }
+      ],
+      "manual_prices": [
+        9190
+      ],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1550.jpeg",
+      "sha256": "86c0284b2ce2b767969f5ec5e520851c9a4cbc7481d56dde293e3f4f091badb8",
+      "tags": [
+        "brand_sublabel",
+        "angle"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6950
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7100
+        },
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3990
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7750
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    },
+    {
+      "file": "ocr-1620.jpeg",
+      "sha256": "6ea4c5b527e74fb0b66b92965220e206d44d42666583e5b39056cfc32b151fed",
+      "tags": [
+        "distant_sign",
+        "zero_price",
+        "watermark"
+      ],
+      "expected_rows": [
+        {
+          "fuel": "ETHANOL",
+          "milli_brl": 3970
+        },
+        {
+          "fuel": "GASOLINE_REGULAR",
+          "milli_brl": 6980
+        },
+        {
+          "fuel": "GASOLINE_PREMIUM",
+          "milli_brl": 7170
+        },
+        {
+          "fuel": "DIESEL_S10",
+          "milli_brl": 7920
+        }
+      ],
+      "manual_prices": [],
+      "conditional_required": false
+    }
+  ]
+}

@@ -24,7 +24,14 @@ on:
       - .github/workflows/backend.yml
 
 env:
-  GO_VERSION_FILE: backend/go.mod
+  # Pinned exact (matches backend/go.mod toolchain). Do not float back to
+  # go-version-file: setup-go resolves the `go` directive to the latest
+  # 1.27.x patch, and the pinned staticcheck cannot read a newer compiler's
+  # export data yet (fast/quick outage on 1.27.2, 2026-10-09). The fast gate
+  # runs staticcheck under GOTOOLCHAIN=go1.27.1 until it catches up.
+  # Re-pin deliberately only after verifying staticcheck AND govulncheck
+  # against the new toolchain.
+  GO_VERSION: '1.27.2'
   SQLC_VERSION: v1.31.1
   STATICCHECK_VERSION: v0.8.1
   VACUUM_VERSION: v0.30.6
@@ -45,7 +52,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
+          go-version: ${{ env.GO_VERSION }}
       - name: Install pinned tools
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}

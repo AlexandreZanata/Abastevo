@@ -1,6 +1,6 @@
 package com.anpfuel.app.ui.community
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -34,7 +33,10 @@ import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.BouncyToggleIcon
 import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.FuelProductTint
 import com.anpfuel.domain.community.CommunityFeedItem
 import com.anpfuel.domain.community.FeedSort
@@ -69,10 +71,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
     var showRules by remember { mutableStateOf(false) }
     AnpScaffold(modifier = modifier.fillMaxSize(), topBar = {
         AnpTopAppBar(title = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Image(painterResource(R.drawable.ic_abastevo_logo), null, Modifier.size(30.dp))
-                Text(stringResource(R.string.community_screen_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            Text(stringResource(R.string.community_screen_title))
         }, actions = {
             IconButton(onClick = onRefresh, enabled = state.city != null && !state.loading) {
                 Icon(Icons.Default.Refresh, stringResource(R.string.feed_refresh))
@@ -107,7 +106,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                                 Text(stringResource(R.string.feed_contribute_hint), style = MaterialTheme.typography.bodySmall)
                             }
                         }
-                        Button(onClick = { onNavigate(Routes.STATIONS) }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { onNavigate(Routes.CAPTURE) }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Add, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.community_action_contribute))
                         }
@@ -121,17 +120,24 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                ) {
+                    CommunityFilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
                         label = { Text(stringResource(R.string.feed_recent)) }, leadingIcon = { Icon(Icons.Default.Schedule, null, Modifier.size(18.dp)) })
-                    FilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
+                    CommunityFilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
                         label = { Text(stringResource(R.string.feed_cheapest)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingDown, null, Modifier.size(18.dp)) })
+                    CommunityFilterChip(selected = state.sort == FeedSort.BEST, onClick = { onSort(FeedSort.BEST) },
+                        label = { Text(stringResource(R.string.feed_best)) }, leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(18.dp)) })
+                    CommunityFilterChip(selected = state.sort == FeedSort.WORST, onClick = { onSort(FeedSort.WORST) },
+                        label = { Text(stringResource(R.string.feed_worst)) }, leadingIcon = { Icon(Icons.Default.StarOutline, null, Modifier.size(18.dp)) })
                 }
             }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(FuelProduct.entries, key = { it.name }) { fuel ->
-                        FilterChip(selected = state.fuel == fuel, onClick = { onFuel(fuel) },
+                        CommunityFilterChip(selected = state.fuel == fuel, onClick = { onFuel(fuel) },
                             label = { Text(stringResource(FuelProductI18n.toStringRes(fuel))) },
                             leadingIcon = { FuelProductIcon(fuel, size = 20.dp, contentDescription = null) })
                     }
@@ -151,7 +157,11 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             when {
-                state.loading -> item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                state.loading -> item {
+                    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+                        repeat(3) { SkeletonCard(height = 190.dp) }
+                    }
+                }
                 state.noCity -> item { FeedMessage(stringResource(R.string.feed_choose_city), stringResource(R.string.feed_no_city_hint)) {
                     TextButton(onClick = { onNavigate(Routes.LOCATION) }) { Text(stringResource(R.string.feed_choose_city)) }
                 } }
@@ -160,7 +170,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             items(state.items, key = { it.stationId }) { item ->
-                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationProfile(item.stationId)) })
+                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationPage(item.stationId, state.fuel)) })
             }
             if (state.nextCursor != null && state.items.size < 200 && !state.loading) item {
                 OutlinedButton(onClick = onMore, enabled = !state.loadingMore, modifier = Modifier.fillMaxWidth()) {
@@ -180,6 +190,81 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.community_rules_body)); Text(stringResource(R.string.community_moderation_body)); Text(stringResource(R.string.community_moderation_appeal))
         } }, confirmButton = { TextButton(onClick = { showRules = false }) { Text(stringResource(R.string.feed_close)) } })
+}
+
+/**
+ * Community filter with a distinct active treatment: elevated surface plus
+ * the app primary container when selected, matching the rounded-card language
+ * used across home and profile.
+ */
+@Composable
+private fun CommunityFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    leadingIcon: @Composable () -> Unit,
+) {
+    ElevatedFilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = label,
+        leadingIcon = leadingIcon,
+        colors = FilterChipDefaults.elevatedFilterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    )
+}
+
+/**
+ * Frontend-only approve/contest/report toggles.
+ *
+ * The city feed exposes exact [CommunityFeedItem.supporters] but no
+ * dispute tally and no observation id, so the dislike icon carries no
+ * invented count. Taps only flip local state with a spring pulse —
+ * they never navigate and never reach the backend. The confirmation
+ * count travels with the check badge next to the fuel name.
+ */
+@Composable
+private fun FeedVoteActions(item: CommunityFeedItem) {
+    var liked by remember { mutableStateOf(false) }
+    var disliked by remember { mutableStateOf(false) }
+    var reported by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BouncyToggleIcon(
+            selected = liked,
+            onToggle = {
+                liked = !liked
+                if (liked) disliked = false
+            },
+            icon = Icons.Default.ThumbUp,
+            contentDescription = stringResource(R.string.station_feedback_vote_valid),
+        )
+        Text("${item.supporters + if (liked) 1 else 0}",
+            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(4.dp))
+        BouncyToggleIcon(
+            selected = disliked,
+            onToggle = {
+                disliked = !disliked
+                if (disliked) liked = false
+            },
+            icon = Icons.Default.ThumbDown,
+            contentDescription = stringResource(R.string.station_feedback_vote_invalid),
+            selectedTint = MaterialTheme.colorScheme.error,
+        )
+        Spacer(Modifier.weight(1f))
+        BouncyToggleIcon(
+            selected = reported,
+            onToggle = { reported = !reported },
+            icon = Icons.Default.Flag,
+            contentDescription = stringResource(R.string.station_page_report_title),
+            selectedTint = MaterialTheme.colorScheme.error,
+            unselectedTint = MaterialTheme.colorScheme.error,
+        )
+    }
 }
 
 @Composable
@@ -206,7 +291,6 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(painterResource(R.drawable.ic_home_community), null, tint = Color.Unspecified, modifier = Modifier.size(24.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.stationName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("${stringResource(R.string.feed_community_source)} · $timestamp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -217,14 +301,27 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FuelProductIcon(item.fuel, size = 44.dp, contentDescription = null)
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
+                        Icon(Icons.Default.Verified, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Text("${item.confirmations}", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Text(price, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = FuelProductTint.colorFor(item.fuel, darkTheme))
                     Text(stringResource(when (item.unit) { "M3" -> R.string.feed_unit_m3; "KG_13" -> R.string.feed_unit_cylinder; else -> R.string.feed_unit_litre }),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(stringResource(when (item.confidence) { "HIGH" -> R.string.feed_confidence_high; "MEDIUM" -> R.string.feed_confidence_medium; else -> R.string.feed_confidence_low }),
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val avg = item.ratingsAvg
+            if (avg != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.feed_rating_value, avg, item.ratingsCount),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            FeedVoteActions(item)
         }
     }
 }

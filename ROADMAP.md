@@ -3398,7 +3398,7 @@ State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/
 #### P37-T01 — Contextual capture and review
 
 - **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
-- **Goal:** Station/fuel/photo/OCR/manual price/condition selection, explicit submit and existing location-integrity/bounded media rules.
+- **Goal:** Location-first capture within the initial 150m radius, real image OCR/local crop, detected-fuel-only vertical review and optional subsets, explicit submit and existing location-integrity/bounded media rules. No payment inputs; preserve condition truth internally. [User refinement and private corpus preparation](docs/planning/PHOTO_PRICE_CONTRIBUTION_PLAN.md) owns P37-PC01–PC06; implementation remains planned.
 - **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
 - **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
 
@@ -3416,7 +3416,7 @@ State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/
 #### P37-T03 — Private storage and all-copy expiry
 
 - **Status / priority:** PLANNED / MUST for selected Android/VPS scope.
-- **Goal:** Prove 24h deletion/cache/outbox/storage/restore; missing attached VPS media blocks live photo acceptance explicitly.
+- **Goal:** Prove 24h operational deletion/cache/outbox/storage/restore; missing attached VPS media blocks live photo acceptance explicitly. Proposed optional [training-consent amendment](docs/security/AI_TRAINING_IMAGE_CONSENT_PLAN.md): separate minimized permanent training copy, no automatic TTL, revocation/erasure enforced; no retention exception is implemented by this plan.
 - **Dependencies / acceptance / tests:** owning phase section in ANDROID_VPS_PLAN; documented contract/risk checks before consumers. Record exact meaningful commands/results and unresolved live/device prerequisites; no fabricated green.
 - **Delivery:** atomic task commit, isolated phase branch and tested local checkpoint; CI/PR merge/wiki only at final construction batch closure under ADR-018.
 

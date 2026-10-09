@@ -8,7 +8,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * P10-T04 capture/OCR flag (default OFF).
+ * P10-T04 capture/OCR flag (default ON since the Community contribute
+ * entry opens the camera module: enabling only unlocks local capture +
+ * OCR candidates and never uploads, auto-picks a price or migrates
+ * existing local data).
  *
  * Synchronous SharedPreferences read so the flow never blocks; enabling
  * only unlocks local capture + OCR candidates and never uploads,
@@ -23,7 +26,7 @@ class CaptureOcrFlagStore @Inject constructor(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun isEnabled(): Boolean =
-        prefs.getBoolean(KEY_ENABLED, false)
+        prefs.getBoolean(KEY_ENABLED, true)
 
     fun setEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()

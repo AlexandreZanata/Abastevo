@@ -38,10 +38,22 @@ class RoutesTest {
     }
 
     @Test
+    fun contributionsRouteIsRegisteredConstant() {
+        assertEquals("contributions", Routes.CONTRIBUTIONS)
+    }
+
+    @Test
     fun stationsRouteIncludesFuelProductName() {
         assertEquals(
             "stations/GASOLINE_REGULAR",
             Routes.stations(FuelProduct.GASOLINE_REGULAR),
         )
+    }
+    @Test
+    fun stationPageBindsIdentityAndFuelWithoutAccountSecrets() {
+        assertEquals("station/04218406000104?fuelProduct=ETHANOL", Routes.stationPage("04218406000104", FuelProduct.ETHANOL))
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException::class.java) {
+            Routes.stationPage("../auth", FuelProduct.ETHANOL)
+        }
     }
 }

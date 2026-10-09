@@ -16,6 +16,8 @@ class RetailStation private constructor(
     val state: BrazilianState,
     val brand: String?,
 ) {
+    val artwork = com.anpfuel.domain.profile.StationArtwork.BETA_DEFAULT
+
     init {
         if (address.isBlank()) {
             throw DomainException("RetailStation address must not be blank")

@@ -320,4 +320,17 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+    val MIGRATION_8_9: Migration = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE contribution_outbox ADD COLUMN observation_id TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE contribution_outbox ADD COLUMN remote_status TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE contribution_outbox ADD COLUMN failure_reason TEXT DEFAULT NULL")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS photo_upload_sessions (
+                capture_id TEXT NOT NULL PRIMARY KEY, session_id TEXT NOT NULL,
+                photo_id TEXT NOT NULL, owner_scope TEXT NOT NULL, origin TEXT NOT NULL,
+                captured_at_millis INTEGER NOT NULL, expires_at_millis INTEGER NOT NULL,
+                sha256 TEXT NOT NULL, evidence_id TEXT)""".trimIndent())
+        }
+    }
+
 }

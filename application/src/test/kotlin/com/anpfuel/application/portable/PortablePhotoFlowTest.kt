@@ -27,8 +27,10 @@ private class ScriptedEncoder(private val script: List<ByteArray?>) : PhotoEncod
 private class FakeCache : PhotoCache {
     val entries = mutableMapOf<String, ByteArray>()
     var swept = 0
+    var originalTime: Long? = null
     override fun put(id: String, bytes: ByteArray, capturedAtMillis: Long) {
         entries[id] = bytes
+        originalTime = capturedAtMillis
     }
     override fun get(id: String): ByteArray? = entries[id]
     override fun delete(id: String) {
@@ -152,4 +154,18 @@ class PortablePhotoFlowTest {
         assertEquals(0, flow.sweepExpired())
         assertEquals(1, cache.swept)
     }
+    @Test fun cropsRetainOriginalAgeAndExpiredInputNeverPublishes() {
+        val (flow, cache, encoder) = flow()
+        val original = 1_700_000_000_000L - 60_000
+        assertTrue(flow.prepareAt(ByteArray(10), "image/jpeg", original) is PhotoResult.Ready)
+        assertEquals(original, cache.originalTime)
+        flow.discard("entry-1")
+        val attempts = encoder.attempts.size
+        listOf(0L, 1_700_000_000_001L, 1_700_000_000_000L - 86_400_000).forEach {
+            assertEquals(PhotoResult.Refused("photo.expired"), flow.prepareAt(ByteArray(10), "image/jpeg", it))
+        }
+        assertTrue(cache.entries.isEmpty())
+        assertEquals(attempts, encoder.attempts.size)
+    }
+
 }

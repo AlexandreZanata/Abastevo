@@ -1,0 +1,8 @@
+{
+  "id": "fuel-valid-premium-grade",
+  "version": 1,
+  "schema": "FuelProduct",
+  "valid": true,
+  "provenance": "User-authorized true premium gasoline extension; synthetic",
+  "value": "GASOLINE_PREMIUM_GRADE"
+}

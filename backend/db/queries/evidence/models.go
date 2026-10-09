@@ -19,6 +19,7 @@ type EvidenceObject struct {
 	Dhash                   int64              `json:"dhash"`
 	BoundObservationID      pgtype.UUID        `json:"bound_observation_id"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	BoundCaptureID          pgtype.UUID        `json:"bound_capture_id"`
 	FinalDeletedAt          pgtype.Timestamptz `json:"final_deleted_at"`
 	RetentionExtendedUntil  pgtype.Timestamptz `json:"retention_extended_until"`
 	RetentionExtendedReason string             `json:"retention_extended_reason"`
@@ -39,5 +40,6 @@ type EvidenceSession struct {
 	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	PolicyVersion       string             `json:"policy_version"`
+	PhotoCaptureID      pgtype.UUID        `json:"photo_capture_id"`
 	QuarantineDeletedAt pgtype.Timestamptz `json:"quarantine_deleted_at"`
 }

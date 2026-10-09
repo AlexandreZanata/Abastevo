@@ -118,7 +118,7 @@ clear_overrides
 # 5. Unpinned builder image (digest stripped).
 M5="$(mktemp -d)"
 mutant_root "$M5"
-sed -i 's|golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195|golang:1.27.1-bookworm|' "$M5/infra/docker/Dockerfile"
+sed -i 's|golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61|golang:1.27.2-bookworm|' "$M5/infra/docker/Dockerfile"
 with_overrides "$M5"
 assert_fail "unpinned builder refused" bash scripts/check-security.sh --static-only
 clear_overrides

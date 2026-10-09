@@ -63,10 +63,15 @@ class PriceDropNotificationRepositoryImpl @Inject constructor(
                 .setAutoCancel(true)
                 .setContentIntent(createContentIntent())
 
-            NotificationManagerCompat.from(localizedContext).notify(
-                notificationId(notification.vehicleId),
-                builder.build(),
-            )
+            try {
+                NotificationManagerCompat.from(localizedContext).notify(
+                    notificationId(notification.vehicleId),
+                    builder.build(),
+                )
+            } catch (_: SecurityException) {
+                // Permission may be revoked after the check, including during localization.
+                return@withContext
+            }
         }
     }
 

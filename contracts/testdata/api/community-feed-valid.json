@@ -16,6 +16,8 @@
     "expires_at": "2026-10-07T12:00:00Z",
     "supporters": 1,
     "confirmations": 0,
-    "version": 1
+    "version": 1,
+    "ratings_count": 3,
+    "ratings_avg": 4.33
   }
 }

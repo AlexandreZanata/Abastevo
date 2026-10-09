@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
@@ -135,11 +136,7 @@ fun VehicleForm(
             )
             when {
                 isLoadingStations -> {
-                    Text(
-                        text = stringResource(R.string.state_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    SkeletonLine()
                 }
                 stationOptions.isEmpty() -> {
                     Text(

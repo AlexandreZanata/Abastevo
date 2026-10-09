@@ -2,7 +2,9 @@ package com.anpfuel.data.local.auth
 
 import com.anpfuel.application.portable.AuthAccountApi
 import com.anpfuel.application.portable.AuthApiResult
+import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.ConsumeOk
+import com.anpfuel.application.portable.KeyLogin
 import com.anpfuel.domain.portable.PortableAuth
 import java.io.IOException
 import java.time.OffsetDateTime
@@ -25,9 +27,16 @@ import org.json.JSONObject
  * seconds here, keeping portable code clock-pure.
  */
 class AccountHttpApi(
-    private val client: OkHttpClient,
+    client: OkHttpClient,
     private val baseUrl: String,
 ) : AuthAccountApi {
+    // Account keys and bearer tokens must never follow a redirect, even
+    // when a caller supplies an otherwise permissive HTTP client.
+    private val client = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .callTimeout(20L, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     override fun requestCode(email: String): AuthApiResult<Unit> {
         val res = post("/v1/accounts/email/codes", JSONObject().put("email", email))
@@ -53,7 +62,35 @@ class AccountHttpApi(
         }
     }
 
+    override fun createKeyAccount(username: String): AuthApiResult<AuthFlow.KeyIssued> {
+        val res = post("/v1/accounts/keys", JSONObject().put("username", username))
+        return when (res) {
+            is HttpResult.Err -> AuthApiResult.Err(res.verdict)
+            is HttpResult.Ok -> {
+                val name = res.body.optString("username", "")
+                val key = res.body.optString("account_key", "")
+                if (name.isEmpty() || key.isEmpty()) return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                AuthApiResult.Ok(AuthFlow.KeyIssued(name, key))
+            }
+        }
+    }
+
+    override fun loginWithKey(accountKey: String): AuthApiResult<KeyLogin> {
+        val res = post("/v1/accounts/keys/login", JSONObject().put("account_key", accountKey))
+        return when (res) {
+            is HttpResult.Err -> AuthApiResult.Err(res.verdict)
+            is HttpResult.Ok -> {
+                val session = res.body.optJSONObject("session")?.let(::parseSession)
+                    ?: return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                val username = res.body.optJSONObject("account")?.optString("public_alias", "").orEmpty()
+                if (username.isEmpty()) return AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+                AuthApiResult.Ok(KeyLogin(session, username))
+            }
+        }
+    }
+
     override fun refresh(familyId: String, refreshToken: String): AuthApiResult<PortableAuth.Session> {
+
         val res = post(
             "/v1/accounts/sessions/refresh",
             JSONObject().put("family_id", familyId).put("refresh_token", refreshToken),
@@ -133,7 +170,12 @@ class AccountHttpApi(
         }
         response.use {
             val raw = try {
-                it.body?.string() ?: ""
+                val body = it.body ?: return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                if (body.contentLength() > MAX_RESPONSE_BYTES) return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                val source = body.source()
+                source.request(MAX_RESPONSE_BYTES + 1L)
+                if (source.buffer.size > MAX_RESPONSE_BYTES) return HttpResult.Err(PortableAuth.UNAVAILABLE)
+                source.readUtf8()
             } catch (_: Exception) {
                 return HttpResult.Err(PortableAuth.UNAVAILABLE)
             }
@@ -163,7 +205,7 @@ class AccountHttpApi(
 
     private fun parseSession(doc: JSONObject): PortableAuth.Session? {
         return try {
-            PortableAuth.Session(
+            val session = PortableAuth.Session(
                 familyId = doc.getString("family_id"),
                 accountId = doc.getString("account_id"),
                 accessToken = doc.getString("access_token"),
@@ -171,6 +213,10 @@ class AccountHttpApi(
                 accessExpiresAt = epochOf(doc.getString("access_expires_at")),
                 absoluteExpiresAt = epochOf(doc.getString("absolute_expires_at")),
             )
+            if (session.familyId.isBlank() || session.accountId.isBlank() ||
+                session.accessToken.isBlank() || session.refreshToken.isBlank() ||
+                session.accessExpiresAt <= 0L || session.absoluteExpiresAt <= session.accessExpiresAt
+            ) null else session
         } catch (_: Exception) {
             null
         }
@@ -181,6 +227,7 @@ class AccountHttpApi(
     }
 
     companion object {
+        private const val MAX_RESPONSE_BYTES = 64L * 1024L
         private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 }

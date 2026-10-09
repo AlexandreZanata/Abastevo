@@ -86,6 +86,7 @@ type Params struct {
 	ID              string
 	ContributorRef  string
 	ClientSessionID string
+	PhotoCaptureID  string
 	MIME            string
 	DeclaredBytes   int64
 	ClaimedSHA256   string
@@ -101,6 +102,7 @@ type Session struct {
 	ID              string
 	ContributorRef  string
 	ClientSessionID string
+	PhotoCaptureID  string
 	MIME            string
 	DeclaredBytes   int64
 	MaxBytes        int64
@@ -168,7 +170,7 @@ func NewSession(p Params) (Session, Event, error) {
 	}
 	s := Session{
 		ID: p.ID, ContributorRef: p.ContributorRef,
-		ClientSessionID: p.ClientSessionID, MIME: p.MIME,
+		ClientSessionID: p.ClientSessionID, PhotoCaptureID: p.PhotoCaptureID, MIME: p.MIME,
 		DeclaredBytes: p.DeclaredBytes, MaxBytes: MaxUploadBytes,
 		ClaimedSHA256: claim, QuarantineKey: p.QuarantineKey,
 		Status: StateIssued, CreatedAt: p.CreatedAt,

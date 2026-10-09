@@ -100,6 +100,7 @@ func TestPublicReadsIgnoreIdentity(t *testing.T) {
 	}
 	for _, target := range []string{
 		"/v1/stations?q=alfa&limit=5",
+		"/v1/stations/by-cnpj/04218406000104",
 		"/v1/stations/d6c74c23-63db-4c24-a2e5-408cb23bad26",
 		"/v1/stations/nearby?lat=-15.8&lon=-47.9&radius_m=3000&limit=5",
 	} {
@@ -126,5 +127,47 @@ func TestPublicErrorsAreNotCached(t *testing.T) {
 	}
 	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("error cache = %q, want no-store", cc)
+	}
+}
+
+func (fakeStations) ByCNPJ(_ context.Context, cnpj string) (application.Station, error) {
+	if cnpj != "04218406000104" {
+		return application.Station{}, application.ErrUnknownStation
+	}
+	station, _ := (fakeStations{}).Detail(context.Background(), "")
+	station.CNPJNormalized = &cnpj
+	return station, nil
+}
+
+func TestByCNPJReadUsesExactValidatedIdentifier(t *testing.T) {
+	for _, tc := range []struct {
+		value  string
+		status int
+	}{
+		{"04218406000104", http.StatusOK},
+		{"11222333000181", http.StatusNotFound},
+		{"04218406000105", http.StatusBadRequest},
+		{"123", http.StatusBadRequest},
+	} {
+		response := serveDirectory(http.MethodGet, "/v1/stations/by-cnpj/"+tc.value, nil)
+		if response.Code != tc.status {
+			t.Errorf("%s: status %d, want %d", tc.value, response.Code, tc.status)
+		}
+		if tc.status != http.StatusOK && response.Header().Get("Cache-Control") != "no-store" {
+			t.Errorf("%s: negative identifier response must be no-store", tc.value)
+		}
+	}
+}
+
+func TestByCNPJConditionalRead(t *testing.T) {
+	target := "/v1/stations/by-cnpj/04218406000104"
+	response := serveDirectory(http.MethodGet, target, nil)
+	etag := response.Header().Get("ETag")
+	if etag == "" || response.Header().Get("Cache-Control") != "public, max-age=30, s-maxage=60" {
+		t.Fatal("exact public read lacks bounded cache contract")
+	}
+	replay := serveDirectory(http.MethodGet, target, map[string]string{"If-None-Match": etag})
+	if replay.Code != http.StatusNotModified || replay.Body.Len() != 0 {
+		t.Fatal("conditional exact read must be bodiless 304")
 	}
 }

@@ -76,7 +76,8 @@ type Config struct {
 	ANPDiscoveryEnabled bool
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
-	R2 *R2Config
+	R2                           *R2Config
+	DevelopmentPhotoPreviewUntil time.Time
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -225,6 +226,15 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.R2 = r2
 
+	if raw, present := getenv("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL"); present && raw != "" {
+		deadline, err := time.Parse(time.RFC3339, raw)
+		if err != nil || cfg.Env == EnvProduction ||
+			(cfg.Env == EnvStaging && cfg.CanonicalHost != "teste.abastevo.com.br") ||
+			deadline.After(time.Now().Add(7*24*time.Hour)) {
+			return Config{}, fmt.Errorf("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL requires a valid bounded deadline in development or the owned staging host")
+		}
+		cfg.DevelopmentPhotoPreviewUntil = deadline
+	}
 	return cfg, nil
 }
 

@@ -73,6 +73,11 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.jsoup)
 
+    // P37-PC02 dependency/license review: docs/mobile/p37-image-ocr.md
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+    implementation("com.google.android.gms:play-services-base:18.11.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

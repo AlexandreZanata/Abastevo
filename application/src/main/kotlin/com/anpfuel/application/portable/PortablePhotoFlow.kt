@@ -45,13 +45,22 @@ class PhotoFlow(private val ports: PhotoPorts) {
      * Corrupt/oversize/unsupported inputs refuse with stable codes;
      * failures never leave partial cache entries.
      */
-    fun prepare(intentBytes: ByteArray, mime: String): PhotoResult {
+    fun prepare(intentBytes: ByteArray, mime: String): PhotoResult =
+        prepareAt(intentBytes, mime, ports.clock.nowMillis())
+
+    /** Crops/retries retain original age; expired evidence never gets a fresh TTL. */
+    fun prepareAt(intentBytes: ByteArray, mime: String, capturedAtMillis: Long): PhotoResult {
+        val now = ports.clock.nowMillis()
+        if (capturedAtMillis <= 0 || capturedAtMillis > now || now - capturedAtMillis >= 86_400_000) {
+            return PhotoResult.Refused("photo.expired")
+        }
+        if (intentBytes.isEmpty() || intentBytes.size > 32 * 1024 * 1024) return PhotoResult.Refused(PortablePhoto.UNDECODABLE_INPUT)
         if (!PortablePhoto.isSupportedIntentMime(mime)) {
             return PhotoResult.Refused(PortablePhoto.UNSUPPORTED_FORMAT)
         }
         val dims = ports.decoder.probeDims(intentBytes)
             ?: return PhotoResult.Refused(PortablePhoto.UNDECODABLE_INPUT)
-        if (dims.width <= 0 || dims.height <= 0) {
+        if (dims.width <= 0 || dims.height <= 0 || dims.width.toLong() * dims.height > 100_000_000) {
             return PhotoResult.Refused(PortablePhoto.UNDECODABLE_INPUT)
         }
         val sampleSize = PortablePhoto.sampleSizeForBounds(dims.width, dims.height)
@@ -64,7 +73,7 @@ class PhotoFlow(private val ports: PhotoPorts) {
                 continue
             }
             val id = ports.ids.nextId()
-            ports.cache.put(id, encoded, ports.clock.nowMillis())
+            ports.cache.put(id, encoded, capturedAtMillis)
             return PhotoResult.Ready(id, encoded.size.toLong(), attempt)
         }
         // Attempts produced only oversize bytes → over budget; attempts

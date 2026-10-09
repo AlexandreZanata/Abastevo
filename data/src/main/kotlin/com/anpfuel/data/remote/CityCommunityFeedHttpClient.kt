@@ -26,7 +26,12 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
             .addQueryParameter("state", query.city.state.abbreviation)
             .addQueryParameter("municipality_code", query.city.code)
             .addQueryParameter("fuel_product", WireFuelMapper.toWire(query.fuel))
-            .addQueryParameter("sort", if (query.sort == FeedSort.RECENT) "recent" else "cheapest")
+            .addQueryParameter("sort", when (query.sort) {
+                FeedSort.RECENT -> "recent"
+                FeedSort.CHEAPEST -> "cheapest"
+                FeedSort.BEST -> "best"
+                FeedSort.WORST -> "worst"
+            })
             .addQueryParameter("limit", "20")
             .apply { cursor?.let { addQueryParameter("cursor", it) } }.build()
         val call = client.newCall(Request.Builder().url(url).header("Accept", "application/json").build())
@@ -83,7 +88,12 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
             val page = JSONObject(payload)
             require(page.getString("state") == query.city.state.abbreviation && page.getString("municipality_code") == query.city.code)
             require(page.getString("fuel_product") == WireFuelMapper.toWire(query.fuel))
-            require(page.getString("sort") == if (query.sort == FeedSort.RECENT) "recent" else "cheapest")
+            require(page.getString("sort") == when (query.sort) {
+                FeedSort.RECENT -> "recent"
+                FeedSort.CHEAPEST -> "cheapest"
+                FeedSort.BEST -> "best"
+                FeedSort.WORST -> "worst"
+            })
             val rows = page.getJSONArray("items")
             require(rows.length() <= 20)
             val generated = Instant.parse(page.getString("generated_at"))
@@ -97,6 +107,8 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                     updatedAt = Instant.parse(row.getString("updated_at")), expiresAt = Instant.parse(row.getString("expires_at")),
                     supporters = row.getInt("supporters"), confirmations = row.getInt("confirmations"),
                     confidence = row.getString("confidence"), version = row.getLong("version"),
+                    ratingsCount = row.optInt("ratings_count"),
+                    ratingsAvg = if (row.isNull("ratings_avg")) null else row.getDouble("ratings_avg"),
                 )
                 require(item.fuel == query.fuel && item.unit == row.getString("unit") && item.updatedAt <= generated)
                 item

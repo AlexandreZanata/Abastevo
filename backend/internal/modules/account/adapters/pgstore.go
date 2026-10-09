@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -904,4 +905,91 @@ func (s *PGStore) ListBindingAudit(ctx context.Context, accountID string) ([]dom
 		out = append(out, toBindingAudit(r))
 	}
 	return out, nil
+}
+
+// toKeyCredential maps a key-credential row to the domain shape.
+func toKeyCredential(row account.AccountKeyCredential) domain.KeyCredential {
+	return domain.KeyCredential{
+		AccountID:    uuidString(row.AccountID),
+		UsernameHash: row.UsernameHash,
+		KeyLookup:    row.KeyLookup,
+		KeySalt:      row.KeySalt,
+		KeyHash:      row.KeyHash,
+		CreatedAt:    row.CreatedAt,
+	}
+}
+
+// CreateKeyAccount inserts the account and its key credential atomically.
+// A lost username race surfaces ErrUsernameTaken; a lost key race surfaces
+// ErrKeyCollision so the caller mints a fresh key and retries.
+func (s *PGStore) CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error {
+	id, err := mustUUID(acc.ID)
+	if err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := account.New(tx)
+	if err := q.InsertAccount(ctx, account.InsertAccountParams{
+		ID:        id,
+		Alias:     acc.Alias,
+		Status:    acc.Status,
+		CreatedAt: stamp(acc.CreatedAt),
+	}); err != nil {
+		return err
+	}
+	if err := q.InsertKeyCredential(ctx, account.InsertKeyCredentialParams{
+		AccountID:    id,
+		UsernameHash: cred.UsernameHash,
+		KeyLookup:    cred.KeyLookup,
+		KeySalt:      cred.KeySalt,
+		KeyHash:      cred.KeyHash,
+		CreatedAt:    cred.CreatedAt,
+	}); err != nil {
+		return keyCredentialConflict(err)
+	}
+	return tx.Commit(ctx)
+}
+
+// keyCredentialConflict maps key-credential unique races: username
+// collisions refuse the signup, key collisions ask the caller to mint a
+// fresh key and retry (158-bit entropy makes this near-impossible).
+func keyCredentialConflict(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if strings.Contains(pgErr.ConstraintName, "key_lookup") {
+			return domain.ErrKeyCollision
+		}
+		return domain.ErrUsernameTaken
+	}
+	return err
+}
+
+// FindKeyCredentialByUsername returns the credential for a username hash,
+// or false when no account uses it.
+func (s *PGStore) FindKeyCredentialByUsername(ctx context.Context, usernameHash string) (domain.KeyCredential, bool, error) {
+	row, err := account.New(s.pool).FindKeyCredentialByUsername(ctx, usernameHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.KeyCredential{}, false, nil
+		}
+		return domain.KeyCredential{}, false, err
+	}
+	return toKeyCredential(row), true, nil
+}
+
+// FindKeyCredentialByLookup returns the credential for a key lookup, or
+// false when no account holds it.
+func (s *PGStore) FindKeyCredentialByLookup(ctx context.Context, lookup string) (domain.KeyCredential, bool, error) {
+	row, err := account.New(s.pool).FindKeyCredentialByLookup(ctx, lookup)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.KeyCredential{}, false, nil
+		}
+		return domain.KeyCredential{}, false, err
+	}
+	return toKeyCredential(row), true, nil
 }

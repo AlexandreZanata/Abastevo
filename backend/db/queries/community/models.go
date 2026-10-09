@@ -70,6 +70,7 @@ type CommunityObservation struct {
 	LocationVerdict    pgtype.Text        `json:"location_verdict"`
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
 }
 
 type CommunityObservationDecision struct {
@@ -95,6 +96,20 @@ type CommunityObservationSignal struct {
 	NeedsReview    bool               `json:"needs_review"`
 	PolicyVersion  string             `json:"policy_version"`
 	ComputedAt     pgtype.Timestamptz `json:"computed_at"`
+}
+
+type CommunityPhotoCapture struct {
+	ID                pgtype.UUID        `json:"id"`
+	ContributorRef    string             `json:"contributor_ref"`
+	KeyID             string             `json:"key_id"`
+	ClientCaptureID   string             `json:"client_capture_id"`
+	StationID         pgtype.UUID        `json:"station_id"`
+	IssuedAt          pgtype.Timestamptz `json:"issued_at"`
+	CameraExpiresAt   pgtype.Timestamptz `json:"camera_expires_at"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	PolicyVersion     string             `json:"policy_version"`
+	EvidenceSessionID pgtype.UUID        `json:"evidence_session_id"`
+	CapturedAt        pgtype.Timestamptz `json:"captured_at"`
 }
 
 type CommunityProjectionInput struct {
@@ -138,4 +153,23 @@ type DirectoryStation struct {
 	CurrentQuality    pgtype.Text        `json:"current_quality"`
 	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type FeedbackRating struct {
+	ID        pgtype.UUID        `json:"id"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	StationID pgtype.UUID        `json:"station_id"`
+	Product   string             `json:"product"`
+	Stars     int16              `json:"stars"`
+	Revision  int32              `json:"revision"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type FeedbackRatingStat struct {
+	StationID    pgtype.UUID        `json:"station_id"`
+	Product      string             `json:"product"`
+	RatingsCount int64              `json:"ratings_count"`
+	StarsSum     int64              `json:"stars_sum"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }

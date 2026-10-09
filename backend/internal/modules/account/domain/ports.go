@@ -36,6 +36,10 @@ var (
 	ErrBindingInvalid        = errors.New("account: invalid binding request")
 	ErrKeyUnavailable        = errors.New("account: key verifier unavailable")
 	ErrKeyProofDenied        = errors.New("account: key proof denied")
+	ErrUsernameTaken         = errors.New("account: username already taken")
+	ErrUsernameInvalid       = errors.New("account: invalid username")
+	ErrKeyInvalid            = errors.New("account: unknown key or account")
+	ErrKeyCollision          = errors.New("account: key collision, retry")
 	ErrAddressLinked         = errors.New("account: address already linked")
 	ErrSessionReuse          = errors.New("account: refresh token reused")
 	ErrSessionRevoked        = errors.New("account: session family revoked")
@@ -145,6 +149,14 @@ func VerdictCode(err error) string {
 		return "key-unavailable"
 	case errors.Is(err, ErrKeyProofDenied):
 		return "key-proof-denied"
+	case errors.Is(err, ErrUsernameTaken):
+		return "username-taken"
+	case errors.Is(err, ErrUsernameInvalid):
+		return "username-invalid"
+	case errors.Is(err, ErrKeyInvalid):
+		return "key-invalid"
+	case errors.Is(err, ErrKeyCollision):
+		return "key-collision"
 	case errors.Is(err, ErrAddressLinked):
 		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):

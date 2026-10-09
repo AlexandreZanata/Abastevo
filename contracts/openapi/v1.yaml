@@ -193,6 +193,75 @@ paths:
                 existed: false
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/photo-captures:
+    post:
+      summary: Authorize camera capture inside the reviewed station area.
+      operationId: authorizePhotoCapture
+      tags: [community]
+      security: []
+      description: Signed proof, account gate and idempotency apply. No coordinates persist. Expired retries never renew camera permission.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Must equal client_capture_id.
+          schema: {type: string, minLength: 1, maxLength: 128}
+      requestBody:
+        required: true
+        description: Canonical station and transient fresh location claim.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [client_capture_id, station_id]
+              oneOf:
+                - required: [location]
+                  properties:
+                    development_preview: {const: false}
+                - required: [development_preview]
+                  properties:
+                    development_preview: {const: true}
+                  not: {required: [location]}
+              properties:
+                client_capture_id: {type: string, minLength: 1, maxLength: 128}
+                station_id: {type: string, format: uuid}
+                development_preview:
+                  type: boolean
+                  default: false
+                  description: Temporary debug UI validation; denied unless explicitly enabled with a bounded non-production server deadline. Gallery import is not a verified shutter or location claim.
+                location:
+                  $ref: '#/components/schemas/LocationEvidence'
+      responses:
+        '201':
+          description: Owner bound authorization; camera window two minutes, submission window twenty four hours.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [capture_id, station_id, issued_at, camera_expires_at, expires_at, policy_version]
+                properties:
+                  capture_id: {type: string, format: uuid}
+                  station_id: {type: string, format: uuid}
+                  issued_at: {type: string, format: date-time}
+                  camera_expires_at: {type: string, format: date-time}
+                  expires_at: {type: string, format: date-time}
+                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1]}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Location or account does not permit capture.
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: Capture authorization is unavailable.
   /v1/observations:
     post:
       summary: Submit one observation (signed, idempotent).
@@ -533,8 +602,8 @@ paths:
           example: ETHANOL
         - name: sort
           in: query
-          description: Recent anchor time descending or exact integer price ascending; station UUID breaks ties.
-          schema: {type: string, enum: [recent, cheapest], default: recent}
+          description: Recent anchor time descending, exact integer price ascending, or community star average descending/ascending (unrated stations sort last in both); station UUID breaks ties.
+          schema: {type: string, enum: [recent, cheapest, best, worst], default: recent}
           example: recent
         - name: limit
           in: query
@@ -658,6 +727,36 @@ paths:
                 generated_at: '2026-09-28T00:00:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/stations/by-cnpj/{cnpj}:
+    get:
+      summary: Resolve an existing station by its active CNPJ (anonymous, read only).
+      description: Does not create stations or grant representation. Unknown or retired identifiers return 404.
+      operationId: getStationByCnpj
+      tags: [directory]
+      security: []
+      parameters:
+        - name: cnpj
+          in: path
+          required: true
+          description: Normalized CNPJ with validated check digits, including alphanumeric identifiers.
+          schema: {type: string, minLength: 14, maxLength: 14, pattern: '^[A-Z0-9]{12}[0-9]{2}$'}
+          example: '04218406000104'
+      responses:
+        '200':
+          description: Canonical public station projection.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /v1/stations/{station_id}:
     get:
       summary: Station metadata with coordinate provenance (anonymous).
@@ -1615,6 +1714,70 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EmailCodeConsume'
+      responses:
+        '200':
+          description: Authenticated session with bearer tokens shown once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/accounts/keys:
+    post:
+      summary: Create an anonymous account with a server-issued key.
+      operationId: createKeyAccount
+      tags: [accounts]
+      security: []
+      description: >
+        Username plus a one-display 32-glyph account key; the key is the
+        only login secret (no email, provider or device key). Taken
+        usernames answer 409; nothing about the key persists beyond its
+        salted verifier.
+      requestBody:
+        required: true
+        description: Desired username handle.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyAccountCreate'
+      responses:
+        '201':
+          description: Account created; the key is shown exactly once.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeyAccountIssued'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/accounts/keys/login:
+    post:
+      summary: Open a session with the account key alone.
+      operationId: loginWithKey
+      tags: [accounts]
+      security: []
+      description: >
+        Key-only login issuing a standard rotating session. Unknown,
+        wrong and malformed keys share the key-invalid refusal.
+      requestBody:
+        required: true
+        description: The account key (separators and case tolerated).
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyAccountLogin'
       responses:
         '200':
           description: Authenticated session with bearer tokens shown once.
@@ -2870,7 +3033,7 @@ components:
       type: object
       additionalProperties: false
       description: Current comparable price facts; no media or attribution identifiers.
-      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version]
+      required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version, ratings_count]
       properties:
         station_id: {type: string, format: uuid}
         station_name: {type: string}
@@ -2886,6 +3049,15 @@ components:
         supporters: {type: integer, minimum: 0}
         confirmations: {type: integer, minimum: 0}
         version: {type: integer, minimum: 1}
+        ratings_count:
+          type: integer
+          minimum: 0
+          description: Community star ratings for the same station and fuel.
+        ratings_avg:
+          type: number
+          minimum: 1
+          maximum: 5
+          description: Mean community stars; absent when unrated.
     Money:
       description: >
         Exact price in thousandths of a real. Positive integer 1..1000000
@@ -2919,9 +3091,11 @@ components:
       description: >
         Backend wire vocabulary per D04. Legacy Android GASOLINE_PREMIUM
         (GASOLINA ADITIVADA) maps only through a named Android adapter in
-        P10 and never appears on the wire (A05).
+        P10 and never appears on the wire (A05). GASOLINE_PREMIUM_GRADE
+        is the distinct true premium gasoline grade (unit L), added for community
+        contributions; it does not imply an ANP survey observation.
       type: string
-      enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+      enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, GASOLINE_PREMIUM_GRADE]
       example: GASOLINE_ADDITIVED
     PriceCondition:
       description: >
@@ -3493,6 +3667,41 @@ components:
           type: string
           description: Single-use login nonce bound to this request.
           example: n-07
+    KeyAccountCreate:
+      description: Anonymous account signup handle (3-20 lowercase alphanumerics, leading letter).
+      type: object
+      required: [username]
+      example:
+        username: ana123
+      properties:
+        username:
+          type: string
+          pattern: '^[a-z][a-z0-9]{2,19}$'
+          example: ana123
+    KeyAccountIssued:
+      description: Created username plus the one-display 32-glyph account key.
+      type: object
+      required: [username, account_key]
+      properties:
+        username:
+          type: string
+          pattern: '^[a-z][a-z0-9]{2,19}$'
+          example: ana123
+        account_key:
+          type: string
+          pattern: '^[a-hj-km-np-z2-9]{32}$'
+          example: abcdefghjkmnpqrstuvwxyz23456789a
+    KeyAccountLogin:
+      description: Key-only login; separators and case tolerated client-side.
+      type: object
+      required: [account_key]
+      example:
+        account_key: abcdefghjkmnpqrstuvwxyz23456789a
+      properties:
+        account_key:
+          type: string
+          minLength: 1
+          example: abcdefghjkmnpqrstuvwxyz23456789a
     Session:
       description: Short-lived access with a rotating refresh family (absolute 30-day ceiling).
       type: object
@@ -3923,6 +4132,11 @@ components:
             qualifier_id:
               type: [string, "null"]
               example: null
+        photo_capture_id:
+          type: [string, "null"]
+          format: uuid
+          description: Proven capture shared by this reviewed subset. Requires ready owner evidence and immutable claimed_captured_at; owner, key, station and evidence session must match.
+          example: c0000000-0000-4000-8000-000000000001
         evidence_id:
           type: [string, "null"]
           format: uuid
@@ -4185,6 +4399,20 @@ components:
           pattern: '^[0-9a-fA-F]{64}$'
           description: Client hash claim, verified after upload.
           example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        photo_capture_id:
+          type: string
+          format: uuid
+          description: Optional capture envelope; station_id and captured_at must accompany it. Legacy uploads omit all three fields.
+          example: c0000000-0000-4000-8000-000000000001
+        station_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        captured_at:
+          type: string
+          format: date-time
+          description: Original camera capture time inside the receipt window, immutable on retries.
+          example: '2026-10-07T12:00:00.123Z'
     UploadReservation:
       description: Reserved session with a short direct PUT authorization.
       type: object
@@ -4215,6 +4443,11 @@ components:
           type: string
           format: date-time
           example: '2026-09-30T12:05:00Z'
+        session_expires_at:
+          type: string
+          format: date-time
+          description: Immutable reservation deadline, distinct from the short PUT authorization expiry.
+          example: '2026-10-08T12:00:00Z'
         max_bytes:
           type: integer
           example: 3145728

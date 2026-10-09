@@ -38,7 +38,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.StorageUsage
 import com.anpfuel.domain.model.UserPreferences
@@ -145,11 +147,17 @@ private fun SettingsContent(
     ) { innerPadding ->
         when {
             uiState.isLoading -> {
-                LoadingState(
+                SkeletonGroup(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding),
-                )
+                        .padding(innerPadding)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    SkeletonLine(width = 160.dp, height = 20.dp)
+                    SkeletonCard(height = 120.dp)
+                    SkeletonLine(width = 160.dp, height = 20.dp)
+                    SkeletonCard(height = 180.dp)
+                }
             }
 
             uiState.error != null && !uiState.hasLoaded -> {

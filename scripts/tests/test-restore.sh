@@ -131,7 +131,7 @@ fi
 # 5. Replay the ledger on the restored snapshot with the real binary.
 (
     cd backend
-    GOTOOLCHAIN=go1.27.1 go build -o "$WORK/ops" ./cmd/ops
+    GOTOOLCHAIN=go1.27.2 go build -o "$WORK/ops" ./cmd/ops
 )
 capture env -i PATH="/usr/bin:/bin" HOME="$HOME" \
         ANPFUEL_VALIDATION_PROJECT="${ANPFUEL_VALIDATION_PROJECT:-}" \
