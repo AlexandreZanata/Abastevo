@@ -88,9 +88,10 @@ func (r *benchRng) below(n uint64) uint64 { return r.next() % n }
 // seedCensus COPYs n reviewed stations: 70% across 5 dense cities, the
 // rest over 195 sparse ones; 60% of points cluster near the dense query
 // center, the rest spread over a Brazil-wide box. Returns dense/sparse
-// municipality codes plus the COPY duration.
-func seedCensus(b *testing.B, pool *pgxpool.Pool, n int) (dense, sparse string, copyMs int64) {
-	b.Helper()
+// municipality codes plus the COPY duration. testing.TB keeps the shape
+// reusable from RST-15 correctness tests and benchmarks alike.
+func seedCensus(tb testing.TB, pool *pgxpool.Pool, n int) (dense, sparse string, copyMs int64) {
+	tb.Helper()
 	ctx := context.Background()
 	rng := benchRng(0xC3555)
 	type stationRow struct {
@@ -164,11 +165,11 @@ func seedCensus(b *testing.B, pool *pgxpool.Pool, n int) (dense, sparse string, 
 		for range rows[base:end] {
 			if _, err := results.Exec(); err != nil {
 				results.Close()
-				b.Fatalf("seed insert: %v", err)
+				tb.Fatalf("seed insert: %v", err)
 			}
 		}
 		if err := results.Close(); err != nil {
-			b.Fatalf("seed batch: %v", err)
+			tb.Fatalf("seed batch: %v", err)
 		}
 	}
 	return best, worst, time.Since(started).Milliseconds()
