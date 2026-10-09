@@ -80,6 +80,26 @@ func TestErrorEnvelopeShape(t *testing.T) {
 	}
 }
 
+func TestWriteJSONWithETagDecouplesIdentity(t *testing.T) {
+	stable := []byte(`{"items":[{"id":1}]}`)
+	first := []byte(`{"items":[{"id":1}],"generated_at":"2026-10-09T12:00:00Z"}`)
+	second := []byte(`{"items":[{"id":1}],"generated_at":"2026-10-09T12:00:01Z"}`)
+	etag := ETag(stable)
+	r1 := httptest.NewRequest("GET", "/v1/stations", nil)
+	w1 := httptest.NewRecorder()
+	WriteJSONWithETag(w1, r1, 200, "public, max-age=60", first, etag)
+	if w1.Code != 200 || w1.Header().Get("ETag") != etag {
+		t.Fatalf("first render = %d etag %q", w1.Code, w1.Header().Get("ETag"))
+	}
+	r2 := httptest.NewRequest("GET", "/v1/stations", nil)
+	r2.Header.Set("If-None-Match", etag)
+	w2 := httptest.NewRecorder()
+	WriteJSONWithETag(w2, r2, 200, "public, max-age=60", second, etag)
+	if w2.Code != 304 || w2.Body.Len() != 0 {
+		t.Fatalf("volatile revalidation = %d bytes %d, want bodiless 304", w2.Code, w2.Body.Len())
+	}
+}
+
 func TestETagConditional(t *testing.T) {
 	body := []byte(`{"items":[]}`)
 	etag := ETag(body)
