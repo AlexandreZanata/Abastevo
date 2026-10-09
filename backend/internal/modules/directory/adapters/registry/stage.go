@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 )
@@ -85,6 +86,12 @@ type Assertion struct {
 // PGStore implements Store with the generated directory queries.
 type PGStore struct {
 	Q *directory.Queries
+}
+
+// NewPGStore opens staging ownership on pool without touching query
+// text or migration state.
+func NewPGStore(pool *pgxpool.Pool) *PGStore {
+	return &PGStore{Q: directory.New(pool)}
 }
 
 func newUUID() string {

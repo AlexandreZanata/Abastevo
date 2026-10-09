@@ -126,6 +126,7 @@ fn knobs_vary_independently() {
         quarantine_every: 0,
         long_field_every: 0,
         missing_location_every: 0,
+        serial_offset: 0,
     };
     let clean = generate(&base);
     assert_eq!(clean.oracle.duplicates, 0);
@@ -149,6 +150,7 @@ fn knobs_vary_independently() {
 
     let missing = generate(&DatasetProfile {
         missing_location_every: 10,
+        serial_offset: 0,
         ..base
     });
     assert!(missing.oracle.without_location > 0);
@@ -355,4 +357,36 @@ fn committed_tiny_fixtures_match_frozen_oracle() {
         .sum();
     assert_eq!(total, 1000);
     assert_eq!(trace["strata"]["empty_requests"].as_u64().unwrap(), 500);
+}
+
+#[test]
+fn serial_offsets_yield_disjoint_identity_sets() {
+    let edition = |offset: u64| {
+        let mut profile = tiny_profile();
+        profile.rows = 300;
+        profile.cities = 5;
+        profile.seed = 7;
+        profile.serial_offset = offset;
+        generate(&profile)
+    };
+    let first = edition(0);
+    let second = edition(1000);
+    let batch_a = parse_generated(&first.csv, &first.aliases_json);
+    let batch_b = parse_generated(&second.csv, &second.aliases_json);
+    let keys_a: HashSet<&str> = batch_a
+        .accepted
+        .iter()
+        .map(|row| row.source_key.as_str())
+        .collect();
+    let keys_b: HashSet<&str> = batch_b
+        .accepted
+        .iter()
+        .map(|row| row.source_key.as_str())
+        .collect();
+    assert_eq!(keys_a.len(), batch_a.accepted.len());
+    assert!(
+        keys_a.is_disjoint(&keys_b),
+        "editions must not share identities"
+    );
+    assert_eq!(batch_a.counts.accepted, batch_b.counts.accepted);
 }

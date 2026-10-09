@@ -21,6 +21,7 @@ fn profile(rows: usize, seed: u64) -> DatasetProfile {
         quarantine_every: 60,
         long_field_every: 150,
         missing_location_every: 0,
+        serial_offset: 0,
     }
 }
 
@@ -227,6 +228,7 @@ fn heavy_variants_keep_accounting() {
         quarantine_every: 0,
         long_field_every: 0,
         missing_location_every: 0,
+        serial_offset: 0,
     };
     let clean = generate(&base);
     let clean_run = run_pipeline(&clean.csv, &clean.aliases_json, usize::MAX, &dir);

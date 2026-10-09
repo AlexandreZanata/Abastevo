@@ -44,6 +44,9 @@ pub struct DatasetProfile {
     pub long_field_every: usize,
     /// Sidecar location missing every N accepted stations (0 disables).
     pub missing_location_every: usize,
+    /// Starting establishment serial (0 default). Spacing offsets beyond
+    /// rows yields disjoint identity sets across editions.
+    pub serial_offset: u64,
 }
 
 /// Committed correctness set: 30 rows over 5 cities with at least one
@@ -60,6 +63,7 @@ pub fn tiny_profile() -> DatasetProfile {
         quarantine_every: 9,
         long_field_every: 15,
         missing_location_every: 7,
+        serial_offset: 0,
     }
 }
 
@@ -75,6 +79,7 @@ pub fn representative_profile() -> DatasetProfile {
         quarantine_every: 1000,
         long_field_every: 5000,
         missing_location_every: 20,
+        serial_offset: 0,
     }
 }
 
@@ -90,6 +95,7 @@ pub fn stress_100k_profile() -> DatasetProfile {
         quarantine_every: 0,
         long_field_every: 5000,
         missing_location_every: 20,
+        serial_offset: 0,
     }
 }
 
@@ -106,6 +112,7 @@ pub fn stress_1m_profile() -> DatasetProfile {
         quarantine_every: 0,
         long_field_every: 5000,
         missing_location_every: 20,
+        serial_offset: 0,
     }
 }
 
@@ -279,7 +286,7 @@ pub fn generate(profile: &DatasetProfile) -> GeneratedDataset {
     let mut duplicates = 0usize;
     let mut quarantined = 0usize;
     let mut quarantine_injections = 0usize;
-    let mut serial: u64 = 0;
+    let mut serial: u64 = profile.serial_offset;
     // Round-robin cities stay even for tiny correctness sets; larger
     // universes reuse the RST-07 Zipf-ish skew as aggregate shape.
     let skewed = profile.cities > 8;

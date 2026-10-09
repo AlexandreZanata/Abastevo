@@ -6,6 +6,7 @@
 //! Usage: bench_datasets <tiny|representative|stress-100k|stress-1M>
 //!   <out.csv> [--aliases out.json] [--oracle out.json]
 //!   [--trace <uniform|proportional|skew-80-20|hot-90> <total> <out.json>]
+//!   [--serial-offset N]
 
 use station_prep::{
     alias_table_json, generate, representative_profile, request_trace, stress_100k_profile,
@@ -15,7 +16,7 @@ use std::io::Write;
 
 fn usage() -> ! {
     eprintln!(
-        "usage: bench_datasets <tiny|representative|stress-100k|stress-1M> <out.csv> [--aliases out.json] [--oracle out.json] [--trace <uniform|proportional|skew-80-20|hot-90> <total> <out.json>]"
+        "usage: bench_datasets <tiny|representative|stress-100k|stress-1M> <out.csv> [--aliases out.json] [--oracle out.json] [--trace <uniform|proportional|skew-80-20|hot-90> <total> <out.json>] [--serial-offset N]"
     );
     std::process::exit(2);
 }
@@ -35,13 +36,25 @@ fn main() {
     if args.len() < 3 {
         usage();
     }
-    let profile = match args[1].as_str() {
+    let mut profile = match args[1].as_str() {
         "tiny" => tiny_profile(),
         "representative" => representative_profile(),
         "stress-100k" => stress_100k_profile(),
         "stress-1M" => stress_1m_profile(),
         _ => usage(),
     };
+    // Pre-pass: serial offsets shift establishment identities before
+    // generation so editions stay disjoint.
+    let mut scan = 3;
+    while scan < args.len() {
+        if args[scan] == "--serial-offset" {
+            if scan + 1 >= args.len() {
+                usage();
+            }
+            profile.serial_offset = args[scan + 1].parse().unwrap_or_else(|_| usage());
+        }
+        scan += 1;
+    }
     let generated = generate(&profile);
     std::fs::write(&args[2], &generated.csv).expect("csv");
     let mut position = 3;
@@ -98,6 +111,13 @@ fn main() {
                 let total: usize = args[position + 2].parse().expect("total");
                 trace_spec = Some((distribution, total, args[position + 3].clone()));
                 position += 3;
+            }
+            "--serial-offset" => {
+                // Applied in the pre-pass above; skipped here.
+                position += 1;
+                if position >= args.len() {
+                    usage();
+                }
             }
             _ => usage(),
         }
