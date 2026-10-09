@@ -1,10 +1,17 @@
 # Rust station preparation module: national catalog and trustworthy locations
 
-Status: PLANNED — implementation not authorized by this planning artifact.
+Status: planning overlay; implementation acceptance is recorded per task in
+current PROGRESS and linked evidence. Additional RST-10–21 benchmarks are PLANNED.
 Research date: 2026-10-09. User requested the plan alongside the separate premium
 fuel implementation. This is an execution overlay for existing P25–P29 catalog
 work, after the app-first P34–P38 source checkpoints; it does not replace their
 IDs, close gates, create issues, deploy, or implement a second Directory.
+
+Extension 2026-10-09: [professional performance campaign](RUST_STATION_BENCHMARK_PLAN.md)
+adds twelve bounded phases for ingestion, database construction and geographically
+distributed queries. RST-00–05 now have separate audit/contract/implementation
+records; this document does not replace their evidence or accept concurrent
+RST-06 work. New phases do not imply benchmark execution or measured speedups.
 
 ## Outcome and scope
 
@@ -320,6 +327,8 @@ limits and next task. Remote publication/deployment are separate final steps.
   measured census size plus 100k/1M stress records, skewed cities and realistic
   history. Compare Go/current baseline vs Rust, index candidates and optional
   read-projection partitions; use identical semantics and output checksums.
+  Keep this ID as a bounded pilot. RST-10–21 below expand the full campaign;
+  RST-07 alone cannot certify national capacity or select production partitions.
 - **RST-08 — incremental operations:** bounded discovery schedule using existing
   jobs, conditional downloads, complete snapshots, 429/backoff/circuit stop,
   checksums/leases/fencing, source outage, crash and recovery. If Rust networking
@@ -330,7 +339,50 @@ limits and next task. Remote publication/deployment are separate final steps.
   locations, source freshness and a staged rollout/rollback runbook. Canonical
   identity and historical facts survive removal/rebuild of the new read view.
 
+### Additional ingestion/database benchmark phases
+
+Full dependencies, acceptance, metric dictionary and reproducible method live in
+[the performance campaign](RUST_STATION_BENCHMARK_PLAN.md). All twelve phases
+below are PLANNED. Select one task at a time; protocol/corpus/harness work can
+start after its own dependencies without changing the RST-06 implementation.
+
+- **RST-10 — protocol and budgets:** freeze hardware, workload/run manifest,
+  resource ceilings, stop conditions, measurement layers and provisional SLOs.
+- **RST-11 — datasets and geography:** deterministic representative/100k/1M
+  fixtures, history, correctness oracle, city strata and uniform/skew/hot-city
+  request distributions with explicit weights and zero-row municipalities.
+- **RST-12 — qualified harness:** raw samples/histograms, per-stage telemetry,
+  SQL/API separation, closed/open load and error/drop/timeout accounting tests.
+- **RST-13 — Rust preparation scaling:** parse/normalize/join/dedup/spill/output
+  timing, rows/s, CPU, peak memory and disk, full/replay/delta equivalence.
+- **RST-14 — database construction:** owned staging/application/query-ready
+  timing, index/statistics build, incremental writes, WAL/locks/storage cost.
+- **RST-15 — city search distribution:** stable pagination, sparse/dense/empty
+  cities, prepared plans, cold/warm/rotating workloads and per-stratum tails.
+- **RST-16 — spatial and eligibility cost:** GiST/radius/cross-border reads,
+  distance oracle and separate authoritative 150m/fix-integrity performance.
+- **RST-17 — physical design comparison:** baseline indexes versus rebuildable
+  UF/hash read partitions, history candidates, pruning and maintenance costs.
+- **RST-18 — mixed load and capacity:** simultaneous reads/imports, offered vs
+  achieved throughput, saturation knee, backlog/freshness and safe headroom.
+- **RST-19 — fault/recovery campaign:** worker/DB/disk/source failures, replay,
+  duplicates, recovery time and no lost/incorrectly published data.
+- **RST-20 — soak and efficiency:** bounded pilot then provisioned 24h/48h
+  campaigns, maintenance/growth, deployment-class limits and measured unit costs.
+- **RST-21 — decision and regression tiers:** raw evidence/exportable report,
+  accepted/rejected/inconclusive options and scoped CI vs manual lab cadence.
+
+This campaign refines existing ROADMAP P29-T01; it does not create a second
+catalog acceptance gate or close P29-T02/G29/G09. Database read layout remains a
+measured decision; no per-city database/table or canonical identity rewrite.
+
 ## Benchmark and acceptance manifest
+
+The detailed acceptance manifest is [RST-10–21](RUST_STATION_BENCHMARK_PLAN.md),
+including phase prerequisites, metric units/denominators, geographic traffic
+mixes, error/censored-sample accounting, repetitions, uncertainty, isolated
+resource budgets and decision criteria. The following original targets remain
+provisional; do not report them as measured performance.
 
 Record wall time, CPU time, peak RSS, input bytes/rows, rows/sec, disk spill,
 output sizes, changed/no-op/quarantine counts, and DB WAL/lock/transaction impact.
@@ -342,7 +394,7 @@ Use 1/8/32 read clients and bounded imports on fixed stated hardware; compare
 Provisional laboratory targets, **not measured results or SLAs**: parser peak
 RSS <=256MiB on a specified representative snapshot, bounded two concurrent
 source streams, city first-page p95 <=100ms and nearby p95 <=150ms at eight
-clients on the documented workstation. RST-00/07 must revise these targets from
+clients on the documented workstation. RST-10 must revise/freeze these targets from
 real source size and target VPS limits. Partitioning needs a material measured
 benefit across the workload, including planning/maintenance/uniqueness costs;
 otherwise keep the simpler indexed baseline. Faster parsing cannot compensate
@@ -365,9 +417,12 @@ suite or new cron service merely because this plan names a future task.
 
 ## Handoff
 
-Use [the bounded implementation prompt](RUST_STATION_INGESTION_PROMPT.md) to start
-with RST-00, not the entire module. Existing source plans/contracts remain
+Use [the bounded implementation prompt](RUST_STATION_INGESTION_PROMPT.md) to select
+the next uncompleted task from verified current evidence, not the entire module.
+RST-10 is the new documentation/protocol entry for the benchmark extension;
+do not restart completed RST-00–05. Existing source plans/contracts remain
 canonical: [catalog plan](STATION_CATALOG_PLAN.md), [catalog contract](../product/STATION_CATALOG.md),
 [ANP ingestion](../backend/ANP_INGESTION.md), [test strategy](../backend/TEST_STRATEGY.md).
-This document was researched and checked as documentation only; no Rust crate,
-national data ingestion, database partition or reviewed coordinate was created.
+The original plan and this extension are documentation-only changes. Subsequent
+Rust/Go implementation has its own task evidence; no benchmark run, national
+ingestion, partition migration or location promotion is certified by this plan.
