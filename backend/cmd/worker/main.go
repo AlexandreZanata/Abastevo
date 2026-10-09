@@ -439,6 +439,10 @@ func run() error {
 			Store: &directoryregistry.PGStore{Q: dbdirectory.New(pool.Underlying())},
 			Canon: directoryadapters.RegistryCanonicalizer{Repo: directoryRepo},
 		},
+		"registry-discover": directoryjobs.Discover{
+			Store:  &directoryregistry.PGStore{Q: dbdirectory.New(pool.Underlying())},
+			Config: directoryregistry.ProductionAPIConfig(),
+		},
 		"suggestion-verify": directoryjobs.VerifySweep{
 			Store: &directoryadapters.IntakeStore{Q: dbdirectory.New(pool.Underlying())},
 			Resolve: func(ctx context.Context, cnpj, display string, address map[string]string) (string, string, string, error) {
@@ -752,6 +756,13 @@ func run() error {
 			Interval: 24 * time.Hour, Enabled: false, Reason: "P25 pending: no live source access yet; staging stays operator-triggered",
 			Build: func(period string) map[string]any {
 				return map[string]any{"version": 1, "source": "registry-csv", "snapshot": period}
+			},
+		},
+		{
+			Name: "registry-discover-daily", Kind: "registry-discover", Version: 1,
+			Interval: 24 * time.Hour, Enabled: false, Reason: "P25 pending: no live source access yet; discovery stays operator-triggered",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "snapshot": "api:daily:" + period}
 			},
 		},
 		{
