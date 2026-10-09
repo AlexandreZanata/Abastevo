@@ -39,7 +39,13 @@ class PhotoProofTransport internal constructor(
     private var registeredFingerprint: String?=null
 
     fun ownerScope(): String? = keys.fingerprint()?.let { fingerprint ->
-        val account=auth.currentSession()?.accountId
+        // Access expiry affects authority, never the retained command's owner identity.
+        val account=when(val state=auth.rehydrate()) {
+            is AuthFlow.AuthState.Active -> state.session.accountId
+            is AuthFlow.AuthState.NeedsRefresh -> state.session.accountId
+            is AuthFlow.AuthState.PendingKeyAccount -> return null
+            AuthFlow.AuthState.LoggedOut -> null
+        }
         (account?.let { "account:$it:" } ?: "anonymous:")+fingerprint
     }
 
