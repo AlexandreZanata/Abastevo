@@ -22,6 +22,8 @@ import time
 import urllib.request
 import urllib.error
 import socket
+import http.client
+import ssl
 
 from abastevo_guard import violations
 
@@ -31,6 +33,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 HTTP = urllib.request.build_opener(NoRedirect())
 GUARD = Path(__file__).with_name("abastevo_guard.py")
+CONNECTIONS = threading.local()
 
 
 def snapshot():
@@ -44,16 +47,26 @@ def snapshot():
 
 def fetch(path, required, deadline):
     started = time.monotonic()
+    success = False
     try:
-        request = urllib.request.Request(ORIGIN + path, headers={"User-Agent": "abastevo-rst-qualified/1", "Cache-Control": "no-cache"})
-        with HTTP.open(request, timeout=deadline) as response:
+        if not getattr(CONNECTIONS, "http", None):
+            CONNECTIONS.http = http.client.HTTPSConnection("teste.abastevo.com.br", timeout=deadline,
+                                                          context=ssl.create_default_context())
+        connection = CONNECTIONS.http
+        connection.request("GET", path, headers={"User-Agent": "abastevo-rst-qualified/1", "Cache-Control": "no-cache"})
+        with connection.getresponse() as response:
             body = response.read(2 * 1024 * 1024 + 1)
             if len(body) > 2 * 1024 * 1024:
+                connection.close()
+                CONNECTIONS.http = None
                 return "oversize", (time.monotonic() - started) * 1000
+            if response.status != 200:
+                return str(response.status), (time.monotonic() - started) * 1000
             decoded = json.loads(body)
             good = response.status == 200 and isinstance(decoded, dict) and required in decoded
             if required == "items":
                 good = good and isinstance(decoded["items"], list)
+            success = good
             return "200" if good else "semantic", (time.monotonic() - started) * 1000
     except urllib.error.HTTPError as exc:
         return str(exc.code), (time.monotonic() - started) * 1000
@@ -61,6 +74,12 @@ def fetch(path, required, deadline):
         return "timeout", (time.monotonic() - started) * 1000
     except Exception:
         return "error", (time.monotonic() - started) * 1000
+    finally:
+        # No hidden retry: a broken transport remains a counted failure.
+        # Fully read successful responses can reuse the worker's connection.
+        if not success and getattr(CONNECTIONS, "http", None):
+            CONNECTIONS.http.close()
+            CONNECTIONS.http = None
 
 
 def percentile(values, fraction):
@@ -223,9 +242,9 @@ def run(args):
         guard_file.close()
     hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in out.glob("*.csv")}
     hashes["guard.jsonl"] = hashlib.sha256((out / "guard.jsonl").read_bytes()).hexdigest()
-    manifest = {"format": "abastevo-https-pilot-v1", "wall_end": datetime.now(timezone.utc).isoformat(),
+    manifest = {"format": "abastevo-https-pilot-v2", "wall_end": datetime.now(timezone.utc).isoformat(),
                 "origin": ORIGIN, "layer": "client HTTPS including TLS/edge/network", "cache": "client asks no-cache; edge behavior unchanged",
-                "transport": "Python urllib, TLS connection per request; no keep-alive claim",
+                "transport": "Python http.client, one reusable verified TLS/HTTP1.1 connection per worker; max8; no automatic retry",
                 "guard_sha256": hashlib.sha256(GUARD.read_bytes()).hexdigest(),
                 "driver_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 "parameters": vars(args), "routes": routes, "hashes": hashes, "summaries": summaries,

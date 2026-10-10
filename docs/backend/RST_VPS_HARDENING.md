@@ -219,3 +219,22 @@ National route qualification initially stopped on HTTP200/detail because the
 trace incorrectly expected `id`; the public contract uses `station_id`.
 The trace was corrected before capacity measurement. The failed raw diagnostic
 is retained and excluded from qualified trials. No protection was weakened.
+
+### Separate pooled-transport campaign (H14)
+
+The v1 external campaign stopped at its first timeout (5req/s warm-up, 15/16
+successes). Do not discard or pool this failed trial. Post-stop VPS aggregation
+returned only numeric log summaries: 152 API responses, all200, max server duration
+324ms; one separately sampled internal public HTTP request took28ms versus270ms
+through client HTTPS. This suggests an external-path/connection contribution,
+not proof of the exact timeout cause. No log records were exported.
+
+A separate v2 campaign uses one reusable verified HTTP1.1/TLS connection per
+worker (<=8), matching persistent-client intent more closely than v1's new TLS
+connection per request. This is a different transport scenario, not a retry or a
+relaxed acceptance budget. Every failed request remains counted and still stops
+scheduling; failed connections close without hidden retries. Deadline3s, p95
+hypothesis500ms, resource guards, rates, workload and sample rules are unchanged.
+Transport regressions prove reuse on success and exactly one request on timeout.
+The failed v1 remains an unaccepted connection-churn diagnostic; v2 cannot certify
+v1 behavior, mobile network reliability or 24/48h stability.

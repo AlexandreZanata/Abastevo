@@ -14,6 +14,7 @@ import guarded_http
 import guard_job
 import fetch_official_registry
 import gzip
+from unittest.mock import MagicMock
 
 
 def healthy():
@@ -23,6 +24,23 @@ def healthy():
 
 
 class SafetyTests(unittest.TestCase):
+    def test_https_transport_reuses_success_and_never_retries_timeout(self):
+        guarded_http.CONNECTIONS.http = None
+        conn = MagicMock()
+        response = conn.getresponse.return_value.__enter__.return_value
+        response.status = 200
+        response.read.return_value = b'{"items":[]}'
+        with patch.object(guarded_http.http.client, "HTTPSConnection", return_value=conn) as factory:
+            self.assertEqual(guarded_http.fetch("/v1/stations", "items", 3)[0], "200")
+            self.assertEqual(guarded_http.fetch("/v1/stations", "items", 3)[0], "200")
+            factory.assert_called_once()
+            self.assertEqual(conn.request.call_count, 2)
+            conn.getresponse.side_effect = TimeoutError()
+            self.assertEqual(guarded_http.fetch("/v1/stations", "items", 3)[0], "timeout")
+            self.assertEqual(conn.request.call_count, 3, "no implicit retry")
+            conn.close.assert_called_once()
+            self.assertIsNone(guarded_http.CONNECTIONS.http)
+
     def test_official_freeze_rejects_oversize_gzip_and_ambiguous_identity(self):
         with self.assertRaises(ValueError):
             fetch_official_registry.decode_bounded(gzip.compress(b"X" * 1000), 100)
