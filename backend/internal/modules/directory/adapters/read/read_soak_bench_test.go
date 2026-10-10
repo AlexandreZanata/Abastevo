@@ -231,30 +231,42 @@ func BenchmarkSoakPilot(b *testing.B) {
 		point := soakPoint{elapsedS: now, readP95: p95, readErrs: errs, importLagMS: lag}
 		point.poolAcquired = stat.AcquiredConns()
 		var walNow string
-		if err := pool.QueryRow(ctx, "SELECT pg_current_wal_lsn()::text").Scan(&walNow); err == nil {
-			var walBytes int64
-			if err := pool.QueryRow(ctx, `SELECT pg_wal_lsn_diff($1::pg_lsn,$2::pg_lsn)`, walNow, walStart).Scan(&walBytes); err == nil {
-				point.walMiB = float64(walBytes) / 1048576
-			}
+		if err := pool.QueryRow(ctx, "SELECT pg_current_wal_lsn()::text").Scan(&walNow); err != nil {
+			b.Fatal(err)
 		}
+		var walBytes int64
+		if err := pool.QueryRow(ctx, `SELECT pg_wal_lsn_diff($1::pg_lsn,$2::pg_lsn)`, walNow, walStart).Scan(&walBytes); err != nil {
+			b.Fatal(err)
+		}
+		point.walMiB = float64(walBytes) / 1048576
 		var tableBytes int64
-		if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(pg_total_relation_size(c.oid)),0)
-			FROM pg_class c WHERE c.relname IN ('directory_stations','registry_assertions')`).Scan(&tableBytes); err == nil {
-			point.tableMiB = float64(tableBytes) / 1048576
+		// Table bytes exclude indexes; historical total_relation_size double-counted them.
+		if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(pg_table_size(c.oid)),0)
+ FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='public' AND c.relname IN ('directory_stations','registry_assertions')`).Scan(&tableBytes); err != nil {
+			b.Fatal(err)
 		}
+		point.tableMiB = float64(tableBytes) / 1048576
 		var indexBytes int64
-		if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(pg_indexes_size('directory_stations')),0)
-			+ COALESCE((SELECT SUM(pg_indexes_size(c.oid)) FROM pg_class c
-			WHERE c.relname IN ('registry_assertions')),0)`).Scan(&indexBytes); err == nil {
-			point.indexMiB = float64(indexBytes) / 1048576
+		if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(pg_indexes_size(c.oid)),0)
+ FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='public' AND c.relname IN ('directory_stations','registry_assertions')`).Scan(&indexBytes); err != nil {
+			b.Fatal(err)
 		}
-		_ = pool.QueryRow(ctx, `SELECT COALESCE(SUM(n_dead_tup),0) FROM pg_stat_user_tables
-			WHERE relname IN ('directory_stations','registry_assertions')`).Scan(&point.deadTup)
-		_ = pool.QueryRow(ctx, `SELECT count(*) FROM registry_source_runs
-			WHERE state NOT IN ('complete','failed')`).Scan(&point.backlog)
-		_ = pool.QueryRow(ctx, `SELECT COALESCE((SELECT SUM(checkpoints_timed + checkpoints_req)
-			FROM pg_stat_checkpointer), (SELECT SUM(checkpoints_timed + checkpoints_req)
-			FROM pg_stat_bgwriter))`).Scan(&point.checkpoints)
+		point.indexMiB = float64(indexBytes) / 1048576
+		if err := pool.QueryRow(ctx, `SELECT COALESCE(SUM(n_dead_tup),0) FROM pg_stat_user_tables
+ WHERE relname IN ('directory_stations','registry_assertions')`).Scan(&point.deadTup); err != nil {
+			b.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM registry_source_runs
+ WHERE state NOT IN ('complete','failed')`).Scan(&point.backlog); err != nil {
+			b.Fatal(err)
+		}
+		var err error
+		point.checkpoints, err = completedCheckpointCount(ctx, pool)
+		if err != nil {
+			b.Fatal(err)
+		}
 		return point
 	}
 
