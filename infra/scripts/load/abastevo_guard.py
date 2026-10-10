@@ -70,7 +70,8 @@ def violations(snapshot, baseline):
     if snapshot["available_mib"] < 12288:
         reasons.append("host available memory below 12 GiB reserve")
     if snapshot["load1"] > snapshot["host_cpus"] * 0.65:
-        reasons.append("host load above 65% CPU reserve")
+        # Load includes runnable and uninterruptible work, not CPU utilization.
+        reasons.append("host load1 above conservative 0.65 x CPU-count threshold")
     if snapshot["disk_free_mib"] < 51200:
         reasons.append("host free disk below 50 GiB reserve")
     if set(snapshot["containers"]) != set(baseline["containers"]):

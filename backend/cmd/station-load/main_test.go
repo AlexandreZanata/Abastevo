@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
 	"io"
 	"testing"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestRetryOnlyTransientPersistenceFailures(t *testing.T) {
@@ -41,5 +43,12 @@ func TestPreparedRetryIsBoundedAndCancellationStopsBackoff(t *testing.T) {
 	err = retryPreparedOperation(context.Background(), 3, func() error { calls++; return expected })
 	if calls != 1 || !errors.Is(err, expected) {
 		t.Fatalf("integrity failure attempts=%d err=%v", calls, err)
+	}
+}
+
+func TestMalformedPreparedManifestIsNotATransientDisconnect(t *testing.T) {
+	_, err := registry.LoadPreparedBatch(context.Background(), nil, []byte(`{"format_version":`), nil)
+	if err == nil || retryable(err) {
+		t.Fatalf("integrity failure must never retry: %v", err)
 	}
 }
