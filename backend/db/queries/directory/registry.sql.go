@@ -11,6 +11,53 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attachPreparedAssertion = `-- name: AttachPreparedAssertion :one
+INSERT INTO registry_run_assertions (run_id, assertion_id, supersedes_checksum)
+SELECT $1, a.id, $2 FROM registry_assertions a
+WHERE a.source = 'station-prep' AND a.source_key = $3 AND a.checksum = $4
+ON CONFLICT (run_id, assertion_id) DO NOTHING
+RETURNING assertion_id
+`
+
+type AttachPreparedAssertionParams struct {
+	RunID              pgtype.UUID `json:"run_id"`
+	SupersedesChecksum string      `json:"supersedes_checksum"`
+	SourceKey          string      `json:"source_key"`
+	Checksum           string      `json:"checksum"`
+}
+
+func (q *Queries) AttachPreparedAssertion(ctx context.Context, arg AttachPreparedAssertionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, attachPreparedAssertion,
+		arg.RunID,
+		arg.SupersedesChecksum,
+		arg.SourceKey,
+		arg.Checksum,
+	)
+	var assertion_id pgtype.UUID
+	err := row.Scan(&assertion_id)
+	return assertion_id, err
+}
+
+const bindPreparedManifest = `-- name: BindPreparedManifest :one
+UPDATE registry_source_runs SET prepared_manifest_sha256 = $1
+WHERE id = $2 AND checksum = $3
+  AND (prepared_manifest_sha256 = '' OR prepared_manifest_sha256 = $1)
+RETURNING id
+`
+
+type BindPreparedManifestParams struct {
+	ManifestSha256 string      `json:"manifest_sha256"`
+	ID             pgtype.UUID `json:"id"`
+	Checksum       string      `json:"checksum"`
+}
+
+func (q *Queries) BindPreparedManifest(ctx context.Context, arg BindPreparedManifestParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, bindPreparedManifest, arg.ManifestSha256, arg.ID, arg.Checksum)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const cancelSuggestion = `-- name: CancelSuggestion :execrows
 UPDATE station_suggestions
 SET state = 'cancelled'
@@ -36,6 +83,19 @@ SELECT count(*) FROM registry_source_runs WHERE source = $1 AND state = 'complet
 
 func (q *Queries) CountCompleteRegistryRuns(ctx context.Context, source string) (int64, error) {
 	row := q.db.QueryRow(ctx, countCompleteRegistryRuns, source)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPreparedPublicationRows = `-- name: CountPreparedPublicationRows :one
+SELECT count(*) FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id=a.id
+WHERE m.run_id = $1 AND a.source='station-prep' AND a.municipality_code IS NOT NULL
+  AND a.state IS NOT NULL AND a.latitude IS NULL AND a.longitude IS NULL AND a.superseded_by IS NULL
+`
+
+func (q *Queries) CountPreparedPublicationRows(ctx context.Context, runID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPreparedPublicationRows, runID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -122,9 +182,24 @@ type CreateRegistryRunParams struct {
 	ParserVersion    string      `json:"parser_version"`
 }
 
+type CreateRegistryRunRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	Source           string             `json:"source"`
+	SnapshotIdentity string             `json:"snapshot_identity"`
+	Checksum         string             `json:"checksum"`
+	ParserVersion    string             `json:"parser_version"`
+	State            string             `json:"state"`
+	Accepted         int64              `json:"accepted"`
+	Duplicates       int64              `json:"duplicates"`
+	Rejected         int64              `json:"rejected"`
+	ErrorCode        string             `json:"error_code"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+}
+
 // Owned by directory (registry staging, P25-T02). Staging only: publishers
 // read complete runs in P25-T04; failed/quarantined runs stay invisible.
-func (q *Queries) CreateRegistryRun(ctx context.Context, arg CreateRegistryRunParams) (RegistrySourceRun, error) {
+func (q *Queries) CreateRegistryRun(ctx context.Context, arg CreateRegistryRunParams) (CreateRegistryRunRow, error) {
 	row := q.db.QueryRow(ctx, createRegistryRun,
 		arg.ID,
 		arg.Source,
@@ -132,7 +207,7 @@ func (q *Queries) CreateRegistryRun(ctx context.Context, arg CreateRegistryRunPa
 		arg.Checksum,
 		arg.ParserVersion,
 	)
-	var i RegistrySourceRun
+	var i CreateRegistryRunRow
 	err := row.Scan(
 		&i.ID,
 		&i.Source,
@@ -281,6 +356,44 @@ func (q *Queries) FinishRegistryRun(ctx context.Context, arg FinishRegistryRunPa
 	return result.RowsAffected(), nil
 }
 
+const getPreparedMembership = `-- name: GetPreparedMembership :one
+SELECT m.assertion_id FROM registry_run_assertions m
+JOIN registry_assertions a ON a.id=m.assertion_id
+WHERE m.run_id = $1 AND a.source='station-prep' AND a.source_key = $2
+ AND a.checksum = $3 AND m.supersedes_checksum = $4
+`
+
+type GetPreparedMembershipParams struct {
+	RunID              pgtype.UUID `json:"run_id"`
+	SourceKey          string      `json:"source_key"`
+	Checksum           string      `json:"checksum"`
+	SupersedesChecksum string      `json:"supersedes_checksum"`
+}
+
+func (q *Queries) GetPreparedMembership(ctx context.Context, arg GetPreparedMembershipParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getPreparedMembership,
+		arg.RunID,
+		arg.SourceKey,
+		arg.Checksum,
+		arg.SupersedesChecksum,
+	)
+	var assertion_id pgtype.UUID
+	err := row.Scan(&assertion_id)
+	return assertion_id, err
+}
+
+const getPreparedRunBinding = `-- name: GetPreparedRunBinding :one
+SELECT prepared_manifest_sha256 FROM registry_source_runs
+WHERE id = $1 AND source = 'station-prep' AND state = 'complete'
+`
+
+func (q *Queries) GetPreparedRunBinding(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getPreparedRunBinding, id)
+	var prepared_manifest_sha256 string
+	err := row.Scan(&prepared_manifest_sha256)
+	return prepared_manifest_sha256, err
+}
+
 const getRegistryRun = `-- name: GetRegistryRun :one
 SELECT id, source, snapshot_identity, checksum, parser_version, state,
     accepted, duplicates, rejected, error_code, started_at, finished_at
@@ -293,9 +406,24 @@ type GetRegistryRunParams struct {
 	SnapshotIdentity string `json:"snapshot_identity"`
 }
 
-func (q *Queries) GetRegistryRun(ctx context.Context, arg GetRegistryRunParams) (RegistrySourceRun, error) {
+type GetRegistryRunRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	Source           string             `json:"source"`
+	SnapshotIdentity string             `json:"snapshot_identity"`
+	Checksum         string             `json:"checksum"`
+	ParserVersion    string             `json:"parser_version"`
+	State            string             `json:"state"`
+	Accepted         int64              `json:"accepted"`
+	Duplicates       int64              `json:"duplicates"`
+	Rejected         int64              `json:"rejected"`
+	ErrorCode        string             `json:"error_code"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+}
+
+func (q *Queries) GetRegistryRun(ctx context.Context, arg GetRegistryRunParams) (GetRegistryRunRow, error) {
 	row := q.db.QueryRow(ctx, getRegistryRun, arg.Source, arg.SnapshotIdentity)
-	var i RegistrySourceRun
+	var i GetRegistryRunRow
 	err := row.Scan(
 		&i.ID,
 		&i.Source,
@@ -320,9 +448,24 @@ FROM registry_source_runs
 WHERE id = $1
 `
 
-func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (RegistrySourceRun, error) {
+type GetRegistryRunByIDRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	Source           string             `json:"source"`
+	SnapshotIdentity string             `json:"snapshot_identity"`
+	Checksum         string             `json:"checksum"`
+	ParserVersion    string             `json:"parser_version"`
+	State            string             `json:"state"`
+	Accepted         int64              `json:"accepted"`
+	Duplicates       int64              `json:"duplicates"`
+	Rejected         int64              `json:"rejected"`
+	ErrorCode        string             `json:"error_code"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+}
+
+func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (GetRegistryRunByIDRow, error) {
 	row := q.db.QueryRow(ctx, getRegistryRunByID, id)
-	var i RegistrySourceRun
+	var i GetRegistryRunByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Source,
@@ -465,9 +608,24 @@ ORDER BY finished_at DESC NULLS LAST, started_at DESC
 LIMIT 1
 `
 
-func (q *Queries) LastCompleteRegistryRun(ctx context.Context, source string) (RegistrySourceRun, error) {
+type LastCompleteRegistryRunRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	Source           string             `json:"source"`
+	SnapshotIdentity string             `json:"snapshot_identity"`
+	Checksum         string             `json:"checksum"`
+	ParserVersion    string             `json:"parser_version"`
+	State            string             `json:"state"`
+	Accepted         int64              `json:"accepted"`
+	Duplicates       int64              `json:"duplicates"`
+	Rejected         int64              `json:"rejected"`
+	ErrorCode        string             `json:"error_code"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	FinishedAt       pgtype.Timestamptz `json:"finished_at"`
+}
+
+func (q *Queries) LastCompleteRegistryRun(ctx context.Context, source string) (LastCompleteRegistryRunRow, error) {
 	row := q.db.QueryRow(ctx, lastCompleteRegistryRun, source)
-	var i RegistrySourceRun
+	var i LastCompleteRegistryRunRow
 	err := row.Scan(
 		&i.ID,
 		&i.Source,
@@ -483,6 +641,23 @@ func (q *Queries) LastCompleteRegistryRun(ctx context.Context, source string) (R
 		&i.FinishedAt,
 	)
 	return i, err
+}
+
+const linkPreparedSupersedes = `-- name: LinkPreparedSupersedes :execrows
+UPDATE registry_assertions older SET superseded_by = newer.id
+FROM registry_run_assertions m, registry_assertions newer, registry_run_assertions n
+WHERE m.run_id = $1 AND m.assertion_id = older.id
+  AND m.supersedes_checksum <> '' AND newer.checksum = m.supersedes_checksum
+  AND newer.source_key = older.source_key AND n.run_id = m.run_id AND n.assertion_id = newer.id
+  AND older.superseded_by IS NULL AND older.id <> newer.id
+`
+
+func (q *Queries) LinkPreparedSupersedes(ctx context.Context, runID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, linkPreparedSupersedes, runID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listOwnedSuggestions = `-- name: ListOwnedSuggestions :many
@@ -567,13 +742,65 @@ func (q *Queries) ListPendingSuggestions(ctx context.Context, pageLimit int32) (
 	return items, nil
 }
 
+const listPreparedRegistryPage = `-- name: ListPreparedRegistryPage :many
+SELECT a.id, a.source_key, a.display_name, a.address, a.municipality_code, a.state
+FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id = a.id
+WHERE m.run_id = $1 AND a.id > $2
+  AND a.municipality_code IS NOT NULL AND a.state IS NOT NULL
+  AND a.source = 'station-prep' AND a.latitude IS NULL AND a.longitude IS NULL
+  AND a.superseded_by IS NULL
+ORDER BY a.id LIMIT 100
+`
+
+type ListPreparedRegistryPageParams struct {
+	RunID   pgtype.UUID `json:"run_id"`
+	AfterID pgtype.UUID `json:"after_id"`
+}
+
+type ListPreparedRegistryPageRow struct {
+	ID               pgtype.UUID `json:"id"`
+	SourceKey        string      `json:"source_key"`
+	DisplayName      string      `json:"display_name"`
+	Address          []byte      `json:"address"`
+	MunicipalityCode pgtype.Text `json:"municipality_code"`
+	State            pgtype.Text `json:"state"`
+}
+
+func (q *Queries) ListPreparedRegistryPage(ctx context.Context, arg ListPreparedRegistryPageParams) ([]ListPreparedRegistryPageRow, error) {
+	rows, err := q.db.Query(ctx, listPreparedRegistryPage, arg.RunID, arg.AfterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPreparedRegistryPageRow
+	for rows.Next() {
+		var i ListPreparedRegistryPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceKey,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
 FROM registry_assertions
-WHERE run_id = $1
+WHERE registry_assertions.run_id = $1 OR EXISTS (SELECT 1 FROM registry_run_assertions AS m
+    WHERE m.run_id = $1 AND m.assertion_id = registry_assertions.id)
 ORDER BY source_key, checksum
 `
 
@@ -637,6 +864,40 @@ func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID)
 	return items, nil
 }
 
+const preparedDanglingSupersedes = `-- name: PreparedDanglingSupersedes :one
+SELECT count(*) FROM registry_run_assertions m
+JOIN registry_assertions older ON older.id = m.assertion_id
+WHERE m.run_id = $1 AND m.supersedes_checksum <> '' AND NOT EXISTS (
+ SELECT 1 FROM registry_run_assertions newer_membership
+ JOIN registry_assertions newer ON newer.id = newer_membership.assertion_id
+ WHERE newer_membership.run_id = m.run_id AND newer.source_key = older.source_key
+   AND newer.checksum = m.supersedes_checksum
+   AND newer.id <> older.id
+   AND (older.superseded_by IS NULL OR older.superseded_by = newer.id)
+)
+`
+
+func (q *Queries) PreparedDanglingSupersedes(ctx context.Context, runID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, preparedDanglingSupersedes, runID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const resumePreparedRun = `-- name: ResumePreparedRun :execrows
+UPDATE registry_source_runs SET state = 'running', accepted = 0, duplicates = 0,
+    rejected = 0, error_code = '', finished_at = NULL
+WHERE id = $1 AND source = 'station-prep' AND state IN ('failed', 'running')
+`
+
+func (q *Queries) ResumePreparedRun(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resumePreparedRun, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setAssertionStation = `-- name: SetAssertionStation :execrows
 UPDATE registry_assertions
 SET station_id = $1
@@ -673,6 +934,29 @@ func (q *Queries) SetAssertionSuperseded(ctx context.Context, arg SetAssertionSu
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setInitialRegistryLocality = `-- name: SetInitialRegistryLocality :one
+UPDATE directory_stations
+SET municipality_code = COALESCE(municipality_code, $1),
+    state = COALESCE(state, $2)
+WHERE id = $3
+  AND (municipality_code IS NULL OR municipality_code = $1)
+  AND (state IS NULL OR state = $2)
+RETURNING id
+`
+
+type SetInitialRegistryLocalityParams struct {
+	MunicipalityCode pgtype.Text `json:"municipality_code"`
+	State            pgtype.Text `json:"state"`
+	ID               pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SetInitialRegistryLocality(ctx context.Context, arg SetInitialRegistryLocalityParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, setInitialRegistryLocality, arg.MunicipalityCode, arg.State, arg.ID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
