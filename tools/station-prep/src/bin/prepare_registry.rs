@@ -27,7 +27,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let table = AliasTable::from_json(&aliases).map_err(|e| e.0)?;
     let meta_raw = raw.clone();
-    let batch = parse_registry(&args[1], raw, &Limits::default(), &table)
+    let source_name = std::path::Path::new(&args[1])
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("source file name must be UTF-8")?;
+    let batch = parse_registry(source_name, raw, &Limits::default(), &table)
         .map_err(|e| format!("registry parse refused: {e:?}"))?;
     if batch.state != RunState::Complete {
         return Err("quarantined source/header must not publish".into());

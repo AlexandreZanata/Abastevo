@@ -67,7 +67,7 @@ func run() error {
 				return err
 			}
 			if hex.EncodeToString(digest.Sum(nil)) != item.SHA256 {
-				return fmt.Errorf("trial %d output checksum differs", trial)
+				return fmt.Errorf("trial %d output checksum differs: %s", trial, item.Path)
 			}
 		}
 		usage := cmd.ProcessState.SysUsage().(*syscall.Rusage)

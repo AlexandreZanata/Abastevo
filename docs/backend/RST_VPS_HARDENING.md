@@ -151,3 +151,12 @@ vet and sqlc vet/generate passed. A transient-retry negative test caught that
 context.DeadlineExceeded implements net.Error; explicit cancellation refusal
 fixed it. No known failure is deferred. Final scoped VPS import/HTTP evidence
 follows; these source tests alone do not certify VPS capacity or long stability.
+
+### Cross-host portability correction
+
+The first bounded VPS preparation run correctly refused a quarantine-output hash
+mismatch: quarantine row locators included the caller's absolute CSV path.
+The operational CLI now uses the source basename, and a subprocess regression
+proves all four artifacts are byte-identical across different parent directories.
+No DB import occurred during this refused offline run. The original files remain
+as audit evidence; only `prepared-portable` is an authorized load input.

@@ -119,7 +119,7 @@ pub struct NormalizedAddress {
     pub postal_code: String,
 }
 
-/// One accepted registry row, serializable as `station-assertion-v1`.
+/// One accepted registry row, serializable as `station-assertion-v2`.
 #[derive(Debug, Clone, Serialize)]
 pub struct RegistryRow {
     pub schema_version: &'static str,
