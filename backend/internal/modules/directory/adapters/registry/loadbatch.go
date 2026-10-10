@@ -540,6 +540,13 @@ func LoadBatch(ctx context.Context, store Store, manifestJSON []byte, streams Ba
 			if err != nil {
 				return nil, err
 			}
+			// A non-terminal snapshot never reports success: retry
+			// loops treat nil error as convergence, so an orphaned
+			// running run or a failed run must fail loudly here and
+			// stay visible for resolve-before-retry instead.
+			if existing.State != "complete" {
+				return nil, fmt.Errorf("registry: input %q unfinished %s (run %s): resolve before retry", input.Key, existing.State, existing.RunID)
+			}
 			reports[input.Key] = existing
 			continue
 		}
