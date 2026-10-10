@@ -158,6 +158,29 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+echo "== bounded rust selection (RST-04) =="
+if grep -q "tools/\*" scripts/quick-verify.sh; then
+    echo "PASS: tools path classified in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: tools path missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+if grep -q "check-rust-fast.sh" scripts/quick-verify.sh; then
+    echo "PASS: rust check integration present in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: rust check integration missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+if bash scripts/check-rust-fast.sh >/dev/null 2>&1; then
+    echo "PASS: rust fast gate green on repo tree"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: rust fast gate red on repo tree" >&2
+    FAIL=$((FAIL + 1))
+fi
+
 echo "== summary: $PASS passed, $FAIL failed =="
 if [[ "$FAIL" -gt 0 ]]; then
     exit 1

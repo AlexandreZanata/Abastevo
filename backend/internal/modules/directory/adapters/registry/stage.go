@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 )
@@ -55,7 +56,9 @@ type Store interface {
 	FinishRun(ctx context.Context, runID, state string, accepted, duplicates, rejected int64, errorCode string) error
 	StageAssertion(ctx context.Context, a Assertion) (accepted bool, err error)
 	ListAssertions(ctx context.Context, runID string) ([]Assertion, error)
+	GetAssertion(ctx context.Context, id string) (Assertion, string, error)
 	SetAssertionStation(ctx context.Context, assertionID, stationID string) error
+	SetAssertionSuperseded(ctx context.Context, assertionID, supersededBy string) error
 }
 
 // Assertion is one validated source row ready for staging.
@@ -83,6 +86,12 @@ type Assertion struct {
 // PGStore implements Store with the generated directory queries.
 type PGStore struct {
 	Q *directory.Queries
+}
+
+// NewPGStore opens staging ownership on pool without touching query
+// text or migration state.
+func NewPGStore(pool *pgxpool.Pool) *PGStore {
+	return &PGStore{Q: directory.New(pool)}
 }
 
 func newUUID() string {
@@ -245,6 +254,62 @@ func (s *PGStore) SetAssertionStation(ctx context.Context, assertionID, stationI
 	_, err = s.Q.SetAssertionStation(ctx, directory.SetAssertionStationParams{
 		ID:        assertionUID,
 		StationID: stationUID,
+	})
+	return err
+}
+
+// GetAssertion fetches one staged assertion plus its run state for
+// evidence-gated decisions. Unknown ids fail; states gate promotion.
+func (s *PGStore) GetAssertion(ctx context.Context, id string) (Assertion, string, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return Assertion{}, "", err
+	}
+	row, err := s.Q.GetReviewEvidence(ctx, uid)
+	if err != nil {
+		return Assertion{}, "", err
+	}
+	address := map[string]string{}
+	if len(row.Address) > 0 {
+		_ = json.Unmarshal(row.Address, &address)
+	}
+	return Assertion{
+		ID:               uuidString(row.ID),
+		Source:           row.Source,
+		SourceKey:        row.SourceKey,
+		Checksum:         row.Checksum,
+		DisplayName:      row.DisplayName,
+		Address:          address,
+		MunicipalityCode: row.MunicipalityCode.String,
+		State:            row.State.String,
+		AuthState:        row.AuthState,
+		Eligibility:      row.Eligibility,
+		LocationQuality:  row.LocationQuality,
+		SourceReference:  row.SourceReference,
+		Latitude:         row.Latitude.Float64,
+		Longitude:        row.Longitude.Float64,
+		HasCoords:        row.Latitude.Valid && row.Longitude.Valid,
+		CRS:              row.Crs,
+		EffectiveDate:    row.EffectiveDate,
+		runID:            uuidString(row.RunID),
+	}, row.RunState, nil
+}
+
+// SetAssertionSuperseded links staged succession history: an older
+// assertion points at its superseding checksum identity. History stays
+// auditable; newer evidence never deletes older rows.
+func (s *PGStore) SetAssertionSuperseded(ctx context.Context, assertionID, supersededBy string) error {
+	assertionUID, err := mustUUID(assertionID)
+	if err != nil {
+		return err
+	}
+	supersededUID, err := mustUUID(supersededBy)
+	if err != nil {
+		return err
+	}
+	_, err = s.Q.SetAssertionSuperseded(ctx, directory.SetAssertionSupersededParams{
+		ID:           assertionUID,
+		SupersededBy: supersededUID,
 	})
 	return err
 }

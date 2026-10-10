@@ -1,0 +1,4 @@
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"/tmp/rst14-tiny-delta1.csv:11","reason":"unknown_city","detail":"municipality \"NOWHERE XV\" has no reference entry","source_key":"90000000000001"}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"/tmp/rst14-tiny-delta1.csv:2","reason":"invalid_cnpj","detail":"identifier fails checksum vector","source_key":null}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"/tmp/rst14-tiny-delta1.csv:20","reason":"invalid_cnpj","detail":"identifier fails checksum vector","source_key":null}
+{"schema_version":"station-quarantine-v1","source":"registry-13col","row_locator":"/tmp/rst14-tiny-delta1.csv:29","reason":"unknown_city","detail":"municipality \"NOWHERE XV\" has no reference entry","source_key":"62000000000068"}

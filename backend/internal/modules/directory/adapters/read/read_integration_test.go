@@ -22,7 +22,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
-func testDSN(t *testing.T) string {
+func testDSN(t testing.TB) string {
 	t.Helper()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -38,7 +38,7 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
-func freshPool(t *testing.T) *pgxpool.Pool {
+func freshPool(t testing.TB) *pgxpool.Pool {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

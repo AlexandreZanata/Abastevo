@@ -70,6 +70,24 @@ func (f *fakeStore) SetAssertionStation(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (f *fakeStore) GetAssertion(_ context.Context, id string) (Assertion, string, error) {
+	for _, assertion := range f.assertions {
+		if assertion.ID == id {
+			for _, report := range f.runs {
+				if report.RunID == assertion.RunID() {
+					return assertion, report.State, nil
+				}
+			}
+			return Assertion{}, "", errTest
+		}
+	}
+	return Assertion{}, "", errTest
+}
+
+func (f *fakeStore) SetAssertionSuperseded(_ context.Context, _, _ string) error {
+	return nil
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

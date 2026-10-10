@@ -114,6 +114,27 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return application.Station{}, err
 	}
+	// Source-separated official anchor: latest complete official
+	// evidence for this CNPJ, or nil for community-only stations. The
+	// lookup follows the existing per-row pattern and stays bounded by
+	// page limits; no trust flows either direction.
+	var official *application.OfficialAnchor
+	if cnpj != nil {
+		if anchor, err := q.FindOfficialAssertion(ctx, *cnpj); err == nil {
+			official = &application.OfficialAnchor{
+				Source:           anchor.Source,
+				DisplayName:      anchor.DisplayName,
+				MunicipalityCode: textPtr(anchor.MunicipalityCode),
+				State:            textPtr(anchor.State),
+			}
+			if anchor.RunFinishedAt.Valid {
+				finished := anchor.RunFinishedAt.Time
+				official.FinishedAt = &finished
+			}
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return application.Station{}, err
+		}
+	}
 	var addr map[string]any
 	if len(address) > 0 && string(address) != "{}" {
 		var m map[string]any
@@ -130,6 +151,7 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 		LocationQuality:  qualityName,
 		Coordinates:      coords,
 		Address:          addr,
+		Official:         official,
 	}
 	if rev.Valid {
 		s := uuidString(rev)

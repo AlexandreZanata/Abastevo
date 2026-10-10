@@ -1,0 +1,27 @@
+{
+  "id": "ibge-mapping-sample",
+  "version": 1,
+  "schema": "IbgeMappingV1",
+  "valid": true,
+  "provenance": "RST-01 synthetic; owned [RST01-TEST] markers; alias table is illustrative, never a municipal census",
+  "reference": "ibge-localidades-v1",
+  "reference_hash": null,
+  "updated_at": "2024-03-01T00:00:00Z",
+  "entries": [
+    {
+      "uf": "SP",
+      "ibge": "3550308",
+      "aliases": ["SÃO PAULO", "SAO PAULO", "São Paulo"]
+    },
+    {
+      "uf": "SP",
+      "ibge": "3549904",
+      "aliases": ["SÃO JOSÉ DOS CAMPOS", "SAO JOSE DOS CAMPOS"]
+    }
+  ],
+  "rules": {
+    "match": "exact normalized name + UF against reference version; normalization is Unicode NFKD, strip diacritics, collapse whitespace, uppercase",
+    "ambiguous": "quarantine ambiguous_municipality with review reason; example SANTACRUZ without UF context matches several states",
+    "unmatched": "quarantine unknown_city; example VILLE INCONNUE has no reference entry"
+  }
+}

@@ -26,6 +26,7 @@ export LOAD_API_BIN="$BIN"
 trap 'rm -f "$BIN"' EXIT
 
 python3 infra/scripts/load/stats.py --self-test
+python3 infra/scripts/load/drive.py --self-test
 bash infra/scripts/load/run.sh
 echo "PASS: load smoke within budgets"
 bash infra/scripts/load/faults.sh

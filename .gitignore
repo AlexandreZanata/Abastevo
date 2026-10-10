@@ -93,3 +93,8 @@ combustiveis.zip
 # Build-time Python asset tools
 __pycache__/
 *.py[cod]
+
+# Rust station-prep build artifacts (never commit; Cargo.lock stays tracked)
+tools/station-prep/target/
+# Exception to **/bin/ above (Android outputs): Rust bench drivers are source
+!tools/station-prep/src/bin/

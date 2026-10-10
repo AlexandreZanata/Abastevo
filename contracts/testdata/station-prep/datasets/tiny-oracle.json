@@ -1,0 +1,20 @@
+{
+  "datasets_version": "station-datasets-v1",
+  "profile": "tiny",
+  "seed": 11,
+  "input": 30,
+  "accepted": 24,
+  "duplicates": 2,
+  "quarantined": 4,
+  "unique_cnpjs": 24,
+  "checksum": "ebe47c28b9cc0d0601bc042c36beae62bb4145f1f29edd36f07220b820e24844",
+  "csv_sha256": "507cf466ccbd6c71f5f1f743aeb91be068b662ef5c35582c095c50b6013bedd9",
+  "csv_bytes": 4973,
+  "history_per_1": 24,
+  "history_per_10": 240,
+  "history_per_100": 2400,
+  "with_location": 20,
+  "without_location": 4,
+  "long_field_rows": 0,
+  "per_city": {"3550000": 4, "3550001": 5, "3550002": 6, "3550003": 4, "3550004": 5}
+}

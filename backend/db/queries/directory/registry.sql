@@ -84,8 +84,8 @@ SET superseded_by = @superseded_by
 WHERE id = @id AND superseded_by IS NULL;
 
 -- name: FindOfficialAssertion :one
-SELECT a.source_key, a.display_name, a.municipality_code, a.state,
-    a.auth_state, a.eligibility
+SELECT a.source, a.source_key, a.display_name, a.municipality_code, a.state,
+    a.auth_state, a.eligibility, r.finished_at AS run_finished_at
 FROM registry_assertions AS a
 JOIN registry_source_runs AS r ON r.id = a.run_id
 WHERE a.source_key = @source_key
@@ -93,6 +93,23 @@ WHERE a.source_key = @source_key
   AND r.state = 'complete'
 ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
 LIMIT 1;
+
+-- Owned by directory (location review, RST-06). The CRS transform stays
+-- inside PostGIS/PROJ: Go plumbs coordinates, never math. Unknown CRS
+-- names fail at the Go gate before reaching SQL.
+
+-- name: GetReviewEvidence :one
+SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
+    a.address, a.municipality_code, a.state, a.auth_state, a.operation,
+    a.eligibility, a.location_quality, a.source_reference, a.latitude,
+    a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state
+FROM registry_assertions AS a
+JOIN registry_source_runs AS r ON r.id = a.run_id
+WHERE a.id = @id;
+
+-- name: TransformPoint :one
+SELECT ST_Y(ST_Transform(ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), @srid::int), 4326))::float8 AS latitude,
+    ST_X(ST_Transform(ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), @srid::int), 4326))::float8 AS longitude;
 
 -- Owned by directory (station suggestions, P27-T01). Private intake:
 -- one row per owner idempotency key; owner-only reads; decisions land

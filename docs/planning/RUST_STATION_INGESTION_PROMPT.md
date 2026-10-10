@@ -5,6 +5,10 @@ an inexpensive model to implement and certify the whole national platform in
 one turn. After each checkpoint, request the next numbered task with its actual
 evidence and changed paths. Keep this prompt with the canonical plan.
 
+Historical entry: the original RST-00 prompt remains below for a fresh audit.
+Current evidence already records RST-00–05; do not repeat completed tasks. For
+the additional performance phases, use the explicit RST-10 prompt at the end.
+
 ```text
 Work in the brazil-fuel-prices repository. Follow its applicable AGENTS.md and
 read docs/planning/FAST_EXECUTION.md plus only current PROGRESS.md. Communicate
@@ -62,3 +66,39 @@ Subsequent tasks must be explicitly selected one at a time. For implementation:
 For the next turn, replace the default selection with exactly `RST-01`, then
 `RST-02`, etc., and include the preceding checkpoint path/SHA. Ask for a narrowly
 scoped correction when a test fails; do not restart the national design.
+
+## Benchmark extension: start with RST-10 only
+
+```text
+Work in this repository following AGENTS.md, FAST_EXECUTION, current PROGRESS
+and DELIVERY_WORKFLOW at phase opening. Communicate in Portuguese; code/docs/
+commits in English. Preserve concurrent work; use an isolated worktree if needed.
+
+Selected task: RST-10 ONLY from docs/planning/RUST_STATION_BENCHMARK_PLAN.md,
+under docs/planning/RUST_STATION_INGESTION_PLAN.md. Verify current task evidence
+and dependencies; do not restart completed RST-00–05 or take over RST-06.
+
+Produce the versioned experimental protocol/run-manifest proposal, metric
+dictionary and scenario-specific budget worksheet. Inspect narrowly the actual
+Rust preparation, Go staging/publication/read paths and existing load harness.
+Separate parser/staging/query-ready ingestion and SQL/API/client timing layers.
+Identify hardware/tooling/traffic gaps honestly. Freeze resource/time/storage
+ceilings, correctness oracles, units/denominators, warm-up/repetitions, cache
+definitions, geographic weights, error/timeout/drop accounting and stop rules.
+Treat 100k/1M rows and skew/hot-city mixes as synthetic hypotheses. Partitioning
+must compete against equivalent indexed read projections and preserve canonical
+identity; no speed or 150m location-quality claims without measured evidence.
+
+This task is protocol/documentation only: no Cargo dependency, benchmark runner,
+load test, national fetch, DB/migration/config change, push or deployment.
+Save concise English RST-10 evidence, link it from PROGRESS, validate links and
+git diff --check, and review the secret surface. Do not run backend/device/load
+suites for docs-only changes. Report real results/limits and smallest RST-11 next
+task. Mark the protocol done only when complete; all performance results remain
+NOT_MEASURED until their selected campaign runs actually execute.
+```
+
+For a later selected RST-11–21, replace the task and its scope with that phase's
+actual dependencies/deliverables. Do not carry the docs-only RST-10 restriction
+into an authorized implementation phase, or execute all phases at once. Include
+the previous checkpoint SHA/path, implemented commands and isolated lab manifest.

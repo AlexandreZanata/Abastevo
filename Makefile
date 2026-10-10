@@ -4,13 +4,16 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 help
 
 quick-verify:
 	bash scripts/quick-verify.sh
 
 check-mobile:
 	bash scripts/check-mobile.sh
+
+check-rust:
+	bash scripts/check-rust-fast.sh
 
 verify-release:
 	bash scripts/verify-release.sh
@@ -73,6 +76,7 @@ help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
 	@echo "  check-mobile    bounded KMP/iOS selection (static always, toolchain-gated full)"
+	@echo "  check-rust      bounded Rust station-prep selection (fmt, clippy, locked tests)"
 	@echo "  verify-release  quick + full-matrix report (foundation subset, NOT CERTIFIED)"
 	@echo "  test-gate       focused harness for gate selection/failure behavior"
 	@echo "  test-flow       synthetic git/fake-gh lifecycle for phase controller"

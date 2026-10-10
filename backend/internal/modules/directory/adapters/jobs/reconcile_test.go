@@ -41,6 +41,19 @@ func (f *fakeStore) SetAssertionStation(_ context.Context, _, _ string) error {
 	return nil
 }
 
+func (f *fakeStore) SetAssertionSuperseded(_ context.Context, _, _ string) error {
+	return nil
+}
+
+func (f *fakeStore) GetAssertion(_ context.Context, id string) (registry.Assertion, string, error) {
+	for _, item := range f.items {
+		if item.ID == id {
+			return item, "complete", nil
+		}
+	}
+	return registry.Assertion{}, "", errors.New("jobs: unknown assertion")
+}
+
 type fakeCanon struct {
 	station string
 	err     error

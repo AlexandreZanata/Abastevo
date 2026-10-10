@@ -77,6 +77,14 @@ func testDSN(t *testing.T) string {
 // staging store on it. The database is dropped during cleanup.
 func freshStore(t *testing.T) *PGStore {
 	t.Helper()
+	store, _ := freshStoreWithDSN(t)
+	return store
+}
+
+// freshStoreWithDSN is freshStore plus the disposable database DSN for
+// tests that need raw connections (least-privilege role setup).
+func freshStoreWithDSN(t *testing.T) (*PGStore, string) {
+	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -115,7 +123,7 @@ func freshStore(t *testing.T) *PGStore {
 		t.Fatalf("pool: %v", err)
 	}
 	t.Cleanup(pool.Close)
-	return &PGStore{Q: directory.New(pool)}
+	return &PGStore{Q: directory.New(pool)}, parsed.String()
 }
 
 func countAssertions(t *testing.T, store *PGStore, runID string) int64 {

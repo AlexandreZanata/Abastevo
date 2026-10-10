@@ -1,0 +1,65 @@
+{
+  "format_version": "station-batch-v1",
+  "run_id": "a3f1c2b4-5d6e-4f7a-8b9c-0d1e2f3a4b5c",
+  "schema": "StationBatchManifestV1",
+  "valid": true,
+  "provenance": "RST-01 synthetic; owned [RST01-TEST] markers; sample manifest with real file hashes of this directory",
+  "inputs": [
+    {
+      "key": "registry-13col",
+      "ref": "registry-13col-sample.csv",
+      "edition": "synthetic-2024-03",
+      "sha256": "e50150b2727945be9b85175a8ef316bfd2b0db0d5cab5a7bb018dd83b2b658e7",
+      "bytes": 3903,
+      "rows": 12,
+      "encoding": "UTF-8 without BOM"
+    },
+    {
+      "key": "pmqc",
+      "ref": "pmqc-sample.csv",
+      "edition": "synthetic-2024-04",
+      "sha256": "c73a696a5fefd956973bf8fa26752fdc9d70db366c189c4d0413b42255d85304",
+      "bytes": 573,
+      "rows": 11,
+      "encoding": "UTF-8 without BOM"
+    }
+  ],
+  "parser_version": "station-prep-v0.1.0-contract",
+  "policy_version": "station-policy-v1",
+  "municipality_reference": {
+    "reference": "ibge-localidades-v1",
+    "reference_hash": null,
+    "note": "pinned at run time from the live IBGE reference; the sample alias table is illustrative only"
+  },
+  "started_at": "2024-05-02T10:00:00Z",
+  "ended_at": "2024-05-02T10:00:07Z",
+  "counts": {
+    "registry-13col": {"input": 12, "accepted": 7, "duplicates": 1, "quarantined": 4},
+    "pmqc": {"input": 11, "accepted": 5, "duplicates": 1, "quarantined": 5}
+  },
+  "completeness": {
+    "eof_validated": true,
+    "expected_manifest": true,
+    "note": "a run publishes only after validated EOF, expected resource manifest and reconciled row accounting"
+  },
+  "outputs": [
+    {
+      "path": "output-assertions-sample.jsonl",
+      "sha256": "51971249b8fec203a2d81b25adb2084ef5a71ef3e7a0e8b32a679b6cc98605ac",
+      "bytes": 1748,
+      "rows": 2
+    },
+    {
+      "path": "output-candidates-sample.jsonl",
+      "sha256": "f5927fa97c74f13c2a66de5470923e7ae9301e1147173cfe526b46ff51e4f171",
+      "bytes": 629,
+      "rows": 2
+    },
+    {
+      "path": "output-quarantine-sample.jsonl",
+      "sha256": "9df3998c2bc4cf033c303bbe959765529433c05dd162cc6105b335ca747b81ae",
+      "bytes": 2116,
+      "rows": 10
+    }
+  ]
+}

@@ -91,7 +91,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*)
+            backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|tools/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -200,6 +200,22 @@ else
         npm --prefix landing run build
         npm --prefix landing run check
         npm --prefix landing test
+    fi
+    # Bounded Rust selection (RST-04): tools-area changes run the frozen
+    # Rust gate (fmt, clippy, locked tests). Quick verification itself is
+    # never disabled or skipped by this selection.
+    RUST_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            tools/*)
+                RUST_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$RUST_CHANGED" == "1" ]]; then
+        echo "== rust static & test selection =="
+        bash scripts/check-rust-fast.sh
     fi
 fi
 
