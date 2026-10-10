@@ -1,5 +1,7 @@
 # RST-20 — Soak, maintenance and cost efficiency (30-minute pilot)
 
+> 2026-10-10 correction: historical table size included indexes and index cost was counted again. Table/index cost slopes must be remeasured. Collectors now use pg_table_size and PG18 num_done and propagate errors. Import-blocked sampling, short duration and missing 24/48h maintenance evidence keep RST-20 INCOMPLETE; the old pilot is historical diagnostic evidence only.
+
 Status: PILOT-MEASURED — isolated disposable PostGIS only; no
 migration, no product change, no new dependency. Date:
 2026-10-10. Scope: `RUST_STATION_BENCHMARK_PLAN.md` RST-20 pilot

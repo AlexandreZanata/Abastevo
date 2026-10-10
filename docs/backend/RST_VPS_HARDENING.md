@@ -160,3 +160,62 @@ The operational CLI now uses the source basename, and a subprocess regression
 proves all four artifacts are byte-identical across different parent directories.
 No DB import occurred during this refused offline run. The original files remain
 as audit evidence; only `prepared-portable` is an authorized load input.
+
+## Frozen VPS HTTP protocol
+
+H12: actual HTTPS, external workstation client, no edge/protection changes,
+one TLS connection per request; <=20 offered request/s, <=8 in flight, no client
+queue. Ladder 1/5/10/20 request/s uses short diagnostic windows, followed by five
+independent 60s warm-up + 300s steady trials at the safe selected rate. These are
+pilot windows, not a 24/48h result. A 500ms client HTTPS p95 hypothesis is frozen
+before measurement and includes network/TLS/edge; the old 100ms Reader hypothesis
+is a different layer. Every error/drop/missed arrival/telemetry failure stops the
+campaign. Each route needs >=100 successful samples per trial for p95 qualification;
+p99 is unavailable below 10,000 per route. Never average percentiles together.
+
+The frozen 9-request cycle weights dense-city 3, Sorriso 1, single-station city 1,
+actual zero-station reference city 1, national text 1, detail 1 and profile 1.
+This is a chosen stress distribution, not measured human behavior. Source data:
+45,617 accepted ANP assertions across 5,503 IBGE municipalities; 5,571 reference
+municipalities; 121 unresolved city-name variants retained in quarantine. The
+largest source city has 1,521 accepted assertions (SP/3550308); sparse AC/1200054
+has one and empty RO/1100098 has zero. Existing non-ANP development station remains.
+
+H13: no maximum-user claim without saturation evidence and a behavior model.
+A tested read-rate lower bound R allows only a scenario estimate:
+active users = R * reserve_fraction * seconds_per_cycle / GETs_per_cycle.
+For example 70% of the tested rate with one GET/30s differs fourfold from four
+GETs/30s. This excludes uploads, OCR, writes, auth and image serving; registered
+users/DAU/connection concurrency cannot be inferred from read request/s.
+
+Safety is checked every ~5s (bounded SSH latency also included): retain >=12GiB
+host available RAM, >=50GiB free disk, load1<=65% of 8 CPUs, every Abastevo
+container below 70% of its existing memory limit, healthy/unchanged pods and
+restart counts, no OOM, <=4 lock waiters and no growing run backlog. Missing
+metrics stop work. Auxiliary Jobs never exceed 250m CPU; preparation 512Mi,
+loader/tests 256Mi. Service limits stay API1CPU/1Gi, DB1CPU/1Gi, worker500m/512Mi,
+storage500m/1Gi. Guard deletion rechecks this campaign's ownership label and
+can delete only one explicitly named disposable Job in abastevo-temp.
+
+### Staging schema compatibility incident
+
+Backup `pre-000053.dump` (mode0600, outside Git) was restored in a uniquely owned
+disposable database and retained 24,552 assertions/11 stations before deletion of
+that test DB. Backup SHA256: afd5d3778bbd28e80f4d771f2b34f44ec3daa56df1999b8517d143e22aac2a37.
+Migration applied only000053. The old API's strict expected-ledger check then
+refused schema53, removing readiness and causing HTTPS502. Load admission refused
+while unhealthy. This was a deployment sequencing error, not an internet failure;
+no data loss or resource-limit increase occurred. Compiled API/worker2cd3fb6 were
+mounted read-only from an Abastevo-owned path and only the existing Abastevo
+Deployment rolled under its unchanged maxSurge0/maxUnavailable1 strategy.
+The private media volume/image/env were preserved; three containers were recreated
+as part of that owned rollout, not an OOM/crash. HTTPS readiness recovered200.
+Future migrations require preparing/releasing the compatible API/worker together;
+never claim zero downtime for this campaign. The temporary command override must
+be reflected in the final deployment record, rather than claiming old image tags
+identify the running source. No other deployment, image or namespace was changed.
+
+National route qualification initially stopped on HTTP200/detail because the
+trace incorrectly expected `id`; the public contract uses `station_id`.
+The trace was corrected before capacity measurement. The failed raw diagnostic
+is retained and excluded from qualified trials. No protection was weakened.
