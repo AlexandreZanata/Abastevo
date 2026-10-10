@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
@@ -53,4 +54,20 @@ func (c RegistryCanonicalizer) SetStatus(ctx context.Context, stationID, status 
 		Status: status,
 	})
 	return err
+}
+
+// SetInitialLocality fills source-backed locality without overwriting conflicting
+// canonical evidence. A conflict is visible to the importer for operator review.
+func (c RegistryCanonicalizer) SetInitialLocality(ctx context.Context, stationID, municipality, state string) error {
+	uid, err := mustUUID(stationID)
+	if err != nil {
+		return err
+	}
+	_, err = directory.New(c.Repo.pool).SetInitialRegistryLocality(ctx, directory.SetInitialRegistryLocalityParams{
+		ID: uid, MunicipalityCode: pgtype.Text{String: municipality, Valid: true}, State: pgtype.Text{String: state, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("registry: locality projection conflict/unavailable: %w", err)
+	}
+	return nil
 }

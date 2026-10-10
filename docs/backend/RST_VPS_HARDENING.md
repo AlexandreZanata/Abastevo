@@ -70,3 +70,84 @@ Historical RST-18 importer-rate and checkpoint values are invalid for comparison
 RST-20 table/index cost slopes need a rerun with these collectors. Earlier Reader
 measurements omit HTTP/TLS/edge overhead. RST-17 UF results are exploratory and
 do not authorize a partition migration. Existing 24,552 assertions are synthetic.
+
+## Operational loader contract
+
+B-BR-RST-H08: operational file loads consume at most one bounded JSONL row at a
+time plus bounded manifest/input metadata. Exact per-edition membership lives in
+PostgreSQL, not a process-wide dedup map. The legacy in-memory adapter remains a
+lab compatibility path and is not advertised as the operational loader.
+B-BR-RST-H09: one transaction owns a prepared batch under a transaction-scoped
+advisory lock. Cancellation/disconnect rolls back its partial attempt; retry
+reuses existing assertion IDs, including legacy partial runs. A completed run is
+bound to the manifest SHA256; changing a manifest under its run identity is an
+error. All inputs complete together, and no retry deletes an assertion/run.
+BUC-RST-H06: unchanged deltas complete with stable canonical IDs and separate
+per-edition membership; concurrent replay converges; malformed tails, checksum
+changes and cancelled transactions do not become visible as completed runs.
+
+B-BR-RST-H10: prepared registry publication pages through complete bound runs,
+resolves identity through Directory and ensures an unclaimed profile through the
+StationProfile port. PMQC candidates do not create stations, locations, grants or
+badges. Valid source municipality/UF fill a missing canonical locality; conflicting
+existing locality fails visibly for review. This path does not grant official
+eligibility or change the official/community source distinction. Existing profiles
+and business projections are preserved. Publication retry is idempotent.
+
+B-BR-RST-H11: ANP metadata defines DATAPUBLICACAO as authorization publication
+and DATAVINCULACAO as the distributor relationship date. Neither is an opening
+date and no ordering constraint between them is supported. Parser v0.3 / policy
+v2 / station-assertion-v2 normalize strict DD/MM/YYYY and ISO calendar dates;
+published_at and effective_at retain authorization publication semantics and
+brand_linked_at preserves distributor linkage separately. Invalid calendar dates
+quarantine; independent date order does not. The v2 checksum has a version prefix
+so changed semantics never reuse a v1 assertion identity. Go still accepts
+historical v1 batches. The prior RST-01 date-reversal rule is superseded.
+Verified source: [ANP registry metadata](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/metadados-revendedores-varejistas-combustiveis-automoveis.pdf).
+
+## Operational ingestion checkpoint (2026-10-10)
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for ingestion source.
+Validation: PASS.
+
+- File-backed Rust emission bounds serialized sorting to 4 MiB/4096 rows,
+  fan-in 32, 1024 run paths, 512 MiB cumulative framed spill writes and 100 MiB
+  per output (one final spill/merge write can cross the disk guard before refusal).
+  Manifest publishes last from an owned sibling directory. Failures clean only
+  unpublished owned files. The parsed batch still resides in memory under the
+  parser's input/row caps; this is bounded emission, not a streaming CSV parser.
+- `prepare_registry` is the operational CLI; it generates no synthetic PMQC.
+  Input CSV is capped at 100 MiB, aliases at 4 MiB before reading them in full.
+  Legacy `emit_run`/`LoadBatch` remain compatibility/benchmark paths.
+- Migration 000053 adds per-edition immutable assertion membership and manifest
+  binding without deleting/backfilling history. The operational Go loader reads
+  JSONL one row at a time, uses server-side exact dedup, one transaction and an
+  advisory lock per batch. An unchanged delta has its own accepted membership
+  while sharing stable assertion IDs. Replay does not update existing membership.
+- Loader and publication retry only transient connection/serialization failures,
+  at most 3 attempts by default (hard maximum 5) under one overall deadline
+  (hard maximum 30 minutes), with at most 2 DB connections. Integrity/permission
+  failures and caller cancellation are terminal. Process restart reuses the
+  same bound manifest and resumes idempotently; a supervisor must restart an
+  exited process. Publication pages 100 rows through explicit module ports.
+- Assertion v2 preserves distributor dates in the prepared artifact, separately
+  from authorization publication. Database effective_date follows publication.
+  Raw source and prepared files are private operational artifacts, never Git.
+
+Immediate real PostGIS tests ran in Abastevo-only Jobs, each 250m CPU/256Mi,
+180s hard deadline, disposable test databases. `abastevo-rst-prepared-accept-20261010`
+passed unchanged/concurrent delta, retained partial IDs, malformed-tail/checksum/
+cancel rollback, manifest conflict, migration 52->53 failure rollback/recovery,
+restricted-role load plus denied canonical writes/DDL, and backend disconnection
+followed by convergent retries. `abastevo-rst-publication-final-20261010` passed
+loader -> city HTTP -> unclaimed profile HTTP, replay and conflict negatives.
+`abastevo-rst-metrics-final-20261010` passed PG18 counters and fail-loud contention
+collection; invalid historic mode aggregate was corrected and queries now scope
+active current-database waits. No statistics reset or service restart.
+
+Rust full tests/fmt/clippy passed; the added overlarge-row failure test proves
+unpublished spill cleanup preserves a neighboring file. Go affected unit/race,
+vet and sqlc vet/generate passed. A transient-retry negative test caught that
+context.DeadlineExceeded implements net.Error; explicit cancellation refusal
+fixed it. No known failure is deferred. Final scoped VPS import/HTTP evidence
+follows; these source tests alone do not certify VPS capacity or long stability.

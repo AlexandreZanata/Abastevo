@@ -239,6 +239,7 @@ type capacitySample struct {
 	waiting   int64
 	waitEvent string
 	backlog   int64
+	err       error
 }
 
 func capacityWatch(ctx context.Context, pool *pgxpool.Pool, out *[]capacitySample, mu *sync.Mutex, stop <-chan struct{}, wg *sync.WaitGroup) {
@@ -250,18 +251,15 @@ func capacityWatch(ctx context.Context, pool *pgxpool.Pool, out *[]capacitySampl
 		case <-stop:
 			return
 		case <-ticker.C:
-			var waiting int64
-			var event string
-			_ = pool.QueryRow(ctx, `SELECT count(*), COALESCE(mode(), '') FROM (
-				SELECT wait_event_type || ':' || COALESCE(wait_event, '') AS mode
-				FROM pg_stat_activity WHERE wait_event IS NOT NULL AND backend_type = 'client backend'
-			) w GROUP BY 1=1`).Scan(&waiting, &event)
-			var backlog int64
-			_ = pool.QueryRow(ctx, `SELECT count(*) FROM registry_source_runs
-				WHERE state NOT IN ('complete','failed')`).Scan(&backlog)
+			sampleCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			waiting, event, backlog, err := capacityContention(sampleCtx, pool)
+			cancel()
 			mu.Lock()
-			*out = append(*out, capacitySample{waiting: waiting, waitEvent: event, backlog: backlog})
+			*out = append(*out, capacitySample{waiting: waiting, waitEvent: event, backlog: backlog, err: err})
 			mu.Unlock()
+			if err != nil {
+				return
+			}
 		}
 	}
 }
@@ -389,6 +387,9 @@ func capacityCell(b *testing.B, editions []capacityEdition, rate float64, worker
 	var event string
 	var firstBacklog, lastBacklog int64
 	for i, sample := range samples {
+		if sample.err != nil {
+			b.Fatalf("capacity telemetry unavailable: %v", sample.err)
+		}
 		if sample.waiting > maxWaiting {
 			maxWaiting = sample.waiting
 			event = sample.waitEvent

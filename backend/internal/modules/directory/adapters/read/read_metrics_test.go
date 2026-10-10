@@ -26,6 +26,21 @@ func completedCheckpointCount(ctx context.Context, query checkpointQuerier) (int
 	return count, nil
 }
 
+func capacityContention(ctx context.Context, query checkpointQuerier) (waiting int64, event string, backlog int64, err error) {
+	err = query.QueryRow(ctx, `SELECT count(*), COALESCE(mode() WITHIN GROUP (
+ ORDER BY wait_event_type || ':' || COALESCE(wait_event,'')), '')
+ FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()
+ AND backend_type='client backend' AND state='active' AND wait_event_type IN ('Lock','LWLock','IO')`).Scan(&waiting, &event)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("collect active DB waits: %w", err)
+	}
+	err = query.QueryRow(ctx, `SELECT count(*) FROM registry_source_runs WHERE state NOT IN ('complete','failed')`).Scan(&backlog)
+	if err != nil {
+		return 0, "", 0, fmt.Errorf("collect run backlog: %w", err)
+	}
+	return
+}
+
 func aggregateImportRate(latenciesMS []float64, window time.Duration) (float64, error) {
 	if len(latenciesMS) == 0 {
 		return 0, nil
@@ -103,6 +118,9 @@ func TestCompletedCheckpointCountRealPostgres18(t *testing.T) {
 	if version < 180000 || version >= 190000 {
 		t.Fatalf("expected PostgreSQL 18, got %d", version)
 	}
+	if _, _, _, err := capacityContention(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
 	before, err := completedCheckpointCount(ctx, pool)
 	if err != nil {
 		t.Fatal(err)
@@ -112,4 +130,12 @@ func TestCompletedCheckpointCountRealPostgres18(t *testing.T) {
 		t.Fatalf("non-monotonic checkpoint count %d -> %d: %v", before, after, err)
 	}
 	t.Logf("server_version_num=%d completed_checkpoints_before=%d after=%d (shared Abastevo cluster counter)", version, before, after)
+}
+
+func TestCapacityContentionPropagatesCollectionFailure(t *testing.T) {
+	want := errors.New("permission denied")
+	probe := &checkpointProbe{row: checkpointRow{err: want}}
+	if _, _, _, err := capacityContention(context.Background(), probe); !errors.Is(err, want) {
+		t.Fatalf("collection failure hidden: %v", err)
+	}
 }

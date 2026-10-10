@@ -53,7 +53,8 @@ SELECT id, run_id, source, source_key, checksum, display_name, address,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
 FROM registry_assertions
-WHERE run_id = @run_id
+WHERE registry_assertions.run_id = @run_id OR EXISTS (SELECT 1 FROM registry_run_assertions AS m
+    WHERE m.run_id = @run_id AND m.assertion_id = registry_assertions.id)
 ORDER BY source_key, checksum;
 
 -- name: SetAssertionStation :execrows
@@ -172,3 +173,74 @@ FROM station_suggestions
 WHERE state = 'pending'
 ORDER BY created_at ASC
 LIMIT @page_limit::int;
+
+-- name: BindPreparedManifest :one
+UPDATE registry_source_runs SET prepared_manifest_sha256 = @manifest_sha256
+WHERE id = @id AND checksum = @checksum
+  AND (prepared_manifest_sha256 = '' OR prepared_manifest_sha256 = @manifest_sha256)
+RETURNING id;
+
+-- name: ResumePreparedRun :execrows
+UPDATE registry_source_runs SET state = 'running', accepted = 0, duplicates = 0,
+    rejected = 0, error_code = '', finished_at = NULL
+WHERE id = @id AND source = 'station-prep' AND state IN ('failed', 'running');
+
+-- name: AttachPreparedAssertion :one
+INSERT INTO registry_run_assertions (run_id, assertion_id, supersedes_checksum)
+SELECT @run_id, a.id, @supersedes_checksum FROM registry_assertions a
+WHERE a.source = 'station-prep' AND a.source_key = @source_key AND a.checksum = @checksum
+ON CONFLICT (run_id, assertion_id) DO NOTHING
+RETURNING assertion_id;
+
+-- name: GetPreparedMembership :one
+SELECT m.assertion_id FROM registry_run_assertions m
+JOIN registry_assertions a ON a.id=m.assertion_id
+WHERE m.run_id = @run_id AND a.source='station-prep' AND a.source_key = @source_key
+ AND a.checksum = @checksum AND m.supersedes_checksum = @supersedes_checksum;
+
+-- name: PreparedDanglingSupersedes :one
+SELECT count(*) FROM registry_run_assertions m
+JOIN registry_assertions older ON older.id = m.assertion_id
+WHERE m.run_id = @run_id AND m.supersedes_checksum <> '' AND NOT EXISTS (
+ SELECT 1 FROM registry_run_assertions newer_membership
+ JOIN registry_assertions newer ON newer.id = newer_membership.assertion_id
+ WHERE newer_membership.run_id = m.run_id AND newer.source_key = older.source_key
+   AND newer.checksum = m.supersedes_checksum
+   AND newer.id <> older.id
+   AND (older.superseded_by IS NULL OR older.superseded_by = newer.id)
+);
+
+-- name: LinkPreparedSupersedes :execrows
+UPDATE registry_assertions older SET superseded_by = newer.id
+FROM registry_run_assertions m, registry_assertions newer, registry_run_assertions n
+WHERE m.run_id = @run_id AND m.assertion_id = older.id
+  AND m.supersedes_checksum <> '' AND newer.checksum = m.supersedes_checksum
+  AND newer.source_key = older.source_key AND n.run_id = m.run_id AND n.assertion_id = newer.id
+  AND older.superseded_by IS NULL AND older.id <> newer.id;
+
+-- name: GetPreparedRunBinding :one
+SELECT prepared_manifest_sha256 FROM registry_source_runs
+WHERE id = @id AND source = 'station-prep' AND state = 'complete';
+
+-- name: ListPreparedRegistryPage :many
+SELECT a.id, a.source_key, a.display_name, a.address, a.municipality_code, a.state
+FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id = a.id
+WHERE m.run_id = @run_id AND a.id > @after_id
+  AND a.municipality_code IS NOT NULL AND a.state IS NOT NULL
+  AND a.source = 'station-prep' AND a.latitude IS NULL AND a.longitude IS NULL
+  AND a.superseded_by IS NULL
+ORDER BY a.id LIMIT 100;
+
+-- name: SetInitialRegistryLocality :one
+UPDATE directory_stations
+SET municipality_code = COALESCE(municipality_code, @municipality_code),
+    state = COALESCE(state, @state)
+WHERE id = @id
+  AND (municipality_code IS NULL OR municipality_code = @municipality_code)
+  AND (state IS NULL OR state = @state)
+RETURNING id;
+
+-- name: CountPreparedPublicationRows :one
+SELECT count(*) FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id=a.id
+WHERE m.run_id = @run_id AND a.source='station-prep' AND a.municipality_code IS NOT NULL
+  AND a.state IS NOT NULL AND a.latitude IS NULL AND a.longitude IS NULL AND a.superseded_by IS NULL;
