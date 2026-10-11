@@ -100,3 +100,11 @@ three-minute/speed caps. Independent Run reference: seed 19, avoidance trace,
 10,800 ticks → score 255, lane 0, speed 20. Command:
 `./gradlew :domain:test --tests 'com.anpfuel.domain.games.Fuel*Test' --offline --console=plain`.
 Diff/secret review PASS. No backend replayer or network behavior.
+
+GME-M04 LOCAL_DONE: session and fractional 60Hz clock; RED 8/8 against
+stubs, GREEN 22 combined tests. 30/60/90/120Hz produce exactly 60 ticks/second;
+long stalls cap at five ticks, background debt/input discarded, terminal state
+frozen, restart clean, recreation starts READY. Local best accepts only valid
+FINISHED scores and never decreases. Command: `./gradlew :domain:test --tests
+'com.anpfuel.domain.games.*' --offline --console=plain`. No unfinished snapshot
+or trace persistence. Diff/secret checks PASS.
