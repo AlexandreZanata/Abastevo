@@ -2,8 +2,14 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="." />
+        <!-- SEC05-D: private Room metadata never enters cloud backup;
+            offline packs re-download after a restore. -->
+        <exclude domain="database" path="." />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="." />
+        <!-- SEC05-D: private Room metadata never transfers devices;
+            offline packs re-download after a restore. -->
+        <exclude domain="database" path="." />
     </device-transfer>
 </data-extraction-rules>

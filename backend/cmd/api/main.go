@@ -288,7 +288,17 @@ func run() error {
 	identityRegistrar := identityadapters.NewRegistrar(pool.Underlying())
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
-	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
+	// SEC02-B: bill the proxy-observed forwarding address only from
+	// explicitly trusted immediate proxies (ANPFUEL_TRUSTED_PROXIES);
+	// validated at startup, empty trusts nothing (peer-only billing).
+	trustedProxies, err := identityhttp.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	// SEC02-C: deliberate global ceilings, separate from per-client/key
+	// fairness; zero disables an operation (no global cap).
+	globalBreaker := identityhttp.NewGlobalBreaker(cfg.GlobalQuotaChallenge, cfg.GlobalQuotaRegister, cfg.GlobalQuotaWrite)
+	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies, GlobalBreaker: globalBreaker}.RegisterRoutes(router)
 	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
 	// modules: Postgres store, production generators, and delivery
 	// gated by deployment configuration — off by default (codes never
@@ -335,13 +345,13 @@ func run() error {
 		Mail:        accountMail,
 		MailEnabled: mailEnabled,
 		Store:       accountStore,
-		Verifier:  accountVerifier,
-		KeyProver: accountKeys,
-		CodeGen:   accountdomain.GenerateCode,
-		TokenGen:  accountdomain.GenerateToken,
-		AliasGen:  accountdomain.GenerateAlias,
-		KeyGen:    accountdomain.GenerateAccountKey,
-		IDGen:     newUUID,
+		Verifier:    accountVerifier,
+		KeyProver:   accountKeys,
+		CodeGen:     accountdomain.GenerateCode,
+		TokenGen:    accountdomain.GenerateToken,
+		AliasGen:    accountdomain.GenerateAlias,
+		KeyGen:      accountdomain.GenerateAccountKey,
+		IDGen:       newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session
@@ -405,6 +415,38 @@ func run() error {
 			return res.CaseID, nil
 		},
 		IDGen: newUUID,
+	}
+	// Account deletion linkage (SEC04-B): after atomic revocation and
+	// durable intent capture, enqueue owned scope cleanup — one
+	// privacy deletion intent per captured contributor (durable job
+	// through the deletion ledger) plus synchronous account-social
+	// erasure. Deterministic submission IDs make retries converge;
+	// feedback erasure converges on re-run (second run reports zero).
+	privacyEraseStore := privacyadapters.NewStore(pool.Underlying())
+	accountService.RequestErasure = func(ctx context.Context, accountID string, contributorIDs []string) error {
+		for _, contributorID := range contributorIDs {
+			if _, err := privacyapp.RequestDeletion(ctx, privacyapp.ErasePorts{
+				Clock: time.Now,
+				NewID: newUUID,
+				Attribution: func(ctx context.Context, contributorID string) (string, error) {
+					return identityRegistrar.AttributionToken(ctx, contributorID)
+				},
+				Store: privacyEraseStore,
+				EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+					_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+					return err
+				},
+			}, contributorID, privacyapp.EraseDTO{
+				ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID,
+				Reason:             "account-deletion",
+			}); err != nil {
+				return err
+			}
+		}
+		if _, err := feedbackService.EraseAccount(ctx, accountID); err != nil {
+			return err
+		}
+		return nil
 	}
 	feedbackhttp.Handler{
 		Service: feedbackService,
@@ -795,11 +837,14 @@ func run() error {
 			// Intake circuit breaker (B-BR-M04): any copy past its
 			// 24 h deadline with bytes still present stops new
 			// intake until the hourly sweeper catches up.
-			overdue, err := evidenceStore.OverdueFinals(ctx, time.Now().Add(-evidenceapp.CopyRetention), 1)
+			// SEC05-A: finals AND quarantine originals — an
+			// overdue original with a failed deletion trips the
+			// breaker exactly like an overdue final.
+			overdue, err := evidenceapp.AuditOverdue(ctx, evidenceStore, time.Now(), 1)
 			if err != nil {
 				return err
 			}
-			if len(overdue) > 0 {
+			if overdue.Unhealthy() {
 				return evidenceapp.ErrEnforcementUnhealthy
 			}
 			return nil

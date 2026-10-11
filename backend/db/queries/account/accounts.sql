@@ -93,6 +93,32 @@ UPDATE account_session_families SET revoked_at = @now WHERE id = @id;
 UPDATE account_session_families SET revoked_at = @now
 WHERE account_id = @account_id AND revoked_at IS NULL;
 
+-- SEC07-A bounded hashed rotation history (AUD-08): one row per
+-- superseded refresh verifier, newest first, pruned on rotation.
+-- Plaintext tokens never reach these statements.
+
+-- name: InsertRefreshHistory :exec
+INSERT INTO account_session_refresh_history
+    (family_id, refresh_salt, refresh_hash, rotated_at)
+VALUES (@family_id, @refresh_salt, @refresh_hash, @rotated_at)
+ON CONFLICT (family_id, refresh_hash) DO NOTHING;
+
+-- name: ListRefreshHistory :many
+SELECT refresh_salt, refresh_hash
+FROM account_session_refresh_history
+WHERE family_id = @family_id
+ORDER BY rotated_at DESC, refresh_hash
+LIMIT @cap;
+
+-- name: PruneRefreshHistory :execrows
+DELETE FROM account_session_refresh_history h
+WHERE h.family_id = @family_id AND h.refresh_hash NOT IN (
+    SELECT refresh_hash FROM account_session_refresh_history
+    WHERE family_id = @family_id
+    ORDER BY rotated_at DESC, refresh_hash
+    LIMIT @keep
+);
+
 -- Provider links and OIDC nonces (P13-T03B). Only salt-free opaque
 -- subjects persist; email is display/relay only and never a merge key.
 
@@ -114,6 +140,13 @@ DELETE FROM account_addresses WHERE account_id = @account_id;
 
 -- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = @account_id;
+
+-- SEC04-C credential minimization: key verifiers never survive the
+-- owner. The account audit row stays; the secrets that authenticate
+-- as it go with deletion.
+
+-- name: DeleteAccountKeys :exec
+DELETE FROM account_key_credentials WHERE account_id = @account_id;
 
 -- Contributor bindings and link audit (P13-T04B). One contributor binds
 -- at most one account; the application refuses stolen-ID binds and the
@@ -254,3 +287,25 @@ WHERE issued_at < @before;
 -- name: PurgeExpiredFamilies :execrows
 DELETE FROM account_session_families
 WHERE issued_at < @before;
+
+-- SEC01-D quota rollback: compensate one issued code when downstream
+-- delivery fails, so failed sends consume no budget rows.
+
+-- name: DeleteCodeByID :execrows
+DELETE FROM account_email_codes
+WHERE id = @id;
+
+-- SEC04-B durable erasure intents: recorded in the DeleteAccount
+-- transaction before bindings drop, so revocation and intent are
+-- atomic. Replay converges on the natural key.
+
+-- name: InsertErasureIntent :execrows
+INSERT INTO account_erasure_intents (account_id, contributor_id, created_at)
+VALUES (@account_id, @contributor_id, @created_at)
+ON CONFLICT (account_id, contributor_id) DO NOTHING;
+
+-- name: ListErasureIntentsByAccount :many
+SELECT account_id, contributor_id, created_at
+FROM account_erasure_intents
+WHERE account_id = @account_id
+ORDER BY contributor_id;

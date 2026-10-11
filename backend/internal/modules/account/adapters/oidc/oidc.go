@@ -83,7 +83,22 @@ func (v Verifier) Verify(ctx context.Context, provider, rawToken, audience, nonc
 	}
 	key, err := selectKey(keys, kid)
 	if err != nil {
-		return domain.ProviderSubject{}, domain.ErrOIDCUnknownIssuer
+		// SEC07-AUD-09 bounded refresh: the cached set may predate an
+		// upstream rotation (or removal). Exactly one TTL-bypassing
+		// refetch decides: a rotated-in key verifies, a removed or
+		// foreign key still refuses. Sources without refresh stay put.
+		if rs, ok := v.Keys.(RefreshingKeySource); ok {
+			fresh, ferr := rs.Refresh(ctx, issuer)
+			if ferr != nil {
+				return domain.ProviderSubject{}, domain.ErrOIDCUnavailable
+			}
+			key, err = selectKey(fresh, kid)
+			if err != nil {
+				return domain.ProviderSubject{}, domain.ErrOIDCUnknownIssuer
+			}
+		} else {
+			return domain.ProviderSubject{}, domain.ErrOIDCUnknownIssuer
+		}
 	}
 	if err := verifySignature(key, alg, signed, sig); err != nil {
 		return domain.ProviderSubject{}, domain.ErrOIDCWrongAudience

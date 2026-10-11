@@ -48,7 +48,7 @@ class ContributionStatusViewModelTest {
 
     @Test
     fun emptyOutboxRendersEmpty() = runTest(dispatcher) {
-        coEvery { outbox.listOwned() } returns emptyList()
+        coEvery { outbox.listOwnedPage(any(), any()) } returns emptyList()
 
         viewModel.load()
         advanceUntilIdle()
@@ -58,7 +58,7 @@ class ContributionStatusViewModelTest {
 
     @Test
     fun ownedCommandsRenderContent() = runTest(dispatcher) {
-        coEvery { outbox.listOwned() } returns listOf(
+        coEvery { outbox.listOwnedPage(any(), any()) } returns listOf(
             OwnedContribution("cmd-1", 2, 1, OwnedContributionPhase.FAILED),
         )
 
@@ -77,7 +77,7 @@ class ContributionStatusViewModelTest {
 
     @Test
     fun loadFailureRendersError() = runTest(dispatcher) {
-        coEvery { outbox.listOwned() } throws RuntimeException("boom")
+        coEvery { outbox.listOwnedPage(any(), any()) } throws RuntimeException("boom")
 
         viewModel.load()
         advanceUntilIdle()
@@ -87,7 +87,7 @@ class ContributionStatusViewModelTest {
 
     @Test
     fun cancelDelegatesAndReloads() = runTest(dispatcher) {
-        coEvery { outbox.listOwned() } returns listOf(
+        coEvery { outbox.listOwnedPage(any(), any()) } returns listOf(
             OwnedContribution("cmd-1", 1, 0, OwnedContributionPhase.QUEUED),
         )
         coEvery { outbox.cancel("cmd-1") } returns Unit

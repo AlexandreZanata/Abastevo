@@ -1,9 +1,11 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.dao.ContributionOutboxDao
+import com.anpfuel.data.local.dao.EligibleDispatchKey
 import com.anpfuel.data.local.entity.ContributionOutboxEntity
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.OwnedContributionPhase
 import com.anpfuel.domain.repository.PendingContribution
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -24,12 +26,39 @@ class RoomContributionOutboxRepositoryTest {
 
     private class FakeDao : ContributionOutboxDao {
         val rows = mutableMapOf<String, ContributionOutboxEntity>()
+        var listAllCalls = 0
 
         override suspend fun findById(commandId: String): ContributionOutboxEntity? =
             rows[commandId]
 
-        override suspend fun listAll(): List<ContributionOutboxEntity> =
-            rows.values.toList()
+        override suspend fun listAll(): List<ContributionOutboxEntity> {
+            listAllCalls++
+            return rows.values.toList()
+        }
+
+        private fun isEligible(row: ContributionOutboxEntity, nowMillis: Long): Boolean =
+            row.state == "QUEUED" || (row.state in setOf("FAILED", "IN_FLIGHT") && row.nextEligibleTick <= nowMillis) ||
+                (row.state == "ACKED" && row.remoteStatus in setOf("RECEIVED", "VALIDATING") && row.nextEligibleTick <= nowMillis)
+
+        override suspend fun findDispatchableById(commandId: String, nowMillis: Long): ContributionOutboxEntity? =
+            rows[commandId]?.takeIf { isEligible(it, nowMillis) }
+
+        override suspend fun listEligibleKeys(limit: Int, nowMillis: Long): List<EligibleDispatchKey> =
+            rows.values.filter { isEligible(it, nowMillis) }.take(limit)
+                .map { EligibleDispatchKey(it.commandId, it.revision) }
+
+        override suspend fun listOwnedPage(limit: Int, offset: Int): List<ContributionOutboxEntity> =
+            rows.values.toList().asReversed().drop(offset).take(limit)
+
+        override suspend fun deleteTerminalBeyond(keep: Int, batch: Int): Int {
+            fun isTerminal(row: ContributionOutboxEntity): Boolean =
+                row.state == "CANCELLED" || (row.state == "ACKED" && row.remoteStatus in setOf("VALIDATED", "REJECTED", "EXPIRED"))
+            val ordered = rows.values.toList()
+            val retained = ordered.takeLast(keep.coerceAtLeast(0)).map { it.commandId }.toSet()
+            val victims = ordered.filter { isTerminal(it) && it.commandId !in retained }.take(batch)
+            victims.forEach { rows.remove(it.commandId) }
+            return victims.size
+        }
 
         override suspend fun upsert(entity: ContributionOutboxEntity) {
             rows[entity.commandId] = entity
@@ -60,6 +89,13 @@ class RoomContributionOutboxRepositoryTest {
             val row = rows[commandId] ?: return 0
             if (row.revision != revision || row.nonce != nonce || row.state != "IN_FLIGHT") return 0
             rows[commandId] = row.copy(state = "FAILED", attempts = attempts, nextEligibleTick = nextTick)
+            return 1
+        }
+
+        override suspend fun markRefused(commandId: String, revision: Int, attempts: Int, neverTick: Long, reason: String): Int {
+            val row = rows[commandId] ?: return 0
+            if (row.revision != revision || row.state != "IN_FLIGHT") return 0
+            rows[commandId] = row.copy(state = "FAILED", attempts = attempts, nextEligibleTick = neverTick, failureReason = reason)
             return 1
         }
 
@@ -101,7 +137,7 @@ class RoomContributionOutboxRepositoryTest {
 
         assertEquals(1, first.revision)
         assertEquals(2, second.revision)
-        assertEquals(1, repo.listDispatchable(2_000_000L).size)
+        assertEquals(1, repo.listDispatchablePage(2_000_000L, 50).size)
         assertTrue(second.payloadJson.contains("historical"))
     }
 
@@ -126,8 +162,8 @@ class RoomContributionOutboxRepositoryTest {
         repo.enqueue(draft(), payload())
         repo.markFailed("cmd-1", 1_000_000L)
 
-        assertTrue(repo.listDispatchable(1_000_000L).isEmpty())
-        assertEquals(1, repo.listDispatchable(1_000_000L + 1_000L).size)
+        assertTrue(repo.listDispatchablePage(1_000_000L, 50).isEmpty())
+        assertEquals(1, repo.listDispatchablePage(1_000_000L + 1_000L, 50).size)
     }
 
     @Test
@@ -139,7 +175,7 @@ class RoomContributionOutboxRepositoryTest {
         repo.markFailed("cmd-1", 1_000_000L)
         repo.enqueue(draft("cmd-2"), payload())
 
-        val owned = repo.listOwned().sortedBy { it.commandId }
+        val owned = repo.listOwnedPage(100, 0).sortedBy { it.commandId }
         assertEquals(2, owned.size)
         assertEquals(OwnedContributionPhase.FAILED, owned[0].phase)
         assertEquals(1, owned[0].revision)
@@ -164,7 +200,7 @@ class RoomContributionOutboxRepositoryTest {
         val repo = RoomContributionOutboxRepository(dao)
 
         assertThrows(DomainException::class.java) {
-            kotlinx.coroutines.runBlocking { repo.listOwned() }
+            kotlinx.coroutines.runBlocking { repo.listOwnedPage(100, 0) }
         }
     }
 
@@ -193,4 +229,145 @@ class RoomContributionOutboxRepositoryTest {
         assertEquals(setOf("row-1", "row-2"), dao.rows.keys)
     }
 
+    // SEC04-D: owner purge deletes exactly the scoped rows and keeps
+    // unscoped/unparseable rows (fail-closed) plus other owners.
+    @Test
+    fun `purgeOwned deletes only the erased owner`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        fun row(id: String, scope: String?) = ContributionOutboxEntity(
+            commandId = id, kind = "SUBMIT", state = "QUEUED", attempts = 0,
+            nextEligibleTick = 0L, nonce = "",
+            payload = if (scope == null) "{\"client_submission_id\":\"$id\"}"
+            else "{\"client_submission_id\":\"$id\",\"scope\":{\"owner_scope\":\"$scope\",\"origin\":\"https://teste.abastevo.com.br\"}}",
+            revision = 1,
+        )
+        dao.upsert(row("cmd-a1", "scope-a"))
+        dao.upsert(row("cmd-a2", "scope-a"))
+        dao.upsert(row("cmd-b1", "scope-b"))
+        dao.upsert(row("cmd-legacy", null))
+        dao.upsert(row("cmd-broken", "scope-a").copy(payload = "not json"))
+
+        val purged = repo.purgeOwned("scope-a")
+
+        assertEquals(2, purged)
+        val remaining = dao.listAll().map { it.commandId }.toSet()
+        assertEquals(setOf("cmd-b1", "cmd-legacy", "cmd-broken"), remaining)
+        assertEquals(0, repo.purgeOwned(""))
+        assertEquals(0, repo.purgeOwned("scope-unknown"))
+    }
+
+    // SEC06-C: dispatch pages cap at the limit with identifiers only;
+    // single-command lookup never scans the table.
+    @Test
+    fun `dispatch selection stays bounded without full scans`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repeat(60) { i -> repo.enqueue(draft("cmd-$i"), payload()) }
+        val callsBefore = dao.listAllCalls
+        val page = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(50, page.size)
+        assertEquals("cmd-0", page.first().commandId)
+        val single = repo.findDispatchable("cmd-59", 2_000_000L)
+        assertEquals("cmd-59", single?.commandId)
+        assertEquals(null, repo.findDispatchable("cmd-missing", 2_000_000L))
+        assertEquals(callsBefore, dao.listAllCalls)
+    }
+
+    // SEC06-C: history pages newest-first and bounded.
+    @Test
+    fun `history pages newest first bounded`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repeat(5) { i -> repo.enqueue(draft("cmd-$i"), payload()) }
+        val first = repo.listOwnedPage(2, 0)
+        assertEquals(listOf("cmd-4", "cmd-3"), first.map { it.commandId })
+        val second = repo.listOwnedPage(2, 2)
+        assertEquals(listOf("cmd-2", "cmd-1"), second.map { it.commandId })
+        assertEquals("cmd-1", repo.findOwned("cmd-1")?.commandId)
+        assertEquals(null, repo.findOwned("cmd-missing"))
+        assertEquals(emptyList<OwnedContribution>(), repo.listOwnedPage(0, 0))
+    }
+
+    // SEC06-C retention: terminal history beyond the retained window
+    // purges oldest-first in bounded batches; live rows never match.
+    @Test
+    fun `retention purges terminal beyond window bounded`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        dao.upsert(
+            ContributionOutboxEntity(
+                commandId = "live-1", kind = "SUBMIT", payload = payload(),
+                revision = 1, state = "QUEUED", attempts = 0,
+                nextEligibleTick = 0L, nonce = "",
+            ),
+        )
+        repeat(1005) { i ->
+            dao.upsert(
+                ContributionOutboxEntity(
+                    commandId = "old-$i", kind = "SUBMIT", payload = payload(),
+                    revision = 1, state = "CANCELLED", attempts = 0,
+                    nextEligibleTick = 0L, nonce = "",
+                ),
+            )
+        }
+        assertEquals(5, repo.purgeTerminalHistory())
+        assertEquals(1001, dao.rows.size)
+        assertTrue(dao.rows.containsKey("live-1"))
+        assertEquals(0, repo.purgeTerminalHistory())
+        // Amortized on the write path: enquing converges retention.
+        repo.enqueue(draft("cmd-new"), payload())
+        assertTrue(dao.rows.size <= 1002)
+    }
+
+    // SEC06-D: server Retry-After overrides the curve but never the
+    // ceiling; permanent refusals park with their reason and stay
+    // parked; transient failures keep bounded backoff.
+    @Test
+    fun `retry hint honored capped and permanent parks distinctly`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repo.enqueue(draft("cmd-hint"), payload())
+        // Move to IN_FLIGHT via a dispatch claim to mirror the worker.
+        assertEquals(1, dao.claim("cmd-hint", 1, "n1", 1_000L, 2_000L))
+        repo.failDispatch("cmd-hint", 1, "n1", 1_000L, 120_000L)
+        val hinted = dao.rows.getValue("cmd-hint")
+        assertEquals(121_000L, hinted.nextEligibleTick)
+        // Absurd hints cap at the backoff ceiling, never overflow.
+        dao.upsert(hinted.copy(state = "IN_FLIGHT", nonce = "n2"))
+        repo.failDispatch("cmd-hint", 1, "n2", 1_000L, Long.MAX_VALUE)
+        assertEquals(1_000L + com.anpfuel.application.portable.PortableOutbox.MAX_DELAY_TICKS, dao.rows.getValue("cmd-hint").nextEligibleTick)
+        // Permanent refusal parks distinctly with its reason.
+        dao.upsert(hinted.copy(state = "IN_FLIGHT", nonce = "n3"))
+        repo.refusePermanently("cmd-hint", 1, "contribution.owner-or-origin-changed")
+        val parked = dao.rows.getValue("cmd-hint")
+        assertEquals("FAILED", parked.state)
+        assertEquals(com.anpfuel.application.portable.PortableOutbox.MAX_DISPATCH_ATTEMPTS, parked.attempts)
+        assertEquals(Long.MAX_VALUE, parked.nextEligibleTick)
+        assertEquals("contribution.owner-or-origin-changed", parked.failureReason)
+        // A second park is a safe no-op (row left IN_FLIGHT checks).
+        repo.refusePermanently("cmd-hint", 1, "contribution.owner-or-origin-changed")
+        assertEquals(parked, dao.rows.getValue("cmd-hint"))
+        // Parked rows never dispatch again (any realistic clock).
+        assertTrue(repo.listDispatchablePage(Long.MAX_VALUE - 1, 50).isEmpty())
+        assertNull(repo.findDispatchable("cmd-hint", Long.MAX_VALUE - 1))
+    }
+
+    // SEC06-D fairness: no per-owner caps — FIFO order serves both
+    // accounts without starvation.
+    @Test
+    fun `two accounts interleave without starvation`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        fun scopedPayload(owner: String) =
+            "{\"client_submission_id\":\"x\",\"scope\":{\"owner_scope\":\"$owner\",\"origin\":\"https://teste.abastevo.com.br\"}}"
+        repo.enqueue(draft("cmd-a1"), scopedPayload("owner-a"))
+        repo.enqueue(draft("cmd-b1"), scopedPayload("owner-b"))
+        repo.enqueue(draft("cmd-a2"), scopedPayload("owner-a"))
+        val page = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(listOf("cmd-a1", "cmd-b1", "cmd-a2"), page.map { it.commandId })
+        assertEquals(2, repo.purgeOwned("owner-a"))
+        val rest = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(listOf("cmd-b1"), rest.map { it.commandId })
+    }
 }

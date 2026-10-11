@@ -59,6 +59,14 @@ WHERE id = @id AND status = 'VERIFYING' AND created_at <= @cutoff;
 SELECT count(*) FROM evidence_sessions
 WHERE contributor_ref = @contributor_ref AND created_at >= @since;
 
+-- SEC03-A live-byte reservation accounting: declared bytes held by
+-- unexpired in-flight sessions (expired and terminal sessions
+-- release their bytes; created-today rows keep counting above).
+-- name: SumLiveBytesSince :one
+SELECT COALESCE(SUM(declared_bytes), 0)::bigint FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref AND created_at >= @since
+  AND expires_at > @now AND status IN ('ISSUED', 'VERIFYING');
+
 -- Sweep inventory (P05-T05). State transitions stay conditional; every
 -- deletion marker is set-if-unset so repeated runs converge. Postgres
 -- UPDATE takes no LIMIT, so batched transitions select their keys in a
@@ -109,7 +117,7 @@ LIMIT @batch;
 
 -- OverdueFinals lists copies past their 24 h deadline whose bytes may
 -- still be present: the failing-policy signal for the intake circuit
--- breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+-- breaker and the overdue audit. Bounded, newest
 -- deadline first is unnecessary; oldest first surfaces the worst lag.
 
 -- name: OverdueFinals :many
@@ -120,6 +128,19 @@ WHERE final_deleted_at IS NULL
 ORDER BY COALESCE(received_at, created_at) ASC
 LIMIT @batch;
 
+-- SEC05-A overdue originals: quarantine originals past their 24 h
+-- deadline whose bytes may still be present (no deletion marker).
+-- Strict deadline anchor (created_at): terminal status, live jobs
+-- and stuck validation do not excuse overdue bytes — an overrun is
+-- itself a lag signal. Bounded oldest-first for the breaker/audit.
+-- name: OverdueOriginals :many
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE quarantine_deleted_at IS NULL
+    AND created_at <= @cutoff
+ORDER BY created_at ASC
+LIMIT @batch;
+
 -- name: MarkFinalDeleted :execrows
 UPDATE evidence_objects
 SET final_deleted_at = now()
@@ -128,6 +149,26 @@ WHERE id = @id AND final_deleted_at IS NULL;
 -- name: PurgeObjectsBefore :execrows
 DELETE FROM evidence_objects
 WHERE created_at < @cutoff;
+
+-- SEC03-D intake-health accounting (bounded aggregates only: counts,
+-- declared-byte sums and one timestamp — never keys, hashes or
+-- payloads). Reserved = live in-flight sessions; decided splits
+-- READY vs REJECTED created today; oldest incomplete names the lag.
+
+-- name: SumReservedSessions :one
+SELECT count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE expires_at > @now AND status IN ('ISSUED', 'VERIFYING');
+
+-- name: SumDecidedSessions :many
+SELECT status, count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE created_at >= @since AND status IN ('READY', 'REJECTED')
+GROUP BY status;
+
+-- name: OldestIncompleteSession :one
+SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
+WHERE status IN ('ISSUED', 'VERIFYING');
 
 -- name: FindByDHash :many
 SELECT id, session_id, final_key, dhash, created_at

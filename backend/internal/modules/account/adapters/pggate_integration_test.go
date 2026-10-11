@@ -38,7 +38,7 @@ func TestPGBindingBlockedMatrix(t *testing.T) {
 	if blocked, err := application.BindingBlocked(ctx, f.svc.Store, "contrib-g"); !blocked || err != nil {
 		t.Errorf("bound-suspended must block, got %v %v", blocked, err)
 	}
-	if err := f.svc.DeleteAccount(ctx, accID); err != nil {
+	if _, err := f.svc.DeleteAccount(ctx, accID); err != nil {
 		t.Fatal(err)
 	}
 	if blocked, err := application.BindingBlocked(ctx, f.svc.Store, "contrib-g"); blocked || err != nil {

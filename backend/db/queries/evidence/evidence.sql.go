@@ -799,6 +799,18 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 	return result.RowsAffected(), nil
 }
 
+const oldestIncompleteSession = `-- name: OldestIncompleteSession :one
+SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
+WHERE status IN ('ISSUED', 'VERIFYING')
+`
+
+func (q *Queries) OldestIncompleteSession(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestIncompleteSession)
+	var oldest pgtype.Timestamptz
+	err := row.Scan(&oldest)
+	return oldest, err
+}
+
 const overdueFinals = `-- name: OverdueFinals :many
 
 SELECT id, final_key, created_at, received_at
@@ -823,7 +835,7 @@ type OverdueFinalsRow struct {
 
 // OverdueFinals lists copies past their 24 h deadline whose bytes may
 // still be present: the failing-policy signal for the intake circuit
-// breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+// breaker and the overdue audit. Bounded, newest
 // deadline first is unnecessary; oldest first surfaces the worst lag.
 func (q *Queries) OverdueFinals(ctx context.Context, arg OverdueFinalsParams) ([]OverdueFinalsRow, error) {
 	rows, err := q.db.Query(ctx, overdueFinals, arg.Cutoff, arg.Batch)
@@ -839,6 +851,57 @@ func (q *Queries) OverdueFinals(ctx context.Context, arg OverdueFinalsParams) ([
 			&i.FinalKey,
 			&i.CreatedAt,
 			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const overdueOriginals = `-- name: OverdueOriginals :many
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE quarantine_deleted_at IS NULL
+    AND created_at <= $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type OverdueOriginalsParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+type OverdueOriginalsRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// SEC05-A overdue originals: quarantine originals past their 24 h
+// deadline whose bytes may still be present (no deletion marker).
+// Strict deadline anchor (created_at): terminal status, live jobs
+// and stuck validation do not excuse overdue bytes — an overrun is
+// itself a lag signal. Bounded oldest-first for the breaker/audit.
+func (q *Queries) OverdueOriginals(ctx context.Context, arg OverdueOriginalsParams) ([]OverdueOriginalsRow, error) {
+	rows, err := q.db.Query(ctx, overdueOriginals, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OverdueOriginalsRow
+	for rows.Next() {
+		var i OverdueOriginalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.QuarantineKey,
+			&i.Status,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -954,4 +1017,82 @@ func (q *Queries) StaleFinalCandidates(ctx context.Context, arg StaleFinalCandid
 		return nil, err
 	}
 	return items, nil
+}
+
+const sumDecidedSessions = `-- name: SumDecidedSessions :many
+SELECT status, count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE created_at >= $1 AND status IN ('READY', 'REJECTED')
+GROUP BY status
+`
+
+type SumDecidedSessionsRow struct {
+	Status string `json:"status"`
+	N      int64  `json:"n"`
+	Bytes  int64  `json:"bytes"`
+}
+
+func (q *Queries) SumDecidedSessions(ctx context.Context, since pgtype.Timestamptz) ([]SumDecidedSessionsRow, error) {
+	rows, err := q.db.Query(ctx, sumDecidedSessions, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumDecidedSessionsRow
+	for rows.Next() {
+		var i SumDecidedSessionsRow
+		if err := rows.Scan(&i.Status, &i.N, &i.Bytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumLiveBytesSince = `-- name: SumLiveBytesSince :one
+SELECT COALESCE(SUM(declared_bytes), 0)::bigint FROM evidence_sessions
+WHERE contributor_ref = $1 AND created_at >= $2
+  AND expires_at > $3 AND status IN ('ISSUED', 'VERIFYING')
+`
+
+type SumLiveBytesSinceParams struct {
+	ContributorRef string             `json:"contributor_ref"`
+	Since          pgtype.Timestamptz `json:"since"`
+	Now            pgtype.Timestamptz `json:"now"`
+}
+
+// SEC03-A live-byte reservation accounting: declared bytes held by
+// unexpired in-flight sessions (expired and terminal sessions
+// release their bytes; created-today rows keep counting above).
+func (q *Queries) SumLiveBytesSince(ctx context.Context, arg SumLiveBytesSinceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, sumLiveBytesSince, arg.ContributorRef, arg.Since, arg.Now)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const sumReservedSessions = `-- name: SumReservedSessions :one
+
+SELECT count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE expires_at > $1 AND status IN ('ISSUED', 'VERIFYING')
+`
+
+type SumReservedSessionsRow struct {
+	N     int64 `json:"n"`
+	Bytes int64 `json:"bytes"`
+}
+
+// SEC03-D intake-health accounting (bounded aggregates only: counts,
+// declared-byte sums and one timestamp — never keys, hashes or
+// payloads). Reserved = live in-flight sessions; decided splits
+// READY vs REJECTED created today; oldest incomplete names the lag.
+func (q *Queries) SumReservedSessions(ctx context.Context, now pgtype.Timestamptz) (SumReservedSessionsRow, error) {
+	row := q.db.QueryRow(ctx, sumReservedSessions, now)
+	var i SumReservedSessionsRow
+	err := row.Scan(&i.N, &i.Bytes)
+	return i, err
 }

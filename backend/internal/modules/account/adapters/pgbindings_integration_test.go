@@ -167,7 +167,7 @@ func TestPGDeleteDropsBindings(t *testing.T) {
 	// Advance past access expiry so the delete path (not the session) is
 	// what we exercise below; deletion itself needs no session.
 	f.clock.advance(901 * time.Second)
-	if err := f.svc.DeleteAccount(ctx, accID); err != nil {
+	if _, err := f.svc.DeleteAccount(ctx, accID); err != nil {
 		t.Fatalf("DeleteAccount: %v", err)
 	}
 	if _, found, _ := f.svc.Store.FindBindingOwner(ctx, "contrib-6"); found {

@@ -138,3 +138,15 @@ merge landing into dev. This source consolidation uses the same no-bypass,
 current-head/base, clean-tree and successful-check guards with an explicit
 GitHub merge commit. Protected dev→main delivery, deployment, live browser
 accessibility/field performance and external indexing remain owed.
+
+
+## Final PR128 / PR129 reconciliation — 2026-10-11
+
+User now authorizes both PRs delivered to main through landing → dev → main,
+only after successful current-head CI. Merge landing `acd4725` with repaired
+dev `9c0746e`, which contains current main `6f062a4`, using a normal merge.
+The only conflict is PROGRESS; every nonblank line in both parents is retained
+and verified. Backend, mobile modules, infrastructure, contracts and gate
+sources exactly match repaired dev; landing implementation stays intact.
+See [CI recovery](../backend/CI_PR128_PR129_RECOVERY.md) for the actual failures
+and focused repair tests. Remote checks/merges remain pending until observed.

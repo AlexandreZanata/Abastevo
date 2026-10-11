@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
@@ -28,6 +29,18 @@ type MemStore struct {
 	keyCreds      map[string]domain.KeyCredential
 	keyByUsername map[string]string
 	keyByLookup   map[string]string
+	// intents holds durable account-erasure intents (SEC04-B):
+	// contributor IDs captured at deletion for scope cleanup.
+	intents map[erasureIntentKey]int64
+	// refreshHist holds bounded hashed rotation histories (SEC07-A):
+	// newest superseded verifiers first, at most
+	// domain.MaxRefreshHistory per family. Salted hashes only.
+	refreshHist map[string][]domain.RotatedVerifier
+}
+
+type erasureIntentKey struct {
+	accountID     string
+	contributorID string
 }
 
 // NewMemStore returns an empty memory store.
@@ -47,6 +60,8 @@ func NewMemStore() *MemStore {
 		keyCreds:      map[string]domain.KeyCredential{},
 		keyByUsername: map[string]string{},
 		keyByLookup:   map[string]string{},
+		intents:       map[erasureIntentKey]int64{},
+		refreshHist:   map[string][]domain.RotatedVerifier{},
 	}
 }
 
@@ -254,6 +269,27 @@ func (m *MemStore) TryCreateFamily(_ context.Context, fam domain.SessionFamily, 
 	return nil
 }
 
+// DeleteCode compensates one issued code by ID (SEC01-D quota
+// rollback). Unknown IDs converge no-op so compensating a
+// never-persisted issuance stays safe under races.
+func (m *MemStore) DeleteCode(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.codes[:0]
+	for _, rec := range m.codes {
+		if rec.ID == id {
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	m.codes = kept
+	m.byAddr = map[string][]int{}
+	for i, rec := range m.codes {
+		m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], i)
+	}
+	return nil
+}
+
 func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.EmailCode, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -353,10 +389,26 @@ func (m *MemStore) Rotate(_ context.Context, familyID, expectedRefreshHash, refr
 	if !domain.EqualHash(fam.RefreshHash, expectedRefreshHash) {
 		return domain.ErrSessionReuse
 	}
+	// SEC07-A: archive the superseded verifier before swapping, newest
+	// first, bounded so history cannot grow without limit.
+	hist := append([]domain.RotatedVerifier{{Salt: fam.RefreshSalt, Hash: fam.RefreshHash}}, m.refreshHist[familyID]...)
+	if len(hist) > domain.MaxRefreshHistory {
+		hist = hist[:domain.MaxRefreshHistory]
+	}
+	m.refreshHist[familyID] = hist
 	fam.RefreshSalt, fam.RefreshHash = refreshSalt, refreshHash
 	fam.AccessSalt, fam.AccessHash = accessSalt, accessHash
 	fam.AccessExpires = accessExpires
 	return nil
+}
+
+// RefreshHistory returns the bounded hashed rotation history, newest
+// first (SEC07-A). Callers compare with the token hasher; the memory
+// copy stays internal.
+func (m *MemStore) RefreshHistory(_ context.Context, familyID string) ([]domain.RotatedVerifier, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]domain.RotatedVerifier(nil), m.refreshHist[familyID]...), nil
 }
 
 func (m *MemStore) RevokeFamily(_ context.Context, familyID string, nowUnix int64) error {
@@ -555,17 +607,30 @@ func (m *MemStore) ReactivateAccount(_ context.Context, accountID string) error 
 	return m.setStatusLocked(accountID, domain.StatusActive)
 }
 
-// DeleteAccount marks the account deleted, revokes every session family
-// and drops address and provider bindings. The account row stays as an
-// audit record; a later signup with the same address mints a new account
-// without reputation carryover.
-func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) error {
+// DeleteAccount marks the account deleted, revokes every session family,
+// captures contributor bindings into durable erasure intents BEFORE
+// dropping them, and drops address and provider bindings — all under
+// one lock, so revocation and intent are atomic. The account row stays
+// as an audit record; a later signup with the same address mints a new
+// account without reputation carryover. It returns the captured
+// contributor IDs for scope cleanup.
+func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.setStatusLocked(accountID, domain.StatusDeleted); err != nil {
-		return err
+		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	var contributors []string
+	if set, ok := m.bindings[accountID]; ok {
+		for contributor := range set {
+			contributors = append(contributors, contributor)
+			delete(m.byContributor, contributor)
+			m.intents[erasureIntentKey{accountID: accountID, contributorID: contributor}] = nowUnix
+		}
+		delete(m.bindings, accountID)
+	}
+	sort.Strings(contributors)
 	for hash, a := range m.accounts {
 		if a.ID == accountID {
 			delete(m.accounts, hash)
@@ -578,13 +643,29 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		}
 		delete(m.links, accountID)
 	}
-	if set, ok := m.bindings[accountID]; ok {
-		for contributor := range set {
-			delete(m.byContributor, contributor)
-		}
-		delete(m.bindings, accountID)
+	// SEC04-C: key verifiers never survive the owner.
+	if cred, ok := m.keyCreds[accountID]; ok {
+		delete(m.keyByUsername, cred.UsernameHash)
+		delete(m.keyByLookup, cred.KeyLookup)
+		delete(m.keyCreds, accountID)
 	}
-	return nil
+	return contributors, nil
+}
+
+// ListErasureIntents returns the durable contributor intents of one
+// account for enqueue replay after a crash between revocation and
+// scope cleanup (SEC04-B/D).
+func (m *MemStore) ListErasureIntents(_ context.Context, accountID string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []string
+	for k := range m.intents {
+		if k.accountID == accountID {
+			out = append(out, k.contributorID)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 // BindContributor records a verified contributor binding, refusing

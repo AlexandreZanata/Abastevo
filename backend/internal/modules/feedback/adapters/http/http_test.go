@@ -328,6 +328,20 @@ func TestWriteAuthAndMapping(t *testing.T) {
 	if rec.Code != 400 {
 		t.Errorf("oversize must be 400, got %d", rec.Code)
 	}
+	// SEC01-D: comment-budget exhaustion is a stable 429 with a retry
+	// hint and no identity leak.
+	svc.err = domain.ErrQuotaExceeded
+	rec = call(t, h, "POST", "/v1/feedback/comments",
+		authed+`,"station_id":"s1","product":"P","text":"x"}`)
+	if rec.Code != 429 || !strings.Contains(rec.Body.String(), "feedback.quota-exceeded") {
+		t.Errorf("budget must be 429 quota-exceeded, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") != "60" {
+		t.Errorf("budget must carry Retry-After 60, got %q", rec.Header().Get("Retry-After"))
+	}
+	if strings.Contains(rec.Body.String(), "acc-1") {
+		t.Error("budget refusal must not leak the account id")
+	}
 	svc.err = nil
 	for _, body := range []string{`not json`, `{"family_id":"fam-1"}`} {
 		if rec := call(t, h, "POST", "/v1/feedback/comments",
@@ -533,6 +547,9 @@ func TestReportFlow(t *testing.T) {
 	rec = call(t, h, "POST", "/v1/feedback/comments/c1/report", authed+`,"reason":"spam"}`)
 	if rec.Code != 429 || !strings.Contains(rec.Body.String(), "feedback.quota-exceeded") {
 		t.Errorf("quota must be 429, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Retry-After") != "30" {
+		t.Errorf("report quota must carry Retry-After 30, got %q", rec.Header().Get("Retry-After"))
 	}
 	svc.err = domain.ErrCommentNotFound
 	rec = call(t, h, "POST", "/v1/feedback/comments/c9/report", authed+`,"reason":"spam"}`)

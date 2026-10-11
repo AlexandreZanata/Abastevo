@@ -153,11 +153,14 @@ func freshService(t *testing.T) (*application.Service, *integClock, *integMail) 
 		Mail:        mail,
 		MailEnabled: true,
 		Store:       NewPGStore(pool),
-		CodeGen:     nextCode,
-		TokenGen:    nextToken,
-		AliasGen:    nextAlias,
-		KeyGen:      domain.GenerateAccountKey,
-		IDGen:       nextID,
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
+		CodeGen:  nextCode,
+		TokenGen: nextToken,
+		AliasGen: nextAlias,
+		KeyGen:   domain.GenerateAccountKey,
+		IDGen:    nextID,
 	}
 	return svc, clock, mail
 }

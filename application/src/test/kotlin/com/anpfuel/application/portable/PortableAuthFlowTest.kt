@@ -439,7 +439,8 @@ class PortableAuthFlowTest {
     @Test
     fun deniedRefreshNeverUsesKeyAndClearsLocalAuthority() {
         for (verdict in listOf(PortableAuth.Verdict.SESSION_REVOKED,
-            PortableAuth.Verdict.SESSION_REUSE, PortableAuth.Verdict.ACCOUNT_SUSPENDED,
+            PortableAuth.Verdict.SESSION_REUSE, PortableAuth.Verdict.SESSION_INVALID,
+            PortableAuth.Verdict.ACCOUNT_SUSPENDED,
             PortableAuth.Verdict.ACCOUNT_DELETED, PortableAuth.Verdict.CODE_UNKNOWN)) {
             val store = FakeStore()
             val keys = FakeKeys()

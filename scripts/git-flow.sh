@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # P01-T14 phase branch and PR lifecycle controller.
 # Commands: start, checkpoint, sync, status, finish. Trusted repo only:
-# origin must point to AlexandreZanata/brazil-fuel-prices unless
+# origin must point to the verified AlexandreZanata/Abastevo repository
+# (or its historical brazil-fuel-prices alias) unless
 # ANPFUEL_TRUST_OVERRIDE=1 (synthetic tests only, never production).
 # Guards: wrong repo, main branch, dirty tree, missing/failed/skipped/
 # cancelled checks, changed head/base, unmerged deletion all refuse.
@@ -17,6 +18,10 @@ STATE_FILE="$GIT_DIR/anpfuel-phase.json"
 CHECKPOINT_DIR="$GIT_DIR/anpfuel-checkpoints"
 EXPECTED_SSH="git@github.com:AlexandreZanata/brazil-fuel-prices.git"
 EXPECTED_HTTPS="https://github.com/AlexandreZanata/brazil-fuel-prices.git"
+EXPECTED_SSH_RENAMED="git@github.com:AlexandreZanata/Abastevo.git"
+EXPECTED_HTTPS_RENAMED="https://github.com/AlexandreZanata/Abastevo.git"
+EXPECTED_SSH_ALIAS="git@github.com:AlexandreZanata/abastevo.git"
+EXPECTED_HTTPS_ALIAS="https://github.com/AlexandreZanata/abastevo.git"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "git-flow: $*"; }
@@ -29,7 +34,9 @@ check_trusted_repo() {
     fi
     local url
     url="$(origin_url)"
-    if [[ "$url" != "$EXPECTED_SSH" && "$url" != "$EXPECTED_HTTPS" ]]; then
+    if [[ "$url" != "$EXPECTED_SSH" && "$url" != "$EXPECTED_HTTPS" &&
+          "$url" != "$EXPECTED_SSH_RENAMED" && "$url" != "$EXPECTED_HTTPS_RENAMED" &&
+          "$url" != "$EXPECTED_SSH_ALIAS" && "$url" != "$EXPECTED_HTTPS_ALIAS" ]]; then
         die "untrusted origin '$url' (expected fuel repository); refusing"
     fi
 }

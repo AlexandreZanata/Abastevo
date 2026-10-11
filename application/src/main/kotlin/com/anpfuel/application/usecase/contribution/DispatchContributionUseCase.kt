@@ -4,9 +4,11 @@ import com.anpfuel.domain.exception.ContributionPhotoExpired
 import com.anpfuel.domain.exception.ContributionPhotoRejected
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.repository.ContributionOutboxRepository
+import com.anpfuel.domain.repository.ContributionRateLimited
 import com.anpfuel.domain.repository.ContributionReceipt
 import com.anpfuel.domain.repository.ContributionRemoteStatus
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
+import com.anpfuel.domain.repository.OutboxBudgets
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 
@@ -21,12 +23,20 @@ class DispatchContributionUseCase(
 ) {
     suspend fun invoke(requestedId: String?): DispatchOutcome {
         val now = nowMillis()
-        val pending = outbox.listDispatchable(now)
-        val next = if (requestedId.isNullOrBlank()) pending.firstOrNull() else pending.firstOrNull { it.commandId == requestedId }
+        // SEC06-C bounded selection: one requested command by id, or
+        // the head of one bounded eligible page. Full-history scans
+        // (and loading all payloads to select one) are gone; owner,
+        // origin, frozen revision and lease semantics are unchanged.
+        val next = if (requestedId.isNullOrBlank()) {
+            outbox.listDispatchablePage(now, OutboxBudgets.DISPATCH_PAGE_SIZE).firstOrNull()
+        } else {
+            outbox.findDispatchable(requestedId, now)
+        }
         if (next == null) {
-            val waiting = outbox.listOwned().any { it.commandId == requestedId &&
+            val waiting = !requestedId.isNullOrBlank() && outbox.findOwned(requestedId)?.let {
                 it.phase != com.anpfuel.domain.repository.OwnedContributionPhase.CANCELLED &&
-                it.remoteStatus !in setOf(ContributionRemoteStatus.VALIDATED, ContributionRemoteStatus.REJECTED, ContributionRemoteStatus.EXPIRED) }
+                    it.remoteStatus !in setOf(ContributionRemoteStatus.VALIDATED, ContributionRemoteStatus.REJECTED, ContributionRemoteStatus.EXPIRED)
+            } == true
             return if (waiting) DispatchOutcome.RETRY else DispatchOutcome.DONE
         }
         val attempt = attemptId()
@@ -47,12 +57,42 @@ class DispatchContributionUseCase(
         } catch (_: ContributionPhotoRejected) {
             outbox.recordReceipt(ContributionReceipt(next.commandId,next.revision,ContributionRemoteStatus.REJECTED,reason="contribution.photo-rejected"),nowMillis())
             DispatchOutcome.DONE
-        } catch (_: DomainException) {
-            outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis())
-            DispatchOutcome.REFUSED
+        } catch (limited: ContributionRateLimited) {
+            // SEC06-D: honor the server's Retry-After (bounded by the
+            // backoff ceiling in the repository) instead of hammering
+            // the fixed curve.
+            outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis(),limited.retryAfterSeconds * 1000L)
+            DispatchOutcome.RETRY
+        } catch (refused: DomainException) {
+            // SEC06-D: permanent refusals park distinctly (never
+            // eligible again, stable reason); anything else keeps the
+            // transient backoff. Retrying a permanently refused intent
+            // can never help.
+            if (refused.message in PERMANENT_REFUSALS) {
+                outbox.refusePermanently(next.commandId,next.revision,refused.message ?: "contribution.refused")
+                DispatchOutcome.REFUSED
+            } else {
+                outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis())
+                DispatchOutcome.REFUSED
+            }
         } catch (_: Exception) {
             outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis())
             DispatchOutcome.RETRY
         }
+    }
+
+    companion object {
+        /**
+         * SEC06-D permanent refusal allowlist: inputs that can never
+         * become valid by retrying (scope/environment changed under
+         * the queued intent, or a malformed receipt). Everything else
+         * stays transient. Closed set by review, never extended
+         * silently.
+         */
+        val PERMANENT_REFUSALS: Set<String> = setOf(
+            "contribution.owner-or-origin-changed",
+            "contribution.invalid-or-unscoped",
+            "contribution.invalid-dispatch-receipt",
+        )
     }
 }

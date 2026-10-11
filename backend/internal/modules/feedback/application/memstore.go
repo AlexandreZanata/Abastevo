@@ -162,10 +162,21 @@ func (m *MemStore) CountLiveCommentsByAccount(_ context.Context, accountID strin
 // TryInsertComment atomically admits one comment/reply (SEC01-C,
 // B-BR-F03/F04): live per-account budget and row insertion under one
 // lock. Over-budget refuses with ErrQuotaExceeded; edits (which
-// converge in place) do not consume budget.
+// converge in place) do not consume budget. SEC01-D: an identical
+// retry (same ID, same live account) replays converged without
+// consuming another budget unit.
 func (m *MemStore) TryInsertComment(_ context.Context, rec domain.StoredComment) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if existing, ok := m.comments[rec.ID]; ok {
+		// Identical live retry replays converged; any other reuse
+		// of the same ID (foreign owner or tombstoned row) fails
+		// closed without leaking which condition fired.
+		if existing.Live() && existing.AccountID == rec.AccountID {
+			return nil
+		}
+		return domain.ErrCommentNotFound
+	}
 	n := 0
 	for _, c := range m.comments {
 		if c.AccountID == rec.AccountID && c.Live() {

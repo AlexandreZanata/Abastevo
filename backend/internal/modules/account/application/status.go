@@ -44,13 +44,39 @@ func (s *Service) ReactivateAccount(ctx context.Context, accountID string) error
 }
 
 // DeleteAccount marks the caller's account deleted, revokes every
-// session family and drops address and provider bindings. The account
-// row stays as an audit record; later signups mint new accounts without
-// reputation carryover.
-func (s *Service) DeleteAccount(ctx context.Context, accountID string) error {
+// session family, captures contributor bindings into durable erasure
+// intents and drops address and provider bindings — then enqueues
+// owned scope cleanup through RequestErasure (SEC04-B). The account
+// row stays as an audit record; later signups mint new accounts
+// without reputation carryover. A nil RequestErasure refuses closed:
+// deletion without the erasure linkage would repeat AUD-05.
+//
+// Crash window: intents are durable before enqueue, so a failure
+// after revocation replays from ListErasureIntents on retry
+// (convergent scope cleanup, SEC04-D). The receipt names the
+// recorded intent — acknowledgement is never completion (SEC04-A).
+func (s *Service) DeleteAccount(ctx context.Context, accountID string) (DeletionReceipt, error) {
 	accountID = strings.TrimSpace(accountID)
 	if accountID == "" {
-		return domain.ErrAccountNotFound
+		return DeletionReceipt{}, domain.ErrAccountNotFound
 	}
-	return s.Store.DeleteAccount(ctx, accountID, s.Clock.NowUnix())
+	if s.RequestErasure == nil {
+		return DeletionReceipt{}, domain.ErrErasureWiringMissing
+	}
+	contributors, err := s.Store.DeleteAccount(ctx, accountID, s.Clock.NowUnix())
+	if err != nil {
+		return DeletionReceipt{}, err
+	}
+	if len(contributors) == 0 {
+		// Retry after a crash between revocation and enqueue, or a
+		// binding-free account: replay durable intents.
+		contributors, err = s.Store.ListErasureIntents(ctx, accountID)
+		if err != nil {
+			return DeletionReceipt{}, err
+		}
+	}
+	if err := s.RequestErasure(ctx, accountID, contributors); err != nil {
+		return DeletionReceipt{}, err
+	}
+	return DeletionReceipt{AccountID: accountID, ContributorIDs: contributors, ErasureRequested: true}, nil
 }

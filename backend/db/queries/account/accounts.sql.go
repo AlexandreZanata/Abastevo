@@ -132,6 +132,19 @@ func (q *Queries) DeleteAccountBindings(ctx context.Context, accountID pgtype.UU
 	return err
 }
 
+const deleteAccountKeys = `-- name: DeleteAccountKeys :exec
+
+DELETE FROM account_key_credentials WHERE account_id = $1
+`
+
+// SEC04-C credential minimization: key verifiers never survive the
+// owner. The account audit row stays; the secrets that authenticate
+// as it go with deletion.
+func (q *Queries) DeleteAccountKeys(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAccountKeys, accountID)
+	return err
+}
+
 const deleteAccountProviders = `-- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = $1
 `
@@ -154,6 +167,22 @@ type DeleteBindingParams struct {
 func (q *Queries) DeleteBinding(ctx context.Context, arg DeleteBindingParams) error {
 	_, err := q.db.Exec(ctx, deleteBinding, arg.AccountID, arg.ContributorID)
 	return err
+}
+
+const deleteCodeByID = `-- name: DeleteCodeByID :execrows
+
+DELETE FROM account_email_codes
+WHERE id = $1
+`
+
+// SEC01-D quota rollback: compensate one issued code when downstream
+// delivery fails, so failed sends consume no budget rows.
+func (q *Queries) DeleteCodeByID(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCodeByID, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteProviderLink = `-- name: DeleteProviderLink :exec
@@ -486,6 +515,30 @@ func (q *Queries) InsertCode(ctx context.Context, arg InsertCodeParams) error {
 	return err
 }
 
+const insertErasureIntent = `-- name: InsertErasureIntent :execrows
+
+INSERT INTO account_erasure_intents (account_id, contributor_id, created_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (account_id, contributor_id) DO NOTHING
+`
+
+type InsertErasureIntentParams struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// SEC04-B durable erasure intents: recorded in the DeleteAccount
+// transaction before bindings drop, so revocation and intent are
+// atomic. Replay converges on the natural key.
+func (q *Queries) InsertErasureIntent(ctx context.Context, arg InsertErasureIntentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertErasureIntent, arg.AccountID, arg.ContributorID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertFamily = `-- name: InsertFamily :exec
 INSERT INTO account_session_families
     (id, account_id, refresh_salt, refresh_hash, access_salt, access_hash,
@@ -595,6 +648,34 @@ func (q *Queries) InsertProviderLink(ctx context.Context, arg InsertProviderLink
 	return err
 }
 
+const insertRefreshHistory = `-- name: InsertRefreshHistory :exec
+
+INSERT INTO account_session_refresh_history
+    (family_id, refresh_salt, refresh_hash, rotated_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (family_id, refresh_hash) DO NOTHING
+`
+
+type InsertRefreshHistoryParams struct {
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	RefreshSalt string             `json:"refresh_salt"`
+	RefreshHash string             `json:"refresh_hash"`
+	RotatedAt   pgtype.Timestamptz `json:"rotated_at"`
+}
+
+// SEC07-A bounded hashed rotation history (AUD-08): one row per
+// superseded refresh verifier, newest first, pruned on rotation.
+// Plaintext tokens never reach these statements.
+func (q *Queries) InsertRefreshHistory(ctx context.Context, arg InsertRefreshHistoryParams) error {
+	_, err := q.db.Exec(ctx, insertRefreshHistory,
+		arg.FamilyID,
+		arg.RefreshSalt,
+		arg.RefreshHash,
+		arg.RotatedAt,
+	)
+	return err
+}
+
 const latestCode = `-- name: LatestCode :one
 SELECT id, address_hash, salt, hash, issued_at, attempts, consumed_at
 FROM account_email_codes
@@ -683,6 +764,33 @@ func (q *Queries) ListBindings(ctx context.Context, accountID pgtype.UUID) ([]Ac
 	return items, nil
 }
 
+const listErasureIntentsByAccount = `-- name: ListErasureIntentsByAccount :many
+SELECT account_id, contributor_id, created_at
+FROM account_erasure_intents
+WHERE account_id = $1
+ORDER BY contributor_id
+`
+
+func (q *Queries) ListErasureIntentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]AccountErasureIntent, error) {
+	rows, err := q.db.Query(ctx, listErasureIntentsByAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountErasureIntent
+	for rows.Next() {
+		var i AccountErasureIntent
+		if err := rows.Scan(&i.AccountID, &i.ContributorID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProviderLinks = `-- name: ListProviderLinks :many
 SELECT account_id, provider, issuer, subject, email, linked_at
 FROM account_provider_links
@@ -707,6 +815,44 @@ func (q *Queries) ListProviderLinks(ctx context.Context, accountID pgtype.UUID) 
 			&i.Email,
 			&i.LinkedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRefreshHistory = `-- name: ListRefreshHistory :many
+SELECT refresh_salt, refresh_hash
+FROM account_session_refresh_history
+WHERE family_id = $1
+ORDER BY rotated_at DESC, refresh_hash
+LIMIT $2
+`
+
+type ListRefreshHistoryParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	Cap      int32       `json:"cap"`
+}
+
+type ListRefreshHistoryRow struct {
+	RefreshSalt string `json:"refresh_salt"`
+	RefreshHash string `json:"refresh_hash"`
+}
+
+func (q *Queries) ListRefreshHistory(ctx context.Context, arg ListRefreshHistoryParams) ([]ListRefreshHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listRefreshHistory, arg.FamilyID, arg.Cap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRefreshHistoryRow
+	for rows.Next() {
+		var i ListRefreshHistoryRow
+		if err := rows.Scan(&i.RefreshSalt, &i.RefreshHash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -804,6 +950,29 @@ func (q *Queries) LockLatestCode(ctx context.Context, addressHash string) (Accou
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const pruneRefreshHistory = `-- name: PruneRefreshHistory :execrows
+DELETE FROM account_session_refresh_history h
+WHERE h.family_id = $1 AND h.refresh_hash NOT IN (
+    SELECT refresh_hash FROM account_session_refresh_history
+    WHERE family_id = $1
+    ORDER BY rotated_at DESC, refresh_hash
+    LIMIT $2
+)
+`
+
+type PruneRefreshHistoryParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	Keep     int32       `json:"keep"`
+}
+
+func (q *Queries) PruneRefreshHistory(ctx context.Context, arg PruneRefreshHistoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneRefreshHistory, arg.FamilyID, arg.Keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const purgeExpiredCodes = `-- name: PurgeExpiredCodes :execrows

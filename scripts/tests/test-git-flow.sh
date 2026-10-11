@@ -77,6 +77,18 @@ if bash "$FLOW" finish --dry-run >/dev/null 2>&1; then bad "main finish accepted
 git -C "$WORK" checkout -q codex/phase-02-lifecycle
 if ANPFUEL_TRUST_OVERRIDE=0 GIT_FLOW_ROOT="$WORK" bash "$FLOW" status >/dev/null 2>&1; then bad "wrong repo accepted"; else ok "wrong repo refuses"; fi
 
+echo "== renamed repository accepts only verified owner aliases =="
+ORIGINAL_ORIGIN="$(git -C "$WORK" remote get-url origin)"
+for URL in git@github.com:AlexandreZanata/Abastevo.git https://github.com/AlexandreZanata/Abastevo.git git@github.com:AlexandreZanata/abastevo.git https://github.com/AlexandreZanata/abastevo.git; do
+    git -C "$WORK" remote set-url origin "$URL"
+    if ANPFUEL_TRUST_OVERRIDE=0 bash "$FLOW" status >/dev/null 2>&1; then ok "verified alias accepted: $URL"; else bad "verified alias refused: $URL"; fi
+done
+for URL in git@github.com:SomeoneElse/Abastevo.git https://github.com/AlexandreZanata/Abastevo-copy.git; do
+    git -C "$WORK" remote set-url origin "$URL"
+    if ANPFUEL_TRUST_OVERRIDE=0 bash "$FLOW" status >/dev/null 2>&1; then bad "foreign alias accepted: $URL"; else ok "foreign alias refused: $URL"; fi
+done
+git -C "$WORK" remote set-url origin "$ORIGINAL_ORIGIN"
+
 echo "== dry-run lifecycle zero mutations + status read-only =="
 BEFORE="$(snapshot "$WORK")"
 bash "$FLOW" sync --dry-run >/dev/null

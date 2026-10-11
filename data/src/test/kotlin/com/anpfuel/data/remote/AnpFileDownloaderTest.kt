@@ -37,6 +37,7 @@ class AnpFileDownloaderTest {
         downloader = AnpFileDownloader.forDirectory(
             downloadDirectory = tempDir.toFile(),
             okHttpClient = OkHttpClient(),
+            extraAllowedHosts = setOf("localhost"),
         )
     }
 
@@ -120,6 +121,113 @@ class AnpFileDownloaderTest {
             runBlocking {
                 downloader.download(server.url(summaryUrlPath).toString())
             }
+        }
+    }
+
+    // SEC06-A: foreign, private, plaintext and userinfo destinations
+    // refuse before any fetch (zero recorded requests).
+    @Test
+    fun refusesUnapprovedOriginsWithoutFetching() = runBlocking {
+        val destinations = listOf(
+            "https://example.com" + summaryUrlPath,
+            "https://127.0.0.1:9" + summaryUrlPath,
+            "https://user:pass@localhost:" + server.port + summaryUrlPath,
+        )
+        for (url in destinations) {
+            try {
+                downloader.download(url)
+                throw AssertionError("fetched $url")
+            } catch (_: IllegalArgumentException) {
+            }
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    // SEC06-A: redirect chains re-check the origin — a bounce to a
+    // dead/plaintext destination refuses with no file left behind.
+    @Test
+    fun refusesRedirectLeavingApprovedOrigins() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(301)
+                .setHeader("Location", "http://127.0.0.1:9" + summaryUrlPath),
+        )
+        try {
+            downloader.download(server.url(summaryUrlPath).toString())
+            throw AssertionError("redirect fetched")
+        } catch (_: IOException) {
+        }
+        val leftovers = tempDir.toFile().walkTopDown().filter { it.isFile }.toList()
+        assertTrue(leftovers.isEmpty(), "redirect must leave no file: $leftovers")
+    }
+
+    // SEC06-A: transfers cap during the copy (a JSON maximum alone
+    // would cap nothing) and partial files purge atomically.
+    @Test
+    fun refusesOversizedTransferAndPurgesPartial() = runBlocking {
+        val over = ByteArray((AnpFileDownloader.MAX_DOWNLOAD_BYTES + 1).toInt()) { 0x7f }
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/octet-stream")
+                .setBody(Buffer().write(over)),
+        )
+        try {
+            downloader.download(server.url(summaryUrlPath).toString())
+            throw AssertionError("oversize fetched")
+        } catch (_: IOException) {
+        }
+        val leftovers = tempDir.toFile().walkTopDown().filter { it.isFile }.toList()
+        assertTrue(leftovers.isEmpty(), "oversize must leave no file: $leftovers")
+    }
+
+    // SEC06-A: query/traversal-like names sanitize-or-refuse without
+    // fetching, and failures never land outside the directory.
+    @Test
+    fun sanitizesUnsafeFileNames() = runBlocking {
+        val base = server.url("/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/").toString()
+            .removeSuffix("/")
+        val traversal = base + "/arquivos-lpc/2026/x.xlsx/.."
+        try {
+            downloader.download(traversal)
+            throw AssertionError("traversal fetched")
+        } catch (_: IllegalArgumentException) {
+        }
+        assertEquals(0, server.requestCount)
+        val withQuery = base + "/arquivos-lpc/2026/revendas_lpc_2026-06-07_2026-06-13.xlsx?token=abc&x=1"
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/octet-stream")
+                .setBody(Buffer().write(byteArrayOf(1, 2, 3))),
+        )
+        val result = downloader.download(withQuery)
+        assertEquals("revendas_lpc_2026-06-07_2026-06-13.xlsx", result.file.name)
+        assertTrue(result.file.parentFile == tempDir.toFile())
+    }
+
+    // SEC06-A: same-origin redirects still complete (origin policy
+    // follows the chain, it does not forbid it).
+    @Test
+    fun followsSameOriginRedirect() = runBlocking {
+        val target = MockWebServer()
+        target.start()
+        try {
+            target.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setHeader("Content-Type", "application/octet-stream")
+                    .setBody(Buffer().write(byteArrayOf(9, 9, 9))),
+            )
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(301)
+                    .setHeader("Location", target.url(summaryUrlPath).toString()),
+            )
+            val result = downloader.download(server.url(summaryUrlPath).toString())
+            assertEquals(3L, result.sizeBytes)
+        } finally {
+            target.shutdown()
         }
     }
 }

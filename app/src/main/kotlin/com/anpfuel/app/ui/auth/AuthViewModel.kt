@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.data.repository.OwnerLocalErasure
 import com.anpfuel.domain.portable.PortableAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -81,6 +82,7 @@ sealed interface AuthNavigation {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authFlow: AuthFlow,
+    private val ownerErasure: OwnerLocalErasure,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -359,6 +361,10 @@ class AuthViewModel @Inject constructor(
         refreshGeneration++
         _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {
+            // SEC04-D: purge the owner's queue and private media copies
+            // before identity keys clear (scope resolution needs them).
+            // Local storage always clears on logout, even offline.
+            onIo { ownerErasure.purgeCurrentOwner() }
             onIo { authFlow.logout() }
             pendingAttempt = null
             _uiState.update {
@@ -379,8 +385,14 @@ class AuthViewModel @Inject constructor(
         refreshGeneration++
         _uiState.value = AuthUiState(step = AuthStep.BUSY)
         viewModelScope.launch {
+            // SEC04-D: capture the owner scope before identity clears,
+            // but purge only when local authority is gone (success or
+            // definitive denial). Transport failure keeps the account,
+            // the backup AND the queue.
+            val scope = onIo { ownerErasure.currentScopeOrNull() }
             when (val res = onIo { authFlow.deleteAccount() }) {
                 is AuthApiResult.Ok -> {
+                    if (scope != null) onIo { ownerErasure.purgeScope(scope) }
                     pendingAttempt = null
                     _uiState.update {
                         AuthUiState(step = AuthStep.USERNAME_ENTRY, error = AuthUiError.Deleted)
@@ -388,6 +400,9 @@ class AuthViewModel @Inject constructor(
                 }
                 is AuthApiResult.Err -> {
                     val retained = onIo { authFlow.rehydrate() }
+                    if (retained !is AuthFlow.AuthState.Active && retained !is AuthFlow.AuthState.NeedsRefresh && scope != null) {
+                        onIo { ownerErasure.purgeScope(scope) }
+                    }
                     _uiState.value = AuthUiState(
                         step = when (retained) {
                             is AuthFlow.AuthState.Active -> AuthStep.AUTHENTICATED

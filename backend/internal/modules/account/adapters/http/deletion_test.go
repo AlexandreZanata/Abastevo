@@ -36,6 +36,11 @@ func TestSelfDeleteFlow(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "deleted") {
 		t.Fatalf("delete: %d (%s)", rec.Code, rec.Body.String())
 	}
+	// SEC04-B receipt: the response records the erasure intent
+	// (acknowledgement, never completion).
+	if !strings.Contains(rec.Body.String(), "erasure_requested") {
+		t.Errorf("delete receipt must record the erasure intent: %s", rec.Body.String())
+	}
 	if rec.Header().Get("Cache-Control") != "no-store" {
 		t.Error("delete response must be no-store")
 	}

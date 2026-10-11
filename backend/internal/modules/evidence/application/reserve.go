@@ -34,6 +34,12 @@ var (
 // worker verifies actual bytes afterward regardless of declared intent.
 const MaxReservesPerDay = 10
 
+// MaxReserveBytesPerDay bounds live reserved bytes per contributor per
+// UTC day (SEC03-A): ten full-size sessions. Expired and terminal
+// sessions release their bytes; created-today rows keep counting
+// toward MaxReservesPerDay.
+const MaxReserveBytesPerDay = int64(MaxReservesPerDay) * domain.MaxUploadBytes
+
 // QuotaDeniedError carries the retry delay for 429 mapping.
 type QuotaDeniedError struct {
 	RetryAfter time.Duration
@@ -65,12 +71,13 @@ type Ports struct {
 }
 
 // Store is the owned persistence port for reservations: one atomic
-// insert-or-converge plus the daily-budget counter. The SQL
-// implementation converges identical retries and conflicts on divergent
-// payloads inside the transaction; fakes mirror that contract.
+// budget-checked insert-or-converge. Identical retries converge on
+// the winner without consuming budget (readable even at full quota);
+// divergent payloads conflict; fresh rows admit only inside the
+// count and live-byte budgets. The SQL implementation holds all of
+// it in one transaction; fakes mirror that contract.
 type Store interface {
-	ReserveSession(ctx context.Context, s domain.Session) (stored domain.Session, replayed bool, err error)
-	CountSince(ctx context.Context, contributorRef string, since time.Time) (int, error)
+	ReserveSession(ctx context.Context, s domain.Session, budget domain.ReserveBudget) (stored domain.Session, replayed bool, err error)
 }
 
 // Intent carries the client-declared upload intent: submission ID, media
@@ -135,14 +142,6 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 		return Result{}, err
 	}
 	now := p.Clock()
-	used, err := p.Store.CountSince(ctx, caller.Token, dayStart(now))
-	if err != nil {
-		return Result{}, err
-	}
-	if used >= MaxReservesPerDay {
-		next := dayStart(now).Add(24 * time.Hour)
-		return Result{}, &QuotaDeniedError{RetryAfter: next.Sub(now)}
-	}
 	id, err := p.NewID()
 	if err != nil {
 		return Result{}, err
@@ -164,10 +163,20 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 	if photo && captureDeadline.Before(built.ExpiresAt) {
 		built.ExpiresAt = captureDeadline
 	}
-	stored, replayed, err := p.Store.ReserveSession(ctx, built)
+	// SEC03-A: quota, natural-key admission and byte reservation
+	// complete atomically in the store. Identical replays converge
+	// on the winner even at full quota; divergent bodies conflict.
+	stored, replayed, err := p.Store.ReserveSession(ctx, built, domain.ReserveBudget{
+		Now: now, DayStart: dayStart(now),
+		MaxCount: MaxReservesPerDay, MaxBytes: MaxReserveBytesPerDay,
+	})
 	if err != nil {
 		if errors.Is(err, domain.ErrConflict) {
 			return Result{}, ErrConflict
+		}
+		if errors.Is(err, domain.ErrQuotaDenied) {
+			next := dayStart(now).Add(24 * time.Hour)
+			return Result{}, &QuotaDeniedError{RetryAfter: next.Sub(now)}
 		}
 		return Result{}, err
 	}

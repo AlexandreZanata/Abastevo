@@ -15,22 +15,26 @@ import (
 // CachedKeys fronts any KeySource with the frozen JWKS TTL (P13-T01):
 // provider keys are fetched once per TTL per process, so verification
 // stays local and fast while rotation still propagates within the hour.
+// SEC07-AUD-09: expiry is per issuer — one provider's refresh never
+// prolongs another provider's TTL.
 type CachedKeys struct {
 	Source KeySource
 	TTL    time.Duration
 	Now    func() time.Time
 	mu     sync.Mutex
-	at     time.Time
+	at     map[string]time.Time
 	sets   map[string][]JSONWebKey
 }
 
 // Fetch serves the cached set while fresh, refetching past the TTL.
+// A failed refetch fails closed (no stale serve); the previous stamp is
+// kept so the next call retries instead of serving expired keys.
 func (c *CachedKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.Now()
-	if c.sets != nil {
-		if set, ok := c.sets[issuer]; ok && now.Sub(c.at) < c.TTL {
+	if set, ok := c.sets[issuer]; ok {
+		if at, stamped := c.at[issuer]; stamped && now.Sub(at) < c.TTL {
 			return set, nil
 		}
 	}
@@ -41,18 +45,55 @@ func (c *CachedKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, er
 	if c.sets == nil {
 		c.sets = map[string][]JSONWebKey{}
 	}
+	if c.at == nil {
+		c.at = map[string]time.Time{}
+	}
 	c.sets[issuer] = set
-	c.at = now
+	c.at[issuer] = now
+	return set, nil
+}
+
+// RefreshingKeySource is a KeySource that can bypass its TTL once.
+// The verifier uses it for a single bounded retry when the cached set
+// lacks the token's kid (rotation or removal upstream).
+type RefreshingKeySource interface {
+	KeySource
+	Refresh(ctx context.Context, issuer string) ([]JSONWebKey, error)
+}
+
+// Refresh refetches the issuer set unconditionally (one bounded fetch),
+// restamping only that issuer's expiry.
+func (c *CachedKeys) Refresh(ctx context.Context, issuer string) ([]JSONWebKey, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	set, err := c.Source.Fetch(ctx, issuer)
+	if err != nil {
+		return nil, err
+	}
+	if c.sets == nil {
+		c.sets = map[string][]JSONWebKey{}
+	}
+	if c.at == nil {
+		c.at = map[string]time.Time{}
+	}
+	c.sets[issuer] = set
+	c.at[issuer] = c.Now()
 	return set, nil
 }
 
 // HTTPKeys fetches issuer JWKS documents over HTTPS for production wiring.
-// Responses are size-capped and JSON-decoded strictly; redirects, file URLs
-// and non-HTTPS issuers are refused before any byte is trusted.
+// Responses are size-capped and JSON-decoded strictly; non-HTTPS issuers
+// are refused before any byte is trusted. Redirects are never followed:
+// JWKS endpoints are stable, and the default Go client would silently
+// follow a 302 to an attacker host (SEC07-AUD-09) — the policy below
+// fails the fetch instead, for caller-supplied clients as well.
 type HTTPKeys struct {
 	Client *http.Client
 	URLs   map[string]string
 }
+
+// errNoRedirect fails a JWKS fetch on any redirect (SEC07-AUD-09).
+var errNoRedirect = errors.New("oidc: JWKS redirects refused")
 
 // Fetch GETs the configured JWKS document for issuer.
 func (h HTTPKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, error) {
@@ -67,11 +108,16 @@ func (h HTTPKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, error
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
 	}
+	// Constrain redirects without mutating the caller's client.
+	pinned := *client
+	pinned.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return errNoRedirect
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Do(req)
+	resp, err := pinned.Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -175,6 +176,17 @@ func (s *PGStore) PurgeExpiredFamilies(ctx context.Context, beforeUnix int64) (i
 		return 0, err
 	}
 	return int(n), nil
+}
+
+// DeleteCode compensates one issued code by ID (SEC01-D quota
+// rollback). Unknown IDs converge no-op.
+func (s *PGStore) DeleteCode(ctx context.Context, id string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return nil
+	}
+	_, err = account.New(s.pool).DeleteCodeByID(ctx, uid)
+	return err
 }
 
 // TryIssueCode atomically admits one code issuance (SEC01-C): global
@@ -480,8 +492,10 @@ func (s *PGStore) Family(ctx context.Context, familyID string) (domain.SessionFa
 
 // Rotate swaps a family's tokens only when the stored refresh hash still
 // matches the winner the caller verified: a lost rotation race fails with
-// ErrSessionReuse instead of forking a parallel chain.
-func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, _ int64) error {
+// ErrSessionReuse instead of forking a parallel chain. The superseded
+// verifier archives into the bounded hashed rotation history (SEC07-A)
+// in the same transaction, pruned to domain.MaxRefreshHistory.
+func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error {
 	id, err := mustUUID(familyID)
 	if err != nil {
 		return domain.ErrCodeUnknown
@@ -515,7 +529,43 @@ func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, ref
 	}); err != nil {
 		return err
 	}
+	if err := q.InsertRefreshHistory(ctx, account.InsertRefreshHistoryParams{
+		FamilyID:    id,
+		RefreshSalt: row.RefreshSalt,
+		RefreshHash: row.RefreshHash,
+		RotatedAt:   stamp(nowUnix),
+	}); err != nil {
+		return err
+	}
+	if _, err := q.PruneRefreshHistory(ctx, account.PruneRefreshHistoryParams{
+		FamilyID: id,
+		Keep:     int32(domain.MaxRefreshHistory),
+	}); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
+}
+
+// RefreshHistory returns the bounded hashed rotation history, newest
+// first (SEC07-A). Salted hashes only; callers compare with the token
+// hasher and never log the values.
+func (s *PGStore) RefreshHistory(ctx context.Context, familyID string) ([]domain.RotatedVerifier, error) {
+	id, err := mustUUID(familyID)
+	if err != nil {
+		return nil, nil
+	}
+	rows, err := account.New(s.pool).ListRefreshHistory(ctx, account.ListRefreshHistoryParams{
+		FamilyID: id,
+		Cap:      int32(domain.MaxRefreshHistory),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.RotatedVerifier, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, domain.RotatedVerifier{Salt: r.RefreshSalt, Hash: r.RefreshHash})
+	}
+	return out, nil
 }
 
 func (s *PGStore) RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error {
@@ -850,48 +900,93 @@ func (s *PGStore) ReactivateAccount(ctx context.Context, accountID string) error
 	})
 }
 
-// DeleteAccount marks the account deleted, revokes every session family
-// and drops address and provider bindings atomically. The account row
-// stays as an audit record; later signups mint new accounts.
-func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error {
+// DeleteAccount marks the account deleted, revokes every session family,
+// captures contributor bindings into durable erasure intents BEFORE
+// dropping them, and drops address and provider bindings — all in one
+// transaction, so revocation and intent are atomic (SEC04-B). The
+// account row stays as an audit record; later signups mint new
+// accounts. It returns the captured contributor IDs for scope cleanup.
+func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix int64) ([]string, error) {
 	id, err := mustUUID(accountID)
 	if err != nil {
-		return domain.ErrAccountNotFound
+		return nil, domain.ErrAccountNotFound
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := account.New(tx)
 	if _, err := q.GetAccountByID(ctx, id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrAccountNotFound
+			return nil, domain.ErrAccountNotFound
 		}
-		return err
+		return nil, err
 	}
 	if err := q.SetAccountStatus(ctx, account.SetAccountStatusParams{
 		Status: domain.StatusDeleted,
 		ID:     id,
 	}); err != nil {
-		return err
+		return nil, err
 	}
 	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
 		Now:       stamp(nowUnix),
 		AccountID: id,
 	}); err != nil {
-		return err
+		return nil, err
+	}
+	var contributors []string
+	if rows, err := q.ListBindings(ctx, id); err != nil {
+		return nil, err
+	} else {
+		for _, row := range rows {
+			contributors = append(contributors, row.ContributorID)
+		}
+	}
+	sort.Strings(contributors)
+	for _, contributor := range contributors {
+		if _, err := q.InsertErasureIntent(ctx, account.InsertErasureIntentParams{
+			AccountID: id, ContributorID: contributor, CreatedAt: stamp(nowUnix),
+		}); err != nil {
+			return nil, err
+		}
 	}
 	if err := q.DeleteAccountAddresses(ctx, id); err != nil {
-		return err
+		return nil, err
 	}
 	if err := q.DeleteAccountProviders(ctx, id); err != nil {
-		return err
+		return nil, err
+	}
+	// SEC04-C: key verifiers never survive the owner.
+	if err := q.DeleteAccountKeys(ctx, id); err != nil {
+		return nil, err
 	}
 	if err := q.DeleteAccountBindings(ctx, id); err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return contributors, nil
+}
+
+// ListErasureIntents returns the durable contributor intents of one
+// account for enqueue replay after a crash between revocation and
+// scope cleanup (SEC04-B/D).
+func (s *PGStore) ListErasureIntents(ctx context.Context, accountID string) ([]string, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrAccountNotFound
+	}
+	rows, err := account.New(s.pool).ListErasureIntentsByAccount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.ContributorID)
+	}
+	return out, nil
 }
 
 func toBinding(row account.AccountContributorBinding) domain.ContributorBinding {

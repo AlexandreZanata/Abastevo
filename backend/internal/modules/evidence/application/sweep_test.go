@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -22,14 +23,24 @@ type fakeSweepStore struct {
 	fdel       []string
 	purged     int64
 	failExpire error
+	health     IntakeHealth
+	healthErr  error
+	// overdueOriginals scripts the SEC05-A originals audit.
+	overdueOriginals []domain.SessionRef
 }
 
-func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
+func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, batch int) ([]domain.SessionRef, error) {
 	if f.failExpire != nil {
 		return nil, f.failExpire
 	}
-	out := f.idle
-	f.idle = nil
+	// SEC05-B: honor the batch like the bounded SQL inventory, so
+	// catch-up throughput is measurable run over run.
+	n := len(f.idle)
+	if n > batch {
+		n = batch
+	}
+	out := f.idle[:n]
+	f.idle = f.idle[n:]
 	return out, nil
 }
 
@@ -55,14 +66,48 @@ func (f *fakeSweepStore) QuarantineCandidates(_ context.Context, _ time.Time, _ 
 	return out, nil
 }
 
-func (f *fakeSweepStore) StaleFinalCandidates(_ context.Context, _ time.Time, _ int) ([]domain.ObjectRef, error) {
-	out := f.finals
-	f.finals = nil
+func (f *fakeSweepStore) StaleFinalCandidates(_ context.Context, _ time.Time, batch int) ([]domain.ObjectRef, error) {
+	// SEC05-B: honor the batch like the bounded SQL inventory.
+	n := len(f.finals)
+	if n > batch {
+		n = batch
+	}
+	out := f.finals[:n]
+	f.finals = f.finals[n:]
 	return out, nil
 }
 
-func (f *fakeSweepStore) OverdueFinals(_ context.Context, _ time.Time, _ int) ([]domain.ObjectRef, error) {
-	return f.overdue, nil
+func (f *fakeSweepStore) OverdueFinals(_ context.Context, cutoff time.Time, batch int) ([]domain.ObjectRef, error) {
+	// SEC05-B: mirror the SQL semantics — unprocessed past-deadline
+	// finals read overdue — plus explicitly scripted rows, oldest
+	// first, bounded. Catch-up runs watch the derived backlog drain.
+	seen := map[string]bool{}
+	var out []domain.ObjectRef
+	for _, o := range f.overdue {
+		if seen[o.ID] {
+			continue
+		}
+		seen[o.ID] = true
+		out = append(out, o)
+	}
+	for _, o := range f.finals {
+		if seen[o.ID] || !o.ReceivedOrCreated().Before(cutoff) {
+			continue
+		}
+		seen[o.ID] = true
+		out = append(out, o)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].ReceivedOrCreated().Before(out[j].ReceivedOrCreated())
+	})
+	if len(out) > batch {
+		out = out[:batch]
+	}
+	return out, nil
+}
+
+func (f *fakeSweepStore) OverdueOriginals(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
+	return f.overdueOriginals, nil
 }
 
 func (f *fakeSweepStore) MarkFinalDeleted(_ context.Context, id string) error {
@@ -72,6 +117,10 @@ func (f *fakeSweepStore) MarkFinalDeleted(_ context.Context, id string) error {
 
 func (f *fakeSweepStore) PurgeObjectsBefore(_ context.Context, _ time.Time) (int64, error) {
 	return f.purged, nil
+}
+
+func (f *fakeSweepStore) IntakeHealth(_ context.Context, _, _ time.Time) (IntakeHealth, error) {
+	return f.health, f.healthErr
 }
 
 type fakeSweepJobs struct {

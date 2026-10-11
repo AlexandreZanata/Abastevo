@@ -99,6 +99,16 @@ func newUUIDv4() (string, error) {
 		hexed[16:20] + "-" + hexed[20:32], nil
 }
 
+// openBudget isolates converge/conflict behavior from admission: budgets
+// far above any test volume. Admission itself rides dedicated SEC03-A
+// tests with frozen ceilings.
+func openBudget() domain.ReserveBudget {
+	return domain.ReserveBudget{
+		Now: time.Now(), DayStart: time.Unix(0, 0),
+		MaxCount: 1 << 30, MaxBytes: 1 << 62,
+	}
+}
+
 func testSession(id, client string) domain.Session {
 	now := time.Now()
 	s, _, err := domain.NewSession(domain.Params{
@@ -140,17 +150,17 @@ func TestReserveConvergesAndConflicts(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	sess := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
-	stored, replayed, err := s.ReserveSession(ctx, sess)
+	stored, replayed, err := s.ReserveSession(ctx, sess, openBudget())
 	if err != nil || replayed || stored.ID != sess.ID {
 		t.Fatalf("reserve = %+v %v %v", stored, replayed, err)
 	}
-	again, replayed, err := s.ReserveSession(ctx, sess)
+	again, replayed, err := s.ReserveSession(ctx, sess, openBudget())
 	if err != nil || !replayed || again.ID != stored.ID {
 		t.Fatalf("retry = %+v %v %v", again, replayed, err)
 	}
 	diverged := sess
 	diverged.DeclaredBytes++
-	if _, _, err := s.ReserveSession(ctx, diverged); !errors.Is(err, domain.ErrConflict) {
+	if _, _, err := s.ReserveSession(ctx, diverged, openBudget()); !errors.Is(err, domain.ErrConflict) {
 		t.Errorf("divergent retry = %v, want conflict", err)
 	}
 }
@@ -159,7 +169,7 @@ func TestCompleteClaimsAndEnqueuesAtomically(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	sess := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -183,7 +193,7 @@ func TestCompleteRollsBackOnEnqueueFailure(t *testing.T) {
 	s, pool := freshStore(t)
 	ctx := context.Background()
 	sess := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	failEnqueue := func(context.Context, pgx.Tx, string, []byte, string) error {
@@ -209,7 +219,7 @@ func readyFixture(t *testing.T, s *Store, id, client string) ObjectData {
 	t.Helper()
 	ctx := context.Background()
 	sess := testSession(id, client)
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -254,7 +264,7 @@ func TestRecordVerifiedConvergesDuplicateContentKey(t *testing.T) {
 	ctx := context.Background()
 	first := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
 	sess := testSession("e0000000-0000-4000-8000-000000000002", "upl-2")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -276,7 +286,7 @@ func TestRecordVerifiedConvergesDuplicateContentKey(t *testing.T) {
 	}
 	// Same key with divergent bytes refuses instead of forking history.
 	sess2 := testSession("e0000000-0000-4000-8000-000000000003", "upl-3")
-	if _, _, err := s.ReserveSession(ctx, sess2); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess2, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.CompleteSession(ctx, sess2.ID, enqueueStub(&jobs)); err != nil {
@@ -294,7 +304,7 @@ func TestRecordRejectedKeepsReasons(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	sess := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -340,10 +350,10 @@ func TestTryBindObjectClaimsOnce(t *testing.T) {
 func TestCountSinceScopesContributor(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
-	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000001", "upl-1")); err != nil {
+	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000001", "upl-1"), openBudget()); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000002", "upl-2")); err != nil {
+	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000002", "upl-2"), openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	n, err := s.CountSince(ctx, "tok-c1", time.Now().Add(-time.Hour))
@@ -418,10 +428,10 @@ func TestExpireIdleSessions(t *testing.T) {
 	s, _ := freshStore(t)
 	ctx := context.Background()
 	old := time.Now().Add(-25 * time.Hour)
-	if _, _, err := s.ReserveSession(ctx, testSessionAt("e0000000-0000-4000-8000-000000000001", "upl-1", old)); err != nil {
+	if _, _, err := s.ReserveSession(ctx, testSessionAt("e0000000-0000-4000-8000-000000000001", "upl-1", old), openBudget()); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000002", "upl-2")); err != nil {
+	if _, _, err := s.ReserveSession(ctx, testSession("e0000000-0000-4000-8000-000000000002", "upl-2"), openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	expired, err := s.ExpireIdleSessions(ctx, time.Now(), 10)
@@ -446,14 +456,14 @@ func TestVerifyingListsSplitByAge(t *testing.T) {
 	ctx := context.Background()
 	var jobs [][]byte
 	young := testSession("e0000000-0000-4000-8000-000000000001", "upl-1")
-	if _, _, err := s.ReserveSession(ctx, young); err != nil {
+	if _, _, err := s.ReserveSession(ctx, young, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.CompleteSession(ctx, young.ID, enqueueStub(&jobs)); err != nil {
 		t.Fatal(err)
 	}
 	stuck := testSessionAt("e0000000-0000-4000-8000-000000000002", "upl-2", time.Now().Add(-26*time.Hour))
-	if _, _, err := s.ReserveSession(ctx, stuck); err != nil {
+	if _, _, err := s.ReserveSession(ctx, stuck, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.CompleteSession(ctx, stuck.ID, enqueueStub(&jobs)); err != nil {
@@ -485,7 +495,7 @@ func TestQuarantineCandidatesAndMarks(t *testing.T) {
 	readyObj := readyFixture(t, s, "e0000000-0000-4000-8000-000000000001", "upl-1")
 	_ = readyObj
 	rej := testSession("e0000000-0000-4000-8000-000000000002", "upl-2")
-	if _, _, err := s.ReserveSession(ctx, rej); err != nil {
+	if _, _, err := s.ReserveSession(ctx, rej, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -496,7 +506,7 @@ func TestQuarantineCandidatesAndMarks(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifying := testSession("e0000000-0000-4000-8000-000000000003", "upl-3")
-	if _, _, err := s.ReserveSession(ctx, verifying); err != nil {
+	if _, _, err := s.ReserveSession(ctx, verifying, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.CompleteSession(ctx, verifying.ID, enqueueStub(&jobs)); err != nil {
@@ -595,12 +605,12 @@ func TestPhotoSessionIntentReplayAndOwnerBoundSharing(t *testing.T) {
 	capture := "c0000000-0000-4000-8000-000000000041"
 	sess := testSession(id, "photo-41")
 	sess.PhotoCaptureID = capture
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	changed := sess
 	changed.PhotoCaptureID = ""
-	if _, _, err := s.ReserveSession(ctx, changed); !errors.Is(err, domain.ErrConflict) {
+	if _, _, err := s.ReserveSession(ctx, changed, openBudget()); !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("stripped capture replay=%v", err)
 	}
 	var jobs [][]byte
