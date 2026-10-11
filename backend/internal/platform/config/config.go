@@ -40,6 +40,11 @@ const (
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	// keyMailMode selects code delivery: "off" (default — codes
+	// never issue) or "memory" (bounded local outbox for
+	// development/tests). SMTP lands with deployment
+	// configuration, never silently.
+	keyMailMode = "ANPFUEL_MAIL_MODE"
 	// keyTrainingTermsDigest carries the digest of the currently
 	// published training-terms text that fresh consent grants must
 	// present. Rotating it invalidates old grants until owners
@@ -90,6 +95,9 @@ type Config struct {
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
 	TrainingTermsDigest string
+	// MailMode is "off" or "memory" (see keyMailMode). Production
+	// stays off until delivery is deployed and configured.
+	MailMode string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -244,6 +252,15 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("%s must be 1..128 lowercase hex characters", keyTrainingTermsDigest)
 	}
 	cfg.TrainingTermsDigest = digest
+
+	mode, _ := getenv(keyMailMode)
+	if mode == "" {
+		mode = "off"
+	}
+	if mode != "off" && mode != "memory" {
+		return Config{}, fmt.Errorf("%s must be off or memory", keyMailMode)
+	}
+	cfg.MailMode = mode
 
 	r2, err := loadR2(getenv)
 	if err != nil {

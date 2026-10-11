@@ -192,3 +192,22 @@ func TestLoadTrainingTermsDigest(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadMailMode(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.MailMode != "off" {
+		t.Errorf("MailMode = %q, want off by default", cfg.MailMode)
+	}
+	cfg, err = load(envFunc(map[string]string{keyMailMode: "memory"}))
+	if err != nil || cfg.MailMode != "memory" {
+		t.Errorf("explicit memory must apply, got %q, %v", cfg.MailMode, err)
+	}
+	if _, err := load(envFunc(map[string]string{keyMailMode: "smtp"})); err == nil {
+		t.Error("unconfigured smtp accepted")
+	} else if !strings.Contains(err.Error(), keyMailMode) {
+		t.Errorf("error %q must name the variable", err)
+	}
+}

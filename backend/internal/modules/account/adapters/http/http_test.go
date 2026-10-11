@@ -43,11 +43,12 @@ func testHandler() (Handler, *testMail) {
 	var mu sync.Mutex
 	ci, tn := 0, 0
 	h := Handler{Service: &application.Service{
-		Clock:   &testClock{now: 1_700_000_000},
-		Hasher:  domain.SHA256Hasher{},
-		Mail:    mail,
-		Store:   application.NewMemStore(),
-		CodeGen: func() (string, error) { mu.Lock(); defer mu.Unlock(); c := codes[ci%len(codes)]; ci++; return c, nil },
+		Clock:       &testClock{now: 1_700_000_000},
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        mail,
+		MailEnabled: true,
+		Store:       application.NewMemStore(),
+		CodeGen:     func() (string, error) { mu.Lock(); defer mu.Unlock(); c := codes[ci%len(codes)]; ci++; return c, nil },
 		TokenGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()

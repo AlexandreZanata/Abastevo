@@ -48,11 +48,12 @@ func testLinkFixture(t *testing.T) *linkFixture {
 		CacheTTL: time.Hour,
 	}
 	svc := &Service{
-		Clock:    clock,
-		Hasher:   domain.SHA256Hasher{},
-		Mail:     mail,
-		Store:    NewMemStore(),
-		Verifier: verifier,
+		Clock:       clock,
+		Hasher:      domain.SHA256Hasher{},
+		MailEnabled: true,
+		Mail:        mail,
+		Store:       NewMemStore(),
+		Verifier:    verifier,
 		CodeGen: func() (string, error) {
 			c := codes[ci%len(codes)]
 			ci++

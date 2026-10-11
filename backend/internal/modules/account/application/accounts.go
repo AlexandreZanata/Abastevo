@@ -66,23 +66,34 @@ type AuthResult struct {
 
 // Service wires frozen policy to the Store and MailSender ports.
 type Service struct {
-	Clock     domain.Clock
-	Hasher    domain.CodeHasher
-	Mail      domain.MailSender
-	Store     Store
-	Verifier  domain.ProviderVerifier
-	KeyProver domain.KeyProver
-	CodeGen   func() (string, error)
-	TokenGen  func() (string, error)
-	AliasGen  func() (string, error)
-	KeyGen    func() (string, error)
-	IDGen     func() (string, error)
+	Clock  domain.Clock
+	Hasher domain.CodeHasher
+	Mail   domain.MailSender
+	// MailEnabled gates code issuance on deployed delivery. Off by
+	// default: with no delivery configured, RequestCode answers nil
+	// before any store write, so unavailable dependencies leave no
+	// retained issuances. Tests opt in explicitly.
+	MailEnabled bool
+	Store       Store
+	Verifier    domain.ProviderVerifier
+	KeyProver   domain.KeyProver
+	CodeGen     func() (string, error)
+	TokenGen    func() (string, error)
+	AliasGen    func() (string, error)
+	KeyGen      func() (string, error)
+	IDGen       func() (string, error)
 }
 
 // RequestCode issues a code when quota and cooldown allow. Unknown
 // addresses, cooldown hits and quota exhaustion all answer nil: the caller
 // cannot distinguish them, so no oracle leaks registration or limits.
 func (s *Service) RequestCode(ctx context.Context, address string) error {
+	// Delivery off answers nil before any store write: identical to
+	// quota/cooldown/unknown, so no oracle leaks status and no rows
+	// accumulate for a dependency that cannot deliver.
+	if !s.MailEnabled {
+		return nil
+	}
 	now := s.Clock.NowUnix()
 	hash := domain.AddressHash(address)
 	// Suspended and deleted accounts (deleted rows are unreachable by

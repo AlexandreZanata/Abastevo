@@ -289,11 +289,14 @@ func run() error {
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
 	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
-	// FREE email accounts (P13-T02C). Narrow closure wiring like the other
-	// modules: Postgres store, memory mail sink, production generators.
-	// The memory sink is an explicit preview: codes issue but deliver
-	// nowhere until SMTP lands with deployment configuration.
-	accountMail := accountmail.NewOutbox(unixClock{})
+	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
+	// modules: Postgres store, production generators, and delivery
+	// gated by deployment configuration — off by default (codes never
+	// issue, no rows retained), bounded memory outbox only when local
+	// delivery is explicitly configured. SMTP lands with deployment
+	// configuration, never silently.
+	accountMail := accountmail.NewOutbox(unixClock{}, accountmail.DefaultMaxRetained)
+	mailEnabled := cfg.MailMode == "memory"
 	// FREE provider verification (P13-T03C). Production JWKS over HTTPS
 	// with the frozen 1h cache plus the DB-backed nonce ledger; stub
 	// issuers stay test-only. Audience stays server-side.
@@ -327,10 +330,11 @@ func run() error {
 	// (P13-T04D): one shared handle feeds the service and the
 	// community CheckAccount closures below.
 	accountService := &accountapp.Service{
-		Clock:     unixClock{},
-		Hasher:    accountdomain.SHA256Hasher{},
-		Mail:      accountMail,
-		Store:     accountStore,
+		Clock:       unixClock{},
+		Hasher:      accountdomain.SHA256Hasher{},
+		Mail:        accountMail,
+		MailEnabled: mailEnabled,
+		Store:       accountStore,
 		Verifier:  accountVerifier,
 		KeyProver: accountKeys,
 		CodeGen:   accountdomain.GenerateCode,
