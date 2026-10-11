@@ -1,10 +1,16 @@
 package com.anpfuel.app.games
 
 import android.content.Context
+import android.graphics.Bitmap
+import java.io.File
+import java.io.FileOutputStream
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -79,6 +85,31 @@ class GamesScreenDeviceTest {
         assertEquals(41, reopened.records.best(GameId.RUN))
         assertEquals(7, reopened.records.best(GameId.FLIGHT))
         assertEquals(true, reopened.options().muted)
+    }
+
+    @Test fun captureOfflineScenesForVisualReview() {
+        show(); waitForSelector("FLIGHT")
+        capture("selector")
+        rule.onNodeWithTag("games_choose_FLIGHT").performClick()
+        capture("flight-tutorial")
+        rule.onNodeWithTag("games_start").performScrollTo().performClick()
+        capture("flight-play")
+        rule.onNodeWithTag("games_pause").performScrollTo().performClick()
+        rule.onNodeWithText(context.getString(R.string.games_select_other)).performScrollTo().performClick()
+        rule.onNodeWithTag("games_choose_RUN").performScrollTo().performClick()
+        capture("run-tutorial")
+        rule.onNodeWithTag("games_start").performScrollTo().performClick()
+        capture("run-play")
+        rule.onNodeWithTag("games_pause").performScrollTo().performClick()
+        capture("run-paused")
+    }
+
+    private fun capture(name: String) {
+        rule.waitForIdle()
+        val screenshot = rule.onRoot().captureToImage().asAndroidBitmap()
+        val directory = File(context.getExternalFilesDir(null), "game-validation").apply { mkdirs() }
+        FileOutputStream(File(directory, "$name.png")).use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        screenshot.recycle()
     }
 
     private fun show(fontScale: Float = 1f) {
