@@ -39,6 +39,10 @@ type Store interface {
 	CreateFamily(ctx context.Context, fam domain.SessionFamily) error
 	Family(ctx context.Context, familyID string) (domain.SessionFamily, bool, error)
 	Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
+	// RefreshHistory returns the bounded hashed rotation history for
+	// proven-reuse detection (SEC07-A): newest superseded verifiers
+	// first, at most domain.MaxRefreshHistory. Never plaintext.
+	RefreshHistory(ctx context.Context, familyID string) ([]domain.RotatedVerifier, error)
 	RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error
 	RevokeAccount(ctx context.Context, accountID string, nowUnix int64) error
 	GetAccount(ctx context.Context, accountID string) (domain.Account, bool, error)
@@ -275,10 +279,24 @@ func (s *Service) Refresh(ctx context.Context, familyID, refreshToken string) (S
 		return Session{}, domain.ErrSessionExpired
 	}
 	if !s.Hasher.Equal(fam.RefreshHash, fam.RefreshSalt, refreshToken) {
-		if err := s.Store.RevokeFamily(ctx, familyID, now); err != nil {
-			return Session{}, err
+		// SEC07-A proof-based reuse: only a token matching the bounded
+		// hashed rotation history proves theft and revokes the family.
+		// A random invalid credential refuses fail-closed with a
+		// distinct verdict and leaves the live family untouched.
+		// Neither branch logs tokens or family identifiers.
+		hist, herr := s.Store.RefreshHistory(ctx, familyID)
+		if herr != nil {
+			return Session{}, herr
 		}
-		return Session{}, domain.ErrSessionReuse
+		for _, v := range hist {
+			if s.Hasher.Equal(v.Hash, v.Salt, refreshToken) {
+				if err := s.Store.RevokeFamily(ctx, familyID, now); err != nil {
+					return Session{}, err
+				}
+				return Session{}, domain.ErrSessionReuse
+			}
+		}
+		return Session{}, domain.ErrSessionInvalid
 	}
 	sess, err := s.rotate(ctx, fam, now)
 	if err != nil {

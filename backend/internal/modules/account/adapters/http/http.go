@@ -113,6 +113,8 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		retryAfter = retryAfterBudgetSeconds
 	case "session-reuse-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-reuse-revoked", "session revoked"
+	case "session-invalid":
+		status, code, msg = http.StatusUnauthorized, "account.session-invalid", "valid account proof required"
 	case "session-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-revoked", "session revoked"
 	case "session-expired":

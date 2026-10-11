@@ -492,8 +492,10 @@ func (s *PGStore) Family(ctx context.Context, familyID string) (domain.SessionFa
 
 // Rotate swaps a family's tokens only when the stored refresh hash still
 // matches the winner the caller verified: a lost rotation race fails with
-// ErrSessionReuse instead of forking a parallel chain.
-func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, _ int64) error {
+// ErrSessionReuse instead of forking a parallel chain. The superseded
+// verifier archives into the bounded hashed rotation history (SEC07-A)
+// in the same transaction, pruned to domain.MaxRefreshHistory.
+func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error {
 	id, err := mustUUID(familyID)
 	if err != nil {
 		return domain.ErrCodeUnknown
@@ -527,7 +529,43 @@ func (s *PGStore) Rotate(ctx context.Context, familyID, expectedRefreshHash, ref
 	}); err != nil {
 		return err
 	}
+	if err := q.InsertRefreshHistory(ctx, account.InsertRefreshHistoryParams{
+		FamilyID:    id,
+		RefreshSalt: row.RefreshSalt,
+		RefreshHash: row.RefreshHash,
+		RotatedAt:   stamp(nowUnix),
+	}); err != nil {
+		return err
+	}
+	if _, err := q.PruneRefreshHistory(ctx, account.PruneRefreshHistoryParams{
+		FamilyID: id,
+		Keep:     int32(domain.MaxRefreshHistory),
+	}); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
+}
+
+// RefreshHistory returns the bounded hashed rotation history, newest
+// first (SEC07-A). Salted hashes only; callers compare with the token
+// hasher and never log the values.
+func (s *PGStore) RefreshHistory(ctx context.Context, familyID string) ([]domain.RotatedVerifier, error) {
+	id, err := mustUUID(familyID)
+	if err != nil {
+		return nil, nil
+	}
+	rows, err := account.New(s.pool).ListRefreshHistory(ctx, account.ListRefreshHistoryParams{
+		FamilyID: id,
+		Cap:      int32(domain.MaxRefreshHistory),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.RotatedVerifier, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, domain.RotatedVerifier{Salt: r.RefreshSalt, Hash: r.RefreshHash})
+	}
+	return out, nil
 }
 
 func (s *PGStore) RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error {

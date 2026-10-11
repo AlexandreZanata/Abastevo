@@ -648,6 +648,34 @@ func (q *Queries) InsertProviderLink(ctx context.Context, arg InsertProviderLink
 	return err
 }
 
+const insertRefreshHistory = `-- name: InsertRefreshHistory :exec
+
+INSERT INTO account_session_refresh_history
+    (family_id, refresh_salt, refresh_hash, rotated_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (family_id, refresh_hash) DO NOTHING
+`
+
+type InsertRefreshHistoryParams struct {
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	RefreshSalt string             `json:"refresh_salt"`
+	RefreshHash string             `json:"refresh_hash"`
+	RotatedAt   pgtype.Timestamptz `json:"rotated_at"`
+}
+
+// SEC07-A bounded hashed rotation history (AUD-08): one row per
+// superseded refresh verifier, newest first, pruned on rotation.
+// Plaintext tokens never reach these statements.
+func (q *Queries) InsertRefreshHistory(ctx context.Context, arg InsertRefreshHistoryParams) error {
+	_, err := q.db.Exec(ctx, insertRefreshHistory,
+		arg.FamilyID,
+		arg.RefreshSalt,
+		arg.RefreshHash,
+		arg.RotatedAt,
+	)
+	return err
+}
+
 const latestCode = `-- name: LatestCode :one
 SELECT id, address_hash, salt, hash, issued_at, attempts, consumed_at
 FROM account_email_codes
@@ -797,6 +825,44 @@ func (q *Queries) ListProviderLinks(ctx context.Context, accountID pgtype.UUID) 
 	return items, nil
 }
 
+const listRefreshHistory = `-- name: ListRefreshHistory :many
+SELECT refresh_salt, refresh_hash
+FROM account_session_refresh_history
+WHERE family_id = $1
+ORDER BY rotated_at DESC, refresh_hash
+LIMIT $2
+`
+
+type ListRefreshHistoryParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	Cap      int32       `json:"cap"`
+}
+
+type ListRefreshHistoryRow struct {
+	RefreshSalt string `json:"refresh_salt"`
+	RefreshHash string `json:"refresh_hash"`
+}
+
+func (q *Queries) ListRefreshHistory(ctx context.Context, arg ListRefreshHistoryParams) ([]ListRefreshHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listRefreshHistory, arg.FamilyID, arg.Cap)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRefreshHistoryRow
+	for rows.Next() {
+		var i ListRefreshHistoryRow
+		if err := rows.Scan(&i.RefreshSalt, &i.RefreshHash); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockAddressCodes = `-- name: LockAddressCodes :many
 
 SELECT id, address_hash, salt, hash, issued_at, attempts, consumed_at
@@ -884,6 +950,29 @@ func (q *Queries) LockLatestCode(ctx context.Context, addressHash string) (Accou
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const pruneRefreshHistory = `-- name: PruneRefreshHistory :execrows
+DELETE FROM account_session_refresh_history h
+WHERE h.family_id = $1 AND h.refresh_hash NOT IN (
+    SELECT refresh_hash FROM account_session_refresh_history
+    WHERE family_id = $1
+    ORDER BY rotated_at DESC, refresh_hash
+    LIMIT $2
+)
+`
+
+type PruneRefreshHistoryParams struct {
+	FamilyID pgtype.UUID `json:"family_id"`
+	Keep     int32       `json:"keep"`
+}
+
+func (q *Queries) PruneRefreshHistory(ctx context.Context, arg PruneRefreshHistoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneRefreshHistory, arg.FamilyID, arg.Keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const purgeExpiredCodes = `-- name: PurgeExpiredCodes :execrows

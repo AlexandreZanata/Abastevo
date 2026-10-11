@@ -42,6 +42,7 @@ var (
 	ErrKeyCollision           = errors.New("account: key collision, retry")
 	ErrAddressLinked          = errors.New("account: address already linked")
 	ErrSessionReuse           = errors.New("account: refresh token reused")
+	ErrSessionInvalid         = errors.New("account: invalid refresh credential")
 	ErrSessionRevoked         = errors.New("account: session family revoked")
 	ErrSessionExpired         = errors.New("account: session expired")
 	ErrAggregateExhausted     = errors.New("account: aggregate admission exhausted")
@@ -164,6 +165,8 @@ func VerdictCode(err error) string {
 		return "address-linked"
 	case errors.Is(err, ErrSessionReuse):
 		return "session-reuse-revoked"
+	case errors.Is(err, ErrSessionInvalid):
+		return "session-invalid"
 	case errors.Is(err, ErrSessionRevoked):
 		return "session-revoked"
 	case errors.Is(err, ErrSessionExpired):

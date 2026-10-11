@@ -86,3 +86,10 @@ type AccountSessionFamily struct {
 	IssuedAt      pgtype.Timestamptz `json:"issued_at"`
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
+
+type AccountSessionRefreshHistory struct {
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	RefreshSalt string             `json:"refresh_salt"`
+	RefreshHash string             `json:"refresh_hash"`
+	RotatedAt   pgtype.Timestamptz `json:"rotated_at"`
+}

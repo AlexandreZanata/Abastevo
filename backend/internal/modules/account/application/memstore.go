@@ -32,6 +32,10 @@ type MemStore struct {
 	// intents holds durable account-erasure intents (SEC04-B):
 	// contributor IDs captured at deletion for scope cleanup.
 	intents map[erasureIntentKey]int64
+	// refreshHist holds bounded hashed rotation histories (SEC07-A):
+	// newest superseded verifiers first, at most
+	// domain.MaxRefreshHistory per family. Salted hashes only.
+	refreshHist map[string][]domain.RotatedVerifier
 }
 
 type erasureIntentKey struct {
@@ -57,6 +61,7 @@ func NewMemStore() *MemStore {
 		keyByUsername: map[string]string{},
 		keyByLookup:   map[string]string{},
 		intents:       map[erasureIntentKey]int64{},
+		refreshHist:   map[string][]domain.RotatedVerifier{},
 	}
 }
 
@@ -384,10 +389,26 @@ func (m *MemStore) Rotate(_ context.Context, familyID, expectedRefreshHash, refr
 	if !domain.EqualHash(fam.RefreshHash, expectedRefreshHash) {
 		return domain.ErrSessionReuse
 	}
+	// SEC07-A: archive the superseded verifier before swapping, newest
+	// first, bounded so history cannot grow without limit.
+	hist := append([]domain.RotatedVerifier{{Salt: fam.RefreshSalt, Hash: fam.RefreshHash}}, m.refreshHist[familyID]...)
+	if len(hist) > domain.MaxRefreshHistory {
+		hist = hist[:domain.MaxRefreshHistory]
+	}
+	m.refreshHist[familyID] = hist
 	fam.RefreshSalt, fam.RefreshHash = refreshSalt, refreshHash
 	fam.AccessSalt, fam.AccessHash = accessSalt, accessHash
 	fam.AccessExpires = accessExpires
 	return nil
+}
+
+// RefreshHistory returns the bounded hashed rotation history, newest
+// first (SEC07-A). Callers compare with the token hasher; the memory
+// copy stays internal.
+func (m *MemStore) RefreshHistory(_ context.Context, familyID string) ([]domain.RotatedVerifier, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]domain.RotatedVerifier(nil), m.refreshHist[familyID]...), nil
 }
 
 func (m *MemStore) RevokeFamily(_ context.Context, familyID string, nowUnix int64) error {

@@ -77,7 +77,9 @@ func (c EmailCode) Live(nowUnix int64) bool {
 }
 
 // SessionFamily is one rotating refresh chain. Only salted token hashes
-// persist; reuse of a superseded refresh token revokes the whole family.
+// persist. Proven reuse of a superseded refresh token (SEC07-A: matched
+// against the bounded hashed rotation history) revokes the whole family;
+// a random invalid credential refuses without revoking.
 type SessionFamily struct {
 	ID            string
 	AccountID     string
@@ -89,6 +91,18 @@ type SessionFamily struct {
 	IssuedAt      int64
 	RevokedAt     int64
 }
+
+// RotatedVerifier is one superseded refresh verifier kept for proven-reuse
+// detection (SEC07-A). Salted hash only, never plaintext.
+type RotatedVerifier struct {
+	Salt string
+	Hash string
+}
+
+// MaxRefreshHistory bounds the per-family rotation history (SEC07-A):
+// the newest N superseded verifiers prove reuse; older ones age out and
+// refuse as invalid without revoking.
+const MaxRefreshHistory = 8
 
 // Live reports whether the family may still rotate at nowUnix.
 func (f SessionFamily) Live(nowUnix int64) bool {
