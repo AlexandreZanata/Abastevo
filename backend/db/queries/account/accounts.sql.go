@@ -83,8 +83,8 @@ func (q *Queries) CountCodesSince(ctx context.Context, arg CountCodesSinceParams
 
 const countKeyAccountsSince = `-- name: CountKeyAccountsSince :one
 SELECT count(*)::bigint
-FROM account_key_credentials
-WHERE created_at >= $1
+FROM account_key_admission_events
+WHERE admitted_at >= $1
 `
 
 func (q *Queries) CountKeyAccountsSince(ctx context.Context, sinceUnix int64) (int64, error) {
@@ -952,6 +952,22 @@ func (q *Queries) LockLatestCode(ctx context.Context, addressHash string) (Accou
 	return i, err
 }
 
+const pruneKeyAccountAdmissions = `-- name: PruneKeyAccountAdmissions :execrows
+WITH expired AS (
+ SELECT adm.id FROM account_key_admission_events adm WHERE adm.admitted_at < $1
+ ORDER BY adm.admitted_at, adm.id LIMIT 1000 FOR UPDATE SKIP LOCKED
+)
+DELETE FROM account_key_admission_events e USING expired WHERE e.id = expired.id
+`
+
+func (q *Queries) PruneKeyAccountAdmissions(ctx context.Context, beforeUnix int64) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneKeyAccountAdmissions, beforeUnix)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const pruneRefreshHistory = `-- name: PruneRefreshHistory :execrows
 DELETE FROM account_session_refresh_history h
 WHERE h.family_id = $1 AND h.refresh_hash NOT IN (
@@ -1003,6 +1019,15 @@ func (q *Queries) PurgeExpiredFamilies(ctx context.Context, before pgtype.Timest
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const recordKeyAccountAdmission = `-- name: RecordKeyAccountAdmission :exec
+INSERT INTO account_key_admission_events(admitted_at) VALUES ($1)
+`
+
+func (q *Queries) RecordKeyAccountAdmission(ctx context.Context, admittedAt int64) error {
+	_, err := q.db.Exec(ctx, recordKeyAccountAdmission, admittedAt)
+	return err
 }
 
 const revokeAccountFamilies = `-- name: RevokeAccountFamilies :exec

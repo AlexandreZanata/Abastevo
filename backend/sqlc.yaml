@@ -121,6 +121,7 @@ sql:
       - db/migrations/000042_key_accounts.sql
       - db/migrations/000059_account_erasure_intents.sql
       - db/migrations/000060_account_refresh_history.sql
+      - db/migrations/000062_account_admission_events.sql
     gen:
       go:
         package: account

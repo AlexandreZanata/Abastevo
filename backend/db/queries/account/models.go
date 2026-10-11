@@ -52,6 +52,11 @@ type AccountErasureIntent struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
+type AccountKeyAdmissionEvent struct {
+	ID         int64 `json:"id"`
+	AdmittedAt int64 `json:"admitted_at"`
+}
+
 type AccountKeyCredential struct {
 	AccountID    pgtype.UUID `json:"account_id"`
 	UsernameHash string      `json:"username_hash"`
