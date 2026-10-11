@@ -193,4 +193,31 @@ class RoomContributionOutboxRepositoryTest {
         assertEquals(setOf("row-1", "row-2"), dao.rows.keys)
     }
 
+    // SEC04-D: owner purge deletes exactly the scoped rows and keeps
+    // unscoped/unparseable rows (fail-closed) plus other owners.
+    @Test
+    fun `purgeOwned deletes only the erased owner`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        fun row(id: String, scope: String?) = ContributionOutboxEntity(
+            commandId = id, kind = "SUBMIT", state = "QUEUED", attempts = 0,
+            nextEligibleTick = 0L, nonce = "",
+            payload = if (scope == null) "{\"client_submission_id\":\"$id\"}"
+            else "{\"client_submission_id\":\"$id\",\"scope\":{\"owner_scope\":\"$scope\",\"origin\":\"https://teste.abastevo.com.br\"}}",
+            revision = 1,
+        )
+        dao.upsert(row("cmd-a1", "scope-a"))
+        dao.upsert(row("cmd-a2", "scope-a"))
+        dao.upsert(row("cmd-b1", "scope-b"))
+        dao.upsert(row("cmd-legacy", null))
+        dao.upsert(row("cmd-broken", "scope-a").copy(payload = "not json"))
+
+        val purged = repo.purgeOwned("scope-a")
+
+        assertEquals(2, purged)
+        val remaining = dao.listAll().map { it.commandId }.toSet()
+        assertEquals(setOf("cmd-b1", "cmd-legacy", "cmd-broken"), remaining)
+        assertEquals(0, repo.purgeOwned(""))
+        assertEquals(0, repo.purgeOwned("scope-unknown"))
+    }
 }

@@ -50,6 +50,15 @@ interface ContributionOutboxRepository {
      * receipt; unscoped legacy commands remain quarantined from dispatch.
      */
     suspend fun listOwned(): List<OwnedContribution>
+
+    /**
+     * SEC04-D owner erasure: delete every row whose payload scope matches
+     * [ownerScope] and cancel its scheduled work, returning the purged
+     * count. Rows without a parseable scope are kept (fail-closed: never
+     * delete unattributable rows). After this returns, no pending
+     * operation of the erased owner remains to send.
+     */
+    suspend fun purgeOwned(ownerScope: String): Int
 }
 
 /**

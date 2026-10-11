@@ -29,4 +29,13 @@ interface PhotoUploadSessionDao {
     @Query("""UPDATE photo_upload_sessions SET evidence_id=:evidenceId WHERE capture_id=:captureId
         AND session_id=:sessionId AND (evidence_id IS NULL OR evidence_id=:evidenceId)""")
     suspend fun ready(captureId: String, sessionId: String, evidenceId: String): Int
+
+    // SEC04-D owner erasure: list and drop every private upload session
+    // of one owner scope. Callers purge sealed-cache copies for the
+    // returned photo/capture ids first, then delete the rows.
+    @Query("SELECT * FROM photo_upload_sessions WHERE owner_scope=:ownerScope")
+    suspend fun listByOwner(ownerScope: String): List<PhotoUploadSessionEntity>
+
+    @Query("DELETE FROM photo_upload_sessions WHERE owner_scope=:ownerScope")
+    suspend fun deleteByOwner(ownerScope: String): Int
 }

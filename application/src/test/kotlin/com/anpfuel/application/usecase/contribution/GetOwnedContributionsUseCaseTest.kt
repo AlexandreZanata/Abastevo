@@ -41,6 +41,7 @@ class GetOwnedContributionsUseCaseTest {
 
         override suspend fun markFailed(commandId: String, nowMillis: Long) = Unit
 
+        override suspend fun purgeOwned(ownerScope: String): Int = 0
         override suspend fun cancel(commandId: String) {
             cancelled.add(commandId)
         }

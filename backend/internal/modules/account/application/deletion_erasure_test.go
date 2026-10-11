@@ -199,3 +199,38 @@ func TestDeleteMinimizesKeyCredentials(t *testing.T) {
 		t.Fatalf("username reuse: %v", err)
 	}
 }
+
+// SEC04-D concurrent duplicate deletions: parallel deletes converge —
+// exactly one capture, durable intents name the contributors once,
+// and every caller receives a receipt (scope cleanup converges
+// downstream via idempotent submissions).
+func TestConcurrentDuplicateDeletionsConverge(t *testing.T) {
+	svc, _, rec := deletionService()
+	ctx := context.Background()
+	auth := signupBound(t, svc, "erase-e@example.invalid", "482916", "contrib-erase-e")
+	const racers = 8
+	var wg sync.WaitGroup
+	errs := make([]error, racers)
+	for i := 0; i < racers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, errs[i] = svc.DeleteAccount(ctx, auth.Account.ID)
+		}(i)
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("delete %d: %v", i, err)
+		}
+	}
+	intents, err := svc.Store.ListErasureIntents(ctx, auth.Account.ID)
+	if err != nil || len(intents) != 1 || intents[0] != "contrib-erase-e" {
+		t.Fatalf("intents = %v (%v), want single capture", intents, err)
+	}
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.contributors) != racers {
+		t.Fatalf("enqueue calls = %d, want %d convergent calls", len(rec.contributors), racers)
+	}
+}

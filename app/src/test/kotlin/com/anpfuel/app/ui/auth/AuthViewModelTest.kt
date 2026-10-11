@@ -5,6 +5,9 @@ import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.ConsumeOk
 import com.anpfuel.domain.portable.PortableAuth
+import com.anpfuel.data.repository.OwnerLocalErasure
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -27,6 +30,7 @@ class AuthViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val authFlow = mockk<AuthFlow>()
+    private val ownerErasure = mockk<OwnerLocalErasure>(relaxed = true)
     private lateinit var viewModel: AuthViewModel
 
     private fun session() = PortableAuth.Session(
@@ -40,7 +44,7 @@ class AuthViewModelTest {
         Dispatchers.setMain(dispatcher)
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         every { authFlow.currentKey() } returns null
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         viewModel.ioDispatcher = dispatcher
     }
 
@@ -60,7 +64,7 @@ class AuthViewModelTest {
     @Test
     fun rehydratesActiveSession() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -69,7 +73,7 @@ class AuthViewModelTest {
     fun rotatesStaleSessionOnStart() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(session())
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.AUTHENTICATED, viewModel.uiState.value.step)
     }
@@ -78,7 +82,7 @@ class AuthViewModelTest {
     fun deadSessionReturnsToEmailEntry() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Ok(null)
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.USERNAME_ENTRY, viewModel.uiState.value.step)
     }
@@ -316,7 +320,7 @@ class AuthViewModelTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session())
         every { authFlow.refreshSession() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
         every { authFlow.currentKey() } returns AuthFlow.KeyBackup("ana123", "key-for-ana123")
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         assertEquals(AuthStep.OFFLINE_ACCOUNT, viewModel.uiState.value.step)
         assertEquals(AuthUiError.Offline, viewModel.uiState.value.error)
@@ -345,7 +349,7 @@ class AuthViewModelTest {
     @Test
     fun resumeReflectsLogoutFromAnotherDestination() = runTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         viewModel.refreshAccount()
@@ -360,7 +364,7 @@ class AuthViewModelTest {
         every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
         every { authFlow.currentKey() } returns backup
         every { authFlow.deleteAccount() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
-        viewModel = AuthViewModel(authFlow).also { it.ioDispatcher = dispatcher }
+        viewModel = AuthViewModel(authFlow, ownerErasure).also { it.ioDispatcher = dispatcher }
         advanceUntilIdle()
         viewModel.onDeleteAccount()
         advanceUntilIdle()
@@ -369,4 +373,39 @@ class AuthViewModelTest {
         assertEquals(AuthUiError.Offline, viewModel.uiState.value.error)
     }
 
+    // SEC04-D: logout purges the owner's queue and private media copies
+    // before identity clears; deletion purges only when local
+    // authority is gone, never on transport failure.
+    @Test
+    fun logoutPurgesOwnerQueue() = runTest {
+        advanceUntilIdle()
+        every { authFlow.logout() } returns AuthApiResult.Ok(Unit)
+        viewModel.onLogout()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { ownerErasure.purgeCurrentOwner() }
+    }
+
+    @Test
+    fun deleteAccountPurgesCapturedScope() = runTest {
+        advanceUntilIdle()
+        coEvery { ownerErasure.currentScopeOrNull() } returns "scope-a"
+        coEvery { ownerErasure.purgeScope("scope-a") } returns OwnerLocalErasure.Report(2, 1, 2)
+        every { authFlow.deleteAccount() } returns AuthApiResult.Ok(Unit)
+        viewModel.onDeleteAccount()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { ownerErasure.purgeScope("scope-a") }
+    }
+
+    @Test
+    fun failedDeletionKeepsQueue() = runTest {
+        advanceUntilIdle()
+        coEvery { ownerErasure.currentScopeOrNull() } returns "scope-a"
+        every { authFlow.deleteAccount() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(
+            PortableAuth.Session("family-1", "account-1", "access-1", "refresh-1", 1_000_900L, 4_259_200L),
+        )
+        viewModel.onDeleteAccount()
+        advanceUntilIdle()
+        coVerify(exactly = 0) { ownerErasure.purgeScope(any()) }
+    }
 }

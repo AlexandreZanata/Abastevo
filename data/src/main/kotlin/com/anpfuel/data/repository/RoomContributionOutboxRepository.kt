@@ -138,19 +138,34 @@ class RoomContributionOutboxRepository @Inject constructor(
     override suspend fun listOwned(): List<OwnedContribution> =
         dao.listAll().map { entity ->
             if (entity.state == "ACKED" && entity.remoteStatus == null) throw DomainException("acknowledged command lacks receipt")
-            val scope = try { JSONObject(entity.payload).optJSONObject("scope")?.let {
-                ContributionScope(it.getString("owner_scope"), it.getString("origin"))
-            } } catch (_: Exception) { null }
             OwnedContribution(
                 commandId = entity.commandId,
                 revision = entity.revision,
                 attempts = entity.attempts,
                 phase = OwnedContribution.phaseOf(entity.state),
-                scope = scope,
+                scope = scopeOf(entity),
                 remoteStatus = entity.remoteStatus?.let { ContributionRemoteStatus.valueOf(it) },
                 reason = entity.failureReason,
             )
         }
+
+    override suspend fun purgeOwned(ownerScope: String): Int {
+        if (ownerScope.isBlank()) return 0
+        var purged = 0
+        for (entity in dao.listAll()) {
+            if (scopeOf(entity)?.ownerScope != ownerScope) continue
+            dao.deleteById(entity.commandId)
+            runCatching { scheduler?.cancelContribution(entity.commandId) }
+            purged++
+        }
+        return purged
+    }
+
+    private fun scopeOf(entity: ContributionOutboxEntity): ContributionScope? = try {
+        JSONObject(entity.payload).optJSONObject("scope")?.let {
+            ContributionScope(it.getString("owner_scope"), it.getString("origin"))
+        }
+    } catch (_: Exception) { null }
 
     private fun toCommand(entity: ContributionOutboxEntity): OutboxCommand =
         OutboxCommandMapper.fromEntityFields(
