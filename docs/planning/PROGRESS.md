@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR09 2026-10-11: LOCAL_DONE on branch `landing`, asset build extension. Provenance-gated `assets/app/` copying (48 WebP hash-verified, masters refused, missing/traversal loud) + 4 build tests; typecheck/build/check green, landing tests 29/29. Chapter route registration owed at LR15 with chapter sources. Next: LR10 header/hero.
+
 - Landing redesign LR08 2026-10-11: LOCAL_DONE on branch `landing`, responsive derivatives. 48 deterministic WebP (360/720/1080w, q85, aspect-preserved, no upscale) + provenance in `landing/static/assets/app/`; 360w legible at 100%, rebuild identical, landing tests 25/25 green. Build wiring/alt assignment owed at LR09/LR11. Next: LR09 asset build.
 
 - Landing redesign LR07 2026-10-11: LOCAL_DONE on branch `landing`, manifest selection. 16 entries with roles + claim classes, rejected list, 13 missing rows in manifest; [README selection](../assets/landing/redesign-20261011/README.md). Integrity re-verified 16/16, diff-check clean, secrets passed. Next: LR08 responsive derivatives.

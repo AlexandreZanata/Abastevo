@@ -50,6 +50,43 @@ export function validateStoreState(storeState, storeUrl) {
   }
 }
 
+export function copyAppAssets(staticAppDir, outAppDir) {
+  const provenancePath = path.join(staticAppDir, 'provenance.json');
+  if (!fs.existsSync(provenancePath)) {
+    throw new Error(`App asset provenance missing: ${provenancePath}`);
+  }
+  const provenance = JSON.parse(fs.readFileSync(provenancePath, 'utf8'));
+  // Masters (lossless PNG) must never ship: only derived WebP + provenance land in dist.
+  for (const item of fs.readdirSync(staticAppDir)) {
+    if (item.endsWith('.png')) {
+      throw new Error(`App master must not ship in web assets: ${item}`);
+    }
+  }
+  if (!Array.isArray(provenance.outputs) || provenance.outputs.length === 0) {
+    throw new Error('App asset provenance declares no outputs');
+  }
+  fs.mkdirSync(outAppDir, { recursive: true });
+  let copied = 0;
+  for (const output of provenance.outputs) {
+    if (!/^[a-z0-9-]+\.webp$/.test(output.file)) {
+      throw new Error(`Invalid app derivative filename (possible traversal): ${output.file}`);
+    }
+    const src = path.join(staticAppDir, output.file);
+    if (!fs.existsSync(src)) {
+      throw new Error(`App derivative missing: ${output.file}`);
+    }
+    const content = fs.readFileSync(src);
+    const sha256 = crypto.createHash('sha256').update(content).digest('hex');
+    if (sha256 !== output.sha256) {
+      throw new Error(`App derivative hash mismatch: ${output.file}`);
+    }
+    fs.writeFileSync(path.join(outAppDir, output.file), content);
+    copied += 1;
+  }
+  fs.copyFileSync(provenancePath, path.join(outAppDir, 'provenance.json'));
+  return copied;
+}
+
 export function build(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const origin = validateOrigin(options.origin || options.canonicalOrigin || 'https://abastevo.com.br');
@@ -130,6 +167,13 @@ export function build(options = {}) {
     for (const license of ['OFL-Manrope.txt', 'OFL-Source-Sans-3.txt']) {
       fs.copyFileSync(path.join(fontsStaticDir, license), path.join(fontsOutDir, license));
     }
+
+    // Public app derivatives (LR08) gated by their provenance manifest (LR09):
+    // hash-verified WebP only; masters and undeclared files never ship.
+    const appAssetsCopied = copyAppAssets(
+      path.join(staticDir, 'assets', 'app'),
+      path.join(outDir, 'assets', 'app'),
+    );
 
     // 6. Copy and substitute static configuration files
     const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
@@ -249,6 +293,7 @@ export function build(options = {}) {
       fingerprintedJs: fingerprintedJsName,
       cssHash,
       jsHash,
+      appAssets: appAssetsCopied,
     };
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
