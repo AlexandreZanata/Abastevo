@@ -11,13 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// SEC02-A proxy-fairness regressions (AUD-03): behind the supplied
-// Caddy edge every client shares the TCP peer, so per-IP quotas
-// collapse onto one bucket; untrusted forwarding headers must never
-// select the quota subject. Each test asserts the future behavior
-// and skips until SEC02-B implements the trusted resolver —
-// committed skipped (not blessed, not breaking CI), mirroring the
-// audit characterization without permanently asserting the flaw.
+// SEC02-B trusted-resolver regressions (AUD-03, B-BR-015): behind the
+// supplied Caddy edge independent clients bill independently via the
+// proxy-observed forwarding address; untrusted headers never select
+// the subject; malformed chains fall back to the peer. Formerly
+// skipped SEC02-A regressions, now enforced (GREEN).
 
 type proxyProbe struct {
 	mu       sync.Mutex
@@ -25,10 +23,15 @@ type proxyProbe struct {
 }
 
 func (p *proxyProbe) handler() Handler {
+	proxies, err := ParseTrustedProxies("10.0.0.0/8")
+	if err != nil {
+		panic(err)
+	}
 	return Handler{
-		Registrar:   noRegistrar{},
-		Authority:   "test.invalid",
-		QuotaSecret: []byte(strings.Repeat("a", 32)),
+		Registrar:      noRegistrar{},
+		Authority:      "test.invalid",
+		QuotaSecret:    []byte(strings.Repeat("a", 32)),
+		TrustedProxies: proxies,
 		CheckQuota: func(_ context.Context, subject, _ string) (time.Duration, error) {
 			p.mu.Lock()
 			defer p.mu.Unlock()
@@ -67,7 +70,6 @@ func (p *proxyProbe) ipSubjects() []string {
 }
 
 func TestProxyPeersShareOneBucket(t *testing.T) {
-	t.Skip("SEC02-B: trusted proxy resolver pending")
 	p := &proxyProbe{}
 	fpA := "fp:" + strings.Repeat("a", 64)
 	fpB := "fp:" + strings.Repeat("b", 64)
@@ -87,7 +89,6 @@ func TestProxyPeersShareOneBucket(t *testing.T) {
 }
 
 func TestSpoofedForwardingHeaderIgnored(t *testing.T) {
-	t.Skip("SEC02-B: trusted proxy resolver pending")
 	p := &proxyProbe{}
 	fp := "fp:" + strings.Repeat("c", 64)
 	// Direct (untrusted peer) request forging X-Forwarded-For: the
@@ -105,7 +106,6 @@ func TestSpoofedForwardingHeaderIgnored(t *testing.T) {
 }
 
 func TestMalformedForwardingFallsBackToPeer(t *testing.T) {
-	t.Skip("SEC02-B: trusted proxy resolver pending")
 	p := &proxyProbe{}
 	fp := "fp:" + strings.Repeat("d", 64)
 	for _, xff := range []string{"not-an-ip", "198.51.100.7, 198.51.100.8", ""} {

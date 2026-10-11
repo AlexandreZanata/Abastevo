@@ -288,7 +288,14 @@ func run() error {
 	identityRegistrar := identityadapters.NewRegistrar(pool.Underlying())
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
-	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
+	// SEC02-B: bill the proxy-observed forwarding address only from
+	// explicitly trusted immediate proxies (ANPFUEL_TRUSTED_PROXIES);
+	// validated at startup, empty trusts nothing (peer-only billing).
+	trustedProxies, err := identityhttp.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies}.RegisterRoutes(router)
 	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
 	// modules: Postgres store, production generators, and delivery
 	// gated by deployment configuration — off by default (codes never
@@ -335,13 +342,13 @@ func run() error {
 		Mail:        accountMail,
 		MailEnabled: mailEnabled,
 		Store:       accountStore,
-		Verifier:  accountVerifier,
-		KeyProver: accountKeys,
-		CodeGen:   accountdomain.GenerateCode,
-		TokenGen:  accountdomain.GenerateToken,
-		AliasGen:  accountdomain.GenerateAlias,
-		KeyGen:    accountdomain.GenerateAccountKey,
-		IDGen:     newUUID,
+		Verifier:    accountVerifier,
+		KeyProver:   accountKeys,
+		CodeGen:     accountdomain.GenerateCode,
+		TokenGen:    accountdomain.GenerateToken,
+		AliasGen:    accountdomain.GenerateAlias,
+		KeyGen:      accountdomain.GenerateAccountKey,
+		IDGen:       newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session

@@ -211,3 +211,26 @@ func TestLoadMailMode(t *testing.T) {
 		t.Errorf("error %q must name the variable", err)
 	}
 }
+
+// SEC02-B: the trusted-proxy allowlist defaults to trusting nothing
+// and refuses non-CIDR values at startup with the variable named.
+func TestLoadTrustedProxies(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.TrustedProxies != "" {
+		t.Errorf("TrustedProxies = %q, want empty (trust nothing) by default", cfg.TrustedProxies)
+	}
+	cfg, err = load(envFunc(map[string]string{keyTrustedProxies: "10.0.0.0/8, 192.168.0.0/16"}))
+	if err != nil || cfg.TrustedProxies == "" {
+		t.Errorf("explicit CIDRs must apply, got %q, %v", cfg.TrustedProxies, err)
+	}
+	for _, bad := range []string{"10.0.0.1", "private_ranges", "10.0.0.0/33", "10.0.0.0/8, nope"} {
+		if _, err := load(envFunc(map[string]string{keyTrustedProxies: bad})); err == nil {
+			t.Errorf("CIDR %q accepted", bad)
+		} else if !strings.Contains(err.Error(), keyTrustedProxies) {
+			t.Errorf("error %q must name the variable", err)
+		}
+	}
+}

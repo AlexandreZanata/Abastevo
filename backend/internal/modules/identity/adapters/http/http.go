@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"mime"
-	"net"
 	"net/http"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,6 +32,11 @@ type Handler struct {
 	QuotaSecret []byte
 	CheckQuota  func(context.Context, string, string) (time.Duration, error)
 	Now         func() time.Time
+	// TrustedProxies is the explicit CIDR allowlist whose forwarding
+	// headers the resolver may bill (SEC02-B). Empty trusts nothing
+	// and preserves peer-only billing. Raw addresses never persist:
+	// quota subjects stay HMAC digests (see domain.HashIPSubject).
+	TrustedProxies []netip.Prefix
 }
 
 func (h Handler) now() time.Time {
@@ -118,13 +123,17 @@ func bad(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteError(w, r, 400, "identity.bad-body", "malformed identity request", nil)
 }
 func (h Handler) quota(w http.ResponseWriter, r *http.Request, fp, op string) bool {
-	peer, _, err := net.SplitHostPort(r.RemoteAddr)
+	// SEC02-B: the billable address comes from the trusted resolver,
+	// never raw from headers. Untrusted peers bill their TCP peer;
+	// trusted peers bill the proxy-observed forwarding address with
+	// peer fallback on malformed data.
+	client, err := Resolver{TrustedProxies: h.TrustedProxies}.ClientIP(r)
 	if err != nil {
 		bad(w, r)
 		return false
 	}
 	day := h.now().UTC().Format("2006-01-02")
-	subject, err := domain.HashIPSubject(day, h.QuotaSecret, peer)
+	subject, err := domain.HashIPSubject(day, h.QuotaSecret, client)
 	if err != nil {
 		fail(w, r, err)
 		return false
