@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR25 2026-10-11: LOCAL_DONE on branch `landing`, legal copy review. Account-deletion page reconciled to username/key model (no registered email); privacy/terms verified (24h media, non-affiliation, report rules). Tests 36/36. Next: LR26 navigation hardening.
+- Landing redesign LR26 2026-10-11: LOCAL_DONE on branch `landing`, navigation hardening. Anchor/heading/skip-link/focus test across emitted pages; fixed h1→h3 skip in 15 chapters (now h2). Build/check green, 37/37 tests. Live 200% zoom/keyboard pass still owed (no browser here). Next: LR27 indexation evidence.
+
+- Landing redesign LR25 2026-10-11: LOCAL_DONE on branch `landing`, legal copy review.
 
 - Landing redesign LR24 2026-10-11: LOCAL_DONE on branch `landing`, search/recovery/CRUD reference.
 
