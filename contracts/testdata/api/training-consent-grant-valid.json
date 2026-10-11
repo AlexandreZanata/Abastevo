@@ -1,0 +1,12 @@
+{
+  "id": "training-consent-grant-valid",
+  "version": 1,
+  "schema": "TrainingConsentGrant",
+  "valid": true,
+  "provenance": "CS09C consent wire shape; synthetic",
+  "value": {
+    "terms_version": "training-terms-v1",
+    "terms_digest": "741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48",
+    "revision": 1
+  }
+}

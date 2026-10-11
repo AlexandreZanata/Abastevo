@@ -23,6 +23,12 @@ const (
 	// points: floor(10000*valid/total). Zero votes is null, never
 	// 0% certainty (F06).
 	AgreementScale = 10000
+	// MaxLiveCommentsPerAccount bounds durable per-account comment
+	// growth (SEC01-C, B-BR-F03/F04): at most 100 live top-level
+	// comments plus replies per account. Edits converge in place
+	// and do not consume budget; deletes free it. Free social
+	// participation stays free inside the ceiling.
+	MaxLiveCommentsPerAccount = 100
 )
 
 // Rating is one personal-experience score for an account/target.

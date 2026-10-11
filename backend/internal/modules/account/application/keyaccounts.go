@@ -20,6 +20,9 @@ const keyCreateAttempts = 3
 // CreateKeyAccount mints an anonymous account for username and returns the
 // single-display account key. Usernames collide visibly (409) so the
 // contributor can pick another; keys never collide observably.
+// SEC01-C (B-BR-A01/A05): aggregate hourly ceiling admits atomically via
+// TryCreateKeyAccount before any row exists; over-budget refuses with
+// ErrAggregateExhausted so distinct-username floods cannot bypass it.
 func (s *Service) CreateKeyAccount(ctx context.Context, username string) (KeyAccount, error) {
 	if !domain.ValidUsername(username) {
 		return KeyAccount{}, domain.ErrUsernameInvalid
@@ -58,7 +61,7 @@ func (s *Service) CreateKeyAccount(ctx context.Context, username string) (KeyAcc
 			KeyHash:      s.Hasher.Hash(salt, canonical),
 			CreatedAt:    now,
 		}
-		if err := s.Store.CreateKeyAccount(ctx, acc, cred); err != nil {
+		if err := s.Store.TryCreateKeyAccount(ctx, acc, cred, now); err != nil {
 			if err == domain.ErrKeyCollision {
 				continue
 			}

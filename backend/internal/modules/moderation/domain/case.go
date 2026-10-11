@@ -27,6 +27,12 @@ const (
 	// the ordinary restricted moderation path (P31-T03, B-BR-P12):
 	// reports never suspend a business or grant access alone.
 	TargetStationClaim = "STATION_CLAIM"
+	// TargetContribution names a community price contribution (an
+	// observation UUID) for social-abuse reports: spam, harassment,
+	// vote gaming and off-topic content. Price-accuracy reports keep
+	// using OBSERVATION with dispute reasons; contribution reports use
+	// the frozen reason set below, never free text.
+	TargetContribution = "CONTRIBUTION"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -60,6 +66,30 @@ const (
 	MaxReasonChars = 200
 	MaxDetailChars = 500
 )
+
+// Contribution report reasons, frozen with the queue. Other targets
+// keep free-text reasons; contribution reports bind this set so abuse
+// triage stays reviewable and never becomes a payload dump.
+const (
+	ContributionReasonSpam       = "SPAM"
+	ContributionReasonHarassment = "HARASSMENT"
+	ContributionReasonVoteGaming = "VOTE_GAMING"
+	ContributionReasonOffTopic   = "OFF_TOPIC"
+	ContributionReasonOther      = "OTHER"
+)
+
+// ValidContributionReason reports whether the reason names a frozen
+// contribution report code.
+func ValidContributionReason(reason string) bool {
+	switch reason {
+	case ContributionReasonSpam, ContributionReasonHarassment,
+		ContributionReasonVoteGaming, ContributionReasonOffTopic,
+		ContributionReasonOther:
+		return true
+	default:
+		return false
+	}
+}
 
 // CaseParams carries one case-open intent. EvidenceID is an optional
 // safe reference (object/session UUID) for privileged review; it never
@@ -110,7 +140,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}
@@ -126,6 +156,9 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 	}
 	reason := strings.TrimSpace(p.Reason)
 	if reason == "" || len([]rune(reason)) > MaxReasonChars {
+		return Case{}, ModerationCaseOpened{}, ErrBadReason
+	}
+	if p.TargetType == TargetContribution && !ValidContributionReason(reason) {
 		return Case{}, ModerationCaseOpened{}, ErrBadReason
 	}
 	if len([]rune(p.Detail)) > MaxDetailChars {

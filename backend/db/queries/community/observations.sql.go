@@ -56,9 +56,31 @@ FROM community_observations
 WHERE id = $1
 `
 
-func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (CommunityObservation, error) {
+type GetObservationRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	FuelProduct        string             `json:"fuel_product"`
+	Unit               string             `json:"unit"`
+	AmountMilliBrl     int64              `json:"amount_milli_brl"`
+	RawPriceText       string             `json:"raw_price_text"`
+	ConditionKind      string             `json:"condition_kind"`
+	QualifierKey       string             `json:"qualifier_key"`
+	EvidenceID         pgtype.UUID        `json:"evidence_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
+	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
+	PolicyVersion      string             `json:"policy_version"`
+	LocationVerdict    pgtype.Text        `json:"location_verdict"`
+	LocationProximity  pgtype.Text        `json:"location_proximity"`
+	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+}
+
+func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (GetObservationRow, error) {
 	row := q.db.QueryRow(ctx, getObservation, id)
-	var i CommunityObservation
+	var i GetObservationRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContributorRef,
@@ -97,9 +119,31 @@ type GetObservationByNaturalKeyParams struct {
 	ClientSubmissionID string `json:"client_submission_id"`
 }
 
-func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObservationByNaturalKeyParams) (CommunityObservation, error) {
+type GetObservationByNaturalKeyRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	FuelProduct        string             `json:"fuel_product"`
+	Unit               string             `json:"unit"`
+	AmountMilliBrl     int64              `json:"amount_milli_brl"`
+	RawPriceText       string             `json:"raw_price_text"`
+	ConditionKind      string             `json:"condition_kind"`
+	QualifierKey       string             `json:"qualifier_key"`
+	EvidenceID         pgtype.UUID        `json:"evidence_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
+	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
+	PolicyVersion      string             `json:"policy_version"`
+	LocationVerdict    pgtype.Text        `json:"location_verdict"`
+	LocationProximity  pgtype.Text        `json:"location_proximity"`
+	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+}
+
+func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObservationByNaturalKeyParams) (GetObservationByNaturalKeyRow, error) {
 	row := q.db.QueryRow(ctx, getObservationByNaturalKey, arg.ContributorRef, arg.ClientSubmissionID)
-	var i CommunityObservation
+	var i GetObservationByNaturalKeyRow
 	err := row.Scan(
 		&i.ID,
 		&i.ContributorRef,
@@ -236,7 +280,29 @@ type ListByContributorParams struct {
 	LimitPlusOne   int32              `json:"limit_plus_one"`
 }
 
-func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorParams) ([]CommunityObservation, error) {
+type ListByContributorRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	FuelProduct        string             `json:"fuel_product"`
+	Unit               string             `json:"unit"`
+	AmountMilliBrl     int64              `json:"amount_milli_brl"`
+	RawPriceText       string             `json:"raw_price_text"`
+	ConditionKind      string             `json:"condition_kind"`
+	QualifierKey       string             `json:"qualifier_key"`
+	EvidenceID         pgtype.UUID        `json:"evidence_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
+	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
+	PolicyVersion      string             `json:"policy_version"`
+	LocationVerdict    pgtype.Text        `json:"location_verdict"`
+	LocationProximity  pgtype.Text        `json:"location_proximity"`
+	LocationReason     pgtype.Text        `json:"location_reason"`
+	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+}
+
+func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorParams) ([]ListByContributorRow, error) {
 	rows, err := q.db.Query(ctx, listByContributor,
 		arg.ContributorRef,
 		arg.HasCursor,
@@ -248,9 +314,9 @@ func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorPa
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CommunityObservation
+	var items []ListByContributorRow
 	for rows.Next() {
-		var i CommunityObservation
+		var i ListByContributorRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ContributorRef,

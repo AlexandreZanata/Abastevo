@@ -222,3 +222,35 @@ WHERE username_hash = @username_hash;
 SELECT account_id, username_hash, key_lookup, key_salt, key_hash, created_at
 FROM account_key_credentials
 WHERE key_lookup = @key_lookup;
+
+-- SEC01-C admission accounting (B-BR-A01/A02/A04/A05). Counts only;
+-- no raw addresses/usernames travel, only hashes and totals.
+
+-- name: CountAllCodesSince :one
+SELECT count(*)::bigint
+FROM account_email_codes
+WHERE issued_at >= @since;
+
+-- name: CountKeyAccountsSince :one
+SELECT count(*)::bigint
+FROM account_key_credentials
+WHERE created_at >= @since_unix;
+
+-- name: CountLiveFamiliesByAccount :one
+SELECT count(*)::bigint
+FROM account_session_families
+WHERE account_id = @account_id
+  AND revoked_at IS NULL
+  AND issued_at >= @live_since;
+
+-- SEC01-C bounded retention (FREE_ACCOUNT_ACCESS inventory): purge
+-- code verifiers and absolutely-expired families past the caller's
+-- cutoff. Callers pass now-(TTL+grace); audit inside the window stays.
+
+-- name: PurgeExpiredCodes :execrows
+DELETE FROM account_email_codes
+WHERE issued_at < @before;
+
+-- name: PurgeExpiredFamilies :execrows
+DELETE FROM account_session_families
+WHERE issued_at < @before;

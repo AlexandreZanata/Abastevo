@@ -118,6 +118,198 @@ func (s *PGStore) CountCodesSince(ctx context.Context, addressHash string, since
 	return int(n), nil
 }
 
+// CountAllCodesSince counts issued codes across all addresses (SEC01-C
+// aggregate mail accounting).
+func (s *PGStore) CountAllCodesSince(ctx context.Context, sinceUnix int64) (int, error) {
+	n, err := account.New(s.pool).CountAllCodesSince(ctx, stamp(sinceUnix))
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// CountKeyAccountsSince counts key-account creations in the window
+// (SEC01-C aggregate username accounting; created_at is unix seconds).
+func (s *PGStore) CountKeyAccountsSince(ctx context.Context, sinceUnix int64) (int, error) {
+	n, err := account.New(s.pool).CountKeyAccountsSince(ctx, sinceUnix)
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// CountLiveFamiliesByAccount counts live session families (SEC01-C
+// per-account session accounting): non-revoked and inside the
+// absolute refresh lifetime at nowUnix.
+func (s *PGStore) CountLiveFamiliesByAccount(ctx context.Context, accountID string, nowUnix int64) (int, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return 0, domain.ErrAccountNotFound
+	}
+	liveSince := nowUnix - int64(domain.RefreshAbsoluteLifetimeDays)*24*3600
+	n, err := account.New(s.pool).CountLiveFamiliesByAccount(ctx, account.CountLiveFamiliesByAccountParams{
+		AccountID: id,
+		LiveSince: stamp(liveSince),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// PurgeExpiredCodes deletes code verifiers older than beforeUnix
+// (SEC01-C bounded retention).
+func (s *PGStore) PurgeExpiredCodes(ctx context.Context, beforeUnix int64) (int, error) {
+	n, err := account.New(s.pool).PurgeExpiredCodes(ctx, stamp(beforeUnix))
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// PurgeExpiredFamilies deletes absolutely-expired families older than
+// beforeUnix (SEC01-C bounded retention).
+func (s *PGStore) PurgeExpiredFamilies(ctx context.Context, beforeUnix int64) (int, error) {
+	n, err := account.New(s.pool).PurgeExpiredFamilies(ctx, stamp(beforeUnix))
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// TryIssueCode atomically admits one code issuance (SEC01-C): global
+// advisory lock serializes concurrent issuers, then per-address quota,
+// aggregate ceiling, account usability and cooldown admit inside one
+// transaction. Refusals return admitted=false with no rows and no
+// oracle.
+func (s *PGStore) TryIssueCode(ctx context.Context, rec domain.EmailCode, nowUnix int64) (bool, error) {
+	id, err := mustUUID(rec.ID)
+	if err != nil {
+		return false, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(810001)`); err != nil {
+		return false, err
+	}
+	q := account.New(tx)
+	if row, err := q.FindAccountByAddress(ctx, rec.AddressHash); err == nil {
+		if row.Status != domain.StatusActive {
+			return false, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return false, err
+	}
+	if n, err := q.CountCodesSince(ctx, account.CountCodesSinceParams{
+		AddressHash: rec.AddressHash, Since: stamp(nowUnix - 3600),
+	}); err != nil {
+		return false, err
+	} else if int(n) >= domain.MaxCodesPerAddressPerHour {
+		return false, nil
+	}
+	if n, err := q.CountAllCodesSince(ctx, stamp(nowUnix-3600)); err != nil {
+		return false, err
+	} else if int(n) >= domain.MaxAggregateCodesPerHour {
+		return false, nil
+	}
+	if latest, err := q.LatestCode(ctx, rec.AddressHash); err == nil {
+		lr := toCode(latest)
+		if lr.ConsumedAt == 0 && !domain.CodeExpired(lr.IssuedAt, nowUnix) &&
+			!domain.ResendAllowed(lr.IssuedAt, nowUnix) {
+			return false, nil
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return false, err
+	}
+	if err := q.InsertCode(ctx, account.InsertCodeParams{
+		ID: id, AddressHash: rec.AddressHash, Salt: rec.Salt, Hash: rec.Hash, IssuedAt: stamp(rec.IssuedAt),
+	}); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// TryCreateKeyAccount atomically admits one key-account creation
+// (SEC01-C): aggregate hourly ceiling plus username/key uniqueness in
+// one transaction under a global advisory lock.
+func (s *PGStore) TryCreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error {
+	id, err := mustUUID(acc.ID)
+	if err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(810002)`); err != nil {
+		return err
+	}
+	q := account.New(tx)
+	if n, err := q.CountKeyAccountsSince(ctx, nowUnix-3600); err != nil {
+		return err
+	} else if int(n) >= domain.MaxKeyAccountsPerHour {
+		return domain.ErrAggregateExhausted
+	}
+	if err := q.InsertAccount(ctx, account.InsertAccountParams{
+		ID: id, Alias: acc.Alias, Status: acc.Status, CreatedAt: stamp(acc.CreatedAt),
+	}); err != nil {
+		return err
+	}
+	if err := q.InsertKeyCredential(ctx, account.InsertKeyCredentialParams{
+		AccountID: id, UsernameHash: cred.UsernameHash, KeyLookup: cred.KeyLookup,
+		KeySalt: cred.KeySalt, KeyHash: cred.KeyHash, CreatedAt: cred.CreatedAt,
+	}); err != nil {
+		return keyCredentialConflict(err)
+	}
+	return tx.Commit(ctx)
+}
+
+// TryCreateFamily atomically admits one session family (SEC01-C):
+// per-account live budget plus insert in one transaction under a
+// per-account advisory lock.
+func (s *PGStore) TryCreateFamily(ctx context.Context, fam domain.SessionFamily, nowUnix int64) error {
+	id, err := mustUUID(fam.ID)
+	if err != nil {
+		return err
+	}
+	accountID, err := mustUUID(fam.AccountID)
+	if err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('families:' || $1))`, fam.AccountID); err != nil {
+		return err
+	}
+	q := account.New(tx)
+	liveSince := nowUnix - int64(domain.RefreshAbsoluteLifetimeDays)*24*3600
+	if n, err := q.CountLiveFamiliesByAccount(ctx, account.CountLiveFamiliesByAccountParams{
+		AccountID: accountID, LiveSince: stamp(liveSince),
+	}); err != nil {
+		return err
+	} else if int(n) >= domain.MaxLiveSessionsPerAccount {
+		return domain.ErrSessionBudgetExhausted
+	}
+	if err := q.InsertFamily(ctx, account.InsertFamilyParams{
+		ID: id, AccountID: accountID, RefreshSalt: fam.RefreshSalt, RefreshHash: fam.RefreshHash,
+		AccessSalt: fam.AccessSalt, AccessHash: fam.AccessHash,
+		AccessExpires: stamp(fam.AccessExpires), IssuedAt: stamp(fam.IssuedAt),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *PGStore) LatestCode(ctx context.Context, addressHash string) (domain.EmailCode, bool, error) {
 	row, err := account.New(s.pool).LatestCode(ctx, addressHash)
 	if err != nil {

@@ -71,3 +71,27 @@ func TestWindowStart(t *testing.T) {
 		t.Errorf("window = %v", got)
 	}
 }
+
+func TestHashIPSubjectNormalizesForms(t *testing.T) {
+	key := []byte("0123456789abcdef0123456789abcdef")
+	plain, err := HashIPSubject("k1", key, "192.0.2.10")
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+	// IPv4-mapped IPv6 is the same host: one budget, no farm split.
+	mapped, err := HashIPSubject("k1", key, "::ffff:192.0.2.10")
+	if err != nil || mapped != plain {
+		t.Errorf("mapped = %q, want %q (%v)", mapped, plain, err)
+	}
+	// Case and leading zeros do not fork subjects either.
+	upper, err := HashIPSubject("k1", key, "2001:DB8::1")
+	lower, err2 := HashIPSubject("k1", key, "2001:db8::1")
+	if err != nil || err2 != nil || upper != lower {
+		t.Errorf("case fork: %q vs %q (%v %v)", upper, lower, err, err2)
+	}
+	for _, bad := range []string{"fe80::1%eth0", "192.0.2.10 ", " 192.0.2.10", "::ffff:999.0.0.1"} {
+		if _, err := HashIPSubject("k1", key, bad); err == nil {
+			t.Errorf("ambiguous input accepted: %q", bad)
+		}
+	}
+}

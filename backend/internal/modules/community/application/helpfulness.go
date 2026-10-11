@@ -13,6 +13,11 @@ import (
 // left: older-revision votes never transfer to an edited contribution.
 var ErrStaleSequence = errors.New("community: helpfulness target moved on")
 
+// ErrReviewUnavailable marks a tally read that cannot verify the review
+// state: serving un-annotated counts would hide an open review, so the
+// read fails closed for honest retry instead.
+var ErrReviewUnavailable = errors.New("community: review state unavailable")
+
 // HelpfulnessTarget is the resolved vote target: an existing,
 // validated, visible contribution plus the immutable revision the
 // caller must bind to. Unknown, hidden, deleted and ineligible targets
@@ -44,13 +49,32 @@ type HelpfulnessStore interface {
 	MyVote(ctx context.Context, contributorRef, observationID string, sequence int64) (domain.Choice, bool, error)
 }
 
+// ReviewTargetContribution names the moderation review target for
+// community contributions. It must stay spelled exactly like the
+// moderation queue's CONTRIBUTION target; the community module never
+// imports the moderation domain, so the spelling is pinned by the
+// annotation tests instead of the compiler.
+const ReviewTargetContribution = "CONTRIBUTION"
+
+// ReviewLookup reports whether a contribution target carries an open
+// moderation review. Implementations read the moderation queue; the
+// community module owns only this narrow interface, never the
+// moderation tables.
+type ReviewLookup interface {
+	OpenReview(ctx context.Context, targetType, targetID string) (bool, error)
+}
+
 // HelpfulnessPorts wires helpfulness commands through identity and the
 // owned store. Attribution always derives from the verified caller.
+// CheckQuota caps write intake per fingerprint before any store work;
+// denials surface for 429 mapping and never mutate.
 type HelpfulnessPorts struct {
 	Clock        func() time.Time
 	NewID        func() (string, error)
 	CheckAccount func(ctx context.Context, contributorID string) error
+	CheckQuota   func(ctx context.Context, subject, operation string) (time.Duration, error)
 	Store        HelpfulnessStore
+	Reviews      ReviewLookup
 }
 
 // CastDTO carries one helpfulness vote: target plus immutable revision
@@ -76,18 +100,24 @@ type CastResult struct {
 
 // TallyResult is the public count snapshot plus the private owner
 // overlay. Public caches must carry only the counts; MyChoice travels
-// on the caller-bound read path.
+// on the caller-bound read path. UnderReview annotates counts whose
+// target carries an open contribution review; the frozen wording lives
+// at the wire layer.
 type TallyResult struct {
-	Tally    domain.Tally
-	Share    domain.Share
-	MyChoice *domain.Choice
+	Tally       domain.Tally
+	Share       domain.Share
+	MyChoice    *domain.Choice
+	UnderReview bool
 }
 
 // Cast records one helpfulness vote on a validated, visible
 // contribution. Repeats converge; choice changes rewrite in place;
 // lost-response retries replay on the client submission identity;
 // removals stay idempotent. Concurrent replacements cannot inflate
-// totals: the store holds one live row per account+target+revision.
+// totals: the store holds one live row per attribution+target+revision.
+// Vote identity binds caller.Token (the stable attribution reference
+// observations carry), exactly like community confirmations; the
+// account gate keeps using the contributor ID.
 func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (CastResult, error) {
 	if strings.TrimSpace(caller.ContributorID) == "" || strings.TrimSpace(caller.Token) == "" {
 		return CastResult{}, ErrUnauthorized
@@ -99,6 +129,12 @@ func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (
 		return CastResult{}, domain.ErrInvalidVote
 	}
 	if err := checkHelpfulnessAccount(ctx, p, caller.ContributorID); err != nil {
+		return CastResult{}, err
+	}
+	if p.CheckQuota == nil {
+		return CastResult{}, ErrQuotaDenied
+	}
+	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
 		return CastResult{}, err
 	}
 	target, err := p.Store.Target(ctx, strings.TrimSpace(dto.ObservationID))
@@ -128,7 +164,7 @@ func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (
 func castNewVote(p HelpfulnessPorts, caller Caller, target HelpfulnessTarget, dto CastDTO, id string, now time.Time) (domain.StoredVote, bool, error) {
 	rec, _, err := domain.NewVote(domain.VoteParams{
 		ID:                 id,
-		ContributorRef:     caller.ContributorID,
+		ContributorRef:     caller.Token,
 		AuthorRef:          target.AuthorRef,
 		ObservationID:      target.ObservationID,
 		DecisionSequence:   dto.DecisionSequence,
@@ -179,7 +215,7 @@ func Remove(ctx context.Context, p HelpfulnessPorts, caller Caller, observationI
 	if sequence != target.LatestSequence {
 		return ErrStaleSequence
 	}
-	_, err = p.Store.RemoveVote(ctx, caller.ContributorID, target.ObservationID, sequence)
+	_, err = p.Store.RemoveVote(ctx, caller.Token, target.ObservationID, sequence)
 	return err
 }
 
@@ -208,13 +244,21 @@ func TallyFor(ctx context.Context, p HelpfulnessPorts, caller Caller, observatio
 		return TallyResult{}, err
 	}
 	res := TallyResult{Tally: tally, Share: share}
-	if strings.TrimSpace(caller.ContributorID) != "" {
-		if choice, ok, err := p.Store.MyVote(ctx, caller.ContributorID, target.ObservationID, sequence); err != nil {
+	if strings.TrimSpace(caller.Token) != "" {
+		if choice, ok, err := p.Store.MyVote(ctx, caller.Token, target.ObservationID, sequence); err != nil {
 			return TallyResult{}, err
 		} else if ok {
 			res.MyChoice = &choice
 		}
 	}
+	if p.Reviews == nil {
+		return res, nil
+	}
+	review, err := p.Reviews.OpenReview(ctx, ReviewTargetContribution, target.ObservationID)
+	if err != nil {
+		return TallyResult{}, ErrReviewUnavailable
+	}
+	res.UnderReview = review
 	return res, nil
 }
 

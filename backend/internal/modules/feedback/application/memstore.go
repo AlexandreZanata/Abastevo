@@ -144,6 +144,44 @@ func (m *MemStore) InsertComment(_ context.Context, rec domain.StoredComment) er
 	return nil
 }
 
+// CountLiveCommentsByAccount counts live (non-tombstoned) rows of one
+// account (SEC01-C per-account comment accounting; storage totals
+// only, no text travels).
+func (m *MemStore) CountLiveCommentsByAccount(_ context.Context, accountID string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, rec := range m.comments {
+		if rec.AccountID == accountID && rec.Live() {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// TryInsertComment atomically admits one comment/reply (SEC01-C,
+// B-BR-F03/F04): live per-account budget and row insertion under one
+// lock. Over-budget refuses with ErrQuotaExceeded; edits (which
+// converge in place) do not consume budget.
+func (m *MemStore) TryInsertComment(_ context.Context, rec domain.StoredComment) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, c := range m.comments {
+		if c.AccountID == rec.AccountID && c.Live() {
+			n++
+		}
+	}
+	if n >= domain.MaxLiveCommentsPerAccount {
+		return domain.ErrQuotaExceeded
+	}
+	m.comments[rec.ID] = rec
+	if _, ok := m.aliases[rec.AccountID]; !ok {
+		m.aliases[rec.AccountID] = "alias-" + rec.AccountID
+	}
+	return nil
+}
+
 // GetComment resolves one comment by ID, including tombstoned rows
 // so callers distinguish missing from deleted.
 func (m *MemStore) GetComment(_ context.Context, id string) (domain.StoredComment, bool, error) {

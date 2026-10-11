@@ -34,7 +34,7 @@ func newFakeHelpfulnessStore() *fakeHelpfulnessStore {
 	return &fakeHelpfulnessStore{
 		target: HelpfulnessTarget{
 			ObservationID:  "obs-1",
-			AuthorRef:      "contrib-author",
+			AuthorRef:      "tok-contrib-author",
 			State:          domain.StateValidated,
 			LatestSequence: 3,
 		},
@@ -58,19 +58,19 @@ func (f *fakeHelpfulnessStore) CastVote(_ context.Context, rec domain.StoredVote
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.casts++
-	if key, ok := f.bySub[rec.ClientSubmissionID]; ok {
+	if key, ok := f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID]; ok {
 		return f.votes[key], false, nil
 	}
 	key := helpfulKey(rec.ContributorRef, rec.ObservationID, rec.DecisionSequence)
 	if existing, ok := f.votes[key]; ok {
 		existing.Choice = rec.Choice
 		f.votes[key] = existing
-		f.bySub[rec.ClientSubmissionID] = key
+		f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID] = key
 		f.recount()
 		return existing, false, nil
 	}
 	f.votes[key] = rec
-	f.bySub[rec.ClientSubmissionID] = key
+	f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID] = key
 	f.recount()
 	return rec, true, nil
 }
@@ -124,6 +124,7 @@ func (f *fakeHelpfulnessStore) recount() {
 func helpfulPorts(store *fakeHelpfulnessStore) HelpfulnessPorts {
 	n := 0
 	return HelpfulnessPorts{
+		CheckQuota:   func(_ context.Context, _, _ string) (time.Duration, error) { return 0, nil },
 		Clock:        func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },
 		NewID:        func() (string, error) { n++; return "vote-" + strconv.Itoa(n), nil },
 		CheckAccount: func(_ context.Context, _ string) error { return nil },
@@ -132,7 +133,11 @@ func helpfulPorts(store *fakeHelpfulnessStore) HelpfulnessPorts {
 }
 
 func helpfulCaller() Caller {
-	return Caller{ContributorID: "contrib-a", Fingerprint: "fp", KeyID: "k", Token: "t"}
+	return helpfulCallerAs("contrib-a")
+}
+
+func helpfulCallerAs(ref string) Caller {
+	return Caller{ContributorID: ref, Fingerprint: "fp", KeyID: "k", Token: "tok-" + ref}
 }
 
 func helpfulDTO() CastDTO {
@@ -164,8 +169,7 @@ func TestCastHelpfulCreatesVoteWithExactTally(t *testing.T) {
 
 func TestCastRefusesSelfVoteBeforeMutation(t *testing.T) {
 	store := newFakeHelpfulnessStore()
-	caller := helpfulCaller()
-	caller.ContributorID = "contrib-author"
+	caller := helpfulCallerAs("contrib-author")
 	if _, err := Cast(context.Background(), helpfulPorts(store), caller, helpfulDTO()); err != domain.ErrSelfVote {
 		t.Fatalf("self-vote must refuse with ErrSelfVote, got %v", err)
 	}
@@ -303,5 +307,122 @@ func TestInvalidChoiceNeverMutates(t *testing.T) {
 	}
 	if store.casts != 0 {
 		t.Fatal("invalid choice must never reach the store")
+	}
+}
+
+func TestCastQuotaDenialFailsBeforeMutation(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.CheckQuota = func(_ context.Context, subject, operation string) (time.Duration, error) {
+		if subject != "fp" || operation != "write" {
+			t.Errorf("quota subject = %q op = %q, want fp/write", subject, operation)
+		}
+		return 90 * time.Second, &QuotaDeniedError{RetryAfter: 90 * time.Second}
+	}
+	_, err := Cast(context.Background(), ports, helpfulCaller(), helpfulDTO())
+	var denied *QuotaDeniedError
+	if !errors.As(err, &denied) || denied.RetryAfter != 90*time.Second {
+		t.Fatalf("quota denial must surface with retry delay, got %v", err)
+	}
+	if store.casts != 0 {
+		t.Fatal("denied vote must never reach the store")
+	}
+}
+
+func TestSameAccountAcrossDeviceKeysConverges(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	// One account, two device keys: the stable attribution token binds
+	// both to a single vote (tablet/kiosk rule: devices never mint
+	// separate votes for one account).
+	firstKey := Caller{ContributorID: "contrib-a", Fingerprint: "fp-phone", KeyID: "k1", Token: "tok-contrib-a"}
+	secondKey := Caller{ContributorID: "contrib-a", Fingerprint: "fp-tablet", KeyID: "k2", Token: "tok-contrib-a"}
+	first, err := Cast(context.Background(), ports, firstKey, helpfulDTO())
+	if err != nil {
+		t.Fatalf("first key cast must succeed: %v", err)
+	}
+	second, err := Cast(context.Background(), ports, secondKey, helpfulDTO())
+	if err != nil {
+		t.Fatalf("second key cast must succeed: %v", err)
+	}
+	if second.Created || second.Vote.ID != first.Vote.ID {
+		t.Fatalf("second device key must converge onto one vote: %+v", second)
+	}
+	if second.Tally.Helpful != 1 {
+		t.Fatalf("one account holds one vote: %+v", second.Tally)
+	}
+}
+
+func TestSharedDeviceKeepsAccountsSeparate(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	// One shared fingerprint, two accounts: votes stay separate even
+	// though the write quota subject is shared.
+	a := Caller{ContributorID: "contrib-a", Fingerprint: "fp-kiosk", KeyID: "ka", Token: "tok-contrib-a"}
+	b := Caller{ContributorID: "contrib-b", Fingerprint: "fp-kiosk", KeyID: "kb", Token: "tok-contrib-b"}
+	dto := helpfulDTO()
+	if _, err := Cast(context.Background(), ports, a, dto); err != nil {
+		t.Fatalf("account A must succeed: %v", err)
+	}
+	dto.ClientSubmissionID = "sub-b"
+	res, err := Cast(context.Background(), ports, b, dto)
+	if err != nil {
+		t.Fatalf("account B must succeed: %v", err)
+	}
+	if !res.Created || res.Tally.Helpful != 2 {
+		t.Fatalf("kiosk accounts hold separate votes: %+v", res)
+	}
+}
+
+type stubReviewLookup struct {
+	open bool
+	err  error
+	seen []string
+}
+
+func (s *stubReviewLookup) OpenReview(_ context.Context, targetType, targetID string) (bool, error) {
+	s.seen = append(s.seen, targetType+"|"+targetID)
+	return s.open, s.err
+}
+
+func TestTallyAnnotatesOpenReview(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	lookup := &stubReviewLookup{open: true}
+	ports.Reviews = lookup
+	got, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil {
+		t.Fatalf("tally must succeed: %v", err)
+	}
+	if !got.UnderReview {
+		t.Fatal("open review must annotate the tally")
+	}
+	if len(lookup.seen) != 1 || lookup.seen[0] != ReviewTargetContribution+"|obs-1" {
+		t.Fatalf("lookup saw %v, want pinned CONTRIBUTION spelling", lookup.seen)
+	}
+}
+
+func TestTallyCleanWithoutReview(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.Reviews = &stubReviewLookup{open: false}
+	got, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil || got.UnderReview {
+		t.Fatalf("clean tally = %+v %v", got, err)
+	}
+	// Nil lookup keeps older wiring working with no annotation.
+	ports.Reviews = nil
+	got, err = TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil || got.UnderReview {
+		t.Fatalf("nil lookup tally = %+v %v", got, err)
+	}
+}
+
+func TestTallyReviewLookupFailureClosesRead(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.Reviews = &stubReviewLookup{err: errors.New("queue down")}
+	if _, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3); err != ErrReviewUnavailable {
+		t.Fatalf("lookup failure = %v, want ErrReviewUnavailable", err)
 	}
 }

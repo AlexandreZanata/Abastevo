@@ -370,7 +370,7 @@ func (s *Store) Decisions(ctx context.Context, id string) ([]domain.Decision, er
 	return out, nil
 }
 
-func mapObservation(row community.CommunityObservation) domain.Observation {
+func mapObservation(row community.GetObservationRow) domain.Observation {
 	var claimed time.Time
 	if row.ClaimedCapturedAt.Valid {
 		claimed = row.ClaimedCapturedAt.Time
@@ -424,7 +424,9 @@ func (s *Store) ListByContributor(ctx context.Context, ref string, limit int, af
 	}
 	out := make([]domain.Observation, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, mapObservation(row))
+		// ListByContributor projects the stable fact columns; the
+		// visibility pair stays out of owner history reads.
+		out = append(out, mapObservation(community.GetObservationRow(row)))
 	}
 	return out, nil
 }

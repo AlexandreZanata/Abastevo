@@ -104,3 +104,33 @@ func TestTallyFoldsThroughShare(t *testing.T) {
 		t.Fatalf("tally share mismatch: %+v", share)
 	}
 }
+
+func TestComputeShareDisplayBoundaries(t *testing.T) {
+	// CS06: display math is floor under review — shares never exceed
+	// the true ratio, never show 0% with votes, and stay exact at the
+	// basis-point edges the wire renders.
+	vectors := []struct {
+		helpful, notHelpful, wantBps int64
+	}{
+		{1, 0, 10000},
+		{0, 1, 0},
+		{1, 1, 5000},
+		{1, 2, 3333},
+		{2, 1, 6666},
+		{9999, 1, 9999},
+		{1, 9999, 1},
+		{1 << 40, 1 << 40, 5000},
+	}
+	for _, v := range vectors {
+		share, err := ComputeShare(v.helpful, v.notHelpful)
+		if err != nil {
+			t.Fatalf("%d/%d: %v", v.helpful, v.notHelpful, err)
+		}
+		if !share.HasVotes || share.BasisPoints != v.wantBps {
+			t.Errorf("%d/%d = %+v, want %dbps", v.helpful, v.notHelpful, share, v.wantBps)
+		}
+		if share.BasisPoints < 0 || share.BasisPoints > 10000 {
+			t.Errorf("%d/%d escapes basis points: %+v", v.helpful, v.notHelpful, share)
+		}
+	}
+}

@@ -5,6 +5,7 @@ package adapters
 import (
 	"context"
 	"fmt"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -72,7 +73,20 @@ func seedErasureFixtures(t *testing.T, ctx context.Context, db pgx.Tx) {
 		(id, contributor_ref, tier, reason, policy_version)
 		VALUES ('` + eraseTrustID + `', '` + eraseToken + `', 'ESTABLISHED', 'review', 'trust-v1')`)
 	exec(`INSERT INTO trust_current (contributor_ref, tier) VALUES ('` + eraseToken + `', 'ESTABLISHED')`)
+	exec(`INSERT INTO privacy_training_consents
+		(contributor_id, contributor_ref, terms_version, terms_digest, state, revision, granted_at, decided_at)
+		VALUES ('` + eraseContributorID + `', '` + eraseToken + `', 'training-terms-v1', 'digest-v1', 'GRANTED', 1, now(), now())`)
+	exec(`INSERT INTO privacy_training_derivatives
+		(image_id, consent_revision, contributor_id, contributor_ref, source_sha256,
+		 derivative_sha256, captured_at, terms_version, terms_digest, state, promoted_at)
+		VALUES ('erase-derivative-1', 1, '` + eraseContributorID + `', '` + eraseToken + `', 'sh-erase',
+		 'dh-erase', now(), 'training-terms-v1', 'digest-v1', 'ACTIVE', now())`)
 }
+
+type eraseTerms struct{}
+
+func (eraseTerms) CurrentVersion() string { return "training-terms-v1" }
+func (eraseTerms) CurrentDigest() string  { return "digest-v1" }
 
 type eraseHarness struct {
 	privacy   *Store
@@ -81,6 +95,8 @@ type eraseHarness struct {
 	newIDs    []string
 	n         int
 	clockTime time.Time
+	training  *TrainingObjects
+	s3        *fakeS3
 }
 
 func (h *eraseHarness) newID() (string, error) {
@@ -106,7 +122,16 @@ func queryText(t *testing.T, ctx context.Context, db pgx.Tx, sql string, args ..
 	return s
 }
 
-func erasePorts(h *eraseHarness, s *Store, pool *pgxpool.Pool) privacyapp.ErasePorts {
+func erasePorts(t *testing.T, h *eraseHarness, s *Store, pool *pgxpool.Pool) privacyapp.ErasePorts {
+	t.Helper()
+	s3 := &fakeS3{objects: map[string][]byte{}}
+	srv := httptest.NewServer(s3)
+	t.Cleanup(srv.Close)
+	h.s3 = s3
+	h.training = NewTrainingObjects(TrainingObjectConfig{
+		Endpoint: srv.URL, Bucket: "validation-private", Region: "us-east-1",
+		AccessKeyID: "test", SecretAccessKey: "test-secret-test-secret-test12",
+	})
 	return privacyapp.ErasePorts{
 		Clock: func() time.Time { return h.clockTime },
 		NewID: h.newID,
@@ -117,7 +142,15 @@ func erasePorts(h *eraseHarness, s *Store, pool *pgxpool.Pool) privacyapp.EraseP
 		Identity:  identityadapters.NewRegistrar(pool),
 		Community: communityadapters.NewStore(pool),
 		Evidence:  evidenceadapters.NewStore(pool),
-		Trust:     trustadapters.NewStore(pool),
+		Training: TrainingErasure{
+			Clock:       func() time.Time { return h.clockTime },
+			Attribution: func(context.Context, string) (string, error) { return eraseToken, nil },
+			Consents:    NewConsentStore(pool),
+			Terms:       eraseTerms{},
+			Inventory:   NewPromotionStore(pool),
+			Objects:     h.training,
+		},
+		Trust: trustadapters.NewStore(pool),
 		DeleteObject: func(_ context.Context, key, namespace string) error {
 			h.deleted = append(h.deleted, [2]string{key, namespace})
 			return nil
@@ -163,7 +196,20 @@ func TestEraseRemovesLinksMediaAndLocation(t *testing.T) {
 	}
 
 	h := &eraseHarness{privacy: s, clockTime: base.Add(time.Hour)}
-	ports := erasePorts(h, s, pool)
+	ports := erasePorts(t, h, s, pool)
+	// One minimized derivative copy of the same owner in the private
+	// namespace, like the promotion job would store it.
+	var promotedAt time.Time
+	if err := pool.QueryRow(ctx, `SELECT promoted_at FROM privacy_training_derivatives WHERE image_id='erase-derivative-1'`).Scan(&promotedAt); err != nil {
+		t.Fatal(err)
+	}
+	derivativeKey := privacyapp.TrainingObjectKey("erase-derivative-1", 1, promotedAt)
+	if derivativeKey == "" {
+		t.Fatal("empty derivative key")
+	}
+	if err := h.training.Put(ctx, derivativeKey, []byte("minimized")); err != nil {
+		t.Fatalf("seed bytes: %v", err)
+	}
 	report, err := privacyapp.Erase(ctx, ports, eraseContributorID, privacyapp.EraseDTO{
 		ClientSubmissionID: "erase-1", Reason: "owner request",
 	})
@@ -181,6 +227,9 @@ func TestEraseRemovesLinksMediaAndLocation(t *testing.T) {
 	}
 	if report.TrustUnlinked != 1 {
 		t.Errorf("trust = %+v", report)
+	}
+	if report.TrainingRevoked != 1 || report.TrainingPurged != 1 {
+		t.Errorf("training = %+v", report)
 	}
 	if report.ArchivesPurged != 1 {
 		t.Errorf("exports = %+v", report)
@@ -239,9 +288,19 @@ func TestEraseRemovesLinksMediaAndLocation(t *testing.T) {
 	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM privacy_requests WHERE contributor_id = $1 AND archive IS NOT NULL`, eraseContributorID); n != 0 {
 		t.Error("export bytes survive")
 	}
+	// Training consent revoked, derivative tombstoned, bytes gone.
+	if got := queryText(t, ctx, check, `SELECT state FROM privacy_training_consents WHERE contributor_id = $1`, eraseContributorID); got != "REVOKED" {
+		t.Errorf("consent state = %q", got)
+	}
+	if got := queryText(t, ctx, check, `SELECT state FROM privacy_training_derivatives WHERE image_id = 'erase-derivative-1'`); got != "REVOKED" {
+		t.Errorf("derivative state = %q", got)
+	}
+	if exists, err := h.training.Exists(ctx, derivativeKey); err != nil || exists {
+		t.Errorf("derivative bytes survive: %v, %v", exists, err)
+	}
 	// Ledger holds one row per scope.
-	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM privacy_deletion_ledger WHERE contributor_id = $1`, eraseContributorID); n != 5 {
-		t.Errorf("ledger rows = %d, want 5", n)
+	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM privacy_deletion_ledger WHERE contributor_id = $1`, eraseContributorID); n != 6 {
+		t.Errorf("ledger rows = %d, want 6", n)
 	}
 	if err := check.Rollback(ctx); err != nil {
 		t.Fatal(err)
@@ -274,7 +333,7 @@ func TestRestoreReappliesDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := &eraseHarness{privacy: s, clockTime: base}
-	ports := erasePorts(h, s, pool)
+	ports := erasePorts(t, h, s, pool)
 	if _, err := privacyapp.Erase(ctx, ports, eraseContributorID, privacyapp.EraseDTO{
 		ClientSubmissionID: "erase-1", Reason: "owner request",
 	}); err != nil {
@@ -316,8 +375,8 @@ func TestRestoreReappliesDeletion(t *testing.T) {
 	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM community_observations WHERE contributor_ref = $1`, eraseToken); n != 1 {
 		t.Fatalf("restored links = %d, want 1", n)
 	}
-	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM privacy_deletion_ledger WHERE contributor_id = $1 AND replayed_at IS NULL`, eraseContributorID); n != 5 {
-		t.Fatalf("pending replay rows = %d, want 5", n)
+	if n := queryCount(t, ctx, check, `SELECT COUNT(*) FROM privacy_deletion_ledger WHERE contributor_id = $1 AND replayed_at IS NULL`, eraseContributorID); n != 6 {
+		t.Fatalf("pending replay rows = %d, want 6", n)
 	}
 	if err := check.Rollback(ctx); err != nil {
 		t.Fatal(err)
@@ -384,7 +443,7 @@ func TestNoRestoredDataServedBeforeReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := &eraseHarness{privacy: s, clockTime: base.Add(time.Hour)}
-	ports := erasePorts(h, s, pool)
+	ports := erasePorts(t, h, s, pool)
 	if _, err := privacyapp.Erase(ctx, ports, eraseContributorID, privacyapp.EraseDTO{
 		ClientSubmissionID: "erase-1", Reason: "owner request",
 	}); err != nil {

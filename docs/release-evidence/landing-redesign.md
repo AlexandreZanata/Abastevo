@@ -106,3 +106,34 @@ Search Console/Bing Webmaster ownership, diagnostics and receipts;
 answer-engine citations (no guaranteed ranking or AI placement anywhere);
 field Core Web Vitals; live zoom/keyboard browser pass. No doorway pages,
 no keyword stuffing, no hidden bot-only content, no guaranteed ranking.
+
+## LR36 reconciliation — 2026-10-11 user-authorized merge
+
+The user explicitly requested reconciliation and merge of PR #128 into dev.
+Work is isolated in `.worktrees/landing-reconcile-dev`; the occupied primary
+checkout and all its unpublished/in-progress security changes remain untouched.
+Publication uses only the PR's actual remote base `origin/dev` (`47b5464`) and
+landing source `04dbdf8`, preserving both histories through an ordinary merge.
+The sole conflict is `docs/planning/PROGRESS.md`: retain every nonblank line
+from both parents, verified mechanically, without choosing one side wholesale.
+Backend, Android, domain/data/application, contracts, infrastructure and gate
+source match the published dev parent byte-for-byte. Original landing assets
+and implementation match the landing parent; only reconciliation evidence and
+progress are added. No force push, squash, branch deletion or main delivery.
+
+Affected validation after reconciliation: landing typecheck/build/check PASS;
+40/40 landing tests PASS (zero skips/failures), emitted CSS `a63f6f37` and JS
+`72d6a45f` unchanged, store prelaunch. Existing locked TypeScript installation
+was copied into this isolated worktree; the temporary empty offline npm cache
+had no tarball. Sandbox blocked child-process/cache access; validations reran
+with authorized execution. No dependency/lockfile change. Diff/secret scans
+PASS. Gate-selection harness rerun: 18/18 PASS (zero failures). Current-head
+remote Quick verification must pass before
+merge; missing/failed/skipped checks block it. Guard expected PR head and base
+at finalization, retain commit ancestry, and verify the merged result in dev.
+
+`git-flow.sh finish` explicitly accepts only main as final target; it cannot
+merge landing into dev. This source consolidation uses the same no-bypass,
+current-head/base, clean-tree and successful-check guards with an explicit
+GitHub merge commit. Protected dev→main delivery, deployment, live browser
+accessibility/field performance and external indexing remain owed.

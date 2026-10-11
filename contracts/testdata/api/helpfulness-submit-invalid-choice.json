@@ -1,0 +1,12 @@
+{
+  "id": "helpfulness-submit-invalid-choice",
+  "version": 1,
+  "schema": "HelpfulnessSubmit",
+  "valid": false,
+  "provenance": "CS02B VALID is not a helpfulness choice; synthetic",
+  "value": {
+    "choice": "VALID",
+    "decision_sequence": 2,
+    "client_submission_id": "help-2026-10-11-002"
+  }
+}

@@ -18,9 +18,19 @@ import (
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
+
+// opsTrainingTerms serves the current training-terms pair for replay
+// (same provisional digest as the API and worker until CS11).
+type opsTrainingTerms struct {
+	digest string
+}
+
+func (t opsTrainingTerms) CurrentVersion() string { return privacydomain.TrainingTermsV1 }
+func (t opsTrainingTerms) CurrentDigest() string  { return t.digest }
 
 // eraseArgs carries one parsed erasure intake. Parsing stays pure (no
 // I/O) so arg validation is unit-testable.
@@ -163,16 +173,35 @@ func privacyReplay(r replayArgs, getenv func(string) string) error {
 	} else {
 		fmt.Fprintln(os.Stderr, "warning: storage not configured; replay marks database rows, orphaned bytes need a worker pass")
 	}
+	var trainingObjects *privacyadapters.TrainingObjects
+	if cfg.R2 != nil {
+		trainingObjects = privacyadapters.NewTrainingObjects(privacyadapters.TrainingObjectConfig{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Region: cfg.R2.Region,
+			AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey,
+		})
+	} else {
+		fmt.Fprintln(os.Stderr, "warning: training namespace not configured; replay revokes training rows, orphaned copies need a worker pass")
+	}
 	report, err := privacyapp.ReplayLedger(ctx, privacyapp.ErasePorts{
 		Clock: time.Now,
 		NewID: newUUID,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
 			return registrar.AttributionToken(ctx, contributorID)
 		},
-		Store:        privacyadapters.NewStore(raw),
-		Identity:     registrar,
-		Community:    communityadapters.NewStore(raw),
-		Evidence:     evidenceadapters.NewStore(raw),
+		Store:     privacyadapters.NewStore(raw),
+		Identity:  registrar,
+		Community: communityadapters.NewStore(raw),
+		Evidence:  evidenceadapters.NewStore(raw),
+		Training: privacyadapters.TrainingErasure{
+			Clock: time.Now,
+			Attribution: func(ctx context.Context, contributorID string) (string, error) {
+				return registrar.AttributionToken(ctx, contributorID)
+			},
+			Consents:  privacyadapters.NewConsentStore(raw),
+			Terms:     opsTrainingTerms{digest: cfg.TrainingTermsDigest},
+			Inventory: privacyadapters.NewPromotionStore(raw),
+			Objects:   privacyadapters.TrainingObjectsOrRefusal(trainingObjects),
+		},
 		Trust:        trustadapters.NewStore(raw),
 		DeleteObject: deleteObject,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
@@ -183,10 +212,10 @@ func privacyReplay(r replayArgs, getenv func(string) string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "operator=%s replay contributor=%s obs=%d votes=%d keys=%d sessions=%d objects=%d trust=%d archives=%d\n",
+	fmt.Fprintf(os.Stdout, "operator=%s replay contributor=%s obs=%d votes=%d keys=%d sessions=%d objects=%d training_revoked=%d training_purged=%d trust=%d archives=%d\n",
 		operator, strings.TrimSpace(r.contributor),
 		report.ObsUnlinked, report.VotesUnlinked, report.KeysRecomputed,
-		report.SessionsPurged, report.ObjectsPurged, report.TrustUnlinked, report.ArchivesPurged)
+		report.SessionsPurged, report.ObjectsPurged, report.TrainingRevoked, report.TrainingPurged, report.TrustUnlinked, report.ArchivesPurged)
 	return nil
 }
 

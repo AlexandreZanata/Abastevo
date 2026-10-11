@@ -1,0 +1,12 @@
+{
+  "id": "training-consent-grant-stale-terms-invalid",
+  "version": 1,
+  "schema": "TrainingConsentGrant",
+  "valid": false,
+  "provenance": "CS09C revision 0 violates the schema minimum; superseded terms additionally refuse at runtime",
+  "value": {
+    "terms_version": "training-terms-v0",
+    "terms_digest": "digest-v0",
+    "revision": 0
+  }
+}

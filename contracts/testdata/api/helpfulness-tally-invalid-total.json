@@ -1,0 +1,14 @@
+{
+  "id": "helpfulness-tally-invalid-total",
+  "version": 1,
+  "schema": "HelpfulnessTally",
+  "valid": false,
+  "provenance": "CS02B negative counts rejected; synthetic",
+  "value": {
+    "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad27",
+    "decision_sequence": 2,
+    "helpful": -1,
+    "not_helpful": 0,
+    "total": 3
+  }
+}

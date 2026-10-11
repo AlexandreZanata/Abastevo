@@ -51,6 +51,25 @@ type CommunityDispute struct {
 	PolicyVersion       string             `json:"policy_version"`
 }
 
+type CommunityHelpfulnessTally struct {
+	ObservationID    pgtype.UUID        `json:"observation_id"`
+	DecisionSequence int64              `json:"decision_sequence"`
+	Helpful          int64              `json:"helpful"`
+	NotHelpful       int64              `json:"not_helpful"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CommunityHelpfulnessVote struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ObservationID      pgtype.UUID        `json:"observation_id"`
+	DecisionSequence   int64              `json:"decision_sequence"`
+	Choice             string             `json:"choice"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type CommunityObservation struct {
 	ID                 pgtype.UUID        `json:"id"`
 	ContributorRef     string             `json:"contributor_ref"`
@@ -71,6 +90,8 @@ type CommunityObservation struct {
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
 	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+	HiddenAt           pgtype.Timestamptz `json:"hidden_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type CommunityObservationDecision struct {

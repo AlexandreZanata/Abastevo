@@ -117,6 +117,22 @@ func (s *Store) OpenCase(ctx context.Context, c domain.Case) (string, bool, erro
 	return uuidString(row.ID), true, nil
 }
 
+// OpenReview reports whether one target carries an open review case.
+// Community tally reads consume this narrow lookup through their own
+// port; targets without an open case simply read clean, never as errors.
+func (s *Store) OpenReview(ctx context.Context, targetType, targetID string) (bool, error) {
+	_, err := dbmoderation.New(s.pool).GetOpenCase(ctx, dbmoderation.GetOpenCaseParams{
+		TargetType: targetType, TargetID: targetID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // Get returns one case by ID. Missing rows share one not-found shape so
 // callers cannot probe for other targets.
 func (s *Store) Get(ctx context.Context, id string) (domain.Case, error) {

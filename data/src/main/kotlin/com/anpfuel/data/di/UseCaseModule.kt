@@ -3,8 +3,10 @@ package com.anpfuel.data.di
 import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
+import com.anpfuel.application.port.CommunityHelpfulnessFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.port.CommunityVoteFlagProvider
+import com.anpfuel.application.port.TrainingConsentLocalStore
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.application.port.ContributionScopeProvider
 import com.anpfuel.application.port.FeedbackFlagProvider
@@ -14,6 +16,8 @@ import com.anpfuel.application.usecase.alert.EvaluatePriceDropAlertsUseCase
 import com.anpfuel.application.usecase.capture.ConfirmPriceCaptureUseCase
 import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.SubmitCommunityVoteUseCase
+import com.anpfuel.application.usecase.community.SubmitHelpfulnessVoteUseCase
+import com.anpfuel.application.usecase.privacy.TrainingConsentUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationDetailUseCase
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
@@ -32,6 +36,8 @@ import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.StationIntakeGateway
+import com.anpfuel.domain.repository.CommunityHelpfulnessGateway
+import com.anpfuel.domain.repository.TrainingConsentGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.FeedbackCacheRepository
@@ -597,6 +603,28 @@ object UseCaseModule {
     ): SubmitCommunityVoteUseCase = SubmitCommunityVoteUseCase(
         flagProvider = flagProvider,
         gateway = gateway,
+    )
+
+    @Provides
+    @Singleton
+    fun provideSubmitHelpfulnessVoteUseCase(
+        flagProvider: CommunityHelpfulnessFlagProvider,
+        gateway: CommunityHelpfulnessGateway,
+    ): SubmitHelpfulnessVoteUseCase = SubmitHelpfulnessVoteUseCase(
+        flagProvider = flagProvider,
+        gateway = gateway,
+    )
+
+    @Provides
+    @Singleton
+    fun provideTrainingConsentUseCase(
+        local: TrainingConsentLocalStore,
+        gateway: TrainingConsentGateway,
+        network: NetworkConnectivityGateway,
+    ): TrainingConsentUseCase = TrainingConsentUseCase(
+        local = local,
+        gateway = gateway,
+        network = network,
     )
 
     @Provides
