@@ -7,6 +7,7 @@ import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionReceipt
 import com.anpfuel.domain.repository.ContributionRemoteStatus
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
+import com.anpfuel.domain.repository.OutboxBudgets
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 
@@ -21,12 +22,20 @@ class DispatchContributionUseCase(
 ) {
     suspend fun invoke(requestedId: String?): DispatchOutcome {
         val now = nowMillis()
-        val pending = outbox.listDispatchable(now)
-        val next = if (requestedId.isNullOrBlank()) pending.firstOrNull() else pending.firstOrNull { it.commandId == requestedId }
+        // SEC06-C bounded selection: one requested command by id, or
+        // the head of one bounded eligible page. Full-history scans
+        // (and loading all payloads to select one) are gone; owner,
+        // origin, frozen revision and lease semantics are unchanged.
+        val next = if (requestedId.isNullOrBlank()) {
+            outbox.listDispatchablePage(now, OutboxBudgets.DISPATCH_PAGE_SIZE).firstOrNull()
+        } else {
+            outbox.findDispatchable(requestedId, now)
+        }
         if (next == null) {
-            val waiting = outbox.listOwned().any { it.commandId == requestedId &&
+            val waiting = !requestedId.isNullOrBlank() && outbox.findOwned(requestedId)?.let {
                 it.phase != com.anpfuel.domain.repository.OwnedContributionPhase.CANCELLED &&
-                it.remoteStatus !in setOf(ContributionRemoteStatus.VALIDATED, ContributionRemoteStatus.REJECTED, ContributionRemoteStatus.EXPIRED) }
+                    it.remoteStatus !in setOf(ContributionRemoteStatus.VALIDATED, ContributionRemoteStatus.REJECTED, ContributionRemoteStatus.EXPIRED)
+            } == true
             return if (waiting) DispatchOutcome.RETRY else DispatchOutcome.DONE
         }
         val attempt = attemptId()

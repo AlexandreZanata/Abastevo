@@ -59,10 +59,19 @@ class EnqueueContributionUseCaseTest {
             }
         }
 
-        override suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution> =
-            payloads.map { (id, payload) ->
+        override suspend fun findDispatchable(commandId: String, nowMillis: Long): QueuedContribution? =
+            payloads[commandId]?.let { QueuedContribution(commandId, revisions.getValue(commandId), it, it.contains("historical")) }
+
+        override suspend fun listDispatchablePage(nowMillis: Long, limit: Int): List<QueuedContribution> =
+            payloads.entries.take(limit).map { (id, payload) ->
                 QueuedContribution(id, revisions.getValue(id), payload, payload.contains("historical"))
             }
+
+        override suspend fun findOwned(commandId: String): OwnedContribution? = null
+
+        override suspend fun listOwnedPage(limit: Int, offset: Int): List<OwnedContribution> = emptyList()
+
+        override suspend fun purgeTerminalHistory(): Int = 0
 
         override suspend fun loadPayload(commandId: String): String? = payloads[commandId]
 
@@ -80,7 +89,7 @@ class EnqueueContributionUseCaseTest {
         override suspend fun purgeOwned(ownerScope: String): Int = 0
         override suspend fun cancel(commandId: String) = Unit
 
-        override suspend fun listOwned(): List<OwnedContribution> = emptyList()
+
     }
 
     private fun request(

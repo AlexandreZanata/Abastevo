@@ -15,7 +15,8 @@ class DispatchContributionUseCaseTest {
     private val pending = QueuedContribution("row", 1, "frozen", false)
     private fun dispatcher() = DispatchContributionUseCase(outbox, gateway, { 1000L }, { "lease" })
     private fun ready(receipt: ContributionReceipt? = null) {
-        coEvery { outbox.listDispatchable(any()) } returns listOf(pending)
+        coEvery { outbox.findDispatchable("row", any()) } returns pending
+        coEvery { outbox.listDispatchablePage(any(), any()) } returns listOf(pending)
         coEvery { outbox.claimDispatch("row", 1, "lease", 1000) } returns true
         coEvery { outbox.receipt("row") } returns receipt
     }
@@ -37,6 +38,8 @@ class DispatchContributionUseCaseTest {
         ready()
         coEvery { outbox.claimDispatch(any(), any(), any(), any()) } returns false
         assertEquals(DispatchOutcome.RETRY, dispatcher().invoke("row"))
+        coEvery { outbox.findDispatchable("other", any()) } returns null
+        coEvery { outbox.findOwned("other") } returns null
         assertEquals(DispatchOutcome.DONE, dispatcher().invoke("other"))
         coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any()) }
     }

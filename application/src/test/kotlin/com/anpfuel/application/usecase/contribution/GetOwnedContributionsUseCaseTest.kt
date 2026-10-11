@@ -30,8 +30,15 @@ class GetOwnedContributionsUseCaseTest {
             payloadJson: String,
         ): QueuedContribution = throw UnsupportedOperationException()
 
-        override suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution> =
+        override suspend fun findDispatchable(commandId: String, nowMillis: Long): QueuedContribution? = null
+
+        override suspend fun listDispatchablePage(nowMillis: Long, limit: Int): List<QueuedContribution> =
             emptyList()
+
+        override suspend fun findOwned(commandId: String): OwnedContribution? =
+            owned.firstOrNull { it.commandId == commandId }
+
+        override suspend fun purgeTerminalHistory(): Int = 0
 
         override suspend fun loadPayload(commandId: String): String? = null
 
@@ -46,7 +53,8 @@ class GetOwnedContributionsUseCaseTest {
             cancelled.add(commandId)
         }
 
-        override suspend fun listOwned(): List<OwnedContribution> = owned
+        override suspend fun listOwnedPage(limit: Int, offset: Int): List<OwnedContribution> =
+            owned.drop(offset).take(limit)
     }
 
     private fun owned(

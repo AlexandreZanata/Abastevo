@@ -1,9 +1,11 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.dao.ContributionOutboxDao
+import com.anpfuel.data.local.dao.EligibleDispatchKey
 import com.anpfuel.data.local.entity.ContributionOutboxEntity
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.OwnedContributionPhase
 import com.anpfuel.domain.repository.PendingContribution
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -24,12 +26,39 @@ class RoomContributionOutboxRepositoryTest {
 
     private class FakeDao : ContributionOutboxDao {
         val rows = mutableMapOf<String, ContributionOutboxEntity>()
+        var listAllCalls = 0
 
         override suspend fun findById(commandId: String): ContributionOutboxEntity? =
             rows[commandId]
 
-        override suspend fun listAll(): List<ContributionOutboxEntity> =
-            rows.values.toList()
+        override suspend fun listAll(): List<ContributionOutboxEntity> {
+            listAllCalls++
+            return rows.values.toList()
+        }
+
+        private fun isEligible(row: ContributionOutboxEntity, nowMillis: Long): Boolean =
+            row.state == "QUEUED" || (row.state in setOf("FAILED", "IN_FLIGHT") && row.nextEligibleTick <= nowMillis) ||
+                (row.state == "ACKED" && row.remoteStatus in setOf("RECEIVED", "VALIDATING") && row.nextEligibleTick <= nowMillis)
+
+        override suspend fun findDispatchableById(commandId: String, nowMillis: Long): ContributionOutboxEntity? =
+            rows[commandId]?.takeIf { isEligible(it, nowMillis) }
+
+        override suspend fun listEligibleKeys(limit: Int, nowMillis: Long): List<EligibleDispatchKey> =
+            rows.values.filter { isEligible(it, nowMillis) }.take(limit)
+                .map { EligibleDispatchKey(it.commandId, it.revision) }
+
+        override suspend fun listOwnedPage(limit: Int, offset: Int): List<ContributionOutboxEntity> =
+            rows.values.toList().asReversed().drop(offset).take(limit)
+
+        override suspend fun deleteTerminalBeyond(keep: Int, batch: Int): Int {
+            fun isTerminal(row: ContributionOutboxEntity): Boolean =
+                row.state == "CANCELLED" || (row.state == "ACKED" && row.remoteStatus in setOf("VALIDATED", "REJECTED", "EXPIRED"))
+            val ordered = rows.values.toList()
+            val retained = ordered.takeLast(keep.coerceAtLeast(0)).map { it.commandId }.toSet()
+            val victims = ordered.filter { isTerminal(it) && it.commandId !in retained }.take(batch)
+            victims.forEach { rows.remove(it.commandId) }
+            return victims.size
+        }
 
         override suspend fun upsert(entity: ContributionOutboxEntity) {
             rows[entity.commandId] = entity
@@ -101,7 +130,7 @@ class RoomContributionOutboxRepositoryTest {
 
         assertEquals(1, first.revision)
         assertEquals(2, second.revision)
-        assertEquals(1, repo.listDispatchable(2_000_000L).size)
+        assertEquals(1, repo.listDispatchablePage(2_000_000L, 50).size)
         assertTrue(second.payloadJson.contains("historical"))
     }
 
@@ -126,8 +155,8 @@ class RoomContributionOutboxRepositoryTest {
         repo.enqueue(draft(), payload())
         repo.markFailed("cmd-1", 1_000_000L)
 
-        assertTrue(repo.listDispatchable(1_000_000L).isEmpty())
-        assertEquals(1, repo.listDispatchable(1_000_000L + 1_000L).size)
+        assertTrue(repo.listDispatchablePage(1_000_000L, 50).isEmpty())
+        assertEquals(1, repo.listDispatchablePage(1_000_000L + 1_000L, 50).size)
     }
 
     @Test
@@ -139,7 +168,7 @@ class RoomContributionOutboxRepositoryTest {
         repo.markFailed("cmd-1", 1_000_000L)
         repo.enqueue(draft("cmd-2"), payload())
 
-        val owned = repo.listOwned().sortedBy { it.commandId }
+        val owned = repo.listOwnedPage(100, 0).sortedBy { it.commandId }
         assertEquals(2, owned.size)
         assertEquals(OwnedContributionPhase.FAILED, owned[0].phase)
         assertEquals(1, owned[0].revision)
@@ -164,7 +193,7 @@ class RoomContributionOutboxRepositoryTest {
         val repo = RoomContributionOutboxRepository(dao)
 
         assertThrows(DomainException::class.java) {
-            kotlinx.coroutines.runBlocking { repo.listOwned() }
+            kotlinx.coroutines.runBlocking { repo.listOwnedPage(100, 0) }
         }
     }
 
@@ -219,5 +248,68 @@ class RoomContributionOutboxRepositoryTest {
         assertEquals(setOf("cmd-b1", "cmd-legacy", "cmd-broken"), remaining)
         assertEquals(0, repo.purgeOwned(""))
         assertEquals(0, repo.purgeOwned("scope-unknown"))
+    }
+
+    // SEC06-C: dispatch pages cap at the limit with identifiers only;
+    // single-command lookup never scans the table.
+    @Test
+    fun `dispatch selection stays bounded without full scans`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repeat(60) { i -> repo.enqueue(draft("cmd-$i"), payload()) }
+        val callsBefore = dao.listAllCalls
+        val page = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(50, page.size)
+        assertEquals("cmd-0", page.first().commandId)
+        val single = repo.findDispatchable("cmd-59", 2_000_000L)
+        assertEquals("cmd-59", single?.commandId)
+        assertEquals(null, repo.findDispatchable("cmd-missing", 2_000_000L))
+        assertEquals(callsBefore, dao.listAllCalls)
+    }
+
+    // SEC06-C: history pages newest-first and bounded.
+    @Test
+    fun `history pages newest first bounded`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repeat(5) { i -> repo.enqueue(draft("cmd-$i"), payload()) }
+        val first = repo.listOwnedPage(2, 0)
+        assertEquals(listOf("cmd-4", "cmd-3"), first.map { it.commandId })
+        val second = repo.listOwnedPage(2, 2)
+        assertEquals(listOf("cmd-2", "cmd-1"), second.map { it.commandId })
+        assertEquals("cmd-1", repo.findOwned("cmd-1")?.commandId)
+        assertEquals(null, repo.findOwned("cmd-missing"))
+        assertEquals(emptyList<OwnedContribution>(), repo.listOwnedPage(0, 0))
+    }
+
+    // SEC06-C retention: terminal history beyond the retained window
+    // purges oldest-first in bounded batches; live rows never match.
+    @Test
+    fun `retention purges terminal beyond window bounded`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        dao.upsert(
+            ContributionOutboxEntity(
+                commandId = "live-1", kind = "SUBMIT", payload = payload(),
+                revision = 1, state = "QUEUED", attempts = 0,
+                nextEligibleTick = 0L, nonce = "",
+            ),
+        )
+        repeat(1005) { i ->
+            dao.upsert(
+                ContributionOutboxEntity(
+                    commandId = "old-$i", kind = "SUBMIT", payload = payload(),
+                    revision = 1, state = "CANCELLED", attempts = 0,
+                    nextEligibleTick = 0L, nonce = "",
+                ),
+            )
+        }
+        assertEquals(5, repo.purgeTerminalHistory())
+        assertEquals(1001, dao.rows.size)
+        assertTrue(dao.rows.containsKey("live-1"))
+        assertEquals(0, repo.purgeTerminalHistory())
+        // Amortized on the write path: enquing converges retention.
+        repo.enqueue(draft("cmd-new"), payload())
+        assertTrue(dao.rows.size <= 1002)
     }
 }

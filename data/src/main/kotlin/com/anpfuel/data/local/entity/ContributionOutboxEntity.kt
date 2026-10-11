@@ -2,6 +2,7 @@ package com.anpfuel.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -15,7 +16,14 @@ import androidx.room.PrimaryKey
  * `next_eligible_tick` gates FAILED backoff. No contributor id, GPS, EXIF
  * or signed URL is stored here.
  */
-@Entity(tableName = "contribution_outbox")
+@Entity(
+    tableName = "contribution_outbox",
+    indices = [
+        // SEC06-C dispatch index: eligibility filter plus FIFO order.
+        Index(value = ["state", "next_eligible_tick"]),
+        Index(value = ["remote_status"]),
+    ],
+)
 data class ContributionOutboxEntity(
     @PrimaryKey @ColumnInfo(name = "command_id") val commandId: String,
     @ColumnInfo(name = "kind") val kind: String,

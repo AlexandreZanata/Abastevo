@@ -37,7 +37,18 @@ interface ContributionOutboxRepository {
     suspend fun failDispatch(commandId: String, revision: Int, nonce: String, nowMillis: Long): Unit =
         throw DomainException("atomic failure storage unavailable")
     suspend fun enqueue(draft: ContributionDraft, payloadJson: String): QueuedContribution
-    suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution>
+    /**
+     * SEC06-C bounded dispatch selection: one requested command by id
+     * (no scan), or null when absent/ineligible. Payloads of other
+     * rows are never loaded to select one.
+     */
+    suspend fun findDispatchable(commandId: String, nowMillis: Long): QueuedContribution?
+    /**
+     * SEC06-C bounded dispatch selection: at most [limit] eligible
+     * commands, oldest first, payloads included only for the page.
+     * Backed by the dispatch index; never a full-history scan.
+     */
+    suspend fun listDispatchablePage(nowMillis: Long, limit: Int): List<QueuedContribution>
     suspend fun loadPayload(commandId: String): String?
     suspend fun markDispatched(commandId: String, nonce: String)
     suspend fun markAcknowledged(commandId: String, revision: Int)
@@ -45,11 +56,23 @@ interface ContributionOutboxRepository {
     suspend fun cancel(commandId: String)
 
     /**
-     * P21-T03 private owner status: every locally retained command with
-     * its durable phase and exact server receipt. ACKED requires a persisted
-     * receipt; unscoped legacy commands remain quarantined from dispatch.
+     * P21-T03 private owner status, newest first, bounded page.
+     * ACKED requires a persisted receipt; unscoped legacy commands
+     * remain quarantined from dispatch.
      */
-    suspend fun listOwned(): List<OwnedContribution>
+    suspend fun listOwnedPage(limit: Int, offset: Int): List<OwnedContribution>
+
+    /** Single owned row by id, or null when absent. */
+    suspend fun findOwned(commandId: String): OwnedContribution?
+
+    /**
+     * SEC06-C retention: delete terminal history (CANCELLED rows and
+     * ACKED rows with a terminal receipt) beyond the retained newest
+     * window, at most one purge batch, returning the purged count.
+     * Live and retryable rows are never touched; terminal payload
+     * bytes free with their rows.
+     */
+    suspend fun purgeTerminalHistory(): Int
 
     /**
      * SEC04-D owner erasure: delete every row whose payload scope matches
@@ -59,6 +82,24 @@ interface ContributionOutboxRepository {
      * operation of the erased owner remains to send.
      */
     suspend fun purgeOwned(ownerScope: String): Int
+}
+
+/**
+ * SEC06-C outbox budgets: dispatch reads one bounded page, history
+ * reads one bounded page, and terminal history older than the
+ * retention horizon purges in bounded batches. Live and retryable
+ * rows are never purged; payloads stay small by construction
+ * (price intents), and terminal receipts free their bytes on purge.
+ */
+object OutboxBudgets {
+    /** Dispatch page: one worker run scans at most this many rows. */
+    const val DISPATCH_PAGE_SIZE = 50
+    /** History page: status screens read newest-first pages. */
+    const val HISTORY_PAGE_SIZE = 200
+    /** Terminal history retained (newest rows); older purge away. */
+    const val MAX_RETAINED_TERMINAL = 1000
+    /** Terminal purge batch per amortized run. */
+    const val HISTORY_PURGE_BATCH = 500
 }
 
 /**

@@ -22,13 +22,16 @@ private class FakeOutbox : ContributionOutboxRepository {
     }
     override suspend fun enqueue(draft: ContributionDraft, payloadJson: String): QueuedContribution =
         throw UnsupportedOperationException()
-    override suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution> = emptyList()
+    override suspend fun findDispatchable(commandId: String, nowMillis: Long): QueuedContribution? = null
+    override suspend fun listDispatchablePage(nowMillis: Long, limit: Int): List<QueuedContribution> = emptyList()
+    override suspend fun findOwned(commandId: String): OwnedContribution? = null
+    override suspend fun listOwnedPage(limit: Int, offset: Int): List<OwnedContribution> = emptyList()
+    override suspend fun purgeTerminalHistory(): Int = 0
     override suspend fun loadPayload(commandId: String): String? = null
     override suspend fun markDispatched(commandId: String, nonce: String) = Unit
     override suspend fun markAcknowledged(commandId: String, revision: Int) = Unit
     override suspend fun markFailed(commandId: String, nowMillis: Long) = Unit
     override suspend fun cancel(commandId: String) = Unit
-    override suspend fun listOwned(): List<OwnedContribution> = emptyList()
 }
 
 private class FakeSessions : PhotoUploadSessionDao {

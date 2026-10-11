@@ -21,6 +21,7 @@ import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.app.navigation.AnpAppNavHost
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.domain.repository.OutboxBudgets
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.IO) {
                     runCatching {
                         val scope = contributionScope.currentScope()
-                        outbox.listOwned().filter { it.scope == scope &&
+                        outbox.listOwnedPage(OutboxBudgets.HISTORY_PAGE_SIZE, 0).filter { it.scope == scope &&
                             it.phase != com.anpfuel.domain.repository.OwnedContributionPhase.CANCELLED &&
                             it.remoteStatus !in setOf(com.anpfuel.domain.repository.ContributionRemoteStatus.VALIDATED,
                                 com.anpfuel.domain.repository.ContributionRemoteStatus.REJECTED,
