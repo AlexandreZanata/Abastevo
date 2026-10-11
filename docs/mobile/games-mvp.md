@@ -1,6 +1,10 @@
 # Offline Games mobile MVP
 
 Date: 2026-10-11. Status: SOURCE_IMPLEMENTED / ACCEPTANCE_BLOCKED / INTEGRATION_PENDING.
+Follow-up: the user subsequently authorized GitHub publication and emulator
+polish. [Current validation and visual evidence](games-polish-emulator.md)
+supersede the push/device deferrals below, retained as checkpoint history.
+
 Branch: `games`; isolated worktree `.worktrees/games`; source dev `571f904`.
 User explicitly requests this branch instead of maintained dev construction.
 Main `a349d7c` is an ancestor of source dev. Other worktrees and uncommitted

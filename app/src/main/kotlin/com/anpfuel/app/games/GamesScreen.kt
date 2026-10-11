@@ -186,11 +186,15 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier, prefe
                         }
                     }
                 }
-                if (maxWidth > maxHeight && phase == GamePhase.RUNNING) {
+                if (maxWidth > maxHeight) {
                     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f).fillMaxHeight()) { stage() }
-                        Column(Modifier.width(200.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
-                            GameControls(session.gameId, phase, view::action, view::pause)
+                        // Keep the native stage at the same composition position.
+                        // Moving it between Row/Column on start detaches and pauses it.
+                        if (phase == GamePhase.RUNNING) {
+                            Column(Modifier.width(200.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                                GameControls(session.gameId, phase, view::action, view::pause)
+                            }
                         }
                     }
                 } else {
@@ -372,22 +376,30 @@ private fun GameOverlay(
 @Composable
 private fun GameControls(game: GameId, phase: GamePhase, onAction: (GameAction) -> Unit, onPause: () -> Unit) {
     val running = phase == GamePhase.RUNNING
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (game == GameId.FLIGHT) {
-            ArcadeButton(R.string.games_fly, Icons.Default.ArrowUpward, GameAction.IMPULSE, running, onAction, Modifier.fillMaxWidth())
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ArcadeButton(R.string.games_left, Icons.AutoMirrored.Filled.ArrowBack, GameAction.LEFT, running, onAction, Modifier.weight(1f))
-                ArcadeButton(R.string.games_right, Icons.AutoMirrored.Filled.ArrowForward, GameAction.RIGHT, running, onAction, Modifier.weight(1f))
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val narrow = maxWidth < 280.dp
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (game == GameId.FLIGHT) {
+                ArcadeButton(R.string.games_fly, Icons.Default.ArrowUpward, GameAction.IMPULSE, running, onAction, Modifier.fillMaxWidth())
+            } else if (narrow) {
+                ArcadeButton(R.string.games_left, Icons.AutoMirrored.Filled.ArrowBack, GameAction.LEFT, running, onAction, Modifier.fillMaxWidth())
+                ArcadeButton(R.string.games_right, Icons.AutoMirrored.Filled.ArrowForward, GameAction.RIGHT, running, onAction, Modifier.fillMaxWidth())
+                ArcadeButton(R.string.games_jump, Icons.Default.ArrowUpward, GameAction.JUMP, running, onAction, Modifier.fillMaxWidth())
+                ArcadeButton(R.string.games_slide, Icons.Default.ArrowDownward, GameAction.SLIDE, running, onAction, Modifier.fillMaxWidth())
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ArcadeButton(R.string.games_left, Icons.AutoMirrored.Filled.ArrowBack, GameAction.LEFT, running, onAction, Modifier.weight(1f))
+                    ArcadeButton(R.string.games_right, Icons.AutoMirrored.Filled.ArrowForward, GameAction.RIGHT, running, onAction, Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ArcadeButton(R.string.games_jump, Icons.Default.ArrowUpward, GameAction.JUMP, running, onAction, Modifier.weight(1f))
+                    ArcadeButton(R.string.games_slide, Icons.Default.ArrowDownward, GameAction.SLIDE, running, onAction, Modifier.weight(1f))
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ArcadeButton(R.string.games_jump, Icons.Default.ArrowUpward, GameAction.JUMP, running, onAction, Modifier.weight(1f))
-                ArcadeButton(R.string.games_slide, Icons.Default.ArrowDownward, GameAction.SLIDE, running, onAction, Modifier.weight(1f))
+            OutlinedButton(onPause, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("games_pause"),
+                shape = RoundedCornerShape(14.dp), enabled = running) {
+                Icon(Icons.Default.Pause, null, Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_pause))
             }
-        }
-        OutlinedButton(onPause, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("games_pause"),
-            shape = RoundedCornerShape(14.dp), enabled = running) {
-            Icon(Icons.Default.Pause, null, Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_pause))
         }
     }
 }
