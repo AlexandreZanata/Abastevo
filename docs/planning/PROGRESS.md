@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR30 2026-10-11: LOCAL_DONE on branch `landing`, error/redirect pass. 404 recovers to home + hub without scripts; redirect targets pinned to project repo. Build/check green, 38/38 tests. Next: LR31 store readiness.
+- Landing redesign LR31 2026-10-11: LOCAL_DONE on branch `landing`, store readiness. Default build pinned prelaunch (no download CTA, no Play URL without verified listing); deletion URL live for listing requirements. Tests 39/39. Next: LR32 accessibility exit.
+
+- Landing redesign LR30 2026-10-11: LOCAL_DONE on branch `landing`, error/redirect pass.
 
 - Landing redesign LR29 2026-10-11: LOCAL_DONE on branch `landing`, performance pass.
 
