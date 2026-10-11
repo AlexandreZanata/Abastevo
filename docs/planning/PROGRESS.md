@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR22 2026-10-11: LOCAL_DONE on branch `landing`, offline/error states. Airplane-offline cache + empty-search captures (radios restored off, query cleared, list verified); TU29 page + TU08 error step; manifest 23/69. Build/check green, 35/35 tests. Next: LR23 permission/location pass.
+
 - Landing redesign LR21 2026-10-11: LOCAL_DONE on branch `landing`, seven evidence-backed chapters (TU05/06/07/08/17/23/28 from accepted masters + fresh read-only bound dumps, no new captures). 14 chapter pages live; TU01/03/04/11/12/15/16/18/19/22/24/25/27/29/30 pending (no captures or blocked). Build/check green, 35/35 tests. Next: LR22 empty/error/offline states.
 
 - Landing redesign LR20 2026-10-11: LOCAL_DONE on branch `landing`, vehicle-form lesson TU26. Blank dark form (nothing typed/toggled/saved) + page; suggest/claim/manage entries unobserved, alert OS permission pending. Build/check green, 35/35 tests. Device left on Explorar. Next: LR21 remaining lessons.

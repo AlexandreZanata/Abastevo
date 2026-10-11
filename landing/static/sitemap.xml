@@ -46,6 +46,9 @@
     <loc>{{CANONICAL_ORIGIN}}/como-usar/veiculos/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/offline-e-recuperacao/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/como-usar/precos-anp/</loc>
   </url>
   <url>

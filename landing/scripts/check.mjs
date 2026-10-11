@@ -30,6 +30,7 @@ export function checkDist(options = {}) {
     'como-usar/fotografar-preco/index.html',
     'como-usar/denunciar-abuso/index.html',
     'como-usar/veiculos/index.html',
+    'como-usar/offline-e-recuperacao/index.html',
     'como-usar/precos-anp/index.html',
     'como-usar/semanas-anp/index.html',
     'como-usar/historico/index.html',

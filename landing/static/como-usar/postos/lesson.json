@@ -82,6 +82,34 @@
       "capturedAt": "2026-10-11",
       "privacyReviewed": true,
       "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s4",
+      "image": "/assets/app/search-empty-720w.webp",
+      "imageSha256": "29dbd9668c2ce41279349253ebba5966ccd5b94c0083285ea9aff3f20131cd8b",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Error state",
+      "prerequisite": "Lista de postos aberta.",
+      "instructionPtBr": "Busque um nome inexistente para ver o erro honesto.",
+      "controlLabelPtBr": "Buscar por nome do posto",
+      "expectedPtBr": "Nada por aqui: nenhum posto corresponde, sem travar.",
+      "recoveryPtBr": "Limpe a busca; a lista volta sozinha.",
+      "altPtBr": "Busca sem resultado com teclado visível.",
+      "target": {
+        "x": 48,
+        "y": 1116,
+        "width": 1124,
+        "height": 168
+      },
+      "availability": "Disponível",
+      "claimClass": "empty-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
     }
   ]
 }

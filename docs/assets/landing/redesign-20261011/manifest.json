@@ -3,7 +3,7 @@
   "branch": "landing",
   "installedSourceSha": "UNKNOWN; not linked to repository HEAD",
   "releaseStatus": "DEVELOPMENT; no store availability or release acceptance inferred",
-  "capturedCount": 21,
+  "capturedCount": 23,
   "captureTimePrecision": "Date only; exact per-frame time was not recorded",
   "privacyReview": "Guest/blank forms; no credentials, private media, precise contributor GPS or notification content in accepted frames. History/week attempts with a private music overlay were rejected and not copied.",
   "deviceRestoration": "Original dark theme restored and verified by Ativar tema claro control; temporary UI XML removed. No app storage reset or submitted mutation.",
@@ -518,6 +518,54 @@
         "tutorial"
       ],
       "claimClass": "unsaved-form"
+    },
+    {
+      "file": "screenshots/offline-cached.png",
+      "sha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
+      "bytes": 220743,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Offline cached price table",
+      "lesson": "TU29",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Airplane mode on (icon visible), radios restored off right after; cached ANP table renders, community shows same empty state.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "offline-cache"
+    },
+    {
+      "file": "screenshots/search-empty.png",
+      "sha256": "29dbd9668c2ce41279349253ebba5966ccd5b94c0083285ea9aff3f20131cd8b",
+      "bytes": 232769,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Empty station search result",
+      "lesson": "TU08",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Gibberish query typed read-only, honest no-match state, query cleared and list restored after.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
     }
   ],
   "rejectedFrames": [
