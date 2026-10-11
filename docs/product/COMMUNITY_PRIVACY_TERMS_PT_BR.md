@@ -19,20 +19,27 @@ under CS15–CS25, not currently implemented promises. Activation also requires
 the capability matrix, bounded cache/outbox, safe deferred-capture contract,
 offline expiry and reconnect acceptance. No absolute availability/abuse guarantee.
 
-Replace bracketed owner fields before public activation. Restricted staging
-may identify `Abastevo — test environment` with the previously approved
-`privacidade@abastevo.example.invalid`, clearly marked as nonfunctional. Never
-publish it as a production rights channel. Existing operational-retention gaps
-remain gaps until actual enforcement is proven; a notice does not fix them.
+Controller identity supplied by the owner on 2026-10-11 and checked against
+pages 2 and 16 of the privately supplied signed company contract. Only the
+company qualification and designated rights channel are transcribed below;
+the contract, signatures and customer data must not enter the repository.
+The supplied WhatsApp is documented as a privacy channel, but delivery and
+handling of an Abastevo rights request have not yet been tested. Verify that
+workflow before activation; do not invent a privacy email. Other bracketed
+publication fields and operational-retention proofs remain outstanding.
 
 ---
 
 ## Termos de participação na comunidade Abastevo
 
 Versão: [VERSÃO PUBLICADA]. Vigência: [DATA DE VIGÊNCIA].
-Responsável pelo serviço e controlador dos dados: [NOME OU RAZÃO SOCIAL],
-[CPF OU CNPJ, CONFORME APLICÁVEL], [ENDEREÇO E CONTATO EXIGÍVEIS].
-Canal de privacidade e atendimento: [CANAL FUNCIONAL VERIFICADO].
+Responsável pelo serviço e controlador dos dados: **ZAFLAS INOVA SIMPLES (I.S.)**,
+CNPJ **67.852.667/0001-93**, com sede na Rua Florenca, nº 922, Bairro Mont Serrat,
+Sorriso/MT, CEP 78891-109.
+Canal de privacidade e atendimento: **WhatsApp (66) 9631-4240**. Ao entrar em
+contato, informe que a solicitação se refere ao Abastevo e descreva o direito
+que deseja exercer. Não envie senhas, códigos de acesso ou documentos sem
+solicitação justificada pelo atendimento.
 
 ### 1. Finalidade do serviço
 
