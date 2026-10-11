@@ -117,9 +117,10 @@ landing source `04dbdf8`, preserving both histories through an ordinary merge.
 The sole conflict is `docs/planning/PROGRESS.md`: retain every nonblank line
 from both parents, verified mechanically, without choosing one side wholesale.
 Backend, Android, domain/data/application, contracts, infrastructure and gate
-source match the published dev parent byte-for-byte. Original landing assets
-and implementation match the landing parent; only reconciliation evidence and
-progress are added. No force push, squash, branch deletion or main delivery.
+source match the published dev parent byte-for-byte. Original landing assets and semantic implementation/content are preserved.
+The cumulative diff check also found 14 pre-existing whitespace-only HTML lines
+in tutorials; those blank lines are normalized without changing rendered content.
+Reconciliation evidence and progress are added. No force push, squash, branch deletion or main delivery.
 
 Affected validation after reconciliation: landing typecheck/build/check PASS;
 40/40 landing tests PASS (zero skips/failures), emitted CSS `a63f6f37` and JS
