@@ -370,7 +370,7 @@ func (s *Store) Decisions(ctx context.Context, id string) ([]domain.Decision, er
 	return out, nil
 }
 
-func mapObservation(row community.CommunityObservation) domain.Observation {
+func mapObservation(row community.GetObservationRow) domain.Observation {
 	var claimed time.Time
 	if row.ClaimedCapturedAt.Valid {
 		claimed = row.ClaimedCapturedAt.Time
@@ -424,7 +424,20 @@ func (s *Store) ListByContributor(ctx context.Context, ref string, limit int, af
 	}
 	out := make([]domain.Observation, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, mapObservation(row))
+		// ListByContributor projects the stable fact columns; the
+		// visibility pair stays out of owner history reads.
+		out = append(out, mapObservation(community.GetObservationRow{
+			ID: row.ID, ContributorRef: row.ContributorRef,
+			ClientSubmissionID: row.ClientSubmissionID, StationID: row.StationID,
+			FuelProduct: row.FuelProduct, Unit: row.Unit,
+			AmountMilliBrl: row.AmountMilliBrl, RawPriceText: row.RawPriceText,
+			ConditionKind: row.ConditionKind, QualifierKey: row.QualifierKey,
+			EvidenceID: row.EvidenceID, ReceivedAt: row.ReceivedAt,
+			ClaimedCapturedAt: row.ClaimedCapturedAt, SupersedesID: row.SupersedesID,
+			PolicyVersion: row.PolicyVersion, LocationVerdict: row.LocationVerdict,
+			LocationProximity: row.LocationProximity, LocationReason: row.LocationReason,
+			PhotoCaptureID: row.PhotoCaptureID,
+		}))
 	}
 	return out, nil
 }
