@@ -37,7 +37,7 @@ func TestConsentGoldenVectors(t *testing.T) {
 		t.Fatal("runtime caller unavailable")
 	}
 	dir := filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "contracts", "testdata", "privacy-consent")
-	matches, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	matches, err := filepath.Glob(filepath.Join(dir, "consent-*.json"))
 	if err != nil || len(matches) != 4 {
 		t.Fatalf("expected 4 consent vectors, got %d (%v)", len(matches), err)
 	}
