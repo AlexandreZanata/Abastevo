@@ -45,7 +45,34 @@ func rowToDerivative(row dbprivacy.PrivacyTrainingDerivative) domain.Derivative 
 // the stored row with replayed=true; divergent hashes on the same
 // natural key conflict instead of forking inventory.
 func (s *PromotionStore) Put(ctx context.Context, d domain.Derivative) (bool, bool, error) {
-	row, err := dbprivacy.New(s.pool).PutDerivative(ctx, dbprivacy.PutDerivativeParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := dbprivacy.New(tx)
+	if err := q.LockTrainingOwner(ctx, d.ContributorID); err != nil {
+		return false, false, err
+	}
+	consent, err := q.GetTrainingConsent(ctx, d.ContributorID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, domain.ErrConsentRequired
+	}
+	if err != nil {
+		return false, false, err
+	}
+	current := rowToConsent(consent)
+	if d.State != domain.DerivativeActive || !domain.SelectableForTraining(d, &current, d.TermsVersion, d.TermsDigest) {
+		return false, false, domain.ErrConsentRequired
+	}
+	fence, err := q.GetTrainingRevocation(ctx, d.ContributorID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return false, false, err
+	}
+	if err == nil && d.ConsentRevision <= uint64(fence.Revision) {
+		return false, false, domain.ErrConsentRequired
+	}
+	row, err := q.PutDerivative(ctx, dbprivacy.PutDerivativeParams{
 		ImageID: d.ImageID, ConsentRevision: int64(d.ConsentRevision),
 		ContributorID: d.ContributorID, ContributorRef: d.ContributorRef,
 		SourceSha256: d.SourceSHA256, DerivativeSha256: d.DerivativeSHA256,
@@ -55,31 +82,29 @@ func (s *PromotionStore) Put(ctx context.Context, d domain.Derivative) (bool, bo
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return s.resolveDerivativeConflict(ctx, d)
+			existing, loadErr := q.GetDerivative(ctx, dbprivacy.GetDerivativeParams{ImageID: d.ImageID, ConsentRevision: int64(d.ConsentRevision)})
+			if loadErr != nil {
+				return false, false, loadErr
+			}
+			got := rowToDerivative(existing)
+			if got.State != domain.DerivativeActive {
+				return false, false, domain.ErrConsentRequired
+			}
+			if got.ContributorID != d.ContributorID || got.ContributorRef != d.ContributorRef || got.SourceSHA256 != d.SourceSHA256 || got.DerivativeSHA256 != d.DerivativeSHA256 {
+				return false, false, domain.ErrConflict
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return false, false, err
+			}
+			return false, true, nil
 		}
 		return false, false, err
 	}
 	_ = row
-	return true, false, nil
-}
-
-// resolveDerivativeConflict compares a natural-key hit against the
-// stored row. Same owner and hashes converge; anything else on the
-// same key conflicts — inventory never forks and never leaks across
-// owners through a shared image reference.
-func (s *PromotionStore) resolveDerivativeConflict(ctx context.Context, d domain.Derivative) (bool, bool, error) {
-	stored, err := dbprivacy.New(s.pool).GetDerivative(ctx, dbprivacy.GetDerivativeParams{
-		ImageID: d.ImageID, ConsentRevision: int64(d.ConsentRevision),
-	})
-	if err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return false, false, err
 	}
-	got := rowToDerivative(stored)
-	if got.ContributorID != d.ContributorID || got.ContributorRef != d.ContributorRef ||
-		got.SourceSHA256 != d.SourceSHA256 || got.DerivativeSHA256 != d.DerivativeSHA256 {
-		return false, false, domain.ErrConflict
-	}
-	return false, true, nil
+	return true, false, nil
 }
 
 // ListActiveByOwner returns one owner's selectable derivatives for
@@ -159,4 +184,10 @@ func (s *PromotionStore) resolveRevokeMark(ctx context.Context, imageID string, 
 		return nil
 	}
 	return domain.ErrBadState
+}
+
+// ReconcileRevocations materializes at most 32 tombstones. The durable
+// watermark already excludes all affected rows, even before this repair.
+func (s *PromotionStore) ReconcileRevocations(ctx context.Context) (int64, error) {
+	return dbprivacy.New(s.pool).TombstoneTrainingBatch(ctx)
 }

@@ -172,7 +172,7 @@ func SelectableForTraining(d Derivative, consent *Consent, currentVersion, curre
 	if consent == nil || consent.State != StateGranted {
 		return false
 	}
-	if consent.ContributorID != d.ContributorID || consent.ContributorRef != d.ContributorRef {
+	if consent.ContributorID != d.ContributorID || consent.ContributorRef != d.ContributorRef || consent.Revision != d.ConsentRevision || consent.TermsVersion != d.TermsVersion || consent.TermsDigest != d.TermsDigest {
 		return false
 	}
 	if consent.TermsVersion != currentVersion || consent.TermsDigest != currentDigest {

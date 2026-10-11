@@ -62,15 +62,23 @@ func EraseTrainingContributor(ctx context.Context, p TrainingErasePorts, contrib
 	if err != nil {
 		return 0, 0, err
 	}
-	if _, _, err := p.Consent.Store.Put(ctx, next); err != nil {
-		return 0, 0, err
-	}
-	flipped, err := RevokeOwner(ctx, PromotePorts{
-		ConsentPorts: p.Consent, Inventory: p.Inventory,
-	}, Caller{ContributorID: contributorID})
+	// Capture the work covered by this operation before the transactional
+	// consent store materializes its first tombstone batch. Counts describe
+	// this call's covered rows; retries beginning after revocation report zero.
+	before, err := p.Inventory.ListByOwner(ctx, contributorID)
 	if err != nil {
 		return 0, 0, err
 	}
+	activeBefore := map[string]bool{}
+	for _, d := range before {
+		if d.State == domain.DerivativeActive {
+			activeBefore[TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)] = true
+		}
+	}
+	if _, _, err := p.Consent.Store.Put(ctx, next); err != nil {
+		return 0, 0, err
+	}
+	flipped := 0
 	rows, err := p.Inventory.ListByOwner(ctx, contributorID)
 	if err != nil {
 		return flipped, 0, err
@@ -80,6 +88,14 @@ func EraseTrainingContributor(ctx context.Context, p TrainingErasePorts, contrib
 		key := TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
 		if key == "" {
 			return flipped, purged, domain.ErrInvalidRequest
+		}
+		if d.State == domain.DerivativeActive {
+			if err := p.Inventory.MarkRevoked(ctx, d.ImageID, d.ConsentRevision, now); err != nil {
+				return flipped, purged, err
+			}
+			flipped++
+		} else if activeBefore[key] {
+			flipped++
 		}
 		exists, err := p.Objects.Exists(ctx, key)
 		if err != nil {

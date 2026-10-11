@@ -782,6 +782,7 @@ func run() error {
 		// Training-copy purge (CS10C, AT05): revoked derivatives past
 		// the 24-hour deadline lose their namespace bytes daily while
 		// receipts stay for the restore filter.
+		"privacy-training-reconcile": privacyjobs.TrainingReconcile{Run: promotionStore.ReconcileRevocations},
 		"privacy-training-sweep": privacyjobs.Sweep{
 			Run: func(ctx context.Context) (privacyapp.SweepReport, error) {
 				return privacyapp.SweepRevoked(ctx, purgePorts)
@@ -891,6 +892,7 @@ func run() error {
 			Interval: 24 * time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
+		{Name: "privacy-training-reconcile-every-minute", Kind: "privacy-training-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
 			Name: "privacy-training-sweep-daily", Kind: "privacy-training-sweep", Version: 1,
 			Interval: 24 * time.Hour, Enabled: true,

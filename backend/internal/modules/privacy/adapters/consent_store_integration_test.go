@@ -199,20 +199,23 @@ func TestConsentUpgradeAppliesOnly000056(t *testing.T) {
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	previous := fstest.MapFS{}
+	previous, target := fstest.MapFS{}, fstest.MapFS{}
 	files, err := fs.Glob(dbmigrations.Files, "*.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range files {
-		if name == "000056_privacy_training_consent.sql" {
+		if name > "000056_privacy_training_consent.sql" {
 			continue
 		}
 		data, err := fs.ReadFile(dbmigrations.Files, name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		previous[name] = &fstest.MapFile{Data: data}
+		target[name] = &fstest.MapFile{Data: data}
+		if name < "000056_privacy_training_consent.sql" {
+			previous[name] = &fstest.MapFile{Data: data}
+		}
 	}
 	dsn := freshPre056DB(t, adminDSN)
 	if _, err := migrate.Apply(ctx, dsn, previous); err != nil {
@@ -227,7 +230,7 @@ func TestConsentUpgradeAppliesOnly000056(t *testing.T) {
 	if _, err := conn.Exec(ctx, `INSERT INTO privacy_requests(id,contributor_id,contributor_ref,client_submission_id,type,status,requested_at,policy_version) VALUES ('e0000000-0000-4000-8000-000000000001','c1','tok-c1','export-1','EXPORT','REQUESTED',now(),'privacy-v1')`); err != nil {
 		t.Fatal(err)
 	}
-	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	applied, err := migrate.Apply(ctx, dsn, target)
 	if err != nil || len(applied) != 1 || applied[0] != "000056" {
 		t.Fatalf("upgrade %v %v", applied, err)
 	}
@@ -239,7 +242,7 @@ func TestConsentUpgradeAppliesOnly000056(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM privacy_requests WHERE client_submission_id='export-1'`).Scan(&kept); err != nil || kept != 1 {
 		t.Fatalf("history rows %d %v", kept, err)
 	}
-	again, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	again, err := migrate.Apply(ctx, dsn, target)
 	if err != nil || len(again) != 0 {
 		t.Fatalf("replay %v %v", again, err)
 	}

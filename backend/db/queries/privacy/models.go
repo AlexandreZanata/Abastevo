@@ -62,3 +62,9 @@ type PrivacyTrainingDerivative struct {
 	PromotedAt       pgtype.Timestamptz `json:"promoted_at"`
 	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
 }
+
+type PrivacyTrainingRevocation struct {
+	ContributorID string             `json:"contributor_id"`
+	Revision      int64              `json:"revision"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+}
