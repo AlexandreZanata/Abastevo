@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing post-batch 2026-10-11 (user review): dark theme with OS default + header toggle (owner-authorized wordmark filter, AA pairs measured), header GitHub/Play buttons with CC0 marks (Play honest pill in prelaunch), truthful hero rework (no cheapest/savings/coverage claims, no mockup), store/GitHub buttons open new tabs. Tests 42/42, typecheck/build/check green. Local commits only, PR #128 untouched.
+
 - Landing redesign LR39 2026-10-11: LOCAL_DONE on branch `landing`, final SEO/AI report in [evidence](../release-evidence/landing-redesign.md) (verified vs owed per source, no ranking guarantee). Landing construction batch LR00–LR39 complete; integration/deploy/index owed per LR36–LR38.
 
 - Landing redesign LR38 2026-10-11: LOCAL_DONE on branch `landing`, index follow-up.

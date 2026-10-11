@@ -88,3 +88,27 @@ test('mobile hamburger menu is native disclosure on every page', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('header theme toggle and store buttons ship on every page', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-header-'));
+  try {
+    build({ projectRoot: root, outDir });
+    for (const rel of ['index.html', 'como-usar/index.html', 'guias/index.html']) {
+      const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
+      assert.match(html, /data-theme-toggle/, `${rel} theme toggle`);
+      assert.match(html, /aria-label="Alternar tema claro e escuro"/, `${rel} toggle label`);
+      assert.match(
+        html,
+        /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/,
+        `${rel} GitHub button opens a new tab`
+      );
+      assert.match(html, /Em breve no Google Play/, `${rel} prelaunch Play pill`);
+    }
+    const cssFile = fs.readdirSync(path.join(outDir, 'assets')).find((f) => /^styles\.[a-f0-9]{8}\.css$/.test(f));
+    const css = fs.readFileSync(path.join(outDir, 'assets', cssFile), 'utf8');
+    assert.match(css, /\[data-theme="dark"\]/);
+    assert.match(css, /prefers-color-scheme:\s*dark/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});

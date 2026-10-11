@@ -216,11 +216,11 @@ export function checkDist(options = {}) {
   const indexHtmlPath = path.join(distDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
     const indexContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    if (!indexContent.includes('Preços de combustíveis. Fonte e data à vista.')) {
+    if (!indexContent.includes('Encontre preços de combustível na sua região.')) {
       errors.push('index.html is missing main H1 text');
     }
-    if (!indexContent.includes('href="#aplicativo"') || !indexContent.includes('Conheça o aplicativo')) {
-      errors.push('index.html is missing primary app-gallery CTA');
+    if (!indexContent.includes('target="_blank"') || !indexContent.includes('Ver no GitHub')) {
+      errors.push('index.html store buttons must open new tabs');
     }
     if (!indexContent.includes('https://github.com/AlexandreZanata/abastevo')) {
       errors.push('index.html is missing repository link');

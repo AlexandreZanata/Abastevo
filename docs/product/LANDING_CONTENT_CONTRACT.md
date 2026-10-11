@@ -85,11 +85,12 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1 (LR10):** `Preços de combustíveis. Fonte e data à vista.`
-**Lead:** `Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros, com a fonte e a data de cada informação sempre visíveis. Comunidade e ANP aparecem separadas: uma nunca substitui a outra.`
+**H1 (user review):** `Encontre preços de combustível na sua região.`
+**Lead:** `O Abastevo combina dados oficiais da ANP com informações da comunidade para ajudar você a abastecer com fonte e data — sem prometer preço mínimo.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
-**Primary CTA (LR10):** `Conheça o aplicativo` → `#aplicativo` (solid blue button, white text 8.12 contrast; the app gallery anchor exists).
-**Secondary link:** `Ver no GitHub` → repository (outline button; same tab).
+**Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden.
+**Secondary action:** `Copiar link` copies the repository URL without navigation.
+**Stats strip:** ANP official data, community prices, source-and-date always, free to browse — each factual, none a ranking or coverage claim.
 **Store notice [prelaunch]:** `Em breve na Google Play` (plain text). **[published]:** `Ver na Google Play`, one link or the official badge, in one place only.
 
 **Illustrative comparison** (heading `Comunidade e ANP, lado a lado`; label `Exemplo ilustrativo · dados fictícios`): two cards with the fictional place `Posto Exemplo` and the fictional value `R$ X,XX`; the community card reads `Observação enviada por pessoa · há algumas horas · apoio visível`; the ANP card reads `Levantamento publicado pela ANP · semana da pesquisa · não é preço da bomba agora`. Example values are always visibly fictional (no realistic price); text alternative: “Exemplo ilustrativo com dados fictícios: a mesma pergunta respondida pela comunidade e pela referência da ANP.”
@@ -179,7 +180,15 @@ Contrast ratios computed from the WCAG relative-luminance formula on 2026-10-05:
 | `#7b87a3` interactive boundary on white | 3.60 | Non-text 3 |
 | `#c5cee0` decorative outline on white | 1.58 | Decorative only; never the sole indicator of a control |
 
-**Dark appearance: not in P25.** The approved wordmark is navy and the project has no dark-background logo variant; creating one would invent brand artwork. Automatic dark mode is deferred until an approved variant exists. This resolves the plan's conditional dark-scheme allowance.
+**Dark appearance (user-authorized exception, 2026-10-11):** the site follows
+the OS scheme with a header toggle and persisted choice; the navy wordmark is
+shown through a CSS presentation filter only in dark mode because no
+light-background wordmark variant exists. Dark pairs measured AA (body
+16.42, muted 10.30, links 8.62, green 10.85, white-on-brand-blue 5.92);
+solid buttons keep white text on brand blue in both themes.
+
+**New-tab policy:** store and GitHub CTA buttons open a new tab with
+`rel="noopener"`; text and legal links keep same-tab navigation.
 
 ## Visual revision (LR03) — 2026-10-11
 

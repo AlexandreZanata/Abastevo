@@ -126,6 +126,54 @@ function setupMobileNav(): void {
   });
 }
 
+function setupTheme(): void {
+  // Enhancement: without JavaScript the OS-level dark scheme still applies via CSS.
+  const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  if (!toggle) return;
+  const root = document.documentElement;
+  const sun = toggle.querySelector('.icon-sun');
+  const moon = toggle.querySelector('.icon-moon');
+  const apply = (theme: string): void => {
+    root.setAttribute('data-theme', theme);
+    const dark = theme === 'dark';
+    if (sun) {
+      if (dark) {
+        sun.setAttribute('hidden', '');
+      } else {
+        sun.removeAttribute('hidden');
+      }
+    }
+    if (moon) {
+      if (dark) {
+        moon.removeAttribute('hidden');
+      } else {
+        moon.setAttribute('hidden', '');
+      }
+    }
+  };
+  let initial = 'light';
+  try {
+    const stored = window.localStorage.getItem('abastevo-theme');
+    if (stored === 'light' || stored === 'dark') {
+      initial = stored;
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      initial = 'dark';
+    }
+  } catch {
+    initial = 'light';
+  }
+  apply(initial);
+  toggle.addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    try {
+      window.localStorage.setItem('abastevo-theme', next);
+    } catch {
+      // Private mode: keep the session-only choice.
+    }
+    apply(next);
+  });
+}
+
 function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -133,12 +181,14 @@ function init(): void {
       setupCopyHelper();
       setupBackToTop();
       setupMobileNav();
+      setupTheme();
     });
   } else {
     setupNavigationHighlight();
     setupCopyHelper();
     setupBackToTop();
     setupMobileNav();
+    setupTheme();
   }
 }
 
