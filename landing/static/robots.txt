@@ -1,4 +1,25 @@
 User-agent: *
 Allow: /
 
+# Search crawlers stay allowed (Google, Bing, OAI-SearchBot for ChatGPT answers).
+User-agent: OAI-SearchBot
+Allow: /
+
+# Training crawlers are not granted: project policy permits indexing and
+# answer citations, not foundation-model training. Researched 2026-10-11
+# (OpenAI crawler docs; Anthropic/Perplexity user-agent table).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+# User-triggered fetchers (ChatGPT-User, Perplexity-User) visit on demand and
+# may ignore robots.txt; listed for transparency, not control.
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
 Sitemap: {{CANONICAL_ORIGIN}}/sitemap.xml

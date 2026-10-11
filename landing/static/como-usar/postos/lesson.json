@@ -1,0 +1,143 @@
+{
+  "lessonId": "TU08",
+  "slug": "postos",
+  "titlePtBr": "Encontrar e navegar até um posto",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu08-s1",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Busque pelo nome do posto.",
+      "controlLabelPtBr": "Buscar por nome do posto",
+      "expectedPtBr": "Filtra a lista sem sair da tela.",
+      "recoveryPtBr": "Limpe a busca para ver todos.",
+      "altPtBr": "Busca por nome destacada.",
+      "target": {
+        "x": 204,
+        "y": 1164,
+        "width": 599,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s2",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Ordene por menor preço primeiro.",
+      "controlLabelPtBr": "Menor preço primeiro",
+      "expectedPtBr": "Lista reordena pelos valores ANP datados.",
+      "recoveryPtBr": "Ordem por distância exige localização.",
+      "altPtBr": "Ordenação destacada.",
+      "target": {
+        "x": 48,
+        "y": 1572,
+        "width": 413,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s3",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Toque no cartão para ver detalhes e navegar.",
+      "controlLabelPtBr": "Cartão do posto",
+      "expectedPtBr": "Abre identidade, preços por fonte e botão Ir.",
+      "recoveryPtBr": "Sem preço comunitário, vale a referência ANP.",
+      "altPtBr": "Cartão do posto como resultado.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s4",
+      "image": "/assets/app/search-empty-720w.webp",
+      "imageSha256": "29dbd9668c2ce41279349253ebba5966ccd5b94c0083285ea9aff3f20131cd8b",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Error state",
+      "prerequisite": "Lista de postos aberta.",
+      "instructionPtBr": "Busque um nome inexistente para ver o erro honesto.",
+      "controlLabelPtBr": "Buscar por nome do posto",
+      "expectedPtBr": "Nada por aqui: nenhum posto corresponde, sem travar.",
+      "recoveryPtBr": "Limpe a busca; a lista volta sozinha.",
+      "altPtBr": "Busca sem resultado com teclado visível.",
+      "target": {
+        "x": 48,
+        "y": 1116,
+        "width": 1124,
+        "height": 168
+      },
+      "availability": "Disponível",
+      "claimClass": "empty-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s5",
+      "image": "/assets/app/nearby-failure-720w.webp",
+      "imageSha256": "9deea81646241d20de9fd7e0247f2813ec35b3ff845b270eaa7f7e3d8a4a9b4c",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Error state",
+      "prerequisite": "Permissão de localização já concedida; nada a decidir.",
+      "instructionPtBr": "Use Mais barato perto de mim com a permissão existente.",
+      "controlLabelPtBr": "Mais barato perto de mim",
+      "expectedPtBr": "Sem posto próximo, aviso honesto; verifique conexão e localização.",
+      "recoveryPtBr": "A lista por preço segue disponível sem localização.",
+      "altPtBr": "Aviso de posto próximo indisponível sobre a lista.",
+      "target": {
+        "x": 410,
+        "y": 1722,
+        "width": 496,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "error-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

@@ -20,8 +20,8 @@ import (
 // Local S3-compatible service for the verify loop. Small synthetic
 // payloads only; the anonymous volume dies with the container.
 const (
-	protoMinioImage = "minio/minio:RELEASE.2025-04-22T22-12-26Z"
-	protoMCImage    = "bitnamilegacy/minio-client:latest"
+	protoMinioImage = "bitnamilegacy/minio@sha256:451fe6858cb770cc9d0e77ba811ce287420f781c7c1b806a386f6896471a349c"
+	protoMCImage    = "bitnamilegacy/minio-client@sha256:00dcc4e58ada0df45bb7d9ee435af98295f96c27c3c68292ce78ec700a87b511"
 	protoUser       = "testadmin"
 	protoPass       = "testadmin123456"
 	protoBucket     = "sec03c-loop"
@@ -30,17 +30,23 @@ const (
 func startProtoMinIO(t *testing.T) string {
 	t.Helper()
 	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("docker unavailable for the verify-loop proof")
+		t.Fatal("docker unavailable for the verify-loop proof")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
+	var startupStderr bytes.Buffer
+	start := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
 		"-p", "127.0.0.1::9000",
+		"--memory", "512m", "--cpus", "2",
+		"--tmpfs", "/data:rw,size=64m,mode=1777",
+		"--entrypoint", "/opt/bitnami/minio/bin/minio",
 		"-e", "MINIO_ROOT_USER="+protoUser,
 		"-e", "MINIO_ROOT_PASSWORD="+protoPass,
-		protoMinioImage, "server", "/data").CombinedOutput()
+		protoMinioImage, "server", "/data")
+	start.Stderr = &startupStderr
+	out, err := start.Output()
 	if err != nil {
-		t.Fatalf("start minio: %v (%s)", err, out)
+		t.Fatalf("start minio: %v (%s)", err, startupStderr.String())
 	}
 	id := strings.TrimSpace(string(out))
 	t.Cleanup(func() {

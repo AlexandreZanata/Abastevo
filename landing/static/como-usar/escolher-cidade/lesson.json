@@ -1,0 +1,115 @@
+{
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "lessonId": "TU02",
+  "slug": "escolher-cidade",
+  "titlePtBr": "Escolher cidade",
+  "steps": [
+    {
+      "stepId": "tu02-s1",
+      "image": "/assets/app/explore-dark-720w.webp",
+      "imageSha256": "fa8d79901cc70e20c2d097a36c85fce664a9830ba519f6ef00ab6fe24dccb8c0",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "No Explorar, toque em Minha cidade.",
+      "controlLabelPtBr": "Minha cidade",
+      "expectedPtBr": "Abre Selecionar localização com a cidade atual.",
+      "recoveryPtBr": "Volte com o botão do sistema.",
+      "altPtBr": "Explorar com cidade Sorriso MT e link Minha cidade destacado.",
+      "target": {
+        "x": 877,
+        "y": 378,
+        "width": 259,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu02-s2",
+      "image": "/assets/app/city-picker-720w.webp",
+      "imageSha256": "6efc64bf4bf1343abfc13ef3a0edc6fd5fcf1ace517cf50a47534b53b8504094",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Busque o estado ou toque na linha do estado.",
+      "controlLabelPtBr": "Buscar estado",
+      "expectedPtBr": "Mostra a lista de estados com a cidade atual indicada.",
+      "recoveryPtBr": "Limpe a busca para ver todos os estados.",
+      "altPtBr": "Busca de estado e lista de estados com Sorriso MT atual.",
+      "target": {
+        "x": 96,
+        "y": 600,
+        "width": 325,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu02-s3",
+      "image": "/assets/app/municipios-mt-720w.webp",
+      "imageSha256": "0ec81fe5750d6632c486648b0acb0c5549d4d5178b755d56f0717d2ed8ece295",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Dentro do estado, busque o município na lista agrupada.",
+      "controlLabelPtBr": "Buscar município",
+      "expectedPtBr": "Mostra os municípios do estado em grupos alfabéticos.",
+      "recoveryPtBr": "Volte para trocar de estado sem alterar a cidade.",
+      "altPtBr": "Busca e lista de municípios de Mato Grosso.",
+      "target": {
+        "x": 96,
+        "y": 408,
+        "width": 394,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu02-s4",
+      "image": "/assets/app/explore-dark-720w.webp",
+      "imageSha256": "fa8d79901cc70e20c2d097a36c85fce664a9830ba519f6ef00ab6fe24dccb8c0",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Confirme a cidade no Explorar com a semana ativa.",
+      "controlLabelPtBr": "SORRISO, MT",
+      "expectedPtBr": "Explorar exibe SORRISO, MT com a semana de pesquisa atual.",
+      "recoveryPtBr": "Reabra Minha cidade para corrigir.",
+      "altPtBr": "Explorar confirmando a cidade verificada.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

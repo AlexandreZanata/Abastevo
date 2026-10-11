@@ -6,6 +6,7 @@ Static landing page and public web presence for the **abastevo** project.
 
 - **Authored markup:** Plain static HTML5, accessible semantic structure, Portuguese (`pt-BR`).
 - **Styles:** Plain CSS with design tokens, responsive layout (mobile-first, 48rem and 64rem breakpoints), high-contrast accessible focus rings, print stylesheet, zero remote fonts.
+- **Typography:** Self-hosted variable Manrope for display/navigation/CTAs/prices and Source Sans 3 for prose/FAQ/legal copy; Latin and Latin Extended WOFF2, `font-display: swap`, hash-checked assets and SIL OFL notices. Source/license/security provenance: [font manifest](static/assets/fonts/provenance.json). No font CDN or mobile typography change.
 - **Language & Compilation:** Pure TypeScript **7.0.2** (`strict: true`, `noEmitOnError: true`) compiled to standard browser JavaScript module.
 - **Progressive enhancement:** All essential content, navigation, and legal links exist in plain HTML and function completely with JavaScript disabled or unavailable. TypeScript is used only for optional enhancements (active section highlight via IntersectionObserver, copy button helper).
 - **Asset fingerprinting:** `scripts/build.mjs` generates content-hashed asset filenames (e.g. `styles.[hash].css`, `main.[hash].js`) and rewrites HTML references for safe immutable caching (`Cache-Control: public, max-age=31536000, immutable`).
@@ -31,6 +32,7 @@ landing/
     _redirects                    # Redirect definitions
     assets/
       styles.css                  # Token-based styles
+      fonts/                      # Local variable WOFF2, OFL notices & provenance
       brand/                      # Approved SVGs, derived icons & versioned social preview
         favicon.svg               # Modern vector favicon
         apple-touch-icon.png      # 180x180 iOS touch icon
@@ -125,3 +127,13 @@ When the Android app is officially published on Google Play:
    - The JSON-LD in `dist/index.html` includes the `MobileApplication` schema pointing to the live URL.
    - `Organization` structured data `sameAs` includes the Play Store link.
 5. Deploy `dist/` to the static hosting provider.
+
+## Landing redesign follow-up (2026-10-11)
+
+Use branch **landing** and the isolated `.worktrees/landing-refresh` checkout for
+this user-authorized website scope. [LR00–LR39 plan](../docs/planning/LANDING_REDESIGN_EXECUTION_PLAN.md),
+[implementation prompt](../docs/planning/LANDING_REDESIGN_EXECUTION_PROMPT.md) and
+[authentic reference/media](../docs/assets/landing/redesign-20261011/README.md) keep
+the hero, real app gallery and tutorials separate. Fonts are integrated locally;
+production redesign, complete tutorials and SEO follow-up remain planned.
+The reference lives in documentation and is not emitted by the production build.

@@ -1,0 +1,93 @@
+{
+  "lessonId": "TU26",
+  "slug": "veiculos",
+  "titlePtBr": "Veículos e estimativa do tanque",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu26-s1",
+      "image": "/assets/app/vehicle-form-dark-720w.webp",
+      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
+      "instructionPtBr": "Dê um nome ao veículo sem salvar ainda.",
+      "controlLabelPtBr": "Nome do veículo",
+      "expectedPtBr": "Campo de nome em branco, nada digitado.",
+      "recoveryPtBr": "Nome é obrigatório; vazio bloqueia o salvamento.",
+      "altPtBr": "Campo de nome do veículo destacado.",
+      "target": {
+        "x": 96,
+        "y": 432,
+        "width": 378,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "unsaved-form",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu26-s2",
+      "image": "/assets/app/vehicle-form-dark-720w.webp",
+      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
+      "instructionPtBr": "Escolha combustível e referência de preço.",
+      "controlLabelPtBr": "Referência de preço",
+      "expectedPtBr": "Oito combustíveis e referência por posto mais barato ou específico.",
+      "recoveryPtBr": "Sem posto com preço, a estimativa fica indisponível.",
+      "altPtBr": "Combustível e referência destacados.",
+      "target": {
+        "x": 48,
+        "y": 1644,
+        "width": 385,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "unsaved-form",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu26-s3",
+      "image": "/assets/app/vehicle-form-dark-720w.webp",
+      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
+      "instructionPtBr": "O alerta de queda segue desligado; nada foi salvo.",
+      "controlLabelPtBr": "Avisar quando o preço cair",
+      "expectedPtBr": "Alternância intacta e formulário não salvo.",
+      "recoveryPtBr": "Alerta avalia após importação real; permissão do SO segue pendente.",
+      "altPtBr": "Alerta de queda de preço destacado, desligado.",
+      "target": {
+        "x": 48,
+        "y": 1944,
+        "width": 512,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "unsaved-form",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    }
+  ]
+}

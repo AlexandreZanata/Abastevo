@@ -1,0 +1,87 @@
+{
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "lessonId": "TU09",
+  "slug": "precos-do-posto",
+  "titlePtBr": "Entender os preços de um posto",
+  "steps": [
+    {
+      "stepId": "tu09-s1",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Na lista de postos, toque no cartão do posto.",
+      "controlLabelPtBr": "Cartão do posto",
+      "expectedPtBr": "Abre o perfil do posto com identidade e entradas.",
+      "recoveryPtBr": "Volte para ajustar filtros ou busca.",
+      "altPtBr": "Lista de postos com cartão do posto destacado.",
+      "target": {
+        "x": 48,
+        "y": 2064,
+        "width": 1124,
+        "height": 314
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu09-s2",
+      "image": "/assets/app/station-detail-720w.webp",
+      "imageSha256": "c65b8b8738d70d919b22a8932f84044b16040bd42aa6329b1f4bddbfd636da2e",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "No perfil, veja identidade, endereço e entradas de ação.",
+      "controlLabelPtBr": "Atualizar preço",
+      "expectedPtBr": "Mostra quem é o posto e como agir (navegar ou atualizar).",
+      "recoveryPtBr": "Role para ver os preços por fonte abaixo.",
+      "altPtBr": "Perfil do posto com entrada Atualizar preço destacada.",
+      "target": {
+        "x": 464,
+        "y": 1800,
+        "width": 292,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu09-s3",
+      "image": "/assets/app/station-sources-720w.webp",
+      "imageSha256": "ca70ea9292cf54402c40c2bb4301d6ddf29043d7885b1158dd0b9453c4c8aa07",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Leia comunidade e ANP separadas, com data de coleta.",
+      "controlLabelPtBr": "Preço de referência ANP",
+      "expectedPtBr": "Comunidade vazia declarada e ANP de R$ 3,84 com coleta datada.",
+      "recoveryPtBr": "Preço comunitário ausente não é preço zero; consulte a ANP datada.",
+      "altPtBr": "Separação de fontes no posto.",
+      "availability": "Disponível",
+      "claimClass": "source-separation",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}
