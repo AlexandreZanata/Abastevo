@@ -48,5 +48,6 @@
       "file": "OFL-Source-Sans-3.txt",
       "source": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/LICENSE.md"
     }
-  ]
+  ],
+  "licenseFormatting": "Trailing whitespace normalized; license wording and copyright notices preserved."
 }
