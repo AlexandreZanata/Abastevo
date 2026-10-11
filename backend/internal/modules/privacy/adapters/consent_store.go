@@ -107,9 +107,11 @@ func (s *ConsentStore) resolveConsentConflict(ctx context.Context, c domain.Cons
 	return false, false, domain.ErrConflict
 }
 
-// consentEqual compares two consent rows field by field. Time
-// instants compare exactly: writers stamp server time at millisecond
-// precision or coarser, and retries carry the identical instant.
+// consentEqual compares two consent rows decision by decision.
+// Attempt instants are excluded: the revision is the decision
+// identity and writers stamp server time per attempt, so racing
+// identical retries carry different instants but stay the same
+// decision (CS09C e2e correction — a live clock must still converge).
 func consentEqual(a, b domain.Consent) bool {
 	return a.ContributorID == b.ContributorID &&
 		a.ContributorRef == b.ContributorRef &&
@@ -117,8 +119,5 @@ func consentEqual(a, b domain.Consent) bool {
 		a.TermsVersion == b.TermsVersion &&
 		a.TermsDigest == b.TermsDigest &&
 		a.State == b.State &&
-		a.Revision == b.Revision &&
-		a.GrantedAt.Equal(b.GrantedAt) &&
-		a.RevokedAt.Equal(b.RevokedAt) &&
-		a.DecidedAt.Equal(b.DecidedAt)
+		a.Revision == b.Revision
 }

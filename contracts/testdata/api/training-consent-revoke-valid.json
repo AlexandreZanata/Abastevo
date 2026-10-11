@@ -1,0 +1,10 @@
+{
+  "id": "training-consent-revoke-valid",
+  "version": 1,
+  "schema": "TrainingConsentRevoke",
+  "valid": true,
+  "provenance": "CS09C consent wire shape; synthetic",
+  "value": {
+    "revision": 2
+  }
+}

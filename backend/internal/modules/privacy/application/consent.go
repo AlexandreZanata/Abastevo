@@ -84,11 +84,14 @@ type ConsentResult struct {
 // ConsentView is the owner-safe read view. Absent consent reports
 // Granted=false with empty terms (default OFF, not a stored state).
 // NeedsReGrant tells Settings to prompt a fresh explicit grant after
-// a terms rotation.
+// a terms rotation. TermsDigest travels here so clients can present
+// the current pair back on grant; it identifies the reviewed text,
+// never owner material.
 type ConsentView struct {
 	Granted      bool
 	State        string
 	TermsVersion string
+	TermsDigest  string
 	Revision     uint64
 	DecidedAt    time.Time
 	NeedsReGrant bool
@@ -209,7 +212,7 @@ func ReadConsent(ctx context.Context, p ConsentPorts, caller Caller) (ConsentVie
 		return ConsentView{}, err
 	}
 	out := ConsentView{
-		State: stored.State, TermsVersion: stored.TermsVersion,
+		State: stored.State, TermsVersion: stored.TermsVersion, TermsDigest: stored.TermsDigest,
 		Revision: stored.Revision, DecidedAt: stored.DecidedAt,
 	}
 	if stored.State == domain.StateGranted &&

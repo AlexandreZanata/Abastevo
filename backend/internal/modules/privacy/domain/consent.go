@@ -107,8 +107,10 @@ type ImageSelection struct {
 // GrantConsent records one explicit ON decision on the current terms.
 // Absent consent starts at revision >= 1. A stored record requires a
 // strictly greater revision to change state; an equal revision with
-// identical terms/instant converges (replayed); an equal revision
-// with a divergent decision conflicts; a smaller revision is stale.
+// the same state and terms converges (replayed) — attempt instants
+// are server stamps, not decision identity, so a lost-response retry
+// under a live clock still converges; an equal revision with a
+// divergent state/terms conflicts; a smaller revision is stale.
 // Owner mismatch reads as not found so consent existence is never an
 // ownership oracle.
 func GrantConsent(current *Consent, p ConsentParams, currentVersion, currentDigest string) (Consent, ConsentReceipt, error) {
@@ -145,8 +147,7 @@ func GrantConsent(current *Consent, p ConsentParams, currentVersion, currentDige
 	}
 	if p.Revision == current.Revision {
 		if current.State == StateGranted &&
-			current.TermsVersion == p.TermsVersion && current.TermsDigest == p.TermsDigest &&
-			current.DecidedAt.Equal(p.DecidedAt) {
+			current.TermsVersion == p.TermsVersion && current.TermsDigest == p.TermsDigest {
 			return *current, ConsentReceipt{
 				ContributorID: current.ContributorID, State: current.State,
 				Revision: current.Revision, TermsVersion: current.TermsVersion,

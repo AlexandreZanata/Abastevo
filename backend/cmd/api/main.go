@@ -61,6 +61,10 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
+	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
+	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -78,6 +82,16 @@ import (
 type unixClock struct{}
 
 func (unixClock) NowUnix() int64 { return time.Now().Unix() }
+
+// trainingTerms serves the current training-terms pair the consent
+// grants must present: the frozen version plus the configured digest
+// (provisional default until the verified terms text lands in CS11).
+type trainingTerms struct {
+	digest string
+}
+
+func (t trainingTerms) CurrentVersion() string { return privacydomain.TrainingTermsV1 }
+func (t trainingTerms) CurrentDigest() string  { return t.digest }
 
 // newUUID mints v4 identifiers for server-owned facts.
 func newUUID() (string, error) {
@@ -734,6 +748,38 @@ func run() error {
 			return communityapp.TallyFor(ctx, helpfulnessPorts, caller, observationID, sequence)
 		},
 		Secrets: cfg.CursorSecret,
+	}.RegisterRoutes(router)
+	// Owner-only training-consent endpoints (CS09C, B-BR-CS06). Same
+	// proof-derived caller shape as community writes: the contributor
+	// ID resolves server-side from the verified key, and the revision
+	// orders decisions. Terms rotation invalidates old grants until a
+	// fresh explicit grant lands; collection stays OFF until CS10/CS11.
+	consentStore := privacyadapters.NewConsentStore(pool.Underlying())
+	consentPorts := privacyapp.ConsentPorts{
+		Clock: time.Now,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store: consentStore,
+		Terms: trainingTerms{digest: cfg.TrainingTermsDigest},
+	}
+	privacyhttp.Handler{
+		Authenticate: func(r *http.Request) (privacyapp.Caller, error) {
+			id, err := authVerifier.Verify(r.Context(), r)
+			if err != nil {
+				return privacyapp.Caller{}, err
+			}
+			return privacyapp.Caller{ContributorID: id.ContributorID}, nil
+		},
+		GrantConsent: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.GrantDTO) (privacyapp.ConsentResult, error) {
+			return privacyapp.GrantConsent(ctx, consentPorts, caller, dto)
+		},
+		RevokeConsent: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.RevokeDTO) (privacyapp.ConsentResult, error) {
+			return privacyapp.RevokeConsent(ctx, consentPorts, caller, dto)
+		},
+		ReadConsent: func(ctx context.Context, caller privacyapp.Caller) (privacyapp.ConsentView, error) {
+			return privacyapp.ReadConsent(ctx, consentPorts, caller)
+		},
 	}.RegisterRoutes(router)
 	// Private upload reservation and owner status (P05-T04). The
 	// presigned issuance arrives as a narrow port built here from the

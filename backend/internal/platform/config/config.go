@@ -40,6 +40,12 @@ const (
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	// keyTrainingTermsDigest carries the digest of the currently
+	// published training-terms text that fresh consent grants must
+	// present. Rotating it invalidates old grants until owners
+	// re-grant explicitly (CS09); the verified terms text itself
+	// lands with the Settings wiring (CS11).
+	keyTrainingTermsDigest = "ANPFUEL_TRAINING_TERMS_DIGEST"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -53,6 +59,12 @@ const (
 	// metrics stay on the private listener and are never published by
 	// the staging/production topologies. Empty disables the listener.
 	defaultMetricsAddr = "127.0.0.1:9090"
+
+	// defaultTrainingTermsDigest binds training-terms-v1 until the
+	// verified terms text lands (CS11): sha256 of the literal
+	// "abastevo-training-terms-v1". It identifies the provisional
+	// version, never published legal text.
+	defaultTrainingTermsDigest = "741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48"
 
 	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
@@ -74,6 +86,10 @@ type Config struct {
 	// MetricsAddr is the private metrics listener; empty disables it.
 	MetricsAddr         string
 	ANPDiscoveryEnabled bool
+	// TrainingTermsDigest is the published digest fresh training
+	// grants must present; served to owners on the status read, never
+	// logged as anything but configured/unset.
+	TrainingTermsDigest string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -220,6 +236,15 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.MetricsAddr = metrics
 	}
 
+	digest, _ := getenv(keyTrainingTermsDigest)
+	if digest == "" {
+		digest = defaultTrainingTermsDigest
+	}
+	if !validTermsDigest(digest) {
+		return Config{}, fmt.Errorf("%s must be 1..128 lowercase hex characters", keyTrainingTermsDigest)
+	}
+	cfg.TrainingTermsDigest = digest
+
 	r2, err := loadR2(getenv)
 	if err != nil {
 		return Config{}, err
@@ -236,6 +261,21 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.DevelopmentPhotoPreviewUntil = deadline
 	}
 	return cfg, nil
+}
+
+// validTermsDigest bounds the configured training-terms digest before
+// it becomes part of the grant-equality check: non-empty,
+// length-capped, lowercase hex only.
+func validTermsDigest(digest string) bool {
+	if len(digest) == 0 || len(digest) > 128 {
+		return false
+	}
+	for _, c := range digest {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
 
 // validHostname rejects controls, URL syntax and invalid DNS labels before

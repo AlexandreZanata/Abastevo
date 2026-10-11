@@ -143,11 +143,18 @@ func TestSameRevisionReplayAndConflict(t *testing.T) {
 	if err != nil || !receipt.Replayed || same.Revision != 1 {
 		t.Errorf("identical retry = %+v, %v", receipt, err)
 	}
+	// Same revision under a live clock stamps a new attempt instant but
+	// stays the same decision: lost-response retries still converge.
+	later := p
+	later.DecidedAt = p.DecidedAt.Add(time.Minute)
+	if _, receipt, err := GrantConsent(&c, later, TrainingTermsV1, "digest-v1"); err != nil || !receipt.Replayed {
+		t.Errorf("live-clock retry = %+v, %v", receipt, err)
+	}
 	divergent := p
-	divergent.TermsDigest = "digest-v1"
-	divergent.DecidedAt = p.DecidedAt.Add(time.Minute)
-	// Same revision but a different decision instant is a conflicting retry.
-	if _, _, err := GrantConsent(&c, divergent, TrainingTermsV1, "digest-v1"); err != ErrConflict {
+	divergent.TermsDigest = "digest-v1-changed"
+	// Same revision but different terms is a conflicting retry. (The
+	// current-terms gate runs first, so exercise it directly here.)
+	if _, _, err := GrantConsent(&c, divergent, TrainingTermsV1, "digest-v1-changed"); err != ErrConflict {
 		t.Errorf("divergent retry = %v, want conflict", err)
 	}
 }
