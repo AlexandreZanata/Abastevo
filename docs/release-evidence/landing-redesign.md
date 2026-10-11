@@ -41,6 +41,17 @@ Measured on emitted `landing/dist` (not projections): CSS gzip 4,075 B
 check` green. No new images added; full Core Web Vitals still needs field
 measurement after deployment (owner).
 
+## LR36 delivery decision — 2026-10-11
+
+INTEGRATION_PENDING, no merge performed. Reviewed: 39 landing-only commits
+against `dev` touch only docs/landing-static/web assets/ROADMAP (no
+backend/Android); PR #128 stays draft with no CI checks; `dev` has 30 unique
+commits plus another contributor's uncommitted staged work; `dev` branch is
+unprotected while required Quick verification applies at dev→main. Merging
+now would risk conflicts with another contributor's active work. Owed, in order: human review of
+PR #128, landing sync onto latest `dev` with conflict resolution, required
+current-head verification, then merge via the guarded path.
+
 ## LR35 scoped union — 2026-10-11
 
 Single union run at `3da311e` (no repeat without new failure/change):

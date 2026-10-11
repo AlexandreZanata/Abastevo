@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR35 2026-10-11: LOCAL_DONE on branch `landing`, scoped union once at `3da311e`. Typecheck/build/check green, 40/40 tests, gate selection 18/18, diff-check + secrets clean; recorded in [evidence](../release-evidence/landing-redesign.md). No repeat without new change. Next: LR36 delivery decision.
+- Landing redesign LR36 2026-10-11: DECISION on branch `landing` — INTEGRATION_PENDING, no merge. History reviewed (39 landing-only commits, docs/landing/web-only, no backend); PR #128 draft with no checks; `dev` diverged 30 commits with another contributor's uncommitted work; dev branch unprotected, Quick verification applies at dev→main. Next actions: sync review, dev sync + conflict resolution, current-head verification, then merge. Next: LR37 deploy record.
+
+- Landing redesign LR35 2026-10-11: LOCAL_DONE on branch `landing`, scoped union once at `3da311e`.
 
 - Landing redesign LR34 2026-10-11: LOCAL_DONE on branch `landing`, pending-media sweep.
 
