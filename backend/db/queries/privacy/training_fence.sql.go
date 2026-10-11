@@ -61,7 +61,7 @@ WITH due AS (
  FROM privacy_training_derivatives d JOIN LATERAL (
  SELECT v.revoked_at FROM privacy_training_revocations v WHERE v.contributor_id = d.contributor_id AND v.revision >= d.consent_revision ORDER BY v.revision LIMIT 1
  ) r ON true
- WHERE d.contributor_id = $1 AND d.state = 'ACTIVE' 
+ WHERE d.contributor_id = $1 AND d.state = 'ACTIVE'
  ORDER BY d.image_id,d.consent_revision LIMIT 32 FOR UPDATE OF d SKIP LOCKED
 )
 UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at
@@ -82,7 +82,7 @@ WITH due AS (
  FROM privacy_training_derivatives d JOIN LATERAL (
  SELECT v.revoked_at FROM privacy_training_revocations v WHERE v.contributor_id = d.contributor_id AND v.revision >= d.consent_revision ORDER BY v.revision LIMIT 1
  ) r ON true
- WHERE d.state = 'ACTIVE' 
+ WHERE d.state = 'ACTIVE'
  ORDER BY r.revoked_at,d.image_id,d.consent_revision LIMIT 32 FOR UPDATE OF d SKIP LOCKED
 )
 UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at
