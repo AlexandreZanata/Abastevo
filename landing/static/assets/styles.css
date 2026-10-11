@@ -170,13 +170,13 @@ h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-co
 }
 
 .brand-logo {
-  height: 2rem;
+  height: 2.75rem;
   width: auto;
   display: block;
 }
 
 .brand-wordmark {
-  height: 1.5rem;
+  height: 2.25rem;
   width: auto;
   display: block;
 }
