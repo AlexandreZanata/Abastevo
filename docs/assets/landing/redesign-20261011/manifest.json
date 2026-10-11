@@ -32,7 +32,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Sorriso survey week 4–10 October 2026, not a current pump quote."
+      "note": "Sorriso survey week 4–10 October 2026, not a current pump quote.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "dated-reference"
     },
     {
       "file": "screenshots/city-picker.png",
@@ -51,7 +56,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "State list/search shown; municipality completion still needs capture."
+      "note": "State list/search shown; municipality completion still needs capture.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     },
     {
       "file": "screenshots/community-empty.png",
@@ -70,7 +80,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Empty state only; no populated feed or successful contribution implied."
+      "note": "Empty state only; no populated feed or successful contribution implied.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
     },
     {
       "file": "screenshots/explore-dark.png",
@@ -89,7 +104,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Visible official survey summary; not proof of live pump prices."
+      "note": "Visible official survey summary; not proof of live pump prices.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "populated-state"
     },
     {
       "file": "screenshots/explore-light.png",
@@ -108,7 +128,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Visible official survey summary; not proof of live pump prices."
+      "note": "Visible official survey summary; not proof of live pump prices.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "populated-state"
     },
     {
       "file": "screenshots/profile-guest.png",
@@ -127,7 +152,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Guest state; no authenticated account or account key shown."
+      "note": "Guest state; no authenticated account or account key shown.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "guest-state"
     },
     {
       "file": "screenshots/vehicle-form.png",
@@ -146,7 +176,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Unsaved form; scroll/result/limit/recovery captures still owed."
+      "note": "Unsaved form; scroll/result/limit/recovery captures still owed.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "unsaved-form"
     },
     {
       "file": "screenshots/vehicles-empty.png",
@@ -165,7 +200,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Empty state only; no saved vehicle implied."
+      "note": "Empty state only; no saved vehicle implied.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
     },
     {
       "file": "screenshots/stations-list.png",
@@ -184,7 +224,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Fuel chips (8 products), station search, sort, JABER public ANP registry card; location button visible but never tapped."
+      "note": "Fuel chips (8 products), station search, sort, JABER public ANP registry card; location button visible but never tapped.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     },
     {
       "file": "screenshots/station-detail.png",
@@ -203,7 +248,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Default Beta art, public CNPJ identity/address, Ir/Atualizar preco entries shown, never tapped."
+      "note": "Default Beta art, public CNPJ identity/address, Ir/Atualizar preco entries shown, never tapped.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     },
     {
       "file": "screenshots/station-sources.png",
@@ -222,7 +272,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Community (beta) empty state, ANP reference R$ 3,84 coleta 7 out 2026, dated week chip, sign-in gate; not a live pump quote."
+      "note": "Community (beta) empty state, ANP reference R$ 3,84 coleta 7 out 2026, dated week chip, sign-in gate; not a live pump quote.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "source-separation"
     },
     {
       "file": "screenshots/community-feed.png",
@@ -241,7 +296,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Order/fuel filter UI with honest Sorriso empty state and rules link; dark theme companion to accepted light frame."
+      "note": "Order/fuel filter UI with honest Sorriso empty state and rules link; dark theme companion to accepted light frame.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
     },
     {
       "file": "screenshots/history.png",
@@ -260,7 +320,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Three-week Gasolina comum trend (6,83/6,88/6,94) with chart and fuel selector; dated survey reference."
+      "note": "Three-week Gasolina comum trend (6,83/6,88/6,94) with chart and fuel selector; dated survey reference.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "dated-reference"
     },
     {
       "file": "screenshots/week-picker.png",
@@ -279,7 +344,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Bottom sheet with current week card, archive entry and update date; sheet extends under system nav, shown honestly."
+      "note": "Bottom sheet with current week card, archive entry and update date; sheet extends under system nav, shown honestly.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     },
     {
       "file": "screenshots/contributions-empty.png",
@@ -298,7 +368,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Device-empty ledger, nothing public; no account created, no submission staged."
+      "note": "Device-empty ledger, nothing public; no account created, no submission staged.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
     },
     {
       "file": "screenshots/settings.png",
@@ -317,7 +392,12 @@
       "availability": "CAPTURED_VISIBLE_STATE_ONLY",
       "privacyReviewed": true,
       "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
-      "note": "Eight-language grid, background/auto-week/Wi-Fi/history toggles on, 12-week retention selected; no toggle changed. Actual options exceed catalog shorthand."
+      "note": "Eight-language grid, background/auto-week/Wi-Fi/history toggles on, 12-week retention selected; no toggle changed. Actual options exceed catalog shorthand.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     }
   ],
   "rejectedFrames": [
@@ -337,5 +417,97 @@
     "photo review/OCR/outbox/queued/receipt states (need synthetic fixtures, never staged on user phone)",
     "feedback/report/voteumatic flows (require account; no submission for screenshots)",
     "claim/management roles, alerts, deletion completion, offline transitions"
+  ],
+  "selection": {
+    "date": "2026-10-11",
+    "review": "Every accepted frame inspected at 100% on 2026-10-11 (originals) or at acceptance (prior eight); sharp text, stable states, no spinner, source/date uncropped, no PII/keys/GPS/notifications.",
+    "unresolved": "Route-wide complete library blocked by missing states below."
+  },
+  "missingRows": [
+    {
+      "lessons": [
+        "TU01"
+      ],
+      "states": "onboarding sync/download/location-choice frames"
+    },
+    {
+      "lessons": [
+        "TU04"
+      ],
+      "states": "SEARCH entry and result-type frames (entry unobserved)"
+    },
+    {
+      "lessons": [
+        "TU11",
+        "TU12"
+      ],
+      "states": "username/key/backup visuals (FLAG_SECURE blocks screencap)"
+    },
+    {
+      "lessons": [
+        "TU14",
+        "TU15",
+        "TU16"
+      ],
+      "states": "capture permission/OCR-review/outbox queued-receipt states (synthetic fixtures only)"
+    },
+    {
+      "lessons": [
+        "TU17"
+      ],
+      "states": "populated ledger/receipt/cancel states"
+    },
+    {
+      "lessons": [
+        "TU18",
+        "TU19",
+        "TU21"
+      ],
+      "states": "rating/comment/vote/report dialogs (sign-in gated; no staging on user phone)"
+    },
+    {
+      "lessons": [
+        "TU20"
+      ],
+      "states": "helpfulness UI (no Android implementation; CS01 domain-only)"
+    },
+    {
+      "lessons": [
+        "TU22",
+        "TU24",
+        "TU25"
+      ],
+      "states": "suggest/claim/management forms and statuses"
+    },
+    {
+      "lessons": [
+        "TU26"
+      ],
+      "states": "saved-vehicle/estimate/delete-confirm states"
+    },
+    {
+      "lessons": [
+        "TU27"
+      ],
+      "states": "alert preference/OS permission states"
+    },
+    {
+      "lessons": [
+        "TU28"
+      ],
+      "states": "remaining settings rows below fold; destructive confirmations"
+    },
+    {
+      "lessons": [
+        "TU29"
+      ],
+      "states": "per-route offline/queued/reconnect states"
+    },
+    {
+      "lessons": [
+        "TU30"
+      ],
+      "states": "help/rules/legal destination frames"
+    }
   ]
 }

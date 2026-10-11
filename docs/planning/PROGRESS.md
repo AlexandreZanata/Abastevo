@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR07 2026-10-11: LOCAL_DONE on branch `landing`, manifest selection. 16 entries with roles + claim classes, rejected list, 13 missing rows in manifest; [README selection](../assets/landing/redesign-20261011/README.md). Integrity re-verified 16/16, diff-check clean, secrets passed. Next: LR08 responsive derivatives.
+
 - Landing redesign LR06 2026-10-11: LOCAL_DONE on branch `landing`, conditional states view-only. 2 clean captures (contributions-empty, settings) in manifest (16 total); auth/key screens uncapturable by FLAG_SECURE (recorded, TU11/TU12 visuals pending); fixture-gated states (photo/OCR/outbox/feedback/claim) pending, never staged on user phone. Hash/dim checks, diff-check clean, secrets passed. Next: LR07 manifest selection.
 
 - Landing redesign LR05 2026-10-11: LOCAL_DONE on branch `landing`, public-read marketing set. 6 clean 1220×2712 captures (stations-list, station-detail, station-sources, community-feed, history, week-picker) in media [README](../assets/landing/redesign-20261011/README.md)/manifest (14 total); read-only authorized phone session, Sorriso kept, no mutations; notification + secure-screen frames rejected. 100% visual review + hash/dim checks, diff-check clean, secrets passed. Next: LR06 conditional states.

@@ -91,6 +91,19 @@ forward from the preparation manifest below.
   carried forward: `com.anpfuel.app.debug` 3.1.0-debug/code 4, source SHA
   UNKNOWN (not linked to a repository HEAD).
 
+## Selection (LR07) — 2026-10-11
+
+All sixteen manifest entries carry `roles` (`marketing` + `tutorial`) and a
+`claimClass` (populated/empty/guest/visible-state-only, dated-reference,
+source-separation, unsaved-form). Every frame was inspected at 100%:
+sharp text, stable states, no spinner, source/date uncropped. Marketing
+captures stay clean; tutorial red rectangles arrive as overlays (LR13+),
+never baked into these PNGs. Rejected candidates are listed in the manifest,
+never in this directory. Missing states for a route-wide library are in
+`missingRows` (13 rows: onboarding/search/auth-fixture-gated flows,
+populated ledger, sign-in-gated dialogs, helpfulness, suggest/claim/manage,
+saved-vehicle/estimate, alerts, remaining settings, offline, help).
+
 ## Capture continuation
 
 1. Verify installed version, actual screen and permission for the selected task.
