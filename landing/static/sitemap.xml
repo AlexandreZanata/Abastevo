@@ -22,6 +22,9 @@
     <loc>{{CANONICAL_ORIGIN}}/guias/etanol-ou-gasolina/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/guias/como-ler-precos/</loc>
   </url>
 </urlset>

@@ -215,6 +215,7 @@ export function build(options = {}) {
       { srcRel: 'guias/pesquisa-anp/index.html', destRel: 'guias/pesquisa-anp/index.html' },
       { srcRel: 'guias/etanol-ou-gasolina/index.html', destRel: 'guias/etanol-ou-gasolina/index.html' },
       { srcRel: 'guias/como-ler-precos/index.html', destRel: 'guias/como-ler-precos/index.html' },
+      { srcRel: 'como-usar/index.html', destRel: 'como-usar/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 

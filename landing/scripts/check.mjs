@@ -22,6 +22,7 @@ export function checkDist(options = {}) {
     'privacidade/index.html',
     'excluir-conta/index.html',
     'termos/index.html',
+    'como-usar/index.html',
     '404.html',
     'robots.txt',
     'sitemap.xml',

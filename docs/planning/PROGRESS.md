@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR15 2026-10-11: LOCAL_DONE on branch `landing`, tutorial hub. `/como-usar/` with 30 chapters, 4 journeys, status labels, zero dead links; home nav + sitemap + build/check wired. Build/check green, 34/34 tests. Chapter links flip on as pages land (LR16+). Next: LR16 driver lessons.
+
 - Landing redesign LR14 2026-10-11: LOCAL_DONE on branch `landing`, three annotated lessons. `lesson.json` for TU02/TU09/TU10 (10 steps, real bounds from dumps) + municipios-mt master/derivatives (manifest 17, app 51); validator covers shipped lessons. Build/check green, 33/33 tests. Next: LR15 tutorial hub.
 
 - Landing redesign LR13 2026-10-11: LOCAL_DONE on branch `landing`, tutorial data contract. `lesson.json` schema + overlay/prev-next rules in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md); pure `validateLesson` (`src/tutorial.ts`, test-only, never shipped) + shared chapter styles; 3 validator tests. Typecheck green, 33/33 tests. Next: LR14 three annotated lessons.

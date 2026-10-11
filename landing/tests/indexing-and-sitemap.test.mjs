@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
 
-test('sitemap: valid XML, exactly 4 indexable URLs, no 404 and no fabricated lastmod', () => {
+test('sitemap: valid XML, required indexable URLs present, no 404 and no fabricated lastmod', () => {
   const tmpOut = path.join(root, '.test-sitemap-' + Math.random().toString(36).slice(2, 8));
   try {
     buildSite({
@@ -28,6 +28,7 @@ test('sitemap: valid XML, exactly 4 indexable URLs, no 404 and no fabricated las
       'https://abastevo.com.br/privacidade/',
       'https://abastevo.com.br/excluir-conta/',
       'https://abastevo.com.br/termos/',
+      'https://abastevo.com.br/como-usar/',
     ];
 
     for (const url of expectedUrls) {
