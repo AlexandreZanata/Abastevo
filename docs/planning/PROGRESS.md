@@ -1,5 +1,7 @@
 # Current execution state
 
+- Security remediation SEC09-D 2026-10-11: LOCAL_DONE on maintained dev, staging runbook + rollback doc (no rollout). [Evidence](../backend/evidence/community-safety/SEC09D_STAGING_RUNBOOK.md). Abastevo-only rollout order (db→migrate→api/worker→caddy) with measured-headroom rate bounds (5 req/s history explicitly not a budget), stop conditions (p95/5xx/backlog/overdue/OOM), forward-only migration rollback, and no-shared-workload antiblast. Doc-only; diff-check clean, no secrets/PII. Next microtask: SEC09-E final protected delivery.
+
 - Security remediation SEC09-C 2026-10-11: LOCAL_DONE on maintained dev, integration + fault evidence at 375e213 (no product change). [Evidence](../backend/evidence/community-safety/SEC09C_INTEGRATION_FAULT.md). New real-PostGIS 000060 upgrade proof (applies alone, live family intact, history writable, replay empty); Android domain/application/data/app + assembleDebug re-green; build/vet/gofmt/sqlc/diff-check clean, secrets passed. Next microtask: SEC09-D staging runbook and rollback.
 
 - Security remediation SEC09-B 2026-10-11: LOCAL_DONE on maintained dev, dependency/container scans (no dep change). [Evidence](../backend/evidence/community-safety/SEC09B_DEPENDENCY_SCANS.md). govulncheck clean, cargo audit exit 0 (25 crates), Android catalog pinned with empty dep diff since 1b67367, all images digest-pinned, release minify+shrink with one exported activity and no pprof/debug routes. Scan-only; diff-check clean, no secrets/PII. Next microtask: SEC09-C integration and fault evidence.
