@@ -11,6 +11,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const canDeleteQuarantine = `-- name: CanDeleteQuarantine :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = $1
+ AND s.status IN ('READY','REJECTED','EXPIRED')
+ AND NOT EXISTS(SELECT 1 FROM evidence_upload_transfers t
+ WHERE t.session_id = s.id AND t.lease_until > $2)) AS allowed
+`
+
+type CanDeleteQuarantineParams struct {
+	ID pgtype.UUID        `json:"id"`
+	At pgtype.Timestamptz `json:"at"`
+}
+
+// Expiry must already have closed new admission. A separate fresh statement
+// observes any writer admitted before the terminal-state transition.
+func (q *Queries) CanDeleteQuarantine(ctx context.Context, arg CanDeleteQuarantineParams) (bool, error) {
+	row := q.db.QueryRow(ctx, canDeleteQuarantine, arg.ID, arg.At)
+	var allowed bool
+	err := row.Scan(&allowed)
+	return allowed, err
+}
+
 const claimObjectBinding = `-- name: ClaimObjectBinding :execrows
 UPDATE evidence_objects
 SET bound_observation_id = $1
@@ -526,6 +547,34 @@ func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNa
 		&i.UpdatedAt,
 		&i.PolicyVersion,
 		&i.PhotoCaptureID,
+	)
+	return i, err
+}
+
+const getUploadSessionForUpdate = `-- name: GetUploadSessionForUpdate :one
+SELECT id, contributor_ref, client_session_id, mime, declared_bytes, claimed_sha256, quarantine_key, status, status_reason, created_at, expires_at, updated_at, policy_version, photo_capture_id, quarantine_deleted_at FROM evidence_sessions WHERE id = $1 FOR UPDATE
+`
+
+// Ingress serializes with expiry/erasure, never with network I/O.
+func (q *Queries) GetUploadSessionForUpdate(ctx context.Context, id pgtype.UUID) (EvidenceSession, error) {
+	row := q.db.QueryRow(ctx, getUploadSessionForUpdate, id)
+	var i EvidenceSession
+	err := row.Scan(
+		&i.ID,
+		&i.ContributorRef,
+		&i.ClientSessionID,
+		&i.Mime,
+		&i.DeclaredBytes,
+		&i.ClaimedSha256,
+		&i.QuarantineKey,
+		&i.Status,
+		&i.StatusReason,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UpdatedAt,
+		&i.PolicyVersion,
+		&i.PhotoCaptureID,
+		&i.QuarantineDeletedAt,
 	)
 	return i, err
 }

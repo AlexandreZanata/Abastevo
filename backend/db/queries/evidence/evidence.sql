@@ -285,3 +285,15 @@ WHERE id = @id AND status != 'EXPIRED';
 -- name: HasPendingEvidenceErasure :one
 SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = @contributor_ref AND s.quarantine_deleted_at IS NULL)
 OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL) AS pending;
+
+-- Ingress serializes with expiry/erasure, never with network I/O.
+-- name: GetUploadSessionForUpdate :one
+SELECT * FROM evidence_sessions WHERE id = @id FOR UPDATE;
+
+-- Expiry must already have closed new admission. A separate fresh statement
+-- observes any writer admitted before the terminal-state transition.
+-- name: CanDeleteQuarantine :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = @id
+ AND s.status IN ('READY','REJECTED','EXPIRED')
+ AND NOT EXISTS(SELECT 1 FROM evidence_upload_transfers t
+ WHERE t.session_id = s.id AND t.lease_until > @at)) AS allowed;

@@ -34,6 +34,7 @@ const (
 // bounded intake posture for monitoring (counts/bytes/timestamp
 // only, never content).
 type SweepStore interface {
+	CanDeleteQuarantine(context.Context, string, time.Time) (bool, error)
 	ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error)
 	ListStuckVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
 	ExpireStuckSession(ctx context.Context, id string, cutoff time.Time) error
@@ -193,6 +194,14 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	}
 	for _, sess := range expired {
 		rep.ExpiredSessions++
+		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
+		if err != nil {
+			return rep, err
+		}
+		if !allowed {
+			rep.SkippedActive++
+			continue
+		}
 		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
 			rep.StorageErrors++
 			continue
@@ -221,6 +230,14 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 			return rep, err
 		}
 		rep.ExpiredSessions++
+		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
+		if err != nil {
+			return rep, err
+		}
+		if !allowed {
+			rep.SkippedActive++
+			continue
+		}
 		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
 			rep.StorageErrors++
 			continue
@@ -236,6 +253,14 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		return rep, err
 	}
 	for _, sess := range cands {
+		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
+		if err != nil {
+			return rep, err
+		}
+		if !allowed {
+			rep.SkippedActive++
+			continue
+		}
 		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
 			rep.StorageErrors++
 			continue

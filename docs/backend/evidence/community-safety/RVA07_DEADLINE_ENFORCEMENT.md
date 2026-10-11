@@ -144,3 +144,40 @@ Restore must occur in a closed-traffic, separate restore window; simultaneous
 out-of-band storage restore during an in-progress erasure is not certified by
 this test. B3/C remain pending; existing soaks were not modified or inspected
 as passing. Collection remains OFF and no deadline/release claim is made.
+
+## B3.1 quarantine ingress/erasure opening
+
+Serialize new ingress claims with session expiry/erasure using a session row
+lock, without holding a transaction across HTTP/S3. Expiry closes admission
+first. A fresh deletion check then excludes every still-live upload lease
+before deleting or acknowledging a quarantine copy. An already admitted PUT
+may finish; its bytes remain inventoried with a pending cleanup marker until
+the lease finishes/expires and a later bounded pass deletes them. No active
+writer may be acknowledged as already erased. Final-output/verify inventory
+and predeadline scheduling remain B3.2/B3.3, not silently inferred here.
+
+## B3.1 local checkpoint — quarantine ingress fence
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS. Tested delta on
+`db42f98`. RED: erasure during a durably admitted upload invoked deletion and
+acknowledged success despite the live writer. GREEN: ingress reads/claims under
+a session row lock; erasure closes admission first and checks live transfer
+leases in a fresh statement before any source deletion/marker. Sweep uses the
+same check, preserving a pending marker for the next bounded pass.
+
+Real SQL tests passed for live-upload erasure refusal/no false marker, refusal
+of new ingress after expiry, late completion then recoverable deletion, and a
+concurrent failed-transfer retry held behind an erasure row lock. Expiry wins
+without charging another transfer attempt. Ingress budget/receipt/upgrade
+regressions passed. Full evidence adapter SQL race suite passed (13.008s),
+affected evidence/API/worker/ops race suites, dependent privacy erasure/restore
+SQL tests, vet, sqlc vet, format/diff and staged secret checks passed.
+
+The old forward lifecycle outage assertion expected a successful partial
+sweep; the full SQL run exposed it. It now requires failure plus the existing
+unchanged-byte/no-marker assertions, followed by a successful retry. No test
+was skipped or relaxed. This checkpoint's erasure sink is synthetic; actual
+HTTP/S3 cross-resource proof for late source/final writers remains B3.2/C.
+No transaction spans network I/O, no provider/24h/release claim and no change to
+existing soaks. Next: inventory/lease final output before PUT and clean failed
+or revoked verification output; then predeadline scheduling and capacity proof.

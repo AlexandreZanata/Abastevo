@@ -174,8 +174,8 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 		}
 	}
 	rep, err := evidenceapp.Sweep(ctx, deps())
-	if err != nil {
-		t.Fatalf("outage sweep: %v", err)
+	if err == nil {
+		t.Fatal("storage outage must fail the pass for retry")
 	}
 	if rep.FinalsDeleted != 0 || rep.StorageErrors != 1 {
 		t.Fatalf("outage pass must count the failure without marking, got %+v", rep)

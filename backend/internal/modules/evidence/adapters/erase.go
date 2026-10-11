@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"time"
 
 	evidence "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/evidence"
 )
@@ -22,6 +23,13 @@ func (s *Store) EraseContributor(ctx context.Context, ref string, deleteKey func
 	for _, sess := range sessions {
 		if err := q.ExpireErasureSession(ctx, sess.ID); err != nil {
 			return purgedSessions, purgedObjects, err
+		}
+		allowed, err := s.CanDeleteQuarantine(ctx, uuidString(sess.ID), time.Now())
+		if err != nil {
+			return purgedSessions, purgedObjects, err
+		}
+		if !allowed {
+			return purgedSessions, purgedObjects, errors.New("evidence: erasure waits for admitted upload")
 		}
 		if deleteKey != nil && sess.QuarantineKey != "" {
 			if derr := deleteKey(ctx, sess.QuarantineKey, "q/"); derr != nil {

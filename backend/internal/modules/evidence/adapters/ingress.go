@@ -13,21 +13,27 @@ import (
 // ClaimUpload charges every transfer attempt durably before reading bytes.
 // No DB connection/transaction is held during client or storage I/O.
 func (s *Store) ClaimUpload(ctx context.Context, id, nonce string, now time.Time) (domain.Session, bool, error) {
-	session, err := s.Session(ctx, id)
-	if err != nil {
-		return domain.Session{}, false, err
-	}
-	if nonce == "" || session.Status != domain.StateIssued || !now.Before(session.ExpiresAt) {
-		return domain.Session{}, false, domain.ErrBadTransition
-	}
 	uid, err := mustUUID(id)
 	if err != nil {
 		return domain.Session{}, false, err
 	}
-	q := evidence.New(s.pool)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return domain.Session{}, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := evidence.New(tx)
+	row, err := q.GetUploadSessionForUpdate(ctx, uid)
+	if err != nil {
+		return domain.Session{}, false, err
+	}
+	session := mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID)
+	if nonce == "" || session.Status != domain.StateIssued || row.QuarantineDeletedAt.Valid || !now.Before(session.ExpiresAt) {
+		return domain.Session{}, false, domain.ErrBadTransition
+	}
 	receipt, err := q.GetUploadTransfer(ctx, uid)
 	if err == nil && receipt.Valid {
-		return session, true, nil
+		return session, true, tx.Commit(ctx)
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return domain.Session{}, false, err
@@ -39,7 +45,7 @@ func (s *Store) ClaimUpload(ctx context.Context, id, nonce string, now time.Time
 	if n != 1 {
 		return domain.Session{}, false, domain.ErrQuotaDenied
 	}
-	return session, false, nil
+	return session, false, tx.Commit(ctx)
 }
 
 func (s *Store) FinishUpload(ctx context.Context, id, nonce string, completed bool, actualBytes int64) error {
@@ -55,4 +61,13 @@ func (s *Store) FinishUpload(ctx context.Context, id, nonce string, completed bo
 		return domain.ErrBadTransition
 	}
 	return nil
+}
+
+// CanDeleteQuarantine uses a fresh snapshot after admission has been closed.
+func (s *Store) CanDeleteQuarantine(ctx context.Context, id string, now time.Time) (bool, error) {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return false, err
+	}
+	return evidence.New(s.pool).CanDeleteQuarantine(ctx, evidence.CanDeleteQuarantineParams{ID: uid, At: pgTime(now)})
 }
