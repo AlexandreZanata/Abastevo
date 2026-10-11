@@ -273,6 +273,36 @@ export function checkDist(options = {}) {
     }
   }
 
+  // Self-hosted font payload (LR29: measured 128,916 bytes on 2026-10-11).
+  const fontsDir = path.join(assetsDir, 'fonts');
+  if (fs.existsSync(fontsDir)) {
+    let fontBytes = 0;
+    for (const item of fs.readdirSync(fontsDir)) {
+      if (item.endsWith('.woff2')) {
+        fontBytes += fs.statSync(path.join(fontsDir, item)).size;
+      }
+    }
+    const fontBudget = 150 * 1024; // 150 KiB
+    if (fontBytes > fontBudget) {
+      errors.push(`Font payload (${fontBytes} bytes) exceeds budget of ${fontBudget} bytes`);
+    }
+  }
+
+  // Real media derivatives only: downscaled WebP, never masters (LR29).
+  const appDir = path.join(assetsDir, 'app');
+  if (fs.existsSync(appDir)) {
+    const derivativeBudget = 120 * 1024; // 120 KiB per file; largest measured 97,168 bytes
+    for (const item of fs.readdirSync(appDir)) {
+      const full = path.join(appDir, item);
+      if (item.endsWith('.png')) {
+        errors.push(`App master must not ship: ${item}`);
+      }
+      if (item.endsWith('.webp') && fs.statSync(full).size > derivativeBudget) {
+        errors.push(`App derivative ${item} exceeds budget of ${derivativeBudget} bytes`);
+      }
+    }
+  }
+
   // 7. No source leaks (.ts, .map)
   function assertNoLeaks(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

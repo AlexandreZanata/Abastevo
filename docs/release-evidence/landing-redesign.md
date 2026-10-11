@@ -35,3 +35,12 @@
 ## Next
 
 LR01 — freeze actual capability and claim inventory (depends on LR00).
+
+## LR29 performance record — 2026-10-11
+
+Measured on emitted `landing/dist` (not projections): CSS gzip 4,075 B
+(budget 25 KiB), JS gzip 1,290 B (budget 10 KiB), fonts 128,916 B (new budget
+150 KiB), 72 WebP derivatives 3,400,760 B total with largest 97,168 B
+(new per-file budget 120 KiB, PNG masters refused by the checker). `npm run
+check` green. No new images added; full Core Web Vitals still needs field
+measurement after deployment (owner).

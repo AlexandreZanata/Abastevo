@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR28 2026-10-11: LOCAL_DONE on branch `landing`, crawler directives. Docs re-verified; robots.txt separates search (allowed) from training (GPTBot/ClaudeBot disallowed) with fetchers transparent; tests guard tokens. Submissions/IndexNow stay owner-pending. Next: LR29 performance pass.
+- Landing redesign LR29 2026-10-11: LOCAL_DONE on branch `landing`, performance pass. Measured dist budgets (CSS 4KB/25KB, JS 1.3KB/10KB, fonts 129KB/150KB, WebP ≤97KB/120KB, masters refused); record in [evidence](../release-evidence/landing-redesign.md). Check green. Next: LR30 error/redirect pass.
+
+- Landing redesign LR28 2026-10-11: LOCAL_DONE on branch `landing`, crawler directives.
 
 - Landing redesign LR27 2026-10-11: LOCAL_DONE on branch `landing`, indexation evidence.
 
