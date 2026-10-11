@@ -69,3 +69,11 @@ ways (all ≥ AA 4.5); primary controls ship ≥44px hit areas with a visible
 disclosure stays native `details/summary`. Live 200% zoom reflow and
 keyboard-only traversal still need a real browser pass (no browser in this
 environment); automated anchor/heading/skip-link coverage holds.
+
+## LR37 deploy record — 2026-10-11
+
+DEPLOY_PENDING, no remote change. No domain/SSL/hosting/publish approval was
+requested or received in this batch; no preview deployment, DNS/CDN edit,
+smoke run or rollback was executed. Owed, in order: landing→dev integration
+(LR36), protected dev→main delivery with Quick verification, then owner
+approvals for preview, publish, smoke and rollback evidence.

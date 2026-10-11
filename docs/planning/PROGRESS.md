@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR36 2026-10-11: DECISION on branch `landing` — INTEGRATION_PENDING, no merge. History reviewed (39 landing-only commits, docs/landing/web-only, no backend); PR #128 draft with no checks; `dev` diverged 30 commits with another contributor's uncommitted work; dev branch unprotected, Quick verification applies at dev→main. Next actions: sync review, dev sync + conflict resolution, current-head verification, then merge. Next: LR37 deploy record.
+- Landing redesign LR37 2026-10-11: RECORDED on branch `landing` — DEPLOY_PENDING, no remote change (no infra approvals requested or received). Owed: integration, protected delivery, then preview/publish/smoke/rollback approvals. Next: LR38 index follow-up.
+
+- Landing redesign LR36 2026-10-11: DECISION on branch `landing` — INTEGRATION_PENDING, no merge.
 
 - Landing redesign LR35 2026-10-11: LOCAL_DONE on branch `landing`, scoped union once at `3da311e`.
 
