@@ -180,6 +180,36 @@ Contrast ratios computed from the WCAG relative-luminance formula on 2026-10-05:
 
 **Dark appearance: not in P25.** The approved wordmark is navy and the project has no dark-background logo variant; creating one would invent brand artwork. Automatic dark mode is deferred until an approved variant exists. This resolves the plan's conditional dark-scheme allowance.
 
+## Visual revision (LR03) — 2026-10-11
+
+Composition reference: `docs/assets/landing/redesign-20261011/landing-reference-v2.html`
+(authored HTML/CSS with unmodified app PNGs; the AI-generated concept is
+superseded and excluded). It is a reference, not production markup.
+
+Explicit supersessions of the P25 flat contract above:
+
+| Old token | Revised value | Scope |
+|---|---|---|
+| Content width ~60 rem (960 px) | 1152 px max, 32 px gutters (measured from reference) | Desktop layout |
+| System font stack | Manrope (headings/CTAs/nav/cards/prices, 700/800, 700 prices) + Source Sans 3 (prose/FAQ/legal, 400/500), self-hosted WOFF2, swap fallback (see Typography amendment) | Type |
+| No shadows | One soft device-frame shadow only (`0 16px 24px #0b184915`); content cards stay flat | Gallery/tutorial phone frames |
+| 8/12 px radii | 16 px gallery cards, 20 px tutorial visual, 23–29 px device frames | Frames |
+| `--text-muted #44506b`, `--surface #f5f8fc` | Muted `#53617b`, pale `#f4f7fc`, line `#dce3ee`, teal `#03664b` (same as `--green-text`), red `#df231b` for tutorial overlays only | Palette |
+| H1 2–2.75 rem fluid | H1 56 px desktop / 32–40 px mobile, body 18 px, section H2 30–36 px (measured from reference; verify at LR10–LR12) | Scale |
+
+Measured WCAG contrast (relative-luminance formula, 2026-10-11): navy on
+white 16.92 / on pale 15.76; muted on white 6.24 / on pale 5.81; blue on
+white 8.12; teal on white 6.99 / on pale 6.51 / on `#edf6f2` 6.34; white CTA
+text on blue 8.12. All meet AA text 4.5. Red `#df231b` is never body text.
+
+Logo provenance: brand SVGs under `docs/assets/brand/` used verbatim (reference
+`209 px` header / `145 px` footer wordmark widths are measured, not new
+artwork). Prototype deviations kept out of production: red focus ring and
+tutorial overlay red stay prototype-only; production keeps the 3 px `--link`
+focus ring. No phone mockup in the hero; device frames only in gallery and
+tutorial sections. Wireframes `wireframe-375.svg`/`wireframe-1280.svg` remain
+the approved low-fi structure; this revision changes style tokens, not layout.
+
 ## Identity assets
 
 Use only approved sources under `docs/assets/brand/`: [logo SVG](../assets/brand/abastevo-logo.svg), [wordmark SVG](../assets/brand/abastevo-wordmark.svg), [app icon SVG](../assets/brand/abastevo-app-icon.svg) and [1024 px icon PNG](../assets/brand/abastevo-app-icon-1024.png). T04 derives the favicon set (SVG, ICO, 180, 192, 512), `site.webmanifest` icons and the 1200×630 social image from them with recorded provenance; no new logo, lettering or illustration is created.
