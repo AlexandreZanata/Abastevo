@@ -178,6 +178,7 @@ sql:
       - db/migrations/000064_privacy_training_revocation_fence.sql
       - db/migrations/000065_privacy_training_output.sql
       - db/migrations/000066_privacy_training_cleanup.sql
+      - db/migrations/000067_privacy_training_erasure_cursor.sql
     gen:
       go:
         package: privacy

@@ -70,6 +70,13 @@ type PrivacyTrainingDerivative struct {
 	OutputPurgedAt   pgtype.Timestamptz `json:"output_purged_at"`
 }
 
+type PrivacyTrainingErasureCursor struct {
+	ContributorID string             `json:"contributor_id"`
+	LastImageID   string             `json:"last_image_id"`
+	LastRevision  int64              `json:"last_revision"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PrivacyTrainingRevocation struct {
 	ContributorID string             `json:"contributor_id"`
 	Revision      int64              `json:"revision"`

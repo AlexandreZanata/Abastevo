@@ -98,3 +98,49 @@ Remaining B2.2: owner-wide training erasure must consume bounded claimed work
 rather than ListByOwner snapshots. B3 evidence writers/deadline dispatch and C
 wall-time/provider/backup acceptance remain pending. This does not certify a
 maximum backlog/rate or the 24h SLO; collection stays OFF.
+
+## B2.2 owner-erasure opening
+
+Use a durable owner/keyset cursor, at most 32 verified copies per attempt.
+Never load the whole owner inventory into memory. Include historically PURGED
+receipts when a new erasure/restore replay starts: restored bytes can coexist
+with retained deletion receipts and must be rechecked before traffic opens.
+Advance the cursor only in the same transaction as a nonce-fenced byte-absence
+acknowledgement. Failure/live lease leaves the first unconfirmed key pending.
+Completion removes the cursor; replay scans bounded batches and remains
+idempotent. A partially processed owner returns retryable failure, never READY.
+Reuse an existing OFF revision/anchor on retry; do not grow revocation receipts
+or slide the deadline simply because a cleanup attempt resumed.
+
+## B2.2 local checkpoint — bounded owner erasure
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS. Tested delta on
+`a7be415`. RED: one attempt loaded/deleted all 65 owned images and returned
+success. GREEN: append-only 000067 durable owner/key cursor, one nonce-claimed
+copy at a time, 32 per attempt, shared 5s absence-confirmation protocol and
+45s pass bound. The owner cursor advances atomically with the byte receipt;
+remaining/live-leased/failed work prevents a completed erasure receipt.
+No ListByOwner snapshot remains in the training erasure path. Equal OFF replay
+keeps the original revision/time and materializes another bounded tombstone
+batch, rather than minting revocations on every retry.
+
+A new erasure/restore replay scans prior PURGED receipts too, because retained
+metadata alone cannot prove that restored storage bytes are absent. Progress
+is removed only after the keyset completes. Counts describe this attempt's
+covered copies/deletions, not lifetime unique events; already absent terminal
+copies contribute no repeated count.
+
+Real SQL/private S3 65-copy owner work resumes after store reconstruction as
+32/32/1, with a foreign-owner byte control preserved. Restore of bytes beside
+retained PURGED receipts is detected and deleted through the same bounded
+replay. OFF revision/time remain unchanged. Twelve concurrent owner claimants
+obtain one authority. Injected cursor-write failure rolls back byte receipt
+and cursor together; lease expiry/restart resumes the same key, stale ack
+refuses. 000067-only upgrade/replay preserves consent history and writable
+cursor state. Full privacy SQL race suite passed (19.753s); affected units,
+worker/ops, vet, sqlc vet, format/diff and staged secret review passed.
+
+Restore must occur in a closed-traffic, separate restore window; simultaneous
+out-of-band storage restore during an in-progress erasure is not certified by
+this test. B3/C remain pending; existing soaks were not modified or inspected
+as passing. Collection remains OFF and no deadline/release claim is made.

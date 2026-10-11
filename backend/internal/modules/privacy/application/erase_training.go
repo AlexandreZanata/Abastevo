@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -26,11 +27,12 @@ type TrainingErasePorts struct {
 	Objects     ObjectStore
 }
 
-// TrainingInventory reads every owned derivative for erasure,
-// active and tombstoned alike.
+// TrainingInventory advances a durable owner keyset only after confirmed
+// absence. A new replay rechecks prior PURGED receipts for restored bytes.
 type TrainingInventory interface {
-	PromotionInventory
-	ListByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error)
+	ClaimOwnerPurge(context.Context, string, time.Time) (PurgeClaim, bool, error)
+	CompletePurge(context.Context, PurgeClaim, time.Time) error
+	HasRemainingErasure(context.Context, string) (bool, error)
 }
 
 // EraseTrainingContributor revokes one owner's training consent and
@@ -43,80 +45,71 @@ func EraseTrainingContributor(ctx context.Context, p TrainingErasePorts, contrib
 	if contributorID == "" {
 		return 0, 0, ErrUnauthorized
 	}
+	if p.Attribution == nil || p.Consent.Store == nil || p.Inventory == nil || p.Objects == nil {
+		return 0, 0, errors.New("training erasure: unconfigured")
+	}
 	token, err := p.Attribution(ctx, contributorID)
 	if err != nil {
 		return 0, 0, err
 	}
-	now := time.Now()
-	if p.Clock != nil {
-		now = p.Clock()
+	clock := p.Clock
+	if clock == nil {
+		clock = time.Now
 	}
+	now := clock()
 	stored, err := p.Consent.Store.Get(ctx, contributorID)
-	var revision uint64 = 1
-	if err == nil {
-		revision = stored.Revision + 1
-	} else if !isNotFound(err) {
+	found := err == nil
+	if err != nil && !isNotFound(err) {
 		return 0, 0, err
 	}
-	next, _, err := domain.RevokeConsent(ptrConsent(stored, err == nil), contributorID, token, revision, now)
-	if err != nil {
-		return 0, 0, err
-	}
-	// Capture the work covered by this operation before the transactional
-	// consent store materializes its first tombstone batch. Counts describe
-	// this call's covered rows; retries beginning after revocation report zero.
-	before, err := p.Inventory.ListByOwner(ctx, contributorID)
-	if err != nil {
-		return 0, 0, err
-	}
-	activeBefore := map[string]bool{}
-	for _, d := range before {
-		if d.State == domain.DerivativeActive {
-			activeBefore[inventoriedObjectKey(d)] = true
+	next := stored
+	if !found || stored.State != domain.StateRevoked {
+		revision := uint64(1)
+		if found {
+			revision = stored.Revision + 1
+		}
+		next, _, err = domain.RevokeConsent(ptrConsent(stored, found), contributorID, token, revision, now)
+		if err != nil {
+			return 0, 0, err
 		}
 	}
+	// Equal OFF replay retains the original revision/anchor and materializes
+	// another bounded tombstone batch. It does not mint a new revocation.
 	if _, _, err := p.Consent.Store.Put(ctx, next); err != nil {
 		return 0, 0, err
 	}
-	flipped := 0
-	rows, err := p.Inventory.ListByOwner(ctx, contributorID)
-	if err != nil {
-		return flipped, 0, err
-	}
-	purged := 0
-	for _, d := range rows {
-		if now.Before(d.OutputLeaseUntil) {
-			return flipped, purged, domain.ErrBadState
-		}
-		key := inventoriedObjectKey(d)
-		if key == "" {
-			return flipped, purged, domain.ErrInvalidRequest
-		}
-		if d.State == domain.DerivativeActive {
-			if err := p.Inventory.MarkRevoked(ctx, d.ImageID, d.ConsentRevision, now); err != nil {
-				return flipped, purged, err
-			}
-			flipped++
-		} else if activeBefore[key] {
-			flipped++
-		}
-		exists, err := p.Objects.Exists(ctx, key)
+	run, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	for i := 0; i < MaxTrainingPurgeBatch; i++ {
+		claim, ok, err := p.Inventory.ClaimOwnerPurge(run, contributorID, clock())
 		if err != nil {
-			return flipped, purged, err
+			return revoked, objectsPurged, err
 		}
-		if !exists {
-			continue
+		if !ok {
+			break
 		}
-		if err := p.Objects.Delete(ctx, key); err != nil {
-			return flipped, purged, err
+		existed, err := disposeTrainingClaim(run, p.Inventory, p.Objects, claim, clock)
+		if err != nil {
+			return revoked, objectsPurged, err
 		}
-		purged++
+		if !claim.WasPurged || existed {
+			revoked++
+		}
+		if existed {
+			objectsPurged++
+		}
 	}
-	return flipped, purged, nil
+	pending, err := p.Inventory.HasRemainingErasure(run, contributorID)
+	if err != nil {
+		return revoked, objectsPurged, err
+	}
+	if pending {
+		return revoked, objectsPurged, domain.ErrBadState
+	}
+	return revoked, objectsPurged, nil
 }
 
-// ptrConsent returns nil for absent consent (revocation baseline) or
-// the stored row otherwise.
+// ptrConsent returns nil for absent consent (revocation baseline).
 func ptrConsent(stored domain.Consent, ok bool) *domain.Consent {
 	if !ok {
 		return nil

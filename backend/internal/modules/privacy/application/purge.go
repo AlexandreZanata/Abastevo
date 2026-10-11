@@ -50,6 +50,8 @@ type PurgePorts struct {
 type PurgeClaim struct {
 	Derivative domain.Derivative
 	Token      string
+	Owner      string
+	WasPurged  bool
 }
 
 // RevokedInventory atomically claims one due/abandoned output. Purged work is
@@ -116,31 +118,12 @@ func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
 			break
 		}
 		report.Checked++
-		key := inventoriedObjectKey(claim.Derivative)
-		if key == "" {
-			report.Failures = append(report.Failures, "invalid-locator")
-			continue
-		}
-		item, stop := context.WithTimeout(run, 5*time.Second)
-		existed, err := p.Objects.Exists(item, key)
-		if err == nil && existed {
-			err = p.Objects.Delete(item, key)
-		}
-		if err == nil {
-			var remains bool
-			remains, err = p.Objects.Exists(item, key)
-			if err == nil && remains {
-				err = errors.New("training purge: bytes remain")
-			}
-		}
-		if err == nil {
-			err = p.Inventory.CompletePurge(item, claim, clock())
-		}
-		stop()
+		existed, err := disposeTrainingClaim(run, p.Inventory, p.Objects, claim, clock)
 		if err != nil {
-			report.Failures = append(report.Failures, key)
+			report.Failures = append(report.Failures, "unresolved-copy")
 			continue
 		}
+		key := claim.Derivative.ObjectKey
 		if existed {
 			report.Purged++
 		} else {
@@ -151,4 +134,31 @@ func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
 		return report, errors.New("training purge: unresolved copies")
 	}
 	return report, nil
+}
+
+// One shared byte-absence protocol for sweep and owner erasure.
+func disposeTrainingClaim(ctx context.Context, inventory interface {
+	CompletePurge(context.Context, PurgeClaim, time.Time) error
+}, objects ObjectStore, claim PurgeClaim, clock func() time.Time) (bool, error) {
+	key := inventoriedObjectKey(claim.Derivative)
+	if key == "" {
+		return false, domain.ErrInvalidRequest
+	}
+	item, stop := context.WithTimeout(ctx, 5*time.Second)
+	defer stop()
+	existed, err := objects.Exists(item, key)
+	if err == nil && existed {
+		err = objects.Delete(item, key)
+	}
+	if err == nil {
+		var remains bool
+		remains, err = objects.Exists(item, key)
+		if err == nil && remains {
+			err = errors.New("training purge: bytes remain")
+		}
+	}
+	if err == nil {
+		err = inventory.CompletePurge(item, claim, clock())
+	}
+	return existed, err
 }
