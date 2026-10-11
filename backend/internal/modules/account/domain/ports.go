@@ -13,37 +13,39 @@ const (
 )
 
 var (
-	ErrCodeExpired           = errors.New("account: code expired")
-	ErrCodeConsumed          = errors.New("account: code already consumed")
-	ErrCodeAttemptsExhausted = errors.New("account: code attempts exhausted")
-	ErrCodeResendCooldown    = errors.New("account: resend cooldown active")
-	ErrCodeUnknown           = errors.New("account: unknown code or address")
-	ErrOIDCUnknownIssuer     = errors.New("account: unknown OIDC issuer")
-	ErrOIDCWrongAudience     = errors.New("account: OIDC audience mismatch")
-	ErrOIDCExpired           = errors.New("account: OIDC token expired")
-	ErrOIDCNonceReused       = errors.New("account: OIDC nonce already consumed")
-	ErrOIDCNonceMismatch     = errors.New("account: OIDC nonce mismatch")
-	ErrOIDCUnavailable       = errors.New("account: provider unavailable")
-	ErrLinkCrossAccount      = errors.New("account: proof belongs to another account")
-	ErrLinkEmailOnly         = errors.New("account: email match is not linking proof")
-	ErrLastLoginMethod       = errors.New("account: last login method cannot be removed")
-	ErrProviderNotLinked     = errors.New("account: provider not linked")
-	ErrAccountNotFound       = errors.New("account: unknown account")
-	ErrAccountSuspended      = errors.New("account: account suspended")
-	ErrAccountDeleted        = errors.New("account: account deleted")
-	ErrBindingCrossAccount   = errors.New("account: contributor bound to another account")
-	ErrBindingNotFound       = errors.New("account: contributor binding not found")
-	ErrBindingInvalid        = errors.New("account: invalid binding request")
-	ErrKeyUnavailable        = errors.New("account: key verifier unavailable")
-	ErrKeyProofDenied        = errors.New("account: key proof denied")
-	ErrUsernameTaken         = errors.New("account: username already taken")
-	ErrUsernameInvalid       = errors.New("account: invalid username")
-	ErrKeyInvalid            = errors.New("account: unknown key or account")
-	ErrKeyCollision          = errors.New("account: key collision, retry")
-	ErrAddressLinked         = errors.New("account: address already linked")
-	ErrSessionReuse          = errors.New("account: refresh token reused")
-	ErrSessionRevoked        = errors.New("account: session family revoked")
-	ErrSessionExpired        = errors.New("account: session expired")
+	ErrCodeExpired            = errors.New("account: code expired")
+	ErrCodeConsumed           = errors.New("account: code already consumed")
+	ErrCodeAttemptsExhausted  = errors.New("account: code attempts exhausted")
+	ErrCodeResendCooldown     = errors.New("account: resend cooldown active")
+	ErrCodeUnknown            = errors.New("account: unknown code or address")
+	ErrOIDCUnknownIssuer      = errors.New("account: unknown OIDC issuer")
+	ErrOIDCWrongAudience      = errors.New("account: OIDC audience mismatch")
+	ErrOIDCExpired            = errors.New("account: OIDC token expired")
+	ErrOIDCNonceReused        = errors.New("account: OIDC nonce already consumed")
+	ErrOIDCNonceMismatch      = errors.New("account: OIDC nonce mismatch")
+	ErrOIDCUnavailable        = errors.New("account: provider unavailable")
+	ErrLinkCrossAccount       = errors.New("account: proof belongs to another account")
+	ErrLinkEmailOnly          = errors.New("account: email match is not linking proof")
+	ErrLastLoginMethod        = errors.New("account: last login method cannot be removed")
+	ErrProviderNotLinked      = errors.New("account: provider not linked")
+	ErrAccountNotFound        = errors.New("account: unknown account")
+	ErrAccountSuspended       = errors.New("account: account suspended")
+	ErrAccountDeleted         = errors.New("account: account deleted")
+	ErrBindingCrossAccount    = errors.New("account: contributor bound to another account")
+	ErrBindingNotFound        = errors.New("account: contributor binding not found")
+	ErrBindingInvalid         = errors.New("account: invalid binding request")
+	ErrKeyUnavailable         = errors.New("account: key verifier unavailable")
+	ErrKeyProofDenied         = errors.New("account: key proof denied")
+	ErrUsernameTaken          = errors.New("account: username already taken")
+	ErrUsernameInvalid        = errors.New("account: invalid username")
+	ErrKeyInvalid             = errors.New("account: unknown key or account")
+	ErrKeyCollision           = errors.New("account: key collision, retry")
+	ErrAddressLinked          = errors.New("account: address already linked")
+	ErrSessionReuse           = errors.New("account: refresh token reused")
+	ErrSessionRevoked         = errors.New("account: session family revoked")
+	ErrSessionExpired         = errors.New("account: session expired")
+	ErrAggregateExhausted     = errors.New("account: aggregate admission exhausted")
+	ErrSessionBudgetExhausted = errors.New("account: session budget exhausted")
 )
 
 // Clock is the only time source portable logic may use; tests inject a fake.
@@ -165,6 +167,10 @@ func VerdictCode(err error) string {
 		return "session-revoked"
 	case errors.Is(err, ErrSessionExpired):
 		return "session-expired"
+	case errors.Is(err, ErrAggregateExhausted):
+		return "admission-exhausted"
+	case errors.Is(err, ErrSessionBudgetExhausted):
+		return "session-budget-exhausted"
 	default:
 		return "invalid-value"
 	}

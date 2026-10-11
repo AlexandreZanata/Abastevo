@@ -13,9 +13,12 @@ import (
 // Atomicity lives here: edits compare-and-swap the revision and
 // deletes tombstone under one lock/transaction with author checks,
 // so concurrent writers cannot fork a revision or erase foreign
-// text. Reads resolve the opaque author alias.
+// text. SEC01-C adds TryInsertComment: per-account live budget and
+// row insertion complete atomically. Reads resolve the opaque author alias.
 type CommentStore interface {
 	InsertComment(ctx context.Context, rec domain.StoredComment) error
+	TryInsertComment(ctx context.Context, rec domain.StoredComment) error
+	CountLiveCommentsByAccount(ctx context.Context, accountID string) (int, error)
 	GetComment(ctx context.Context, id string) (domain.StoredComment, bool, error)
 	EditComment(ctx context.Context, id, accountID, text string, scalars, expectedRevision int, nowUnix int64) (domain.StoredComment, error)
 	DeleteComment(ctx context.Context, id, accountID string, nowUnix int64) error
@@ -52,11 +55,18 @@ func (s *Service) SubmitComment(ctx context.Context, accountID, stationID, produ
 }
 
 func (s *Service) submit(ctx context.Context, accountID, stationID, product, parentID, raw string) (domain.StoredComment, error) {
-	if err := s.authorize(ctx, accountID); err != nil {
-		return domain.StoredComment{}, err
-	}
+	// SEC01-C invalid-first (B-BR-F03/F04): cheap shape/text checks
+	// before any store IO, so malformed floods cost no authorize,
+	// station or parent lookups.
 	target := domain.Target{StationID: strings.TrimSpace(stationID), Product: strings.TrimSpace(product)}
 	if err := target.Validate(); err != nil {
+		return domain.StoredComment{}, err
+	}
+	text, err := domain.ParseComment(raw)
+	if err != nil {
+		return domain.StoredComment{}, err
+	}
+	if err := s.authorize(ctx, accountID); err != nil {
 		return domain.StoredComment{}, err
 	}
 	exists, err := s.stationExists(ctx, target.StationID)
@@ -65,10 +75,6 @@ func (s *Service) submit(ctx context.Context, accountID, stationID, product, par
 	}
 	if !exists {
 		return domain.StoredComment{}, domain.ErrTargetInvalid
-	}
-	text, err := domain.ParseComment(raw)
-	if err != nil {
-		return domain.StoredComment{}, err
 	}
 	depth := 0
 	if parentID != "" {
@@ -100,7 +106,9 @@ func (s *Service) submit(ctx context.Context, accountID, stationID, product, par
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.Comments.InsertComment(ctx, rec); err != nil {
+	// SEC01-C per-account budget admits atomically before any row
+	// exists; over-budget refuses with ErrQuotaExceeded (429).
+	if err := s.Comments.TryInsertComment(ctx, rec); err != nil {
 		return domain.StoredComment{}, err
 	}
 	return rec, nil

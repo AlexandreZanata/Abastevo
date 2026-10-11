@@ -118,6 +118,20 @@ func NormalizeAddress(address string) string {
 	return strings.ToLower(strings.TrimSpace(address))
 }
 
+// ValidEmail reports whether address is a cheaply-checkable email shape
+// (SEC01-C, B-BR-A02): non-empty, <=254 bytes, one @ with local and domain
+// parts, no spaces. Invalid shapes refuse before any store IO so floods
+// of malformed input cost no backend reads or rows. Deeper deliverability
+// is never claimed here; the HTTP layer shares this exact predicate.
+func ValidEmail(address string) bool {
+	address = strings.TrimSpace(address)
+	if len(address) == 0 || len(address) > 254 {
+		return false
+	}
+	at := strings.IndexByte(address, '@')
+	return at > 0 && at < len(address)-1 && !strings.Contains(address, " ")
+}
+
 // AddressHash derives the PII-minimized lookup key for an address.
 func AddressHash(address string) string {
 	sum := sha256.Sum256([]byte(NormalizeAddress(address)))

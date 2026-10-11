@@ -70,6 +70,190 @@ func (m *MemStore) CountCodesSince(_ context.Context, addressHash string, sinceU
 	return n, nil
 }
 
+// CountAllCodesSince counts issued codes across all addresses since
+// sinceUnix (SEC01-C aggregate mail admission). Storage accounting
+// stays hashed: only counts travel, never addresses.
+func (m *MemStore) CountAllCodesSince(_ context.Context, sinceUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, rec := range m.codes {
+		if rec.IssuedAt >= sinceUnix {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// CountKeyAccountsSince counts key-account creations since sinceUnix
+// (SEC01-C aggregate username admission).
+func (m *MemStore) CountKeyAccountsSince(_ context.Context, sinceUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, cred := range m.keyCreds {
+		if cred.CreatedAt >= sinceUnix {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// CountLiveFamiliesByAccount counts live session families of one
+// account (SEC01-C per-account session budget): non-revoked and
+// inside the absolute refresh lifetime at nowUnix.
+func (m *MemStore) CountLiveFamiliesByAccount(_ context.Context, accountID string, nowUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, fam := range m.families {
+		if fam.AccountID != accountID {
+			continue
+		}
+		if fam.RevokedAt != 0 || domain.RefreshExpired(fam.IssuedAt, nowUnix) {
+			continue
+		}
+		n++
+	}
+	return n, nil
+}
+
+// PurgeExpiredCodes deletes code verifiers older than beforeUnix and
+// reports the removed rows (SEC01-C bounded retention). Callers pass
+// now-(CodeTTL+CodePurgeGrace); audit history inside the window stays.
+func (m *MemStore) PurgeExpiredCodes(_ context.Context, beforeUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.codes[:0]
+	purged := 0
+	for _, rec := range m.codes {
+		if rec.IssuedAt < beforeUnix {
+			purged++
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	m.codes = kept
+	m.byAddr = map[string][]int{}
+	for i, rec := range m.codes {
+		m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], i)
+	}
+	return purged, nil
+}
+
+// PurgeExpiredFamilies deletes absolutely-expired families older than
+// beforeUnix and reports the removed rows (SEC01-C bounded
+// retention). Revoked-but-unexpired families stay for reuse defense.
+func (m *MemStore) PurgeExpiredFamilies(_ context.Context, beforeUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	purged := 0
+	for id, fam := range m.families {
+		if fam.IssuedAt < beforeUnix && domain.RefreshExpired(fam.IssuedAt, beforeUnix) {
+			delete(m.families, id)
+			purged++
+		}
+	}
+	return purged, nil
+}
+
+// TryIssueCode atomically admits one code issuance (SEC01-C,
+// B-BR-A02/A05): suspended/deleted, per-address quota, aggregate
+// ceiling and resend cooldown all refuse with admitted=false (no
+// oracle, no rows), otherwise the verifier persists and admitted=true.
+// One mutex guards check+insert so parallel floods cannot overshoot.
+func (m *MemStore) TryIssueCode(_ context.Context, rec domain.EmailCode, nowUnix int64) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if acc, ok := m.accounts[rec.AddressHash]; ok {
+		if acc.Status != domain.StatusActive {
+			return false, nil
+		}
+	}
+	perAddr := 0
+	for _, i := range m.byAddr[rec.AddressHash] {
+		if m.codes[i].IssuedAt >= nowUnix-3600 {
+			perAddr++
+		}
+	}
+	if perAddr >= domain.MaxCodesPerAddressPerHour {
+		return false, nil
+	}
+	agg := 0
+	for _, c := range m.codes {
+		if c.IssuedAt >= nowUnix-3600 {
+			agg++
+		}
+	}
+	if agg >= domain.MaxAggregateCodesPerHour {
+		return false, nil
+	}
+	if idx := m.byAddr[rec.AddressHash]; len(idx) > 0 {
+		latest := m.codes[idx[len(idx)-1]]
+		if latest.ConsumedAt == 0 && !domain.CodeExpired(latest.IssuedAt, nowUnix) &&
+			!domain.ResendAllowed(latest.IssuedAt, nowUnix) {
+			return false, nil
+		}
+	}
+	m.codes = append(m.codes, rec)
+	m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], len(m.codes)-1)
+	return true, nil
+}
+
+// TryCreateKeyAccount atomically admits one key-account creation
+// (SEC01-C, B-BR-A01/A05): aggregate hourly ceiling refuses with
+// ErrAggregateExhausted; username/key races keep their frozen
+// verdicts. One lock covers count+insert.
+func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, c := range m.keyCreds {
+		if c.CreatedAt >= nowUnix-3600 {
+			n++
+		}
+	}
+	if n >= domain.MaxKeyAccountsPerHour {
+		return domain.ErrAggregateExhausted
+	}
+	if owner, ok := m.keyByUsername[cred.UsernameHash]; ok && owner != acc.ID {
+		return domain.ErrUsernameTaken
+	}
+	if owner, ok := m.keyByLookup[cred.KeyLookup]; ok && owner != acc.ID {
+		return domain.ErrKeyCollision
+	}
+	m.accountsByID[acc.ID] = acc
+	m.keyCreds[acc.ID] = cred
+	m.keyByUsername[cred.UsernameHash] = acc.ID
+	m.keyByLookup[cred.KeyLookup] = acc.ID
+	return nil
+}
+
+// TryCreateFamily atomically admits one session family (SEC01-C,
+// B-BR-A04): live families at cap refuse with
+// ErrSessionBudgetExhausted. Revoked and absolutely-expired rows do
+// not consume budget.
+func (m *MemStore) TryCreateFamily(_ context.Context, fam domain.SessionFamily, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, f := range m.families {
+		if f.AccountID != fam.AccountID {
+			continue
+		}
+		if f.RevokedAt != 0 || domain.RefreshExpired(f.IssuedAt, nowUnix) {
+			continue
+		}
+		n++
+	}
+	if n >= domain.MaxLiveSessionsPerAccount {
+		return domain.ErrSessionBudgetExhausted
+	}
+	cp := fam
+	m.families[fam.ID] = &cp
+	return nil
+}
+
 func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.EmailCode, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

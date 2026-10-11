@@ -38,6 +38,22 @@ func (q *Queries) AttributeCommentBusiness(ctx context.Context, arg AttributeCom
 	return result.RowsAffected(), nil
 }
 
+const countLiveCommentsByAccount = `-- name: CountLiveCommentsByAccount :one
+
+SELECT count(*)::bigint
+FROM feedback_comments
+WHERE account_id = $1 AND deleted_at IS NULL
+`
+
+// SEC01-C per-account comment accounting (B-BR-F03/F04): live rows
+// only; tombstoned history stays for audit but frees budget.
+func (q *Queries) CountLiveCommentsByAccount(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveCommentsByAccount, accountID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const flagComment = `-- name: FlagComment :execrows
 UPDATE feedback_comments SET visibility = 'flagged'
 WHERE id = $1 AND visibility = 'visible' AND deleted_at IS NULL

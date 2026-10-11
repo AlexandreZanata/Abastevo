@@ -95,6 +95,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.code-expired", "code expired"
 	case "code-attempts-exhausted":
 		status, code, msg = http.StatusUnauthorized, "account.code-attempts-exhausted", "code locked"
+	case "admission-exhausted":
+		status, code, msg = http.StatusTooManyRequests, "account.admission-exhausted", "admission budget exhausted, retry later"
+	case "session-budget-exhausted":
+		status, code, msg = http.StatusTooManyRequests, "account.session-budget-exhausted", "session budget exhausted, retry later"
 	case "session-reuse-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-reuse-revoked", "session revoked"
 	case "session-revoked":
@@ -165,12 +169,7 @@ func write(w http.ResponseWriter, r *http.Request, status int, body any) {
 }
 
 func validEmail(address string) bool {
-	address = strings.TrimSpace(address)
-	if len(address) == 0 || len(address) > 254 {
-		return false
-	}
-	at := strings.IndexByte(address, '@')
-	return at > 0 && at < len(address)-1 && !strings.Contains(address, " ")
+	return domain.ValidEmail(address)
 }
 
 func (h Handler) requestCode(w http.ResponseWriter, r *http.Request) {

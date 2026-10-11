@@ -47,6 +47,22 @@ func (q *Queries) CountAddressesByAccount(ctx context.Context, accountID pgtype.
 	return column_1, err
 }
 
+const countAllCodesSince = `-- name: CountAllCodesSince :one
+
+SELECT count(*)::bigint
+FROM account_email_codes
+WHERE issued_at >= $1
+`
+
+// SEC01-C admission accounting (B-BR-A01/A02/A04/A05). Counts only;
+// no raw addresses/usernames travel, only hashes and totals.
+func (q *Queries) CountAllCodesSince(ctx context.Context, since pgtype.Timestamptz) (int64, error) {
+	row := q.db.QueryRow(ctx, countAllCodesSince, since)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countCodesSince = `-- name: CountCodesSince :one
 SELECT count(*)::bigint
 FROM account_email_codes
@@ -60,6 +76,39 @@ type CountCodesSinceParams struct {
 
 func (q *Queries) CountCodesSince(ctx context.Context, arg CountCodesSinceParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countCodesSince, arg.AddressHash, arg.Since)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countKeyAccountsSince = `-- name: CountKeyAccountsSince :one
+SELECT count(*)::bigint
+FROM account_key_credentials
+WHERE created_at >= $1
+`
+
+func (q *Queries) CountKeyAccountsSince(ctx context.Context, sinceUnix int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countKeyAccountsSince, sinceUnix)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countLiveFamiliesByAccount = `-- name: CountLiveFamiliesByAccount :one
+SELECT count(*)::bigint
+FROM account_session_families
+WHERE account_id = $1
+  AND revoked_at IS NULL
+  AND issued_at >= $2
+`
+
+type CountLiveFamiliesByAccountParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	LiveSince pgtype.Timestamptz `json:"live_since"`
+}
+
+func (q *Queries) CountLiveFamiliesByAccount(ctx context.Context, arg CountLiveFamiliesByAccountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveFamiliesByAccount, arg.AccountID, arg.LiveSince)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -755,6 +804,36 @@ func (q *Queries) LockLatestCode(ctx context.Context, addressHash string) (Accou
 		&i.ConsumedAt,
 	)
 	return i, err
+}
+
+const purgeExpiredCodes = `-- name: PurgeExpiredCodes :execrows
+
+DELETE FROM account_email_codes
+WHERE issued_at < $1
+`
+
+// SEC01-C bounded retention (FREE_ACCOUNT_ACCESS inventory): purge
+// code verifiers and absolutely-expired families past the caller's
+// cutoff. Callers pass now-(TTL+grace); audit inside the window stays.
+func (q *Queries) PurgeExpiredCodes(ctx context.Context, before pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredCodes, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeExpiredFamilies = `-- name: PurgeExpiredFamilies :execrows
+DELETE FROM account_session_families
+WHERE issued_at < $1
+`
+
+func (q *Queries) PurgeExpiredFamilies(ctx context.Context, before pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredFamilies, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const revokeAccountFamilies = `-- name: RevokeAccountFamilies :exec

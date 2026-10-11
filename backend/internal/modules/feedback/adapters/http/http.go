@@ -87,6 +87,8 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	status, code, msg := http.StatusInternalServerError, "feedback.unavailable", "feedback service unavailable"
 	switch domain.VerdictCode(err) {
+	case "quota-exceeded":
+		status, code, msg = http.StatusTooManyRequests, "feedback.quota-exceeded", "comment budget exhausted, retry later"
 	case "text-empty", "text-too-long", "text-invalid-encoding", "target-invalid", "parent-invalid":
 		status, code, msg = http.StatusBadRequest, "feedback."+domain.VerdictCode(err), "invalid feedback input"
 	case "rating-out-of-range":
