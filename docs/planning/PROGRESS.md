@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR34 2026-10-11: LOCAL_DONE on branch `landing`, pending-media sweep. Help-rules capture + TU30 page; SEARCH chip entry located in code; missingRows rewritten with 12 owned absences (onboarding/fixtures/gated entries need emulator or owner). Manifest 25/75. Build/check green, 40/40 tests. Next: LR35 scoped union.
+- Landing redesign LR35 2026-10-11: LOCAL_DONE on branch `landing`, scoped union once at `3da311e`. Typecheck/build/check green, 40/40 tests, gate selection 18/18, diff-check + secrets clean; recorded in [evidence](../release-evidence/landing-redesign.md). No repeat without new change. Next: LR36 delivery decision.
+
+- Landing redesign LR34 2026-10-11: LOCAL_DONE on branch `landing`, pending-media sweep.
 
 - Landing redesign LR33 2026-10-11: LOCAL_DONE on branch `landing`, final review.
 

@@ -41,6 +41,14 @@ Measured on emitted `landing/dist` (not projections): CSS gzip 4,075 B
 check` green. No new images added; full Core Web Vitals still needs field
 measurement after deployment (owner).
 
+## LR35 scoped union — 2026-10-11
+
+Single union run at `3da311e` (no repeat without new failure/change):
+landing typecheck green, build green (CSS `a63f6f37`, JS `72d6a45f`,
+prelaunch), `npm run check` PASSED, landing tests 40/40, gate selection
+18/18 (`test-gate-selection.sh`), `git diff --check` clean, secret scan
+passed. No backend/PostGIS/Android suites: landing-only scope per plan.
+
 ## LR32 accessibility record — 2026-10-11
 
 Measured/static (not browser) exit: text contrast navy/white 16.92,
