@@ -2,4 +2,11 @@
 <full-backup-content>
     <!-- Auth keys/tokens and device identity must never leave via OS backup. -->
     <exclude domain="sharedpref" path="." />
+    <!-- SEC05-D: the Room database carries private draft/owner/evidence
+        metadata, so it never enters OS backup either. Sealed photos live
+        under cacheDir (never backed up by the platform) and excluded auth
+        preferences stay above. Public offline packs re-download on next
+        sync after a restore; the app boots a fresh logged-out state when
+        no database is present (existing fresh-install path). -->
+    <exclude domain="database" path="." />
 </full-backup-content>
