@@ -63,6 +63,15 @@ test('robots: allows crawling and references canonical sitemap', () => {
       'Robots must point to canonical sitemap'
     );
     assert.ok(!robotsContent.includes('{{CANONICAL_ORIGIN}}'), 'Robots must not contain unreplaced placeholders');
+
+    // Crawler separation (LR28): search allowed, training not granted, fetchers transparent.
+    for (const token of ['OAI-SearchBot', 'ChatGPT-User', 'Perplexity-User']) {
+      assert.ok(robotsContent.includes(`User-agent: ${token}`), `Robots must name ${token}`);
+    }
+    for (const token of ['GPTBot', 'ClaudeBot']) {
+      const section = robotsContent.match(new RegExp(`User-agent: ${token}\\s*\\nDisallow: /`));
+      assert.ok(section, `Robots must disallow training crawler ${token}`);
+    }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }

@@ -765,6 +765,14 @@ Do not claim this plan installed every possible indexer.
   with no guaranteed inclusion or ranking and no Google IndexNow claim.
 - [Core Web Vitals](https://developers.google.com/search/docs/appearance/core-web-vitals):
   distinguish field user measurements from local lab diagnostics.
+- LR28 re-verified 2026-10-11: OpenAI crawler docs still separate OAI-SearchBot
+  (search answers, independent opt-out) from GPTBot (training) and ChatGPT-User
+  (user-triggered, robots may not apply); a 2026 user-agent table attests
+  ClaudeBot (Anthropic training) and Perplexity-User (on-demand agent); IndexNow
+  serves Bing/Yandex/Seznam/Naver while Google declines it and requires key
+  ownership. Implemented in `robots.txt`: search allowed, GPTBot/ClaudeBot
+  disallowed, fetchers listed for transparency. Submissions stay pending owner
+  action.
 
 Adopt from Zaflas: centralized factual head fields; stable/deduplicated entity IDs;
 route-aware metadata tests; sitemap/robots/llms consistency; optional clean Markdown
