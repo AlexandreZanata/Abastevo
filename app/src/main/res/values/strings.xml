@@ -506,6 +506,19 @@
     <string name="community_helpful_guest">Sign in to a free account to vote</string>
     <string name="community_helpful_guest_body">Votes need a free account so one person holds one vote. Browsing stays anonymous.</string>
 
+    <!-- Training consent (CS11B: optional, default OFF, server authoritative) -->
+    <string name="training_consent_title">Improve price recognition</string>
+    <string name="training_consent_body">Help improve price recognition with sanitized copies of photos you explicitly allow. Originals never leave the review pipeline and collection stays off unless you opt in.</string>
+    <string name="training_consent_on">On</string>
+    <string name="training_consent_off">Off</string>
+    <string name="training_consent_terms">Terms: %1$s</string>
+    <string name="training_consent_regrant">Terms changed since your last review — please review and confirm again.</string>
+    <string name="training_consent_pending">Revocation pending — it uploads on the next connection.</string>
+    <string name="training_consent_delete_note">Turning off stops new permissions immediately and deletes your training copies.</string>
+    <string name="training_consent_rights">Your rights and contact</string>
+    <string name="training_consent_rejected">Not recorded (%1$s)</string>
+    <string name="training_consent_offline">No connection — retry when online.</string>
+
     <!-- Community privacy (P10-T08: what actually leaves the device) -->
     <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
     <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
