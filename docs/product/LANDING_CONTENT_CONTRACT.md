@@ -51,7 +51,7 @@ Public wording follows the class of each capability. Classes are checked against
 | Optional one-shot device location, navigation to Maps/Waze, local price-drop alerts | README imported features | E1 |
 | Community price observations, source/date/condition display, “unknown/disputed” outcomes | [Product contract](PRODUCT_CONTRACT.md), PROGRESS P19–P24 | E2 |
 | Photo contribution with private evidence limited to 24 hours | [Local media policy](../security/LOCAL_MEDIA_LOCATION_POLICY.md), PROGRESS P21 | E2 |
-| Free accounts (email code, Google, Apple), ratings, 280-character comments, votes, reports | [Free account access](../security/FREE_ACCOUNT_ACCESS.md), [moderation policy](COMMUNITY_MODERATION.md), PROGRESS P22 | E2 |
+| Free accounts (username + saved account key; provider/email paths code-present but device-gated, tutorials pending proof), ratings, 280-character comments, votes, reports | [Free account access](../security/FREE_ACCOUNT_ACCESS.md), [moderation policy](COMMUNITY_MODERATION.md), PROGRESS P22, LR01 route audit (`AuthViewModel`, `AnpNavGraph`) | E2 |
 | Paid optional hosted benefits | Product contract (LATER) | P — not mentioned except the “payment never buys trust” commitment |
 | Ethanol-versus-gasoline comparison | No verified feature | Excluded from copy and FAQ until a feature exists |
 | “Cheapest near me”, savings figures, coverage claims, user counts, ratings | No evidence | Forbidden (B-BR-L01) |

@@ -37,6 +37,53 @@ Primary current account flow is username/key. Legacy providers/email, future
 helpfulness, offline expansion and training consent need owner implementation
 and actual UI capture before active instructions. Do not build them for marketing.
 
+## Capability freeze (LR01) — 2026-10-11
+
+Checked read-only against `app/.../navigation/Routes.kt` (25 route constants),
+`AnpNavGraph.kt` (every constant wired to a screen) and
+`ui/auth/AuthViewModel.kt` (username/key primary flow). Source-present is not
+device-ready; capture availability stays in the media manifest.
+
+| Route constant(s) | Wired screen | Chapter |
+|---|---|---|
+| ONBOARDING | OnboardingScreen | TU01 |
+| LOCATION | LocationPickerScreen | TU02 |
+| HOME / EXPLORE | HomeScreen | TU03 |
+| SEARCH | SearchScreen | TU04 |
+| PRICES | PricesScreen | TU05 |
+| WEEK_PICKER | WeekPickerRoute | TU06 |
+| HISTORY | HistoryScreen | TU07 |
+| STATIONS / STATIONS_WITH_FUEL | StationsScreen | TU08 |
+| STATION_PAGE | StationPageScreen | TU09 (+TU18/TU19/TU21 controls) |
+| COMMUNITY | CommunityScreen | TU10 |
+| AUTH | AuthRoute/AuthScreen | TU11/TU12 |
+| ACCOUNT | AccountScreen | TU12/TU13 |
+| CAPTURE / CAPTURE_WITH_TARGET | CaptureScreen | TU14 |
+| (capture OCR/review components) | review step | TU15 |
+| (PhotoSubmissionFeedback/outbox) | send states | TU16 |
+| CONTRIBUTIONS | MyContributionsScreen | TU17 |
+| SUGGEST | SuggestStationScreen | TU22 |
+| STATION_PROFILE | StationProfileScreen | TU23 |
+| STATION_CLAIM | StationClaimScreen | TU24 |
+| STATION_MANAGEMENT | StationManagementScreen | TU25 |
+| VEHICLES | VehicleScreen | TU26 (+TU27 toggle) |
+| SETTINGS (+PROFILE entry) | SettingsScreen/ProfileScreen | TU28 (+TU13/TU17/TU26/TU30 entries) |
+| (all routes) | cached/freshness behavior | TU29 |
+| HELP (+PROFILE entry) | HelpScreen | TU30 |
+
+Explicitly gated (no active lesson, no invented screens):
+
+- **TU20 helpfulness:** PENDING. CS01 is domain/contract only; no Android
+  helpfulness UI exists. VALID/INVALID feedback (TU18/TU19) stays distinct.
+- **Offline city packs / durable social queues:** PLANNED (CS15–CS25). TU29
+  teaches only actual per-route cached behavior.
+- **Training consent switch:** PROPOSED, not active. TU28 keeps it pending.
+- **Email/provider auth:** code-present (`AuthScreen` email field, AUTH
+  provider deep-link args) but the native provider SDK is device-gated and the
+  working primary flow is username + saved account key. Tutorials teach
+  username/key; provider/email appendices stay pending runtime proof.
+- **PMQC UI, paid benefits, iOS:** no mobile control evidence; pending.
+
 ## Driver and discovery lessons
 
 ### TU01 — Primeiros passos (primeiros-passos)
