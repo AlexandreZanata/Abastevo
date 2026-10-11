@@ -766,9 +766,7 @@ func run() error {
 		// refuses explicitly instead of misbehaving. Namespace writes
 		// require configured storage, same as erasure deletes.
 		"privacy-training-promote": privacyjobs.Promote{
-			LoadSource: func(ctx context.Context, imageID string) ([]byte, error) {
-				return nil, errors.New("training promotion: quarantine source not configured")
-			},
+			LoadSource: privacyadapters.TrainingSourceUnavailable,
 			Propose: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
 				return privacyapp.Propose(ctx, promotePorts, caller, dto)
 			},

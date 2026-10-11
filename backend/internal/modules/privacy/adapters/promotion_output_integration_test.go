@@ -420,3 +420,23 @@ func TestPromotionReplayKeepsCommittedDateAndQueuedRevisionOnSQL(t *testing.T) {
 		t.Fatal("queued revision mismatch accepted", err)
 	}
 }
+
+func TestUnqualifiedContentCannotCreateInventoryOnSQL(t *testing.T) {
+	s := promotionPG(t)
+	ctx := context.Background()
+	p := app.PromotePorts{ConsentPorts: consentAppPorts(NewConsentStore(s.pool)), Inventory: s, Sanitizer: unqualifiedSanitizer{}}
+	_, body, err := app.Propose(ctx, p, app.Caller{ContributorID: "c1"}, app.PromotionDTO{ConsentRevision: 1, ImageID: "unqualified-image", CapturedAt: time.Now(), PerImageAllowed: true, Source: testJPEG(t, 32, 16)})
+	if err == nil || len(body) != 0 {
+		t.Fatal("unqualified image was proposed", len(body), err)
+	}
+	var rows int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM privacy_training_derivatives`).Scan(&rows); err != nil || rows != 0 {
+		t.Fatal("uncertain input persisted", rows, err)
+	}
+}
+
+type unqualifiedSanitizer struct{}
+
+func (unqualifiedSanitizer) Sanitize(ctx context.Context, source []byte) ([]byte, domain.SanitizeVerdict, error) {
+	return SanitizeImage(ctx, source)
+}
