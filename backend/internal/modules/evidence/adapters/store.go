@@ -627,6 +627,30 @@ func (s *Store) OverdueFinals(ctx context.Context, cutoff time.Time, batch int) 
 	return out, nil
 }
 
+// OverdueOriginals lists quarantine originals past their deadline
+// with bytes possibly present (SEC05-A): the originals half of the
+// failing-policy signal. Bounded oldest-first.
+func (s *Store) OverdueOriginals(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error) {
+	n, err := checkBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := evidence.New(s.pool).OverdueOriginals(ctx, evidence.OverdueOriginalsParams{
+		Cutoff: pgTime(cutoff), Batch: n,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.SessionRef, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.SessionRef{
+			ID: uuidString(row.ID), QuarantineKey: row.QuarantineKey,
+			Status: row.Status, CreatedAt: row.CreatedAt.Time,
+		})
+	}
+	return out, nil
+}
+
 // MarkFinalDeleted records removed sanitized bytes, keeping the row with
 // its duplicate-signal hashes to the 90-day bound. Convergent on repeat.
 func (s *Store) MarkFinalDeleted(ctx context.Context, id string) error {

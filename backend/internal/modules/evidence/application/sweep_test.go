@@ -24,6 +24,8 @@ type fakeSweepStore struct {
 	failExpire error
 	health     IntakeHealth
 	healthErr  error
+	// overdueOriginals scripts the SEC05-A originals audit.
+	overdueOriginals []domain.SessionRef
 }
 
 func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
@@ -65,6 +67,10 @@ func (f *fakeSweepStore) StaleFinalCandidates(_ context.Context, _ time.Time, _ 
 
 func (f *fakeSweepStore) OverdueFinals(_ context.Context, _ time.Time, _ int) ([]domain.ObjectRef, error) {
 	return f.overdue, nil
+}
+
+func (f *fakeSweepStore) OverdueOriginals(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
+	return f.overdueOriginals, nil
 }
 
 func (f *fakeSweepStore) MarkFinalDeleted(_ context.Context, id string) error {

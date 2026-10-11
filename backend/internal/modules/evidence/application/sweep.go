@@ -41,6 +41,10 @@ type SweepStore interface {
 	QuarantineCandidates(ctx context.Context, oldCutoff time.Time, batch int) ([]domain.SessionRef, error)
 	StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error)
 	OverdueFinals(ctx context.Context, cutoff time.Time, batch int) ([]domain.ObjectRef, error)
+	// OverdueOriginals lists quarantine originals past their deadline
+	// with bytes possibly present (SEC05-A): the originals half of
+	// the failing-policy signal. Bounded oldest-first.
+	OverdueOriginals(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
 	MarkFinalDeleted(ctx context.Context, id string) error
 	PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error)
 	IntakeHealth(ctx context.Context, since, now time.Time) (IntakeHealth, error)
@@ -112,14 +116,20 @@ func FinalDue(obj domain.ObjectRef, now time.Time) bool {
 // OverdueReport is the failing-policy signal (B-BR-M04): copies past
 // their deadline whose bytes may still be present. Any count above
 // zero fails the enforcement audit and trips the intake breaker.
+// Finals and Originals are reported separately so alarms name which
+// namespace lags; Oldest* name the worst lag per namespace.
 type OverdueReport struct {
-	Count  int
-	Oldest time.Time
+	Count          int
+	Oldest         time.Time
+	Originals      int
+	OldestOriginal time.Time
 }
 
 // AuditOverdue lists the overdue signal bounded oldest-first: the
 // count plus the oldest first receipt, so alarms name the lag. Only
 // database errors fail; an empty ledger is a healthy zero.
+// SEC05-A: quarantine originals audit alongside finals — an overdue
+// original with a failed deletion no longer reports healthy zero.
 func AuditOverdue(ctx context.Context, store SweepStore, now time.Time, batch int) (OverdueReport, error) {
 	var rep OverdueReport
 	if batch < 1 {
@@ -135,7 +145,23 @@ func AuditOverdue(ctx context.Context, store SweepStore, now time.Time, batch in
 		}
 		rep.Count++
 	}
+	originals, err := store.OverdueOriginals(ctx, now.Add(-CopyRetention), batch)
+	if err != nil {
+		return rep, err
+	}
+	for _, sess := range originals {
+		if rep.Originals == 0 {
+			rep.OldestOriginal = sess.CreatedAt
+		}
+		rep.Originals++
+	}
 	return rep, nil
+}
+
+// Unhealthy reports whether the intake breaker must trip: any overdue
+// copy, either namespace.
+func (r OverdueReport) Unhealthy() bool {
+	return r.Count > 0 || r.Originals > 0
 }
 
 // Sweep runs one retention pass in dependency order: idle expiry first

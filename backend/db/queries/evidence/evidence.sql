@@ -117,7 +117,7 @@ LIMIT @batch;
 
 -- OverdueFinals lists copies past their 24 h deadline whose bytes may
 -- still be present: the failing-policy signal for the intake circuit
--- breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+-- breaker and the overdue audit. Bounded, newest
 -- deadline first is unnecessary; oldest first surfaces the worst lag.
 
 -- name: OverdueFinals :many
@@ -126,6 +126,19 @@ FROM evidence_objects
 WHERE final_deleted_at IS NULL
     AND COALESCE(received_at, created_at) < @cutoff
 ORDER BY COALESCE(received_at, created_at) ASC
+LIMIT @batch;
+
+-- SEC05-A overdue originals: quarantine originals past their 24 h
+-- deadline whose bytes may still be present (no deletion marker).
+-- Strict deadline anchor (created_at): terminal status, live jobs
+-- and stuck validation do not excuse overdue bytes — an overrun is
+-- itself a lag signal. Bounded oldest-first for the breaker/audit.
+-- name: OverdueOriginals :many
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE quarantine_deleted_at IS NULL
+    AND created_at <= @cutoff
+ORDER BY created_at ASC
 LIMIT @batch;
 
 -- name: MarkFinalDeleted :execrows

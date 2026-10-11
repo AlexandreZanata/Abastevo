@@ -835,7 +835,7 @@ type OverdueFinalsRow struct {
 
 // OverdueFinals lists copies past their 24 h deadline whose bytes may
 // still be present: the failing-policy signal for the intake circuit
-// breaker and the overdue audit (P15-T04, B-BR-M04). Bounded, newest
+// breaker and the overdue audit. Bounded, newest
 // deadline first is unnecessary; oldest first surfaces the worst lag.
 func (q *Queries) OverdueFinals(ctx context.Context, arg OverdueFinalsParams) ([]OverdueFinalsRow, error) {
 	rows, err := q.db.Query(ctx, overdueFinals, arg.Cutoff, arg.Batch)
@@ -851,6 +851,57 @@ func (q *Queries) OverdueFinals(ctx context.Context, arg OverdueFinalsParams) ([
 			&i.FinalKey,
 			&i.CreatedAt,
 			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const overdueOriginals = `-- name: OverdueOriginals :many
+SELECT id, quarantine_key, status, created_at
+FROM evidence_sessions
+WHERE quarantine_deleted_at IS NULL
+    AND created_at <= $1
+ORDER BY created_at ASC
+LIMIT $2
+`
+
+type OverdueOriginalsParams struct {
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+	Batch  int32              `json:"batch"`
+}
+
+type OverdueOriginalsRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	QuarantineKey string             `json:"quarantine_key"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// SEC05-A overdue originals: quarantine originals past their 24 h
+// deadline whose bytes may still be present (no deletion marker).
+// Strict deadline anchor (created_at): terminal status, live jobs
+// and stuck validation do not excuse overdue bytes — an overrun is
+// itself a lag signal. Bounded oldest-first for the breaker/audit.
+func (q *Queries) OverdueOriginals(ctx context.Context, arg OverdueOriginalsParams) ([]OverdueOriginalsRow, error) {
+	rows, err := q.db.Query(ctx, overdueOriginals, arg.Cutoff, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OverdueOriginalsRow
+	for rows.Next() {
+		var i OverdueOriginalsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.QuarantineKey,
+			&i.Status,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

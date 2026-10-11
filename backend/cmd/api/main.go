@@ -837,11 +837,14 @@ func run() error {
 			// Intake circuit breaker (B-BR-M04): any copy past its
 			// 24 h deadline with bytes still present stops new
 			// intake until the hourly sweeper catches up.
-			overdue, err := evidenceStore.OverdueFinals(ctx, time.Now().Add(-evidenceapp.CopyRetention), 1)
+			// SEC05-A: finals AND quarantine originals — an
+			// overdue original with a failed deletion trips the
+			// breaker exactly like an overdue final.
+			overdue, err := evidenceapp.AuditOverdue(ctx, evidenceStore, time.Now(), 1)
 			if err != nil {
 				return err
 			}
-			if len(overdue) > 0 {
+			if overdue.Unhealthy() {
 				return evidenceapp.ErrEnforcementUnhealthy
 			}
 			return nil
