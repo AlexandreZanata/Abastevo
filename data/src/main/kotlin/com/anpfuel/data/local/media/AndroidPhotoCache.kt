@@ -17,6 +17,16 @@ import java.io.File
  * `[A-Za-z0-9_-]+` refuse the write: file names never escape the
  * directory. A missing keystore fails every write closed (nothing
  * lands unsealed) while reads still answer null.
+ *
+ * SEC05-C cache policy v1: expiry is the portable 24 h predicate,
+ * plus a 1 h future tolerance — captures modestly ahead of the
+ * device clock (honest skew) stay live, while far-future captures
+ * (rollback/tamper) refuse and delete. Abandoned `.tmp` siblings
+ * purge after a 1 h file-age grace (live writers rename within one
+ * call, so the grace can never race them; rollback keeps them,
+ * never deletes). Lifetime derives from the sealed envelope, so it
+ * survives restart/reboot; a powered-off phone deletes on its next
+ * run (documented limitation).
  */
 class AndroidPhotoCache(
     private val dir: File,
@@ -56,7 +66,7 @@ class AndroidPhotoCache(
             file.delete()
             return null
         }
-        if (PortablePhoto.isTransientExpired(entry.capturedAtMillis, nowMillis())) {
+        if (isCacheExpired(entry.capturedAtMillis, nowMillis())) {
             file.delete()
             return null
         }
@@ -67,6 +77,9 @@ class AndroidPhotoCache(
         if (!ID_PATTERN.matches(id)) return
         try {
             File(dir, FILE_PREFIX + id).delete()
+            // Abandoned writes share the id: discard covers the
+            // temporary sibling too.
+            File(dir, FILE_PREFIX + id + TMP_SUFFIX).delete()
         } catch (_: Exception) {
             // Fail closed: the entry stays until the next sweep.
         }
@@ -75,13 +88,27 @@ class AndroidPhotoCache(
     override fun sweepExpired(now: Long): Int {
         var purged = 0
         val files = try {
-            dir.listFiles { f -> f.isFile && f.name.startsWith(FILE_PREFIX) && !f.name.endsWith(TMP_SUFFIX) }
+            dir.listFiles { f -> f.isFile && f.name.startsWith(FILE_PREFIX) }
                 ?: return 0
         } catch (_: Exception) {
             return 0
         }
+        // Stale abandoned writes go first by file age (no envelope to
+        // read, no owner to resolve). The grace dwarfs one atomic
+        // put call, so live writers never race it; rollback keeps
+        // them, never deletes.
+        for (file in files) {
+            if (!file.name.endsWith(TMP_SUFFIX)) continue
+            val age = try {
+                now - file.lastModified()
+            } catch (_: Exception) {
+                continue
+            }
+            if (age >= TMP_GRACE_MILLIS && file.delete()) purged++
+        }
         val key = keys.getOrCreateKey(alias)
         for (file in files) {
+            if (file.name.endsWith(TMP_SUFFIX)) continue
             val expired = if (key == null) {
                 true
             } else {
@@ -91,7 +118,7 @@ class AndroidPhotoCache(
                     null
                 }
                 val entry = envelope?.let { PhotoBlobSeal.open(it, key) }
-                entry == null || PortablePhoto.isTransientExpired(entry.capturedAtMillis, now)
+                entry == null || isCacheExpired(entry.capturedAtMillis, now)
             }
             if (expired && file.delete()) purged++
         }
@@ -104,5 +131,14 @@ class AndroidPhotoCache(
         const val FILE_PREFIX: String = "photo_"
         const val TMP_SUFFIX: String = ".tmp"
         val ID_PATTERN: Regex = Regex("[A-Za-z0-9_-]+")
+        /** Abandoned-write grace: live writers rename within one call. */
+        const val TMP_GRACE_MILLIS: Long = 3_600_000L
+        /** Honest clock-skew window; farther futures refuse as tamper. */
+        const val FUTURE_TOLERANCE_MILLIS: Long = 3_600_000L
+
+        /** Cache expiry: portable 24 h predicate plus the future policy. */
+        fun isCacheExpired(capturedAtMillis: Long, nowMillis: Long): Boolean =
+            PortablePhoto.isTransientExpired(capturedAtMillis, nowMillis) ||
+                capturedAtMillis - nowMillis > FUTURE_TOLERANCE_MILLIS
     }
 }
