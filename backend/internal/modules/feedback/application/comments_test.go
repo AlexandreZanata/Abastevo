@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
@@ -11,6 +12,7 @@ import (
 
 func testCommentService(gate AccountGate) (*Service, *MemStore) {
 	store := NewMemStore()
+	var mu sync.Mutex
 	var n int
 	return &Service{
 		Clock:         &fakeClock{now: 1_700_000_000},
@@ -19,6 +21,10 @@ func testCommentService(gate AccountGate) (*Service, *MemStore) {
 		CheckAccount:  gate,
 		StationExists: knownStations,
 		IDGen: func() (string, error) {
+			// SEC09-A: parallel admission tests share this generator;
+			// the counter stays race-clean under -race.
+			mu.Lock()
+			defer mu.Unlock()
 			n++
 			return "comment-" + string(rune('0'+n)), nil
 		},
