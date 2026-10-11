@@ -467,3 +467,22 @@ func TestLostKeyHasNoRecovery(t *testing.T) {
 		t.Error("unregistered key rotated")
 	}
 }
+
+func TestAttributionTokenSurvivesRotation(t *testing.T) {
+	pool := freshRotationPool(t)
+	ctx := context.Background()
+	reg := NewRegistrar(pool)
+	oldPriv, oldFp, enrolled := enrollKey(t, pool)
+	before, err := reg.AttributionToken(ctx, enrolled.ContributorID)
+	if err != nil || before == "" {
+		t.Fatalf("token = %q, %v", before, err)
+	}
+	newPriv, _, _ := testKey(t)
+	if _, err := rotateKeys(t, pool, oldPriv, oldFp, newPriv); err != nil {
+		t.Fatalf("rotate: %v", err)
+	}
+	after, err := reg.AttributionToken(ctx, enrolled.ContributorID)
+	if err != nil || after != before {
+		t.Fatalf("token changed across rotation: %q -> %q (%v)", before, after, err)
+	}
+}
