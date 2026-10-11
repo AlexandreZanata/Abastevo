@@ -37,6 +37,7 @@ visible state, privacy review and capture limitations. Open individual files:
 - [Profile connected, demo account](screenshots/profile-connected.png) (LR17: session entries only, no key in pixels)
 - [Capture entry, station required](screenshots/capture-entry.png) (LR18: degraded list, shutter disabled, dev toggle untouched)
 - [Verification rules dialog](screenshots/rules-dialog.png) (LR19: read-only, dismissed, nothing reported)
+- [Vehicle form blank, dark](screenshots/vehicle-form-dark.png) (LR20: nothing typed, toggled or saved)
 - [Guest profile](screenshots/profile-guest.png)
 - [Vehicle list empty state](screenshots/vehicles-empty.png)
 - [Blank vehicle form](screenshots/vehicle-form.png)

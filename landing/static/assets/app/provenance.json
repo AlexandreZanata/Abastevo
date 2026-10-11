@@ -495,6 +495,30 @@
       "height": 2401,
       "bytes": 84690,
       "sha256": "ae31bb7ec1bc1b3bb731782affddd07f25898b5330dbcf785e29aff60308b979"
+    },
+    {
+      "file": "vehicle-form-dark-360w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 19168,
+      "sha256": "18b98c4063baa7e2718785f098e9a0b9b8499fcd5ea93dd7dda33cbf7dde1bc6"
+    },
+    {
+      "file": "vehicle-form-dark-720w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 42734,
+      "sha256": "7eda4001a55966592ad8adce3977f7f879a75602f718da6632684b19541423d3"
+    },
+    {
+      "file": "vehicle-form-dark-1080w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 69230,
+      "sha256": "bede0331f2b85e695cdedac91d0e379fde1442b3582d94ac4d2b4d5ce399916f"
     }
   ]
 }

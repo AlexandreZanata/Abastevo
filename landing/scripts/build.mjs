@@ -222,6 +222,7 @@ export function build(options = {}) {
       { srcRel: 'como-usar/conta-e-privacidade/index.html', destRel: 'como-usar/conta-e-privacidade/index.html' },
       { srcRel: 'como-usar/fotografar-preco/index.html', destRel: 'como-usar/fotografar-preco/index.html' },
       { srcRel: 'como-usar/denunciar-abuso/index.html', destRel: 'como-usar/denunciar-abuso/index.html' },
+      { srcRel: 'como-usar/veiculos/index.html', destRel: 'como-usar/veiculos/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 

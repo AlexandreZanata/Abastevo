@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR20 2026-10-11: LOCAL_DONE on branch `landing`, vehicle-form lesson TU26. Blank dark form (nothing typed/toggled/saved) + page; suggest/claim/manage entries unobserved, alert OS permission pending. Build/check green, 35/35 tests. Device left on Explorar. Next: LR21 remaining lessons.
+
 - Landing redesign LR19 2026-10-11: LOCAL_DONE on branch `landing`, report-rules lesson TU21. Rules dialog capture (read-only, dismissed) + page; rating/comment/vote composers gated by station verification + empty feed, pending hermetic preproduction. Build/check green, 35/35 tests. Next: LR20 management lessons.
 
 - Landing redesign LR18 2026-10-11: LOCAL_DONE on branch `landing`, photo entry lesson TU14. Capture-entry frame (degraded list, disabled shutter, dev toggle off) + page; shutter never pressed, OCR/outbox pending on synthetic fixtures. Build/check green, 35/35 tests. Next: LR19 participation lessons.
