@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
 // Sweep runs one revoked-copy purge pass (CS10C, AT05): revoked
-// derivatives past the 24-hour deadline lose their namespace bytes
+// derivatives lose their namespace bytes starting at revocation
 // while receipts stay for the restore filter. Failures report
 // through the report and fail the handler for bounded queue retry. Partial
 // cleanup must never be acknowledged as a successful completed sweep.
@@ -39,6 +40,12 @@ func (s Sweep) Handle(ctx context.Context, job jobs.Job) error {
 		return fmt.Errorf("sweep: no sweep configured")
 	}
 	rep, err := s.Run(ctx)
+	args := []any{"checked", rep.Checked, "purged", rep.Purged, "missing_count", len(rep.Missing), "failure_count", len(rep.Failures)}
+	if err != nil || len(rep.Failures) > 0 {
+		slog.Warn("privacy.training.sweep.incomplete", args...)
+	} else {
+		slog.Info("privacy.training.sweep", args...)
+	}
 	if err != nil {
 		return err
 	}

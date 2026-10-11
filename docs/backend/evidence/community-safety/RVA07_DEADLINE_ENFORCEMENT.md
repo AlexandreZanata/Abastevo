@@ -57,3 +57,44 @@ S3 recovery is already covered by RVA05 and more cleanup proofs remain below.
 
 B2/B3/C remain IN_PROGRESS/PENDING: no whole RVA07 deadline acceptance, no new
 soak/provider/device completion, no VPS or pre-existing soak mutation.
+
+## B2 output disposal opening
+
+Purge revoked training copies immediately, with no wait until the 24h cutoff;
+run every minute. Claim at most 32 copies per pass, one at a time, using a
+60s nonce lease. Each private transfer is limited to 5s and the pass to 45s.
+Expired WRITING/PURGING output and exhausted pending attempts are cleanup work,
+not silently skipped inventory. A confirmed absence atomically acknowledges
+PURGED (revoked/terminal) or repairable PENDING (active incomplete output).
+No storage call holds a DB transaction; a stale ack cannot affect a new lease.
+A provider outage leaves work leased/inventoried for retry, never selected.
+Owner-wide erasure batching and evidence races remain subsequent subtasks.
+
+## B2.1 local checkpoint — bounded output disposal
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for global training-output cleanup.
+Validation: PASS. Tested delta on `7353352`. RED: a one-minute-old revocation
+received no cleanup because the old sweep waited 24h. GREEN: immediate disposal
+in 32-item/45s passes, per-copy 5s transfer and 60s durable nonce claim. Schedule
+is every minute. Confirmed absent bytes receive PURGED or repairable PENDING
+acknowledgements; purged/healthy/unused rows leave the hot cleanup query.
+Append-only 000066 adds the partial due index; no applied schema was rewritten.
+
+Real SQL/private S3 tests passed for failed DELETE with retained bytes/lease,
+restart after lease expiry, byte absence + terminal ack, no repeated hot work,
+live writer exclusion, abandoned active PUT disposal/repair and stale writer
+refusal. Twelve parallel cleanup claimants yield one authority; expiry creates
+a distinct token and stale acknowledgement refuses. 65 revoked rows drain
+32/32/1/0 after bounded tombstone reconciliation.
+
+The actual query file was EXPLAIN ANALYZE'd against 10,000 synthetic terminal
+receipts plus live cleanup: the partial due index is used with no sequential
+scan on derivative inventory. 000066-only upgrade/replay preserves history.
+Full privacy adapter SQL race suite passed (18.743s), affected unit/consumer
+race tests, vet, sqlc vet, gofmt, diff and staged secret checks passed.
+Storage tests concern transport/recovery only, never content minimization.
+
+Remaining B2.2: owner-wide training erasure must consume bounded claimed work
+rather than ListByOwner snapshots. B3 evidence writers/deadline dispatch and C
+wall-time/provider/backup acceptance remain pending. This does not certify a
+maximum backlog/rate or the 24h SLO; collection stays OFF.

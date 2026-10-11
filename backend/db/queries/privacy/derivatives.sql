@@ -53,7 +53,8 @@ SELECT image_id, consent_revision, contributor_id, contributor_ref,
 FROM privacy_training_derivatives
 WHERE state = 'REVOKED' AND revoked_at < @before AND output_state != 'PURGED'
 AND (output_lease_until IS NULL OR output_lease_until <= now())
-ORDER BY revoked_at, image_id, consent_revision;
+ORDER BY revoked_at, image_id, consent_revision
+LIMIT 32;
 
 -- name: ListDerivativesByOwner :many
 SELECT image_id, consent_revision, contributor_id, contributor_ref,

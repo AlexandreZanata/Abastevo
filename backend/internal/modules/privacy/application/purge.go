@@ -12,8 +12,8 @@ import (
 
 // Revoked-copy purge (CS10C, AT05): derivatives whose consent was
 // withdrawn must vanish from every byte copy within 24 hours of the
-// revocation receipt. The sweeper lists revoked rows past the
-// deadline, deletes their namespace objects, and confirms each copy
+// revocation receipt. The sweeper starts at revocation, deletes the
+// namespace objects in bounded batches, and confirms each copy
 // is gone. Copies already absent are reported missing (observability,
 // not failure — the SLO is trivially met for them); copies that
 // resist deletion are failures for retry. Inventory rows stay
@@ -22,8 +22,8 @@ import (
 // the wall-clock proof is the controlled soak, never a virtual-clock
 // assertion.
 const (
-	// RevokedCopyTTL bounds revoked bytes: purge is due 24 hours
-	// after the revocation receipt.
+	// RevokedCopyTTL is the outer physical-deletion deadline. Cleanup
+	// starts immediately, with scheduler/backlog margin before this bound.
 	RevokedCopyTTL = 24 * time.Hour
 	// TrainingNamespace is the single private prefix derivative
 	// objects land under. Keys never escape it.
@@ -45,10 +45,21 @@ type PurgePorts struct {
 	Objects   ObjectStore
 }
 
-// RevokedInventory reads revoked rows due for purge.
-type RevokedInventory interface {
-	ListRevokedBefore(ctx context.Context, before time.Time) ([]domain.Derivative, error)
+// PurgeClaim is one short-lived, private cleanup authority. Never log its
+// token or locator; the receipt is matched atomically on completion.
+type PurgeClaim struct {
+	Derivative domain.Derivative
+	Token      string
 }
+
+// RevokedInventory atomically claims one due/abandoned output. Purged work is
+// excluded at the database boundary; an old worker cannot acknowledge a new claim.
+type RevokedInventory interface {
+	ClaimPurge(context.Context, time.Time) (PurgeClaim, bool, error)
+	CompletePurge(context.Context, PurgeClaim, time.Time) error
+}
+
+const MaxTrainingPurgeBatch = 32
 
 // SweepReport is the auditable outcome: how many rows were due, how
 // many copies demonstrably vanished, which keys were already gone,
@@ -83,48 +94,58 @@ func inventoriedObjectKey(d domain.Derivative) string {
 	return d.ObjectKey
 }
 
-// SweepRevoked purges due revoked copies: rows revoked longer ago
-// than RevokedCopyTTL. Each due key is existence-checked, deleted,
-// and confirmed gone; the report distinguishes purged, already
-// missing and failed copies. A failed delete errors the sweep only
-// through both the partial report and an error. Rows stay REVOKED for
-// retry, never resurrected or dropped.
+// SweepRevoked disposes at most 32 revoked/abandoned copies immediately.
+// The 24h deadline is an upper bound, not a delay before work starts.
 func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
-	now := time.Now()
-	if p.Clock != nil {
-		now = p.Clock()
+	if p.Inventory == nil || p.Objects == nil {
+		return SweepReport{}, errors.New("training purge: unconfigured")
 	}
-	due, err := p.Inventory.ListRevokedBefore(ctx, now.Add(-RevokedCopyTTL))
-	if err != nil {
-		return SweepReport{}, err
+	run, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	clock := p.Clock
+	if clock == nil {
+		clock = time.Now
 	}
 	report := SweepReport{}
-	for _, d := range due {
-		key := inventoriedObjectKey(d)
-		if key == "" {
-			report.Failures = append(report.Failures, d.ImageID)
-			continue
+	for i := 0; i < MaxTrainingPurgeBatch; i++ {
+		claim, ok, err := p.Inventory.ClaimPurge(run, clock())
+		if err != nil {
+			return report, err
+		}
+		if !ok {
+			break
 		}
 		report.Checked++
-		exists, err := p.Objects.Exists(ctx, key)
+		key := inventoriedObjectKey(claim.Derivative)
+		if key == "" {
+			report.Failures = append(report.Failures, "invalid-locator")
+			continue
+		}
+		item, stop := context.WithTimeout(run, 5*time.Second)
+		existed, err := p.Objects.Exists(item, key)
+		if err == nil && existed {
+			err = p.Objects.Delete(item, key)
+		}
+		if err == nil {
+			var remains bool
+			remains, err = p.Objects.Exists(item, key)
+			if err == nil && remains {
+				err = errors.New("training purge: bytes remain")
+			}
+		}
+		if err == nil {
+			err = p.Inventory.CompletePurge(item, claim, clock())
+		}
+		stop()
 		if err != nil {
 			report.Failures = append(report.Failures, key)
 			continue
 		}
-		if !exists {
+		if existed {
+			report.Purged++
+		} else {
 			report.Missing = append(report.Missing, key)
-			continue
 		}
-		if err := p.Objects.Delete(ctx, key); err != nil {
-			report.Failures = append(report.Failures, key)
-			continue
-		}
-		gone, err := p.Objects.Exists(ctx, key)
-		if err != nil || gone {
-			report.Failures = append(report.Failures, key)
-			continue
-		}
-		report.Purged++
 	}
 	if len(report.Failures) > 0 {
 		return report, errors.New("training purge: unresolved copies")
