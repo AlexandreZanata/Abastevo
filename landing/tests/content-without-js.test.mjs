@@ -61,6 +61,10 @@ test('essential content and links are present in static HTML without JS', () => 
     const delHtml = fs.readFileSync(path.join(tmpOut, 'excluir-conta', 'index.html'), 'utf8');
     assert.match(delHtml, /<h1[^>]*>Exclusão de Conta e Dados<\/h1>/);
 
+    // 7b. Account-deletion copy follows the username/key model (no registered email).
+    assert.match(delHtml, /nome de usuário/i);
+    assert.doesNotMatch(delHtml, /e-mail cadastrado/);
+
     const termHtml = fs.readFileSync(path.join(tmpOut, 'termos', 'index.html'), 'utf8');
     assert.match(termHtml, /<h1[^>]*>Termos de Uso e Moderação<\/h1>/);
   } finally {

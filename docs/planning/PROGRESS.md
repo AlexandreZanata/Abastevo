@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR24 2026-10-11: LOCAL_DONE on branch `landing`, search/recovery/CRUD reference. Acceptance criteria in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md) + bounded negative tests (recovery text, target omission, success promises, deletion explicitness) on all 15 chapters. Build/check green, 36/36 tests. Next: LR25 domain-legal texts.
+- Landing redesign LR25 2026-10-11: LOCAL_DONE on branch `landing`, legal copy review. Account-deletion page reconciled to username/key model (no registered email); privacy/terms verified (24h media, non-affiliation, report rules). Tests 36/36. Next: LR26 navigation hardening.
+
+- Landing redesign LR24 2026-10-11: LOCAL_DONE on branch `landing`, search/recovery/CRUD reference.
 
 - Landing redesign LR23 2026-10-11: LOCAL_DONE on branch `landing`, permission/location pass.
 
