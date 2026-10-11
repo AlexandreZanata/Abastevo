@@ -471,6 +471,30 @@
       "height": 2401,
       "bytes": 55254,
       "sha256": "4f9741775d4f1da56c7b45384f1fe5ac3dd3e4b385b1d295a49755cdd7070140"
+    },
+    {
+      "file": "rules-dialog-360w.webp",
+      "master": "rules-dialog.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23838,
+      "sha256": "f950f5e185c7716921e94b7665ba24e38a15b9b1f289366caf7d14c1e94a6fae"
+    },
+    {
+      "file": "rules-dialog-720w.webp",
+      "master": "rules-dialog.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 54528,
+      "sha256": "e39c54a664dbd9f1024e9a1afe37bb5cf4299e35831953c91ab94842e372648f"
+    },
+    {
+      "file": "rules-dialog-1080w.webp",
+      "master": "rules-dialog.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 84690,
+      "sha256": "ae31bb7ec1bc1b3bb731782affddd07f25898b5330dbcf785e29aff60308b979"
     }
   ]
 }

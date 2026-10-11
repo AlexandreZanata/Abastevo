@@ -28,6 +28,7 @@ export function checkDist(options = {}) {
     'como-usar/comunidade/index.html',
     'como-usar/conta-e-privacidade/index.html',
     'como-usar/fotografar-preco/index.html',
+    'como-usar/denunciar-abuso/index.html',
     '404.html',
     'robots.txt',
     'sitemap.xml',

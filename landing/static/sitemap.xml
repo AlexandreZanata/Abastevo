@@ -40,6 +40,9 @@
     <loc>{{CANONICAL_ORIGIN}}/como-usar/fotografar-preco/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/denunciar-abuso/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/guias/como-ler-precos/</loc>
   </url>
 </urlset>
