@@ -2,6 +2,7 @@ package com.anpfuel.data.parser
 
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+import java.io.IOException
 import java.io.InputStream
 import java.util.zip.ZipFile
 
@@ -13,7 +14,32 @@ private fun XmlPullParser.isSpreadsheetTag(localName: String): Boolean =
         (namespace == SPREADSHEET_MAIN_NAMESPACE || namespace.isNullOrEmpty())
 
 /**
+ * Resource ceilings for untrusted XLSX input (SEC06-B, AUD-10).
+ * Every bound refuses before the corresponding allocation — never by
+ * catching OutOfMemoryError. Excel grid maxima are hard caps; byte
+ * and count ceilings sit far above observed ANP weeklies while
+ * blocking input amplification (a 748-byte single-cell file must
+ * never drive a 300M-entry row). Honest large ANP samples run
+ * against these ceilings in SEC06-E.
+ */
+object XlsxLimits {
+    /** Largest single inflated ZIP entry read (sheet/sharedStrings). */
+    const val MAX_ENTRY_BYTES: Long = 256L * 1024L * 1024L
+    /** Largest shared-strings table: count cap. */
+    const val MAX_SHARED_STRINGS: Int = 1_000_000
+    /** Largest single text run (shared/inline/value). */
+    const val MAX_TEXT_CHARS: Int = 32_768
+    /** Largest worksheet catalog scanned for one sheet lookup. */
+    const val MAX_WORKSHEETS: Int = 1_024
+}
+
+/**
  * Streams worksheet rows from an XLSX file (ZIP + sheet XML) with low memory use.
+ *
+ * Untrusted-input posture: coordinates validate before allocation,
+ * entry bytes cap before inflation, shared strings cap by count and
+ * per-text length, worksheets cap by catalog size. Initialization
+ * failure closes the ZIP (no handle leaks); callers close via `use`.
  */
 class StreamingXlsxParser private constructor(
     private val zipFile: ZipFile,
@@ -26,7 +52,9 @@ class StreamingXlsxParser private constructor(
         onRow: (SheetRow) -> Unit,
     ) {
         val sheetPath = resolveSheetEntryPath(sheetName)
-        zipFile.getInputStream(zipFile.getEntry(sheetPath)).use { input ->
+        val entry = zipFile.getEntry(sheetPath)
+            ?: error("Sheet '$sheetName' has no data entry")
+        cappedStream(entry).use { input ->
             streamSheetXml(input, options, onRow)
         }
     }
@@ -42,23 +70,30 @@ class StreamingXlsxParser private constructor(
     }
 
     private fun readWorkbookRelationshipId(sheetName: String): String {
-        zipFile.getInputStream(zipFile.getEntry(WORKBOOK_ENTRY)).use { input ->
+        // The catalog is tiny (capped below), so collect it whole: the
+        // size bound must hold regardless of where the target sits.
+        val sheets = mutableListOf<Pair<String, String>>()
+        entryStream(WORKBOOK_ENTRY)?.use { input ->
             val parser = createParser(input)
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 if (parser.eventType == XmlPullParser.START_TAG &&
-                    parser.isSpreadsheetTag("sheet") &&
-                    parser.getAttributeValue(null, "name") == sheetName
+                    parser.isSpreadsheetTag("sheet")
                 ) {
-                    return parser.getAttributeValue(REL_NAMESPACE, "id")
-                        ?: error("Sheet '$sheetName' is missing relationship id")
+                    sheets += (parser.getAttributeValue(null, "name") ?: "") to
+                        (parser.getAttributeValue(REL_NAMESPACE, "id") ?: "")
+                    require(sheets.size <= XlsxLimits.MAX_WORKSHEETS) {
+                        "Workbook exceeds ${XlsxLimits.MAX_WORKSHEETS} worksheets"
+                    }
                 }
             }
         }
-        error("Sheet '$sheetName' not found in workbook")
+        return sheets.firstOrNull { it.first == sheetName }?.second
+            ?.ifBlank { error("Sheet '$sheetName' is missing relationship id") }
+            ?: error("Sheet '$sheetName' not found in workbook")
     }
 
     private fun readWorkbookRelationshipTarget(relationshipId: String): String {
-        zipFile.getInputStream(zipFile.getEntry(WORKBOOK_RELS_ENTRY)).use { input ->
+        entryStream(WORKBOOK_RELS_ENTRY)?.use { input ->
             val parser = createParser(input)
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 if (parser.eventType == XmlPullParser.START_TAG &&
@@ -73,6 +108,12 @@ class StreamingXlsxParser private constructor(
         error("Relationship '$relationshipId' not found")
     }
 
+    /** Capped entry stream, or null when the entry is absent. */
+    private fun entryStream(entryName: String): InputStream? {
+        val entry = zipFile.getEntry(entryName) ?: return null
+        return cappedStream(entry)
+    }
+
     private fun streamSheetXml(
         input: InputStream,
         options: SheetParseOptions,
@@ -85,6 +126,9 @@ class StreamingXlsxParser private constructor(
             ) {
                 val rowNumber = parser.getAttributeValue(null, "r")?.toIntOrNull()
                     ?: error("Row element missing r attribute")
+                require(rowNumber in 1..XlsxCellReference.MAX_ROW_NUMBER) {
+                    "Row number is outside the Excel grid: $rowNumber"
+                }
                 if (options.shouldEmit(rowNumber) || options.isHeaderRow(rowNumber)) {
                     onRow(readRow(parser, rowNumber))
                 }
@@ -100,7 +144,12 @@ class StreamingXlsxParser private constructor(
                     if (parser.isSpreadsheetTag("c")) {
                         val cellReference = parser.getAttributeValue(null, "r")
                             ?: error("Cell missing r attribute")
+                        // Validates before any allocation: XFD is the
+                        // widest key, so the dense row below is bounded.
                         val columnIndex = XlsxCellReference.columnIndex(cellReference)
+                        require(cells.size <= XlsxCellReference.MAX_COLUMN_INDEX) {
+                            "Row $rowNumber exceeds the Excel grid"
+                        }
                         val cellType = parser.getAttributeValue(null, "t")
                         cells[columnIndex] = readCellValue(parser, cellType)
                     }
@@ -143,13 +192,21 @@ class StreamingXlsxParser private constructor(
         }
     }
 
+    /** Capped entry stream for sheet data (see companion). */
+    private fun cappedStream(entry: java.util.zip.ZipEntry): InputStream =
+        Companion.cappedStream(zipFile, entry)
+
     private fun readInlineString(parser: XmlPullParser): String {
         val builder = StringBuilder()
         while (parser.next() != XmlPullParser.END_DOCUMENT) {
             when (parser.eventType) {
                 XmlPullParser.START_TAG -> {
                     if (parser.isSpreadsheetTag("t")) {
-                        builder.append(readText(parser))
+                        val run = readText(parser)
+                        require(builder.length + run.length <= XlsxLimits.MAX_TEXT_CHARS) {
+                            "Inline string exceeds ${XlsxLimits.MAX_TEXT_CHARS} characters"
+                        }
+                        builder.append(run)
                     }
                 }
                 XmlPullParser.END_TAG -> {
@@ -170,19 +227,32 @@ class StreamingXlsxParser private constructor(
 
         fun open(file: java.io.File): StreamingXlsxParser {
             val zipFile = ZipFile(file)
-            val sharedStrings = loadSharedStrings(zipFile)
-            return StreamingXlsxParser(zipFile, sharedStrings)
+            try {
+                val sharedStrings = loadSharedStrings(zipFile)
+                return StreamingXlsxParser(zipFile, sharedStrings)
+            } catch (e: Exception) {
+                // Initialization failure closes the handle: no leak,
+                // and callers still see the original refusal.
+                try {
+                    zipFile.close()
+                } catch (_: Exception) {
+                }
+                throw e
+            }
         }
 
         private fun loadSharedStrings(zipFile: ZipFile): List<String> {
             val entry = zipFile.getEntry(SHARED_STRINGS_ENTRY) ?: return emptyList()
             val strings = mutableListOf<String>()
-            zipFile.getInputStream(entry).use { input ->
+            cappedStream(zipFile, entry).use { input ->
                 val parser = createParser(input)
                 while (parser.next() != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG &&
                         parser.isSpreadsheetTag("si")
                     ) {
+                        require(strings.size < XlsxLimits.MAX_SHARED_STRINGS) {
+                            "Shared strings exceed ${XlsxLimits.MAX_SHARED_STRINGS}"
+                        }
                         strings += readSharedStringItem(parser)
                     }
                 }
@@ -196,7 +266,11 @@ class StreamingXlsxParser private constructor(
                 when (parser.eventType) {
                     XmlPullParser.START_TAG -> {
                         if (parser.isSpreadsheetTag("t")) {
-                            builder.append(readText(parser))
+                            val run = readText(parser)
+                            require(builder.length + run.length <= XlsxLimits.MAX_TEXT_CHARS) {
+                                "Shared string exceeds ${XlsxLimits.MAX_TEXT_CHARS} characters"
+                            }
+                            builder.append(run)
                         }
                     }
                     XmlPullParser.END_TAG -> {
@@ -220,11 +294,29 @@ class StreamingXlsxParser private constructor(
             val builder = StringBuilder()
             while (parser.next() != XmlPullParser.END_DOCUMENT) {
                 when (parser.eventType) {
-                    XmlPullParser.TEXT, XmlPullParser.CDSECT -> builder.append(parser.text)
+                    XmlPullParser.TEXT, XmlPullParser.CDSECT -> {
+                        require(builder.length + parser.text.length <= XlsxLimits.MAX_TEXT_CHARS) {
+                            "Text run exceeds ${XlsxLimits.MAX_TEXT_CHARS} characters"
+                        }
+                        builder.append(parser.text)
+                    }
                     XmlPullParser.END_TAG -> break
                 }
             }
             return builder.toString()
+        }
+
+        /**
+         * Entry stream capped two ways: the declared inflated size
+         * refuses without reading, and a counting wrapper caps actual
+         * bytes (lying headers cannot smuggle expansion past it).
+         */
+        private fun cappedStream(zipFile: ZipFile, entry: java.util.zip.ZipEntry): InputStream {
+            val declared = entry.size
+            require(declared < 0 || declared <= XlsxLimits.MAX_ENTRY_BYTES) {
+                "ZIP entry exceeds ${XlsxLimits.MAX_ENTRY_BYTES} bytes"
+            }
+            return CappedInputStream(zipFile.getInputStream(entry), XlsxLimits.MAX_ENTRY_BYTES)
         }
     }
 }
