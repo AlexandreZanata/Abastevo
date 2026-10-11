@@ -223,3 +223,36 @@ func TestCastHelpfulnessQuotaDenialMaps429(t *testing.T) {
 		t.Errorf("body lacks quota-exceeded code: %s", w.Body.String())
 	}
 }
+
+func TestTallyAnnotatesOpenReviewWithFrozenWording(t *testing.T) {
+	h := helpfulHandler()
+	h.HelpfulnessTally = func(_ context.Context, _ application.Caller, _ string, _ int64) (application.TallyResult, error) {
+		res, _ := helpfulHandler().HelpfulnessTally(context.Background(), application.Caller{}, "", 0)
+		res.UnderReview = true
+		return res, nil
+	}
+	w := serveVotes(h, http.MethodGet, helpfulTarget+"?decision_sequence=2", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("code = %d, body %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"under_review":true`) {
+		t.Errorf("body lacks frozen annotation flag: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"review_notice":"contribution under review"`) {
+		t.Errorf("body lacks frozen wording: %s", w.Body.String())
+	}
+}
+
+func TestTallyReviewUnavailableMaps503(t *testing.T) {
+	h := helpfulHandler()
+	h.HelpfulnessTally = func(_ context.Context, _ application.Caller, _ string, _ int64) (application.TallyResult, error) {
+		return application.TallyResult{}, application.ErrReviewUnavailable
+	}
+	w := serveVotes(h, http.MethodGet, helpfulTarget+"?decision_sequence=2", "")
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("code = %d, body %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "community.review-unavailable") {
+		t.Errorf("body lacks code: %s", w.Body.String())
+	}
+}

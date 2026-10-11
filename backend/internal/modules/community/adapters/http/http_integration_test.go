@@ -34,6 +34,7 @@ import (
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	modadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
@@ -223,6 +224,7 @@ func helpfulnessTestPorts(pool *pgxpool.Pool) (cast func(context.Context, commun
 		CheckAccount: func(context.Context, string) error { return nil },
 		CheckQuota:   helpfulnessTestQuota(identityadapters.NewLimiter(pool, identitydomain.DefaultQuotaPolicy())),
 		Store:        communityadapters.NewHelpfulnessStore(pool),
+		Reviews:      modadapters.NewStore(pool),
 	}
 	cast = func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.CastDTO) (communityapp.CastResult, error) {
 		dto.ObservationID = observationID

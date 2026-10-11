@@ -21,6 +21,10 @@ import (
 
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	modadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	modapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
+	moddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 func newTestUUID() (string, error) {
@@ -196,4 +200,78 @@ func TestHelpfulnessProofNegativesEndToEnd(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("unknown target = %d: %s", w.Code, w.Body.String())
 	}
+}
+
+func TestHelpfulnessTallyAnnotatesOpenCaseEndToEnd(t *testing.T) {
+	r, pool, station := fixture(t)
+	author := enrollCaller(t, pool)
+	voter := enrollCaller(t, pool)
+
+	obsID := submitValidated(t, r, pool, station, author, "help-e2e-review")
+	target := "/v1/observations/" + obsID + "/helpfulness"
+	cast := `{"choice":"HELPFUL","decision_sequence":2,"client_submission_id":"help-rev-1"}`
+	if w := doRequest(t, r, signedRequest(t, pool, voter, http.MethodPost, target, cast)); w.Code != http.StatusCreated {
+		t.Fatalf("cast = %d: %s", w.Code, w.Body.String())
+	}
+
+	// Clean tally carries no annotation.
+	tallyURL := target + "?decision_sequence=2"
+	if w := doRequest(t, r, mustGET(t, tallyURL)); w.Code != http.StatusOK || strings.Contains(w.Body.String(), "under_review") {
+		t.Fatalf("clean tally = %d: %s", w.Code, w.Body.String())
+	}
+
+	// An open contribution case annotates the public tally with the
+	// frozen wording while counts stay exact.
+	ctx := context.Background()
+	modStore := modadapters.NewStore(pool)
+	opened, err := modapp.Open(ctx, modapp.Ports{
+		Clock: time.Now,
+		NewID: newTestUUID,
+		Store: modStore,
+	}, modapp.OpenDTO{
+		TargetType: moddomain.TargetContribution, TargetID: obsID,
+		Reason: moddomain.ContributionReasonSpam,
+	})
+	if err != nil {
+		t.Fatalf("open case: %v", err)
+	}
+	w := doRequest(t, r, mustGET(t, tallyURL))
+	if w.Code != http.StatusOK {
+		t.Fatalf("review tally = %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"under_review":true`) ||
+		!strings.Contains(w.Body.String(), `"review_notice":"contribution under review"`) ||
+		!strings.Contains(w.Body.String(), `"helpful":1`) {
+		t.Fatalf("annotated tally = %s", w.Body.String())
+	}
+
+	// Dismissing the case clears the annotation; counts unchanged.
+	var kinds []string
+	if _, err := modapp.Act(ctx, modapp.ActPorts{
+		Clock: time.Now,
+		NewID: newTestUUID,
+		Store: modStore,
+		EnqueueJob: func(_ context.Context, _ pgx.Tx, kind string, _ []byte, _ string) error {
+			kinds = append(kinds, kind)
+			return nil
+		},
+	}, modapp.Caller{OperatorID: "op-1"}, modapp.ActDTO{
+		CaseID: opened.CaseID, Action: moddomain.ActionDismiss, Reason: moddomain.ContributionReasonSpam,
+	}); err != nil {
+		t.Fatalf("dismiss: %v", err)
+	}
+	_ = kinds
+	w = doRequest(t, r, mustGET(t, tallyURL))
+	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "under_review") {
+		t.Fatalf("post-dismiss tally = %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func mustGET(t *testing.T, url string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return req
 }

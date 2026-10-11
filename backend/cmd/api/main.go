@@ -658,7 +658,8 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
-		Store:        communityadapters.NewHelpfulnessStore(pool.Underlying()),
+		Store:   communityadapters.NewHelpfulnessStore(pool.Underlying()),
+		Reviews: moderationStore,
 	}
 	communityhttp.Handler{
 		PhotoCapture: func(ctx context.Context, caller communityapp.Caller, key string, intent communityapp.PhotoCaptureIntent, body []byte) (communityapp.PhotoCapture, bool, error) {

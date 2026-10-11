@@ -79,6 +79,8 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusForbidden, "community.self-vote", "contributors cannot vote on their own contributions", nil)
 	case errors.Is(err, application.ErrStaleSequence):
 		httpapi.WriteError(w, r, http.StatusConflict, "community.stale-revision", "contribution moved on; bind the current revision", nil)
+	case errors.Is(err, application.ErrReviewUnavailable):
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "community.review-unavailable", "review state unavailable, try again later", nil)
 	case errors.Is(err, domain.ErrVoteChoiceInvalid),
 		errors.Is(err, domain.ErrInvalidVote):
 		httpapi.WriteError(w, r, http.StatusBadRequest, "community.invalid-vote", "invalid helpfulness vote",

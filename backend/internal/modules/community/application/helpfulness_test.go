@@ -373,3 +373,56 @@ func TestSharedDeviceKeepsAccountsSeparate(t *testing.T) {
 		t.Fatalf("kiosk accounts hold separate votes: %+v", res)
 	}
 }
+
+type stubReviewLookup struct {
+	open bool
+	err  error
+	seen []string
+}
+
+func (s *stubReviewLookup) OpenReview(_ context.Context, targetType, targetID string) (bool, error) {
+	s.seen = append(s.seen, targetType+"|"+targetID)
+	return s.open, s.err
+}
+
+func TestTallyAnnotatesOpenReview(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	lookup := &stubReviewLookup{open: true}
+	ports.Reviews = lookup
+	got, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil {
+		t.Fatalf("tally must succeed: %v", err)
+	}
+	if !got.UnderReview {
+		t.Fatal("open review must annotate the tally")
+	}
+	if len(lookup.seen) != 1 || lookup.seen[0] != ReviewTargetContribution+"|obs-1" {
+		t.Fatalf("lookup saw %v, want pinned CONTRIBUTION spelling", lookup.seen)
+	}
+}
+
+func TestTallyCleanWithoutReview(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.Reviews = &stubReviewLookup{open: false}
+	got, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil || got.UnderReview {
+		t.Fatalf("clean tally = %+v %v", got, err)
+	}
+	// Nil lookup keeps older wiring working with no annotation.
+	ports.Reviews = nil
+	got, err = TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil || got.UnderReview {
+		t.Fatalf("nil lookup tally = %+v %v", got, err)
+	}
+}
+
+func TestTallyReviewLookupFailureClosesRead(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.Reviews = &stubReviewLookup{err: errors.New("queue down")}
+	if _, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3); err != ErrReviewUnavailable {
+		t.Fatalf("lookup failure = %v, want ErrReviewUnavailable", err)
+	}
+}

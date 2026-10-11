@@ -13,6 +13,11 @@ import (
 // left: older-revision votes never transfer to an edited contribution.
 var ErrStaleSequence = errors.New("community: helpfulness target moved on")
 
+// ErrReviewUnavailable marks a tally read that cannot verify the review
+// state: serving un-annotated counts would hide an open review, so the
+// read fails closed for honest retry instead.
+var ErrReviewUnavailable = errors.New("community: review state unavailable")
+
 // HelpfulnessTarget is the resolved vote target: an existing,
 // validated, visible contribution plus the immutable revision the
 // caller must bind to. Unknown, hidden, deleted and ineligible targets
@@ -44,6 +49,21 @@ type HelpfulnessStore interface {
 	MyVote(ctx context.Context, contributorRef, observationID string, sequence int64) (domain.Choice, bool, error)
 }
 
+// ReviewTargetContribution names the moderation review target for
+// community contributions. It must stay spelled exactly like the
+// moderation queue's CONTRIBUTION target; the community module never
+// imports the moderation domain, so the spelling is pinned by the
+// annotation tests instead of the compiler.
+const ReviewTargetContribution = "CONTRIBUTION"
+
+// ReviewLookup reports whether a contribution target carries an open
+// moderation review. Implementations read the moderation queue; the
+// community module owns only this narrow interface, never the
+// moderation tables.
+type ReviewLookup interface {
+	OpenReview(ctx context.Context, targetType, targetID string) (bool, error)
+}
+
 // HelpfulnessPorts wires helpfulness commands through identity and the
 // owned store. Attribution always derives from the verified caller.
 // CheckQuota caps write intake per fingerprint before any store work;
@@ -54,6 +74,7 @@ type HelpfulnessPorts struct {
 	CheckAccount func(ctx context.Context, contributorID string) error
 	CheckQuota   func(ctx context.Context, subject, operation string) (time.Duration, error)
 	Store        HelpfulnessStore
+	Reviews      ReviewLookup
 }
 
 // CastDTO carries one helpfulness vote: target plus immutable revision
@@ -79,11 +100,14 @@ type CastResult struct {
 
 // TallyResult is the public count snapshot plus the private owner
 // overlay. Public caches must carry only the counts; MyChoice travels
-// on the caller-bound read path.
+// on the caller-bound read path. UnderReview annotates counts whose
+// target carries an open contribution review; the frozen wording lives
+// at the wire layer.
 type TallyResult struct {
-	Tally    domain.Tally
-	Share    domain.Share
-	MyChoice *domain.Choice
+	Tally       domain.Tally
+	Share       domain.Share
+	MyChoice    *domain.Choice
+	UnderReview bool
 }
 
 // Cast records one helpfulness vote on a validated, visible
@@ -227,6 +251,14 @@ func TallyFor(ctx context.Context, p HelpfulnessPorts, caller Caller, observatio
 			res.MyChoice = &choice
 		}
 	}
+	if p.Reviews == nil {
+		return res, nil
+	}
+	review, err := p.Reviews.OpenReview(ctx, ReviewTargetContribution, target.ObservationID)
+	if err != nil {
+		return TallyResult{}, ErrReviewUnavailable
+	}
+	res.UnderReview = review
 	return res, nil
 }
 

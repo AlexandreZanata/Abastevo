@@ -4639,6 +4639,14 @@ components:
           example: 10000
         my_choice:
           $ref: '#/components/schemas/HelpfulnessChoice'
+        under_review:
+          type: boolean
+          description: True while an open contribution review case names this target; counts stay exact.
+          example: true
+        review_notice:
+          type: string
+          description: Frozen public wording; present only with under_review. Case internals stay operator-side.
+          example: contribution under review
     HelpfulnessRemove:
       description: Helpfulness removal bound to the immutable decision sequence.
       type: object

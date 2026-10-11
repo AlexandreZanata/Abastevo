@@ -74,9 +74,15 @@ func parseRemoveHelpfulBody(raw []byte) (int64, error) {
 	return parseHelpfulSequence(in.DecisionSequence)
 }
 
+// ReviewNotice is the frozen public wording for tallies under open
+// contribution review. The literal is pinned by tests; translate it
+// only through a frozen-string change with contract review, never
+// with per-case text (case internals stay operator-side).
+const ReviewNotice = "contribution under review"
+
 // helpfulTallyBody renders counts plus the private owner overlay. Voter,
 // account, key, device and cursor internals never appear here.
-func helpfulTallyBody(observationID string, sequence int64, tally domain.Tally, share domain.Share, myChoice *domain.Choice) map[string]any {
+func helpfulTallyBody(observationID string, sequence int64, tally domain.Tally, share domain.Share, myChoice *domain.Choice, underReview bool) map[string]any {
 	out := map[string]any{
 		"observation_id":    observationID,
 		"decision_sequence": sequence,
@@ -89,6 +95,10 @@ func helpfulTallyBody(observationID string, sequence int64, tally domain.Tally, 
 	}
 	if myChoice != nil {
 		out["my_choice"] = string(*myChoice)
+	}
+	if underReview {
+		out["under_review"] = true
+		out["review_notice"] = ReviewNotice
 	}
 	return out
 }
@@ -114,7 +124,7 @@ func (h Handler) castHelpfulness(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, err)
 		return
 	}
-	bodyMap := helpfulTallyBody(dto.ObservationID, result.Tally.DecisionSequence, result.Tally, result.Share, &result.MyChoice)
+	bodyMap := helpfulTallyBody(dto.ObservationID, result.Tally.DecisionSequence, result.Tally, result.Share, &result.MyChoice, false)
 	bodyMap["vote_id"] = result.VoteID
 	bodyMap["received_at"] = result.Vote.CreatedAt.Format(time.RFC3339)
 	body, _ := json.Marshal(bodyMap)
@@ -142,7 +152,7 @@ func (h Handler) removeHelpfulness(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, err)
 		return
 	}
-	body, _ := json.Marshal(helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice))
+	body, _ := json.Marshal(helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice, res.UnderReview))
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", body)
 }
 
@@ -164,7 +174,7 @@ func (h Handler) helpfulnessTally(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, err)
 		return
 	}
-	body, _ := json.Marshal(helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice))
+	body, _ := json.Marshal(helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice, res.UnderReview))
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", body)
 }
 
