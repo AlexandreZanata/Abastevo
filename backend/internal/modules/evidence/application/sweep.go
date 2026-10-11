@@ -75,8 +75,8 @@ type SweepDeps struct {
 }
 
 // SweepReport makes cleanup observable: every deleted or expired unit
-// is counted, storage failures are counted rather than aborting the
-// pass, and only database errors fail the run. Health carries the
+// is counted. Storage failures allow other cleanup to proceed and fail
+// the completed pass for retry; query outages report unknown health. Health carries the
 // intake posture (SEC03-D): reserved/accepted/rejected declared
 // buckets plus the oldest incomplete reservation — counts, bytes
 // and one timestamp, never keys, hashes or payloads.
@@ -87,6 +87,8 @@ type SweepReport struct {
 	FinalsDeleted      int
 	ObjectsPurged      int64
 	StorageErrors      int
+	HealthKnown        bool
+	OverdueKnown       bool
 	Health             IntakeHealth
 	// Overdue is the post-pass failing-policy signal (SEC05-B):
 	// copies still past deadline after this run's bounded work.
@@ -267,18 +269,25 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		return rep, err
 	}
 	rep.ObjectsPurged = purged
-	// Intake posture last: monitoring-only aggregates that never fail
-	// the retention pass (a health-query error degrades to a zero
-	// snapshot rather than blocking cleanup).
-	if health, herr := deps.Store.IntakeHealth(ctx, dayStart(now), now); herr == nil {
+	// Cleanup effects are retained even if monitoring fails. UNKNOWN is
+	// explicit and errors propagate; a missing observation is never healthy zero.
+	var failures error
+	health, healthErr := deps.Store.IntakeHealth(ctx, dayStart(now), now)
+	if healthErr != nil {
+		failures = errors.Join(failures, healthErr)
+	} else {
 		rep.Health = health
+		rep.HealthKnown = true
 	}
-	// Post-pass overdue signal (SEC05-B): bounded re-audit after this
-	// run's work, so alarms and the next run's catch-up see the
-	// remaining backlog. Errors degrade to a zero signal rather than
-	// failing cleanup that already succeeded.
-	if overdue, oerr := AuditOverdue(ctx, deps.Store, now, deps.Batch); oerr == nil {
+	overdue, auditErr := AuditOverdue(ctx, deps.Store, now, deps.Batch)
+	if auditErr != nil {
+		failures = errors.Join(failures, auditErr)
+	} else {
 		rep.Overdue = overdue
+		rep.OverdueKnown = true
 	}
-	return rep, nil
+	if rep.StorageErrors > 0 {
+		failures = errors.Join(failures, errors.New("evidence: incomplete storage cleanup"))
+	}
+	return rep, failures
 }

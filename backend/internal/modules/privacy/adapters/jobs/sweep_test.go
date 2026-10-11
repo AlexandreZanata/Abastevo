@@ -43,3 +43,12 @@ func TestSweepHandleRejects(t *testing.T) {
 		t.Error("inventory outage accepted")
 	}
 }
+
+func TestSweepHandleRefusesPartialCleanupFailures(t *testing.T) {
+	h := Sweep{Run: func(context.Context) (privacyapp.SweepReport, error) {
+		return privacyapp.SweepReport{Checked: 2, Purged: 1, Failures: []string{"synthetic-key"}}, nil
+	}}
+	if err := h.Handle(context.Background(), jobs.Job{Payload: []byte(`{"version":1}`)}); err == nil {
+		t.Fatal("partial cleanup failure was acknowledged")
+	}
+}

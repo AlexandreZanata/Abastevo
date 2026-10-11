@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 // intake posture (reserved/accepted/rejected declared buckets plus
 // oldest incomplete) without secrets; failed (REJECTED) originals
 // reconcile like every terminal copy; a health-query failure degrades
-// to a zero snapshot instead of blocking cleanup.
+// to explicit UNKNOWN and an error after preceding cleanup.
 
 func TestSweepEmbedsIntakeHealth(t *testing.T) {
 	oldest := time.Date(2026, 9, 29, 8, 0, 0, 0, time.UTC)
@@ -37,13 +38,13 @@ func TestSweepEmbedsIntakeHealth(t *testing.T) {
 	}
 }
 
-func TestSweepHealthFailureDegradesToZero(t *testing.T) {
+func TestSweepHealthFailureReportsUnknownAndError(t *testing.T) {
 	store := &fakeSweepStore{healthErr: context.DeadlineExceeded}
 	rep, err := Sweep(context.Background(), sweepDeps(store))
-	if err != nil {
-		t.Fatalf("health failure must not fail cleanup, got %v", err)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("health failure was acknowledged: %v", err)
 	}
-	if rep.Health != (IntakeHealth{}) {
+	if rep.HealthKnown || !rep.OverdueKnown || rep.Health != (IntakeHealth{}) {
 		t.Errorf("health = %+v, want zero snapshot", rep.Health)
 	}
 }
@@ -73,4 +74,23 @@ func TestSweepReconcilesRejectedOriginals(t *testing.T) {
 	if storage.keys["q/rejected"] {
 		t.Error("rejected bytes still present after sweep")
 	}
+}
+
+func TestSweepAuditFailureCannotReportHealthySuccess(t *testing.T) {
+	store := &auditFailedSweep{fakeSweepStore: &fakeSweepStore{idle: []domain.SessionRef{{ID: "s1", QuarantineKey: "q/a"}}}}
+	deps := sweepDeps(store.fakeSweepStore)
+	deps.Store = store
+	rep, err := Sweep(context.Background(), deps)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("audit outage reported successful healthy zero", rep, err)
+	}
+	if rep.QuarantinesDeleted != 1 || rep.OverdueKnown || !rep.HealthKnown {
+		t.Fatal("audit failure lost partial cleanup or UNKNOWN", rep)
+	}
+}
+
+type auditFailedSweep struct{ *fakeSweepStore }
+
+func (*auditFailedSweep) OverdueFinals(context.Context, time.Time, int) ([]domain.ObjectRef, error) {
+	return nil, context.DeadlineExceeded
 }

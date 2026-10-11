@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,8 +14,8 @@ import (
 
 // Sweep handles one evidence-sweep job: a single retention pass with an
 // observable report. The run converges on repeat; database failures
-// retry with backoff until the cap, storage failures stay counted
-// inside the report for the next pass.
+// retry with backoff until the cap. Storage failures, unknown health and
+// overdue copies are observable partial failures, never successful runs.
 type Sweep struct {
 	Run func(ctx context.Context) (evidenceapp.SweepReport, error)
 }
@@ -40,9 +41,6 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 		return fmt.Errorf("sweep: no sweep configured")
 	}
 	rep, err := v.Run(ctx)
-	if err != nil {
-		return err
-	}
 	// The report is the observable cleanup outcome: every expired or
 	// deleted unit counted, storage failures counted for the next pass.
 	// Intake posture rides along as counts/bytes/timestamp only — never
@@ -56,6 +54,8 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 		"finals_deleted", rep.FinalsDeleted,
 		"objects_purged", rep.ObjectsPurged,
 		"storage_errors", rep.StorageErrors,
+		"health_known", rep.HealthKnown,
+		"overdue_known", rep.OverdueKnown,
 		"reserved_sessions", rep.Health.ReservedSessions,
 		"reserved_bytes", rep.Health.ReservedBytes,
 		"accepted_today", rep.Health.AcceptedToday,
@@ -66,13 +66,13 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 		"overdue_finals", rep.Overdue.Count,
 		"overdue_originals", rep.Overdue.Originals,
 	}
-	if rep.Overdue.Unhealthy() {
+	if err != nil || !rep.HealthKnown || !rep.OverdueKnown || rep.StorageErrors > 0 || rep.Overdue.Unhealthy() {
 		args = append(args,
 			"oldest_overdue_final", rep.Overdue.Oldest.UTC().Format(time.RFC3339),
 			"oldest_overdue_original", rep.Overdue.OldestOriginal.UTC().Format(time.RFC3339),
 		)
-		slog.Warn("evidence.sweep.overdue", args...)
-		return nil
+		slog.Warn("evidence.sweep.incomplete", args...)
+		return errors.Join(err, errors.New("evidence sweep: cleanup or health unresolved"))
 	}
 	slog.Info("evidence.sweep", args...)
 	return nil

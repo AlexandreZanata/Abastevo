@@ -30,7 +30,7 @@ func TestSweepHandleRunsAndPropagates(t *testing.T) {
 	called := false
 	h := Sweep{Run: func(context.Context) (evidenceapp.SweepReport, error) {
 		called = true
-		return evidenceapp.SweepReport{ExpiredSessions: 2, QuarantinesDeleted: 2}, nil
+		return evidenceapp.SweepReport{ExpiredSessions: 2, QuarantinesDeleted: 2, HealthKnown: true, OverdueKnown: true}, nil
 	}}
 	if err := h.Handle(context.Background(), jobs.Job{ID: "job-1", Payload: []byte(`{"version":1}`)}); err != nil {
 		t.Fatalf("handle = %v", err)
@@ -44,5 +44,20 @@ func TestSweepHandleRunsAndPropagates(t *testing.T) {
 	}}
 	if err := failing.Handle(context.Background(), jobs.Job{ID: "job-1", Payload: []byte(`{"version":1}`)}); !errors.Is(err, boom) {
 		t.Errorf("failure = %v", err)
+	}
+}
+
+func TestSweepHandleNeverAcknowledgesUnknownPartialOrOverdue(t *testing.T) {
+	for name, rep := range map[string]evidenceapp.SweepReport{
+		"unknown": {},
+		"storage": {HealthKnown: true, OverdueKnown: true, StorageErrors: 1},
+		"overdue": {HealthKnown: true, OverdueKnown: true, Overdue: evidenceapp.OverdueReport{Originals: 1}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := Sweep{Run: func(context.Context) (evidenceapp.SweepReport, error) { return rep, nil }}
+			if err := h.Handle(context.Background(), jobs.Job{Payload: []byte(`{"version":1}`)}); err == nil {
+				t.Fatal("unresolved sweep acknowledged")
+			}
+		})
 	}
 }

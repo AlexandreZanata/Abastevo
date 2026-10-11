@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -86,8 +87,8 @@ func inventoriedObjectKey(d domain.Derivative) string {
 // than RevokedCopyTTL. Each due key is existence-checked, deleted,
 // and confirmed gone; the report distinguishes purged, already
 // missing and failed copies. A failed delete errors the sweep only
-// through the report — rows stay REVOKED for the next pass, never
-// resurrected, never dropped.
+// through both the partial report and an error. Rows stay REVOKED for
+// retry, never resurrected or dropped.
 func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
 	now := time.Now()
 	if p.Clock != nil {
@@ -124,6 +125,9 @@ func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
 			continue
 		}
 		report.Purged++
+	}
+	if len(report.Failures) > 0 {
+		return report, errors.New("training purge: unresolved copies")
 	}
 	return report, nil
 }

@@ -249,8 +249,8 @@ func TestSweepContinuesPastStorageErrors(t *testing.T) {
 	deps := sweepDeps(store)
 	deps.Storage.(*fakeSweepStorage).fail["q/a"] = true
 	rep, err := Sweep(context.Background(), deps)
-	if err != nil {
-		t.Fatalf("sweep = %v", err)
+	if err == nil {
+		t.Fatal("partial storage failure was acknowledged")
 	}
 	if rep.QuarantinesDeleted != 1 || rep.StorageErrors != 1 {
 		t.Errorf("report = %+v", rep)

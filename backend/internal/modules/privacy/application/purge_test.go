@@ -101,8 +101,8 @@ func TestSweepReportsMissingAndFailures(t *testing.T) {
 		Inventory: inv,
 		Objects:   store,
 	})
-	if err != nil {
-		t.Fatalf("sweep = %v", err)
+	if err == nil {
+		t.Fatal("partial cleanup was acknowledged")
 	}
 	if report.Checked != 2 || report.Purged != 0 {
 		t.Errorf("report = %+v", report)
