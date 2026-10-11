@@ -169,3 +169,33 @@ func TestDeleteBindingFreeAccountEnqueuesEmpty(t *testing.T) {
 		t.Errorf("enqueued = %v, want one empty call", rec.contributors)
 	}
 }
+
+// SEC04-C credential minimization: key verifiers never survive the
+// owner. The old key authenticates nothing after deletion, and the
+// username is free for a new account without reputation carryover.
+func TestDeleteMinimizesKeyCredentials(t *testing.T) {
+	svc := testKeyService()
+	svc.RequestErasure = func(_ context.Context, _ string, _ []string) error { return nil }
+	ctx := context.Background()
+	created, err := svc.CreateKeyAccount(ctx, "erasablekey")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldKey := created.Key
+	if _, err := svc.LoginWithKey(ctx, oldKey); err != nil {
+		t.Fatalf("pre-delete login: %v", err)
+	}
+	if _, err := svc.DeleteAccount(ctx, created.Account.ID); err != nil {
+		t.Fatalf("DeleteAccount: %v", err)
+	}
+	if _, err := svc.LoginWithKey(ctx, oldKey); err != domain.ErrKeyInvalid {
+		t.Fatalf("post-delete login = %v, want key-invalid", err)
+	}
+	if _, found, _ := svc.Store.FindKeyCredentialByUsername(ctx, domain.UsernameHash("erasablekey")); found {
+		t.Error("username verifier survived deletion")
+	}
+	// The handle is free again for a new account.
+	if _, err := svc.CreateKeyAccount(ctx, "erasablekey"); err != nil {
+		t.Fatalf("username reuse: %v", err)
+	}
+}
