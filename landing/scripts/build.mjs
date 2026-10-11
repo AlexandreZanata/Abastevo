@@ -50,6 +50,43 @@ export function validateStoreState(storeState, storeUrl) {
   }
 }
 
+export function copyAppAssets(staticAppDir, outAppDir) {
+  const provenancePath = path.join(staticAppDir, 'provenance.json');
+  if (!fs.existsSync(provenancePath)) {
+    throw new Error(`App asset provenance missing: ${provenancePath}`);
+  }
+  const provenance = JSON.parse(fs.readFileSync(provenancePath, 'utf8'));
+  // Masters (lossless PNG) must never ship: only derived WebP + provenance land in dist.
+  for (const item of fs.readdirSync(staticAppDir)) {
+    if (item.endsWith('.png')) {
+      throw new Error(`App master must not ship in web assets: ${item}`);
+    }
+  }
+  if (!Array.isArray(provenance.outputs) || provenance.outputs.length === 0) {
+    throw new Error('App asset provenance declares no outputs');
+  }
+  fs.mkdirSync(outAppDir, { recursive: true });
+  let copied = 0;
+  for (const output of provenance.outputs) {
+    if (!/^[a-z0-9-]+\.webp$/.test(output.file)) {
+      throw new Error(`Invalid app derivative filename (possible traversal): ${output.file}`);
+    }
+    const src = path.join(staticAppDir, output.file);
+    if (!fs.existsSync(src)) {
+      throw new Error(`App derivative missing: ${output.file}`);
+    }
+    const content = fs.readFileSync(src);
+    const sha256 = crypto.createHash('sha256').update(content).digest('hex');
+    if (sha256 !== output.sha256) {
+      throw new Error(`App derivative hash mismatch: ${output.file}`);
+    }
+    fs.writeFileSync(path.join(outAppDir, output.file), content);
+    copied += 1;
+  }
+  fs.copyFileSync(provenancePath, path.join(outAppDir, 'provenance.json'));
+  return copied;
+}
+
 export function build(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const origin = validateOrigin(options.origin || options.canonicalOrigin || 'https://abastevo.com.br');
@@ -110,6 +147,34 @@ export function build(options = {}) {
       }
     }
 
+    // Self-hosted fonts use versioned content-hash names for immutable caching.
+    // Copy only declared public font assets and their required license notices.
+    const fontsStaticDir = path.join(staticDir, 'assets', 'fonts');
+    const fontsOutDir = path.join(outDir, 'assets', 'fonts');
+    const fontManifest = JSON.parse(fs.readFileSync(path.join(fontsStaticDir, 'provenance.json'), 'utf8'));
+    fs.mkdirSync(fontsOutDir, { recursive: true });
+    for (const font of fontManifest.fonts) {
+      if (!/^[a-z0-9-]+\.[a-f0-9]{8}\.woff2$/.test(font.file)) {
+        throw new Error(`Invalid public font filename: ${font.file}`);
+      }
+      const content = fs.readFileSync(path.join(fontsStaticDir, font.file));
+      const sha256 = crypto.createHash('sha256').update(content).digest('hex');
+      if (sha256 !== font.sha256 || !font.file.includes(`.${sha256.slice(0, 8)}.`)) {
+        throw new Error(`Font provenance/hash mismatch: ${font.file}`);
+      }
+      fs.writeFileSync(path.join(fontsOutDir, font.file), content);
+    }
+    for (const license of ['OFL-Manrope.txt', 'OFL-Source-Sans-3.txt']) {
+      fs.copyFileSync(path.join(fontsStaticDir, license), path.join(fontsOutDir, license));
+    }
+
+    // Public app derivatives (LR08) gated by their provenance manifest (LR09):
+    // hash-verified WebP only; masters and undeclared files never ship.
+    const appAssetsCopied = copyAppAssets(
+      path.join(staticDir, 'assets', 'app'),
+      path.join(outDir, 'assets', 'app'),
+    );
+
     // 6. Copy and substitute static configuration files
     const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
     for (const file of configFiles) {
@@ -150,6 +215,23 @@ export function build(options = {}) {
       { srcRel: 'guias/pesquisa-anp/index.html', destRel: 'guias/pesquisa-anp/index.html' },
       { srcRel: 'guias/etanol-ou-gasolina/index.html', destRel: 'guias/etanol-ou-gasolina/index.html' },
       { srcRel: 'guias/como-ler-precos/index.html', destRel: 'guias/como-ler-precos/index.html' },
+      { srcRel: 'como-usar/index.html', destRel: 'como-usar/index.html' },
+      { srcRel: 'como-usar/escolher-cidade/index.html', destRel: 'como-usar/escolher-cidade/index.html' },
+      { srcRel: 'como-usar/precos-do-posto/index.html', destRel: 'como-usar/precos-do-posto/index.html' },
+      { srcRel: 'como-usar/comunidade/index.html', destRel: 'como-usar/comunidade/index.html' },
+      { srcRel: 'como-usar/conta-e-privacidade/index.html', destRel: 'como-usar/conta-e-privacidade/index.html' },
+      { srcRel: 'como-usar/fotografar-preco/index.html', destRel: 'como-usar/fotografar-preco/index.html' },
+      { srcRel: 'como-usar/denunciar-abuso/index.html', destRel: 'como-usar/denunciar-abuso/index.html' },
+      { srcRel: 'como-usar/veiculos/index.html', destRel: 'como-usar/veiculos/index.html' },
+      { srcRel: 'como-usar/offline-e-recuperacao/index.html', destRel: 'como-usar/offline-e-recuperacao/index.html' },
+      { srcRel: 'como-usar/ajuda-e-regras/index.html', destRel: 'como-usar/ajuda-e-regras/index.html' },
+      { srcRel: 'como-usar/precos-anp/index.html', destRel: 'como-usar/precos-anp/index.html' },
+      { srcRel: 'como-usar/semanas-anp/index.html', destRel: 'como-usar/semanas-anp/index.html' },
+      { srcRel: 'como-usar/historico/index.html', destRel: 'como-usar/historico/index.html' },
+      { srcRel: 'como-usar/postos/index.html', destRel: 'como-usar/postos/index.html' },
+      { srcRel: 'como-usar/minhas-contribuicoes/index.html', destRel: 'como-usar/minhas-contribuicoes/index.html' },
+      { srcRel: 'como-usar/perfil-do-posto/index.html', destRel: 'como-usar/perfil-do-posto/index.html' },
+      { srcRel: 'como-usar/configuracoes/index.html', destRel: 'como-usar/configuracoes/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 
@@ -228,6 +310,7 @@ export function build(options = {}) {
       fingerprintedJs: fingerprintedJsName,
       cssHash,
       jsHash,
+      appAssets: appAssetsCopied,
     };
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

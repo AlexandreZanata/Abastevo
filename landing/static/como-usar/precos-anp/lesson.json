@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU05",
+  "slug": "precos-anp",
+  "titlePtBr": "Consultar a tabela ANP",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu05-s1",
+      "image": "/assets/app/anp-prices-720w.webp",
+      "imageSha256": "7f0021d8893e5271bb78deb882cbfebf4c7da10a317928f106bc4faa68384937",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Toque no cartão do combustível para ver os postos.",
+      "controlLabelPtBr": "Etanol, preço médio R$ 3,96",
+      "expectedPtBr": "Abre a lista de postos daquele combustível.",
+      "recoveryPtBr": "Volte para ler outra média.",
+      "altPtBr": "Cartão do etanol destacado na tabela ANP.",
+      "target": {
+        "x": 48,
+        "y": 624,
+        "width": 1124,
+        "height": 420
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu05-s2",
+      "image": "/assets/app/anp-prices-720w.webp",
+      "imageSha256": "7f0021d8893e5271bb78deb882cbfebf4c7da10a317928f106bc4faa68384937",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Leia média, mínimo e máximo com contagem de postos.",
+      "controlLabelPtBr": "Média: R$ 3,96",
+      "expectedPtBr": "Média com mínimo, máximo e 7 postos pesquisados.",
+      "recoveryPtBr": "Valores são da semana; troque a semana para comparar.",
+      "altPtBr": "Linha de média destacada.",
+      "target": {
+        "x": 96,
+        "y": 768,
+        "width": 328,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu05-s3",
+      "image": "/assets/app/anp-prices-720w.webp",
+      "imageSha256": "7f0021d8893e5271bb78deb882cbfebf4c7da10a317928f106bc4faa68384937",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Confira a semana de pesquisa no topo.",
+      "controlLabelPtBr": "Semana de pesquisa",
+      "expectedPtBr": "Semana datada, nunca preço vivo na bomba.",
+      "recoveryPtBr": "Semana antiga indica dados desatualizados.",
+      "altPtBr": "Semana de pesquisa confirmada.",
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

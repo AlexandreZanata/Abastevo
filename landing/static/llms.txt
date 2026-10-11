@@ -14,6 +14,11 @@ O abastevo é um projeto de código aberto sob licença MIT desenvolvido para da
 
 ## Links Canônicos
 - Site principal: {{CANONICAL_ORIGIN}}/
+- Como usar (tutoriais com capturas reais): {{CANONICAL_ORIGIN}}/como-usar/
+- Tutorial: Escolher cidade: {{CANONICAL_ORIGIN}}/como-usar/escolher-cidade/
+- Tutorial: Entender os preços de um posto: {{CANONICAL_ORIGIN}}/como-usar/precos-do-posto/
+- Tutorial: Usar a Comunidade: {{CANONICAL_ORIGIN}}/como-usar/comunidade/
+- Tutorial: Offline e recuperação: {{CANONICAL_ORIGIN}}/como-usar/offline-e-recuperacao/
 - Guias Educativos: {{CANONICAL_ORIGIN}}/guias/
 - Guia: Pesquisa semanal da ANP: {{CANONICAL_ORIGIN}}/guias/pesquisa-anp/
 - Guia: Etanol ou gasolina (regra dos 70%): {{CANONICAL_ORIGIN}}/guias/etanol-ou-gasolina/

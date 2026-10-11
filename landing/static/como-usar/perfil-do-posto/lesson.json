@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU23",
+  "slug": "perfil-do-posto",
+  "titlePtBr": "Consultar perfil do posto",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu23-s1",
+      "image": "/assets/app/station-detail-720w.webp",
+      "imageSha256": "c65b8b8738d70d919b22a8932f84044b16040bd42aa6329b1f4bddbfd636da2e",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Confira razão social e bandeira.",
+      "controlLabelPtBr": "JABER COMERCIO DE COMBUSTIVEIS LTDA",
+      "expectedPtBr": "Identidade pública do cadastro ANP.",
+      "recoveryPtBr": "Nome divergente indica cadastro desatualizado.",
+      "altPtBr": "Identidade do posto destacada.",
+      "target": {
+        "x": 306,
+        "y": 1074,
+        "width": 854,
+        "height": 192
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/StationProfileScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu23-s2",
+      "image": "/assets/app/station-detail-720w.webp",
+      "imageSha256": "c65b8b8738d70d919b22a8932f84044b16040bd42aa6329b1f4bddbfd636da2e",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Use Ir para navegar ou Atualizar preço.",
+      "controlLabelPtBr": "Atualizar preço",
+      "expectedPtBr": "Entradas de ação sem sair do perfil.",
+      "recoveryPtBr": "Atualizar exige conta e posto elegível.",
+      "altPtBr": "Entrada Atualizar preço destacada.",
+      "target": {
+        "x": 464,
+        "y": 1800,
+        "width": 292,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/StationProfileScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu23-s3",
+      "image": "/assets/app/station-detail-720w.webp",
+      "imageSha256": "c65b8b8738d70d919b22a8932f84044b16040bd42aa6329b1f4bddbfd636da2e",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Endereço público orienta a chegada.",
+      "controlLabelPtBr": "RUA ALENCAR BORTOLANZA",
+      "expectedPtBr": "Endereço do cadastro, nunca GPS de pessoa.",
+      "recoveryPtBr": "Endereço divergente: confira na rua.",
+      "altPtBr": "Endereço confirmado.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/StationProfileScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

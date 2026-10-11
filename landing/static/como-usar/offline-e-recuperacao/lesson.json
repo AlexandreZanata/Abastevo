@@ -1,0 +1,59 @@
+{
+  "lessonId": "TU29",
+  "slug": "offline-e-recuperacao",
+  "titlePtBr": "Offline e recuperação",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu29-s1",
+      "image": "/assets/app/offline-cached-720w.webp",
+      "imageSha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Modo avião ligado para o teste e desligado logo depois.",
+      "instructionPtBr": "Com o modo avião ligado, abra a tabela: o cache local renderiza.",
+      "controlLabelPtBr": "Etanol, preço médio R$ 3,96",
+      "expectedPtBr": "Tabela em cache com médias da semana, sem rede.",
+      "recoveryPtBr": "Sem cache, a tela informa em vez de inventar.",
+      "altPtBr": "Tabela em cache com modo avião ativo.",
+      "target": {
+        "x": 48,
+        "y": 624,
+        "width": 1124,
+        "height": 420
+      },
+      "availability": "Disponível",
+      "claimClass": "offline-cache",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s2",
+      "image": "/assets/app/offline-cached-720w.webp",
+      "imageSha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "Modo avião ligado para o teste e desligado logo depois.",
+      "instructionPtBr": "Na Comunidade, o vazio segue honesto sem rede.",
+      "controlLabelPtBr": "Ainda não há preços recentes",
+      "expectedPtBr": "Mesmo estado vazio do online; nada finge atualizar.",
+      "recoveryPtBr": "Desligue o modo avião para sincronizar.",
+      "altPtBr": "Vazio honesto mantido sem rede.",
+      "availability": "Disponível",
+      "claimClass": "offline-cache",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

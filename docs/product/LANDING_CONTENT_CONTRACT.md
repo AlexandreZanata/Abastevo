@@ -4,6 +4,24 @@ State: **LOCAL_DONE — APPROVED**, 2026-10-05. Scope: documentation and two sta
 
 This contract freezes what P25-T02–T05 build. Changing copy, section order, tokens or a claim class goes back through this document first.
 
+## Typography amendment — user decision 2026-10-11
+
+For the landing, use **Manrope** for headings, CTAs, navigation, cards, prices and
+emphasis (700/800 for headings and 700 for prices); use **Source Sans 3** for
+long text, descriptions, FAQ answers, legal copy and informational subtitles
+(400/500). This supersedes the system-only family row below. Self-host official
+variable WOFF2 Latin/Latin Extended subsets, with `font-display: swap`, system
+fallbacks, content-hash filenames and original SIL OFL 1.1 notices. Preserve the
+approved vector wordmark; this does not authorize changing mobile typography.
+Need/license/security provenance: `landing/static/assets/fonts/provenance.json`.
+No runtime font CDN, new package or tracker is added. Include font bytes in
+initial-transfer measurement and inspect layout/contrast after loading/fallback.
+
+The follow-up visual/tutorial request uses branch `landing`; see the
+[bounded redesign plan](../planning/LANDING_REDESIGN_EXECUTION_PLAN.md).
+The home opening is separate from the genuine app gallery and tutorial section.
+Only actual app captures may appear in mockups or step walkthroughs.
+
 ## Page inventory
 
 | Path | Purpose | Indexed / sitemap | Notes |
@@ -12,9 +30,32 @@ This contract freezes what P25-T02–T05 build. Changing copy, section order, to
 | `/privacidade/` | Privacy statement (B-BR-L07) | Yes / Yes | Derived from maintained policy; see [Legal pages](#legal-pages-b-br-l07) |
 | `/excluir-conta/` | Web path to request account/data deletion | Yes / Yes | Required by Google Play for apps with account creation |
 | `/termos/` | Community terms | Yes / Yes | Reporting/moderation rules from the moderation policy |
+| `/guias/` + 3 evergreen guides | Education (P26) | Yes / Yes | Retained unchanged by the redesign |
+| `/como-usar/` | Tutorial hub: grouped chapter links, step counts, availability labels | Yes / Yes | New in redesign (LR15); crawlable links, no placeholders |
+| `/como-usar/<slug>/` | 30 chapters, one per TU01–TU30 slug frozen in the [tutorial catalog](LANDING_MOBILE_TUTORIAL_CATALOG.md) | Yes / Yes | New in redesign (LR16–LR24); pending chapters show a factual note, never invented screens |
 | `/404.html` | Real 404 | No / No | Short message with links to home and repository |
 
 Not in scope: blog, city pages, translations, dashboards, forms, analytics, newsletter.
+
+## Information architecture freeze (LR02) — 2026-10-11
+
+Home section order for the redesign (plan §Visual direction): compact header →
+text hero without phone mockup → quiet principles strip → app gallery
+(`#aplicativo`, existing anchor kept) → feature stories → tutorial teaser
+(`#tutoriais`, new) → source explanation (`#fontes`, new) → project/privacy
+(`#o-projeto`, existing anchor kept) → FAQ (`#faq`, new) → availability
+(`#disponibilidade`, new) → footer. Existing anchors `#como-funciona` and
+`#aplicativo`/`#o-projeto` keep their names; new anchors land with their
+sections (LR10–LR12/LR15), never as empty targets.
+
+Chapter slugs are frozen to the parenthesized slug in each TU01–TU30 catalog
+heading (e.g. TU02 → `/como-usar/escolher-cidade/`); never renumber chapters,
+never add city/keyword doorway pages. Hub groups: driver/discovery
+(TU01–TU10), accounts/participation (TU11–TU21), representatives/tools
+(TU22–TU28), help/offline (TU29–TU30). Availability labels: chapter headers
+use `Disponível` (captured), `Em breve` (accepted capture, chapter pending) or
+`Planejado` (gated per LR01); the prelaunch store notice stays
+`Em breve na Google Play` (plain text, B-BR-L03) until a verified listing.
 
 ## Verified-feature inventory and claim classes
 
@@ -33,7 +74,7 @@ Public wording follows the class of each capability. Classes are checked against
 | Optional one-shot device location, navigation to Maps/Waze, local price-drop alerts | README imported features | E1 |
 | Community price observations, source/date/condition display, “unknown/disputed” outcomes | [Product contract](PRODUCT_CONTRACT.md), PROGRESS P19–P24 | E2 |
 | Photo contribution with private evidence limited to 24 hours | [Local media policy](../security/LOCAL_MEDIA_LOCATION_POLICY.md), PROGRESS P21 | E2 |
-| Free accounts (email code, Google, Apple), ratings, 280-character comments, votes, reports | [Free account access](../security/FREE_ACCOUNT_ACCESS.md), [moderation policy](COMMUNITY_MODERATION.md), PROGRESS P22 | E2 |
+| Free accounts (username + saved account key; provider/email paths code-present but device-gated, tutorials pending proof), ratings, 280-character comments, votes, reports | [Free account access](../security/FREE_ACCOUNT_ACCESS.md), [moderation policy](COMMUNITY_MODERATION.md), PROGRESS P22, LR01 route audit (`AuthViewModel`, `AnpNavGraph`) | E2 |
 | Paid optional hosted benefits | Product contract (LATER) | P — not mentioned except the “payment never buys trust” commitment |
 | Ethanol-versus-gasoline comparison | No verified feature | Excluded from copy and FAQ until a feature exists |
 | “Cheapest near me”, savings figures, coverage claims, user counts, ratings | No evidence | Forbidden (B-BR-L01) |
@@ -44,10 +85,11 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1:** `abastevo: preços de combustíveis com a comunidade`
+**H1 (LR10):** `Preços de combustíveis. Fonte e data à vista.`
 **Lead:** `Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros, com a fonte e a data de cada informação sempre visíveis. Comunidade e ANP aparecem separadas: uma nunca substitui a outra.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
-**Primary link:** `Ver no GitHub` → repository (ordinary link; same tab).
+**Primary CTA (LR10):** `Conheça o aplicativo` → `#aplicativo` (solid blue button, white text 8.12 contrast; the app gallery anchor exists).
+**Secondary link:** `Ver no GitHub` → repository (outline button; same tab).
 **Store notice [prelaunch]:** `Em breve na Google Play` (plain text). **[published]:** `Ver na Google Play`, one link or the official badge, in one place only.
 
 **Illustrative comparison** (heading `Comunidade e ANP, lado a lado`; label `Exemplo ilustrativo · dados fictícios`): two cards with the fictional place `Posto Exemplo` and the fictional value `R$ X,XX`; the community card reads `Observação enviada por pessoa · há algumas horas · apoio visível`; the ANP card reads `Levantamento publicado pela ANP · semana da pesquisa · não é preço da bomba agora`. Example values are always visibly fictional (no realistic price); text alternative: “Exemplo ilustrativo com dados fictícios: a mesma pergunta respondida pela comunidade e pela referência da ANP.”
@@ -138,6 +180,36 @@ Contrast ratios computed from the WCAG relative-luminance formula on 2026-10-05:
 | `#c5cee0` decorative outline on white | 1.58 | Decorative only; never the sole indicator of a control |
 
 **Dark appearance: not in P25.** The approved wordmark is navy and the project has no dark-background logo variant; creating one would invent brand artwork. Automatic dark mode is deferred until an approved variant exists. This resolves the plan's conditional dark-scheme allowance.
+
+## Visual revision (LR03) — 2026-10-11
+
+Composition reference: `docs/assets/landing/redesign-20261011/landing-reference-v2.html`
+(authored HTML/CSS with unmodified app PNGs; the AI-generated concept is
+superseded and excluded). It is a reference, not production markup.
+
+Explicit supersessions of the P25 flat contract above:
+
+| Old token | Revised value | Scope |
+|---|---|---|
+| Content width ~60 rem (960 px) | 1152 px max, 32 px gutters (measured from reference) | Desktop layout |
+| System font stack | Manrope (headings/CTAs/nav/cards/prices, 700/800, 700 prices) + Source Sans 3 (prose/FAQ/legal, 400/500), self-hosted WOFF2, swap fallback (see Typography amendment) | Type |
+| No shadows | One soft device-frame shadow only (`0 16px 24px #0b184915`); content cards stay flat | Gallery/tutorial phone frames |
+| 8/12 px radii | 16 px gallery cards, 20 px tutorial visual, 23–29 px device frames | Frames |
+| `--text-muted #44506b`, `--surface #f5f8fc` | Muted `#53617b`, pale `#f4f7fc`, line `#dce3ee`, teal `#03664b` (same as `--green-text`), red `#df231b` for tutorial overlays only | Palette |
+| H1 2–2.75 rem fluid | H1 56 px desktop / 32–40 px mobile, body 18 px, section H2 30–36 px (measured from reference; verify at LR10–LR12) | Scale |
+
+Measured WCAG contrast (relative-luminance formula, 2026-10-11): navy on
+white 16.92 / on pale 15.76; muted on white 6.24 / on pale 5.81; blue on
+white 8.12; teal on white 6.99 / on pale 6.51 / on `#edf6f2` 6.34; white CTA
+text on blue 8.12. All meet AA text 4.5. Red `#df231b` is never body text.
+
+Logo provenance: brand SVGs under `docs/assets/brand/` used verbatim (reference
+`209 px` header / `145 px` footer wordmark widths are measured, not new
+artwork). Prototype deviations kept out of production: red focus ring and
+tutorial overlay red stay prototype-only; production keeps the 3 px `--link`
+focus ring. No phone mockup in the hero; device frames only in gallery and
+tutorial sections. Wireframes `wireframe-375.svg`/`wireframe-1280.svg` remain
+the approved low-fi structure; this revision changes style tokens, not layout.
 
 ## Identity assets
 

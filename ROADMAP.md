@@ -3453,6 +3453,12 @@ State: PLANNED. Entry/exit, risk cases and evidence: [phase plan](docs/planning/
 
 ## P25 — Static landing page
 
+2026-10-11 user-authorized follow-up: [LR00–LR39 redesign/media/tutorial/SEO plan](docs/planning/LANDING_REDESIGN_EXECUTION_PLAN.md)
+and [economical-agent prompt](docs/planning/LANDING_REDESIGN_EXECUTION_PROMPT.md),
+using branch **landing**. Local fonts and a separate genuine-screen reference are
+prepared; full redesign/tutorial/SEO implementation and publication remain pending.
+Preserve the completed T01–T05 history below and independent Android gates.
+
 Priority: **MUST within the authorized website scope**. State: **PLANNED**. Entry: existing G09-LOCAL integration and approved abastevo identity. Independent from the Android/backend release sequence. Exit: **G25-STATIC-READY**, demonstrated static-site acceptance; integration, website publication, store availability and Google field evidence remain distinct. Specification: [static landing plan](docs/planning/STATIC_LANDING_PLAN.md).
 
 Current authority: local planning only (specification revision 2, including the maintainer-requested review: legal destinations, owner decisions D-L01–D-L08, hosting policy, icons/social/headers, visual contract, verification tooling). Future implementation branch: `codex/phase-25-static-landing`; T01–T05 run sequentially under one phase milestone/draft PR when delivery is authorized. Public hosting, Search Console ownership operations and the later real Play Store activation have their own prerequisites and authorization. No website/runtime is completed by this plan.

@@ -70,6 +70,8 @@
 
 - Security remediation SEC01-D 2026-10-11: LOCAL_DONE on maintained dev, retry/rollback + stable 429s (no SMTP, no SEC02+ scope). [Evidence](../backend/evidence/community-safety/SEC01D_RETRY_ROLLBACK.md). Mail-failure DeleteCode rollback (zero rows/budget, recovered retry 1/1); cooldown duplicates converge (1 row/1 mail); exhausted global nil with zero growth; hourly rotation re-admits; duplicate comment-ID replays converged, foreign reuse fails closed; account 429s carry Retry-After (aggregate 3600, session 60) and feedback 429s (report exact, comment 60) with stable codes and no identity echo. Unit + real-PostGIS (-race) green; build/vet/gofmt/sqlc/diff-check clean, secrets passed. Next microtask: SEC02-A proxy-fairness regressions.
 
+- Landing PR #128 reconciliation 2026-10-11: LOCAL_RECONCILED / REMOTE_CHECK_PENDING, isolated `codex/landing-reconcile-dev`; [evidence](../release-evidence/landing-redesign.md). Ordinary merge of published dev `47b5464` into landing `04dbdf8`; sole PROGRESS conflict resolved retaining both parents. Typecheck/build/check + 40 landing tests PASS; backend/app and in-progress local dev work preserved. User-authorized landing→dev merge requires current-head Quick verification; main/deploy/index remain pending.
+
 - Security remediation SEC01-C 2026-10-11: LOCAL_DONE on maintained dev, atomic admission + budgets (no SMTP, no SEC01-D matrix). [Evidence](../backend/evidence/community-safety/SEC01C_ATOMIC_ADMISSION.md). Frozen: aggregate mail 20/h, key-usernames 100/h, live sessions 10/account, live comments 100/account; ValidEmail + ParseComment before any store IO (zero lookups for malformed); TryIssue/TryCreateKey/TryCreateFamily/TryInsert under one lock/tx (pg_advisory_xact_lock); purges with exact counts (codes ≤24h after expiry, families ≤7d after absolute). 6/6 SEC01-A regressions GREEN (session rewritten to cap+second-account) + 5 new unit + 4 new real-PostGIS parallel/purge tests; account/feedback unit + integration (-race) green; build/vet/gofmt/sqlc/diff-check clean, secrets passed. Next microtask: SEC01-D real-SQL flood/rollback/retry proofs.
 
 - Security remediation SEC01-B 2026-10-11: LOCAL_DONE on maintained dev, bounded mailbox + config-gated delivery (no SMTP, no aggregate bounds). [Evidence](../backend/evidence/community-safety/SEC01B_MAILBOX_BOUND.md). Memory outbox ring-capped at 100 (oldest drops); Service.MailEnabled off-by-default answers nil before any store write (zero rows/mail, no oracle); ANPFUEL_MAIL_MODE off|memory (smtp refused); cmd/api wires cap + flag. New cap/gate/config tests green incl. RED pre-GREEN; existing fixtures opt in explicitly; account unit + integration (-race) green; build/vet/gofmt/diff-check clean, secrets passed. Next microtask: SEC01-C atomic admission + budgets.
@@ -133,6 +135,88 @@
 - Community safety CS02A 2026-10-11: LOCAL_DONE on maintained dev, store only (no HTTP/OpenAPI). [Evidence](../backend/evidence/community-safety/CS02A_HELPFULNESS_STORE.md). Migration 000054 (votes uniques, tallies with non-negative checks, observation visibility columns) + sqlc queries + `HelpfulnessStore` pg implementation. Real-PostGIS: 10/10 green incl. 20-voter concurrency, flips, removals, crash-replay, per-contributor submission scope, corrupt-tally rebuild, ownership/eligibility, erase+recast, 000054 upgrade, non-destructive guard; concurrent trio also `-race` green. Key fix: delta-upsert rejected by PG CHECK-before-conflict semantics → plain UPDATE + exact rebuild on missing. vet/gofmt/diff-check clean, secrets scan passed; local staticcheck predates go1.27 (env gap, CI pinned). Next microtask: CS02B helpfulness HTTP + OpenAPI.
 
 - Offline community extension 2026-10-11: PLANNING_LOCAL_DONE / IMPLEMENTATION_NOT_STARTED, opening maintained dev `61f7c1b`; existing CI contributor commit preserved. [CS15–CS25 additional phases/rules](COMMUNITY_SAFETY_EXECUTION_PLAN.md), [updated implementation and eight-line microtask prompts](COMMUNITY_SAFETY_EXECUTION_PROMPT.md), [inactive Portuguese offline notice](../product/COMMUNITY_PRIVACY_TERMS_PT_BR.md). Execution order CS00–CS12 → CS15–CS25 → CS13 → CS14 preserves final staging/device GPS acceptance. Reuse Room station cache/outbox; city feed lacks persistent cache-first reads, dispatch scans listAll, current capture needs online two-minute authorization. Plan covers bounded offline city packs/local pages, all-route capability matrix, queued social/price/privacy actions, versioned offline-capture decision, clock/expiry/owner rules, reconnect quotas/idempotency, abuse/resource/recovery tests and actual device/24h evidence. Full coverage means tested outcomes, never unseen fresh prices, instant remote acknowledgement or absolute abuse immunity. No runtime/dependency/VPS/device/GitHub/wiki operation; docs checks only. Next: selected pending microtask under explicit dependency order; all implementation/runtime gates remain pending.
+
+- Landing redesign LR39 2026-10-11: LOCAL_DONE on branch `landing`, final SEO/AI report in [evidence](../release-evidence/landing-redesign.md) (verified vs owed per source, no ranking guarantee). Landing construction batch LR00–LR39 complete; integration/deploy/index owed per LR36–LR38.
+
+- Landing redesign LR38 2026-10-11: LOCAL_DONE on branch `landing`, index follow-up.
+
+- Landing redesign LR37 2026-10-11: RECORDED on branch `landing` — DEPLOY_PENDING, no remote change (no infra approvals requested or received). Owed: integration, protected delivery, then preview/publish/smoke/rollback approvals. Next: LR38 index follow-up.
+
+- Landing redesign LR36 2026-10-11: DECISION on branch `landing` — INTEGRATION_PENDING, no merge.
+
+- Landing redesign LR35 2026-10-11: LOCAL_DONE on branch `landing`, scoped union once at `3da311e`.
+
+- Landing redesign LR34 2026-10-11: LOCAL_DONE on branch `landing`, pending-media sweep.
+
+- Landing redesign LR33 2026-10-11: LOCAL_DONE on branch `landing`, final review.
+
+- Landing redesign LR32 2026-10-11: LOCAL_DONE on branch `landing`, accessibility exit.
+
+- Landing redesign LR31 2026-10-11: LOCAL_DONE on branch `landing`, store readiness.
+
+- Landing redesign LR30 2026-10-11: LOCAL_DONE on branch `landing`, error/redirect pass.
+
+- Landing redesign LR29 2026-10-11: LOCAL_DONE on branch `landing`, performance pass.
+
+- Landing redesign LR28 2026-10-11: LOCAL_DONE on branch `landing`, crawler directives.
+
+- Landing redesign LR27 2026-10-11: LOCAL_DONE on branch `landing`, indexation evidence.
+
+- Landing redesign LR26 2026-10-11: LOCAL_DONE on branch `landing`, navigation hardening.
+
+- Landing redesign LR25 2026-10-11: LOCAL_DONE on branch `landing`, legal copy review.
+
+- Landing redesign LR24 2026-10-11: LOCAL_DONE on branch `landing`, search/recovery/CRUD reference.
+
+- Landing redesign LR23 2026-10-11: LOCAL_DONE on branch `landing`, permission/location pass.
+
+- Landing redesign LR22 2026-10-11: LOCAL_DONE on branch `landing`, offline/error states. Airplane-offline cache + empty-search captures (radios restored off, query cleared, list verified); TU29 page + TU08 error step; manifest 23/69. Build/check green, 35/35 tests. Next: LR23 permission/location pass.
+
+- Landing redesign LR21 2026-10-11: LOCAL_DONE on branch `landing`, seven evidence-backed chapters (TU05/06/07/08/17/23/28 from accepted masters + fresh read-only bound dumps, no new captures). 14 chapter pages live; TU01/03/04/11/12/15/16/18/19/22/24/25/27/29/30 pending (no captures or blocked). Build/check green, 35/35 tests. Next: LR22 empty/error/offline states.
+
+- Landing redesign LR20 2026-10-11: LOCAL_DONE on branch `landing`, vehicle-form lesson TU26. Blank dark form (nothing typed/toggled/saved) + page; suggest/claim/manage entries unobserved, alert OS permission pending. Build/check green, 35/35 tests. Device left on Explorar. Next: LR21 remaining lessons.
+
+- Landing redesign LR19 2026-10-11: LOCAL_DONE on branch `landing`, report-rules lesson TU21. Rules dialog capture (read-only, dismissed) + page; rating/comment/vote composers gated by station verification + empty feed, pending hermetic preproduction. Build/check green, 35/35 tests. Next: LR20 management lessons.
+
+- Landing redesign LR18 2026-10-11: LOCAL_DONE on branch `landing`, photo entry lesson TU14. Capture-entry frame (degraded list, disabled shutter, dev toggle off) + page; shutter never pressed, OCR/outbox pending on synthetic fixtures. Build/check green, 35/35 tests. Next: LR19 participation lessons.
+
+- Landing redesign LR17 2026-10-11: LOCAL_DONE on branch `landing`, account lesson TU13. Profile-connected capture (demo `zanatateste`, no key in pixels) + page; auth/key visuals secure-blocked (hierarchy-verified, never invented); TU11/TU12 visuals pending. Build/check green, 35/35 tests. Next: LR18 photo lessons.
+
+- Landing redesign LR16 2026-10-11: LOCAL_DONE on branch `landing`, driver lessons BUC01/BUC02. Chapter pages TU02/TU09/TU10 (10 steps, native-viewBox overlays, prev/next, hub links flipped, sitemap); full text without JS, no app-write semantics. Build/check green, 35/35 tests. Conta `zanatateste` segue logada para LR17+. Next: LR17 account lessons.
+
+- Landing redesign LR15 2026-10-11: LOCAL_DONE on branch `landing`, tutorial hub. `/como-usar/` with 30 chapters, 4 journeys, status labels, zero dead links; home nav + sitemap + build/check wired. Build/check green, 34/34 tests. Chapter links flip on as pages land (LR16+). Next: LR16 driver lessons.
+
+- Landing redesign LR14 2026-10-11: LOCAL_DONE on branch `landing`, three annotated lessons. `lesson.json` for TU02/TU09/TU10 (10 steps, real bounds from dumps) + municipios-mt master/derivatives (manifest 17, app 51); validator covers shipped lessons. Build/check green, 33/33 tests. Next: LR15 tutorial hub.
+
+- Landing redesign LR13 2026-10-11: LOCAL_DONE on branch `landing`, tutorial data contract. `lesson.json` schema + overlay/prev-next rules in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md); pure `validateLesson` (`src/tutorial.ts`, test-only, never shipped) + shared chapter styles; 3 validator tests. Typecheck green, 33/33 tests. Next: LR14 three annotated lessons.
+
+- Landing redesign LR12 2026-10-11: LOCAL_DONE on branch `landing`, source/project/footer pass. Explicit ANP non-affiliation + source separation + no-promise copy; legal/GitHub/MIT destinations preserved and test-guarded. Build/check green, 30/30 tests. Conta `zanatateste` logada no aparelho registrada para LR16+; aparelho intocado neste lote. Next: LR13 tutorial data contract.
+
+- Landing redesign LR11 2026-10-11: LOCAL_DONE on branch `landing`, app gallery + stories. 3 authentic figures (srcset 360/720/1080, lazy, alt, captions with status) + static layout; no carousel/autoplay; emitted-asset test. Build/check green, 30/30 tests. Next: LR12 source/privacy/project/footer.
+
+- Landing redesign LR10 2026-10-11: LOCAL_DONE on branch `landing`, header/hero revision. Candidate H1 + `Conheça o aplicativo`→#aplicativo primary CTA (contract-amended, checks updated), 1152px width, 32–56px H1, solid AA CTA; hero phone-free (test-guarded). Typecheck/build/check green, 29/29 tests. Tutorial anchor wiring owed at LR15 (no orphan links). Next: LR11 gallery/stories.
+
+- Landing redesign LR09 2026-10-11: LOCAL_DONE on branch `landing`, asset build extension. Provenance-gated `assets/app/` copying (48 WebP hash-verified, masters refused, missing/traversal loud) + 4 build tests; typecheck/build/check green, landing tests 29/29. Chapter route registration owed at LR15 with chapter sources. Next: LR10 header/hero.
+
+- Landing redesign LR08 2026-10-11: LOCAL_DONE on branch `landing`, responsive derivatives. 48 deterministic WebP (360/720/1080w, q85, aspect-preserved, no upscale) + provenance in `landing/static/assets/app/`; 360w legible at 100%, rebuild identical, landing tests 25/25 green. Build wiring/alt assignment owed at LR09/LR11. Next: LR09 asset build.
+
+- Landing redesign LR07 2026-10-11: LOCAL_DONE on branch `landing`, manifest selection. 16 entries with roles + claim classes, rejected list, 13 missing rows in manifest; [README selection](../assets/landing/redesign-20261011/README.md). Integrity re-verified 16/16, diff-check clean, secrets passed. Next: LR08 responsive derivatives.
+
+- Landing redesign LR06 2026-10-11: LOCAL_DONE on branch `landing`, conditional states view-only. 2 clean captures (contributions-empty, settings) in manifest (16 total); auth/key screens uncapturable by FLAG_SECURE (recorded, TU11/TU12 visuals pending); fixture-gated states (photo/OCR/outbox/feedback/claim) pending, never staged on user phone. Hash/dim checks, diff-check clean, secrets passed. Next: LR07 manifest selection.
+
+- Landing redesign LR05 2026-10-11: LOCAL_DONE on branch `landing`, public-read marketing set. 6 clean 1220×2712 captures (stations-list, station-detail, station-sources, community-feed, history, week-picker) in media [README](../assets/landing/redesign-20261011/README.md)/manifest (14 total); read-only authorized phone session, Sorriso kept, no mutations; notification + secure-screen frames rejected. 100% visual review + hash/dim checks, diff-check clean, secrets passed. Next: LR06 conditional states.
+
+- Landing redesign LR04 2026-10-11: LOCAL_DONE on branch `landing`, safe capture environment. Standard (pt-BR, 1.0 font, portrait, native res) + seeder ban (`clearAppStorage:262`) + device rule in media [README](../assets/landing/redesign-20261011/README.md)/manifest; no new capture, 8/8 hashes re-verified. Diff-check clean, secrets passed. Next: LR05 marketing capture set (needs device session).
+
+- Landing redesign LR03 2026-10-11: LOCAL_DONE on branch `landing`, visual contract revision. Reference-v2 composition frozen; token supersessions (1152px width, Manrope/Source Sans, teal/pale palette, frame radii + one device shadow) + measured AA contrast + logo provenance in [contract](../product/LANDING_CONTENT_CONTRACT.md). Wireframes well-formed/script-free, diff-check clean, secrets passed. Next: LR04 capture environment.
+
+- Landing redesign LR02 2026-10-11: LOCAL_DONE on branch `landing`, IA/copy freeze. Home anchor order + `/como-usar/` hub + 30 frozen chapter slugs in [contract](../product/LANDING_CONTENT_CONTRACT.md)/[catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md); `/guias/` + legal retained; availability labels fixed. Slug check 30/30 unique, diff-check clean, secrets passed. Next: LR03 visual contract.
+
+- Landing redesign LR01 2026-10-11: LOCAL_DONE on branch `landing`, capability/claim freeze. [Catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md) maps all 25 Routes.kt constants to TU01–TU30; TU20/CS-offline/training-consent/provider-email explicitly gated; [content contract](../product/LANDING_CONTENT_CONTRACT.md) reconciled to username/key primary flow. Route-to-chapter check 25/25, diff-check clean, secrets passed. Next: LR02 IA/copy freeze.
+
+- Landing redesign LR00 2026-10-11: LOCAL_DONE on branch `landing` (evidence `20bb603`, ledger refresh `8d10c22` local; `origin/landing` `20bb603`, `dev`/`origin/dev` `a853708`, `main`/`origin/main` `a349d7c`). [Evidence](../release-evidence/landing-redesign.md). Worktree `.worktrees/landing-refresh` clean; occupied dev checkout untouched. P25/P26 acceptance and preparation artifacts (local fonts, authentic reference/media, 30-chapter catalog) inventoried and re-verified (8/8 capture hashes+dims, 4/4 font hashes+signatures, TU01–TU30 present); no duplicate foundation work. Git-only validation + secret scan, no runtime suite per plan. Next: LR01 capability/claim inventory.
+
+- Landing preparation 2026-10-11: PLANNING_LOCAL_DONE; FONT_INTEGRATION_LOCAL_DONE / INTEGRATION_PENDING; production redesign and complete tutorials NOT_STARTED. Existing **landing** branch, isolated `.worktrees/landing-refresh`, opening `954a8d8`; occupied dev edits untouched. [40 microtasks LR00–LR39](LANDING_REDESIGN_EXECUTION_PLAN.md), [economical-agent prompt](LANDING_REDESIGN_EXECUTION_PROMPT.md), [30-chapter mobile catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md) and [authentic reference/media](../assets/landing/redesign-20261011/README.md). Separate opening/gallery/tutorial sections; two-step red-rectangle preview uses real app pixels. Eight native 1220×2712 captures, guest/blank states, debug 3.1.0/code4, installed SHA unknown; private overlay attempts rejected. Original dark theme restored. Requested local Manrope/Source Sans 3 WOFF2 + OFL/provenance/hash-copy regression integrated; typecheck/build/check and 25 landing tests passed, gate selection 18/18, browser responsive/font checks passed. Zaflas read-only SEO patterns and current official search/AI crawler research recorded; no ranking guarantee. No account/data mutation, backend behavior, deployment, remote tracker/PR/merge/wiki or index submission. Next: LR00 reconcile prepared artifacts on landing, then the next authorized bounded phase; normal reviewed integration into dev and protected dev→main only at authorized delivery.
 
 - Community safety CS01 2026-10-11: LOCAL_DONE on maintained dev at `61f7c1b`, pure domain+contract only. [Evidence](../backend/evidence/community-safety/CS01_HELPFULNESS_CONTRACT.md). Frozen: votes bind observation UUID + decision sequence (stale refuses, never transfers); HELPFUL/NOT_HELPFUL only (VALID refuses); floor-bp share null on zero; self/inactive/hidden/deleted/stale refuse pre-mutation; change rewrites, retry replays, remove idempotent; counts public, MyChoice private; erasure via ContributorRef (store in CS02). New: domain/helpfulness.go, application/helpfulness.go, 4 golden fixtures + pinning test; no migration/HTTP/route/VPS. `go test ./internal/modules/community/...` green incl. 16 new tests (RED seen pre-GREEN), vet/gofmt/diff-check clean, secrets scan passed. Next microtask: CS02 atomic votes/HTTP/projections.
 
