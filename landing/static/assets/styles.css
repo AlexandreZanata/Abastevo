@@ -514,6 +514,60 @@ section {
   }
 }
 
+/* App gallery (LR11): authentic captures in restrained frames, static layout */
+.app-gallery {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .app-gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.app-shot {
+  margin: 0;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+.phone-frame {
+  max-width: 20rem;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  line-height: 0;
+  background-color: #1d2639;
+}
+
+.phone-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.app-shot figcaption {
+  padding-top: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.app-shot figcaption strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
+}
+
 /* Step Card */
 .step-card {
   background: #ffffff;
