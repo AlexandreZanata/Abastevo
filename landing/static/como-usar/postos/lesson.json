@@ -110,6 +110,34 @@
       "capturedAt": "2026-10-11",
       "privacyReviewed": true,
       "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s5",
+      "image": "/assets/app/nearby-failure-720w.webp",
+      "imageSha256": "9deea81646241d20de9fd7e0247f2813ec35b3ff845b270eaa7f7e3d8a4a9b4c",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Error state",
+      "prerequisite": "Permissão de localização já concedida; nada a decidir.",
+      "instructionPtBr": "Use Mais barato perto de mim com a permissão existente.",
+      "controlLabelPtBr": "Mais barato perto de mim",
+      "expectedPtBr": "Sem posto próximo, aviso honesto; verifique conexão e localização.",
+      "recoveryPtBr": "A lista por preço segue disponível sem localização.",
+      "altPtBr": "Aviso de posto próximo indisponível sobre a lista.",
+      "target": {
+        "x": 410,
+        "y": 1722,
+        "width": 496,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "error-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
     }
   ]
 }

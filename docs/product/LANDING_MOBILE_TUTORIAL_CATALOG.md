@@ -324,6 +324,21 @@ Explicitly gated (no active lesson, no invented screens):
   explanation → actual external legal/contact destination.
 - **Recovery:** offline/no browser/share handler. No automatic message submission.
 
+## Permission and impact matrix (LR23) — 2026-10-11
+
+Verified on the test device (`appops`, 2026-10-11): camera and fine location
+granted foreground-only; no background grant observed. Tutorials never ask the
+reader to grant, deny or revoke anything; denial/rationale screens stay
+pending on a disposable emulator.
+
+| Capability | Lessons | Rule |
+|---|---|---|
+| Location (foreground) | TU02 (current), TU08 nearby, TU14 area check | Read-only use of an existing grant; no coordinates in pixels or text |
+| Camera | TU14/15 photo | Shutter never pressed on the user phone; synthetic fixtures only |
+| Notifications (OS) | TU27 alerts | Toggle viewed off; OS permission screen pending |
+| Network/sync | TU06/TU28/TU29 settings | Read without toggling; airplane test restored immediately |
+| Signed account | TU11–TU13/TU17–TU21/TU24–25 | Demo `zanatateste` session; no vote/report/upload/delete staged |
+
 ## Data and annotation contract (LR13) — 2026-10-11
 
 Each chapter ships a `lesson.json` beside its page source under

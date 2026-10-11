@@ -567,6 +567,30 @@
       "height": 2401,
       "bytes": 71832,
       "sha256": "66ac298fe955bfe91a574a5f3192efdfe41e271c17e205ae99dd83ceb6b08778"
+    },
+    {
+      "file": "nearby-failure-360w.webp",
+      "master": "nearby-failure.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 22866,
+      "sha256": "d1d1dad4ea58a81b63eb165d416bc54fb5f81e402ba3f4c6a6f41309da72790a"
+    },
+    {
+      "file": "nearby-failure-720w.webp",
+      "master": "nearby-failure.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 51714,
+      "sha256": "0e0e7bc48f5ce0209d2f55593267d7f5e862a4995f2b810aa758f189fb6461bb"
+    },
+    {
+      "file": "nearby-failure-1080w.webp",
+      "master": "nearby-failure.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 81222,
+      "sha256": "b53080cb34c13d6a9d14dd6229e3dca4e417868b97260f7ae96c45f7048e4e0f"
     }
   ]
 }
