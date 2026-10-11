@@ -34,3 +34,16 @@ type PrivacyRequest struct {
 	CompletedAt        pgtype.Timestamptz `json:"completed_at"`
 	PolicyVersion      string             `json:"policy_version"`
 }
+
+type PrivacyTrainingConsent struct {
+	ContributorID  string             `json:"contributor_id"`
+	ContributorRef string             `json:"contributor_ref"`
+	Purpose        string             `json:"purpose"`
+	TermsVersion   string             `json:"terms_version"`
+	TermsDigest    string             `json:"terms_digest"`
+	State          string             `json:"state"`
+	Revision       int64              `json:"revision"`
+	GrantedAt      pgtype.Timestamptz `json:"granted_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+	DecidedAt      pgtype.Timestamptz `json:"decided_at"`
+}
