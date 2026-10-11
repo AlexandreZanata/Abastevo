@@ -55,7 +55,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-pill: 9999px;
-  --max-width: 72rem; /* 1152px content area (LR03 visual revision) */
+  --max-width: 80rem; /* 1280px content area (widened per user review) */
 }
 
 *, *::before, *::after {
@@ -129,8 +129,8 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   max-width: var(--max-width);
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-copy,
