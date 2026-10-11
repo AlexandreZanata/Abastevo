@@ -97,6 +97,21 @@ func (s *PromotionStore) ListActiveByOwner(ctx context.Context, contributorID st
 	return out, nil
 }
 
+// ListRevokedBefore returns REVOKED rows whose revocation is older
+// than the deadline, oldest first, for the purge sweeper. Receipts
+// stay in place after the sweep; only bytes go.
+func (s *PromotionStore) ListRevokedBefore(ctx context.Context, before time.Time) ([]domain.Derivative, error) {
+	rows, err := dbprivacy.New(s.pool).ListRevokedDerivativesBefore(ctx, pgTime(before))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Derivative, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, rowToDerivative(row))
+	}
+	return out, nil
+}
+
 // MarkRevoked flips one row ACTIVE to REVOKED through the guarded
 // transition. Repeating the mark converges silently; unknown rows
 // read as not found.

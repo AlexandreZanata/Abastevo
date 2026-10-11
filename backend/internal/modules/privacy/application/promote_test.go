@@ -49,7 +49,6 @@ func (f *fakePromoteStore) ListActiveByOwner(_ context.Context, contributorID st
 	}
 	return out, nil
 }
-
 func (f *fakePromoteStore) MarkRevoked(_ context.Context, image string, revision uint64, at time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -64,6 +63,18 @@ func (f *fakePromoteStore) MarkRevoked(_ context.Context, image string, revision
 	}
 	f.rows[key] = revoked
 	return nil
+}
+
+func (f *fakePromoteStore) ListRevokedBefore(_ context.Context, before time.Time) ([]domain.Derivative, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []domain.Derivative
+	for _, d := range f.rows {
+		if d.State == domain.DerivativeRevoked && d.RevokedAt.Before(before) {
+			out = append(out, d)
+		}
+	}
+	return out, nil
 }
 
 func promotePorts(store *fakePromoteStore, verdict domain.SanitizeVerdict, sanitizeErr error) PromotePorts {
@@ -110,19 +121,19 @@ func TestProposeHappyPath(t *testing.T) {
 	store := newFakePromoteStore()
 	p := promotePorts(store, domain.VerdictPass, nil)
 	grantPromoteConsent(t, p, "c1", 1)
-	res, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+	res, resBytes, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw-bytes"),
 	})
-	if err != nil || res.Replayed || res.DerivativeSHA256 == "" {
+	if err != nil || res.Replayed || res.DerivativeSHA256 == "" || len(resBytes) == 0 {
 		t.Fatalf("propose = %+v, %v", res, err)
 	}
 	// Identical re-proposal converges without duplicating inventory.
-	second, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+	second, secondBytes, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw-bytes"),
 	})
-	if err != nil || !second.Replayed || second.DerivativeSHA256 != res.DerivativeSHA256 {
+	if err != nil || !second.Replayed || second.DerivativeSHA256 != res.DerivativeSHA256 || secondBytes != nil {
 		t.Fatalf("re-propose = %+v, %v", second, err)
 	}
 }
@@ -133,16 +144,16 @@ func TestProposeRefusesWithoutConsentOrScope(t *testing.T) {
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw"),
 	}
-	if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, dto); !errors.Is(err, domain.ErrConsentRequired) {
+	if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, dto); !errors.Is(err, domain.ErrConsentRequired) {
 		t.Errorf("absent consent = %v", err)
 	}
 	grantPromoteConsent(t, p, "c1", 1)
 	optOut := dto
 	optOut.PerImageAllowed = false
-	if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, optOut); !errors.Is(err, domain.ErrImageNotCovered) {
+	if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, optOut); !errors.Is(err, domain.ErrImageNotCovered) {
 		t.Errorf("opt-out = %v", err)
 	}
-	if _, err := Propose(context.Background(), p, Caller{}, dto); !errors.Is(err, ErrUnauthorized) {
+	if _, _, err := Propose(context.Background(), p, Caller{}, dto); !errors.Is(err, ErrUnauthorized) {
 		t.Errorf("anonymous = %v", err)
 	}
 }
@@ -152,7 +163,7 @@ func TestProposeFailsClosedAndWritesNothing(t *testing.T) {
 		store := newFakePromoteStore()
 		p := promotePorts(store, verdict, nil)
 		grantPromoteConsent(t, p, "c1", 1)
-		if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+		if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 			ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 			PerImageAllowed: true, Source: []byte("raw"),
 		}); !errors.Is(err, domain.ErrNotSanitizable) {
@@ -165,7 +176,7 @@ func TestProposeFailsClosedAndWritesNothing(t *testing.T) {
 	store := newFakePromoteStore()
 	p := promotePorts(store, domain.VerdictPass, errors.New("sanitizer down"))
 	grantPromoteConsent(t, p, "c1", 1)
-	if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+	if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw"),
 	}); err == nil {
@@ -185,7 +196,7 @@ func TestProposeLosesGrantRevokeRace(t *testing.T) {
 	if _, err := RevokeConsent(context.Background(), p.ConsentPorts, Caller{ContributorID: "c1"}, RevokeDTO{Revision: 2}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+	if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw"),
 	}); !errors.Is(err, domain.ErrConsentRequired) {
@@ -201,7 +212,7 @@ func TestRevokeOwnerStopsSelection(t *testing.T) {
 	p := promotePorts(store, domain.VerdictPass, nil)
 	grantPromoteConsent(t, p, "c1", 1)
 	for _, img := range []string{"img-1", "img-2"} {
-		if _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+		if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 			ImageID: img, CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 			PerImageAllowed: true, Source: []byte("raw-" + img),
 		}); err != nil {
@@ -218,7 +229,7 @@ func TestRevokeOwnerStopsSelection(t *testing.T) {
 	}
 	// Another owner's inventory is untouched.
 	grantPromoteConsent(t, p, "c2", 1)
-	if _, err := Propose(context.Background(), p, Caller{ContributorID: "c2"}, PromotionDTO{
+	if _, _, err := Propose(context.Background(), p, Caller{ContributorID: "c2"}, PromotionDTO{
 		ImageID: "img-9", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw"),
 	}); err != nil {
@@ -238,7 +249,7 @@ func TestConcurrentProposesAgreeUnderRace(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
+			_, _, _ = Propose(context.Background(), p, Caller{ContributorID: "c1"}, PromotionDTO{
 				ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 				PerImageAllowed: true, Source: []byte("raw-bytes"),
 			})

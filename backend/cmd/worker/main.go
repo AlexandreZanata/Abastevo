@@ -66,6 +66,42 @@ func (f inventoryFunc) Snapshot(ctx context.Context, contributorID, contributorR
 	return f(ctx, contributorID, contributorRef)
 }
 
+// trainingTermsWorker serves the current training-terms pair the
+// consent grants must present (CS10C; same provisional digest as the
+// API until the verified terms text lands in CS11).
+type trainingTermsWorker struct {
+	digest string
+}
+
+func (t trainingTermsWorker) CurrentVersion() string { return privacydomain.TrainingTermsV1 }
+func (t trainingTermsWorker) CurrentDigest() string  { return t.digest }
+
+// sanitizeFunc adapts the media-mapped sanitizer to the promotion port.
+type sanitizeFunc func(ctx context.Context, source []byte) ([]byte, privacydomain.SanitizeVerdict, error)
+
+func (f sanitizeFunc) Sanitize(ctx context.Context, source []byte) ([]byte, privacydomain.SanitizeVerdict, error) {
+	return f(ctx, source)
+}
+
+// refusingObjects keeps the purge pipeline composed while storage is
+// unconfigured: every call refuses explicitly instead of misbehaving.
+type refusingObjects struct{}
+
+func (refusingObjects) Exists(context.Context, string) (bool, error) {
+	return false, errors.New("training purge: storage not configured")
+}
+
+func (refusingObjects) Delete(context.Context, string) error {
+	return errors.New("training purge: storage not configured")
+}
+
+func trainingObjectsOrRefusal(objects *privacyadapters.TrainingObjects) privacyapp.ObjectStore {
+	if objects == nil {
+		return refusingObjects{}
+	}
+	return objects
+}
+
 // sweepJobPorts adapts the platform job lookup to the evidence sweep
 // port: only queued or leased verify jobs count as live leases.
 type sweepJobPorts struct {
@@ -297,6 +333,39 @@ func run() error {
 	// observation horizon reports metrics only until an FK-consistent
 	// cascade design lands. Rate windows self-clean on check and
 	// evidence media purges on its hourly sweeper.
+	// Training-derivative promotion and purge ports (CS10C): guarded
+	// consent reads plus the media-mapped sanitizer for offers, and
+	// the namespace object store for the daily revoked-copy sweep.
+	// Storage stays nil-guarded at call time (same convention as
+	// erasure deletes); the quarantine source read lands with the
+	// client-review producer in CS11.
+	trainingTerms := trainingTermsWorker{digest: cfg.TrainingTermsDigest}
+	consentStore := privacyadapters.NewConsentStore(pool.Underlying())
+	promotionStore := privacyadapters.NewPromotionStore(pool.Underlying())
+	promotePorts := privacyapp.PromotePorts{
+		ConsentPorts: privacyapp.ConsentPorts{
+			Clock: time.Now,
+			Attribution: func(ctx context.Context, contributorID string) (string, error) {
+				return identityRegistrar.AttributionToken(ctx, contributorID)
+			},
+			Store: consentStore,
+			Terms: trainingTerms,
+		},
+		Inventory: promotionStore,
+		Sanitizer: sanitizeFunc(privacyadapters.SanitizeImage),
+	}
+	var trainingObjects *privacyadapters.TrainingObjects
+	if cfg.R2 != nil {
+		trainingObjects = privacyadapters.NewTrainingObjects(privacyadapters.TrainingObjectConfig{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Region: cfg.R2.Region,
+			AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey,
+		})
+	}
+	purgePorts := privacyapp.PurgePorts{
+		Clock:     time.Now,
+		Inventory: promotionStore,
+		Objects:   trainingObjectsOrRefusal(trainingObjects),
+	}
 	retentionPurges := []privacyapp.NamedPurge{
 		{Name: "community-photo-captures", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
 			count, err := communityStore.PurgeExpiredPhotoCaptures(ctx, time.Now(), privacyapp.RetentionBatch)
@@ -679,6 +748,34 @@ func run() error {
 				return privacyapp.Erase(ctx, privacyErasePorts, contributorID, dto)
 			},
 		},
+		// Training-derivative promotion (CS10C): one offered image per
+		// job through the fail-closed pipeline with hash-bound source
+		// bytes. The quarantine source read arrives with the
+		// client-review producer (CS11); until then the handler
+		// refuses explicitly instead of misbehaving. Namespace writes
+		// require configured storage, same as erasure deletes.
+		"privacy-training-promote": privacyjobs.Promote{
+			LoadSource: func(ctx context.Context, imageID string) ([]byte, error) {
+				return nil, errors.New("training promotion: quarantine source not configured")
+			},
+			Propose: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
+				return privacyapp.Propose(ctx, promotePorts, caller, dto)
+			},
+			WriteOutput: func(ctx context.Context, key string, minimized []byte) error {
+				if cfg.R2 == nil {
+					return errors.New("training promotion: storage not configured")
+				}
+				return trainingObjects.Put(ctx, key, minimized)
+			},
+		},
+		// Training-copy purge (CS10C, AT05): revoked derivatives past
+		// the 24-hour deadline lose their namespace bytes daily while
+		// receipts stay for the restore filter.
+		"privacy-training-sweep": privacyjobs.Sweep{
+			Run: func(ctx context.Context) (privacyapp.SweepReport, error) {
+				return privacyapp.SweepRevoked(ctx, purgePorts)
+			},
+		},
 		// Retention sweep (P07-T05): every inventory category purges
 		// bounded oldest-first with per-category metrics; evidence
 		// media keeps its own hourly sweeper, and the 24-month
@@ -779,6 +876,11 @@ func run() error {
 		},
 		{
 			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
+			Interval: 24 * time.Hour, Enabled: true,
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
+		},
+		{
+			Name: "privacy-training-sweep-daily", Kind: "privacy-training-sweep", Version: 1,
 			Interval: 24 * time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},

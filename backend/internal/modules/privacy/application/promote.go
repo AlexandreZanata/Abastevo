@@ -28,11 +28,12 @@ type Sanitizer interface {
 
 // PromotionInventory is the owned derivative-inventory port: converged
 // writes keyed by image plus consent revision, owner-scoped active
-// reads, and idempotent revocation marks.
+// reads, idempotent revocation marks, and revoked rows due for purge.
 type PromotionInventory interface {
 	Put(ctx context.Context, d domain.Derivative) (stored bool, replayed bool, err error)
 	ListActiveByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error)
 	MarkRevoked(ctx context.Context, imageID string, revision uint64, at time.Time) error
+	ListRevokedBefore(ctx context.Context, before time.Time) ([]domain.Derivative, error)
 }
 
 // PromotePorts wires promotion through the shared consent ports
@@ -55,11 +56,14 @@ type PromotionDTO struct {
 }
 
 // PromotionResult is the safe acknowledgment: the derivative identity
-// and whether the call converged on an existing row.
+// and whether the call converged on an existing row. PromotedAt is
+// set on fresh proposals (key derivation for the namespace write);
+// replays carry the zero instant because no write follows.
 type PromotionResult struct {
 	ImageID          string
 	DerivativeSHA256 string
 	ConsentRevision  uint64
+	PromotedAt       time.Time
 	Replayed         bool
 }
 
@@ -67,17 +71,21 @@ type PromotionResult struct {
 // the current consent at commit time (a revocation between queueing
 // and commit refuses), minimizes fail-closed, and converges identical
 // re-proposals on the image-plus-revision key. Sanitizer outages and
-// non-PASS verdicts refuse with no inventory write.
-func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDTO) (PromotionResult, error) {
+// non-PASS verdicts refuse with no inventory write. On success it
+// also returns the minimized bytes just produced so the caller can
+// land them in the private namespace through the object port; the
+// bytes are nil on replay (nothing new to store) and must never be
+// persisted anywhere else — the API layer never calls Propose.
+func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDTO) (PromotionResult, []byte, error) {
 	if strings.TrimSpace(caller.ContributorID) == "" {
-		return PromotionResult{}, ErrUnauthorized
+		return PromotionResult{}, nil, ErrUnauthorized
 	}
 	if strings.TrimSpace(dto.ImageID) == "" || dto.CapturedAt.IsZero() || len(dto.Source) == 0 {
-		return PromotionResult{}, domain.ErrInvalidRequest
+		return PromotionResult{}, nil, domain.ErrInvalidRequest
 	}
 	token, err := p.Attribution(ctx, caller.ContributorID)
 	if err != nil {
-		return PromotionResult{}, err
+		return PromotionResult{}, nil, err
 	}
 	now := time.Now()
 	if p.Clock != nil {
@@ -86,13 +94,13 @@ func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDT
 	consent, err := p.Store.Get(ctx, caller.ContributorID)
 	if err != nil {
 		if isNotFound(err) {
-			return PromotionResult{}, domain.ErrConsentRequired
+			return PromotionResult{}, nil, domain.ErrConsentRequired
 		}
-		return PromotionResult{}, err
+		return PromotionResult{}, nil, err
 	}
 	minimized, verdict, err := p.Sanitizer.Sanitize(ctx, dto.Source)
 	if err != nil {
-		return PromotionResult{}, err
+		return PromotionResult{}, nil, err
 	}
 	sum := sha256.Sum256(minimized)
 	derivative, _, err := domain.ProposeDerivative(domain.PromotionCandidate{
@@ -102,17 +110,23 @@ func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDT
 	}, &consent, verdict, hex.EncodeToString(sum[:]), now,
 		p.Terms.CurrentVersion(), p.Terms.CurrentDigest())
 	if err != nil {
-		return PromotionResult{}, err
+		return PromotionResult{}, nil, err
 	}
 	stored, replayed, err := p.Inventory.Put(ctx, derivative)
 	if err != nil {
-		return PromotionResult{}, err
+		return PromotionResult{}, nil, err
 	}
 	_ = stored
+	if replayed {
+		return PromotionResult{
+			ImageID: derivative.ImageID, DerivativeSHA256: derivative.DerivativeSHA256,
+			ConsentRevision: derivative.ConsentRevision, Replayed: true,
+		}, nil, nil
+	}
 	return PromotionResult{
 		ImageID: derivative.ImageID, DerivativeSHA256: derivative.DerivativeSHA256,
-		ConsentRevision: derivative.ConsentRevision, Replayed: replayed,
-	}, nil
+		ConsentRevision: derivative.ConsentRevision, PromotedAt: now,
+	}, minimized, nil
 }
 
 // RevokeOwner excludes one owner's active derivatives from selection

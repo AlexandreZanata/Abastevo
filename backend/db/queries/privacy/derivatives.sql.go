@@ -86,6 +86,48 @@ func (q *Queries) ListActiveDerivativesByOwner(ctx context.Context, contributorI
 	return items, nil
 }
 
+const listRevokedDerivativesBefore = `-- name: ListRevokedDerivativesBefore :many
+SELECT image_id, consent_revision, contributor_id, contributor_ref,
+    source_sha256, derivative_sha256, captured_at, terms_version,
+    terms_digest, state, promoted_at, revoked_at
+FROM privacy_training_derivatives
+WHERE state = 'REVOKED' AND revoked_at < $1
+ORDER BY revoked_at, image_id, consent_revision
+`
+
+func (q *Queries) ListRevokedDerivativesBefore(ctx context.Context, before pgtype.Timestamptz) ([]PrivacyTrainingDerivative, error) {
+	rows, err := q.db.Query(ctx, listRevokedDerivativesBefore, before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PrivacyTrainingDerivative
+	for rows.Next() {
+		var i PrivacyTrainingDerivative
+		if err := rows.Scan(
+			&i.ImageID,
+			&i.ConsentRevision,
+			&i.ContributorID,
+			&i.ContributorRef,
+			&i.SourceSha256,
+			&i.DerivativeSha256,
+			&i.CapturedAt,
+			&i.TermsVersion,
+			&i.TermsDigest,
+			&i.State,
+			&i.PromotedAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markDerivativeRevoked = `-- name: MarkDerivativeRevoked :one
 UPDATE privacy_training_derivatives
 SET state = 'REVOKED', revoked_at = $1
