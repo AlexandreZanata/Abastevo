@@ -216,6 +216,9 @@ export function build(options = {}) {
       { srcRel: 'guias/etanol-ou-gasolina/index.html', destRel: 'guias/etanol-ou-gasolina/index.html' },
       { srcRel: 'guias/como-ler-precos/index.html', destRel: 'guias/como-ler-precos/index.html' },
       { srcRel: 'como-usar/index.html', destRel: 'como-usar/index.html' },
+      { srcRel: 'como-usar/escolher-cidade/index.html', destRel: 'como-usar/escolher-cidade/index.html' },
+      { srcRel: 'como-usar/precos-do-posto/index.html', destRel: 'como-usar/precos-do-posto/index.html' },
+      { srcRel: 'como-usar/comunidade/index.html', destRel: 'como-usar/comunidade/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 

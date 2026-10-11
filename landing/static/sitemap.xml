@@ -25,6 +25,15 @@
     <loc>{{CANONICAL_ORIGIN}}/como-usar/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/escolher-cidade/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/precos-do-posto/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/comunidade/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/guias/como-ler-precos/</loc>
   </url>
 </urlset>
