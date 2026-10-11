@@ -621,3 +621,78 @@ func TestContributionInvalidationRemovesEligibilityKeepsAudit(t *testing.T) {
 		t.Fatalf("aggregate = %+v %v, want 1/0", rebuilt, err)
 	}
 }
+
+func TestHelpfulnessLeavesProjectionsRatingsAnchorsUntouched(t *testing.T) {
+	s, pool, stationID := freshStore(t)
+	hs := NewHelpfulnessStore(pool)
+	ctx := context.Background()
+	obs := validatedFixture(t, s, stationID, "help-iso-1")
+
+	// A saved projection, one rating stat row and projection inputs
+	// form the frozen world helpfulness must never move.
+	anchorAt := time.Date(2026, 9, 30, 11, 0, 0, 0, time.UTC)
+	next := time.Date(2026, 9, 30, 17, 0, 0, 0, time.UTC)
+	cutoff := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
+	if err := s.SaveProjection(ctx, projectionKey(), priceResult(), obs.ID, anchorAt, cutoff, &next, "consensus-v1"); err != nil {
+		t.Fatalf("save projection: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO feedback_rating_stats (station_id, product, ratings_count, stars_sum)
+		VALUES ($1, 'GASOLINE_REGULAR', 4, 18)`, stationID); err != nil {
+		t.Fatalf("seed ratings: %v", err)
+	}
+	snapshot := func() string {
+		var out strings.Builder
+		for _, q := range []string{
+			`SELECT station_id::text, fuel_product, unit, amount_milli_brl, availability, confidence, projection_version FROM community_current_prices ORDER BY 1, 2`,
+			`SELECT station_id::text, product, ratings_count, stars_sum FROM feedback_rating_stats ORDER BY 1, 2`,
+			`SELECT projection_key, version, supporting_event_ids::text, reason_codes::text FROM community_projection_inputs ORDER BY 1`,
+		} {
+			rows, err := pool.Query(ctx, q)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rows.Next() {
+				vals, err := rows.Values()
+				if err != nil {
+					t.Fatal(err)
+				}
+				fmt.Fprintf(&out, "%v|", vals)
+			}
+			rows.Close()
+			out.WriteString(";")
+		}
+		return out.String()
+	}
+	before := snapshot()
+	if before == ";;" {
+		t.Fatal("frozen world is empty")
+	}
+
+	// Full helpfulness lifecycle: cast, change, second voter, remove.
+	ports := helpfulPorts(hs)
+	a := helpfulCaller("voter-iso-a")
+	b := helpfulCaller("voter-iso-b")
+	cast := func(caller application.Caller, choice domain.Choice, sub string) {
+		t.Helper()
+		_, err := application.Cast(ctx, ports, caller, application.CastDTO{
+			ObservationID: obs.ID, DecisionSequence: 2,
+			Choice: choice, ClientSubmissionID: sub,
+		})
+		if err != nil {
+			t.Fatalf("cast %s: %v", sub, err)
+		}
+	}
+	cast(a, domain.ChoiceHelpful, "iso-1")
+	cast(a, domain.ChoiceNotHelpful, "iso-2")
+	cast(b, domain.ChoiceHelpful, "iso-3")
+	if err := application.Remove(ctx, ports, a, obs.ID, 2); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if _, err := hs.RebuildTally(ctx, obs.ID, 2); err != nil {
+		t.Fatalf("rebuild: %v", err)
+	}
+
+	if after := snapshot(); after != before {
+		t.Fatalf("helpfulness moved projections/ratings/anchors:\nbefore %s\nafter  %s", before, after)
+	}
+}
