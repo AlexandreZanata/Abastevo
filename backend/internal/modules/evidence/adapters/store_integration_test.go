@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -43,6 +44,10 @@ func testDSN(t *testing.T) string {
 }
 
 func freshStore(t *testing.T) (*Store, *pgxpool.Pool) {
+	return freshStoreSchema(t, dbmigrations.Files)
+}
+
+func freshStoreSchema(t *testing.T, schema fs.FS) (*Store, *pgxpool.Pool) {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -75,7 +80,7 @@ func freshStore(t *testing.T) (*Store, *pgxpool.Pool) {
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	if _, err := migrate.Apply(ctx, dsn, dbmigrations.Files); err != nil {
+	if _, err := migrate.Apply(ctx, dsn, schema); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	pool, err := pgxpool.New(ctx, dsn)

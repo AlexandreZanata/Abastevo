@@ -59,6 +59,39 @@ func (q *Queries) ClaimPhotoObjectBinding(ctx context.Context, arg ClaimPhotoObj
 	return result.RowsAffected(), nil
 }
 
+const claimUploadTransfer = `-- name: ClaimUploadTransfer :execrows
+INSERT INTO evidence_upload_transfers (session_id, lease_nonce, lease_until)
+SELECT id, $1, $2 FROM evidence_sessions
+WHERE id = $3 AND status = 'ISSUED' AND expires_at > $4
+ AND quarantine_deleted_at IS NULL
+ON CONFLICT (session_id) DO UPDATE
+SET attempts = evidence_upload_transfers.attempts + 1,
+ lease_nonce = EXCLUDED.lease_nonce, lease_until = EXCLUDED.lease_until
+WHERE evidence_upload_transfers.received_at IS NULL
+ AND evidence_upload_transfers.attempts < 5
+ AND (evidence_upload_transfers.lease_until IS NULL OR evidence_upload_transfers.lease_until <= $4)
+`
+
+type ClaimUploadTransferParams struct {
+	LeaseNonce string             `json:"lease_nonce"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	SessionID  pgtype.UUID        `json:"session_id"`
+	At         pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) ClaimUploadTransfer(ctx context.Context, arg ClaimUploadTransferParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimUploadTransfer,
+		arg.LeaseNonce,
+		arg.LeaseUntil,
+		arg.SessionID,
+		arg.At,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimVerifying = `-- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()
@@ -214,6 +247,34 @@ func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]Fin
 		return nil, err
 	}
 	return items, nil
+}
+
+const finishUploadTransfer = `-- name: FinishUploadTransfer :execrows
+UPDATE evidence_upload_transfers SET lease_until = NULL, lease_nonce = '',
+ received_at = CASE WHEN $1::boolean THEN now() ELSE received_at END,
+ actual_bytes = CASE WHEN $1::boolean THEN $2::bigint ELSE actual_bytes END
+WHERE session_id = $3 AND lease_nonce = $4
+ AND received_at IS NULL AND lease_until > now()
+`
+
+type FinishUploadTransferParams struct {
+	Completed   bool        `json:"completed"`
+	ActualBytes int64       `json:"actual_bytes"`
+	SessionID   pgtype.UUID `json:"session_id"`
+	LeaseNonce  string      `json:"lease_nonce"`
+}
+
+func (q *Queries) FinishUploadTransfer(ctx context.Context, arg FinishUploadTransferParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishUploadTransfer,
+		arg.Completed,
+		arg.ActualBytes,
+		arg.SessionID,
+		arg.LeaseNonce,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getObject = `-- name: GetObject :one
@@ -457,6 +518,17 @@ func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNa
 		&i.PhotoCaptureID,
 	)
 	return i, err
+}
+
+const getUploadTransfer = `-- name: GetUploadTransfer :one
+SELECT received_at FROM evidence_upload_transfers WHERE session_id = $1
+`
+
+func (q *Queries) GetUploadTransfer(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getUploadTransfer, sessionID)
+	var received_at pgtype.Timestamptz
+	err := row.Scan(&received_at)
+	return received_at, err
 }
 
 const insertObject = `-- name: InsertObject :one

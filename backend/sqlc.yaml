@@ -79,6 +79,7 @@ sql:
       - db/migrations/000047_shared_photo_evidence.sql
       - db/migrations/000011_evidence_retention.sql
       - db/migrations/000029_evidence_received_at.sql
+      - db/migrations/000061_evidence_ingress.sql
     gen:
       go:
         package: evidence

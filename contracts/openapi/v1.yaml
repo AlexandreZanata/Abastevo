@@ -763,6 +763,52 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/uploads/{upload_id}/bytes:
+    put:
+      summary: Transfer reserved bytes through bounded private ingress.
+      operationId: transferUploadBytes
+      description: Capability-authenticated transfer; actual bytes are checked before storage and accepted retries reuse the receipt.
+      tags: [evidence]
+      security: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          description: Server-issued reservation identity bound by the capability.
+          example: e0000000-0000-4000-8000-000000000001
+          schema: {type: string, format: uuid}
+        - in: query
+          name: expires
+          required: true
+          description: Server-issued capability expiry in Unix seconds.
+          example: 1791720300
+          schema: {type: integer, format: int64}
+        - in: query
+          name: token
+          required: true
+          description: Server-issued domain-separated HMAC capability; never logged.
+          example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          schema: {type: string, minLength: 64, maxLength: 64}
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: {type: string, format: binary, maxLength: 3145728}
+      responses:
+        '204':
+          description: Exact bound bytes stored, or existing receipt replayed; verification and publication remain pending.
+        '403':
+          description: Invalid or expired upload capability.
+        '413':
+          description: Body exceeds the reserved size.
+        '415':
+          description: Content type differs from the reservation.
+        '422':
+          description: Size or hash differs from the reservation.
+        '429':
+          description: Transfer admission exhausted or another claim is active.
+        '503':
+          description: Bounded ingress or storage unavailable; retry under the same reservation.
   /v1/uploads/{upload_id}:
     get:
       summary: Owner upload status (signed).
@@ -4890,7 +4936,7 @@ components:
           description: Original camera capture time inside the receipt window, immutable on retries.
           example: '2026-10-07T12:00:00.123Z'
     UploadReservation:
-      description: Reserved session with a short direct PUT authorization.
+      description: Reserved session with a short bounded API PUT capability.
       type: object
       required: [upload_id, method, url, required_headers, expires_at, max_bytes]
       properties:
@@ -4905,8 +4951,8 @@ components:
         url:
           type: string
           format: uri
-          description: Short presigned PUT bound to one quarantine key; transport only, never a size bound.
-          example: https://xxx.r2.cloudflarestorage.com/anpfuel-quarantine/q/e0000000000000000000000000000001?X-Amz-Algorithm=AWS4-HMAC-SHA256
+          description: Short API capability bound to one reservation; exact declared size and SHA-256 are enforced before private storage.
+          example: https://api.example.invalid/v1/uploads/e0000000-0000-4000-8000-000000000001/bytes?expires=1791720300&token=synthetic
         required_headers:
           type: object
           required: [content-type]

@@ -357,17 +357,38 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 			intent := []byte(fmt.Sprintf(`{"client_submission_id":%q,"content_type":"image/jpeg","size_bytes":%d,"sha256":"%x"}`, clientID, len(contents), sum))
 			out := h.call(h.signed(a, "POST", "/v1/uploads", intent), 201)
 			uploadURL := out["url"].(string)
+			// Preserve the signed path/query while routing the canonical-origin
+			// capability through the isolated loopback process under test.
+			capability, err := url.Parse(uploadURL)
+			if err != nil || capability.Host != "test.invalid" || !strings.HasSuffix(capability.Path, "/bytes") {
+				t.Fatalf("unsafe ingress capability: %v", err)
+			}
+			local, _ := url.Parse(h.base)
+			capability.Scheme, capability.Host = local.Scheme, local.Host
+			uploadURL = capability.String()
 			put, _ := http.NewRequest("PUT", uploadURL, bytes.NewReader(contents))
 			put.Header.Set("Content-Type", "image/jpeg")
+			// Reject before storage, then recover the same reservation with the
+			// exact payload. The failed transfer consumes one durable attempt.
+			oversize, _ := http.NewRequest("PUT", uploadURL, bytes.NewReader(append(append([]byte{}, contents...), 0)))
+			oversize.Header.Set("Content-Type", "image/jpeg")
+			refused, err := h.client.Do(oversize)
+			if err != nil {
+				t.Fatal(err)
+			}
+			refused.Body.Close()
+			if refused.StatusCode != 413 {
+				t.Fatalf("oversize transfer accepted: %d", refused.StatusCode)
+			}
 			resp, err := h.client.Do(put)
 			if err != nil {
 				t.Fatal(err)
 			}
 			resp.Body.Close()
-			if resp.StatusCode != 200 {
-				t.Fatalf("presigned PUT: %d", resp.StatusCode)
+			if resp.StatusCode != 204 {
+				t.Fatalf("bounded PUT: %d", resp.StatusCode)
 			}
-			// The bucket is private: removing the query proof cannot read it.
+			// The transfer capability exposes no object read route.
 			public, _ := url.Parse(uploadURL)
 			public.RawQuery = ""
 			resp, err = h.client.Get(public.String())
@@ -375,8 +396,8 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 				t.Fatal(err)
 			}
 			resp.Body.Close()
-			if resp.StatusCode != 403 {
-				t.Fatalf("unsigned object read: %d", resp.StatusCode)
+			if resp.StatusCode != 405 {
+				t.Fatalf("upload route read: %d", resp.StatusCode)
 			}
 			session := out["upload_id"].(string)
 			h.call(h.signed(b, "GET", "/v1/uploads/"+session, nil), 404)
@@ -415,14 +436,20 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 			sum := sha256.Sum256(img.Bytes())
 			intent := []byte(fmt.Sprintf(`{"client_submission_id":"development-upload","content_type":"image/jpeg","size_bytes":%d,"sha256":"%x","photo_capture_id":%q,"station_id":%q,"captured_at":%q}`, img.Len(), sum, captureID, station, capturedAt))
 			up := h.call(h.signed(a, "POST", "/v1/uploads", intent), 201)
-			put, _ := http.NewRequest("PUT", up["url"].(string), bytes.NewReader(img.Bytes()))
+			devCapability, err := url.Parse(up["url"].(string))
+			if err != nil || devCapability.Host != "test.invalid" || !strings.HasSuffix(devCapability.Path, "/bytes") {
+				t.Fatalf("unsafe development capability: %v", err)
+			}
+			local, _ := url.Parse(h.base)
+			devCapability.Scheme, devCapability.Host = local.Scheme, local.Host
+			put, _ := http.NewRequest("PUT", devCapability.String(), bytes.NewReader(img.Bytes()))
 			put.Header.Set("Content-Type", "image/jpeg")
 			response, err := h.client.Do(put)
 			if err != nil {
 				t.Fatal(err)
 			}
 			response.Body.Close()
-			if response.StatusCode != 200 {
+			if response.StatusCode != 204 {
 				t.Fatal("development PUT", response.StatusCode)
 			}
 			uploadID := up["upload_id"].(string)

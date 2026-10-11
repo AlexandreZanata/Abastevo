@@ -30,6 +30,28 @@ SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
 FROM evidence_sessions
 WHERE id = @id;
 
+-- name: GetUploadTransfer :one
+SELECT received_at FROM evidence_upload_transfers WHERE session_id = @session_id;
+
+-- name: ClaimUploadTransfer :execrows
+INSERT INTO evidence_upload_transfers (session_id, lease_nonce, lease_until)
+SELECT id, @lease_nonce, @lease_until FROM evidence_sessions
+WHERE id = @session_id AND status = 'ISSUED' AND expires_at > @at
+ AND quarantine_deleted_at IS NULL
+ON CONFLICT (session_id) DO UPDATE
+SET attempts = evidence_upload_transfers.attempts + 1,
+ lease_nonce = EXCLUDED.lease_nonce, lease_until = EXCLUDED.lease_until
+WHERE evidence_upload_transfers.received_at IS NULL
+ AND evidence_upload_transfers.attempts < 5
+ AND (evidence_upload_transfers.lease_until IS NULL OR evidence_upload_transfers.lease_until <= @at);
+
+-- name: FinishUploadTransfer :execrows
+UPDATE evidence_upload_transfers SET lease_until = NULL, lease_nonce = '',
+ received_at = CASE WHEN @completed::boolean THEN now() ELSE received_at END,
+ actual_bytes = CASE WHEN @completed::boolean THEN @actual_bytes::bigint ELSE actual_bytes END
+WHERE session_id = @session_id AND lease_nonce = @lease_nonce
+ AND received_at IS NULL AND lease_until > now();
+
 -- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()

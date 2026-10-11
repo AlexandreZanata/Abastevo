@@ -47,6 +47,7 @@ import (
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
+	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	feedbackhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http"
 	feedbackapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
@@ -831,6 +832,23 @@ func run() error {
 	// presigned issuance arrives as a narrow port built here from the
 	// configured storage identity; unset storage refuses explicitly
 	// with 503 instead of misbehaving.
+	uploadGateway := evidencehttp.NewUploadGateway(cfg.CursorSecret, "https://"+cfg.CanonicalHost, time.Now)
+	uploadGateway.Claim = evidenceStore.ClaimUpload
+	uploadGateway.Finish = evidenceStore.FinishUpload
+	uploadGateway.Put = func(ctx context.Context, key, mime string, raw []byte) error {
+		if cfg.R2 == nil {
+			return evidenceapp.ErrStorageUnavailable
+		}
+		pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Key: key, Namespace: "q/",
+			ContentType: mime, MaxBytes: int64(len(raw)), TTL: time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Put(ctx, nil, pre.URL, mime, raw)
+	}
+	router.Put("/v1/uploads/{upload_id}/bytes", uploadGateway.ServeHTTP)
 	evidencePorts := evidenceapp.Ports{
 		Clock: time.Now,
 		Enforcement: func(ctx context.Context) error {
@@ -868,25 +886,11 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
-		Presign: func(ctx context.Context, key, mime string, maxBytes int64, deadline time.Time) (string, map[string]string, time.Time, error) {
+		AuthorizeUpload: func(ctx context.Context, session evidencedomain.Session) (string, map[string]string, time.Time, error) {
 			if cfg.R2 == nil {
 				return "", nil, time.Time{}, evidenceapp.ErrStorageUnavailable
 			}
-			now := time.Now()
-			ttl := min(5*time.Minute, deadline.Sub(now))
-			if ttl <= 0 {
-				return "", nil, time.Time{}, evidenceapp.ErrReservationFailed
-			}
-			pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
-				Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-				Key: key, Namespace: "q/",
-				ContentType: mime, MaxBytes: maxBytes,
-				TTL: ttl, Region: cfg.R2.Region, Now: now,
-			}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
-			if err != nil {
-				return "", nil, time.Time{}, err
-			}
-			return pre.URL, pre.RequiredHeaders, pre.ExpiresAt, nil
+			return uploadGateway.Authorize(ctx, session)
 		},
 		Store: evidenceStore,
 		ValidatePhotoCapture: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent) (time.Time, error) {
@@ -946,7 +950,14 @@ func run() error {
 		IdleTimeout:       httpserver.DefaultIdleTimeout,
 		ShutdownTimeout:   cfg.ShutdownTimeout,
 		MaxBodyBytes:      cfg.MaxBodyBytes,
-		Logger:            logger,
+		BodyLimit: func(r *http.Request) int64 {
+			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+			if r.Method == http.MethodPut && len(parts) == 4 && parts[0] == "v1" && parts[1] == "uploads" && parts[3] == "bytes" {
+				return evidencedomain.MaxUploadBytes + 1
+			}
+			return cfg.MaxBodyBytes
+		},
+		Logger: logger,
 	}, router)
 	if err != nil {
 		return err

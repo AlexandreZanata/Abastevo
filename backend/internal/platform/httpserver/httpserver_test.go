@@ -106,6 +106,39 @@ func TestServesRouteAndPropagatesRequestID(t *testing.T) {
 	}
 }
 
+func TestRouteBodyLimitPreservesDefaultForOtherPaths(t *testing.T) {
+	var logs bytes.Buffer
+	opts := testOptions(&logs)
+	opts.MaxBodyBytes = 8
+	opts.BodyLimit = func(r *http.Request) int64 {
+		if r.URL.Path == "/large" {
+			return 16
+		}
+		return 0
+	}
+	h := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := io.ReadAll(r.Body); err != nil {
+			w.WriteHeader(413)
+			return
+		}
+		w.WriteHeader(204)
+	}
+	srv := startTestServer(t, opts, func(r Router) { r.Post("/large", h); r.Post("/small", h) })
+	for _, tc := range []struct {
+		path       string
+		size, code int
+	}{{"/large", 16, 204}, {"/large", 17, 413}, {"/small", 8, 204}, {"/small", 9, 413}} {
+		resp, err := http.Post("http://"+srv.Addr().String()+tc.path, "application/octet-stream", strings.NewReader(strings.Repeat("x", tc.size)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != tc.code {
+			t.Fatalf("%s/%d = %d", tc.path, tc.size, resp.StatusCode)
+		}
+	}
+}
+
 func TestOversizedBodyRejected(t *testing.T) {
 	var logs bytes.Buffer
 	echo := func(r Router) {

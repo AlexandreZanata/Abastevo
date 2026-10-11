@@ -43,3 +43,12 @@ type EvidenceSession struct {
 	PhotoCaptureID      pgtype.UUID        `json:"photo_capture_id"`
 	QuarantineDeletedAt pgtype.Timestamptz `json:"quarantine_deleted_at"`
 }
+
+type EvidenceUploadTransfer struct {
+	SessionID   pgtype.UUID        `json:"session_id"`
+	Attempts    int32              `json:"attempts"`
+	LeaseNonce  string             `json:"lease_nonce"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+	ReceivedAt  pgtype.Timestamptz `json:"received_at"`
+	ActualBytes int64              `json:"actual_bytes"`
+}
