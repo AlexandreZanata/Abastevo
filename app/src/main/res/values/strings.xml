@@ -490,6 +490,22 @@
     <string name="community_vote_disputed">Dispute recorded (%1$s). Thanks for the correction.</string>
     <string name="community_vote_rejected">Not recorded (%1$s)</string>
 
+    <!-- Community helpfulness (CS08B: counts are exact tallies, never truth claims) -->
+    <string name="community_helpful_title">Was this contribution helpful?</string>
+    <string name="community_helpful_counts">%1$d helpful · %2$d not helpful</string>
+    <string name="community_helpful_choice">Your choice: %1$s</string>
+    <string name="community_helpful_helpful">Helpful</string>
+    <string name="community_helpful_not_helpful">Not helpful</string>
+    <string name="community_helpful_remove">Remove my vote</string>
+    <string name="community_helpful_voted">Vote recorded. Thanks for the signal.</string>
+    <string name="community_helpful_replayed">Already recorded — no second vote counted.</string>
+    <string name="community_helpful_removed">Vote removed.</string>
+    <string name="community_helpful_rejected">Not recorded (%1$s)</string>
+    <string name="community_helpful_under_review">Counts under community review</string>
+    <string name="community_helpful_report">Report</string>
+    <string name="community_helpful_guest">Sign in to a free account to vote</string>
+    <string name="community_helpful_guest_body">Votes need a free account so one person holds one vote. Browsing stays anonymous.</string>
+
     <!-- Community privacy (P10-T08: what actually leaves the device) -->
     <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
     <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>

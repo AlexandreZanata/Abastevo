@@ -21,6 +21,7 @@ import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.CommunityHelpfulnessFlagProvider
 import com.anpfuel.application.port.CommunityVoteFlagProvider
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
 import com.anpfuel.application.port.FeedbackFlagProvider
@@ -28,9 +29,11 @@ import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.preferences.AnonymousContributionFlagStore
 import com.anpfuel.data.local.preferences.CaptureOcrFlagStore
 import com.anpfuel.data.local.preferences.CommunityReadsFlagStore
+import com.anpfuel.data.local.preferences.CommunityHelpfulnessFlagStore
 import com.anpfuel.data.local.preferences.CommunityVoteFlagStore
 import com.anpfuel.data.local.preferences.ContributionOutboxFlagStore
 import com.anpfuel.data.local.preferences.FeedbackFlagStore
+import com.anpfuel.data.remote.CommunityHelpfulnessHttpClient
 import com.anpfuel.data.remote.CommunityVoteHttpClient
 import com.anpfuel.data.remote.ContributionUploadHttpClient
 import com.anpfuel.data.remote.FeedbackHttpClient
@@ -61,6 +64,7 @@ import com.anpfuel.domain.repository.BackendPriceCacheRepository
 import com.anpfuel.domain.repository.BackendPriceHttpGateway
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
+import com.anpfuel.domain.repository.CommunityHelpfulnessGateway
 import com.anpfuel.domain.repository.CommunityVoteGateway
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.ContributionSubmissionGateway
@@ -257,6 +261,18 @@ abstract class RepositoryModule {
     abstract fun bindCommunityVoteGateway(
         impl: CommunityVoteHttpClient,
     ): CommunityVoteGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunityHelpfulnessFlagProvider(
+        impl: CommunityHelpfulnessFlagStore,
+    ): CommunityHelpfulnessFlagProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunityHelpfulnessGateway(
+        impl: CommunityHelpfulnessHttpClient,
+    ): CommunityHelpfulnessGateway
 
     @Binds
     @Singleton

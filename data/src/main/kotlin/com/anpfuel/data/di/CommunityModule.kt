@@ -2,6 +2,7 @@ package com.anpfuel.data.di
 
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.BackendStationPriceHttpClient
+import com.anpfuel.data.remote.CommunityHelpfulnessHttpClient
 import com.anpfuel.data.remote.CommunityVoteHttpClient
 import com.anpfuel.data.remote.OkHttpClientFactory
 import com.anpfuel.data.remote.CityCommunityFeedHttpClient
@@ -63,6 +64,16 @@ object CommunityModule {
         @Named("apiOrigin") environment: ApiEnvironment,
     ): CommunityVoteHttpClient =
         CommunityVoteHttpClient(
+            client = OkHttpClientFactory.create(),
+            baseUrl = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideCommunityHelpfulnessHttpClient(
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): CommunityHelpfulnessHttpClient =
+        CommunityHelpfulnessHttpClient(
             client = OkHttpClientFactory.create(),
             baseUrl = environment.origin,
         )

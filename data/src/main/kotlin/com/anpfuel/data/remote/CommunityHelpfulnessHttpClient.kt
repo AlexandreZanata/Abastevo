@@ -141,6 +141,7 @@ class CommunityHelpfulnessHttpClient(
             total = body.optLong("total", body.optLong("helpful", 0) + body.optLong("not_helpful", 0)),
             helpfulBasisPoints = if (body.has("helpful_basis_points")) body.getLong("helpful_basis_points") else null,
             myChoice = body.optString("my_choice", "").takeIf { it.isNotBlank() },
+            underReview = body.optBoolean("under_review", false),
         )
     }
 
