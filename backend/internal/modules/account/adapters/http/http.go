@@ -24,6 +24,15 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
 
+// SEC01-D retry hints (stable, documented): aggregate admission frees
+// as the hourly window slides (upper bound 3600s); session budget
+// frees on revoke/expiry or user action (polite 60s hint, not a slot
+// guarantee). Headers never carry identity.
+const (
+	retryAfterAggregateSeconds = "3600"
+	retryAfterBudgetSeconds    = "60"
+)
+
 // Service is the account use-case port behind the handlers.
 type Service interface {
 	RequestCode(ctx context.Context, address string) error
@@ -36,7 +45,7 @@ type Service interface {
 	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
-	DeleteAccount(ctx context.Context, accountID string) error
+	DeleteAccount(ctx context.Context, accountID string) (application.DeletionReceipt, error)
 	BindContributor(ctx context.Context, familyID, accessToken, contributorID, proof string) (domain.ContributorBinding, error)
 	UnbindContributor(ctx context.Context, familyID, accessToken, contributorID string) error
 	ListBindings(ctx context.Context, familyID, accessToken string) ([]domain.ContributorBinding, error)
@@ -88,6 +97,7 @@ func read(r *http.Request, dst any) error {
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, msg := http.StatusUnauthorized, "account.code-unknown", "valid account proof required"
+	retryAfter := ""
 	switch domain.VerdictCode(err) {
 	case "code-consumed":
 		status, code, msg = http.StatusUnauthorized, "account.code-consumed", "code already used"
@@ -95,8 +105,16 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.code-expired", "code expired"
 	case "code-attempts-exhausted":
 		status, code, msg = http.StatusUnauthorized, "account.code-attempts-exhausted", "code locked"
+	case "admission-exhausted":
+		status, code, msg = http.StatusTooManyRequests, "account.admission-exhausted", "admission budget exhausted, retry later"
+		retryAfter = retryAfterAggregateSeconds
+	case "session-budget-exhausted":
+		status, code, msg = http.StatusTooManyRequests, "account.session-budget-exhausted", "session budget exhausted, manage sessions and retry"
+		retryAfter = retryAfterBudgetSeconds
 	case "session-reuse-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-reuse-revoked", "session revoked"
+	case "session-invalid":
+		status, code, msg = http.StatusUnauthorized, "account.session-invalid", "valid account proof required"
 	case "session-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-revoked", "session revoked"
 	case "session-expired":
@@ -145,8 +163,13 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.key-invalid", "valid account key required"
 	case "key-collision":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	case "erasure-wiring-missing":
+		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	}
+	if retryAfter != "" {
+		w.Header().Set("Retry-After", retryAfter)
 	}
 	httpapi.WriteError(w, r, status, code, msg, nil)
 }
@@ -165,12 +188,7 @@ func write(w http.ResponseWriter, r *http.Request, status int, body any) {
 }
 
 func validEmail(address string) bool {
-	address = strings.TrimSpace(address)
-	if len(address) == 0 || len(address) > 254 {
-		return false
-	}
-	at := strings.IndexByte(address, '@')
-	return at > 0 && at < len(address)-1 && !strings.Contains(address, " ")
+	return domain.ValidEmail(address)
 }
 
 func (h Handler) requestCode(w http.ResponseWriter, r *http.Request) {
@@ -474,9 +492,10 @@ func bindingJSONOf(b domain.ContributorBinding) bindingJSON {
 }
 
 // deleteAccount erases the session-owned account (P13-T04A rights
-// deletion): status flips to deleted, every session family is revoked
-// and address plus provider bindings drop. The account row stays as an
-// audit record; later signups mint new accounts.
+// deletion + SEC04-B linkage): status flips to deleted, every session
+// family is revoked, bindings drop with durable erasure intents, and
+// owned scope cleanup is enqueued. The response is a receipt of the
+// recorded intent (SEC04-A) — acknowledgement, never completion.
 func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
 		FamilyID    string `json:"family_id"`
@@ -491,11 +510,14 @@ func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if err := h.Service.DeleteAccount(r.Context(), accountID); err != nil {
+	receipt, err := h.Service.DeleteAccount(r.Context(), accountID)
+	if err != nil {
 		fail(w, r, err)
 		return
 	}
-	write(w, r, http.StatusOK, map[string]string{"status": "deleted"})
+	write(w, r, http.StatusOK, map[string]any{
+		"status": "deleted", "erasure_requested": receipt.ErasureRequested,
+	})
 }
 
 // listProviders returns the provider bindings of the session-owned

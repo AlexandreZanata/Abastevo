@@ -1,0 +1,16 @@
+{
+  "id": "helpfulness-tally-valid",
+  "version": 1,
+  "schema": "HelpfulnessTally",
+  "valid": true,
+  "provenance": "CS02B exact tally shape; synthetic",
+  "value": {
+    "observation_id": "d6c74c23-63db-4c24-a2e5-408cb23bad27",
+    "decision_sequence": 2,
+    "helpful": 2,
+    "not_helpful": 1,
+    "total": 3,
+    "helpful_basis_points": 6666,
+    "my_choice": "HELPFUL"
+  }
+}

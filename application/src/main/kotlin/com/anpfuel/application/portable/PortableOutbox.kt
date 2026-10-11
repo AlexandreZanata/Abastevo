@@ -39,6 +39,16 @@ object PortableOutbox {
 
     const val BASE_DELAY_TICKS: Long = 1000L
     const val MAX_DELAY_TICKS: Long = 3_600_000L
+    /**
+     * SEC06-D attempt budget: dispatch retries park after this many
+     * attempts (hourly-capped backoff ⇒ more than a day of retries).
+     * Parked rows keep FAILED phase with attempts at cap and
+     * `nextEligibleTick = MAX_VALUE` (never eligible again); history
+     * stays for status/retention, and resubmission mints a new
+     * command. Attempts never exceed the cap (overflow-safe by
+     * construction).
+     */
+    const val MAX_DISPATCH_ATTEMPTS: Int = 25
 
     /**
      * Enqueues a command. A repeated [commandId] replaces the payload in
@@ -110,10 +120,23 @@ object PortableOutbox {
     }
 
     /**
-     * Records a failed attempt with bounded exponential backoff:
-     * `BASE * 2^(attempts-1)` capped at [MAX_DELAY_TICKS], overflow-safe.
+     * Records a failed attempt with bounded exponential backoff plus
+     * deterministic jitter: `BASE * 2^(attempts-1)` capped at
+     * [MAX_DELAY_TICKS], spread ±25% by command/attempt hash (fleet
+     * de-synchronization without RNG plumbing; test-stable),
+     * overflow-safe. At [MAX_DISPATCH_ATTEMPTS] the row parks
+     * (attempts pinned, never eligible again) instead of retrying
+     * forever.
      */
     fun markFailed(command: OutboxCommand, tickMillis: Long): OutboxCommand {
+        if (command.attempts >= MAX_DISPATCH_ATTEMPTS) {
+            return command.copy(
+                state = OutboxState.FAILED,
+                attempts = MAX_DISPATCH_ATTEMPTS,
+                nextEligibleTick = Long.MAX_VALUE,
+                nonce = "",
+            )
+        }
         val attempts = command.attempts + 1
         var delay = BASE_DELAY_TICKS
         repeat(attempts - 1) {
@@ -123,10 +146,18 @@ object PortableOutbox {
                 (delay * 2).coerceAtMost(MAX_DELAY_TICKS)
             }
         }
-        val nextEligible = if (tickMillis > Long.MAX_VALUE - delay) {
+        val spread = delay / 4
+        val jitter = if (spread > 0) {
+            val hash = (command.commandId.hashCode() xor (attempts * 0x9E3779B9.toInt())).toLong()
+            ((hash % (2 * spread + 1)) + 2 * spread + 1) % (2 * spread + 1) - spread
+        } else {
+            0L
+        }
+        val jittered = (delay + jitter).coerceIn(0L, MAX_DELAY_TICKS)
+        val nextEligible = if (tickMillis > Long.MAX_VALUE - jittered) {
             Long.MAX_VALUE
         } else {
-            tickMillis + delay
+            tickMillis + jittered
         }
         return command.copy(
             state = OutboxState.FAILED,

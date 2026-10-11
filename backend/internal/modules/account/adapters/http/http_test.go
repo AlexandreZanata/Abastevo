@@ -43,11 +43,12 @@ func testHandler() (Handler, *testMail) {
 	var mu sync.Mutex
 	ci, tn := 0, 0
 	h := Handler{Service: &application.Service{
-		Clock:   &testClock{now: 1_700_000_000},
-		Hasher:  domain.SHA256Hasher{},
-		Mail:    mail,
-		Store:   application.NewMemStore(),
-		CodeGen: func() (string, error) { mu.Lock(); defer mu.Unlock(); c := codes[ci%len(codes)]; ci++; return c, nil },
+		Clock:       &testClock{now: 1_700_000_000},
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        mail,
+		MailEnabled: true,
+		Store:       application.NewMemStore(),
+		CodeGen:     func() (string, error) { mu.Lock(); defer mu.Unlock(); c := codes[ci%len(codes)]; ci++; return c, nil },
 		TokenGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()
@@ -214,5 +215,38 @@ func TestOversizedBodyRejected(t *testing.T) {
 	big := `{"email":"` + strings.Repeat("a", 9000) + `@example.invalid"}`
 	if rec := call(t, h, "POST", "/v1/accounts/email/codes", big); rec.Code != 400 {
 		t.Errorf("oversized body must be 400, got %d", rec.Code)
+	}
+}
+
+// SEC01-D: budget denials carry stable codes plus Retry-After hints
+// and never echo identity.
+func TestBudget429CarriesRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		err   error
+		code  string
+		retry string
+	}{
+		{domain.ErrAggregateExhausted, "account.admission-exhausted", "3600"},
+		{domain.ErrSessionBudgetExhausted, "account.session-budget-exhausted", "60"},
+	} {
+		req := httptest.NewRequest("POST", "/v1/accounts/keys", nil)
+		rec := httptest.NewRecorder()
+		fail(rec, req, tc.err)
+		if rec.Code != 429 {
+			t.Errorf("%v: status = %d, want 429", tc.err, rec.Code)
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, tc.code) {
+			t.Errorf("%v: body %q must carry %q", tc.err, body, tc.code)
+		}
+		if got := rec.Header().Get("Retry-After"); got != tc.retry {
+			t.Errorf("%v: Retry-After = %q, want %q", tc.err, got, tc.retry)
+		}
+		if strings.Contains(body, "tok-") || strings.Contains(body, "@") {
+			t.Errorf("%v: refusal must not echo secrets: %q", tc.err, body)
+		}
+		if rec.Header().Get("Cache-Control") != "no-store" {
+			t.Errorf("%v: refusal must be no-store", tc.err)
+		}
 	}
 }

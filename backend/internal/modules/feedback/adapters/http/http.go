@@ -82,11 +82,18 @@ func read(r *http.Request, dst any) error {
 func fail(w http.ResponseWriter, r *http.Request, err error) {
 	var denied *domain.QuotaDeniedError
 	if errors.As(err, &denied) {
+		// SEC01-D: report quota carries its exact window delay.
+		w.Header().Set("Retry-After", strconv.FormatInt(denied.RetryAfterSeconds, 10))
 		httpapi.WriteError(w, r, http.StatusTooManyRequests, "feedback.quota-exceeded", "report quota exhausted, retry later", nil)
 		return
 	}
 	status, code, msg := http.StatusInternalServerError, "feedback.unavailable", "feedback service unavailable"
 	switch domain.VerdictCode(err) {
+	case "quota-exceeded":
+		// SEC01-D: comment budget frees on delete/user action;
+		// 60s is a polite retry hint, not a slot guarantee.
+		w.Header().Set("Retry-After", "60")
+		status, code, msg = http.StatusTooManyRequests, "feedback.quota-exceeded", "comment budget exhausted, delete or retry later"
 	case "text-empty", "text-too-long", "text-invalid-encoding", "target-invalid", "parent-invalid":
 		status, code, msg = http.StatusBadRequest, "feedback."+domain.VerdictCode(err), "invalid feedback input"
 	case "rating-out-of-range":

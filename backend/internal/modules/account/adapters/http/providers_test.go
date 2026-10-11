@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -51,10 +52,14 @@ func newProviderHandler(t *testing.T) *providerFixture {
 	ci, tn, an, gi := 0, 0, 0, 0
 	codes := []string{"482916", "111111", "222222", "333333", "444444", "555555", "666666"}
 	svc := &application.Service{
-		Clock:    &testClock{now: 1_800_000_000},
-		Hasher:   domain.SHA256Hasher{},
-		Mail:     &testMail{},
-		Store:    application.NewMemStore(),
+		Clock:       &testClock{now: 1_800_000_000},
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        &testMail{},
+		MailEnabled: true,
+		Store:       application.NewMemStore(),
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
 		Verifier: verifier,
 		CodeGen: func() (string, error) {
 			mu.Lock()

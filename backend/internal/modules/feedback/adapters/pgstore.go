@@ -332,6 +332,87 @@ func (s *PGStore) InsertComment(ctx context.Context, rec domain.StoredComment) e
 	})
 }
 
+// CountLiveCommentsByAccount counts live rows of one account (SEC01-C
+// per-account comment accounting).
+func (s *PGStore) CountLiveCommentsByAccount(ctx context.Context, accountID string) (int, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return 0, nil
+	}
+	n, err := feedback.New(s.pool).CountLiveCommentsByAccount(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// TryInsertComment atomically admits one comment/reply (SEC01-C):
+// per-account live budget plus row insertion in one transaction under
+// a per-account advisory lock. Over-budget refuses with
+// ErrQuotaExceeded.
+func (s *PGStore) TryInsertComment(ctx context.Context, rec domain.StoredComment) error {
+	id, err := mustUUID(rec.ID)
+	if err != nil {
+		return err
+	}
+	accountID, err := mustUUID(rec.AccountID)
+	if err != nil {
+		return err
+	}
+	stationID, err := mustUUID(rec.StationID)
+	if err != nil {
+		return err
+	}
+	var parent pgtype.UUID
+	depth := int16(0)
+	if rec.ParentID != "" {
+		parent, err = mustUUID(rec.ParentID)
+		if err != nil {
+			return err
+		}
+		depth = 1
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('comments:' || $1))`, rec.AccountID); err != nil {
+		return err
+	}
+	q := feedback.New(tx)
+	// SEC01-D duplicate intent first (before the budget check): an
+	// identical retry (same ID, same live account) replays converged
+	// without consuming another budget unit. Any other reuse of the
+	// same ID fails closed without leaking which condition fired.
+	// Checked before insert so a replay never aborts the tx.
+	if row, err := q.LockComment(ctx, id); err == nil {
+		if uuidString(row.AccountID) == rec.AccountID && !row.DeletedAt.Valid {
+			return tx.Commit(ctx)
+		}
+		return domain.ErrCommentNotFound
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	if n, err := q.CountLiveCommentsByAccount(ctx, accountID); err != nil {
+		return err
+	} else if int(n) >= domain.MaxLiveCommentsPerAccount {
+		return domain.ErrQuotaExceeded
+	}
+	if err := q.InsertComment(ctx, feedback.InsertCommentParams{
+		ID: id, AccountID: accountID, StationID: stationID, Product: rec.Product,
+		ParentID: parent, Depth: depth, Text: rec.Text, Now: stamp(rec.CreatedAt),
+	}); err != nil {
+		// Same-ID concurrent race: the winner holds the row; fail
+		// closed rather than leaking PG state.
+		if isUniqueViolation(err) {
+			return domain.ErrCommentNotFound
+		}
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // GetComment resolves one comment by ID, including tombstoned rows.
 func (s *PGStore) GetComment(ctx context.Context, id string) (domain.StoredComment, bool, error) {
 	uid, err := mustUUID(id)

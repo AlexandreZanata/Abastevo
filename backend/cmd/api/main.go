@@ -61,6 +61,10 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
+	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
+	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -78,6 +82,16 @@ import (
 type unixClock struct{}
 
 func (unixClock) NowUnix() int64 { return time.Now().Unix() }
+
+// trainingTerms serves the current training-terms pair the consent
+// grants must present: the frozen version plus the configured digest
+// (provisional default until the verified terms text lands in CS11).
+type trainingTerms struct {
+	digest string
+}
+
+func (t trainingTerms) CurrentVersion() string { return privacydomain.TrainingTermsV1 }
+func (t trainingTerms) CurrentDigest() string  { return t.digest }
 
 // newUUID mints v4 identifiers for server-owned facts.
 func newUUID() (string, error) {
@@ -274,12 +288,25 @@ func run() error {
 	identityRegistrar := identityadapters.NewRegistrar(pool.Underlying())
 	identityRunner := identityadapters.NewRunner(pool.Underlying())
 	identityLimiter := identityadapters.NewLimiter(pool.Underlying(), identitydomain.DefaultQuotaPolicy())
-	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check}.RegisterRoutes(router)
-	// FREE email accounts (P13-T02C). Narrow closure wiring like the other
-	// modules: Postgres store, memory mail sink, production generators.
-	// The memory sink is an explicit preview: codes issue but deliver
-	// nowhere until SMTP lands with deployment configuration.
-	accountMail := accountmail.NewOutbox(unixClock{})
+	// SEC02-B: bill the proxy-observed forwarding address only from
+	// explicitly trusted immediate proxies (ANPFUEL_TRUSTED_PROXIES);
+	// validated at startup, empty trusts nothing (peer-only billing).
+	trustedProxies, err := identityhttp.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	// SEC02-C: deliberate global ceilings, separate from per-client/key
+	// fairness; zero disables an operation (no global cap).
+	globalBreaker := identityhttp.NewGlobalBreaker(cfg.GlobalQuotaChallenge, cfg.GlobalQuotaRegister, cfg.GlobalQuotaWrite)
+	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies, GlobalBreaker: globalBreaker}.RegisterRoutes(router)
+	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
+	// modules: Postgres store, production generators, and delivery
+	// gated by deployment configuration — off by default (codes never
+	// issue, no rows retained), bounded memory outbox only when local
+	// delivery is explicitly configured. SMTP lands with deployment
+	// configuration, never silently.
+	accountMail := accountmail.NewOutbox(unixClock{}, accountmail.DefaultMaxRetained)
+	mailEnabled := cfg.MailMode == "memory"
 	// FREE provider verification (P13-T03C). Production JWKS over HTTPS
 	// with the frozen 1h cache plus the DB-backed nonce ledger; stub
 	// issuers stay test-only. Audience stays server-side.
@@ -313,17 +340,18 @@ func run() error {
 	// (P13-T04D): one shared handle feeds the service and the
 	// community CheckAccount closures below.
 	accountService := &accountapp.Service{
-		Clock:     unixClock{},
-		Hasher:    accountdomain.SHA256Hasher{},
-		Mail:      accountMail,
-		Store:     accountStore,
-		Verifier:  accountVerifier,
-		KeyProver: accountKeys,
-		CodeGen:   accountdomain.GenerateCode,
-		TokenGen:  accountdomain.GenerateToken,
-		AliasGen:  accountdomain.GenerateAlias,
-		KeyGen:    accountdomain.GenerateAccountKey,
-		IDGen:     newUUID,
+		Clock:       unixClock{},
+		Hasher:      accountdomain.SHA256Hasher{},
+		Mail:        accountMail,
+		MailEnabled: mailEnabled,
+		Store:       accountStore,
+		Verifier:    accountVerifier,
+		KeyProver:   accountKeys,
+		CodeGen:     accountdomain.GenerateCode,
+		TokenGen:    accountdomain.GenerateToken,
+		AliasGen:    accountdomain.GenerateAlias,
+		KeyGen:      accountdomain.GenerateAccountKey,
+		IDGen:       newUUID,
 	}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session
@@ -387,6 +415,38 @@ func run() error {
 			return res.CaseID, nil
 		},
 		IDGen: newUUID,
+	}
+	// Account deletion linkage (SEC04-B): after atomic revocation and
+	// durable intent capture, enqueue owned scope cleanup — one
+	// privacy deletion intent per captured contributor (durable job
+	// through the deletion ledger) plus synchronous account-social
+	// erasure. Deterministic submission IDs make retries converge;
+	// feedback erasure converges on re-run (second run reports zero).
+	privacyEraseStore := privacyadapters.NewStore(pool.Underlying())
+	accountService.RequestErasure = func(ctx context.Context, accountID string, contributorIDs []string) error {
+		for _, contributorID := range contributorIDs {
+			if _, err := privacyapp.RequestDeletion(ctx, privacyapp.ErasePorts{
+				Clock: time.Now,
+				NewID: newUUID,
+				Attribution: func(ctx context.Context, contributorID string) (string, error) {
+					return identityRegistrar.AttributionToken(ctx, contributorID)
+				},
+				Store: privacyEraseStore,
+				EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+					_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+					return err
+				},
+			}, contributorID, privacyapp.EraseDTO{
+				ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID,
+				Reason:             "account-deletion",
+			}); err != nil {
+				return err
+			}
+		}
+		if _, err := feedbackService.EraseAccount(ctx, accountID); err != nil {
+			return err
+		}
+		return nil
 	}
 	feedbackhttp.Handler{
 		Service: feedbackService,
@@ -640,6 +700,27 @@ func run() error {
 		},
 		Store: communityStore,
 	}
+	// Helpfulness votes (CS02): one active vote per account, contribution
+	// and decision sequence through the owned atomic store; tallies stay
+	// exact and never feed price confidence. Same account gate as votes.
+	helpfulnessPorts := communityapp.HelpfulnessPorts{
+		Clock:        time.Now,
+		NewID:        newUUID,
+		CheckAccount: checkAccountGate,
+		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &communityapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
+		Store:   communityadapters.NewHelpfulnessStore(pool.Underlying()),
+		Reviews: moderationStore,
+	}
 	communityhttp.Handler{
 		PhotoCapture: func(ctx context.Context, caller communityapp.Caller, key string, intent communityapp.PhotoCaptureIntent, body []byte) (communityapp.PhotoCapture, bool, error) {
 			return communityapp.AuthorizePhotoCapture(ctx, communityPorts, communityStore, caller, key, body, intent)
@@ -699,7 +780,52 @@ func run() error {
 			dto.TargetObservationID = observationID
 			return communityapp.Dispute(ctx, votePorts, caller, dto)
 		},
+		CastHelpfulness: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.CastDTO) (communityapp.CastResult, error) {
+			dto.ObservationID = observationID
+			return communityapp.Cast(ctx, helpfulnessPorts, caller, dto)
+		},
+		RemoveHelpfulness: func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+			if err := communityapp.Remove(ctx, helpfulnessPorts, caller, observationID, sequence); err != nil {
+				return communityapp.TallyResult{}, err
+			}
+			return communityapp.TallyFor(ctx, helpfulnessPorts, caller, observationID, sequence)
+		},
+		HelpfulnessTally: func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+			return communityapp.TallyFor(ctx, helpfulnessPorts, caller, observationID, sequence)
+		},
 		Secrets: cfg.CursorSecret,
+	}.RegisterRoutes(router)
+	// Owner-only training-consent endpoints (CS09C, B-BR-CS06). Same
+	// proof-derived caller shape as community writes: the contributor
+	// ID resolves server-side from the verified key, and the revision
+	// orders decisions. Terms rotation invalidates old grants until a
+	// fresh explicit grant lands; collection stays OFF until CS10/CS11.
+	consentStore := privacyadapters.NewConsentStore(pool.Underlying())
+	consentPorts := privacyapp.ConsentPorts{
+		Clock: time.Now,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store: consentStore,
+		Terms: trainingTerms{digest: cfg.TrainingTermsDigest},
+	}
+	privacyhttp.Handler{
+		Authenticate: func(r *http.Request) (privacyapp.Caller, error) {
+			id, err := authVerifier.Verify(r.Context(), r)
+			if err != nil {
+				return privacyapp.Caller{}, err
+			}
+			return privacyapp.Caller{ContributorID: id.ContributorID}, nil
+		},
+		GrantConsent: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.GrantDTO) (privacyapp.ConsentResult, error) {
+			return privacyapp.GrantConsent(ctx, consentPorts, caller, dto)
+		},
+		RevokeConsent: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.RevokeDTO) (privacyapp.ConsentResult, error) {
+			return privacyapp.RevokeConsent(ctx, consentPorts, caller, dto)
+		},
+		ReadConsent: func(ctx context.Context, caller privacyapp.Caller) (privacyapp.ConsentView, error) {
+			return privacyapp.ReadConsent(ctx, consentPorts, caller)
+		},
 	}.RegisterRoutes(router)
 	// Private upload reservation and owner status (P05-T04). The
 	// presigned issuance arrives as a narrow port built here from the
@@ -711,11 +837,14 @@ func run() error {
 			// Intake circuit breaker (B-BR-M04): any copy past its
 			// 24 h deadline with bytes still present stops new
 			// intake until the hourly sweeper catches up.
-			overdue, err := evidenceStore.OverdueFinals(ctx, time.Now().Add(-evidenceapp.CopyRetention), 1)
+			// SEC05-A: finals AND quarantine originals — an
+			// overdue original with a failed deletion trips the
+			// breaker exactly like an overdue final.
+			overdue, err := evidenceapp.AuditOverdue(ctx, evidenceStore, time.Now(), 1)
 			if err != nil {
 				return err
 			}
-			if len(overdue) > 0 {
+			if overdue.Unhealthy() {
 				return evidenceapp.ErrEnforcementUnhealthy
 			}
 			return nil

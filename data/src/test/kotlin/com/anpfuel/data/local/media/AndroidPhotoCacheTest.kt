@@ -122,4 +122,76 @@ class AndroidPhotoCacheTest {
         assertEquals("anpfuel_photos", files.single().parentFile.name)
         assertTrue(!Files.isSymbolicLink(files.single().toPath()))
     }
+
+    private fun sharedCache(dir: File, now: Long, k: javax.crypto.SecretKey): AndroidPhotoCache =
+        AndroidPhotoCache(
+            dir = File(dir, AndroidPhotoCache.SUBDIR),
+            keys = PhotoKeyProvider { k },
+            nowMillis = { now },
+        )
+
+    // SEC05-C: abandoned writes purge by file-age grace, never live
+    // content; fresh tmp siblings survive the sweep.
+    @Test
+    fun orphanTmpPurgesAfterGraceButFreshTmpSurvives(@TempDir dir: File) {
+        val now = 1_700_000_000_000L
+        val cache = cache(dir, now = now)
+        val sub = File(dir, AndroidPhotoCache.SUBDIR).also { it.mkdirs() }
+        val stale = File(sub, "photo_orphan-1.tmp").also { it.writeText("partial") }
+        stale.setLastModified(now - 2 * AndroidPhotoCache.TMP_GRACE_MILLIS)
+        val fresh = File(sub, "photo_livewrite-1.tmp").also { it.writeText("partial") }
+        fresh.setLastModified(now)
+        cache.put("live-1", ByteArray(100) { 9 }, now)
+        assertEquals(1, cache.sweepExpired(now))
+        assertTrue(!stale.exists())
+        assertTrue(fresh.exists())
+        assertTrue(File(sub, "photo_live-1").exists())
+    }
+
+    // SEC05-C: rollback reads live inside the skew window (documented
+    // limitation — deletion resumes after the clock restores) while
+    // far-future captures refuse as tamper.
+    @Test
+    fun rollbackPolicyToleratesSkewButRefusesFarFuture(@TempDir dir: File) {
+        val now = 1_700_000_000_000L
+        val k = key()
+        sharedCache(dir, now = now, k).put("skew-1", ByteArray(100) { 5 }, now)
+        assertEquals(100, sharedCache(dir, now = now - 30 * 60_000L, k).get("skew-1")?.size)
+        assertEquals(null, sharedCache(dir, now = now - 2 * 3_600_000L, k).get("skew-1"))
+        sharedCache(dir, now = now, k).put("future-1", ByteArray(100) { 6 }, now + 2 * AndroidPhotoCache.FUTURE_TOLERANCE_MILLIS)
+        assertEquals(null, sharedCache(dir, now = now, k).get("future-1"))
+        assertTrue(!File(File(dir, AndroidPhotoCache.SUBDIR), "photo_future-1").exists())
+        assertTrue(!AndroidPhotoCache.isCacheExpired(now + 30 * 60_000L, now))
+        assertTrue(AndroidPhotoCache.isCacheExpired(now + 2 * AndroidPhotoCache.FUTURE_TOLERANCE_MILLIS, now))
+    }
+
+    // SEC05-C: discard covers the temporary sibling; lifetime survives
+    // instance restart via the sealed envelope.
+    @Test
+    fun deleteDropsTmpSiblingAndLifetimeSurvivesRestart(@TempDir dir: File) {
+        val now = 1_700_000_000_000L
+        val k = key()
+        sharedCache(dir, now = now, k).put("r-1", ByteArray(100) { 3 }, now)
+        val sub = File(dir, AndroidPhotoCache.SUBDIR)
+        File(sub, "photo_r-1.tmp").writeText("partial")
+        sharedCache(dir, now = now, k).delete("r-1")
+        assertTrue(!File(sub, "photo_r-1").exists())
+        assertTrue(!File(sub, "photo_r-1.tmp").exists())
+        sharedCache(dir, now = now, k).put("r-2", ByteArray(100) { 4 }, now)
+        assertEquals(100, sharedCache(dir, now = now + 1_000L, k).get("r-2")?.size)
+        assertEquals(null, sharedCache(dir, now = now + 86_400_000L + 1, k).get("r-2"))
+    }
+
+    // SEC04-D support: sealed copies purge by id for owner erasure
+    // (unknown ids stay a no-op).
+    @Test
+    fun ownerPurgeDeletesExactIds(@TempDir dir: File) {
+        val now = 1_700_000_000_000L
+        val cache = cache(dir, now = now)
+        cache.put("owner-a-1", ByteArray(50) { 1 }, now)
+        cache.put("owner-b-1", ByteArray(50) { 2 }, now)
+        cache.delete("owner-a-1")
+        assertEquals(null, cache.get("owner-a-1"))
+        assertEquals(50, cache.get("owner-b-1")?.size)
+    }
 }

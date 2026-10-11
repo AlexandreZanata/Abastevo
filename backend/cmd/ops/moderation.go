@@ -170,8 +170,8 @@ func moderationInvalidate(c caseArgs, getenv func(string) string) error {
 	if err != nil {
 		return err
 	}
-	if target.TargetType != moderationdomain.TargetObservation {
-		return fmt.Errorf("invalidate applies to OBSERVATION targets (case targets %s); use act for other targets", target.TargetType)
+	if target.TargetType != moderationdomain.TargetObservation && target.TargetType != moderationdomain.TargetContribution {
+		return fmt.Errorf("invalidate applies to OBSERVATION/CONTRIBUTION targets (case targets %s); use act for other targets", target.TargetType)
 	}
 	communityStore := communityadapters.NewStore(raw)
 	obs, err := communityStore.Observation(ctx, target.TargetID)

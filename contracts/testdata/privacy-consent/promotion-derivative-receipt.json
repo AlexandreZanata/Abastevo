@@ -1,0 +1,1 @@
+{"id": "promotion-derivative-receipt", "valid": true, "value": {"image_id": "img-1", "captured_after_grant": true, "per_image_allowed": true, "source_sha256": "source-hash", "verdict": "PASS", "state": "ACTIVE", "consent_revision": 1, "terms_version": "training-terms-v1"}}

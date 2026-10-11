@@ -70,3 +70,11 @@ UPDATE feedback_comments
 SET business_station_id = @business_station_id, business_grant_id = @business_grant_id
 WHERE id = @id AND account_id = @account_id AND deleted_at IS NULL
     AND business_station_id IS NULL AND business_grant_id IS NULL;
+
+-- SEC01-C per-account comment accounting (B-BR-F03/F04): live rows
+-- only; tombstoned history stays for audit but frees budget.
+
+-- name: CountLiveCommentsByAccount :one
+SELECT count(*)::bigint
+FROM feedback_comments
+WHERE account_id = @account_id AND deleted_at IS NULL;

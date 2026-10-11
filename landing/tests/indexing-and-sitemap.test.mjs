@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
 
-test('sitemap: valid XML, exactly 4 indexable URLs, no 404 and no fabricated lastmod', () => {
+test('sitemap: valid XML, required indexable URLs present, no 404 and no fabricated lastmod', () => {
   const tmpOut = path.join(root, '.test-sitemap-' + Math.random().toString(36).slice(2, 8));
   try {
     buildSite({
@@ -28,6 +28,7 @@ test('sitemap: valid XML, exactly 4 indexable URLs, no 404 and no fabricated las
       'https://abastevo.com.br/privacidade/',
       'https://abastevo.com.br/excluir-conta/',
       'https://abastevo.com.br/termos/',
+      'https://abastevo.com.br/como-usar/',
     ];
 
     for (const url of expectedUrls) {
@@ -39,6 +40,34 @@ test('sitemap: valid XML, exactly 4 indexable URLs, no 404 and no fabricated las
     assert.ok(!sitemapContent.includes('<lastmod>'), 'Sitemap must NOT fabricate lastmod');
     assert.ok(!sitemapContent.includes('localhost'), 'Sitemap must NOT contain localhost');
     assert.ok(!sitemapContent.includes('{{CANONICAL_ORIGIN}}'), 'Sitemap must NOT have unreplaced origin placeholders');
+
+    // LR38 parity: every emitted indexable page is listed, and every listed URL resolves.
+    const emittedPages = [];
+    function collectHtml(rel) {
+      const abs = path.join(tmpOut, rel);
+      for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+        const entryRel = path.join(rel, entry.name);
+        if (entry.isDirectory()) {
+          collectHtml(entryRel);
+        } else if (entry.name === 'index.html' && entryRel !== path.join('index.html')) {
+          emittedPages.push(entryRel);
+        }
+      }
+    }
+    collectHtml('');
+    assert.ok(emittedPages.length >= 20, `expected emitted subpages, got ${emittedPages.length}`);
+    for (const rel of emittedPages) {
+      const urlPath = `/${rel.slice(0, -'/index.html'.length)}/`;
+      assert.ok(
+        sitemapContent.includes(`<loc>https://abastevo.com.br${urlPath}</loc>`),
+        `Emitted page missing from sitemap: ${urlPath}`
+      );
+    }
+    for (const loc of [...sitemapContent.matchAll(/<loc>(https:\/\/abastevo\.com\.br[^<]*)<\/loc>/g)].map((m) => m[1])) {
+      const rel = loc.replace('https://abastevo.com.br/', '');
+      const file = rel === '' ? 'index.html' : `${rel}index.html`;
+      assert.ok(fs.existsSync(path.join(tmpOut, file)), `Sitemap URL has no emitted page: ${loc}`);
+    }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
@@ -62,6 +91,15 @@ test('robots: allows crawling and references canonical sitemap', () => {
       'Robots must point to canonical sitemap'
     );
     assert.ok(!robotsContent.includes('{{CANONICAL_ORIGIN}}'), 'Robots must not contain unreplaced placeholders');
+
+    // Crawler separation (LR28): search allowed, training not granted, fetchers transparent.
+    for (const token of ['OAI-SearchBot', 'ChatGPT-User', 'Perplexity-User']) {
+      assert.ok(robotsContent.includes(`User-agent: ${token}`), `Robots must name ${token}`);
+    }
+    for (const token of ['GPTBot', 'ClaudeBot']) {
+      const section = robotsContent.match(new RegExp(`User-agent: ${token}\\s*\\nDisallow: /`));
+      assert.ok(section, `Robots must disallow training crawler ${token}`);
+    }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }

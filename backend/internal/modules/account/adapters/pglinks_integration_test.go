@@ -120,10 +120,14 @@ func freshLinkService(t *testing.T) *linkService {
 	// from the database, never from these fakes).
 	var genMu sync.Mutex
 	svc := &application.Service{
-		Clock:    clock,
-		Hasher:   domain.SHA256Hasher{},
-		Mail:     &integMail{},
-		Store:    NewPGStore(pool),
+		Clock:       clock,
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        &integMail{},
+		MailEnabled: true,
+		Store:       NewPGStore(pool),
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
 		Verifier: verifier,
 		CodeGen: func() (string, error) {
 			genMu.Lock()

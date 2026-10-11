@@ -20,14 +20,17 @@ import (
 // happened upstream: Authenticate resolves the caller from the verified
 // proof, so this package never sees keys or signatures.
 type Handler struct {
-	Authenticate func(r *http.Request) (application.Caller, error)
-	PhotoCapture func(ctx context.Context, caller application.Caller, key string, intent application.PhotoCaptureIntent, body []byte) (application.PhotoCapture, bool, error)
-	Submit       func(ctx context.Context, caller application.Caller, key string, dto application.SubmitDTO, body []byte) (application.SubmitResult, bool, error)
-	Status       func(ctx context.Context, caller application.Caller, id string) (application.StatusResult, error)
-	History      func(ctx context.Context, caller application.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]application.HistoryItem, string, error)
-	Confirm      func(ctx context.Context, caller application.Caller, observationID string, dto application.ConfirmDTO, body []byte) (application.ConfirmResult, error)
-	Dispute      func(ctx context.Context, caller application.Caller, observationID string, dto application.DisputeDTO, body []byte) (application.DisputeResult, error)
-	Secrets      []byte
+	Authenticate      func(r *http.Request) (application.Caller, error)
+	PhotoCapture      func(ctx context.Context, caller application.Caller, key string, intent application.PhotoCaptureIntent, body []byte) (application.PhotoCapture, bool, error)
+	Submit            func(ctx context.Context, caller application.Caller, key string, dto application.SubmitDTO, body []byte) (application.SubmitResult, bool, error)
+	Status            func(ctx context.Context, caller application.Caller, id string) (application.StatusResult, error)
+	History           func(ctx context.Context, caller application.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]application.HistoryItem, string, error)
+	Confirm           func(ctx context.Context, caller application.Caller, observationID string, dto application.ConfirmDTO, body []byte) (application.ConfirmResult, error)
+	Dispute           func(ctx context.Context, caller application.Caller, observationID string, dto application.DisputeDTO, body []byte) (application.DisputeResult, error)
+	CastHelpfulness   func(ctx context.Context, caller application.Caller, observationID string, dto application.CastDTO) (application.CastResult, error)
+	RemoveHelpfulness func(ctx context.Context, caller application.Caller, observationID string, sequence int64) (application.TallyResult, error)
+	HelpfulnessTally  func(ctx context.Context, caller application.Caller, observationID string, sequence int64) (application.TallyResult, error)
+	Secrets           []byte
 }
 
 // RegisterRoutes mounts community endpoints under /v1.
@@ -38,6 +41,9 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/contributors/me/observations", h.history)
 	r.Post("/v1/observations/{observation_id}/confirmations", h.confirm)
 	r.Post("/v1/observations/{observation_id}/disputes", h.dispute)
+	r.Post("/v1/observations/{observation_id}/helpfulness", h.castHelpfulness)
+	r.Post("/v1/observations/{observation_id}/helpfulness/remove", h.removeHelpfulness)
+	r.Get("/v1/observations/{observation_id}/helpfulness", h.helpfulnessTally)
 }
 
 func generatedNow() string { return time.Now().UTC().Format(time.RFC3339) }
@@ -69,6 +75,16 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusNotFound, "community.not-found", "observation not found", nil)
 	case errors.Is(err, domain.ErrSelfConfirmation):
 		httpapi.WriteError(w, r, http.StatusForbidden, "community.self-confirmation", "contributors cannot confirm their own observations", nil)
+	case errors.Is(err, domain.ErrSelfVote):
+		httpapi.WriteError(w, r, http.StatusForbidden, "community.self-vote", "contributors cannot vote on their own contributions", nil)
+	case errors.Is(err, application.ErrStaleSequence):
+		httpapi.WriteError(w, r, http.StatusConflict, "community.stale-revision", "contribution moved on; bind the current revision", nil)
+	case errors.Is(err, application.ErrReviewUnavailable):
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "community.review-unavailable", "review state unavailable, try again later", nil)
+	case errors.Is(err, domain.ErrVoteChoiceInvalid),
+		errors.Is(err, domain.ErrInvalidVote):
+		httpapi.WriteError(w, r, http.StatusBadRequest, "community.invalid-vote", "invalid helpfulness vote",
+			[]httpapi.Detail{{Field: "body", Code: "invalid"}})
 	case errors.Is(err, application.ErrIneligibleTarget):
 		httpapi.WriteError(w, r, http.StatusConflict, "community.ineligible-target", "target not eligible for this command", nil)
 	case errors.Is(err, domain.ErrAlreadyConfirmed):

@@ -69,10 +69,11 @@ func testService() (*Service, *fakeClock, *stubMail) {
 	var ci int
 	var mu sync.Mutex
 	svc := &Service{
-		Clock:  clock,
-		Hasher: domain.SHA256Hasher{},
-		Mail:   mail,
-		Store:  NewMemStore(),
+		Clock:       clock,
+		Hasher:      domain.SHA256Hasher{},
+		MailEnabled: true,
+		Mail:        mail,
+		Store:       NewMemStore(),
 		CodeGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()

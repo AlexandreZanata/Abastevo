@@ -1,0 +1,620 @@
+{
+  "date": "2026-10-11",
+  "tool": "PIL",
+  "params": {
+    "format": "WEBP",
+    "quality": 85,
+    "method": 6,
+    "filter": "LANCZOS",
+    "widths": [
+      360,
+      720,
+      1080
+    ]
+  },
+  "need": "Responsive gallery/tutorial delivery without shipping 1220px masters; masters stay canonical under docs/assets.",
+  "note": "Downscale-only, aspect preserved, no crop/retouch/upscale. Not yet referenced by pages or fingerprinted by the build; wiring arrives at LR09. Alt text and per-page choice land with LR11/LR14.",
+  "license": "Same app-capture provenance as masters (manifest); no third-party device templates.",
+  "outputs": [
+    {
+      "file": "anp-prices-360w.webp",
+      "master": "anp-prices.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 19068,
+      "sha256": "1b95cbd3e2bed02efbb853b8ac001a159fb2efb64ceaac7be795fe7ade548a56"
+    },
+    {
+      "file": "anp-prices-720w.webp",
+      "master": "anp-prices.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 43720,
+      "sha256": "6c06aa6db6b83ff8dd2de0fc504d189d7d889f1e8eac1946c96ae83293c75e8f"
+    },
+    {
+      "file": "anp-prices-1080w.webp",
+      "master": "anp-prices.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 68840,
+      "sha256": "5e668ab0059cbfbf2aa2b9747c1ea4d3f8132a2756b834b5be9dabd679a6b982"
+    },
+    {
+      "file": "city-picker-360w.webp",
+      "master": "city-picker.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 11946,
+      "sha256": "f49e47e98fe734bdbcee484a430147c293384ee0f822aed87c94c38505f1df22"
+    },
+    {
+      "file": "city-picker-720w.webp",
+      "master": "city-picker.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 27740,
+      "sha256": "bbd84e5fdebecc06050e4e7c554cc36ae3bdd24a3bf4c3898f90b0978a073455"
+    },
+    {
+      "file": "city-picker-1080w.webp",
+      "master": "city-picker.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 44810,
+      "sha256": "6638550dc42a2870a4a8773cd9b724adee024aa3f9fa69f99a2493fba0946e8c"
+    },
+    {
+      "file": "community-empty-360w.webp",
+      "master": "community-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24194,
+      "sha256": "ab78e69728c749a4e26d9e8b4efbb460dd6f58a3502c28202455dfd07512cefe"
+    },
+    {
+      "file": "community-empty-720w.webp",
+      "master": "community-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 58088,
+      "sha256": "d9e9a9d3530932d0740c87bf470688eaab102fa8e011be54dacfc4bed965a52a"
+    },
+    {
+      "file": "community-empty-1080w.webp",
+      "master": "community-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 88914,
+      "sha256": "04fd68fad8f45fbe1b7dc871ba82d115dc6ceef81311c8a27b73e68d7400d555"
+    },
+    {
+      "file": "community-feed-360w.webp",
+      "master": "community-feed.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24588,
+      "sha256": "1669a446e607d9cbc0683a53f70be00ffbe95643c7188c1a8d06f1d53de5453b"
+    },
+    {
+      "file": "community-feed-720w.webp",
+      "master": "community-feed.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 57502,
+      "sha256": "b1577c52ca6ce80b50fd95d5b1ad4564af491fa92d109544dd95813f5651f2cb"
+    },
+    {
+      "file": "community-feed-1080w.webp",
+      "master": "community-feed.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 90536,
+      "sha256": "450dea486b32c5a7fb2356c5bc140832074792490a669acb9d1c6d2c964dd207"
+    },
+    {
+      "file": "contributions-empty-360w.webp",
+      "master": "contributions-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 12212,
+      "sha256": "5704ce8c60aedbb863ac87c4417e6f4b7f8c53a2c3f5b1228e110c81be2a6af0"
+    },
+    {
+      "file": "contributions-empty-720w.webp",
+      "master": "contributions-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 28568,
+      "sha256": "e05481aac64f3c17a0d62a2be35bb8198cdb23fff65d4b1dcdcf5c20b608bae4"
+    },
+    {
+      "file": "contributions-empty-1080w.webp",
+      "master": "contributions-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 45738,
+      "sha256": "6bc60525437bb64bdc5c461b05bff1cd9c417e37531f64a2b2fe760d0cce574a"
+    },
+    {
+      "file": "explore-dark-360w.webp",
+      "master": "explore-dark.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 27222,
+      "sha256": "58c861db9d8b8e58b0a74c3a5b923f6ada6ce9811d39ec7b32a0de9157bbc45f"
+    },
+    {
+      "file": "explore-dark-720w.webp",
+      "master": "explore-dark.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 61280,
+      "sha256": "c41047b6eaf72f33b34c57960ca8d961c4a8802d3bbe71d0d11ca45663e3a99f"
+    },
+    {
+      "file": "explore-dark-1080w.webp",
+      "master": "explore-dark.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 95430,
+      "sha256": "303ccf6080efd473a8eae2fc6ca4f3fa00b7654e73d8116b32db7d662fc9c85c"
+    },
+    {
+      "file": "explore-light-360w.webp",
+      "master": "explore-light.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 27366,
+      "sha256": "a3a22321940f7c0d2d7256bbd80d2824dd9f01a02fd37ce4946f11e6c64f052a"
+    },
+    {
+      "file": "explore-light-720w.webp",
+      "master": "explore-light.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 61896,
+      "sha256": "51935d2a4f18032e0a8951221ee4e15e9020f0db0b566e731280539dc626d5ed"
+    },
+    {
+      "file": "explore-light-1080w.webp",
+      "master": "explore-light.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 97168,
+      "sha256": "2799f5a9c697f51e841dbf03b38ee2d1ff05d972ae124b88e077c42c48ff75e6"
+    },
+    {
+      "file": "history-360w.webp",
+      "master": "history.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 18460,
+      "sha256": "145982ed289a6617ea3128f2f8d9929cdcd8eab2655f99dfac4f795356a98260"
+    },
+    {
+      "file": "history-720w.webp",
+      "master": "history.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 40720,
+      "sha256": "a9718db7a3bdd410de483d8e09a1851a62c6974a38548f0f475ea74aeea8ec66"
+    },
+    {
+      "file": "history-1080w.webp",
+      "master": "history.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 63820,
+      "sha256": "09fb618830ebbbfa90cc047ceaceff28216fda8050df4628f27785d6b3f6f0e4"
+    },
+    {
+      "file": "profile-guest-360w.webp",
+      "master": "profile-guest.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 25186,
+      "sha256": "6bd448ad621b8e9c02f26b56d3d316a20f77fbabbdd368ccf800b72d13a526be"
+    },
+    {
+      "file": "profile-guest-720w.webp",
+      "master": "profile-guest.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 60904,
+      "sha256": "36bf55d06275d993efabb018d96ae74e32b3c8bdc109626f938fda76c316e3c6"
+    },
+    {
+      "file": "profile-guest-1080w.webp",
+      "master": "profile-guest.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 95832,
+      "sha256": "5115aba8b1d1c83ee79fd1f1155dc9742bfe0b76fc499046191e6237644e37ab"
+    },
+    {
+      "file": "settings-360w.webp",
+      "master": "settings.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 26452,
+      "sha256": "0f50725c9e1addde0465be8003fee248afb15c7cc60d48f436ee2bc307c5fdba"
+    },
+    {
+      "file": "settings-720w.webp",
+      "master": "settings.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 55598,
+      "sha256": "f4ae8cb50108102b9af753768418a26defd49ee04bfbf615100aa022c605b7ec"
+    },
+    {
+      "file": "settings-1080w.webp",
+      "master": "settings.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 87728,
+      "sha256": "dca8567870699c526bb490f42e7daec3376693d494e6389aff2de9fd673a2d68"
+    },
+    {
+      "file": "station-detail-360w.webp",
+      "master": "station-detail.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23704,
+      "sha256": "ea04d50313fe937e468451a148e2a79b57c18384a9aa03c3c6188815594345e3"
+    },
+    {
+      "file": "station-detail-720w.webp",
+      "master": "station-detail.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 51194,
+      "sha256": "b368795a9497a195cc41916c9b15390dfdfa8f7d93b98d5c1ed881b6db9ce238"
+    },
+    {
+      "file": "station-detail-1080w.webp",
+      "master": "station-detail.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 79842,
+      "sha256": "2c0ae2497bedefce4430864b89af1c61431d6f9e857e3b08555f2935d3e543a8"
+    },
+    {
+      "file": "station-sources-360w.webp",
+      "master": "station-sources.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24238,
+      "sha256": "23e8dc5bc149a5f128b942a871ade70103b431fe25dc7c5c80cd5fca7ab40464"
+    },
+    {
+      "file": "station-sources-720w.webp",
+      "master": "station-sources.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 54718,
+      "sha256": "58c35fb1d8dce2b31d5dd5a90eea6c4526f4cb4f8300a4677520b133d93f9db0"
+    },
+    {
+      "file": "station-sources-1080w.webp",
+      "master": "station-sources.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 84172,
+      "sha256": "bd8251090163f64382996b9779b538893a8b634c151e251ed6bbcbdf81dbd810"
+    },
+    {
+      "file": "stations-list-360w.webp",
+      "master": "stations-list.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23434,
+      "sha256": "64b1a75f1b86613d99c9da516495a1121c823d4f80d3b3552a922d2d407aea5d"
+    },
+    {
+      "file": "stations-list-720w.webp",
+      "master": "stations-list.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 52216,
+      "sha256": "550bbc733b9bb0440e56469c94d55d6c54c5010f4abcdd73ea87bc602d486244"
+    },
+    {
+      "file": "stations-list-1080w.webp",
+      "master": "stations-list.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 81968,
+      "sha256": "e7fb134c3d98b004aca4fd23b38f18d9d168f45868f7e8171b6f85146b0a321f"
+    },
+    {
+      "file": "vehicle-form-360w.webp",
+      "master": "vehicle-form.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 18880,
+      "sha256": "5a6e48fafded536336aedf4d484e85bc03740a6488f87b3ca0aa4ae1e8ad5134"
+    },
+    {
+      "file": "vehicle-form-720w.webp",
+      "master": "vehicle-form.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 41986,
+      "sha256": "4b2c8806b21d8d018b406705ed9555d7c0cb05251dbe6cb6b522317101b3f810"
+    },
+    {
+      "file": "vehicle-form-1080w.webp",
+      "master": "vehicle-form.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 68616,
+      "sha256": "112afb6a5ff44c0cf1c3f49b89f758059800c0992478b91543cf3e04c2b2598d"
+    },
+    {
+      "file": "vehicles-empty-360w.webp",
+      "master": "vehicles-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 7870,
+      "sha256": "147c083a9ec4d9d6c8a73e407336c4b26c87c4afd175b48bb4b8c01dfe8f8b0f"
+    },
+    {
+      "file": "vehicles-empty-720w.webp",
+      "master": "vehicles-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 18470,
+      "sha256": "48e344418f1e1effa204038ffa60cf1c473e0e6b7764d08222deccc59ad1cdce"
+    },
+    {
+      "file": "vehicles-empty-1080w.webp",
+      "master": "vehicles-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 30668,
+      "sha256": "b3b619b3a1602c1253fc9476abbc466521b1827bc4991fab52a5ff7abb64c242"
+    },
+    {
+      "file": "week-picker-360w.webp",
+      "master": "week-picker.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 21968,
+      "sha256": "33e58ce13894d95e8150b42639764e4784ca3a5d88c8cd9159a454e90bf0eccd"
+    },
+    {
+      "file": "week-picker-720w.webp",
+      "master": "week-picker.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 50838,
+      "sha256": "44713d5f6b2a6e726ef1bfb8fd2a4c6c5db9ebefb27d6ca537961e46657a4d88"
+    },
+    {
+      "file": "week-picker-1080w.webp",
+      "master": "week-picker.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 79210,
+      "sha256": "aa68b51c0b4eb6a2b6fee1d348f4a9f38f15ec9687a8eec721cdae9d7de397df"
+    },
+    {
+      "file": "municipios-mt-360w.webp",
+      "master": "municipios-mt.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 13990,
+      "sha256": "0e25a1b264fa694f892f013b9cfc31d00bee8f5552b55cce6f2515e4a3afd86c"
+    },
+    {
+      "file": "municipios-mt-720w.webp",
+      "master": "municipios-mt.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 30964,
+      "sha256": "5f1c4c91f982aeeda612c52c4f9b2811cbc0ef883bbfbce457f80c5c74be6edc"
+    },
+    {
+      "file": "municipios-mt-1080w.webp",
+      "master": "municipios-mt.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 49474,
+      "sha256": "dd1c7c169957a5880604cb636efb31d2ca8bcee448226e3a2970205d4f8a3900"
+    },
+    {
+      "file": "profile-connected-360w.webp",
+      "master": "profile-connected.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24668,
+      "sha256": "92c21ca20650476add31af5ed1d11a5e3a3892aea994275e852615f465341cb2"
+    },
+    {
+      "file": "profile-connected-720w.webp",
+      "master": "profile-connected.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 58754,
+      "sha256": "8301f88e6858cd7e7bbf81a4c3e50bcce6e5216361af325a92bb3acbf2a3f119"
+    },
+    {
+      "file": "profile-connected-1080w.webp",
+      "master": "profile-connected.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 93436,
+      "sha256": "88cb91b1517b91047a1b70fb621e9bae024ba636bdff2b9ef485c2e65767ccba"
+    },
+    {
+      "file": "capture-entry-360w.webp",
+      "master": "capture-entry.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 14034,
+      "sha256": "a36f0d5d7a73baf408d017a06274cdef037bb475e5ee0aa261916e86cdfb3513"
+    },
+    {
+      "file": "capture-entry-720w.webp",
+      "master": "capture-entry.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 34292,
+      "sha256": "b5c2f1061d7c9b3bef3735b0fa49c37a17c99e8af6f54b5d04ac43a5ee8aad21"
+    },
+    {
+      "file": "capture-entry-1080w.webp",
+      "master": "capture-entry.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 55254,
+      "sha256": "4f9741775d4f1da56c7b45384f1fe5ac3dd3e4b385b1d295a49755cdd7070140"
+    },
+    {
+      "file": "rules-dialog-360w.webp",
+      "master": "rules-dialog.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23838,
+      "sha256": "f950f5e185c7716921e94b7665ba24e38a15b9b1f289366caf7d14c1e94a6fae"
+    },
+    {
+      "file": "rules-dialog-720w.webp",
+      "master": "rules-dialog.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 54528,
+      "sha256": "e39c54a664dbd9f1024e9a1afe37bb5cf4299e35831953c91ab94842e372648f"
+    },
+    {
+      "file": "rules-dialog-1080w.webp",
+      "master": "rules-dialog.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 84690,
+      "sha256": "ae31bb7ec1bc1b3bb731782affddd07f25898b5330dbcf785e29aff60308b979"
+    },
+    {
+      "file": "vehicle-form-dark-360w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 19168,
+      "sha256": "18b98c4063baa7e2718785f098e9a0b9b8499fcd5ea93dd7dda33cbf7dde1bc6"
+    },
+    {
+      "file": "vehicle-form-dark-720w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 42734,
+      "sha256": "7eda4001a55966592ad8adce3977f7f879a75602f718da6632684b19541423d3"
+    },
+    {
+      "file": "vehicle-form-dark-1080w.webp",
+      "master": "vehicle-form-dark.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 69230,
+      "sha256": "bede0331f2b85e695cdedac91d0e379fde1442b3582d94ac4d2b4d5ce399916f"
+    },
+    {
+      "file": "offline-cached-360w.webp",
+      "master": "offline-cached.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 19018,
+      "sha256": "c54bf9472ed2965da19d0154b3858e8586d69a759bf23253a0e6b2c3380a8607"
+    },
+    {
+      "file": "offline-cached-720w.webp",
+      "master": "offline-cached.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 43324,
+      "sha256": "e25d940a95a8fd021fb2f733fca467028861a4ca160a71574dff0bba111b0369"
+    },
+    {
+      "file": "offline-cached-1080w.webp",
+      "master": "offline-cached.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 68292,
+      "sha256": "f10bbda3033d2e94b42798bdcf63c00248ec5e81fb8fbe5d22d99095d37cb8aa"
+    },
+    {
+      "file": "search-empty-360w.webp",
+      "master": "search-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 21780,
+      "sha256": "6c4e8d6a159267dfd8e67c9dd726455e0d846e991cf0af1cb0c84538b3661726"
+    },
+    {
+      "file": "search-empty-720w.webp",
+      "master": "search-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 46140,
+      "sha256": "4961cc48897391442c54bf4705d705ebd2b8fbee3ee38a3fbaceaf12615fa542"
+    },
+    {
+      "file": "search-empty-1080w.webp",
+      "master": "search-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 71832,
+      "sha256": "66ac298fe955bfe91a574a5f3192efdfe41e271c17e205ae99dd83ceb6b08778"
+    },
+    {
+      "file": "nearby-failure-360w.webp",
+      "master": "nearby-failure.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 22866,
+      "sha256": "d1d1dad4ea58a81b63eb165d416bc54fb5f81e402ba3f4c6a6f41309da72790a"
+    },
+    {
+      "file": "nearby-failure-720w.webp",
+      "master": "nearby-failure.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 51714,
+      "sha256": "0e0e7bc48f5ce0209d2f55593267d7f5e862a4995f2b810aa758f189fb6461bb"
+    },
+    {
+      "file": "nearby-failure-1080w.webp",
+      "master": "nearby-failure.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 81222,
+      "sha256": "b53080cb34c13d6a9d14dd6229e3dca4e417868b97260f7ae96c45f7048e4e0f"
+    },
+    {
+      "file": "help-rules-360w.webp",
+      "master": "help-rules.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 26964,
+      "sha256": "16e510a094ca963941b02b72c747e648fb7d9c26a96bbcc4375abf27ca5c35ef"
+    },
+    {
+      "file": "help-rules-720w.webp",
+      "master": "help-rules.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 67684,
+      "sha256": "a3cf6ac9674796e8514da173a623c538bc0655f26c812f9d9382989807c5fb05"
+    },
+    {
+      "file": "help-rules-1080w.webp",
+      "master": "help-rules.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 105256,
+      "sha256": "fd467763f5d4d02795f94a66c52c21efad2b0c0be58e3588f06fce0d50d7cf69"
+    }
+  ]
+}

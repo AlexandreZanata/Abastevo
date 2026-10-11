@@ -435,6 +435,256 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/observations/{observation_id}/helpfulness:
+    post:
+      summary: Mark one validated contribution helpful or not (signed, idempotent).
+      operationId: castHelpfulness
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        description: Helpfulness vote bound to the immutable decision sequence; the voter derives from proof and must differ from the author. Never validates a price.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HelpfulnessSubmit'
+            example:
+              choice: HELPFUL
+              decision_sequence: 2
+              client_submission_id: help-2026-10-11-001
+      responses:
+        '201':
+          description: Recorded helpfulness with exact tally and owner overlay.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessReceipt'
+              example:
+                vote_id: e6c74c23-63db-4c24-a2e5-408cb23bad26
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 1
+                not_helpful: 0
+                total: 1
+                helpful_basis_points: 10000
+                my_choice: HELPFUL
+                received_at: '2026-10-11T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    get:
+      summary: Exact helpfulness tally (anonymous; owner overlay only when signed).
+      operationId: helpfulnessTally
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        - name: decision_sequence
+          in: query
+          required: true
+          description: Immutable revision the counts bind to.
+          schema: {type: integer, minimum: 1}
+          example: 2
+      responses:
+        '200':
+          description: Exact counts; my_choice present only on the signed read path.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessTally'
+              example:
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 1
+                not_helpful: 0
+                total: 1
+                helpful_basis_points: 10000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/observations/{observation_id}/helpfulness/remove:
+    post:
+      summary: Remove the caller helpfulness vote (signed, idempotent).
+      operationId: removeHelpfulness
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HelpfulnessRemove'
+            example:
+              decision_sequence: 2
+      responses:
+        '200':
+          description: Vote tombstoned; exact tally after removal.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessTally'
+              example:
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 0
+                not_helpful: 0
+                total: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/privacy/training-consent/grant:
+    post:
+      summary: Grant training-image consent for future disclosed images (signed, idempotent).
+      operationId: grantTrainingConsent
+      tags: [privacy]
+      security: []
+      requestBody:
+        required: true
+        description: Explicit ON decision on the current terms pair; revision orders per-owner decisions and makes retries safe. Never authorizes already-captured images.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingConsentGrant'
+            example:
+              terms_version: training-terms-v1
+              terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+              revision: 1
+      responses:
+        '200':
+          description: Consent decision receipt; identical retries converge with replayed true.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingConsentReceipt'
+              example:
+                state: GRANTED
+                revision: 1
+                terms_version: training-terms-v1
+                decided_at: '2026-10-11T00:00:00Z'
+                replayed: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/privacy/training-consent/revoke:
+    post:
+      summary: Revoke training-image consent and request owned training-asset deletion (signed, idempotent).
+      operationId: revokeTrainingConsent
+      tags: [privacy]
+      security: []
+      requestBody:
+        required: true
+        description: Explicit OFF decision; stops selection at receipt and requests deletion of owned training assets. Repeating the stored revocation converges without a duplicate signal.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingConsentRevoke'
+            example:
+              revision: 2
+      responses:
+        '200':
+          description: Revocation receipt with the deletion signal.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingConsentReceipt'
+              example:
+                state: REVOKED
+                revision: 2
+                terms_version: training-terms-v1
+                decided_at: '2026-10-11T00:00:00Z'
+                replayed: false
+                delete_owned_training_assets: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/privacy/training-consent:
+    get:
+      summary: Own training-consent state (signed, owner only).
+      operationId: trainingConsentStatus
+      tags: [privacy]
+      security: []
+      responses:
+        '200':
+          description: Current decision; absent consent reports granted false with no state (default OFF).
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingConsentStatus'
+              example:
+                granted: true
+                state: GRANTED
+                terms_version: training-terms-v1
+                terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+                revision: 1
+                decided_at: '2026-10-11T00:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
@@ -4400,6 +4650,206 @@ components:
           type: string
           format: date-time
           example: '2026-09-30T00:00:00Z'
+    HelpfulnessChoice:
+      description: Contribution helpfulness; never validates a price and never reuses confirmation or VALID/INVALID meanings.
+      type: string
+      enum: [HELPFUL, NOT_HELPFUL]
+      example: HELPFUL
+    HelpfulnessSubmit:
+      description: Helpfulness vote bound to the immutable decision sequence; the voter derives from proof.
+      type: object
+      required: [choice, decision_sequence, client_submission_id]
+      properties:
+        choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+        decision_sequence:
+          type: integer
+          minimum: 1
+          description: Immutable revision the voter saw; stale revisions refuse.
+          example: 2
+        client_submission_id:
+          type: string
+          minLength: 1
+          description: Client operation identity for safe retries.
+          example: help-2026-10-11-001
+    HelpfulnessReceipt:
+      description: Recorded helpfulness with exact tally and owner overlay; no voter list.
+      type: object
+      required: [vote_id, observation_id, decision_sequence, helpful, not_helpful, total, my_choice, received_at]
+      properties:
+        vote_id:
+          type: string
+          format: uuid
+          example: e6c74c23-63db-4c24-a2e5-408cb23bad26
+        observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
+        helpful:
+          type: integer
+          minimum: 0
+          example: 1
+        not_helpful:
+          type: integer
+          minimum: 0
+          example: 0
+        total:
+          type: integer
+          minimum: 0
+          example: 1
+        helpful_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: floor(10000*helpful/total); absent when no votes.
+          example: 10000
+        my_choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+        received_at:
+          type: string
+          format: date-time
+          example: '2026-10-11T00:00:00Z'
+    HelpfulnessTally:
+      description: Exact per-revision counts; my_choice present only on the signed read path.
+      type: object
+      required: [observation_id, decision_sequence, helpful, not_helpful, total]
+      properties:
+        observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
+        helpful:
+          type: integer
+          minimum: 0
+          example: 1
+        not_helpful:
+          type: integer
+          minimum: 0
+          example: 0
+        total:
+          type: integer
+          minimum: 0
+          example: 1
+        helpful_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          example: 10000
+        my_choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+        under_review:
+          type: boolean
+          description: True while an open contribution review case names this target; counts stay exact.
+          example: true
+        review_notice:
+          type: string
+          description: Frozen public wording; present only with under_review. Case internals stay operator-side.
+          example: contribution under review
+    HelpfulnessRemove:
+      description: Helpfulness removal bound to the immutable decision sequence.
+      type: object
+      required: [decision_sequence]
+      properties:
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
+    TrainingConsentGrant:
+      description: Explicit ON decision on the current terms pair; revision orders per-owner decisions. Never authorizes already-captured images.
+      type: object
+      required: [terms_version, terms_digest, revision]
+      properties:
+        terms_version:
+          type: string
+          minLength: 1
+          description: Reviewed terms revision; must equal the server current version.
+          example: training-terms-v1
+        terms_digest:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Digest of the reviewed terms text; must equal the server current digest.
+          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+        revision:
+          type: integer
+          minimum: 1
+          description: Per-owner monotonic decision identity; greater moves state, equal identical replays, smaller refuses.
+          example: 1
+    TrainingConsentRevoke:
+      description: Explicit OFF decision with the per-owner monotonic revision.
+      type: object
+      required: [revision]
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+          example: 2
+    TrainingConsentReceipt:
+      description: Consent decision receipt; identifiers of the decision only, never contributor, token, key or device material.
+      type: object
+      required: [state, revision, decided_at, replayed]
+      properties:
+        state:
+          type: string
+          enum: [GRANTED, REVOKED]
+          example: GRANTED
+        revision:
+          type: integer
+          minimum: 1
+          example: 1
+        terms_version:
+          type: string
+          example: training-terms-v1
+        decided_at:
+          type: string
+          format: date-time
+          example: '2026-10-11T00:00:00Z'
+        replayed:
+          type: boolean
+          description: True when the call converged on the stored decision.
+          example: false
+        delete_owned_training_assets:
+          type: boolean
+          description: Present on revocation; true only on the fresh revocation that requests the purge.
+          example: true
+    TrainingConsentStatus:
+      description: Owner consent view; absent consent reports granted false with no state (default OFF).
+      type: object
+      required: [granted]
+      properties:
+        granted:
+          type: boolean
+          example: true
+        state:
+          type: string
+          enum: [GRANTED, REVOKED]
+          example: GRANTED
+        terms_version:
+          type: string
+          example: training-terms-v1
+        terms_digest:
+          type: string
+          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+        revision:
+          type: integer
+          minimum: 0
+          example: 1
+        decided_at:
+          type: string
+          format: date-time
+          example: '2026-10-11T00:00:00Z'
+        needs_regrant:
+          type: boolean
+          description: True when granted on superseded terms; the owner must grant again explicitly.
+          example: false
     UploadReserveRequest:
       description: Upload intent; the object key is server-generated, never client-supplied.
       type: object

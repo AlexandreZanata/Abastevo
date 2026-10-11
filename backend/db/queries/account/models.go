@@ -46,6 +46,12 @@ type AccountEmailCode struct {
 	ConsumedAt  pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AccountErasureIntent struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type AccountKeyCredential struct {
 	AccountID    pgtype.UUID `json:"account_id"`
 	UsernameHash string      `json:"username_hash"`
@@ -79,4 +85,11 @@ type AccountSessionFamily struct {
 	AccessExpires pgtype.Timestamptz `json:"access_expires"`
 	IssuedAt      pgtype.Timestamptz `json:"issued_at"`
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type AccountSessionRefreshHistory struct {
+	FamilyID    pgtype.UUID        `json:"family_id"`
+	RefreshSalt string             `json:"refresh_salt"`
+	RefreshHash string             `json:"refresh_hash"`
+	RotatedAt   pgtype.Timestamptz `json:"rotated_at"`
 }

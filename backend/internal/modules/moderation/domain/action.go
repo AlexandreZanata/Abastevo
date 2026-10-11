@@ -108,13 +108,15 @@ func AllowedForTarget(action, targetType string) bool {
 	switch action {
 	case ActionInvalidate:
 		return targetType == TargetObservation || targetType == TargetDispute ||
-			targetType == TargetEvidence || targetType == TargetComment
+			targetType == TargetEvidence || targetType == TargetComment ||
+			targetType == TargetContribution
 	case ActionBlock:
 		return targetType == TargetContributor
 	case ActionReview, ActionResolve, ActionDismiss:
 		return targetType == TargetObservation || targetType == TargetDispute ||
 			targetType == TargetContributor || targetType == TargetEvidence ||
-			targetType == TargetComment || targetType == TargetStationClaim
+			targetType == TargetComment || targetType == TargetStationClaim ||
+			targetType == TargetContribution
 	default:
 		return false
 	}

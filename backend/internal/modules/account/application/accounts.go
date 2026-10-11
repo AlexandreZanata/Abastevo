@@ -10,13 +10,28 @@ import (
 // Store is the persistence port behind every account use case. Atomicity
 // lives here: TryConsume checks and marks a code in one step, Rotate swaps
 // a family's tokens in one step, so concurrent retries cannot double-spend
-// a code or fork a refresh chain. The memory implementation guards with a
-// mutex; the Postgres one uses single-statement conditional updates.
-// Provider links (P13-T03B) share the same contract: LinkProvider refuses
-// cross-account binds, UnlinkProvider refuses the last login method.
+// a code or fork a refresh chain. SEC01-C adds TryIssueCode,
+// TryCreateKeyAccount and TryCreateFamily: aggregate/per-account
+// admission and row insertion complete under one lock/transaction, so
+// parallel floods cannot overshoot ceilings. The memory implementation
+// guards with a mutex; the Postgres one uses advisory xact locks plus
+// single-transaction check+insert. Provider links (P13-T03B) share the
+// same contract: LinkProvider refuses cross-account binds,
+// UnlinkProvider refuses the last login method.
 type Store interface {
 	SaveCode(ctx context.Context, rec domain.EmailCode) error
 	CountCodesSince(ctx context.Context, addressHash string, sinceUnix int64) (int, error)
+	CountAllCodesSince(ctx context.Context, sinceUnix int64) (int, error)
+	CountKeyAccountsSince(ctx context.Context, sinceUnix int64) (int, error)
+	CountLiveFamiliesByAccount(ctx context.Context, accountID string, nowUnix int64) (int, error)
+	PurgeExpiredCodes(ctx context.Context, beforeUnix int64) (int, error)
+	PurgeExpiredFamilies(ctx context.Context, beforeUnix int64) (int, error)
+	TryIssueCode(ctx context.Context, rec domain.EmailCode, nowUnix int64) (bool, error)
+	TryCreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error
+	TryCreateFamily(ctx context.Context, fam domain.SessionFamily, nowUnix int64) error
+	// DeleteCode compensates one issued code when downstream delivery
+	// fails (SEC01-D quota rollback), so failed sends retain nothing.
+	DeleteCode(ctx context.Context, id string) error
 	LatestCode(ctx context.Context, addressHash string) (domain.EmailCode, bool, error)
 	TryConsume(ctx context.Context, addressHash, code string, hasher domain.CodeHasher, nowUnix int64) (domain.EmailCode, error)
 	FindAccount(ctx context.Context, addressHash string) (domain.Account, bool, error)
@@ -24,12 +39,22 @@ type Store interface {
 	CreateFamily(ctx context.Context, fam domain.SessionFamily) error
 	Family(ctx context.Context, familyID string) (domain.SessionFamily, bool, error)
 	Rotate(ctx context.Context, familyID, expectedRefreshHash, refreshSalt, refreshHash, accessSalt, accessHash string, accessExpires, nowUnix int64) error
+	// RefreshHistory returns the bounded hashed rotation history for
+	// proven-reuse detection (SEC07-A): newest superseded verifiers
+	// first, at most domain.MaxRefreshHistory. Never plaintext.
+	RefreshHistory(ctx context.Context, familyID string) ([]domain.RotatedVerifier, error)
 	RevokeFamily(ctx context.Context, familyID string, nowUnix int64) error
 	RevokeAccount(ctx context.Context, accountID string, nowUnix int64) error
 	GetAccount(ctx context.Context, accountID string) (domain.Account, bool, error)
 	SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error
 	ReactivateAccount(ctx context.Context, accountID string) error
-	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error
+	// DeleteAccount revokes, captures contributor bindings into
+	// durable erasure intents and unlinks — atomically — returning
+	// the captured contributor IDs for scope cleanup (SEC04-B).
+	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) ([]string, error)
+	// ListErasureIntents replays durable intents after a crash
+	// between revocation and scope cleanup (SEC04-B/D).
+	ListErasureIntents(ctx context.Context, accountID string) ([]string, error)
 	BindContributor(ctx context.Context, binding domain.ContributorBinding, auditID string) error
 	UnbindContributor(ctx context.Context, accountID, contributorID, auditID string, nowUnix int64) error
 	ListBindings(ctx context.Context, accountID string) ([]domain.ContributorBinding, error)
@@ -64,51 +89,62 @@ type AuthResult struct {
 	Created bool
 }
 
+// DeletionReceipt is the safe acknowledgment for account deletion
+// (SEC04-A): the recorded erasure intent, not completion. Scope
+// execution follows in the worker through the deletion ledger;
+// ContributorIDs stay server-side (intents table + scope ports) and
+// never travel to the client beyond the requested flag.
+type DeletionReceipt struct {
+	AccountID        string
+	ContributorIDs   []string
+	ErasureRequested bool
+}
+
 // Service wires frozen policy to the Store and MailSender ports.
 type Service struct {
-	Clock     domain.Clock
-	Hasher    domain.CodeHasher
-	Mail      domain.MailSender
-	Store     Store
-	Verifier  domain.ProviderVerifier
-	KeyProver domain.KeyProver
-	CodeGen   func() (string, error)
-	TokenGen  func() (string, error)
-	AliasGen  func() (string, error)
-	KeyGen    func() (string, error)
-	IDGen     func() (string, error)
+	Clock  domain.Clock
+	Hasher domain.CodeHasher
+	Mail   domain.MailSender
+	// MailEnabled gates code issuance on deployed delivery. Off by
+	// default: with no delivery configured, RequestCode answers nil
+	// before any store write, so unavailable dependencies leave no
+	// retained issuances. Tests opt in explicitly.
+	MailEnabled bool
+	Store       Store
+	Verifier    domain.ProviderVerifier
+	KeyProver   domain.KeyProver
+	// RequestErasure enqueues owned scope cleanup for the captured
+	// contributor IDs plus account-social erasure after revocation
+	// (SEC04-B). Nil refuses deletion closed: unwired deletion would
+	// repeat the AUD-05 disconnect. Tests set an explicit fake; the
+	// composition root wires privacy jobs plus feedback erasure.
+	RequestErasure func(ctx context.Context, accountID string, contributorIDs []string) error
+	CodeGen        func() (string, error)
+	TokenGen       func() (string, error)
+	AliasGen       func() (string, error)
+	KeyGen         func() (string, error)
+	IDGen          func() (string, error)
 }
 
 // RequestCode issues a code when quota and cooldown allow. Unknown
 // addresses, cooldown hits and quota exhaustion all answer nil: the caller
 // cannot distinguish them, so no oracle leaks registration or limits.
+// SEC01-C (B-BR-A02/A05): malformed shapes refuse before any store IO;
+// per-address quota, aggregate ceiling and cooldown admit atomically via
+// TryIssueCode before any row or mail exists.
 func (s *Service) RequestCode(ctx context.Context, address string) error {
+	// Delivery off answers nil before any store write: identical to
+	// quota/cooldown/unknown, so no oracle leaks status and no rows
+	// accumulate for a dependency that cannot deliver.
+	if !s.MailEnabled {
+		return nil
+	}
+	// Invalid shapes cost zero store IO: identical nil, no oracle.
+	if !domain.ValidEmail(address) {
+		return nil
+	}
 	now := s.Clock.NowUnix()
 	hash := domain.AddressHash(address)
-	// Suspended and deleted accounts (deleted rows are unreachable by
-	// address, but the guard is explicit) receive no code and no mail.
-	// The answer stays nil, identical to quota/cooldown/unknown, so no
-	// oracle leaks status.
-	if acc, found, err := s.Store.FindAccount(ctx, hash); err != nil {
-		return err
-	} else if found {
-		if err := accountUsable(acc); err != nil {
-			return nil
-		}
-	}
-	count, err := s.Store.CountCodesSince(ctx, hash, now-3600)
-	if err != nil {
-		return err
-	}
-	if count >= domain.MaxCodesPerAddressPerHour {
-		return nil
-	}
-	if latest, found, err := s.Store.LatestCode(ctx, hash); err != nil {
-		return err
-	} else if found && latest.ConsumedAt == 0 && !domain.CodeExpired(latest.IssuedAt, now) &&
-		!domain.ResendAllowed(latest.IssuedAt, now) {
-		return nil
-	}
 	code, err := s.CodeGen()
 	if err != nil {
 		return err
@@ -128,10 +164,17 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 		Hash:        s.Hasher.Hash(salt, code),
 		IssuedAt:    now,
 	}
-	if err := s.Store.SaveCode(ctx, rec); err != nil {
+	admitted, err := s.Store.TryIssueCode(ctx, rec, now)
+	if err != nil {
 		return err
 	}
+	if !admitted {
+		return nil
+	}
+	// SEC01-D quota rollback: a failed send compensates the admitted
+	// row, so failed deliveries retain nothing and consume no budget.
 	if err := s.Mail.SendCode(ctx, address, code); err != nil {
+		_ = s.Store.DeleteCode(ctx, rec.ID)
 		return err
 	}
 	return nil
@@ -236,10 +279,24 @@ func (s *Service) Refresh(ctx context.Context, familyID, refreshToken string) (S
 		return Session{}, domain.ErrSessionExpired
 	}
 	if !s.Hasher.Equal(fam.RefreshHash, fam.RefreshSalt, refreshToken) {
-		if err := s.Store.RevokeFamily(ctx, familyID, now); err != nil {
-			return Session{}, err
+		// SEC07-A proof-based reuse: only a token matching the bounded
+		// hashed rotation history proves theft and revokes the family.
+		// A random invalid credential refuses fail-closed with a
+		// distinct verdict and leaves the live family untouched.
+		// Neither branch logs tokens or family identifiers.
+		hist, herr := s.Store.RefreshHistory(ctx, familyID)
+		if herr != nil {
+			return Session{}, herr
 		}
-		return Session{}, domain.ErrSessionReuse
+		for _, v := range hist {
+			if s.Hasher.Equal(v.Hash, v.Salt, refreshToken) {
+				if err := s.Store.RevokeFamily(ctx, familyID, now); err != nil {
+					return Session{}, err
+				}
+				return Session{}, domain.ErrSessionReuse
+			}
+		}
+		return Session{}, domain.ErrSessionInvalid
 	}
 	sess, err := s.rotate(ctx, fam, now)
 	if err != nil {
@@ -351,7 +408,9 @@ func (s *Service) storeSession(ctx context.Context, accountID, familyID string, 
 		AccessExpires: accessExpires,
 		IssuedAt:      now,
 	}
-	if err := s.Store.CreateFamily(ctx, fam); err != nil {
+	// SEC01-C per-account session budget admits atomically before any
+	// row exists; over-budget refuses with a stable budget error.
+	if err := s.Store.TryCreateFamily(ctx, fam, now); err != nil {
 		return Session{}, err
 	}
 	return Session{

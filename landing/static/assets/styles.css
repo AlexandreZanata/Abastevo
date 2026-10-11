@@ -1,3 +1,40 @@
+/* Self-hosted OFL fonts: source provenance: landing/static/assets/fonts/provenance.json. */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/assets/fonts/manrope-latin-ext-wght.3911b66d.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/assets/fonts/manrope-latin-wght.a30ddcd3.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(/assets/fonts/source-sans-3-latin-ext-wght.a85a7459.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(/assets/fonts/source-sans-3-latin-wght.19143dca.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --ink: #0b1849;
   --text-muted: #44506b;
@@ -13,11 +50,12 @@
   --line: #c5cee0;
   --line-interactive: #7b87a3;
 
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Manrope', system-ui, sans-serif;
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-pill: 9999px;
-  --max-width: 60rem; /* ~960px */
+  --max-width: 72rem; /* 1152px content area (LR03 visual revision) */
 }
 
 *, *::before, *::after {
@@ -28,6 +66,7 @@
 
 html {
   font-family: var(--font-sans);
+  font-weight: 400;
   font-size: 16px;
   line-height: 1.6;
   color: var(--ink);
@@ -92,6 +131,16 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   margin-right: auto;
   padding-left: 1.25rem;
   padding-right: 1.25rem;
+}
+
+h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-copy,
+.store-link, .back-to-top, .card-source-tag, .card-price-sample,
+.card-station-name, .step-number, .guide-card-title {
+  font-family: var(--font-display);
+}
+
+.card-price-sample {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Header */
@@ -212,9 +261,9 @@ section {
 }
 
 .hero-h1 {
-  font-size: clamp(2rem, 4vw + 1rem, 2.75rem);
+  font-size: clamp(2rem, 1rem + 5vw, 3.5rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.12;
   color: var(--ink);
   letter-spacing: -0.02em;
   margin-bottom: 1.25rem;
@@ -254,16 +303,38 @@ section {
   min-height: 48px;
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-sm);
-  background-color: #ffffff;
-  color: var(--link);
+  background-color: var(--link);
+  color: #ffffff;
   border: 2px solid var(--link);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
   cursor: pointer;
 }
 
 .btn-primary:hover {
+  background-color: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  color: var(--link);
+  border: 2px solid var(--link);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
   background-color: var(--tint-blue);
 }
 
@@ -441,6 +512,60 @@ section {
   .grid-2 {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* App gallery (LR11): authentic captures in restrained frames, static layout */
+.app-gallery {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .app-gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.app-shot {
+  margin: 0;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+.phone-frame {
+  max-width: 20rem;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  line-height: 0;
+  background-color: #1d2639;
+}
+
+.phone-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.app-shot figcaption {
+  padding-top: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.app-shot figcaption strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
 }
 
 /* Step Card */
@@ -816,6 +941,104 @@ section {
 
 .guide-table td {
   color: var(--text-muted);
+}
+
+/* Tutorial chapters (LR13): annotated steps with native-coordinate SVG overlays */
+.lesson-steps {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+  list-style: none;
+  padding: 0;
+}
+
+.lesson-step {
+  background-color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.lesson-step h2 {
+  font-size: 1.125rem;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-visual {
+  max-width: 22rem;
+  margin: 1rem auto;
+  background-color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+.tutorial-frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.tutorial-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tutorial-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tutorial-overlay rect {
+  fill: none;
+  stroke: #df231b;
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+.tutorial-overlay circle {
+  fill: #df231b;
+}
+
+.tutorial-overlay text {
+  fill: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.lesson-meta {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
+.lesson-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.lesson-availability {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--green-text);
+  background-color: var(--tint-green);
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 1rem;
 }
 
 /* Print */

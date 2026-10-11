@@ -77,7 +77,9 @@ func (c EmailCode) Live(nowUnix int64) bool {
 }
 
 // SessionFamily is one rotating refresh chain. Only salted token hashes
-// persist; reuse of a superseded refresh token revokes the whole family.
+// persist. Proven reuse of a superseded refresh token (SEC07-A: matched
+// against the bounded hashed rotation history) revokes the whole family;
+// a random invalid credential refuses without revoking.
 type SessionFamily struct {
 	ID            string
 	AccountID     string
@@ -89,6 +91,18 @@ type SessionFamily struct {
 	IssuedAt      int64
 	RevokedAt     int64
 }
+
+// RotatedVerifier is one superseded refresh verifier kept for proven-reuse
+// detection (SEC07-A). Salted hash only, never plaintext.
+type RotatedVerifier struct {
+	Salt string
+	Hash string
+}
+
+// MaxRefreshHistory bounds the per-family rotation history (SEC07-A):
+// the newest N superseded verifiers prove reuse; older ones age out and
+// refuse as invalid without revoking.
+const MaxRefreshHistory = 8
 
 // Live reports whether the family may still rotate at nowUnix.
 func (f SessionFamily) Live(nowUnix int64) bool {
@@ -116,6 +130,20 @@ func ValidProvider(provider string) bool {
 // keys are always hashes of this form, never raw addresses.
 func NormalizeAddress(address string) string {
 	return strings.ToLower(strings.TrimSpace(address))
+}
+
+// ValidEmail reports whether address is a cheaply-checkable email shape
+// (SEC01-C, B-BR-A02): non-empty, <=254 bytes, one @ with local and domain
+// parts, no spaces. Invalid shapes refuse before any store IO so floods
+// of malformed input cost no backend reads or rows. Deeper deliverability
+// is never claimed here; the HTTP layer shares this exact predicate.
+func ValidEmail(address string) bool {
+	address = strings.TrimSpace(address)
+	if len(address) == 0 || len(address) > 254 {
+		return false
+	}
+	at := strings.IndexByte(address, '@')
+	return at > 0 && at < len(address)-1 && !strings.Contains(address, " ")
 }
 
 // AddressHash derives the PII-minimized lookup key for an address.

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"strconv"
@@ -40,6 +41,29 @@ const (
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	// keyMailMode selects code delivery: "off" (default — codes
+	// never issue) or "memory" (bounded local outbox for
+	// development/tests). SMTP lands with deployment
+	// configuration, never silently.
+	keyMailMode = "ANPFUEL_MAIL_MODE"
+	// keyTrainingTermsDigest carries the digest of the currently
+	// published training-terms text that fresh consent grants must
+	// present. Rotating it invalidates old grants until owners
+	// re-grant explicitly (CS09); the verified terms text itself
+	// lands with the Settings wiring (CS11).
+	keyTrainingTermsDigest = "ANPFUEL_TRAINING_TERMS_DIGEST"
+	// keyTrustedProxies carries the comma-separated CIDR allowlist
+	// whose forwarding headers the identity quota resolver may bill
+	// (SEC02-B). Empty trusts nothing and preserves peer-only
+	// billing; staging/production set their edge network explicitly.
+	keyTrustedProxies = "ANPFUEL_TRUSTED_PROXIES"
+	// keyGlobalQuotaChallenge/Register/Write carry the deliberate
+	// hourly global ceilings for identity operations (SEC02-C),
+	// separate from per-client/key fairness. Empty or zero disables
+	// that operation (no global cap; fairness still enforced).
+	keyGlobalQuotaChallenge = "ANPFUEL_GLOBAL_QUOTA_CHALLENGE"
+	keyGlobalQuotaRegister  = "ANPFUEL_GLOBAL_QUOTA_REGISTER"
+	keyGlobalQuotaWrite     = "ANPFUEL_GLOBAL_QUOTA_WRITE"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -53,6 +77,12 @@ const (
 	// metrics stay on the private listener and are never published by
 	// the staging/production topologies. Empty disables the listener.
 	defaultMetricsAddr = "127.0.0.1:9090"
+
+	// defaultTrainingTermsDigest binds training-terms-v1 until the
+	// verified terms text lands (CS11): sha256 of the literal
+	// "abastevo-training-terms-v1". It identifies the provisional
+	// version, never published legal text.
+	defaultTrainingTermsDigest = "741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48"
 
 	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
@@ -74,6 +104,24 @@ type Config struct {
 	// MetricsAddr is the private metrics listener; empty disables it.
 	MetricsAddr         string
 	ANPDiscoveryEnabled bool
+	// TrainingTermsDigest is the published digest fresh training
+	// grants must present; served to owners on the status read, never
+	// logged as anything but configured/unset.
+	TrainingTermsDigest string
+	// MailMode is "off" or "memory" (see keyMailMode). Production
+	// stays off until delivery is deployed and configured.
+	MailMode string
+	// TrustedProxies is the raw comma-separated CIDR allowlist for
+	// the identity quota resolver (see keyTrustedProxies). Empty
+	// trusts nothing. The value carries network ranges, never
+	// secrets, and stays out of logs with the rest of the config.
+	TrustedProxies string
+	// GlobalQuotaChallenge/Register/Write are the deliberate hourly
+	// global ceilings for identity operations (see keyGlobalQuota*).
+	// Zero disables that operation (no global cap).
+	GlobalQuotaChallenge int
+	GlobalQuotaRegister  int
+	GlobalQuotaWrite     int
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -220,6 +268,57 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.MetricsAddr = metrics
 	}
 
+	digest, _ := getenv(keyTrainingTermsDigest)
+	if digest == "" {
+		digest = defaultTrainingTermsDigest
+	}
+	if !validTermsDigest(digest) {
+		return Config{}, fmt.Errorf("%s must be 1..128 lowercase hex characters", keyTrainingTermsDigest)
+	}
+	cfg.TrainingTermsDigest = digest
+
+	mode, _ := getenv(keyMailMode)
+	if mode == "" {
+		mode = "off"
+	}
+	if mode != "off" && mode != "memory" {
+		return Config{}, fmt.Errorf("%s must be off or memory", keyMailMode)
+	}
+	cfg.MailMode = mode
+
+	proxies, _ := getenv(keyTrustedProxies)
+	if strings.TrimSpace(proxies) != "" {
+		for _, part := range strings.Split(proxies, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			if _, err := netip.ParsePrefix(part); err != nil {
+				return Config{}, fmt.Errorf("%s must be comma-separated CIDRs", keyTrustedProxies)
+			}
+		}
+		cfg.TrustedProxies = proxies
+	}
+
+	for _, tc := range []struct {
+		key string
+		dst *int
+	}{
+		{keyGlobalQuotaChallenge, &cfg.GlobalQuotaChallenge},
+		{keyGlobalQuotaRegister, &cfg.GlobalQuotaRegister},
+		{keyGlobalQuotaWrite, &cfg.GlobalQuotaWrite},
+	} {
+		raw, _ := getenv(tc.key)
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(raw))
+		if err != nil || n < 0 {
+			return Config{}, fmt.Errorf("%s must be a non-negative hourly ceiling", tc.key)
+		}
+		*tc.dst = n
+	}
+
 	r2, err := loadR2(getenv)
 	if err != nil {
 		return Config{}, err
@@ -236,6 +335,21 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.DevelopmentPhotoPreviewUntil = deadline
 	}
 	return cfg, nil
+}
+
+// validTermsDigest bounds the configured training-terms digest before
+// it becomes part of the grant-equality check: non-empty,
+// length-capped, lowercase hex only.
+func validTermsDigest(digest string) bool {
+	if len(digest) == 0 || len(digest) > 128 {
+		return false
+	}
+	for _, c := range digest {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			return false
+		}
+	}
+	return true
 }
 
 // validHostname rejects controls, URL syntax and invalid DNS labels before

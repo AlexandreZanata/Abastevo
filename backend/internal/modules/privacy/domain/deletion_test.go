@@ -20,7 +20,7 @@ func TestLedgerEntryValid(t *testing.T) {
 	if e.PolicyVersion != PolicyV1 || !e.ReplayedAt.IsZero() {
 		t.Errorf("entry = %+v", e)
 	}
-	if len(AllScopes()) != 5 {
+	if len(AllScopes()) != 6 {
 		t.Errorf("scopes = %v", AllScopes())
 	}
 	for _, scope := range AllScopes() {

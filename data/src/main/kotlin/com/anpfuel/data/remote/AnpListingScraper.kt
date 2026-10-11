@@ -4,16 +4,28 @@ import com.anpfuel.domain.model.PriceTable
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
-import javax.inject.Inject
 
 /**
  * Discovers ANP [PriceTable] download URLs from the public listing page (UC-001).
+ *
+ * SEC06-A bounded discovery: approved listing origins only, capped
+ * listing bytes (the whole response never buffers unbounded), and the
+ * same filename-pattern classification as before (origin policy is
+ * separate from name patterns). Provided via NetworkModule (not
+ * constructor injection: the test seam has no binding).
  */
-class AnpListingScraper @Inject constructor(
+class AnpListingScraper(
     private val okHttpClient: OkHttpClient,
+    /**
+     * Explicit test seam for offline suites (loopback MockWebServer).
+     * Production wiring passes the default empty set (approved gov.br
+     * origins over HTTPS only). Never populate from remote input.
+     */
+    private val extraAllowedHosts: Set<String> = emptySet(),
 ) {
 
     private val cacheLock = Any()
@@ -83,6 +95,9 @@ class AnpListingScraper @Inject constructor(
     }
 
     private fun fetchListingHtmlFromNetwork(listingPageUrl: String): String {
+        require(isFetchableListingUrl(listingPageUrl)) {
+            "Listing URL is outside the approved ANP origins: $listingPageUrl"
+        }
         val request = Request.Builder()
             .url(listingPageUrl)
             .get()
@@ -92,8 +107,38 @@ class AnpListingScraper @Inject constructor(
             check(response.isSuccessful) {
                 "ANP listing request failed with HTTP ${response.code}"
             }
-            return requireNotNull(response.body).string()
+            val body = requireNotNull(response.body) { "ANP listing response body was empty" }
+            // Declared length refuses without reading; the read itself
+            // stays capped so unexpected files cannot amplify in memory.
+            val declared = body.contentLength()
+            require(declared < 0 || declared <= MAX_LISTING_BYTES) {
+                "ANP listing exceeds $MAX_LISTING_BYTES bytes"
+            }
+            return readBounded(body.byteStream())
         }
+    }
+
+    internal fun isFetchableListingUrl(rawUrl: String): Boolean {
+        if (AnpEndpoints.isApprovedUrl(rawUrl)) return true
+        if (extraAllowedHosts.isEmpty()) return false
+        val host = rawUrl.trim().toHttpUrlOrNull()?.host ?: return false
+        return host in extraAllowedHosts
+    }
+
+    private fun readBounded(input: java.io.InputStream): String {
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            require(total <= MAX_LISTING_BYTES) {
+                "ANP listing exceeds $MAX_LISTING_BYTES bytes"
+            }
+            out.write(buffer, 0, read)
+        }
+        return out.toString(Charsets.UTF_8.name())
     }
 
     private data class CachedListingHtml(
@@ -107,5 +152,11 @@ class AnpListingScraper @Inject constructor(
 
     companion object {
         internal const val LISTING_CACHE_TTL_MILLIS = 60_000L
+        /**
+         * Listing ceiling (SEC06-A): far above the observed ANP
+         * listing page (hundreds of KiB) while blocking whole-response
+         * buffering amplification.
+         */
+        const val MAX_LISTING_BYTES: Long = 4L * 1024L * 1024L
     }
 }

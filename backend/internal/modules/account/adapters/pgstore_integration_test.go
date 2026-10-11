@@ -148,10 +148,14 @@ func freshService(t *testing.T) (*application.Service, *integClock, *integMail) 
 		return fmt.Sprintf("alias-%d", an), nil
 	}
 	svc := &application.Service{
-		Clock:    clock,
-		Hasher:   domain.SHA256Hasher{},
-		Mail:     mail,
-		Store:    NewPGStore(pool),
+		Clock:       clock,
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        mail,
+		MailEnabled: true,
+		Store:       NewPGStore(pool),
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
 		CodeGen:  nextCode,
 		TokenGen: nextToken,
 		AliasGen: nextAlias,

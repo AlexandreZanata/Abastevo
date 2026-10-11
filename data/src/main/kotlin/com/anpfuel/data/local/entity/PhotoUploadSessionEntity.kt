@@ -2,10 +2,17 @@ package com.anpfuel.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** One shared, immutable negotiation; private URLs/bytes never enter Room. */
-@Entity(tableName = "photo_upload_sessions")
+@Entity(
+    tableName = "photo_upload_sessions",
+    indices = [
+        // SEC06-C owner index: owner-scoped list/purge for erasure.
+        Index(value = ["owner_scope"]),
+    ],
+)
 data class PhotoUploadSessionEntity(
     @PrimaryKey @ColumnInfo(name = "capture_id") val captureId: String,
     @ColumnInfo(name = "session_id") val sessionId: String,

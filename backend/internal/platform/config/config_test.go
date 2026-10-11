@@ -171,3 +171,94 @@ func TestLoadMetricsAddrValidation(t *testing.T) {
 		t.Errorf("explicit non-loopback must parse (firewall owns exposure): %v", err)
 	}
 }
+
+func TestLoadTrainingTermsDigest(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.TrainingTermsDigest != defaultTrainingTermsDigest {
+		t.Errorf("TrainingTermsDigest = %q, want the frozen provisional default", cfg.TrainingTermsDigest)
+	}
+	cfg, err = load(envFunc(map[string]string{keyTrainingTermsDigest: "ab12"}))
+	if err != nil || cfg.TrainingTermsDigest != "ab12" {
+		t.Errorf("explicit digest must apply, got %q, %v", cfg.TrainingTermsDigest, err)
+	}
+	for _, bad := range []string{"UPPERCASE", "not hex!", strings.Repeat("a", 129), "0x12"} {
+		if _, err := load(envFunc(map[string]string{keyTrainingTermsDigest: bad})); err == nil {
+			t.Errorf("digest %q accepted", bad)
+		} else if !strings.Contains(err.Error(), keyTrainingTermsDigest) {
+			t.Errorf("error %q must name the variable", err)
+		}
+	}
+}
+
+func TestLoadMailMode(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.MailMode != "off" {
+		t.Errorf("MailMode = %q, want off by default", cfg.MailMode)
+	}
+	cfg, err = load(envFunc(map[string]string{keyMailMode: "memory"}))
+	if err != nil || cfg.MailMode != "memory" {
+		t.Errorf("explicit memory must apply, got %q, %v", cfg.MailMode, err)
+	}
+	if _, err := load(envFunc(map[string]string{keyMailMode: "smtp"})); err == nil {
+		t.Error("unconfigured smtp accepted")
+	} else if !strings.Contains(err.Error(), keyMailMode) {
+		t.Errorf("error %q must name the variable", err)
+	}
+}
+
+// SEC02-C: the deliberate global ceilings default to disabled and
+// refuse negative/non-numeric values at startup with the variable
+// named.
+func TestLoadGlobalQuotas(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.GlobalQuotaChallenge != 0 || cfg.GlobalQuotaRegister != 0 || cfg.GlobalQuotaWrite != 0 {
+		t.Errorf("global quotas must default disabled, got %+v", cfg)
+	}
+	cfg, err = load(envFunc(map[string]string{
+		keyGlobalQuotaChallenge: "1000",
+		keyGlobalQuotaRegister:  "100",
+		keyGlobalQuotaWrite:     "2000",
+	}))
+	if err != nil || cfg.GlobalQuotaChallenge != 1000 || cfg.GlobalQuotaRegister != 100 || cfg.GlobalQuotaWrite != 2000 {
+		t.Errorf("explicit global quotas must apply, got %+v, %v", cfg, err)
+	}
+	for key, bad := range map[string]string{keyGlobalQuotaChallenge: "-1", keyGlobalQuotaRegister: "many", keyGlobalQuotaWrite: "1.5"} {
+		if _, err := load(envFunc(map[string]string{key: bad})); err == nil {
+			t.Errorf("global quota %s=%q accepted", key, bad)
+		} else if !strings.Contains(err.Error(), key) {
+			t.Errorf("error %q must name the variable", err)
+		}
+	}
+}
+
+// SEC02-B: the trusted-proxy allowlist defaults to trusting nothing
+// and refuses non-CIDR values at startup with the variable named.
+func TestLoadTrustedProxies(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.TrustedProxies != "" {
+		t.Errorf("TrustedProxies = %q, want empty (trust nothing) by default", cfg.TrustedProxies)
+	}
+	cfg, err = load(envFunc(map[string]string{keyTrustedProxies: "10.0.0.0/8, 192.168.0.0/16"}))
+	if err != nil || cfg.TrustedProxies == "" {
+		t.Errorf("explicit CIDRs must apply, got %q, %v", cfg.TrustedProxies, err)
+	}
+	for _, bad := range []string{"10.0.0.1", "private_ranges", "10.0.0.0/33", "10.0.0.0/8, nope"} {
+		if _, err := load(envFunc(map[string]string{keyTrustedProxies: bad})); err == nil {
+			t.Errorf("CIDR %q accepted", bad)
+		} else if !strings.Contains(err.Error(), keyTrustedProxies) {
+			t.Errorf("error %q must name the variable", err)
+		}
+	}
+}

@@ -22,6 +22,31 @@ const (
 	RefreshAbsoluteLifetimeDays = 30
 )
 
+// Frozen admission policy (SEC01-C, B-BR-A01/A02/A04/A05). Aggregate and
+// per-account ceilings bound durable and in-memory growth while keeping
+// free registration and social participation free. Values change only
+// with a new threat analysis, never to make a failing test pass.
+const (
+	// MaxAggregateCodesPerHour caps issued email codes across all
+	// addresses per rolling hour. Per-address quota (5/hour) stays;
+	// this stops distinct-address floods bypassing it.
+	MaxAggregateCodesPerHour = 20
+	// MaxKeyAccountsPerHour caps anonymous key-account creations
+	// across all usernames per rolling hour.
+	MaxKeyAccountsPerHour = 100
+	// MaxLiveSessionsPerAccount caps live (non-revoked,
+	// non-absolutely-expired) session families per account.
+	MaxLiveSessionsPerAccount = 10
+	// CodePurgeGraceSeconds retains expired/consumed code verifiers
+	// briefly for audit, then PurgeExpiredCodes removes them.
+	// Inventory: purged <=24h after expiry (FREE_ACCOUNT_ACCESS).
+	CodePurgeGraceSeconds = 24 * 3600
+	// SessionPurgeGraceSeconds retains absolutely-expired families
+	// briefly, then PurgeExpiredFamilies removes them (<=7d after
+	// absolute expiry per inventory).
+	SessionPurgeGraceSeconds = 7 * 24 * 3600
+)
+
 // Frozen OIDC verification bounds (P13-T01, B-BR-A03). Only the two listed
 // issuers, exact audience match, mandatory nonce and a 120s skew allowance;
 // JWKS responses cache for one hour. Provider outage or key rotation yields

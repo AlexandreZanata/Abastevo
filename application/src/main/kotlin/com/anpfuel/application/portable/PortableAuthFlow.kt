@@ -214,7 +214,8 @@ class AuthFlow(private val ports: AuthPorts) {
 
     private fun isAuthDenial(verdict: String): Boolean = verdict in listOf(
         PortableAuth.Verdict.SESSION_REVOKED, PortableAuth.Verdict.SESSION_REUSE,
-        PortableAuth.Verdict.SESSION_EXPIRED, PortableAuth.Verdict.ACCOUNT_SUSPENDED,
+        PortableAuth.Verdict.SESSION_INVALID, PortableAuth.Verdict.SESSION_EXPIRED,
+        PortableAuth.Verdict.ACCOUNT_SUSPENDED,
         PortableAuth.Verdict.ACCOUNT_DELETED, PortableAuth.Verdict.CODE_UNKNOWN,
         "key-invalid", "account-not-found", CLIENT_INVALID,
     )

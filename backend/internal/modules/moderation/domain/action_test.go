@@ -117,3 +117,14 @@ func TestNextStatus(t *testing.T) {
 		t.Errorf("rejected reopen = %v", err)
 	}
 }
+
+func TestContributionActionEligibility(t *testing.T) {
+	for _, action := range []string{ActionReview, ActionInvalidate, ActionResolve, ActionDismiss} {
+		if !AllowedForTarget(action, TargetContribution) {
+			t.Errorf("%s refused for CONTRIBUTION", action)
+		}
+	}
+	if AllowedForTarget(ActionBlock, TargetContribution) {
+		t.Error("BLOCK accepted for CONTRIBUTION; blocking applies to contributors")
+	}
+}

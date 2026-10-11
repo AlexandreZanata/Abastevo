@@ -1,0 +1,1 @@
+{"id": "promotion-verdict-uncertain", "valid": false, "value": {"image_id": "img-1", "captured_after_grant": true, "per_image_allowed": true, "source_sha256": "source-hash", "verdict": "UNCERTAIN"}}

@@ -63,7 +63,10 @@ var (
 // HashIPSubject digests an IP under a rotating operator key. Only the
 // "ip:<keyid>:<hex>" digest ever reaches storage; raw IPs stay out of the
 // database entirely, and rotation retires old digests with their windows
-// (short retention by construction).
+// (short retention by construction). Forms normalize before hashing so
+// IPv4-mapped IPv6 shares one budget with the same host instead of
+// forking key-farm identities; scoped zone identifiers refuse because
+// they smuggle interface identity into the subject.
 func HashIPSubject(keyID string, key []byte, ip string) (string, error) {
 	if keyID == "" || len(key) == 0 {
 		return "", ErrBadIP
@@ -72,8 +75,11 @@ func HashIPSubject(keyID string, key []byte, ip string) (string, error) {
 	if err != nil {
 		return "", ErrBadIP
 	}
+	if addr.Zone() != "" {
+		return "", ErrBadIP
+	}
 	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(addr.String()))
+	mac.Write([]byte(addr.Unmap().String()))
 	return "ip:" + keyID + ":" + hex.EncodeToString(mac.Sum(nil)), nil
 }
 

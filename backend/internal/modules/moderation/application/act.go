@@ -112,7 +112,7 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 // closure record a moderation-applied intent for the audit trail.
 func actionJob(c domain.Case, a domain.Action) (string, []byte) {
 	switch {
-	case a.Action == domain.ActionInvalidate && c.TargetType == domain.TargetObservation:
+	case a.Action == domain.ActionInvalidate && (c.TargetType == domain.TargetObservation || c.TargetType == domain.TargetContribution):
 		raw, _ := json.Marshal(map[string]any{"version": 1, "observation_id": c.TargetID})
 		return "community-consensus", raw
 	case a.Action == domain.ActionBlock && c.TargetType == domain.TargetContributor:

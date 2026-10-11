@@ -4,6 +4,7 @@ import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.auth.AnonymousProofCrypto
 import com.anpfuel.domain.portable.PortableAnonymousProof
+import com.anpfuel.domain.repository.ContributionRateLimited
 import java.io.IOException
 import java.security.MessageDigest
 import java.util.Base64
@@ -130,7 +131,9 @@ class PhotoProofTransport internal constructor(
     private fun authority(): String = java.net.URI(origin).rawAuthority ?: throw IOException("photo.origin-unavailable")
     private fun execute(request: Request): JSONObject {
         client.newCall(request).execute().use { response ->
-            if(!response.isSuccessful) throw PhotoOperationRefused(response.code)
+            if(!response.isSuccessful) {
+                throw mapErrorStatus(response.code, response.header("Retry-After"))
+            }
             val source=response.body?.source() ?: throw IOException("photo.empty-response")
             if(source.request(65537)) throw IOException("photo.response-size")
             return try { JSONObject(source.readUtf8()) } catch (_: Exception) { throw IOException("photo.invalid-response") }
@@ -140,3 +143,17 @@ class PhotoProofTransport internal constructor(
 }
 
 class PhotoOperationRefused(val status: Int): IOException("photo.operation-refused:$status")
+
+/**
+ * SEC06-D: map an error status to its refusal. A 429 with a valid
+ * Retry-After becomes a rate-limit hint (dispatch honors it instead
+ * of the fixed curve); malformed/absent values fall back to the
+ * plain refusal (existing backoff applies).
+ */
+internal fun mapErrorStatus(code: Int, retryAfter: String?): IOException {
+    if (code == 429) {
+        val parsed = retryAfter?.trim()?.toLongOrNull()
+        if (parsed != null && parsed >= 0) return ContributionRateLimited(minOf(parsed, 3600L))
+    }
+    return PhotoOperationRefused(code)
+}

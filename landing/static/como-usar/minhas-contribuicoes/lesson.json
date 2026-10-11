@@ -1,0 +1,59 @@
+{
+  "lessonId": "TU17",
+  "slug": "minhas-contribuicoes",
+  "titlePtBr": "Minhas contribuições",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu17-s1",
+      "image": "/assets/app/contributions-empty-720w.webp",
+      "imageSha256": "effd3563089d5200ed90ecaa40dfd75056f97060988e06346883f415a0b5f949",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Comece uma colaboração pelo botão.",
+      "controlLabelPtBr": "Colaborar com preço",
+      "expectedPtBr": "Abre o fluxo de captura com posto exigido.",
+      "recoveryPtBr": "Sem posto elegível, o obturador desabilita.",
+      "altPtBr": "Botão colaborar destacado.",
+      "target": {
+        "x": 451,
+        "y": 618,
+        "width": 403,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "empty-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/profile/MyContributionsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu17-s2",
+      "image": "/assets/app/contributions-empty-720w.webp",
+      "imageSha256": "effd3563089d5200ed90ecaa40dfd75056f97060988e06346883f415a0b5f949",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Entenda que o extrato é só deste aparelho.",
+      "controlLabelPtBr": "Nenhuma contribuição neste dispositivo ainda.",
+      "expectedPtBr": "Vazio declarado, nada público.",
+      "recoveryPtBr": "Envios aparecem aqui após a fila.",
+      "altPtBr": "Estado vazio honesto confirmado.",
+      "availability": "Disponível",
+      "claimClass": "empty-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/profile/MyContributionsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

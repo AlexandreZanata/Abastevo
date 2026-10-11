@@ -17,14 +17,15 @@ func testKeyHandler() Handler {
 	var mu sync.Mutex
 	n := 0
 	return Handler{Service: &application.Service{
-		Clock:    &testClock{now: 1_700_000_000},
-		Hasher:   domain.SHA256Hasher{},
-		Mail:     &testMail{},
-		Store:    application.NewMemStore(),
-		CodeGen:  func() (string, error) { return "482916", nil },
-		TokenGen: func() (string, error) { return strings.Repeat("t", 64), nil },
-		AliasGen: func() (string, error) { return "alias-test", nil },
-		KeyGen:   domain.GenerateAccountKey,
+		Clock:       &testClock{now: 1_700_000_000},
+		Hasher:      domain.SHA256Hasher{},
+		Mail:        &testMail{},
+		MailEnabled: true,
+		Store:       application.NewMemStore(),
+		CodeGen:     func() (string, error) { return "482916", nil },
+		TokenGen:    func() (string, error) { return strings.Repeat("t", 64), nil },
+		AliasGen:    func() (string, error) { return "alias-test", nil },
+		KeyGen:      domain.GenerateAccountKey,
 		IDGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()

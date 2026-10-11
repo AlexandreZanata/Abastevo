@@ -1,0 +1,733 @@
+{
+  "schemaVersion": 1,
+  "branch": "landing",
+  "installedSourceSha": "UNKNOWN; not linked to repository HEAD",
+  "releaseStatus": "DEVELOPMENT; no store availability or release acceptance inferred",
+  "capturedCount": 25,
+  "captureTimePrecision": "Date only; exact per-frame time was not recorded",
+  "privacyReview": "Guest/blank forms; no credentials, private media, precise contributor GPS or notification content in accepted frames. History/week attempts with a private music overlay were rejected and not copied.",
+  "deviceRestoration": "Original dark theme restored and verified by Ativar tema claro control; temporary UI XML removed. No app storage reset or submitted mutation.",
+  "captureEnvironment": {
+    "standard": "pt-BR, font scale 1.0, portrait, native 1220x2712, keyboard hidden unless taught; theme recorded per frame",
+    "deviceRule": "User phone read-only with per-session ADB authorization; fixtures/destructive flows on disposable emulator/profile",
+    "seederBan": "InstrumentedAppDataSeeder.clearAppStorage (:262) never on user phone",
+    "captureCommand": "adb -s <selected-device> exec-out screencap -p > <output>.png",
+    "lr04Note": "2026-10-11: no new capture; eight frames carried forward, hashes re-verified 8/8"
+  },
+  "captures": [
+    {
+      "file": "screenshots/anp-prices.png",
+      "sha256": "7f0021d8893e5271bb78deb882cbfebf4c7da10a317928f106bc4faa68384937",
+      "bytes": 222089,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "ANP fuel price list",
+      "lesson": "TU05",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Sorriso survey week 4–10 October 2026, not a current pump quote.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "dated-reference"
+    },
+    {
+      "file": "screenshots/city-picker.png",
+      "sha256": "6efc64bf4bf1343abfc13ef3a0edc6fd5fcf1ace517cf50a47534b53b8504094",
+      "bytes": 138665,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "City/state selector",
+      "lesson": "TU02",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "State list/search shown; municipality completion now in municipios-mt.png.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/community-empty.png",
+      "sha256": "1b0aab1fbea1b1e58980ef561c732ba7985ff91f7dd24a01b0844047b6fcd2b9",
+      "bytes": 232537,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Community guest/empty state",
+      "lesson": "TU10",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Empty state only; no populated feed or successful contribution implied.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
+    },
+    {
+      "file": "screenshots/explore-dark.png",
+      "sha256": "fa8d79901cc70e20c2d097a36c85fce664a9830ba519f6ef00ab6fe24dccb8c0",
+      "bytes": 612043,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Explorar — original dark theme",
+      "lesson": "TU02",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Visible official survey summary; not proof of live pump prices.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "populated-state"
+    },
+    {
+      "file": "screenshots/explore-light.png",
+      "sha256": "0b1709f92636177dd8529fd522237b5cffd23b56d0be2bfe96f029a109d4046f",
+      "bytes": 613725,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Explorar — light theme",
+      "lesson": "TU02",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Visible official survey summary; not proof of live pump prices.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "populated-state"
+    },
+    {
+      "file": "screenshots/profile-guest.png",
+      "sha256": "5aaacf1c6f4b457654cd05462a6be99ca603dbdda67fa786f43ddcb08a9b7995",
+      "bytes": 230398,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Guest profile/navigation",
+      "lesson": "TU11",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Guest state; no authenticated account or account key shown.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "guest-state"
+    },
+    {
+      "file": "screenshots/vehicle-form.png",
+      "sha256": "2a4ec29337e449a883dbde527b3d87ca82570e9b3e418eee4c00e5c029cb6cd8",
+      "bytes": 188478,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "New vehicle blank form",
+      "lesson": "TU26",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Unsaved form; scroll/result/limit/recovery captures still owed.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "unsaved-form"
+    },
+    {
+      "file": "screenshots/vehicles-empty.png",
+      "sha256": "400f5e69641fd0cfa4fc06ad3a1ae7b9a403134b3b16acd92de085218bf8d78a",
+      "bytes": 100666,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Vehicle list empty state",
+      "lesson": "TU26",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Empty state only; no saved vehicle implied.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
+    },
+    {
+      "file": "screenshots/stations-list.png",
+      "sha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "bytes": 244325,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Station list with fuel filters",
+      "lesson": "TU08",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Fuel chips (8 products), station search, sort, JABER public ANP registry card; location button visible but never tapped.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/station-detail.png",
+      "sha256": "c65b8b8738d70d919b22a8932f84044b16040bd42aa6329b1f4bddbfd636da2e",
+      "bytes": 262512,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Station identity and entries",
+      "lesson": "TU09",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Default Beta art, public CNPJ identity/address, Ir/Atualizar preco entries shown, never tapped.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/station-sources.png",
+      "sha256": "ca70ea9292cf54402c40c2bb4301d6ddf29043d7885b1158dd0b9453c4c8aa07",
+      "bytes": 216021,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Community/ANP source separation",
+      "lesson": "TU09",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Community (beta) empty state, ANP reference R$ 3,84 coleta 7 out 2026, dated week chip, sign-in gate; not a live pump quote.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "source-separation"
+    },
+    {
+      "file": "screenshots/community-feed.png",
+      "sha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
+      "bytes": 232796,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Community feed filters and empty state",
+      "lesson": "TU10",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Order/fuel filter UI with honest Sorriso empty state and rules link; dark theme companion to accepted light frame.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
+    },
+    {
+      "file": "screenshots/history.png",
+      "sha256": "02ed266b177d104256d11b9efc3ee2545d40271e11356188b593c23c5b9b1968",
+      "bytes": 209523,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "ANP price history chart",
+      "lesson": "TU07",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Three-week Gasolina comum trend (6,83/6,88/6,94) with chart and fuel selector; dated survey reference.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "dated-reference"
+    },
+    {
+      "file": "screenshots/week-picker.png",
+      "sha256": "b1e671f8e505ba4c694fb488a6b796ae9bb5283de39cc4298bc3ea380158fbe3",
+      "bytes": 231456,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Survey week picker sheet",
+      "lesson": "TU06",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Bottom sheet with current week card, archive entry and update date; sheet extends under system nav, shown honestly.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/contributions-empty.png",
+      "sha256": "effd3563089d5200ed90ecaa40dfd75056f97060988e06346883f415a0b5f949",
+      "bytes": 126738,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "My contributions empty device state",
+      "lesson": "TU17",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Device-empty ledger, nothing public; no account created, no submission staged.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
+    },
+    {
+      "file": "screenshots/settings.png",
+      "sha256": "5c6ef5910bdb136a5bd32ef5082b13b5ca7ff130999ec18b5ebf0792f603c604",
+      "bytes": 251197,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "App settings",
+      "lesson": "TU28",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Eight-language grid, background/auto-week/Wi-Fi/history toggles on, 12-week retention selected; no toggle changed. Actual options exceed catalog shorthand.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/municipios-mt.png",
+      "sha256": "0ec81fe5750d6632c486648b0acb0c5549d4d5178b755d56f0717d2ed8ece295",
+      "bytes": 139207,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Municipality completion list",
+      "lesson": "TU02",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "MT municipality search/grouped list; opened read-only, no selection made, city stayed Sorriso.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/profile-connected.png",
+      "sha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
+      "bytes": 232901,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Profile signed in (demo account)",
+      "lesson": "TU13",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Logged-in demo account; connected state and entries only, no key material in pixels.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/capture-entry.png",
+      "sha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
+      "bytes": 141954,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Capture entry with station requirement",
+      "lesson": "TU14",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Logged-in demo account; station list degraded (needs connection), shutter disabled, dev-mode toggle untouched/off.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/rules-dialog.png",
+      "sha256": "942ab74db464956026253ce4b75f87a5ac9ebb07973a42b7909366f6888ca842",
+      "bytes": 237732,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Community verification rules dialog",
+      "lesson": "TU21",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Read-only rules dialog (consensus, report non-deletion, appeal); dismissed via Fechar, nothing reported.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    },
+    {
+      "file": "screenshots/vehicle-form-dark.png",
+      "sha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
+      "bytes": 190177,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Vehicle form blank (dark, demo account)",
+      "lesson": "TU26",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Blank unsaved form; nothing typed, toggled or saved. Dark companion to accepted light frame.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "unsaved-form"
+    },
+    {
+      "file": "screenshots/offline-cached.png",
+      "sha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
+      "bytes": 220743,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Offline cached price table",
+      "lesson": "TU29",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Airplane mode on (icon visible), radios restored off right after; cached ANP table renders, community shows same empty state.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "offline-cache"
+    },
+    {
+      "file": "screenshots/search-empty.png",
+      "sha256": "29dbd9668c2ce41279349253ebba5966ccd5b94c0083285ea9aff3f20131cd8b",
+      "bytes": 232769,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Empty station search result",
+      "lesson": "TU08",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Gibberish query typed read-only, honest no-match state, query cleared and list restored after.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "empty-state"
+    },
+    {
+      "file": "screenshots/nearby-failure.png",
+      "sha256": "9deea81646241d20de9fd7e0247f2813ec35b3ff845b270eaa7f7e3d8a4a9b4c",
+      "bytes": 274829,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Nearby cheapest failure toast",
+      "lesson": "TU08",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Granted location used read-only; honest failure toast when no nearby station resolves; no coordinates shown.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "error-state"
+    },
+    {
+      "file": "screenshots/help-rules.png",
+      "sha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
+      "bytes": 211671,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Help and community rules",
+      "lesson": "TU30",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Read-only rules destination; collaboration, consensus, report/appeal and privacy notes verified in pixels.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
+    }
+  ],
+  "rejectedFrames": [
+    {
+      "date": "2026-10-11",
+      "reason": "Third-party shopping heads-up notification covered the auth screen; private notification content.",
+      "action": "Rejected; recaptured other states only after overlays cleared."
+    },
+    {
+      "date": "2026-10-11",
+      "reason": "Auth/account-key screen sets FLAG_SECURE: screencap returns black pixels while hierarchy renders. No key content can leak via screenshots by design.",
+      "action": "Recorded as capture constraint; TU11/TU12 visual frames stay pending without invented screens."
+    }
+  ],
+  "lr06Pending": [
+    "masked-key/backup/login screens (FLAG_SECURE, uncapturable)",
+    "photo review/OCR/outbox/queued/receipt states (need synthetic fixtures, never staged on user phone)",
+    "feedback/report/voteumatic flows (require account; no submission for screenshots)",
+    "claim/management roles, alerts, deletion completion, offline transitions"
+  ],
+  "selection": {
+    "date": "2026-10-11",
+    "review": "Every accepted frame inspected at 100% on 2026-10-11 (originals) or at acceptance (prior eight); sharp text, stable states, no spinner, source/date uncropped, no PII/keys/GPS/notifications.",
+    "unresolved": "Route-wide complete library blocked by missing states below."
+  },
+  "missingRows": [
+    {
+      "lessons": [
+        "TU01"
+      ],
+      "states": "onboarding sync/download frames (fresh install forbidden on user phone; emulator owner)",
+      "owner": "app-owner"
+    },
+    {
+      "lessons": [
+        "TU03"
+      ],
+      "states": "Explorar theme toggle and card-detail frames (toggle changes user setting; capture owed)"
+    },
+    {
+      "lessons": [
+        "TU04"
+      ],
+      "states": "SEARCH assist-chip entry identified in HomeScreen RowActions (below fold); result-type frames owed"
+    },
+    {
+      "lessons": [
+        "TU11",
+        "TU12"
+      ],
+      "states": "username/key/backup visuals (FLAG_SECURE blocks screencap; hierarchy-verified)"
+    },
+    {
+      "lessons": [
+        "TU15",
+        "TU16"
+      ],
+      "states": "photo review/OCR/outbox states (synthetic fixtures on disposable emulator only)",
+      "owner": "app-owner"
+    },
+    {
+      "lessons": [
+        "TU17"
+      ],
+      "states": "populated ledger/receipt/cancel states (need test contributions; no staging on user phone)"
+    },
+    {
+      "lessons": [
+        "TU18",
+        "TU19"
+      ],
+      "states": "rating/comment/vote composers (station-verification gated, feed empty; hermetic preproduction owner)",
+      "owner": "app-owner"
+    },
+    {
+      "lessons": [
+        "TU20"
+      ],
+      "states": "helpfulness UI (no Android implementation; CS01 domain-only)",
+      "owner": "app-owner"
+    },
+    {
+      "lessons": [
+        "TU22",
+        "TU24",
+        "TU25"
+      ],
+      "states": "suggest/claim/management entries unobserved in reachable UI; forms unsent"
+    },
+    {
+      "lessons": [
+        "TU26"
+      ],
+      "states": "saved-vehicle/estimate/delete-confirm states (no save/delete staged)"
+    },
+    {
+      "lessons": [
+        "TU27"
+      ],
+      "states": "alert OS permission screens (toggle viewed off; permission flow pending emulator)"
+    },
+    {
+      "lessons": [
+        "TU28"
+      ],
+      "states": "remaining settings rows below fold; destructive confirmations unexecuted"
+    }
+  ],
+  "secureBlocked": [
+    {
+      "date": "2026-10-11",
+      "screens": "Auth username/key entry, Account masked-key/backup screen",
+      "evidence": "Hierarchy renders (username entry, masked bullets, Mostrar/Copiar/Exportar/Sair/Excluir controls) while screencap returns black: FLAG_SECURE by design.",
+      "impact": "TU11/TU12/TU13 key visuals stay pending; behavior documented from hierarchy, never invented pixels."
+    }
+  ]
+}

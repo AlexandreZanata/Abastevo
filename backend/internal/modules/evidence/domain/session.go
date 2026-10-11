@@ -43,7 +43,20 @@ var (
 	ErrBadReason        = errors.New("evidence: stable reason codes required")
 	ErrNotExpired       = errors.New("evidence: session still within its reservation deadline")
 	ErrConflict         = errors.New("evidence: same key, different intent")
+	ErrQuotaDenied      = errors.New("evidence: reservation budget exhausted")
 )
+
+// ReserveBudget bounds one reservation attempt (SEC03-A): at most
+// MaxCount rows created since DayStart plus at most MaxBytes live
+// (unexpired ISSUED/VERIFYING) declared bytes per contributor. Now
+// anchors both windows; expired and terminal sessions release their
+// bytes while created-today rows keep counting toward MaxCount.
+type ReserveBudget struct {
+	Now      time.Time
+	DayStart time.Time
+	MaxCount int
+	MaxBytes int64
+}
 
 // SessionRef is the minimal session identity for retention sweeps:
 // identifiers plus the facts eligibility needs, never payloads.

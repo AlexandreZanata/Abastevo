@@ -30,6 +30,20 @@ test('headers: _headers contains essential security and caching policies', () =>
   }
 });
 
+test('404: noindex plain-HTML fallback with recovery links and no scripts', () => {
+  const tmpOut = path.join(root, '.test-dist-404-' + Date.now());
+  try {
+    build({ projectRoot: root, outDir: tmpOut });
+    const notFound = fs.readFileSync(path.join(tmpOut, '404.html'), 'utf8');
+    assert.match(notFound, /<meta name="robots" content="noindex, nofollow">/);
+    assert.doesNotMatch(notFound, /<script/);
+    assert.ok(notFound.includes('href="/"'), '404 recovers to home');
+    assert.ok(notFound.includes('href="/como-usar/"'), '404 recovers to tutorial hub');
+  } finally {
+    fs.rmSync(tmpOut, { recursive: true, force: true });
+  }
+});
+
 test('redirects: _redirects specifies valid HTTP redirect status codes', () => {
   const tmpOut = path.join(root, '.test-dist-redirects-' + Date.now());
   try {
@@ -44,6 +58,11 @@ test('redirects: _redirects specifies valid HTTP redirect status codes', () => {
       assert.ok(parts.length >= 3, `Line should have source target status: ${line}`);
       const status = Number(parts[parts.length - 1]);
       assert.ok([301, 302, 307, 308].includes(status), `Invalid HTTP status code in line: ${line}`);
+      const target = parts[1];
+      assert.ok(
+        target.startsWith('https://github.com/AlexandreZanata/'),
+        `Redirect target must stay inside the project repository: ${line}`
+      );
     }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });

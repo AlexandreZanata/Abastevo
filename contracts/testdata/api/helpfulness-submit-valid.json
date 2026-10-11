@@ -1,0 +1,12 @@
+{
+  "id": "helpfulness-submit-valid",
+  "version": 1,
+  "schema": "HelpfulnessSubmit",
+  "valid": true,
+  "provenance": "CS02B helpfulness wire shape; synthetic",
+  "value": {
+    "choice": "HELPFUL",
+    "decision_sequence": 2,
+    "client_submission_id": "help-2026-10-11-001"
+  }
+}

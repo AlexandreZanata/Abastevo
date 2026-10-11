@@ -2,7 +2,17 @@ package com.anpfuel.domain.repository
 
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import java.io.IOException
 import com.anpfuel.domain.model.ContributionScope
+
+/**
+ * SEC06-D rate-limit refusal with the server's retry hint in seconds.
+ * Thrown by gateways on HTTP 429; dispatch honors the hint instead of
+ * the fixed curve. An [IOException] (transient family), never a
+ * [DomainException].
+ */
+class ContributionRateLimited(val retryAfterSeconds: Long) :
+    IOException("contribution.rate-limited")
 
 /**
  * P10-T05 durable contribution ports (BUC-003/004, B-BR-003/005/010/011).
@@ -34,10 +44,38 @@ interface ContributionOutboxRepository {
     suspend fun recordReceipt(receipt: ContributionReceipt, nowMillis: Long): Unit =
         throw DomainException("durable receipt storage unavailable")
     suspend fun receipt(commandId: String): ContributionReceipt? = null
-    suspend fun failDispatch(commandId: String, revision: Int, nonce: String, nowMillis: Long): Unit =
-        throw DomainException("atomic failure storage unavailable")
+    /**
+     * SEC06-D: record a failed attempt. When [retryAfterMillis] carries
+     * the server's Retry-After hint, the next eligible tick honors it
+     * (bounded by the backoff ceiling) instead of the fixed curve.
+     */
+    suspend fun failDispatch(
+        commandId: String,
+        revision: Int,
+        nonce: String,
+        nowMillis: Long,
+        retryAfterMillis: Long? = null,
+    ): Unit = throw DomainException("atomic failure storage unavailable")
+    /**
+     * SEC06-D: persist a permanent refusal distinctly from transient
+     * backoff — parks the row (never eligible again) with the stable
+     * reason. Retrying a permanently refused intent can never help.
+     */
+    suspend fun refusePermanently(commandId: String, revision: Int, reason: String): Unit =
+        throw DomainException("atomic refusal storage unavailable")
     suspend fun enqueue(draft: ContributionDraft, payloadJson: String): QueuedContribution
-    suspend fun listDispatchable(nowMillis: Long): List<QueuedContribution>
+    /**
+     * SEC06-C bounded dispatch selection: one requested command by id
+     * (no scan), or null when absent/ineligible. Payloads of other
+     * rows are never loaded to select one.
+     */
+    suspend fun findDispatchable(commandId: String, nowMillis: Long): QueuedContribution?
+    /**
+     * SEC06-C bounded dispatch selection: at most [limit] eligible
+     * commands, oldest first, payloads included only for the page.
+     * Backed by the dispatch index; never a full-history scan.
+     */
+    suspend fun listDispatchablePage(nowMillis: Long, limit: Int): List<QueuedContribution>
     suspend fun loadPayload(commandId: String): String?
     suspend fun markDispatched(commandId: String, nonce: String)
     suspend fun markAcknowledged(commandId: String, revision: Int)
@@ -45,11 +83,50 @@ interface ContributionOutboxRepository {
     suspend fun cancel(commandId: String)
 
     /**
-     * P21-T03 private owner status: every locally retained command with
-     * its durable phase and exact server receipt. ACKED requires a persisted
-     * receipt; unscoped legacy commands remain quarantined from dispatch.
+     * P21-T03 private owner status, newest first, bounded page.
+     * ACKED requires a persisted receipt; unscoped legacy commands
+     * remain quarantined from dispatch.
      */
-    suspend fun listOwned(): List<OwnedContribution>
+    suspend fun listOwnedPage(limit: Int, offset: Int): List<OwnedContribution>
+
+    /** Single owned row by id, or null when absent. */
+    suspend fun findOwned(commandId: String): OwnedContribution?
+
+    /**
+     * SEC06-C retention: delete terminal history (CANCELLED rows and
+     * ACKED rows with a terminal receipt) beyond the retained newest
+     * window, at most one purge batch, returning the purged count.
+     * Live and retryable rows are never touched; terminal payload
+     * bytes free with their rows.
+     */
+    suspend fun purgeTerminalHistory(): Int
+
+    /**
+     * SEC04-D owner erasure: delete every row whose payload scope matches
+     * [ownerScope] and cancel its scheduled work, returning the purged
+     * count. Rows without a parseable scope are kept (fail-closed: never
+     * delete unattributable rows). After this returns, no pending
+     * operation of the erased owner remains to send.
+     */
+    suspend fun purgeOwned(ownerScope: String): Int
+}
+
+/**
+ * SEC06-C outbox budgets: dispatch reads one bounded page, history
+ * reads one bounded page, and terminal history older than the
+ * retention horizon purges in bounded batches. Live and retryable
+ * rows are never purged; payloads stay small by construction
+ * (price intents), and terminal receipts free their bytes on purge.
+ */
+object OutboxBudgets {
+    /** Dispatch page: one worker run scans at most this many rows. */
+    const val DISPATCH_PAGE_SIZE = 50
+    /** History page: status screens read newest-first pages. */
+    const val HISTORY_PAGE_SIZE = 200
+    /** Terminal history retained (newest rows); older purge away. */
+    const val MAX_RETAINED_TERMINAL = 1000
+    /** Terminal purge batch per amortized run. */
+    const val HISTORY_PURGE_BATCH = 500
 }
 
 /**

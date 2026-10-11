@@ -8,6 +8,7 @@ import com.anpfuel.domain.contribution.ContributionStateRule
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.OwnedContributionPhase
+import com.anpfuel.domain.repository.OutboxBudgets
 
 /**
  * P21-T03 — Private owner status (BUC-003, B-BR-003/005).
@@ -29,9 +30,14 @@ class GetOwnedContributionsUseCase(
     private val outbox: ContributionOutboxRepository,
     private val scopeProvider: ContributionScopeProvider? = null,
 ) {
-    suspend fun invoke(): List<OwnedContributionStatus> {
+    /**
+     * SEC06-C bounded history: newest-first page (default covers the
+     * status screen; deeper pages pass explicit offsets). The full
+     * table is never loaded for display.
+     */
+    suspend fun invoke(limit: Int = OutboxBudgets.HISTORY_PAGE_SIZE, offset: Int = 0): List<OwnedContributionStatus> {
         val scope = scopeProvider?.currentScope()
-        return outbox.listOwned().filter { scope == null || it.scope == scope }.map { owned ->
+        return outbox.listOwnedPage(limit, offset).filter { scope == null || it.scope == scope }.map { owned ->
             val local = when (owned.phase) {
                 OwnedContributionPhase.QUEUED -> ContributionLocalPhase.NOT_SENT
                 OwnedContributionPhase.IN_FLIGHT -> ContributionLocalPhase.IN_FLIGHT
@@ -58,7 +64,8 @@ class CancelOwnedContributionUseCase(
         if (commandId.isBlank()) throw DomainException("command_id is blank")
         if (scopeProvider != null) {
             val scope = scopeProvider.currentScope()
-            val command = outbox.listOwned().firstOrNull { it.commandId == commandId && it.scope == scope }
+            val command = outbox.findOwned(commandId)
+                ?.takeIf { it.scope == scope }
                 ?: throw DomainException("owned contribution unavailable")
             if (command.remoteStatus != null) throw DomainException("already submitted contribution cannot be cancelled locally")
         }

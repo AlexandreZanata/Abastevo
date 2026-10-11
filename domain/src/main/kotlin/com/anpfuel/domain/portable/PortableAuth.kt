@@ -95,6 +95,8 @@ object PortableAuth {
         const val SESSION_REUSE: String = "session-reuse-revoked"
         const val SESSION_REVOKED: String = "session-revoked"
         const val SESSION_EXPIRED: String = "session-expired"
+        /** SEC07-A: presented refresh credential invalid, family untouched. */
+        const val SESSION_INVALID: String = "session-invalid"
         const val ACCOUNT_SUSPENDED: String = "account-suspended"
         const val ACCOUNT_DELETED: String = "account-deleted"
     }

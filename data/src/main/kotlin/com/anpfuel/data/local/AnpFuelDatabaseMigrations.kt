@@ -332,5 +332,14 @@ object AnpFuelDatabaseMigrations {
                 sha256 TEXT NOT NULL, evidence_id TEXT)""".trimIndent())
         }
     }
+    val MIGRATION_9_10: Migration = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // SEC06-C dispatch/owner indexes (names match Room's
+            // auto-generated index names for the entity declarations).
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_contribution_outbox_state_next_eligible_tick` ON `contribution_outbox` (`state`, `next_eligible_tick`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_contribution_outbox_remote_status` ON `contribution_outbox` (`remote_status`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photo_upload_sessions_owner_scope` ON `photo_upload_sessions` (`owner_scope`)")
+        }
+    }
 
 }

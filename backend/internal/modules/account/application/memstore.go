@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
@@ -28,6 +29,18 @@ type MemStore struct {
 	keyCreds      map[string]domain.KeyCredential
 	keyByUsername map[string]string
 	keyByLookup   map[string]string
+	// intents holds durable account-erasure intents (SEC04-B):
+	// contributor IDs captured at deletion for scope cleanup.
+	intents map[erasureIntentKey]int64
+	// refreshHist holds bounded hashed rotation histories (SEC07-A):
+	// newest superseded verifiers first, at most
+	// domain.MaxRefreshHistory per family. Salted hashes only.
+	refreshHist map[string][]domain.RotatedVerifier
+}
+
+type erasureIntentKey struct {
+	accountID     string
+	contributorID string
 }
 
 // NewMemStore returns an empty memory store.
@@ -47,6 +60,8 @@ func NewMemStore() *MemStore {
 		keyCreds:      map[string]domain.KeyCredential{},
 		keyByUsername: map[string]string{},
 		keyByLookup:   map[string]string{},
+		intents:       map[erasureIntentKey]int64{},
+		refreshHist:   map[string][]domain.RotatedVerifier{},
 	}
 }
 
@@ -68,6 +83,211 @@ func (m *MemStore) CountCodesSince(_ context.Context, addressHash string, sinceU
 		}
 	}
 	return n, nil
+}
+
+// CountAllCodesSince counts issued codes across all addresses since
+// sinceUnix (SEC01-C aggregate mail admission). Storage accounting
+// stays hashed: only counts travel, never addresses.
+func (m *MemStore) CountAllCodesSince(_ context.Context, sinceUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, rec := range m.codes {
+		if rec.IssuedAt >= sinceUnix {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// CountKeyAccountsSince counts key-account creations since sinceUnix
+// (SEC01-C aggregate username admission).
+func (m *MemStore) CountKeyAccountsSince(_ context.Context, sinceUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, cred := range m.keyCreds {
+		if cred.CreatedAt >= sinceUnix {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// CountLiveFamiliesByAccount counts live session families of one
+// account (SEC01-C per-account session budget): non-revoked and
+// inside the absolute refresh lifetime at nowUnix.
+func (m *MemStore) CountLiveFamiliesByAccount(_ context.Context, accountID string, nowUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, fam := range m.families {
+		if fam.AccountID != accountID {
+			continue
+		}
+		if fam.RevokedAt != 0 || domain.RefreshExpired(fam.IssuedAt, nowUnix) {
+			continue
+		}
+		n++
+	}
+	return n, nil
+}
+
+// PurgeExpiredCodes deletes code verifiers older than beforeUnix and
+// reports the removed rows (SEC01-C bounded retention). Callers pass
+// now-(CodeTTL+CodePurgeGrace); audit history inside the window stays.
+func (m *MemStore) PurgeExpiredCodes(_ context.Context, beforeUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.codes[:0]
+	purged := 0
+	for _, rec := range m.codes {
+		if rec.IssuedAt < beforeUnix {
+			purged++
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	m.codes = kept
+	m.byAddr = map[string][]int{}
+	for i, rec := range m.codes {
+		m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], i)
+	}
+	return purged, nil
+}
+
+// PurgeExpiredFamilies deletes absolutely-expired families older than
+// beforeUnix and reports the removed rows (SEC01-C bounded
+// retention). Revoked-but-unexpired families stay for reuse defense.
+func (m *MemStore) PurgeExpiredFamilies(_ context.Context, beforeUnix int64) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	purged := 0
+	for id, fam := range m.families {
+		if fam.IssuedAt < beforeUnix && domain.RefreshExpired(fam.IssuedAt, beforeUnix) {
+			delete(m.families, id)
+			purged++
+		}
+	}
+	return purged, nil
+}
+
+// TryIssueCode atomically admits one code issuance (SEC01-C,
+// B-BR-A02/A05): suspended/deleted, per-address quota, aggregate
+// ceiling and resend cooldown all refuse with admitted=false (no
+// oracle, no rows), otherwise the verifier persists and admitted=true.
+// One mutex guards check+insert so parallel floods cannot overshoot.
+func (m *MemStore) TryIssueCode(_ context.Context, rec domain.EmailCode, nowUnix int64) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if acc, ok := m.accounts[rec.AddressHash]; ok {
+		if acc.Status != domain.StatusActive {
+			return false, nil
+		}
+	}
+	perAddr := 0
+	for _, i := range m.byAddr[rec.AddressHash] {
+		if m.codes[i].IssuedAt >= nowUnix-3600 {
+			perAddr++
+		}
+	}
+	if perAddr >= domain.MaxCodesPerAddressPerHour {
+		return false, nil
+	}
+	agg := 0
+	for _, c := range m.codes {
+		if c.IssuedAt >= nowUnix-3600 {
+			agg++
+		}
+	}
+	if agg >= domain.MaxAggregateCodesPerHour {
+		return false, nil
+	}
+	if idx := m.byAddr[rec.AddressHash]; len(idx) > 0 {
+		latest := m.codes[idx[len(idx)-1]]
+		if latest.ConsumedAt == 0 && !domain.CodeExpired(latest.IssuedAt, nowUnix) &&
+			!domain.ResendAllowed(latest.IssuedAt, nowUnix) {
+			return false, nil
+		}
+	}
+	m.codes = append(m.codes, rec)
+	m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], len(m.codes)-1)
+	return true, nil
+}
+
+// TryCreateKeyAccount atomically admits one key-account creation
+// (SEC01-C, B-BR-A01/A05): aggregate hourly ceiling refuses with
+// ErrAggregateExhausted; username/key races keep their frozen
+// verdicts. One lock covers count+insert.
+func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, c := range m.keyCreds {
+		if c.CreatedAt >= nowUnix-3600 {
+			n++
+		}
+	}
+	if n >= domain.MaxKeyAccountsPerHour {
+		return domain.ErrAggregateExhausted
+	}
+	if owner, ok := m.keyByUsername[cred.UsernameHash]; ok && owner != acc.ID {
+		return domain.ErrUsernameTaken
+	}
+	if owner, ok := m.keyByLookup[cred.KeyLookup]; ok && owner != acc.ID {
+		return domain.ErrKeyCollision
+	}
+	m.accountsByID[acc.ID] = acc
+	m.keyCreds[acc.ID] = cred
+	m.keyByUsername[cred.UsernameHash] = acc.ID
+	m.keyByLookup[cred.KeyLookup] = acc.ID
+	return nil
+}
+
+// TryCreateFamily atomically admits one session family (SEC01-C,
+// B-BR-A04): live families at cap refuse with
+// ErrSessionBudgetExhausted. Revoked and absolutely-expired rows do
+// not consume budget.
+func (m *MemStore) TryCreateFamily(_ context.Context, fam domain.SessionFamily, nowUnix int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n := 0
+	for _, f := range m.families {
+		if f.AccountID != fam.AccountID {
+			continue
+		}
+		if f.RevokedAt != 0 || domain.RefreshExpired(f.IssuedAt, nowUnix) {
+			continue
+		}
+		n++
+	}
+	if n >= domain.MaxLiveSessionsPerAccount {
+		return domain.ErrSessionBudgetExhausted
+	}
+	cp := fam
+	m.families[fam.ID] = &cp
+	return nil
+}
+
+// DeleteCode compensates one issued code by ID (SEC01-D quota
+// rollback). Unknown IDs converge no-op so compensating a
+// never-persisted issuance stays safe under races.
+func (m *MemStore) DeleteCode(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.codes[:0]
+	for _, rec := range m.codes {
+		if rec.ID == id {
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	m.codes = kept
+	m.byAddr = map[string][]int{}
+	for i, rec := range m.codes {
+		m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], i)
+	}
+	return nil
 }
 
 func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.EmailCode, bool, error) {
@@ -169,10 +389,26 @@ func (m *MemStore) Rotate(_ context.Context, familyID, expectedRefreshHash, refr
 	if !domain.EqualHash(fam.RefreshHash, expectedRefreshHash) {
 		return domain.ErrSessionReuse
 	}
+	// SEC07-A: archive the superseded verifier before swapping, newest
+	// first, bounded so history cannot grow without limit.
+	hist := append([]domain.RotatedVerifier{{Salt: fam.RefreshSalt, Hash: fam.RefreshHash}}, m.refreshHist[familyID]...)
+	if len(hist) > domain.MaxRefreshHistory {
+		hist = hist[:domain.MaxRefreshHistory]
+	}
+	m.refreshHist[familyID] = hist
 	fam.RefreshSalt, fam.RefreshHash = refreshSalt, refreshHash
 	fam.AccessSalt, fam.AccessHash = accessSalt, accessHash
 	fam.AccessExpires = accessExpires
 	return nil
+}
+
+// RefreshHistory returns the bounded hashed rotation history, newest
+// first (SEC07-A). Callers compare with the token hasher; the memory
+// copy stays internal.
+func (m *MemStore) RefreshHistory(_ context.Context, familyID string) ([]domain.RotatedVerifier, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]domain.RotatedVerifier(nil), m.refreshHist[familyID]...), nil
 }
 
 func (m *MemStore) RevokeFamily(_ context.Context, familyID string, nowUnix int64) error {
@@ -371,17 +607,30 @@ func (m *MemStore) ReactivateAccount(_ context.Context, accountID string) error 
 	return m.setStatusLocked(accountID, domain.StatusActive)
 }
 
-// DeleteAccount marks the account deleted, revokes every session family
-// and drops address and provider bindings. The account row stays as an
-// audit record; a later signup with the same address mints a new account
-// without reputation carryover.
-func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) error {
+// DeleteAccount marks the account deleted, revokes every session family,
+// captures contributor bindings into durable erasure intents BEFORE
+// dropping them, and drops address and provider bindings — all under
+// one lock, so revocation and intent are atomic. The account row stays
+// as an audit record; a later signup with the same address mints a new
+// account without reputation carryover. It returns the captured
+// contributor IDs for scope cleanup.
+func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.setStatusLocked(accountID, domain.StatusDeleted); err != nil {
-		return err
+		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	var contributors []string
+	if set, ok := m.bindings[accountID]; ok {
+		for contributor := range set {
+			contributors = append(contributors, contributor)
+			delete(m.byContributor, contributor)
+			m.intents[erasureIntentKey{accountID: accountID, contributorID: contributor}] = nowUnix
+		}
+		delete(m.bindings, accountID)
+	}
+	sort.Strings(contributors)
 	for hash, a := range m.accounts {
 		if a.ID == accountID {
 			delete(m.accounts, hash)
@@ -394,13 +643,29 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		}
 		delete(m.links, accountID)
 	}
-	if set, ok := m.bindings[accountID]; ok {
-		for contributor := range set {
-			delete(m.byContributor, contributor)
-		}
-		delete(m.bindings, accountID)
+	// SEC04-C: key verifiers never survive the owner.
+	if cred, ok := m.keyCreds[accountID]; ok {
+		delete(m.keyByUsername, cred.UsernameHash)
+		delete(m.keyByLookup, cred.KeyLookup)
+		delete(m.keyCreds, accountID)
 	}
-	return nil
+	return contributors, nil
+}
+
+// ListErasureIntents returns the durable contributor intents of one
+// account for enqueue replay after a crash between revocation and
+// scope cleanup (SEC04-B/D).
+func (m *MemStore) ListErasureIntents(_ context.Context, accountID string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []string
+	for k := range m.intents {
+		if k.accountID == accountID {
+			out = append(out, k.contributorID)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 // BindContributor records a verified contributor binding, refusing

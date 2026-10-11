@@ -189,3 +189,34 @@ func TestUnknownOperationRefused(t *testing.T) {
 		t.Error("unknown operation allowed")
 	}
 }
+
+func TestLimiterCardinalityStaysBounded(t *testing.T) {
+	lim, pool := freshLimiter(t, tinyPolicy())
+	ctx := context.Background()
+	const subjects = 50
+	for i := 0; i < subjects; i++ {
+		if _, err := lim.Check(ctx, fmt.Sprintf("fp-farm-%03d", i), domain.OperationWrite); err != nil {
+			t.Fatalf("subject %d denied: %v", i, err)
+		}
+	}
+	// One live row per subject/operation/window: linear, exact, no leaks.
+	var live int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM identity_rate_windows`).Scan(&live); err != nil {
+		t.Fatal(err)
+	}
+	if live != subjects {
+		t.Fatalf("live rows = %d, want %d", live, subjects)
+	}
+	// Expiry plus sweep returns the table to empty: cardinality is
+	// bounded by live windows, never history.
+	if _, err := pool.Exec(ctx, `UPDATE identity_rate_windows SET expires_at = now() - interval '1 hour'`); err != nil {
+		t.Fatal(err)
+	}
+	n, err := lim.Cleanup(ctx)
+	if err != nil || n != subjects {
+		t.Fatalf("cleanup = %d, %v; want %d", n, err, subjects)
+	}
+	if _, err := lim.Check(ctx, "fp-farm-000", domain.OperationWrite); err != nil {
+		t.Errorf("post-sweep budget denied: %v", err)
+	}
+}

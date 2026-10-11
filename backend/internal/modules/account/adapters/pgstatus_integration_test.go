@@ -58,7 +58,7 @@ func TestPGDeleteDropsBindingsResetsSignup(t *testing.T) {
 	if _, err := f.svc.LinkProvider(ctx, accountID, "google", f.googleToken(t, "gone-sub-1", "", "n-pg-del-1"), linkAudience, "n-pg-del-1"); err != nil {
 		t.Fatalf("link: %v", err)
 	}
-	if err := f.svc.DeleteAccount(ctx, accountID); err != nil {
+	if _, err := f.svc.DeleteAccount(ctx, accountID); err != nil {
 		t.Fatalf("DeleteAccount: %v", err)
 	}
 	if _, found, _ := f.svc.Store.FindAccount(ctx, domain.AddressHash("gone-a@example.invalid")); found {
@@ -70,7 +70,7 @@ func TestPGDeleteDropsBindingsResetsSignup(t *testing.T) {
 	if got, found, _ := f.svc.Store.GetAccount(ctx, accountID); !found || got.Status != domain.StatusDeleted {
 		t.Errorf("audit row must stay deleted, got %+v found=%v", got, found)
 	}
-	if err := f.svc.DeleteAccount(ctx, "aaaaaaaa-1111-4111-8111-999999999999"); !errors.Is(err, domain.ErrAccountNotFound) {
+	if _, err := f.svc.DeleteAccount(ctx, "aaaaaaaa-1111-4111-8111-999999999999"); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Errorf("delete unknown must be not-found, got %v", err)
 	}
 	if err := f.svc.ReactivateAccount(ctx, accountID); !errors.Is(err, domain.ErrAccountDeleted) {
@@ -102,7 +102,7 @@ func TestPGConcurrentRefreshAfterDeleteFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.DeleteAccount(ctx, accountID); err != nil {
+	if _, err := f.svc.DeleteAccount(ctx, accountID); err != nil {
 		t.Fatal(err)
 	}
 

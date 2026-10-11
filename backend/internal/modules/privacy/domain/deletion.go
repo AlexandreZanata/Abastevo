@@ -13,15 +13,17 @@ const (
 	ScopeIdentity  = "IDENTITY"
 	ScopeCommunity = "COMMUNITY"
 	ScopeEvidence  = "EVIDENCE"
+	ScopeTraining  = "TRAINING"
 	ScopeTrust     = "TRUST"
 	ScopeExports   = "EXPORTS"
 )
 
 // AllScopes lists every erasure scope in execution order: identity
-// first (revoke writes immediately), then content unlinking, then the
-// ledger's own archive purge last.
+// first (revoke writes immediately), then content unlinking with
+// training derivatives right after their evidence source images,
+// then trust, with the ledger's own archive purge last.
 func AllScopes() []string {
-	return []string{ScopeIdentity, ScopeCommunity, ScopeEvidence, ScopeTrust, ScopeExports}
+	return []string{ScopeIdentity, ScopeCommunity, ScopeEvidence, ScopeTraining, ScopeTrust, ScopeExports}
 }
 
 var (
@@ -63,7 +65,7 @@ func NewLedgerEntry(p LedgerParams) (LedgerEntry, error) {
 		return LedgerEntry{}, ErrInvalidRequest
 	}
 	switch p.Scope {
-	case ScopeIdentity, ScopeCommunity, ScopeEvidence, ScopeTrust, ScopeExports:
+	case ScopeIdentity, ScopeCommunity, ScopeEvidence, ScopeTraining, ScopeTrust, ScopeExports:
 	default:
 		return LedgerEntry{}, ErrUnknownScope
 	}

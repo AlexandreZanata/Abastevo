@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU14",
+  "slug": "fotografar-preco",
+  "titlePtBr": "Fotografar um preço",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu14-s1",
+      "image": "/assets/app/capture-entry-720w.webp",
+      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
+      "instructionPtBr": "Antes de fotografar, escolha o posto deste preço.",
+      "controlLabelPtBr": "Escolha o posto deste preço",
+      "expectedPtBr": "Mostra a exigência de posto e o estado da lista próxima.",
+      "recoveryPtBr": "Sem conexão, a lista degrada com aviso honesto; reconecte.",
+      "altPtBr": "Exigência de escolha do posto destacada.",
+      "target": {
+        "x": 48,
+        "y": 660,
+        "width": 543,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu14-s2",
+      "image": "/assets/app/capture-entry-720w.webp",
+      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
+      "instructionPtBr": "Sem posto, o obturador fica desabilitado. Nunca ative o modo desenvolvedor para burlar.",
+      "controlLabelPtBr": "Fotografar preço (desabilitado)",
+      "expectedPtBr": "Botão desabilitado até haver posto elegível.",
+      "recoveryPtBr": "Não fotografe ambientes privados nem ative bypass de debug.",
+      "altPtBr": "Botão de captura desabilitado destacado.",
+      "target": {
+        "x": 449,
+        "y": 1230,
+        "width": 322,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu14-s3",
+      "image": "/assets/app/capture-entry-720w.webp",
+      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
+      "instructionPtBr": "Leia a verificação da área e fotografe só painéis próprios e sintéticos.",
+      "controlLabelPtBr": "Verificação da área do posto",
+      "expectedPtBr": "Área verificada antes do obturador; foto e OCR ficam para ambiente com imagem sintética.",
+      "recoveryPtBr": "Captura, OCR e fila pendentes de fixture descartável, nunca no aparelho do usuário.",
+      "altPtBr": "Resultado de elegibilidade e pendências.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    }
+  ]
+}
