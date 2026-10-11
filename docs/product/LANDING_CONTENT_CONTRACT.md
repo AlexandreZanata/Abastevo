@@ -30,9 +30,32 @@ Only actual app captures may appear in mockups or step walkthroughs.
 | `/privacidade/` | Privacy statement (B-BR-L07) | Yes / Yes | Derived from maintained policy; see [Legal pages](#legal-pages-b-br-l07) |
 | `/excluir-conta/` | Web path to request account/data deletion | Yes / Yes | Required by Google Play for apps with account creation |
 | `/termos/` | Community terms | Yes / Yes | Reporting/moderation rules from the moderation policy |
+| `/guias/` + 3 evergreen guides | Education (P26) | Yes / Yes | Retained unchanged by the redesign |
+| `/como-usar/` | Tutorial hub: grouped chapter links, step counts, availability labels | Yes / Yes | New in redesign (LR15); crawlable links, no placeholders |
+| `/como-usar/<slug>/` | 30 chapters, one per TU01–TU30 slug frozen in the [tutorial catalog](LANDING_MOBILE_TUTORIAL_CATALOG.md) | Yes / Yes | New in redesign (LR16–LR24); pending chapters show a factual note, never invented screens |
 | `/404.html` | Real 404 | No / No | Short message with links to home and repository |
 
 Not in scope: blog, city pages, translations, dashboards, forms, analytics, newsletter.
+
+## Information architecture freeze (LR02) — 2026-10-11
+
+Home section order for the redesign (plan §Visual direction): compact header →
+text hero without phone mockup → quiet principles strip → app gallery
+(`#aplicativo`, existing anchor kept) → feature stories → tutorial teaser
+(`#tutoriais`, new) → source explanation (`#fontes`, new) → project/privacy
+(`#o-projeto`, existing anchor kept) → FAQ (`#faq`, new) → availability
+(`#disponibilidade`, new) → footer. Existing anchors `#como-funciona` and
+`#aplicativo`/`#o-projeto` keep their names; new anchors land with their
+sections (LR10–LR12/LR15), never as empty targets.
+
+Chapter slugs are frozen to the parenthesized slug in each TU01–TU30 catalog
+heading (e.g. TU02 → `/como-usar/escolher-cidade/`); never renumber chapters,
+never add city/keyword doorway pages. Hub groups: driver/discovery
+(TU01–TU10), accounts/participation (TU11–TU21), representatives/tools
+(TU22–TU28), help/offline (TU29–TU30). Availability labels: chapter headers
+use `Disponível` (captured), `Em breve` (accepted capture, chapter pending) or
+`Planejado` (gated per LR01); the prelaunch store notice stays
+`Em breve na Google Play` (plain text, B-BR-L03) until a verified listing.
 
 ## Verified-feature inventory and claim classes
 

@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR02 2026-10-11: LOCAL_DONE on branch `landing`, IA/copy freeze. Home anchor order + `/como-usar/` hub + 30 frozen chapter slugs in [contract](../product/LANDING_CONTENT_CONTRACT.md)/[catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md); `/guias/` + legal retained; availability labels fixed. Slug check 30/30 unique, diff-check clean, secrets passed. Next: LR03 visual contract.
+
 - Landing redesign LR01 2026-10-11: LOCAL_DONE on branch `landing`, capability/claim freeze. [Catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md) maps all 25 Routes.kt constants to TU01–TU30; TU20/CS-offline/training-consent/provider-email explicitly gated; [content contract](../product/LANDING_CONTENT_CONTRACT.md) reconciled to username/key primary flow. Route-to-chapter check 25/25, diff-check clean, secrets passed. Next: LR02 IA/copy freeze.
 
 - Landing redesign LR00 2026-10-11: LOCAL_DONE on branch `landing` (evidence `20bb603`, ledger refresh `8d10c22` local; `origin/landing` `20bb603`, `dev`/`origin/dev` `a853708`, `main`/`origin/main` `a349d7c`). [Evidence](../release-evidence/landing-redesign.md). Worktree `.worktrees/landing-refresh` clean; occupied dev checkout untouched. P25/P26 acceptance and preparation artifacts (local fonts, authentic reference/media, 30-chapter catalog) inventoried and re-verified (8/8 capture hashes+dims, 4/4 font hashes+signatures, TU01–TU30 present); no duplicate foundation work. Git-only validation + secret scan, no runtime suite per plan. Next: LR01 capability/claim inventory.

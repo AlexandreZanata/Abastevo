@@ -324,6 +324,17 @@ Explicitly gated (no active lesson, no invented screens):
   explanation → actual external legal/contact destination.
 - **Recovery:** offline/no browser/share handler. No automatic message submission.
 
+## IA freeze (LR02) — 2026-10-11
+
+Hub `/como-usar/` groups chapters as driver/discovery (TU01–TU10),
+accounts/participation (TU11–TU21), representatives/tools (TU22–TU28) and
+help/offline (TU29–TU30). The parenthesized slug in each chapter heading is
+the frozen route (`/como-usar/<slug>/`); never renumber accepted chapters,
+add TU30a-style supplements only for newly evidenced controls. Home links to
+the hub from `#tutoriais`; the hub links every chapter with step count and
+`Disponível`/`Em breve`/`Planejado` status. No orphan lesson, no city doorway
+page, no download CTA before a verified store listing.
+
 ## Conditional supplements and closure
 
 Native provider/email legacy flows, PMQC UI, training consent, paid benefits and
