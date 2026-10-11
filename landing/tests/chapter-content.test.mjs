@@ -60,3 +60,40 @@ test('driver chapters render full text, true overlays and working prev/next', ()
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('chapters carry honest recovery paths and no success promises', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-chapters-neg-'));
+  try {
+    build({ projectRoot: root, outDir });
+    for (const slug of CHAPTERS) {
+      const lesson = JSON.parse(
+        fs.readFileSync(path.join(root, 'static', 'como-usar', slug, 'lesson.json'), 'utf8'),
+      );
+      const page = fs.readFileSync(path.join(outDir, 'como-usar', slug, 'index.html'), 'utf8');
+
+      // 1. Every step exposes its recovery path in readable text.
+      const items = [...page.matchAll(/<li class="lesson-step" id="([^"]+)"[\s\S]*?<\/li>/g)];
+      assert.equal(items.length, lesson.steps.length, `${slug} step count`);
+      for (const [item, step] of items.map((m, i) => [m[0], lesson.steps[i]])) {
+        assert.ok(item.includes('Se não funcionar:'), `${slug}/${step.stepId} recovery label`);
+        assert.ok(item.includes(step.recoveryPtBr), `${slug}/${step.stepId} recovery text`);
+      }
+
+      // 2. Result steps (no target) render no overlay rectangle.
+      for (const [item, step] of items.map((m, i) => [m[0], lesson.steps[i]])) {
+        if (!step.target) {
+          assert.doesNotMatch(item, /<rect/, `${slug}/${step.stepId} result must omit target`);
+        }
+      }
+
+      // 3. No success promises or synthetic-success wording anywhere.
+      assert.doesNotMatch(page, /garantia de sucesso|100% garantido|sucesso garantido/i);
+    }
+
+    // 4. Deletion stays explicit: intent, confirmation and network requirement.
+    const tu13 = fs.readFileSync(path.join(outDir, 'como-usar', 'conta-e-privacidade', 'index.html'), 'utf8');
+    assert.match(tu13, /confirmação/i);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});

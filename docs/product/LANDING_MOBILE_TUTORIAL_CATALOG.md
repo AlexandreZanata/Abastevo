@@ -339,10 +339,18 @@ pending on a disposable emulator.
 | Network/sync | TU06/TU28/TU29 settings | Read without toggling; airplane test restored immediately |
 | Signed account | TU11–TU13/TU17–TU21/TU24–25 | Demo `zanatateste` session; no vote/report/upload/delete staged |
 
-## Data and annotation contract (LR13) — 2026-10-11
+## Acceptance reference (LR24) — 2026-10-11
 
-Each chapter ships a `lesson.json` beside its page source under
-`landing/static/como-usar/<slug>/`. Schema (all pt-BR text required):
+A chapter is done when: every step carries instruction, expected result and
+recovery in full text without JS; control rectangles match inspected bounds;
+result frames omit targets; no step promises success or teaches an action the
+app does not perform; deletion/account impacts state intent, confirmation and
+network need; search, status and result transitions resolve to emitted pages.
+Bounded negative tests (`chapter-content`, `tutorial-data`, `hub-content`)
+guard recovery text, target omission, success promises, dead links and
+unverifiable claims on every shipped chapter.
+
+## Data and annotation contract (LR13) — 2026-10-11
 
 `lessonId, slug, titlePtBr, appVersion, appSourceSha (nullable), steps[]`.
 Each step: `stepId, image, imageSha256 (hex64), nativeWidth, nativeHeight,

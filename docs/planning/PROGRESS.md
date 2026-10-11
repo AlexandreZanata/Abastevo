@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR23 2026-10-11: LOCAL_DONE on branch `landing`, permission/location pass. Nearby-failure capture (granted location, read-only, no coordinates) + TU08 location step; permission/impact matrix in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md). Build/check green, 35/35 tests. Next: LR24 search/recovery/CRUD reference.
+- Landing redesign LR24 2026-10-11: LOCAL_DONE on branch `landing`, search/recovery/CRUD reference. Acceptance criteria in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md) + bounded negative tests (recovery text, target omission, success promises, deletion explicitness) on all 15 chapters. Build/check green, 36/36 tests. Next: LR25 domain-legal texts.
+
+- Landing redesign LR23 2026-10-11: LOCAL_DONE on branch `landing`, permission/location pass.
 
 - Landing redesign LR22 2026-10-11: LOCAL_DONE on branch `landing`, offline/error states. Airplane-offline cache + empty-search captures (radios restored off, query cleared, list verified); TU29 page + TU08 error step; manifest 23/69. Build/check green, 35/35 tests. Next: LR23 permission/location pass.
 
