@@ -30,32 +30,35 @@ const (
 // startMinIO boots a disposable loopback MinIO with one bucket and
 // returns its endpoint. Callers stop it via cleanup. Small synthetic
 // payloads only; the anonymous volume dies with the container.
-func startMinIO(t *testing.T, bucket string) (endpoint string, cleanup func()) {
+func startMinIO(t *testing.T, bucket string) string {
 	t.Helper()
 	if _, err := exec.LookPath("docker"); err != nil {
 		t.Fatal("docker unavailable for the S3-compatible matrix")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	out, err := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
+	var startupStderr bytes.Buffer
+	start := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
 		"-p", "127.0.0.1::9000",
 		"--memory", "512m", "--cpus", "2",
 		"--tmpfs", "/data:rw,size=64m,mode=1777",
 		"--entrypoint", "/opt/bitnami/minio/bin/minio",
 		"-e", "MINIO_ROOT_USER="+testMinioUser,
 		"-e", "MINIO_ROOT_PASSWORD="+testMinioPass,
-		testMinioImage, "server", "/data").CombinedOutput()
+		testMinioImage, "server", "/data")
+	start.Stderr = &startupStderr
+	out, err := start.Output()
 	if err != nil {
 		cancel()
-		t.Fatalf("start minio: %v (%s)", err, out)
+		t.Fatalf("start minio: %v (%s)", err, startupStderr.String())
 	}
 	id := strings.TrimSpace(string(out))
-	cleanup = func() {
+	cleanup := func() {
 		defer cancel()
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer stopCancel()
 		_ = exec.CommandContext(stopCtx, "docker", "stop", id).Run()
 	}
-	t.Cleanup(func() { cleanup() })
+	t.Cleanup(cleanup)
 	portOut, err := exec.CommandContext(ctx, "docker", "port", id, "9000").CombinedOutput()
 	if err != nil {
 		t.Fatalf("minio port: %v (%s)", err, portOut)
@@ -64,7 +67,7 @@ func startMinIO(t *testing.T, bucket string) (endpoint string, cleanup func()) {
 	if i := strings.LastIndex(port, ":"); i >= 0 {
 		port = port[i+1:]
 	}
-	endpoint = "http://127.0.0.1:" + port
+	endpoint := "http://127.0.0.1:" + port
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		resp, err := http.Get(endpoint + "/")
@@ -81,7 +84,7 @@ func startMinIO(t *testing.T, bucket string) (endpoint string, cleanup func()) {
 	if out, err := mk.CombinedOutput(); err != nil {
 		t.Fatalf("make bucket: %v (%s)", err, out)
 	}
-	return endpoint, func() {}
+	return endpoint
 }
 
 func testCreds() Credentials {
@@ -105,7 +108,7 @@ func presignPUT(t *testing.T, endpoint, key string, maxBytes int64) PresignedPUT
 // service — never a permissive fake. A returned JSON maximum alone
 // is insufficient: transport accepts what verification must refuse.
 func TestSEC03CTransportMatrixOnRealS3(t *testing.T) {
-	endpoint, _ := startMinIO(t, testBucket)
+	endpoint := startMinIO(t, testBucket)
 	ctx := context.Background()
 
 	// max accepted exactly; max+1 accepted by transport (proving the
