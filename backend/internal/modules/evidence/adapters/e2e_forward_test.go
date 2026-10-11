@@ -106,7 +106,7 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 	raw := loadSmallJPEG(t)
 
 	sess := testSession("e0000000-0000-4000-8000-000000000021", "upl-e2e")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -226,7 +226,7 @@ func TestForwardRejectionsStayRedacted(t *testing.T) {
 	ctx := context.Background()
 	raw := loadSmallJPEG(t)
 	sess := testSession("e0000000-0000-4000-8000-000000000022", "upl-redact")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte

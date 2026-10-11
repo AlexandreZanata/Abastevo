@@ -17,7 +17,7 @@ func TestPGReceivedAtAnchorsDeadline(t *testing.T) {
 	now := time.Now()
 
 	oldSess := testSession("e0000000-0000-4000-8000-000000000011", "upl-old")
-	if _, _, err := s.ReserveSession(ctx, oldSess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, oldSess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte
@@ -31,7 +31,7 @@ func TestPGReceivedAtAnchorsDeadline(t *testing.T) {
 	}
 
 	freshSess := testSession("e0000000-0000-4000-8000-000000000012", "upl-fresh")
-	if _, _, err := s.ReserveSession(ctx, freshSess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, freshSess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.CompleteSession(ctx, freshSess.ID, enqueueStub(&jobs)); err != nil {
@@ -85,7 +85,7 @@ func TestPGReceivedAtFallsBackToCreated(t *testing.T) {
 	s, pool := freshStore(t)
 	ctx := context.Background()
 	sess := testSession("e0000000-0000-4000-8000-000000000013", "upl-backfill")
-	if _, _, err := s.ReserveSession(ctx, sess); err != nil {
+	if _, _, err := s.ReserveSession(ctx, sess, openBudget()); err != nil {
 		t.Fatal(err)
 	}
 	var jobs [][]byte

@@ -955,3 +955,25 @@ func (q *Queries) StaleFinalCandidates(ctx context.Context, arg StaleFinalCandid
 	}
 	return items, nil
 }
+
+const sumLiveBytesSince = `-- name: SumLiveBytesSince :one
+SELECT COALESCE(SUM(declared_bytes), 0)::bigint FROM evidence_sessions
+WHERE contributor_ref = $1 AND created_at >= $2
+  AND expires_at > $3 AND status IN ('ISSUED', 'VERIFYING')
+`
+
+type SumLiveBytesSinceParams struct {
+	ContributorRef string             `json:"contributor_ref"`
+	Since          pgtype.Timestamptz `json:"since"`
+	Now            pgtype.Timestamptz `json:"now"`
+}
+
+// SEC03-A live-byte reservation accounting: declared bytes held by
+// unexpired in-flight sessions (expired and terminal sessions
+// release their bytes; created-today rows keep counting above).
+func (q *Queries) SumLiveBytesSince(ctx context.Context, arg SumLiveBytesSinceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, sumLiveBytesSince, arg.ContributorRef, arg.Since, arg.Now)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}

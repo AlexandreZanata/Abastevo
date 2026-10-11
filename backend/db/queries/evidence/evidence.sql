@@ -59,6 +59,14 @@ WHERE id = @id AND status = 'VERIFYING' AND created_at <= @cutoff;
 SELECT count(*) FROM evidence_sessions
 WHERE contributor_ref = @contributor_ref AND created_at >= @since;
 
+-- SEC03-A live-byte reservation accounting: declared bytes held by
+-- unexpired in-flight sessions (expired and terminal sessions
+-- release their bytes; created-today rows keep counting above).
+-- name: SumLiveBytesSince :one
+SELECT COALESCE(SUM(declared_bytes), 0)::bigint FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref AND created_at >= @since
+  AND expires_at > @now AND status IN ('ISSUED', 'VERIFYING');
+
 -- Sweep inventory (P05-T05). State transitions stay conditional; every
 -- deletion marker is set-if-unset so repeated runs converge. Postgres
 -- UPDATE takes no LIMIT, so batched transitions select their keys in a

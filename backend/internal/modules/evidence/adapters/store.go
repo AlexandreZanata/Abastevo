@@ -88,11 +88,17 @@ func pgTime(t time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t, Valid: true}
 }
 
-// ReserveSession persists one reservation, converging identical retries
-// on the natural key and conflicting on divergent payloads (B-BR-005).
-// It returns the stored row — the winner on convergence — so callers
-// presign from persisted facts, never from loser intent.
-func (s *Store) ReserveSession(ctx context.Context, sess domain.Session) (domain.Session, bool, error) {
+// ReserveSession persists one reservation with atomic admission
+// (SEC03-A, B-BR-005): replay-first natural-key lookup, then the
+// daily count plus live-byte budgets, then insert — all in one
+// transaction under a per-contributor advisory lock, so parallel
+// floods cannot overshoot. Identical retries converge on the winner
+// without consuming budget (readable even at full quota);
+// divergent payloads conflict with domain.ErrConflict; over-budget
+// fresh rows refuse with domain.ErrQuotaDenied. It returns the
+// stored row — the winner on convergence — so callers presign from
+// persisted facts, never from loser intent.
+func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget domain.ReserveBudget) (domain.Session, bool, error) {
 	uid, err := mustUUID(sess.ID)
 	if err != nil {
 		return domain.Session{}, false, err
@@ -109,7 +115,39 @@ func (s *Store) ReserveSession(ctx context.Context, sess domain.Session) (domain
 		return domain.Session{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('reserve:' || $1))`, sess.ContributorRef); err != nil {
+		return domain.Session{}, false, err
+	}
 	tq := evidence.New(tx)
+	if row, err := tq.GetSessionByNaturalKey(ctx, evidence.GetSessionByNaturalKeyParams{
+		ContributorRef: sess.ContributorRef, ClientSessionID: sess.ClientSessionID,
+	}); err == nil {
+		if row.Mime != sess.MIME || row.DeclaredBytes != sess.DeclaredBytes ||
+			!strings.EqualFold(row.ClaimedSha256, sess.ClaimedSHA256) || uuidString(row.PhotoCaptureID) != sess.PhotoCaptureID {
+			return domain.Session{}, false, domain.ErrConflict
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return domain.Session{}, false, err
+		}
+		return mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID), true, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return domain.Session{}, false, err
+	}
+	dayCount, err := tq.CountSessionsSince(ctx, evidence.CountSessionsSinceParams{
+		ContributorRef: sess.ContributorRef, Since: pgTime(budget.DayStart),
+	})
+	if err != nil {
+		return domain.Session{}, false, err
+	}
+	liveBytes, err := tq.SumLiveBytesSince(ctx, evidence.SumLiveBytesSinceParams{
+		ContributorRef: sess.ContributorRef, Since: pgTime(budget.DayStart), Now: pgTime(budget.Now),
+	})
+	if err != nil {
+		return domain.Session{}, false, err
+	}
+	if int(dayCount) >= budget.MaxCount || liveBytes+sess.DeclaredBytes > budget.MaxBytes {
+		return domain.Session{}, false, domain.ErrQuotaDenied
+	}
 	inserted, err := tq.InsertSession(ctx, evidence.InsertSessionParams{
 		ID: uid, ContributorRef: sess.ContributorRef,
 		ClientSessionID: sess.ClientSessionID, Mime: sess.MIME,

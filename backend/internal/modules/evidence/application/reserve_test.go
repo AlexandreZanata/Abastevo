@@ -11,9 +11,11 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 )
 
-// fakeStore mimics the T04 persistence contract: natural-key lookup with a
-// typed miss, and save converging on identical retries while conflicting
-// on divergent payloads under the same key (B-BR-005).
+// fakeStore mimics the SEC03-A persistence contract: replay-first
+// natural-key lookup, then atomic count plus live-byte budgets, saving
+// converging on identical retries while conflicting on divergent
+// payloads under the same key (B-BR-005). One mutex covers
+// check+insert so parallel floods cannot overshoot.
 type fakeStore struct {
 	mu    sync.Mutex
 	rows  map[string]domain.Session
@@ -24,7 +26,7 @@ func newFakeStore() *fakeStore { return &fakeStore{rows: map[string]domain.Sessi
 
 func naturalKey(ref, client string) string { return ref + "\x00" + client }
 
-func (f *fakeStore) ReserveSession(_ context.Context, s domain.Session) (domain.Session, bool, error) {
+func (f *fakeStore) ReserveSession(_ context.Context, s domain.Session, budget domain.ReserveBudget) (domain.Session, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	k := naturalKey(s.ContributorRef, s.ClientSessionID)
@@ -35,21 +37,25 @@ func (f *fakeStore) ReserveSession(_ context.Context, s domain.Session) (domain.
 		}
 		return prev, true, nil
 	}
+	count := 0
+	var liveBytes int64
+	for _, prev := range f.rows {
+		if prev.ContributorRef != s.ContributorRef {
+			continue
+		}
+		if !prev.CreatedAt.Before(budget.DayStart) {
+			count++
+		}
+		if (prev.Status == domain.StateIssued || prev.Status == domain.StateVerifying) && prev.ExpiresAt.After(budget.Now) {
+			liveBytes += prev.DeclaredBytes
+		}
+	}
+	if count >= budget.MaxCount || liveBytes+s.DeclaredBytes > budget.MaxBytes {
+		return domain.Session{}, false, domain.ErrQuotaDenied
+	}
 	f.rows[k] = s
 	f.saves++
 	return s, false, nil
-}
-
-func (f *fakeStore) CountSince(_ context.Context, ref string, since time.Time) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	n := 0
-	for _, s := range f.rows {
-		if s.ContributorRef == ref && !s.CreatedAt.Before(since) {
-			n++
-		}
-	}
-	return n, nil
 }
 
 func testPorts(store *fakeStore) Ports {
