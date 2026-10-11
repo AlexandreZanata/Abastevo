@@ -381,6 +381,19 @@ func (s *PGStore) TryInsertComment(ctx context.Context, rec domain.StoredComment
 		return err
 	}
 	q := feedback.New(tx)
+	// SEC01-D duplicate intent first (before the budget check): an
+	// identical retry (same ID, same live account) replays converged
+	// without consuming another budget unit. Any other reuse of the
+	// same ID fails closed without leaking which condition fired.
+	// Checked before insert so a replay never aborts the tx.
+	if row, err := q.LockComment(ctx, id); err == nil {
+		if uuidString(row.AccountID) == rec.AccountID && !row.DeletedAt.Valid {
+			return tx.Commit(ctx)
+		}
+		return domain.ErrCommentNotFound
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
 	if n, err := q.CountLiveCommentsByAccount(ctx, accountID); err != nil {
 		return err
 	} else if int(n) >= domain.MaxLiveCommentsPerAccount {
@@ -390,6 +403,11 @@ func (s *PGStore) TryInsertComment(ctx context.Context, rec domain.StoredComment
 		ID: id, AccountID: accountID, StationID: stationID, Product: rec.Product,
 		ParentID: parent, Depth: depth, Text: rec.Text, Now: stamp(rec.CreatedAt),
 	}); err != nil {
+		// Same-ID concurrent race: the winner holds the row; fail
+		// closed rather than leaking PG state.
+		if isUniqueViolation(err) {
+			return domain.ErrCommentNotFound
+		}
 		return err
 	}
 	return tx.Commit(ctx)

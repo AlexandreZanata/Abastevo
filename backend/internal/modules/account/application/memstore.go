@@ -254,6 +254,27 @@ func (m *MemStore) TryCreateFamily(_ context.Context, fam domain.SessionFamily, 
 	return nil
 }
 
+// DeleteCode compensates one issued code by ID (SEC01-D quota
+// rollback). Unknown IDs converge no-op so compensating a
+// never-persisted issuance stays safe under races.
+func (m *MemStore) DeleteCode(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.codes[:0]
+	for _, rec := range m.codes {
+		if rec.ID == id {
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	m.codes = kept
+	m.byAddr = map[string][]int{}
+	for i, rec := range m.codes {
+		m.byAddr[rec.AddressHash] = append(m.byAddr[rec.AddressHash], i)
+	}
+	return nil
+}
+
 func (m *MemStore) LatestCode(_ context.Context, addressHash string) (domain.EmailCode, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

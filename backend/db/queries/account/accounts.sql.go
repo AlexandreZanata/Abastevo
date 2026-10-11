@@ -156,6 +156,22 @@ func (q *Queries) DeleteBinding(ctx context.Context, arg DeleteBindingParams) er
 	return err
 }
 
+const deleteCodeByID = `-- name: DeleteCodeByID :execrows
+
+DELETE FROM account_email_codes
+WHERE id = $1
+`
+
+// SEC01-D quota rollback: compensate one issued code when downstream
+// delivery fails, so failed sends consume no budget rows.
+func (q *Queries) DeleteCodeByID(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCodeByID, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteProviderLink = `-- name: DeleteProviderLink :exec
 DELETE FROM account_provider_links
 WHERE account_id = $1 AND provider = $2

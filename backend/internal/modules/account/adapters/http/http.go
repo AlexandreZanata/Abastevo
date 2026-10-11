@@ -24,6 +24,15 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
 
+// SEC01-D retry hints (stable, documented): aggregate admission frees
+// as the hourly window slides (upper bound 3600s); session budget
+// frees on revoke/expiry or user action (polite 60s hint, not a slot
+// guarantee). Headers never carry identity.
+const (
+	retryAfterAggregateSeconds = "3600"
+	retryAfterBudgetSeconds    = "60"
+)
+
 // Service is the account use-case port behind the handlers.
 type Service interface {
 	RequestCode(ctx context.Context, address string) error
@@ -88,6 +97,7 @@ func read(r *http.Request, dst any) error {
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, msg := http.StatusUnauthorized, "account.code-unknown", "valid account proof required"
+	retryAfter := ""
 	switch domain.VerdictCode(err) {
 	case "code-consumed":
 		status, code, msg = http.StatusUnauthorized, "account.code-consumed", "code already used"
@@ -97,8 +107,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.code-attempts-exhausted", "code locked"
 	case "admission-exhausted":
 		status, code, msg = http.StatusTooManyRequests, "account.admission-exhausted", "admission budget exhausted, retry later"
+		retryAfter = retryAfterAggregateSeconds
 	case "session-budget-exhausted":
-		status, code, msg = http.StatusTooManyRequests, "account.session-budget-exhausted", "session budget exhausted, retry later"
+		status, code, msg = http.StatusTooManyRequests, "account.session-budget-exhausted", "session budget exhausted, manage sessions and retry"
+		retryAfter = retryAfterBudgetSeconds
 	case "session-reuse-revoked":
 		status, code, msg = http.StatusUnauthorized, "account.session-reuse-revoked", "session revoked"
 	case "session-revoked":
@@ -151,6 +163,9 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	}
+	if retryAfter != "" {
+		w.Header().Set("Retry-After", retryAfter)
 	}
 	httpapi.WriteError(w, r, status, code, msg, nil)
 }

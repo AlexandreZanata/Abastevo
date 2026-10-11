@@ -29,6 +29,9 @@ type Store interface {
 	TryIssueCode(ctx context.Context, rec domain.EmailCode, nowUnix int64) (bool, error)
 	TryCreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential, nowUnix int64) error
 	TryCreateFamily(ctx context.Context, fam domain.SessionFamily, nowUnix int64) error
+	// DeleteCode compensates one issued code when downstream delivery
+	// fails (SEC01-D quota rollback), so failed sends retain nothing.
+	DeleteCode(ctx context.Context, id string) error
 	LatestCode(ctx context.Context, addressHash string) (domain.EmailCode, bool, error)
 	TryConsume(ctx context.Context, addressHash, code string, hasher domain.CodeHasher, nowUnix int64) (domain.EmailCode, error)
 	FindAccount(ctx context.Context, addressHash string) (domain.Account, bool, error)
@@ -141,7 +144,10 @@ func (s *Service) RequestCode(ctx context.Context, address string) error {
 	if !admitted {
 		return nil
 	}
+	// SEC01-D quota rollback: a failed send compensates the admitted
+	// row, so failed deliveries retain nothing and consume no budget.
 	if err := s.Mail.SendCode(ctx, address, code); err != nil {
+		_ = s.Store.DeleteCode(ctx, rec.ID)
 		return err
 	}
 	return nil

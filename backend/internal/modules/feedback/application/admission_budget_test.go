@@ -56,3 +56,30 @@ func TestParallelCommentsCannotOvershoot(t *testing.T) {
 		t.Fatalf("parallel live comments = %d, want exactly %d", n, domain.MaxLiveCommentsPerAccount)
 	}
 }
+
+// SEC01-D duplicate intent: an identical retry (same ID, same live
+// account) replays converged without consuming another budget unit;
+// a foreign rebind of the same ID fails closed.
+func TestDuplicateCommentIDReplaysConverged(t *testing.T) {
+	_, store := testCommentService(allowAll)
+	ctx := context.Background()
+	rec := domain.StoredComment{
+		ID: "comment-dup-1", AccountID: "acc-1", StationID: "station-1",
+		Product: "GASOLINE_REGULAR", Text: "hello", Scalars: 5,
+		Revision: 1, CreatedAt: 1_700_000_000, UpdatedAt: 1_700_000_000,
+	}
+	if err := store.TryInsertComment(ctx, rec); err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+	if err := store.TryInsertComment(ctx, rec); err != nil {
+		t.Fatalf("identical retry must replay converged, got %v", err)
+	}
+	if n, _ := store.CountLiveCommentsByAccount(ctx, "acc-1"); n != 1 {
+		t.Fatalf("duplicate live = %d, want 1", n)
+	}
+	rebind := rec
+	rebind.AccountID = "acc-2"
+	if err := store.TryInsertComment(ctx, rebind); err == nil {
+		t.Fatal("foreign rebind of the same ID must fail")
+	}
+}

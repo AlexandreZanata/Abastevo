@@ -254,3 +254,10 @@ WHERE issued_at < @before;
 -- name: PurgeExpiredFamilies :execrows
 DELETE FROM account_session_families
 WHERE issued_at < @before;
+
+-- SEC01-D quota rollback: compensate one issued code when downstream
+-- delivery fails, so failed sends consume no budget rows.
+
+-- name: DeleteCodeByID :execrows
+DELETE FROM account_email_codes
+WHERE id = @id;

@@ -177,6 +177,17 @@ func (s *PGStore) PurgeExpiredFamilies(ctx context.Context, beforeUnix int64) (i
 	return int(n), nil
 }
 
+// DeleteCode compensates one issued code by ID (SEC01-D quota
+// rollback). Unknown IDs converge no-op.
+func (s *PGStore) DeleteCode(ctx context.Context, id string) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return nil
+	}
+	_, err = account.New(s.pool).DeleteCodeByID(ctx, uid)
+	return err
+}
+
 // TryIssueCode atomically admits one code issuance (SEC01-C): global
 // advisory lock serializes concurrent issuers, then per-address quota,
 // aggregate ceiling, account usability and cooldown admit inside one
