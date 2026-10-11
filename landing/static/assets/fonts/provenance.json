@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-11",
+  "license": "SIL Open Font License 1.1",
+  "need": "User-requested local landing typography; no runtime dependency or third-party font request.",
+  "scope": "Landing only; mobile fonts and approved vector wordmark unchanged.",
+  "security_review": "Official HTTPS Google Fonts WOFF2, no executable scripts, preserved license notices; binary signature and output-path tests.",
+  "css_source": "https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&family=Source+Sans+3:wght@400..700&display=swap",
+  "fonts": [
+    {
+      "family": "Manrope",
+      "subset": "latin-ext",
+      "file": "manrope-latin-ext-wght.3911b66d.woff2",
+      "sha256": "3911b66d9f2e005a4b989223405d0e5032619c668597ba467cc76a23c8fffcfb",
+      "bytes": 15120,
+      "source": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggmxSuXd.woff2"
+    },
+    {
+      "family": "Manrope",
+      "subset": "latin",
+      "file": "manrope-latin-wght.a30ddcd3.woff2",
+      "sha256": "a30ddcd349703aff7464c34bef3fffdff405ee50c113440d7c8693c02d210972",
+      "bytes": 24836,
+      "source": "https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggexSg.woff2"
+    },
+    {
+      "family": "Source Sans 3",
+      "subset": "latin-ext",
+      "file": "source-sans-3-latin-ext-wght.a85a7459.woff2",
+      "sha256": "a85a7459bdb3cdc1136751e151a506bae653fc29ada3ca86237477df6f1b59e6",
+      "bytes": 60088,
+      "source": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpStKy2OAdR1K-IwhWudF-R3wEaZfrc.woff2"
+    },
+    {
+      "family": "Source Sans 3",
+      "subset": "latin",
+      "file": "source-sans-3-latin-wght.19143dca.woff2",
+      "sha256": "19143dca075972bc84e3fd9eab7416dd40cc565dccb2435a044bdfabe060c7d5",
+      "bytes": 28872,
+      "source": "https://fonts.gstatic.com/s/sourcesans3/v20/nwpStKy2OAdR1K-IwhWudF-R3w8aZQ.woff2"
+    }
+  ],
+  "licenses": [
+    {
+      "file": "OFL-Manrope.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/manrope/OFL.txt"
+    },
+    {
+      "file": "OFL-Source-Sans-3.txt",
+      "source": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/LICENSE.md"
+    }
+  ]
+}

@@ -4,6 +4,24 @@ State: **LOCAL_DONE — APPROVED**, 2026-10-05. Scope: documentation and two sta
 
 This contract freezes what P25-T02–T05 build. Changing copy, section order, tokens or a claim class goes back through this document first.
 
+## Typography amendment — user decision 2026-10-11
+
+For the landing, use **Manrope** for headings, CTAs, navigation, cards, prices and
+emphasis (700/800 for headings and 700 for prices); use **Source Sans 3** for
+long text, descriptions, FAQ answers, legal copy and informational subtitles
+(400/500). This supersedes the system-only family row below. Self-host official
+variable WOFF2 Latin/Latin Extended subsets, with `font-display: swap`, system
+fallbacks, content-hash filenames and original SIL OFL 1.1 notices. Preserve the
+approved vector wordmark; this does not authorize changing mobile typography.
+Need/license/security provenance: `landing/static/assets/fonts/provenance.json`.
+No runtime font CDN, new package or tracker is added. Include font bytes in
+initial-transfer measurement and inspect layout/contrast after loading/fallback.
+
+The follow-up visual/tutorial request uses branch `landing`; see the
+[bounded redesign plan](../planning/LANDING_REDESIGN_EXECUTION_PLAN.md).
+The home opening is separate from the genuine app gallery and tutorial section.
+Only actual app captures may appear in mockups or step walkthroughs.
+
 ## Page inventory
 
 | Path | Purpose | Indexed / sitemap | Notes |

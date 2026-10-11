@@ -110,6 +110,27 @@ export function build(options = {}) {
       }
     }
 
+    // Self-hosted fonts use versioned content-hash names for immutable caching.
+    // Copy only declared public font assets and their required license notices.
+    const fontsStaticDir = path.join(staticDir, 'assets', 'fonts');
+    const fontsOutDir = path.join(outDir, 'assets', 'fonts');
+    const fontManifest = JSON.parse(fs.readFileSync(path.join(fontsStaticDir, 'provenance.json'), 'utf8'));
+    fs.mkdirSync(fontsOutDir, { recursive: true });
+    for (const font of fontManifest.fonts) {
+      if (!/^[a-z0-9-]+\.[a-f0-9]{8}\.woff2$/.test(font.file)) {
+        throw new Error(`Invalid public font filename: ${font.file}`);
+      }
+      const content = fs.readFileSync(path.join(fontsStaticDir, font.file));
+      const sha256 = crypto.createHash('sha256').update(content).digest('hex');
+      if (sha256 !== font.sha256 || !font.file.includes(`.${sha256.slice(0, 8)}.`)) {
+        throw new Error(`Font provenance/hash mismatch: ${font.file}`);
+      }
+      fs.writeFileSync(path.join(fontsOutDir, font.file), content);
+    }
+    for (const license of ['OFL-Manrope.txt', 'OFL-Source-Sans-3.txt']) {
+      fs.copyFileSync(path.join(fontsStaticDir, license), path.join(fontsOutDir, license));
+    }
+
     // 6. Copy and substitute static configuration files
     const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
     for (const file of configFiles) {
