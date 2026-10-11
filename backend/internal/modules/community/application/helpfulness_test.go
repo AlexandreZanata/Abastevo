@@ -34,7 +34,7 @@ func newFakeHelpfulnessStore() *fakeHelpfulnessStore {
 	return &fakeHelpfulnessStore{
 		target: HelpfulnessTarget{
 			ObservationID:  "obs-1",
-			AuthorRef:      "contrib-author",
+			AuthorRef:      "tok-contrib-author",
 			State:          domain.StateValidated,
 			LatestSequence: 3,
 		},
@@ -58,19 +58,19 @@ func (f *fakeHelpfulnessStore) CastVote(_ context.Context, rec domain.StoredVote
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.casts++
-	if key, ok := f.bySub[rec.ClientSubmissionID]; ok {
+	if key, ok := f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID]; ok {
 		return f.votes[key], false, nil
 	}
 	key := helpfulKey(rec.ContributorRef, rec.ObservationID, rec.DecisionSequence)
 	if existing, ok := f.votes[key]; ok {
 		existing.Choice = rec.Choice
 		f.votes[key] = existing
-		f.bySub[rec.ClientSubmissionID] = key
+		f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID] = key
 		f.recount()
 		return existing, false, nil
 	}
 	f.votes[key] = rec
-	f.bySub[rec.ClientSubmissionID] = key
+	f.bySub[rec.ContributorRef+"|"+rec.ClientSubmissionID] = key
 	f.recount()
 	return rec, true, nil
 }
@@ -132,7 +132,11 @@ func helpfulPorts(store *fakeHelpfulnessStore) HelpfulnessPorts {
 }
 
 func helpfulCaller() Caller {
-	return Caller{ContributorID: "contrib-a", Fingerprint: "fp", KeyID: "k", Token: "t"}
+	return helpfulCallerAs("contrib-a")
+}
+
+func helpfulCallerAs(ref string) Caller {
+	return Caller{ContributorID: ref, Fingerprint: "fp", KeyID: "k", Token: "tok-" + ref}
 }
 
 func helpfulDTO() CastDTO {
@@ -164,8 +168,7 @@ func TestCastHelpfulCreatesVoteWithExactTally(t *testing.T) {
 
 func TestCastRefusesSelfVoteBeforeMutation(t *testing.T) {
 	store := newFakeHelpfulnessStore()
-	caller := helpfulCaller()
-	caller.ContributorID = "contrib-author"
+	caller := helpfulCallerAs("contrib-author")
 	if _, err := Cast(context.Background(), helpfulPorts(store), caller, helpfulDTO()); err != domain.ErrSelfVote {
 		t.Fatalf("self-vote must refuse with ErrSelfVote, got %v", err)
 	}

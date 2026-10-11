@@ -435,6 +435,150 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/observations/{observation_id}/helpfulness:
+    post:
+      summary: Mark one validated contribution helpful or not (signed, idempotent).
+      operationId: castHelpfulness
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        description: Helpfulness vote bound to the immutable decision sequence; the voter derives from proof and must differ from the author. Never validates a price.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HelpfulnessSubmit'
+            example:
+              choice: HELPFUL
+              decision_sequence: 2
+              client_submission_id: help-2026-10-11-001
+      responses:
+        '201':
+          description: Recorded helpfulness with exact tally and owner overlay.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessReceipt'
+              example:
+                vote_id: e6c74c23-63db-4c24-a2e5-408cb23bad26
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 1
+                not_helpful: 0
+                total: 1
+                helpful_basis_points: 10000
+                my_choice: HELPFUL
+                received_at: '2026-10-11T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    get:
+      summary: Exact helpfulness tally (anonymous; owner overlay only when signed).
+      operationId: helpfulnessTally
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        - name: decision_sequence
+          in: query
+          required: true
+          description: Immutable revision the counts bind to.
+          schema: {type: integer, minimum: 1}
+          example: 2
+      responses:
+        '200':
+          description: Exact counts; my_choice present only on the signed read path.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessTally'
+              example:
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 1
+                not_helpful: 0
+                total: 1
+                helpful_basis_points: 10000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /v1/observations/{observation_id}/helpfulness/remove:
+    post:
+      summary: Remove the caller helpfulness vote (signed, idempotent).
+      operationId: removeHelpfulness
+      tags: [community]
+      security: []
+      parameters:
+        - name: observation_id
+          in: path
+          required: true
+          description: Target observation identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HelpfulnessRemove'
+            example:
+              decision_sequence: 2
+      responses:
+        '200':
+          description: Vote tombstoned; exact tally after removal.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpfulnessTally'
+              example:
+                observation_id: d6c74c23-63db-4c24-a2e5-408cb23bad27
+                decision_sequence: 2
+                helpful: 0
+                not_helpful: 0
+                total: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
@@ -4400,6 +4544,110 @@ components:
           type: string
           format: date-time
           example: '2026-09-30T00:00:00Z'
+    HelpfulnessChoice:
+      description: Contribution helpfulness; never validates a price and never reuses confirmation or VALID/INVALID meanings.
+      type: string
+      enum: [HELPFUL, NOT_HELPFUL]
+      example: HELPFUL
+    HelpfulnessSubmit:
+      description: Helpfulness vote bound to the immutable decision sequence; the voter derives from proof.
+      type: object
+      required: [choice, decision_sequence, client_submission_id]
+      properties:
+        choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+        decision_sequence:
+          type: integer
+          minimum: 1
+          description: Immutable revision the voter saw; stale revisions refuse.
+          example: 2
+        client_submission_id:
+          type: string
+          minLength: 1
+          description: Client operation identity for safe retries.
+          example: help-2026-10-11-001
+    HelpfulnessReceipt:
+      description: Recorded helpfulness with exact tally and owner overlay; no voter list.
+      type: object
+      required: [vote_id, observation_id, decision_sequence, helpful, not_helpful, total, my_choice, received_at]
+      properties:
+        vote_id:
+          type: string
+          format: uuid
+          example: e6c74c23-63db-4c24-a2e5-408cb23bad26
+        observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
+        helpful:
+          type: integer
+          minimum: 0
+          example: 1
+        not_helpful:
+          type: integer
+          minimum: 0
+          example: 0
+        total:
+          type: integer
+          minimum: 0
+          example: 1
+        helpful_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: floor(10000*helpful/total); absent when no votes.
+          example: 10000
+        my_choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+        received_at:
+          type: string
+          format: date-time
+          example: '2026-10-11T00:00:00Z'
+    HelpfulnessTally:
+      description: Exact per-revision counts; my_choice present only on the signed read path.
+      type: object
+      required: [observation_id, decision_sequence, helpful, not_helpful, total]
+      properties:
+        observation_id:
+          type: string
+          format: uuid
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad27
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
+        helpful:
+          type: integer
+          minimum: 0
+          example: 1
+        not_helpful:
+          type: integer
+          minimum: 0
+          example: 0
+        total:
+          type: integer
+          minimum: 0
+          example: 1
+        helpful_basis_points:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          example: 10000
+        my_choice:
+          $ref: '#/components/schemas/HelpfulnessChoice'
+    HelpfulnessRemove:
+      description: Helpfulness removal bound to the immutable decision sequence.
+      type: object
+      required: [decision_sequence]
+      properties:
+        decision_sequence:
+          type: integer
+          minimum: 1
+          example: 2
     UploadReserveRequest:
       description: Upload intent; the object key is server-generated, never client-supplied.
       type: object

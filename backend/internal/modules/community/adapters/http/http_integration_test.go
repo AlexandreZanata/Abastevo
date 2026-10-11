@@ -179,7 +179,7 @@ func fixture(t *testing.T) (chi.Router, *pgxpool.Pool, string) {
 		Store: store,
 	}
 	r := chi.NewRouter()
-	Handler{
+	h := Handler{
 		Authenticate: func(req *http.Request) (communityapp.Caller, error) {
 			id, err := verifier.Verify(req.Context(), req)
 			if err != nil {
@@ -200,9 +200,43 @@ func fixture(t *testing.T) (chi.Router, *pgxpool.Pool, string) {
 		History: func(ctx context.Context, caller communityapp.Caller, limit int, after time.Time, afterID string, hasCursor bool) ([]communityapp.HistoryItem, string, error) {
 			return communityapp.History(ctx, ports, caller, limit, after, afterID, hasCursor)
 		},
-		Secrets: testSecrets,
-	}.RegisterRoutes(r)
+		CastHelpfulness:   nil,
+		RemoveHelpfulness: nil,
+		HelpfulnessTally:  nil,
+		Secrets:           testSecrets,
+	}
+	h.CastHelpfulness, h.RemoveHelpfulness, h.HelpfulnessTally = helpfulnessTestPorts(pool)
+	h.RegisterRoutes(r)
 	return r, pool, station
+}
+
+// helpfulnessTestPorts wires the real atomic store behind the
+// application commands, exactly like cmd/api minus the account gate
+// (fixture callers enroll fresh and active; blocked accounts are
+// covered by unit mapping tests).
+func helpfulnessTestPorts(pool *pgxpool.Pool) (cast func(context.Context, communityapp.Caller, string, communityapp.CastDTO) (communityapp.CastResult, error),
+	remove func(context.Context, communityapp.Caller, string, int64) (communityapp.TallyResult, error),
+	tally func(context.Context, communityapp.Caller, string, int64) (communityapp.TallyResult, error)) {
+	ports := communityapp.HelpfulnessPorts{
+		Clock:        time.Now,
+		NewID:        newTestUUID,
+		CheckAccount: func(context.Context, string) error { return nil },
+		Store:        communityadapters.NewHelpfulnessStore(pool),
+	}
+	cast = func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.CastDTO) (communityapp.CastResult, error) {
+		dto.ObservationID = observationID
+		return communityapp.Cast(ctx, ports, caller, dto)
+	}
+	remove = func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+		if err := communityapp.Remove(ctx, ports, caller, observationID, sequence); err != nil {
+			return communityapp.TallyResult{}, err
+		}
+		return communityapp.TallyFor(ctx, ports, caller, observationID, sequence)
+	}
+	tally = func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+		return communityapp.TallyFor(ctx, ports, caller, observationID, sequence)
+	}
+	return cast, remove, tally
 }
 
 func submitWithKernel(ctx context.Context, ports communityapp.Ports, caller communityapp.Caller, key string, dto communityapp.SubmitDTO, body []byte) (communityapp.SubmitResult, bool, error) {

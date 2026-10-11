@@ -640,6 +640,15 @@ func run() error {
 		},
 		Store: communityStore,
 	}
+	// Helpfulness votes (CS02): one active vote per account, contribution
+	// and decision sequence through the owned atomic store; tallies stay
+	// exact and never feed price confidence. Same account gate as votes.
+	helpfulnessPorts := communityapp.HelpfulnessPorts{
+		Clock:        time.Now,
+		NewID:        newUUID,
+		CheckAccount: checkAccountGate,
+		Store:        communityadapters.NewHelpfulnessStore(pool.Underlying()),
+	}
 	communityhttp.Handler{
 		PhotoCapture: func(ctx context.Context, caller communityapp.Caller, key string, intent communityapp.PhotoCaptureIntent, body []byte) (communityapp.PhotoCapture, bool, error) {
 			return communityapp.AuthorizePhotoCapture(ctx, communityPorts, communityStore, caller, key, body, intent)
@@ -698,6 +707,19 @@ func run() error {
 		Dispute: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.DisputeDTO, _ []byte) (communityapp.DisputeResult, error) {
 			dto.TargetObservationID = observationID
 			return communityapp.Dispute(ctx, votePorts, caller, dto)
+		},
+		CastHelpfulness: func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.CastDTO) (communityapp.CastResult, error) {
+			dto.ObservationID = observationID
+			return communityapp.Cast(ctx, helpfulnessPorts, caller, dto)
+		},
+		RemoveHelpfulness: func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+			if err := communityapp.Remove(ctx, helpfulnessPorts, caller, observationID, sequence); err != nil {
+				return communityapp.TallyResult{}, err
+			}
+			return communityapp.TallyFor(ctx, helpfulnessPorts, caller, observationID, sequence)
+		},
+		HelpfulnessTally: func(ctx context.Context, caller communityapp.Caller, observationID string, sequence int64) (communityapp.TallyResult, error) {
+			return communityapp.TallyFor(ctx, helpfulnessPorts, caller, observationID, sequence)
 		},
 		Secrets: cfg.CursorSecret,
 	}.RegisterRoutes(router)

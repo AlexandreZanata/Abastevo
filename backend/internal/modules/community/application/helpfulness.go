@@ -87,7 +87,10 @@ type TallyResult struct {
 // contribution. Repeats converge; choice changes rewrite in place;
 // lost-response retries replay on the client submission identity;
 // removals stay idempotent. Concurrent replacements cannot inflate
-// totals: the store holds one live row per account+target+revision.
+// totals: the store holds one live row per attribution+target+revision.
+// Vote identity binds caller.Token (the stable attribution reference
+// observations carry), exactly like community confirmations; the
+// account gate keeps using the contributor ID.
 func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (CastResult, error) {
 	if strings.TrimSpace(caller.ContributorID) == "" || strings.TrimSpace(caller.Token) == "" {
 		return CastResult{}, ErrUnauthorized
@@ -128,7 +131,7 @@ func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (
 func castNewVote(p HelpfulnessPorts, caller Caller, target HelpfulnessTarget, dto CastDTO, id string, now time.Time) (domain.StoredVote, bool, error) {
 	rec, _, err := domain.NewVote(domain.VoteParams{
 		ID:                 id,
-		ContributorRef:     caller.ContributorID,
+		ContributorRef:     caller.Token,
 		AuthorRef:          target.AuthorRef,
 		ObservationID:      target.ObservationID,
 		DecisionSequence:   dto.DecisionSequence,
@@ -179,7 +182,7 @@ func Remove(ctx context.Context, p HelpfulnessPorts, caller Caller, observationI
 	if sequence != target.LatestSequence {
 		return ErrStaleSequence
 	}
-	_, err = p.Store.RemoveVote(ctx, caller.ContributorID, target.ObservationID, sequence)
+	_, err = p.Store.RemoveVote(ctx, caller.Token, target.ObservationID, sequence)
 	return err
 }
 
@@ -208,8 +211,8 @@ func TallyFor(ctx context.Context, p HelpfulnessPorts, caller Caller, observatio
 		return TallyResult{}, err
 	}
 	res := TallyResult{Tally: tally, Share: share}
-	if strings.TrimSpace(caller.ContributorID) != "" {
-		if choice, ok, err := p.Store.MyVote(ctx, caller.ContributorID, target.ObservationID, sequence); err != nil {
+	if strings.TrimSpace(caller.Token) != "" {
+		if choice, ok, err := p.Store.MyVote(ctx, caller.Token, target.ObservationID, sequence); err != nil {
 			return TallyResult{}, err
 		} else if ok {
 			res.MyChoice = &choice
