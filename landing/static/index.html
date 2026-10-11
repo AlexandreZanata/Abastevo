@@ -93,6 +93,7 @@
         <a href="#como-funciona">Como funciona</a>
         <a href="#o-projeto">O projeto</a>
         <a href="#aplicativo">Aplicativo</a>
+        <a href="/como-usar/">Como usar</a>
         <a href="/guias/">Guias</a>
       </nav>
     </div>
@@ -106,10 +107,11 @@
           <div class="status-badge" role="status">
             <span>● Em desenvolvimento · Android não publicado</span>
           </div>
-          <h1 class="hero-h1">abastevo: preços de combustíveis com a comunidade</h1>
+          <h1 class="hero-h1">Preços de combustíveis. Fonte e data à vista.</h1>
           <p class="hero-lead">Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros, com a fonte e a data de cada informação sempre visíveis. Comunidade e ANP aparecem separadas: uma nunca substitui a outra.</p>
           <div class="hero-actions">
-            <a href="https://github.com/AlexandreZanata/abastevo" class="btn-primary" id="btn-github">Ver no GitHub</a>
+            <a href="#aplicativo" class="btn-primary">Conheça o aplicativo</a>
+            <a href="https://github.com/AlexandreZanata/abastevo" class="btn-secondary" id="btn-github">Ver no GitHub</a>
             <button type="button" class="btn-copy" data-copy-target="#btn-github" aria-label="Copiar link do repositório">Copiar link</button>
             <!-- STORE_STATE_SLOT -->
             <span class="store-notice">Em breve na Google Play</span>
@@ -206,7 +208,7 @@
               <p class="section-lead">Código aberto, com fonte e data à vista. Participar da comunidade será gratuito; pagamento nunca aumenta a confiança de um preço (planejado).</p>
             </div>
             <p style="margin-bottom: 1.5rem; color: var(--text-muted);">
-              O abastevo é desenvolvido de forma transparente e colaborativa. Não temos afiliação governamental e preservamos a independência dos dados coletados pelos cidadãos.
+              O abastevo é aberto e independente: sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data. Nada aqui promete economia, posto mais barato ou cobertura nacional.
             </p>
             <a href="https://github.com/AlexandreZanata/abastevo" class="btn-primary">Ver código no GitHub</a>
           </div>
@@ -227,6 +229,30 @@
     <!-- Aplicativo & FAQ Section -->
     <section id="aplicativo">
       <div class="container">
+        <div class="section-heading">
+          <h2 class="section-title">O aplicativo em telas reais</h2>
+          <p class="section-lead">Capturas autênticas do app em desenvolvimento (3.1.0), sem retoques. Valores exibidos são referência ANP datada, nunca preço vivo na bomba.</p>
+        </div>
+        <div class="app-gallery" role="list" aria-label="Capturas reais do aplicativo">
+          <figure class="app-shot" role="listitem">
+            <div class="phone-frame">
+              <img src="/assets/app/explore-dark-720w.webp" srcset="/assets/app/explore-dark-360w.webp 360w, /assets/app/explore-dark-720w.webp 720w, /assets/app/explore-dark-1080w.webp 1080w" sizes="(max-width: 48rem) 72vw, 320px" width="360" height="800" loading="lazy" decoding="async" alt="Tela Explorar em tema escuro: cidade Sorriso MT, semana de pesquisa 4 a 10 de outubro de 2026 e cartões de preço da ANP para etanol e gasolina.">
+            </div>
+            <figcaption><strong>Consulte a semana, não o chute.</strong> Cidade, semana de pesquisa e cartões por combustível, cada um com fonte, data e condição.</figcaption>
+          </figure>
+          <figure class="app-shot" role="listitem">
+            <div class="phone-frame">
+              <img src="/assets/app/station-sources-720w.webp" srcset="/assets/app/station-sources-360w.webp 360w, /assets/app/station-sources-720w.webp 720w, /assets/app/station-sources-1080w.webp 1080w" sizes="(max-width: 48rem) 72vw, 320px" width="360" height="800" loading="lazy" decoding="async" alt="Perfil do posto com fontes separadas: bloco de preços da comunidade vazio e preço de referência ANP de R$ 3,84 com data de coleta.">
+            </div>
+            <figcaption><strong>Comunidade e ANP nunca se misturam.</strong> Bloco da comunidade (beta) vazio e referência ANP datada no mesmo posto, cada fonte no seu lugar.</figcaption>
+          </figure>
+          <figure class="app-shot" role="listitem">
+            <div class="phone-frame">
+              <img src="/assets/app/community-feed-720w.webp" srcset="/assets/app/community-feed-360w.webp 360w, /assets/app/community-feed-720w.webp 720w, /assets/app/community-feed-1080w.webp 1080w" sizes="(max-width: 48rem) 72vw, 320px" width="360" height="800" loading="lazy" decoding="async" alt="Comunidade com filtros de ordenação e combustível e estado vazio honesto para Sorriso, com link para as regras de verificação.">
+            </div>
+            <figcaption><strong>Vazio honesto em vez de número inventado.</strong> Filtros reais e estado vazio declarado quando a cidade ainda não tem observações.</figcaption>
+          </figure>
+        </div>
         <div class="grid-2">
           <div class="app-info">
             <div class="section-heading">
@@ -274,6 +300,31 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Tutoriais Section -->
+    <section id="tutoriais" class="section-surface">
+      <div class="container">
+        <div class="section-heading">
+          <h2 class="section-title">Aprenda com capturas reais</h2>
+          <p class="section-lead">Tutoriais passo a passo do aplicativo: controle exato, resultado esperado e como se recuperar.</p>
+        </div>
+        <div class="grid-3">
+          <div class="step-card">
+            <h3 class="step-title"><a href="/como-usar/escolher-cidade/">Escolher cidade</a></h3>
+            <p class="step-desc">Minha cidade, busca de estado e lista de municípios em 4 passos.</p>
+          </div>
+          <div class="step-card">
+            <h3 class="step-title"><a href="/como-usar/precos-do-posto/">Preços de um posto</a></h3>
+            <p class="step-desc">Comunidade e ANP separadas com data de coleta em 3 passos.</p>
+          </div>
+          <div class="step-card">
+            <h3 class="step-title"><a href="/como-usar/comunidade/">Usar a Comunidade</a></h3>
+            <p class="step-desc">Filtros, estado vazio honesto e regras em 3 passos.</p>
+          </div>
+        </div>
+        <p style="margin-top: 1.5rem;"><a href="/como-usar/" class="btn-secondary">Ver todos os tutoriais</a></p>
       </div>
     </section>
   </main>

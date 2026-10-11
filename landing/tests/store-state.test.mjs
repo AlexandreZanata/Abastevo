@@ -22,6 +22,20 @@ test('store state: prelaunch displays honest notice and no fake store links', ()
   }
 });
 
+test('store state: default build stays prelaunch until a verified listing exists', () => {
+  const tmpOut = path.join(root, '.test-dist-store-default-' + Date.now());
+  try {
+    build({ projectRoot: root, outDir: tmpOut });
+    const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
+
+    assert.match(indexHtml, /<span class="store-notice">Em breve na Google Play<\/span>/);
+    assert.doesNotMatch(indexHtml, /play\.google\.com\/store/);
+    assert.doesNotMatch(indexHtml, /Baixar (agora|o app|na Google Play)/i);
+  } finally {
+    fs.rmSync(tmpOut, { recursive: true, force: true });
+  }
+});
+
 test('store state: published with valid URL renders verified Play Store link', () => {
   const tmpOut = path.join(root, '.test-dist-store-published-' + Date.now());
   const validUrl = 'https://play.google.com/store/apps/details?id=com.anpfuel';

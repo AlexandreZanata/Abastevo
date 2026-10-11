@@ -22,6 +22,23 @@ export function checkDist(options = {}) {
     'privacidade/index.html',
     'excluir-conta/index.html',
     'termos/index.html',
+    'como-usar/index.html',
+    'como-usar/escolher-cidade/index.html',
+    'como-usar/precos-do-posto/index.html',
+    'como-usar/comunidade/index.html',
+    'como-usar/conta-e-privacidade/index.html',
+    'como-usar/fotografar-preco/index.html',
+    'como-usar/denunciar-abuso/index.html',
+    'como-usar/veiculos/index.html',
+    'como-usar/offline-e-recuperacao/index.html',
+    'como-usar/ajuda-e-regras/index.html',
+    'como-usar/precos-anp/index.html',
+    'como-usar/semanas-anp/index.html',
+    'como-usar/historico/index.html',
+    'como-usar/postos/index.html',
+    'como-usar/minhas-contribuicoes/index.html',
+    'como-usar/perfil-do-posto/index.html',
+    'como-usar/configuracoes/index.html',
     '404.html',
     'robots.txt',
     'sitemap.xml',
@@ -199,8 +216,11 @@ export function checkDist(options = {}) {
   const indexHtmlPath = path.join(distDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
     const indexContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    if (!indexContent.includes('abastevo: preços de combustíveis com a comunidade')) {
+    if (!indexContent.includes('Preços de combustíveis. Fonte e data à vista.')) {
       errors.push('index.html is missing main H1 text');
+    }
+    if (!indexContent.includes('href="#aplicativo"') || !indexContent.includes('Conheça o aplicativo')) {
+      errors.push('index.html is missing primary app-gallery CTA');
     }
     if (!indexContent.includes('https://github.com/AlexandreZanata/abastevo')) {
       errors.push('index.html is missing repository link');
@@ -251,6 +271,36 @@ export function checkDist(options = {}) {
     const jsBudget = 10 * 1024; // 10 KiB
     if (gzippedJs.length > jsBudget) {
       errors.push(`JS gzipped size (${gzippedJs.length} bytes) exceeds budget of ${jsBudget} bytes`);
+    }
+  }
+
+  // Self-hosted font payload (LR29: measured 128,916 bytes on 2026-10-11).
+  const fontsDir = path.join(assetsDir, 'fonts');
+  if (fs.existsSync(fontsDir)) {
+    let fontBytes = 0;
+    for (const item of fs.readdirSync(fontsDir)) {
+      if (item.endsWith('.woff2')) {
+        fontBytes += fs.statSync(path.join(fontsDir, item)).size;
+      }
+    }
+    const fontBudget = 150 * 1024; // 150 KiB
+    if (fontBytes > fontBudget) {
+      errors.push(`Font payload (${fontBytes} bytes) exceeds budget of ${fontBudget} bytes`);
+    }
+  }
+
+  // Real media derivatives only: downscaled WebP, never masters (LR29).
+  const appDir = path.join(assetsDir, 'app');
+  if (fs.existsSync(appDir)) {
+    const derivativeBudget = 120 * 1024; // 120 KiB per file; largest measured 97,168 bytes
+    for (const item of fs.readdirSync(appDir)) {
+      const full = path.join(appDir, item);
+      if (item.endsWith('.png')) {
+        errors.push(`App master must not ship: ${item}`);
+      }
+      if (item.endsWith('.webp') && fs.statSync(full).size > derivativeBudget) {
+        errors.push(`App derivative ${item} exceeds budget of ${derivativeBudget} bytes`);
+      }
     }
   }
 

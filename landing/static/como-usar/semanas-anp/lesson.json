@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU06",
+  "slug": "semanas-anp",
+  "titlePtBr": "Trocar ou baixar uma semana",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu06-s1",
+      "image": "/assets/app/anp-prices-720w.webp",
+      "imageSha256": "7f0021d8893e5271bb78deb882cbfebf4c7da10a317928f106bc4faa68384937",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Toque no seletor de semana no topo.",
+      "controlLabelPtBr": "4–10 out. 2026 · Atual",
+      "expectedPtBr": "Abre a lista de semanas arquivadas.",
+      "recoveryPtBr": "Feche e tente de novo.",
+      "altPtBr": "Seletor de semana destacado.",
+      "target": {
+        "x": 667,
+        "y": 168,
+        "width": 505,
+        "height": 96
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/navigation/AnpNavGraph.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu06-s2",
+      "image": "/assets/app/week-picker-720w.webp",
+      "imageSha256": "b1e671f8e505ba4c694fb488a6b796ae9bb5283de39cc4298bc3ea380158fbe3",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Volte à semana mais recente quando quiser.",
+      "controlLabelPtBr": "Usar semana mais recente",
+      "expectedPtBr": "Restaura a semana atual datada.",
+      "recoveryPtBr": "Escolha um arquivo listado para comparar.",
+      "altPtBr": "Botão de semana mais recente destacado.",
+      "target": {
+        "x": 354,
+        "y": 1722,
+        "width": 512,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/navigation/AnpNavGraph.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu06-s3",
+      "image": "/assets/app/week-picker-720w.webp",
+      "imageSha256": "b1e671f8e505ba4c694fb488a6b796ae9bb5283de39cc4298bc3ea380158fbe3",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Confira a semana marcada como atual.",
+      "controlLabelPtBr": "4–10 out. 2026",
+      "expectedPtBr": "Semana atual indicada com data de atualização.",
+      "recoveryPtBr": "Arquivo sem dados exibe aviso honesto.",
+      "altPtBr": "Semana atual confirmada.",
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/navigation/AnpNavGraph.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

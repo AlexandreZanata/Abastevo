@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU07",
+  "slug": "historico",
+  "titlePtBr": "Ler o histórico",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu07-s1",
+      "image": "/assets/app/history-720w.webp",
+      "imageSha256": "02ed266b177d104256d11b9efc3ee2545d40271e11356188b593c23c5b9b1968",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Escolha o combustível da série.",
+      "controlLabelPtBr": "Gasolina comum",
+      "expectedPtBr": "Gráfico e valores filtram para o combustível.",
+      "recoveryPtBr": "Troque o chip para outra série.",
+      "altPtBr": "Chip de gasolina comum destacado.",
+      "target": {
+        "x": 446,
+        "y": 474,
+        "width": 324,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu07-s2",
+      "image": "/assets/app/history-720w.webp",
+      "imageSha256": "02ed266b177d104256d11b9efc3ee2545d40271e11356188b593c23c5b9b1968",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Leia a tendência de 3 semanas no gráfico.",
+      "controlLabelPtBr": "Gráfico de tendência de preços",
+      "expectedPtBr": "Barras com 6,83, 6,88 e 6,94 nas semanas.",
+      "recoveryPtBr": "Poucas semanas indicam série curta.",
+      "altPtBr": "Gráfico de tendência destacado.",
+      "target": {
+        "x": 48,
+        "y": 1368,
+        "width": 1124,
+        "height": 456
+      },
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu07-s3",
+      "image": "/assets/app/history-720w.webp",
+      "imageSha256": "02ed266b177d104256d11b9efc3ee2545d40271e11356188b593c23c5b9b1968",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Confira os valores por semana abaixo do gráfico.",
+      "controlLabelPtBr": "4–10 out. 2026",
+      "expectedPtBr": "Cada semana com seu valor datado.",
+      "recoveryPtBr": "Semana sem coleta não aparece.",
+      "altPtBr": "Valores semanais confirmados.",
+      "availability": "Disponível",
+      "claimClass": "dated-reference",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

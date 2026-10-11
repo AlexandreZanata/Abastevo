@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU28",
+  "slug": "configuracoes",
+  "titlePtBr": "Configurações",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu28-s1",
+      "image": "/assets/app/settings-720w.webp",
+      "imageSha256": "5c6ef5910bdb136a5bd32ef5082b13b5ca7ff130999ec18b5ebf0792f603c604",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; nada alternado.",
+      "instructionPtBr": "Revise a sincronização em segundo plano.",
+      "controlLabelPtBr": "Sincronizar detalhe de postos em segundo plano",
+      "expectedPtBr": "Preferência lida sem alteração.",
+      "recoveryPtBr": "Mudança aqui altera dados móveis e bateria.",
+      "altPtBr": "Preferência de sincronização destacada.",
+      "target": {
+        "x": 48,
+        "y": 1153,
+        "width": 932,
+        "height": 144
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu28-s2",
+      "image": "/assets/app/settings-720w.webp",
+      "imageSha256": "5c6ef5910bdb136a5bd32ef5082b13b5ca7ff130999ec18b5ebf0792f603c604",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; nada alternado.",
+      "instructionPtBr": "Confira a retenção de 12 semanas.",
+      "controlLabelPtBr": "Retenção de dados de postos",
+      "expectedPtBr": "Retenção selecionada sem alteração.",
+      "recoveryPtBr": "Reduzir apaga histórico local antigo.",
+      "altPtBr": "Retenção destacada.",
+      "target": {
+        "x": 48,
+        "y": 1876,
+        "width": 568,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu28-s3",
+      "image": "/assets/app/settings-720w.webp",
+      "imageSha256": "5c6ef5910bdb136a5bd32ef5082b13b5ca7ff130999ec18b5ebf0792f603c604",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; nada alternado.",
+      "instructionPtBr": "Idioma e toggles seguem intactos.",
+      "controlLabelPtBr": "Preferências",
+      "expectedPtBr": "Tela lida sem tocar em nada.",
+      "recoveryPtBr": "Alternar exige entender o custo de dados.",
+      "altPtBr": "Configurações confirmadas sem alteração.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

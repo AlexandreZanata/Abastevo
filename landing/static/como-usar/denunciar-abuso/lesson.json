@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU21",
+  "slug": "denunciar-abuso",
+  "titlePtBr": "Denunciar abuso",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu21-s1",
+      "image": "/assets/app/community-feed-720w.webp",
+      "imageSha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; nada denunciado.",
+      "instructionPtBr": "Na Comunidade, abra as regras de verificação.",
+      "controlLabelPtBr": "Regras de verificação comunitária",
+      "expectedPtBr": "Abre o diálogo somente-leitura com consenso, denúncia e recurso.",
+      "recoveryPtBr": "Feche e reabra se dispensar sem ler.",
+      "altPtBr": "Entrada das regras de verificação destacada.",
+      "target": {
+        "x": 322,
+        "y": 1968,
+        "width": 655,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu21-s2",
+      "image": "/assets/app/rules-dialog-720w.webp",
+      "imageSha256": "942ab74db464956026253ce4b75f87a5ac9ebb07973a42b7909366f6888ca842",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; nada denunciado.",
+      "instructionPtBr": "Leia: denúncia nunca apaga conteúdo sozinha.",
+      "controlLabelPtBr": "Denúncias nunca apagam conteúdo sozinhas",
+      "expectedPtBr": "Moderadores restritos revisam cada caso com motivos registrados.",
+      "recoveryPtBr": "Recursos viram novo caso; histórico nunca editado.",
+      "altPtBr": "Parágrafo de denúncia e moderação destacado.",
+      "target": {
+        "x": 202,
+        "y": 1207,
+        "width": 816,
+        "height": 300
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu21-s3",
+      "image": "/assets/app/rules-dialog-720w.webp",
+      "imageSha256": "942ab74db464956026253ce4b75f87a5ac9ebb07973a42b7909366f6888ca842",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "Conta demo conectada; nada denunciado.",
+      "instructionPtBr": "Recorra com novo motivo em vez de repetir a denúncia.",
+      "controlLabelPtBr": "Discorda de uma decisão?",
+      "expectedPtBr": "Novo motivo abre novo caso revisado.",
+      "recoveryPtBr": "Nunca denuncie usuários reais para obter capturas.",
+      "altPtBr": "Recurso e honestidade explicados.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    }
+  ]
+}
