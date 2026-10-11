@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR18 2026-10-11: LOCAL_DONE on branch `landing`, photo entry lesson TU14. Capture-entry frame (degraded list, disabled shutter, dev toggle off) + page; shutter never pressed, OCR/outbox pending on synthetic fixtures. Build/check green, 35/35 tests. Next: LR19 participation lessons.
+
 - Landing redesign LR17 2026-10-11: LOCAL_DONE on branch `landing`, account lesson TU13. Profile-connected capture (demo `zanatateste`, no key in pixels) + page; auth/key visuals secure-blocked (hierarchy-verified, never invented); TU11/TU12 visuals pending. Build/check green, 35/35 tests. Next: LR18 photo lessons.
 
 - Landing redesign LR16 2026-10-11: LOCAL_DONE on branch `landing`, driver lessons BUC01/BUC02. Chapter pages TU02/TU09/TU10 (10 steps, native-viewBox overlays, prev/next, hub links flipped, sitemap); full text without JS, no app-write semantics. Build/check green, 35/35 tests. Conta `zanatateste` segue logada para LR17+. Next: LR17 account lessons.

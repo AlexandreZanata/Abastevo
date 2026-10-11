@@ -447,6 +447,30 @@
       "height": 2401,
       "bytes": 93436,
       "sha256": "88cb91b1517b91047a1b70fb621e9bae024ba636bdff2b9ef485c2e65767ccba"
+    },
+    {
+      "file": "capture-entry-360w.webp",
+      "master": "capture-entry.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 14034,
+      "sha256": "a36f0d5d7a73baf408d017a06274cdef037bb475e5ee0aa261916e86cdfb3513"
+    },
+    {
+      "file": "capture-entry-720w.webp",
+      "master": "capture-entry.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 34292,
+      "sha256": "b5c2f1061d7c9b3bef3735b0fa49c37a17c99e8af6f54b5d04ac43a5ee8aad21"
+    },
+    {
+      "file": "capture-entry-1080w.webp",
+      "master": "capture-entry.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 55254,
+      "sha256": "4f9741775d4f1da56c7b45384f1fe5ac3dd3e4b385b1d295a49755cdd7070140"
     }
   ]
 }

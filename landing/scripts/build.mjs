@@ -220,6 +220,7 @@ export function build(options = {}) {
       { srcRel: 'como-usar/precos-do-posto/index.html', destRel: 'como-usar/precos-do-posto/index.html' },
       { srcRel: 'como-usar/comunidade/index.html', destRel: 'como-usar/comunidade/index.html' },
       { srcRel: 'como-usar/conta-e-privacidade/index.html', destRel: 'como-usar/conta-e-privacidade/index.html' },
+      { srcRel: 'como-usar/fotografar-preco/index.html', destRel: 'como-usar/fotografar-preco/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 

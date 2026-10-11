@@ -35,6 +35,7 @@ visible state, privacy review and capture limitations. Open individual files:
 - [History chart](screenshots/history.png) / [week picker](screenshots/week-picker.png) (LR05)
 - [Contributions empty state](screenshots/contributions-empty.png) / [settings](screenshots/settings.png) (LR06: view-only, no account or toggle change)
 - [Profile connected, demo account](screenshots/profile-connected.png) (LR17: session entries only, no key in pixels)
+- [Capture entry, station required](screenshots/capture-entry.png) (LR18: degraded list, shutter disabled, dev toggle untouched)
 - [Guest profile](screenshots/profile-guest.png)
 - [Vehicle list empty state](screenshots/vehicles-empty.png)
 - [Blank vehicle form](screenshots/vehicle-form.png)
