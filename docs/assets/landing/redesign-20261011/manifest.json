@@ -3,7 +3,7 @@
   "branch": "landing",
   "installedSourceSha": "UNKNOWN; not linked to repository HEAD",
   "releaseStatus": "DEVELOPMENT; no store availability or release acceptance inferred",
-  "capturedCount": 24,
+  "capturedCount": 25,
   "captureTimePrecision": "Date only; exact per-frame time was not recorded",
   "privacyReview": "Guest/blank forms; no credentials, private media, precise contributor GPS or notification content in accepted frames. History/week attempts with a private music overlay were rejected and not copied.",
   "deviceRestoration": "Original dark theme restored and verified by Ativar tema claro control; temporary UI XML removed. No app storage reset or submitted mutation.",
@@ -590,6 +590,30 @@
         "tutorial"
       ],
       "claimClass": "error-state"
+    },
+    {
+      "file": "screenshots/help-rules.png",
+      "sha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
+      "bytes": 211671,
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "title": "Help and community rules",
+      "lesson": "TU30",
+      "capturedDate": "2026-10-11",
+      "source": "Physical Android via adb exec-out screencap -p",
+      "appPackage": "com.anpfuel.app.debug",
+      "appVersion": "3.1.0-debug",
+      "appVersionCode": 4,
+      "appSourceSha": null,
+      "availability": "CAPTURED_VISIBLE_STATE_ONLY",
+      "privacyReviewed": true,
+      "pixels": "Original lossless PNG, no retouch, upscaling, crop or synthetic UI",
+      "note": "Read-only rules destination; collaboration, consensus, report/appeal and privacy notes verified in pixels.",
+      "roles": [
+        "marketing",
+        "tutorial"
+      ],
+      "claimClass": "visible-state-only"
     }
   ],
   "rejectedFrames": [
@@ -620,48 +644,56 @@
       "lessons": [
         "TU01"
       ],
-      "states": "onboarding sync/download/location-choice frames"
+      "states": "onboarding sync/download frames (fresh install forbidden on user phone; emulator owner)",
+      "owner": "app-owner"
+    },
+    {
+      "lessons": [
+        "TU03"
+      ],
+      "states": "Explorar theme toggle and card-detail frames (toggle changes user setting; capture owed)"
     },
     {
       "lessons": [
         "TU04"
       ],
-      "states": "SEARCH entry and result-type frames (entry unobserved)"
+      "states": "SEARCH assist-chip entry identified in HomeScreen RowActions (below fold); result-type frames owed"
     },
     {
       "lessons": [
         "TU11",
         "TU12"
       ],
-      "states": "username/key/backup visuals (FLAG_SECURE blocks screencap)"
+      "states": "username/key/backup visuals (FLAG_SECURE blocks screencap; hierarchy-verified)"
     },
     {
       "lessons": [
-        "TU14",
         "TU15",
         "TU16"
       ],
-      "states": "capture permission/OCR-review/outbox queued-receipt states (synthetic fixtures only)"
+      "states": "photo review/OCR/outbox states (synthetic fixtures on disposable emulator only)",
+      "owner": "app-owner"
     },
     {
       "lessons": [
         "TU17"
       ],
-      "states": "populated ledger/receipt/cancel states"
+      "states": "populated ledger/receipt/cancel states (need test contributions; no staging on user phone)"
     },
     {
       "lessons": [
         "TU18",
-        "TU19",
-        "TU21"
+        "TU19"
       ],
-      "states": "rating/comment/vote/report dialogs (sign-in gated; no staging on user phone)"
+      "states": "rating/comment/vote composers (station-verification gated, feed empty; hermetic preproduction owner)",
+      "owner": "app-owner"
     },
     {
       "lessons": [
         "TU20"
       ],
-      "states": "helpfulness UI (no Android implementation; CS01 domain-only)"
+      "states": "helpfulness UI (no Android implementation; CS01 domain-only)",
+      "owner": "app-owner"
     },
     {
       "lessons": [
@@ -669,37 +701,25 @@
         "TU24",
         "TU25"
       ],
-      "states": "suggest/claim/management forms and statuses"
+      "states": "suggest/claim/management entries unobserved in reachable UI; forms unsent"
     },
     {
       "lessons": [
         "TU26"
       ],
-      "states": "saved-vehicle/estimate/delete-confirm states"
+      "states": "saved-vehicle/estimate/delete-confirm states (no save/delete staged)"
     },
     {
       "lessons": [
         "TU27"
       ],
-      "states": "alert preference/OS permission states"
+      "states": "alert OS permission screens (toggle viewed off; permission flow pending emulator)"
     },
     {
       "lessons": [
         "TU28"
       ],
-      "states": "remaining settings rows below fold; destructive confirmations"
-    },
-    {
-      "lessons": [
-        "TU29"
-      ],
-      "states": "per-route offline/queued/reconnect states"
-    },
-    {
-      "lessons": [
-        "TU30"
-      ],
-      "states": "help/rules/legal destination frames"
+      "states": "remaining settings rows below fold; destructive confirmations unexecuted"
     }
   ],
   "secureBlocked": [

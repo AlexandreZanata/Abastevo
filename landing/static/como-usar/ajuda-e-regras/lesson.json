@@ -1,0 +1,65 @@
+{
+  "lessonId": "TU30",
+  "slug": "ajuda-e-regras",
+  "titlePtBr": "Ajuda e regras",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu30-s1",
+      "image": "/assets/app/help-rules-720w.webp",
+      "imageSha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; leitura apenas.",
+      "instructionPtBr": "Abra Ajuda e leia como colaborar bem.",
+      "controlLabelPtBr": "Colabore bem",
+      "expectedPtBr": "Regras de foto segura e valores legíveis, sem invenção.",
+      "recoveryPtBr": "Dúvida de condição: escolha a exata antes de enviar.",
+      "altPtBr": "Seção Colabore bem destacada.",
+      "target": {
+        "x": 96,
+        "y": 396,
+        "width": 308,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu30-s2",
+      "image": "/assets/app/help-rules-720w.webp",
+      "imageSha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; leitura apenas.",
+      "instructionPtBr": "Confira consenso, denúncia e privacidade.",
+      "controlLabelPtBr": "Regras da comunidade",
+      "expectedPtBr": "Consenso sem mistura com ANP, pagamento sem poder, 24h de foto.",
+      "recoveryPtBr": "Regras mudam por versão; confira a data do app.",
+      "altPtBr": "Regras da comunidade destacadas.",
+      "target": {
+        "x": 96,
+        "y": 780,
+        "width": 506,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

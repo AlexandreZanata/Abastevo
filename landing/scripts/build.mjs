@@ -224,6 +224,7 @@ export function build(options = {}) {
       { srcRel: 'como-usar/denunciar-abuso/index.html', destRel: 'como-usar/denunciar-abuso/index.html' },
       { srcRel: 'como-usar/veiculos/index.html', destRel: 'como-usar/veiculos/index.html' },
       { srcRel: 'como-usar/offline-e-recuperacao/index.html', destRel: 'como-usar/offline-e-recuperacao/index.html' },
+      { srcRel: 'como-usar/ajuda-e-regras/index.html', destRel: 'como-usar/ajuda-e-regras/index.html' },
       { srcRel: 'como-usar/precos-anp/index.html', destRel: 'como-usar/precos-anp/index.html' },
       { srcRel: 'como-usar/semanas-anp/index.html', destRel: 'como-usar/semanas-anp/index.html' },
       { srcRel: 'como-usar/historico/index.html', destRel: 'como-usar/historico/index.html' },

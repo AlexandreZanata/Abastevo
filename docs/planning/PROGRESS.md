@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR33 2026-10-11: LOCAL_DONE on branch `landing`, final review. Registry consistent (24/72, 15/15, hub+sitemap parity); restored missing `#tutoriais` home band + llms.txt hub entries; full suite 40/40, build/check green. No redesign. Next: LR34 pending media.
+- Landing redesign LR34 2026-10-11: LOCAL_DONE on branch `landing`, pending-media sweep. Help-rules capture + TU30 page; SEARCH chip entry located in code; missingRows rewritten with 12 owned absences (onboarding/fixtures/gated entries need emulator or owner). Manifest 25/75. Build/check green, 40/40 tests. Next: LR35 scoped union.
+
+- Landing redesign LR33 2026-10-11: LOCAL_DONE on branch `landing`, final review.
 
 - Landing redesign LR32 2026-10-11: LOCAL_DONE on branch `landing`, accessibility exit.
 

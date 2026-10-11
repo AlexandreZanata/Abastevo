@@ -591,6 +591,30 @@
       "height": 2401,
       "bytes": 81222,
       "sha256": "b53080cb34c13d6a9d14dd6229e3dca4e417868b97260f7ae96c45f7048e4e0f"
+    },
+    {
+      "file": "help-rules-360w.webp",
+      "master": "help-rules.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 26964,
+      "sha256": "16e510a094ca963941b02b72c747e648fb7d9c26a96bbcc4375abf27ca5c35ef"
+    },
+    {
+      "file": "help-rules-720w.webp",
+      "master": "help-rules.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 67684,
+      "sha256": "a3cf6ac9674796e8514da173a623c538bc0655f26c812f9d9382989807c5fb05"
+    },
+    {
+      "file": "help-rules-1080w.webp",
+      "master": "help-rules.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 105256,
+      "sha256": "fd467763f5d4d02795f94a66c52c21efad2b0c0be58e3588f06fce0d50d7cf69"
     }
   ]
 }

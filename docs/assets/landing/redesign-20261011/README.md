@@ -40,6 +40,7 @@ visible state, privacy review and capture limitations. Open individual files:
 - [Vehicle form blank, dark](screenshots/vehicle-form-dark.png) (LR20: nothing typed, toggled or saved)
 - [Offline cached table](screenshots/offline-cached.png) / [empty search](screenshots/search-empty.png) (LR22: airplane restored off, query cleared after)
 - [Nearby failure toast](screenshots/nearby-failure.png) (LR23: granted location used read-only, no coordinates)
+- [Help and community rules](screenshots/help-rules.png) (LR34: read-only destination)
 - [Guest profile](screenshots/profile-guest.png)
 - [Vehicle list empty state](screenshots/vehicles-empty.png)
 - [Blank vehicle form](screenshots/vehicle-form.png)
