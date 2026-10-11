@@ -40,7 +40,8 @@ nonnegative. No traces, tickets, accounts or network queue are collected.
 Flight world 1000×1600, player (220,800), radius 42, gravity +2/tick, impulse -22,
 velocity cap +30; bounds 0..1500. Gates width 130, gap 480, speed 6/tick,
 first at tick 120, then every 110 ticks; center 480..1120 inclusive from PRNG.
-Gate pass +1, fuel pickup +5; touching a collision boundary is a collision.
+Player collision uses a radius-42 AABB; gate edges are inclusive. Fuel uses
+an AABB half-size 28. Gate pass +1, fuel pickup +5; touching a collision boundary is a collision.
 Run: lanes -1/0/+1, start center; jump 48 ticks, slide 36 ticks, mutually
 exclusive. Entities spawn first at tick 90 then every 75 ticks at depth 1800;
 speed min(20,10+tick/900). Impact crosses depth 80; cone requires active jump,
@@ -84,3 +85,10 @@ No Go replayer parity or national ranking acceptance is implied by local vectors
 ## Evidence
 
 GME-M01: original assets preserved; contract recorded before runtime code.
+
+GME-M02 LOCAL_DONE: Flight pure Kotlin; RED 4 failures/5 tests against stub,
+GREEN 7 tests including unsigned PRNG reference, inclusive collision edges,
+500-tick vector (17 points) and 10,800-tick time-limit vector (576 points).
+Command: `./gradlew :domain:test --tests 'com.anpfuel.domain.games.FuelFlightTest' --offline --console=plain`.
+Diff and tracked secret checks PASS. Push PENDING: automatic approval review
+refused unverified remote egress; only local commits are authorized to proceed.
