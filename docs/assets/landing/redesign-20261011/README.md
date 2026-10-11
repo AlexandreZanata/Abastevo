@@ -48,6 +48,35 @@ Account creation/key, populated community, photo/OCR, permissions, deletion,
 alerts, full offline flow and other chapter frames remain **MEDIA_PENDING**.
 See the [full catalog](../../../product/LANDING_MOBILE_TUTORIAL_CATALOG.md).
 
+## Safe capture environment (LR04) — 2026-10-11
+
+Standardize before every capture session; record deviations in the manifest.
+No capture was taken for this task — the eight accepted frames are carried
+forward from the preparation manifest below.
+
+- **Device selection:** the user's physical phone is used only for read-only
+  public-state navigation with explicit per-session ADB authorization. Fixture,
+  account, deletion, permission-denial and destructive flows run on a
+  disposable emulator/profile, never on the user's phone.
+- **Seeder prohibition:** `InstrumentedAppDataSeeder.clearAppStorage`
+  (`app/src/androidTest/.../support/InstrumentedAppDataSeeder.kt:262`) and its
+  callers (`seedReturningUserHomeState:37`, `seedAppendixA2PostSyncState:52`)
+  must never run against the user's phone. No install, DB seed, logout,
+  storage reset or persistent-settings change on that device.
+- **Environment standard:** app language pt-BR, system font scale 1.0 unless
+  the lesson teaches otherwise, portrait orientation, original 1220×2712
+  resolution, keyboard hidden unless teaching input. Theme per lesson
+  (light/dark recorded per frame); restore the user's theme afterwards
+  (dark theme restored 2026-10-11, verified via `Ativar tema claro`).
+- **Lock/privacy gate:** a locked black frame is rejected; capture only after
+  the user unlocks. Close notification/media overlays with the user; reject
+  frames with account keys, IDs, contributor GPS, private photos or
+  notification content (music-overlay history attempts already rejected).
+- **Capture command:** `adb -s <selected-device> exec-out screencap -p >
+  <output>.png`, copied byte-for-byte, no recompression. Installed build
+  carried forward: `com.anpfuel.app.debug` 3.1.0-debug/code 4, source SHA
+  UNKNOWN (not linked to a repository HEAD).
+
 ## Capture continuation
 
 1. Verify installed version, actual screen and permission for the selected task.
