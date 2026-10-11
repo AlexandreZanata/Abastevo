@@ -1,0 +1,97 @@
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/api	1.025s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/migrate	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/ops	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/station-load	2.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/station-sync	1.008s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/cmd/worker	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/account	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/community	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/evidence	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/feedback	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/identity	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/moderation	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/official	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/privacy	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/stationprofile	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/trust	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/http	1.664s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/keyprover	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/mail	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc	1.987s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application	1.579s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain	1.018s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http	1.020s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs	1.012s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application	1.015s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain	1.018s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/dou	1.230s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/geocoder	1.108s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http	1.011s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs	1.244s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry	1.046s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registrysync	1.896s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain	1.008s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs	1.007s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/media	4.755s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage	1.066s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application	1.018s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain	1.009s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http	1.015s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application	1.012s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain	1.009s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth	1.007s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http	1.012s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/application	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/profile	1.012s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel	1.012s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain	1.008s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp	1.028s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http	1.009s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs	[no test files]
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source	5.595s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/domain	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters	1.011s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http	1.013s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application	1.011s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters	1.796s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application	1.019s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/authority	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/domain	1.035s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/verify	1.074s
+?   	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters	[no test files]
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/application	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/anpfixture	1.040s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/apicontract	2.593s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health	1.059s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver	1.670s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs	1.009s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate	1.007s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry	1.008s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/alerts	1.010s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics	1.017s

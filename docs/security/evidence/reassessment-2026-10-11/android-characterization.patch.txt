@@ -1,0 +1,98 @@
+--- a/application/src/test/kotlin/com/anpfuel/application/usecase/privacy/TrainingConsentUseCaseTest.kt
++++ b/application/src/test/kotlin/com/anpfuel/application/usecase/privacy/TrainingConsentUseCaseTest.kt
+@@ -176,4 +176,31 @@
+         }
+         assertTrue(gateway.grants.isEmpty())
+     }
++
++    @Test
++    fun `review offline revocation crosses account boundary`() = runTest {
++        val (offline, local, gateway) = useCase(connected = false)
++        offline.revoke(TrainingConsentCaller("owner-A"))
++        assertTrue(local.hasPendingRevocation())
++        val online = TrainingConsentUseCase(local, gateway, FakeNetwork(true))
++        val outcome = online.syncPending(TrainingConsentCaller("owner-B"))
++        assertTrue(outcome is TrainingConsentOutcome.Revoked)
++        assertEquals(1, gateway.revokes.size)
++        assertFalse(local.hasPendingRevocation())
++        println("REVIEW: owner-A pending intent sent through owner-B current gateway and then discarded")
++    }
++
++    @Test
++    fun `review server revision is never adopted locally`() = runTest {
++        val local = FakeLocal()
++        val gateway = FakeGateway(status = TrainingConsentStatus(false, "REVOKED", "training-terms-v1", "digest-v1", 100, false),
++            failure = null)
++        val online = TrainingConsentUseCase(local, gateway, FakeNetwork(true))
++        online.status(caller())
++        assertEquals(0, local.revision)
++        online.revoke(caller())
++        assertEquals(listOf(1L), gateway.revokes)
++        println("REVIEW: status revision 100 observed; next revoke still submits revision 1")
++    }
++
+ }
+--- a/data/src/test/kotlin/com/anpfuel/data/repository/RoomContributionOutboxRepositoryTest.kt
++++ b/data/src/test/kotlin/com/anpfuel/data/repository/RoomContributionOutboxRepositoryTest.kt
+@@ -370,4 +370,19 @@
+         val rest = repo.listDispatchablePage(2_000_000L, 50)
+         assertEquals(listOf("cmd-b1"), rest.map { it.commandId })
+     }
++
++    @Test
++    fun `review RetryAfter reopens exhausted attempt budget`() = runTest {
++        val dao = FakeDao()
++        val repo = RoomContributionOutboxRepository(dao)
++        repo.enqueue(draft(), payload())
++        val row = dao.rows.getValue("cmd-1")
++        dao.rows["cmd-1"] = row.copy(state="IN_FLIGHT", attempts=25, nonce="review-lease")
++        repo.failDispatch("cmd-1", row.revision, "review-lease", 1000L, 1000L)
++        assertEquals(25, dao.rows.getValue("cmd-1").attempts)
++        assertEquals(2000L, dao.rows.getValue("cmd-1").nextEligibleTick)
++        assertTrue(repo.findDispatchable("cmd-1", 2000L) != null)
++        println("REVIEW: attempt budget exhausted but Retry-After makes the row dispatchable again")
++    }
++
+ }
+--- a/data/src/test/kotlin/com/anpfuel/data/remote/TrainingConsentHttpClientTest.kt
++++ b/data/src/test/kotlin/com/anpfuel/data/remote/TrainingConsentHttpClientTest.kt
+@@ -162,4 +162,15 @@
+         }
+         assertEquals(0, server.requestCount)
+     }
++
++    @Test
++    fun `review consent requests omit request proof`() = runTest {
++        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"state":"GRANTED","revision":1,"terms_version":"training-terms-v1"}"""))
++        client().grantConsent("training-terms-v1", "digest-v1", 1)
++        val request = server.takeRequest()
++        assertNull(request.getHeader("Authorization"))
++        assertTrue(request.headers.names().none { it.contains("proof", true) || it.contains("signature", true) || it.contains("contributor", true) || it.contains("nonce", true) })
++        println("REVIEW: Android consent transport emitted no request proof or authentication headers")
++    }
++
+ }
+--- a/data/src/test/kotlin/com/anpfuel/data/remote/AnpFileDownloaderTest.kt
++++ b/data/src/test/kotlin/com/anpfuel/data/remote/AnpFileDownloaderTest.kt
+@@ -230,4 +230,21 @@
+             target.shutdown()
+         }
+     }
++
++    @Test
++    fun reviewRedirectContactsDisallowedDestinationBeforeValidation() = runBlocking {
++        val foreign = MockWebServer()
++        foreign.start()
++        try {
++            foreign.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/octet-stream").setBody("synthetic"))
++            val redirect = foreign.url(summaryUrlPath).newBuilder().host("127.0.0.1").build()
++            server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", redirect.toString()))
++            var rejected = false
++            try { downloader.download(server.url(summaryUrlPath).toString()) } catch (_: Exception) { rejected = true }
++            assertTrue(rejected)
++            assertEquals(1, foreign.requestCount)
++            println("REVIEW: disallowed redirect destination contacted before final URL policy refused")
++        } finally { foreign.shutdown() }
++    }
++
+ }

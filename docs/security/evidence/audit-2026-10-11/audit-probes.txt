@@ -1,0 +1,30 @@
+=== RUN   TestAuditDistinctAccountsAndMailNoAggregateBudget
+    audit_probe_test.go:9: 101 distinct accounts + 100 sessions + 100 email issuances accepted without aggregate quota; memory store only
+--- PASS: TestAuditDistinctAccountsAndMailNoAggregateBudget (0.01s)
+=== RUN   TestAuditInvalidRefreshRevokesKnownFamily
+    audit_probe_test.go:16: invalid token + known family ID revoked the owner's valid session
+--- PASS: TestAuditInvalidRefreshRevokesKnownFamily (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application	1.014s
+=== RUN   TestAuditJWKSProviderRefreshExtendsOtherProviderTTL
+    audit_probe_test.go:10: Google keyset still cached at age 70 min despite 60 min TTL, because Apple refresh changed shared timestamp
+--- PASS: TestAuditJWKSProviderRefreshExtendsOtherProviderTTL (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc	1.009s
+=== RUN   TestAuditDailyReserveBudgetIsNonAtomic
+    audit_probe_test.go:13: 21 reservations accepted for one contributor/day; configured budget=10; atomic fake insert, synchronized count barrier
+--- PASS: TestAuditDailyReserveBudgetIsNonAtomic (0.00s)
+=== RUN   TestAuditOverdueSignalsFailingPolicy
+--- PASS: TestAuditOverdueSignalsFailingPolicy (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application	1.009s
+=== RUN   TestAuditMaxBytesNotBoundInPUTSignature
+    audit_probe_test.go:7: 1 byte and 3 MiB authorization produce identical PUT URL; provider not contacted
+--- PASS: TestAuditMaxBytesNotBoundInPUTSignature (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage	1.009s
+=== RUN   TestAuditDifferentForwardedClientsShareProxyQuota
+    audit_probe_test.go:8: 61 distinct forwarded clients/fingerprints share one proxy-peer bucket; 61st refused before registrar
+--- PASS: TestAuditDifferentForwardedClientsShareProxyQuota (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http	1.013s

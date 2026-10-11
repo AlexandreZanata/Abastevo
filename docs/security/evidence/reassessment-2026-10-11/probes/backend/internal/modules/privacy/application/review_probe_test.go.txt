@@ -1,0 +1,62 @@
+package application
+
+import (
+	"context"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	"testing"
+	"time"
+)
+
+type reviewSanitizer func(context.Context, []byte) ([]byte, domain.SanitizeVerdict, error)
+
+func (f reviewSanitizer) Sanitize(c context.Context, b []byte) ([]byte, domain.SanitizeVerdict, error) {
+	return f(c, b)
+}
+
+// Characterization: PASS documents the defect, not a safety property.
+func TestReviewRevokeDoesNotTombstoneExistingDerivative(t *testing.T) {
+	ctx := context.Background()
+	inv := newFakePromoteStore()
+	p := promotePorts(inv, domain.VerdictPass, nil)
+	grantPromoteConsent(t, p, "c1", 1)
+	dto := PromotionDTO{ImageID: "review-image", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC), PerImageAllowed: true, Source: []byte("synthetic")}
+	if _, _, err := Propose(ctx, p, Caller{ContributorID: "c1"}, dto); err != nil {
+		t.Fatal(err)
+	}
+	r, err := RevokeConsent(ctx, p.ConsentPorts, Caller{ContributorID: "c1"}, RevokeDTO{Revision: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	active, _ := inv.ListActiveByOwner(ctx, "c1")
+	due, _ := inv.ListRevokedBefore(ctx, time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC))
+	if !r.DeleteOwnedTrainingAssets || len(active) != 1 || len(due) != 0 {
+		t.Fatalf("receipt=%+v active=%d due=%d", r, len(active), len(due))
+	}
+	t.Log("revoke signals deletion but leaves derivative ACTIVE and absent from purge inventory")
+}
+
+func TestReviewRevokeDuringSanitizeStillCommits(t *testing.T) {
+	ctx := context.Background()
+	inv := newFakePromoteStore()
+	p := promotePorts(inv, domain.VerdictPass, nil)
+	grantPromoteConsent(t, p, "c1", 1)
+	p.Sanitizer = reviewSanitizer(func(_ context.Context, _ []byte) ([]byte, domain.SanitizeVerdict, error) {
+		if _, err := RevokeConsent(ctx, p.ConsentPorts, Caller{ContributorID: "c1"}, RevokeDTO{Revision: 2}); err != nil {
+			t.Fatal(err)
+		}
+		return []byte("minimized"), domain.VerdictPass, nil
+	})
+	result, _, err := Propose(ctx, p, Caller{ContributorID: "c1"}, PromotionDTO{ImageID: "race-image", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC), PerImageAllowed: true, Source: []byte("synthetic")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := p.Store.Get(ctx, "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := inv.ListActiveByOwner(ctx, "c1")
+	if current.State != domain.StateRevoked || len(rows) != 1 || result.ConsentRevision != 1 {
+		t.Fatalf("current=%+v result=%+v rows=%d", current, result, len(rows))
+	}
+	t.Log("revoked revision 2 completed before inventory commit; ACTIVE revision 1 still inserted")
+}

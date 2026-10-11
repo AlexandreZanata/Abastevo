@@ -1,0 +1,21 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.zip.*;
+import com.anpfuel.data.parser.StreamingXlsxParser;
+public class ReviewParser {
+ public static void main(String[] args) throws Exception {
+  Path path=Files.createTempFile("abastevo-review-shared-", ".xlsx");
+  try {
+   try(ZipOutputStream zip=new ZipOutputStream(Files.newOutputStream(path))){
+    zip.putNextEntry(new ZipEntry("xl/sharedStrings.xml"));
+    zip.write("<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">".getBytes());
+    byte[] text="A".repeat(32768).getBytes();
+    for(int i=0;i<4096;i++){zip.write("<si><t>".getBytes());zip.write(text);zip.write("</t></si>".getBytes());}
+    zip.write("</sst>".getBytes());zip.closeEntry();
+   }
+   long bytes=Files.size(path);
+   try { StreamingXlsxParser.Companion.open(path.toFile()).close();throw new AssertionError("expected isolated heap exhaustion"); }
+   catch(OutOfMemoryError expected){System.out.println("REPRODUCED: "+bytes+" compressed bytes; 4096 valid-length strings exhaust 32 MiB child heap despite current entry/count/text caps");}
+  } finally {Files.deleteIfExists(path);}
+ }
+}

@@ -1,0 +1,5 @@
+=== RUN   TestAuditRealSQLCommentGrowthAndAccountErasureGap
+    audit_probe_integration_test.go:11: real PostGIS: 100 comments accepted for one account without quota; after account deletion, comment text and author alias still publicly resolvable
+--- PASS: TestAuditRealSQLCommentGrowthAndAccountErasureGap (0.39s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters	1.401s

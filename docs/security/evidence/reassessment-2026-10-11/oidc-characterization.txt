@@ -1,0 +1,5 @@
+=== RUN   TestReviewUnknownKidForcesFetchForEveryInvalidToken
+    review_probe_test.go:24: 20 unverified unknown-kid tokens triggered 21 source fetches inside one fresh TTL; no valid provider credential required
+--- PASS: TestReviewUnknownKidForcesFetchForEveryInvalidToken (0.03s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc	1.039s

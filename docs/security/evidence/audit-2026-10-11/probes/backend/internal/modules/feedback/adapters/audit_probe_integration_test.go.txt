@@ -1,0 +1,47 @@
+//go:build integration
+
+package adapters
+
+import (
+	"context"
+	"fmt"
+	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
+	"testing"
+)
+
+func TestAuditRealSQLCommentGrowthAndAccountErasureGap(t *testing.T) {
+	svc, pool := freshService(t)
+	store := svc.Store.(*PGStore)
+	svc.Comments = store
+	svc.Votes = store
+	ctx := context.Background()
+	acc := seedAccount(t, pool, 91, "active")
+	station := testUUID(9001)
+	var first string
+	for i := 0; i < 100; i++ {
+		c, e := svc.SubmitComment(ctx, acc, station, "GASOLINE_REGULAR", fmt.Sprintf("Synthetic audit comment %d", i))
+		if e != nil {
+			t.Fatal(e)
+		}
+		if i == 0 {
+			first = c.ID
+		}
+	}
+	var n int
+	if e := pool.QueryRow(ctx, "SELECT count(*) FROM feedback_comments WHERE account_id=$1", acc).Scan(&n); e != nil {
+		t.Fatal(e)
+	}
+	if n != 100 {
+		t.Fatal(n)
+	}
+	del := accountapp.Service{Clock: svc.Clock, Store: account.NewPGStore(pool)}
+	if e := del.DeleteAccount(ctx, acc); e != nil {
+		t.Fatal(e)
+	}
+	c, found, e := store.ViewComment(ctx, first)
+	if e != nil || !found || c.Text == "" {
+		t.Fatalf("%v %v %+v", e, found, c)
+	}
+	t.Log("real PostGIS: 100 comments accepted for one account without quota; after account deletion, comment text and author alias still publicly resolvable")
+}

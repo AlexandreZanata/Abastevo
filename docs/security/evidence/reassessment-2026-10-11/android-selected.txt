@@ -1,0 +1,65 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.10.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :application:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:compileKotlin FROM-CACHE
+> Task :domain:compileJava NO-SOURCE
+> Task :domain:processResources NO-SOURCE
+> Task :domain:classes UP-TO-DATE
+> Task :domain:jar
+> Task :application:compileKotlin FROM-CACHE
+> Task :application:compileJava NO-SOURCE
+> Task :application:processResources NO-SOURCE
+> Task :application:classes UP-TO-DATE
+> Task :application:jar
+> Task :application:processTestResources NO-SOURCE
+> Task :data:preBuild UP-TO-DATE
+> Task :data:preDebugBuild UP-TO-DATE
+> Task :data:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :data:generateDebugBuildConfig FROM-CACHE
+> Task :data:generateDebugResValues FROM-CACHE
+> Task :data:generateDebugResources FROM-CACHE
+> Task :data:packageDebugResources FROM-CACHE
+> Task :data:parseDebugLocalResources FROM-CACHE
+> Task :data:generateDebugRFile FROM-CACHE
+> Task :data:kspDebugKotlin
+
+> Task :application:compileTestKotlin
+w: file:///tmp/abastevo-review-final-20261011-kk55rep3/application/src/test/kotlin/com/anpfuel/application/usecase/vehicle/VehicleUseCasesTest.kt:131:20 Check for instance is always 'true'.
+
+> Task :application:compileTestJava NO-SOURCE
+> Task :application:testClasses UP-TO-DATE
+> Task :application:test
+> Task :data:javaPreCompileDebug FROM-CACHE
+> Task :data:preDebugUnitTestBuild UP-TO-DATE
+> Task :data:generateDebugUnitTestStubRFile FROM-CACHE
+> Task :data:javaPreCompileDebugUnitTest FROM-CACHE
+
+> Task :data:compileDebugKotlin
+w: file:///tmp/abastevo-review-final-20261011-kk55rep3/data/src/main/kotlin/com/anpfuel/data/remote/ContributionUploadHttpClient.kt:197:59 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'org.json.JSONArray?'.
+
+> Task :data:compileDebugJavaWithJavac
+> Task :data:processDebugJavaRes
+> Task :data:transformDebugClassesWithAsm
+> Task :data:bundleLibRuntimeToJarDebug
+> Task :data:bundleLibCompileToJarDebug
+> Task :data:kspDebugUnitTestKotlin
+
+> Task :data:compileDebugUnitTestKotlin
+w: file:///tmp/abastevo-review-final-20261011-kk55rep3/data/src/test/kotlin/com/anpfuel/data/local/media/AndroidPhotoCacheTest.kt:122:40 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+
+> Task :data:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :data:hiltAggregateDepsDebugUnitTest FROM-CACHE
+> Task :data:hiltJavaCompileDebugUnitTest NO-SOURCE
+> Task :data:processDebugUnitTestJavaRes
+> Task :data:transformDebugUnitTestClassesWithAsm
+> Task :data:testDebugUnitTest
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.10.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 49s
+28 actionable tasks: 16 executed, 12 from cache

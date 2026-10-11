@@ -2,6 +2,8 @@
 
 State: PROPOSED_USER_REQUESTED / NOT_IMPLEMENTED, 2026-10-07. Owner: P37-PC05 in the [photo contribution plan](../planning/PHOTO_PRICE_CONTRIBUTION_PLAN.md). The user chose 24-hour storage for non-consenters and permanent training-image storage for consenters. This document defines the proposed exception; it does not alter current runtime retention or approve a legal notice for release.
 
+Execution overlay, 2026-10-11: [community safety phases CS09–CS11](../planning/COMMUNITY_SAFETY_EXECUTION_PLAN.md) operationalize this same PC05 scope, with OFF also requesting deletion of existing owned training assets, a proposed 24-hour physical purge SLO after server receipt, and actual 24-hour storage/restore evidence. [Portuguese terms and UI draft](../product/COMMUNITY_PRIVACY_TERMS_PT_BR.md) remains NOT_ACTIVE until controls and owner details are verified. These planning decisions do not enable collection or claim current retention compliance.
+
 ## Purpose and retained-copy boundary
 
 Use explicitly authorized fuel-price image regions and necessary corrected labels to improve recognition of station fuel prices. Training consent is separate from permission to process an image for the contribution itself. No sale, public gallery, unrelated model use or automatic third-party model upload is authorized by this scope.

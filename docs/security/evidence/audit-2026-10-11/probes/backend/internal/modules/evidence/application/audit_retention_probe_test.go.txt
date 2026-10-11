@@ -1,0 +1,33 @@
+package application
+
+import (
+	"context"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
+	"testing"
+	"time"
+)
+
+func TestAuditFailedOriginalDeletionIsAbsentFromOverdueAudit(t *testing.T) {
+	now := time.Unix(1800000000, 0)
+	old := domain.SessionRef{ID: "audit-old", QuarantineKey: "q/a", Status: domain.StateVerifying, CreatedAt: now.Add(-48 * time.Hour)}
+	s := &fakeSweepStore{stuck: []domain.SessionRef{old}, cands: []domain.SessionRef{old}}
+	d := sweepDeps(s)
+	d.Clock = func() time.Time { return now }
+	d.Jobs = &fakeSweepJobs{live: map[string]bool{"audit-old": true}}
+	d.Storage.(*fakeSweepStorage).fail["q/a"] = true
+	r, e := Sweep(context.Background(), d)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if r.SkippedActive != 1 || r.StorageErrors != 1 || !d.Storage.(*fakeSweepStorage).keys["q/a"] {
+		t.Fatal(r)
+	}
+	audit, e := AuditOverdue(context.Background(), s, now, 100)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if audit.Count != 0 {
+		t.Fatal(audit)
+	}
+	t.Log("48h quarantine remains after simulated delete failure; Sweep succeeds with StorageErrors=1, final-only overdue audit reports healthy zero")
+}

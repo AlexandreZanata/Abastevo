@@ -1,0 +1,61 @@
+package application
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+type auditBarrierStore struct {
+	*fakeStore
+	entered sync.WaitGroup
+	release chan struct{}
+}
+
+func (s *auditBarrierStore) CountSince(ctx context.Context, ref string, since time.Time) (int, error) {
+	n, e := s.fakeStore.CountSince(ctx, ref, since)
+	s.entered.Done()
+	<-s.release
+	return n, e
+}
+func TestAuditDailyReserveBudgetIsNonAtomic(t *testing.T) {
+	base := newFakeStore()
+	p := testPorts(base)
+	var seq atomic.Int64
+	p.NewID = func() (string, error) { return fmt.Sprintf("e0000000-0000-4000-8000-%012d", seq.Add(1)), nil }
+	p.NewKey = func() (string, error) { return fmt.Sprintf("q/audit%012d", seq.Load()), nil }
+	for i := 0; i < 9; i++ {
+		in := testIntent()
+		in.ClientSessionID = fmt.Sprintf("seed-%d", i)
+		if _, e := Reserve(context.Background(), p, testCaller(), in); e != nil {
+			t.Fatal(e)
+		}
+	}
+	const n = 12
+	b := &auditBarrierStore{fakeStore: base, release: make(chan struct{})}
+	b.entered.Add(n)
+	p.Store = b
+	errors := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			in := testIntent()
+			in.ClientSessionID = fmt.Sprintf("parallel-%d", i)
+			_, e := Reserve(context.Background(), p, testCaller(), in)
+			errors <- e
+		}(i)
+	}
+	b.entered.Wait()
+	close(b.release)
+	for i := 0; i < n; i++ {
+		if e := <-errors; e != nil {
+			t.Fatal(e)
+		}
+	}
+	if len(base.rows) != 21 {
+		t.Fatal(len(base.rows))
+	}
+	t.Log("21 reservations accepted for one contributor/day; configured budget=10; atomic fake insert, synchronized count barrier")
+}

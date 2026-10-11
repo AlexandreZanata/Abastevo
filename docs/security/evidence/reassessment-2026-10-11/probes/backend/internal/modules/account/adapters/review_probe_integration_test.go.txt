@@ -1,0 +1,30 @@
+//go:build integration
+
+package adapters
+
+import (
+	"context"
+	"fmt"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	"testing"
+)
+
+func TestReviewSQLDeleteReleasesHourlySignupBudget(t *testing.T) {
+	svc, _, _ := freshService(t)
+	ctx := context.Background()
+	svc.RequestErasure = func(context.Context, string, []string) error { return nil }
+	for i := 0; i < domain.MaxKeyAccountsPerHour+1; i++ {
+		acc, err := svc.CreateKeyAccount(ctx, fmt.Sprintf("reviewcycle%d", i))
+		if err != nil {
+			t.Fatalf("creation %d: %v", i, err)
+		}
+		if _, err := svc.DeleteAccount(ctx, acc.Account.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := svc.Store.CountKeyAccountsSince(ctx, svc.Clock.NowUnix()-3600)
+	if err != nil || n != 0 {
+		t.Fatalf("budget=%d err=%v", n, err)
+	}
+	t.Log("real SQL: 101 fixed-clock account creations bypass 100/hour cap; audit account rows retained; credential-based budget zero")
+}

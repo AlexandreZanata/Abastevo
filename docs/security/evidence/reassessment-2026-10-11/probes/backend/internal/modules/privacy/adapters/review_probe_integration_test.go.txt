@@ -1,0 +1,80 @@
+//go:build integration
+
+package adapters
+
+import (
+	"context"
+	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	"testing"
+	"time"
+)
+
+type reviewSQLSanitizer func(context.Context, []byte) ([]byte, domain.SanitizeVerdict, error)
+
+func (f reviewSQLSanitizer) Sanitize(c context.Context, b []byte) ([]byte, domain.SanitizeVerdict, error) {
+	return f(c, b)
+}
+
+func TestReviewSQLRevocationLeavesActiveInventory(t *testing.T) {
+	_, pool := freshStore(t)
+	ctx := context.Background()
+	consents := NewConsentStore(pool)
+	inventory := NewPromotionStore(pool)
+	p := privacyapp.PromotePorts{ConsentPorts: consentAppPorts(consents), Inventory: inventory, Sanitizer: reviewSQLSanitizer(func(context.Context, []byte) ([]byte, domain.SanitizeVerdict, error) {
+		return []byte("minimized"), domain.VerdictPass, nil
+	})}
+	if _, err := privacyapp.GrantConsent(ctx, p.ConsentPorts, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.GrantDTO{TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1", Revision: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := privacyapp.Propose(ctx, p, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.PromotionDTO{ImageID: "review-sql-image", CapturedAt: time.Now().Add(time.Second), PerImageAllowed: true, Source: []byte("synthetic")}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := privacyapp.RevokeConsent(ctx, p.ConsentPorts, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.RevokeDTO{Revision: 2}); err != nil {
+		t.Fatal(err)
+	}
+	active, err := inventory.ListActiveByOwner(ctx, "review-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	due, err := inventory.ListRevokedBefore(ctx, time.Now().Add(72*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(active) != 1 || len(due) != 0 {
+		t.Fatalf("active=%d due=%d", len(active), len(due))
+	}
+	t.Log("real SQL: consent REVOKED, derivative ACTIVE, purge returns no derivative even at +72h")
+}
+
+func TestReviewSQLRevocationDuringSanitizationStillCommits(t *testing.T) {
+	_, pool := freshStore(t)
+	ctx := context.Background()
+	consents := NewConsentStore(pool)
+	inventory := NewPromotionStore(pool)
+	p := privacyapp.PromotePorts{ConsentPorts: consentAppPorts(consents), Inventory: inventory}
+	if _, err := privacyapp.GrantConsent(ctx, p.ConsentPorts, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.GrantDTO{TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1", Revision: 1}); err != nil {
+		t.Fatal(err)
+	}
+	p.Sanitizer = reviewSQLSanitizer(func(context.Context, []byte) ([]byte, domain.SanitizeVerdict, error) {
+		if _, err := privacyapp.RevokeConsent(ctx, p.ConsentPorts, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.RevokeDTO{Revision: 2}); err != nil {
+			t.Fatal(err)
+		}
+		return []byte("minimized"), domain.VerdictPass, nil
+	})
+	if _, _, err := privacyapp.Propose(ctx, p, privacyapp.Caller{ContributorID: "review-owner"}, privacyapp.PromotionDTO{ImageID: "review-race-image", CapturedAt: time.Now().Add(time.Second), PerImageAllowed: true, Source: []byte("synthetic")}); err != nil {
+		t.Fatal(err)
+	}
+	current, err := consents.Get(ctx, "review-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	active, err := inventory.ListActiveByOwner(ctx, "review-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.State != domain.StateRevoked || len(active) != 1 || active[0].ConsentRevision != 1 {
+		t.Fatalf("current=%+v active=%+v", current, active)
+	}
+	t.Log("real SQL: revocation revision 2 committed before insertion; ACTIVE revision 1 inserted anyway")
+}

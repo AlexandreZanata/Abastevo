@@ -1,0 +1,42 @@
+package http
+
+import (
+	"context"
+	"fmt"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	"github.com/go-chi/chi/v5"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestAuditDifferentForwardedClientsShareProxyQuota(t *testing.T) {
+	counts := map[string]int{}
+	h := Handler{Registrar: noRegistrar{}, QuotaSecret: []byte(strings.Repeat("x", 32)), CheckQuota: func(_ context.Context, s, op string) (time.Duration, error) {
+		counts[s]++
+		if counts[s] > 60 {
+			return time.Hour, domain.ErrQuotaExceeded
+		}
+		return 0, nil
+	}}
+	router := chi.NewRouter()
+	h.RegisterRoutes(router)
+	for i := 0; i < 61; i++ {
+		req := httptest.NewRequest("POST", "/v1/identity/challenges", strings.NewReader(fmt.Sprintf(`{"fingerprint":"fp:%064x","purpose":"REGISTER"}`, i+1)))
+		req.RemoteAddr = "172.20.0.2:12345"
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Real-IP", fmt.Sprintf("192.0.2.%d", i+1))
+		req.Header.Set("X-Forwarded-For", fmt.Sprintf("192.0.2.%d", i+1))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		want := 503
+		if i == 60 {
+			want = 429
+		}
+		if rec.Code != want {
+			t.Fatalf("%d: got %d want %d", i, rec.Code, want)
+		}
+	}
+	t.Log("61 distinct forwarded clients/fingerprints share one proxy-peer bucket; 61st refused before registrar")
+}

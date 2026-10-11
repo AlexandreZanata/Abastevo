@@ -1,0 +1,30 @@
+[
+  {
+    "name": "com.anpfuel.application.usecase.privacy.TrainingConsentUseCaseTest",
+    "tests": "10",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.data.remote.TrainingConsentHttpClientTest",
+    "tests": "9",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.data.remote.AnpFileDownloaderTest",
+    "tests": "10",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.data.repository.RoomContributionOutboxRepositoryTest",
+    "tests": "14",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  }
+]

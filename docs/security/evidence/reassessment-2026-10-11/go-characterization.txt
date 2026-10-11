@@ -1,0 +1,35 @@
+=== RUN   TestReviewRevokeDoesNotTombstoneExistingDerivative
+    review_probe_test.go:35: revoke signals deletion but leaves derivative ACTIVE and absent from purge inventory
+--- PASS: TestReviewRevokeDoesNotTombstoneExistingDerivative (0.00s)
+=== RUN   TestReviewRevokeDuringSanitizeStillCommits
+    review_probe_test.go:61: revoked revision 2 completed before inventory commit; ACTIVE revision 1 still inserted
+--- PASS: TestReviewRevokeDuringSanitizeStillCommits (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application	1.012s
+=== RUN   TestReviewFailedObjectWriteBecomesSuccessfulReplay
+    review_probe_test.go:36: first write failed, second execution returned success without retrying object write
+--- PASS: TestReviewFailedObjectWriteBecomesSuccessfulReplay (0.00s)
+=== RUN   TestReviewOutputUsesPayloadRevisionNotCommittedRevision
+    review_probe_test.go:54: inventory consent revision 3, bytes stored under payload revision 1
+--- PASS: TestReviewOutputUsesPayloadRevisionNotCommittedRevision (0.00s)
+=== RUN   TestReviewPurgeFailuresAreDiscardedByJob
+    review_probe_test.go:65: copy deletion failed; job returned success and discarded failure report
+--- PASS: TestReviewPurgeFailuresAreDiscardedByJob (0.00s)
+=== RUN   TestReviewFailedErasureIsSkippedOnQueueRetry
+    review_probe_test.go:85: request FAILED after scope failure; queue retry returns success without resuming cleanup
+--- PASS: TestReviewFailedErasureIsSkippedOnQueueRetry (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs	1.015s
+=== RUN   TestReviewSanitizerPassKeepsOutsidePriceRegion
+    review_sanitizer_test.go:40: PASS retained full 100x50 frame and synthetic non-price region; metadata stripping is not content anonymization
+--- PASS: TestReviewSanitizerPassKeepsOutsidePriceRegion (0.01s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters	1.019s
+=== RUN   TestReviewFailedDeletionCannotPassRouteAuthOnRetry
+    review_probe_test.go:27: durable intent exists; same route's mandatory ValidateAccess rejects retry before cleanup callback
+--- PASS: TestReviewFailedDeletionCannotPassRouteAuthOnRetry (0.00s)
+=== RUN   TestReviewDeleteReleasesHourlySignupBudget
+    review_probe_test.go:47: 101 creations at fixed clock passed 100/hour cap by deleting credentials after each signup
+--- PASS: TestReviewDeleteReleasesHourlySignupBudget (0.01s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application	1.017s

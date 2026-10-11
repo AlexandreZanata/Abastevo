@@ -1,0 +1,25 @@
+package oidc
+
+import (
+	"context"
+	"encoding/base64"
+	"testing"
+	"time"
+)
+
+func TestReviewUnknownKidForcesFetchForEveryInvalidToken(t *testing.T) {
+	v, _, _ := testSetup(t, "RS256")
+	source := &countingSource{inner: v.Keys}
+	v.Keys = &CachedKeys{Source: source, TTL: time.Hour, Now: v.Clock}
+	encode := func(s string) string { return base64.RawURLEncoding.EncodeToString([]byte(s)) }
+	raw := encode(`{"alg":"RS256","kid":"synthetic-never-issued"}`) + "." + encode(`{"iss":"https://accounts.google.com","sub":"synthetic","aud":"anpfuel-backend","exp":1900000000,"nonce":"synthetic"}`) + "." + encode("invalid-signature")
+	for i := 0; i < 20; i++ {
+		if _, err := v.Verify(context.Background(), "google", raw, testAudience, "synthetic"); err == nil {
+			t.Fatal("invalid token admitted")
+		}
+	}
+	if source.count() != 21 {
+		t.Fatalf("fetches=%d", source.count())
+	}
+	t.Log("20 unverified unknown-kid tokens triggered 21 source fetches inside one fresh TTL; no valid provider credential required")
+}
