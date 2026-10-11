@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -861,48 +862,89 @@ func (s *PGStore) ReactivateAccount(ctx context.Context, accountID string) error
 	})
 }
 
-// DeleteAccount marks the account deleted, revokes every session family
-// and drops address and provider bindings atomically. The account row
-// stays as an audit record; later signups mint new accounts.
-func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error {
+// DeleteAccount marks the account deleted, revokes every session family,
+// captures contributor bindings into durable erasure intents BEFORE
+// dropping them, and drops address and provider bindings — all in one
+// transaction, so revocation and intent are atomic (SEC04-B). The
+// account row stays as an audit record; later signups mint new
+// accounts. It returns the captured contributor IDs for scope cleanup.
+func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix int64) ([]string, error) {
 	id, err := mustUUID(accountID)
 	if err != nil {
-		return domain.ErrAccountNotFound
+		return nil, domain.ErrAccountNotFound
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := account.New(tx)
 	if _, err := q.GetAccountByID(ctx, id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrAccountNotFound
+			return nil, domain.ErrAccountNotFound
 		}
-		return err
+		return nil, err
 	}
 	if err := q.SetAccountStatus(ctx, account.SetAccountStatusParams{
 		Status: domain.StatusDeleted,
 		ID:     id,
 	}); err != nil {
-		return err
+		return nil, err
 	}
 	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
 		Now:       stamp(nowUnix),
 		AccountID: id,
 	}); err != nil {
-		return err
+		return nil, err
+	}
+	var contributors []string
+	if rows, err := q.ListBindings(ctx, id); err != nil {
+		return nil, err
+	} else {
+		for _, row := range rows {
+			contributors = append(contributors, row.ContributorID)
+		}
+	}
+	sort.Strings(contributors)
+	for _, contributor := range contributors {
+		if _, err := q.InsertErasureIntent(ctx, account.InsertErasureIntentParams{
+			AccountID: id, ContributorID: contributor, CreatedAt: stamp(nowUnix),
+		}); err != nil {
+			return nil, err
+		}
 	}
 	if err := q.DeleteAccountAddresses(ctx, id); err != nil {
-		return err
+		return nil, err
 	}
 	if err := q.DeleteAccountProviders(ctx, id); err != nil {
-		return err
+		return nil, err
 	}
 	if err := q.DeleteAccountBindings(ctx, id); err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return contributors, nil
+}
+
+// ListErasureIntents returns the durable contributor intents of one
+// account for enqueue replay after a crash between revocation and
+// scope cleanup (SEC04-B/D).
+func (s *PGStore) ListErasureIntents(ctx context.Context, accountID string) ([]string, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrAccountNotFound
+	}
+	rows, err := account.New(s.pool).ListErasureIntentsByAccount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.ContributorID)
+	}
+	return out, nil
 }
 
 func toBinding(row account.AccountContributorBinding) domain.ContributorBinding {

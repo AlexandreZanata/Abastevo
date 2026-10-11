@@ -125,7 +125,10 @@ func freshLinkService(t *testing.T) *linkService {
 		Mail:        &integMail{},
 		MailEnabled: true,
 		Store:       NewPGStore(pool),
-		Verifier:    verifier,
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
+		Verifier: verifier,
 		CodeGen: func() (string, error) {
 			genMu.Lock()
 			defer genMu.Unlock()

@@ -46,6 +46,12 @@ type AccountEmailCode struct {
 	ConsumedAt  pgtype.Timestamptz `json:"consumed_at"`
 }
 
+type AccountErasureIntent struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type AccountKeyCredential struct {
 	AccountID    pgtype.UUID `json:"account_id"`
 	UsernameHash string      `json:"username_hash"`

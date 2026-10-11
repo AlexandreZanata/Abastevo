@@ -46,6 +46,7 @@ var (
 	ErrSessionExpired         = errors.New("account: session expired")
 	ErrAggregateExhausted     = errors.New("account: aggregate admission exhausted")
 	ErrSessionBudgetExhausted = errors.New("account: session budget exhausted")
+	ErrErasureWiringMissing   = errors.New("account: erasure wiring missing")
 )
 
 // Clock is the only time source portable logic may use; tests inject a fake.
@@ -171,6 +172,8 @@ func VerdictCode(err error) string {
 		return "admission-exhausted"
 	case errors.Is(err, ErrSessionBudgetExhausted):
 		return "session-budget-exhausted"
+	case errors.Is(err, ErrErasureWiringMissing):
+		return "erasure-wiring-missing"
 	default:
 		return "invalid-value"
 	}

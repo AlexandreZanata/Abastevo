@@ -44,7 +44,13 @@ type Store interface {
 	GetAccount(ctx context.Context, accountID string) (domain.Account, bool, error)
 	SuspendAccount(ctx context.Context, accountID string, nowUnix int64) error
 	ReactivateAccount(ctx context.Context, accountID string) error
-	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) error
+	// DeleteAccount revokes, captures contributor bindings into
+	// durable erasure intents and unlinks — atomically — returning
+	// the captured contributor IDs for scope cleanup (SEC04-B).
+	DeleteAccount(ctx context.Context, accountID string, nowUnix int64) ([]string, error)
+	// ListErasureIntents replays durable intents after a crash
+	// between revocation and scope cleanup (SEC04-B/D).
+	ListErasureIntents(ctx context.Context, accountID string) ([]string, error)
 	BindContributor(ctx context.Context, binding domain.ContributorBinding, auditID string) error
 	UnbindContributor(ctx context.Context, accountID, contributorID, auditID string, nowUnix int64) error
 	ListBindings(ctx context.Context, accountID string) ([]domain.ContributorBinding, error)
@@ -79,6 +85,17 @@ type AuthResult struct {
 	Created bool
 }
 
+// DeletionReceipt is the safe acknowledgment for account deletion
+// (SEC04-A): the recorded erasure intent, not completion. Scope
+// execution follows in the worker through the deletion ledger;
+// ContributorIDs stay server-side (intents table + scope ports) and
+// never travel to the client beyond the requested flag.
+type DeletionReceipt struct {
+	AccountID        string
+	ContributorIDs   []string
+	ErasureRequested bool
+}
+
 // Service wires frozen policy to the Store and MailSender ports.
 type Service struct {
 	Clock  domain.Clock
@@ -92,11 +109,17 @@ type Service struct {
 	Store       Store
 	Verifier    domain.ProviderVerifier
 	KeyProver   domain.KeyProver
-	CodeGen     func() (string, error)
-	TokenGen    func() (string, error)
-	AliasGen    func() (string, error)
-	KeyGen      func() (string, error)
-	IDGen       func() (string, error)
+	// RequestErasure enqueues owned scope cleanup for the captured
+	// contributor IDs plus account-social erasure after revocation
+	// (SEC04-B). Nil refuses deletion closed: unwired deletion would
+	// repeat the AUD-05 disconnect. Tests set an explicit fake; the
+	// composition root wires privacy jobs plus feedback erasure.
+	RequestErasure func(ctx context.Context, accountID string, contributorIDs []string) error
+	CodeGen        func() (string, error)
+	TokenGen       func() (string, error)
+	AliasGen       func() (string, error)
+	KeyGen         func() (string, error)
+	IDGen          func() (string, error)
 }
 
 // RequestCode issues a code when quota and cooldown allow. Unknown

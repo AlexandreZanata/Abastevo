@@ -17,6 +17,7 @@ func testStatusService(t *testing.T) (*Service, *fakeClock) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	svc.RequestErasure = func(_ context.Context, _ string, _ []string) error { return nil }
 	svc.Verifier = &oidc.Verifier{
 		Clock:    func() time.Time { return time.Unix(1_700_000_000, 0) },
 		Issuers:  map[string]string{"google": "https://accounts.google.com", "apple": "https://appleid.apple.com"},
@@ -98,7 +99,7 @@ func TestReactivateDeletedRefuses(t *testing.T) {
 	ctx := context.Background()
 	auth := statusSignup(t, svc, "del-01@example.invalid", "482916")
 
-	if err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
+	if _, err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
 		t.Fatalf("DeleteAccount: %v", err)
 	}
 	if err := svc.ReactivateAccount(ctx, auth.Account.ID); !errors.Is(err, domain.ErrAccountDeleted) {
@@ -114,14 +115,14 @@ func TestDeleteDropsBindingsAndSessions(t *testing.T) {
 	if err := svc.SuspendAccount(ctx, "missing-id"); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Errorf("suspend unknown must be not-found, got %v", err)
 	}
-	if err := svc.DeleteAccount(ctx, "missing-id"); !errors.Is(err, domain.ErrAccountNotFound) {
+	if _, err := svc.DeleteAccount(ctx, "missing-id"); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Errorf("delete unknown must be not-found, got %v", err)
 	}
-	if err := svc.DeleteAccount(ctx, ""); !errors.Is(err, domain.ErrAccountNotFound) {
+	if _, err := svc.DeleteAccount(ctx, ""); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Errorf("delete empty must be not-found, got %v", err)
 	}
 
-	if err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
+	if _, err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
 		t.Fatalf("DeleteAccount: %v", err)
 	}
 	if _, err := svc.ValidateAccess(ctx, auth.Session.FamilyID, auth.Session.AccessToken); !errors.Is(err, domain.ErrAccountDeleted) {
@@ -168,7 +169,7 @@ func TestLinkRefusedOnDeadAccounts(t *testing.T) {
 		t.Errorf("unlink on suspended must refuse suspended, got %v", err)
 	}
 
-	if err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
+	if _, err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.LinkProvider(ctx, auth.Account.ID, "google", "dummy.token.parts", "anpfuel-backend", "n-dead-2"); !errors.Is(err, domain.ErrAccountDeleted) {

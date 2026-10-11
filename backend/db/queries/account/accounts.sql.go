@@ -502,6 +502,30 @@ func (q *Queries) InsertCode(ctx context.Context, arg InsertCodeParams) error {
 	return err
 }
 
+const insertErasureIntent = `-- name: InsertErasureIntent :execrows
+
+INSERT INTO account_erasure_intents (account_id, contributor_id, created_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (account_id, contributor_id) DO NOTHING
+`
+
+type InsertErasureIntentParams struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+// SEC04-B durable erasure intents: recorded in the DeleteAccount
+// transaction before bindings drop, so revocation and intent are
+// atomic. Replay converges on the natural key.
+func (q *Queries) InsertErasureIntent(ctx context.Context, arg InsertErasureIntentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertErasureIntent, arg.AccountID, arg.ContributorID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertFamily = `-- name: InsertFamily :exec
 INSERT INTO account_session_families
     (id, account_id, refresh_salt, refresh_hash, access_salt, access_hash,
@@ -689,6 +713,33 @@ func (q *Queries) ListBindings(ctx context.Context, accountID pgtype.UUID) ([]Ac
 			&i.KeyFingerprint,
 			&i.BoundAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listErasureIntentsByAccount = `-- name: ListErasureIntentsByAccount :many
+SELECT account_id, contributor_id, created_at
+FROM account_erasure_intents
+WHERE account_id = $1
+ORDER BY contributor_id
+`
+
+func (q *Queries) ListErasureIntentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]AccountErasureIntent, error) {
+	rows, err := q.db.Query(ctx, listErasureIntentsByAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AccountErasureIntent
+	for rows.Next() {
+		var i AccountErasureIntent
+		if err := rows.Scan(&i.AccountID, &i.ContributorID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -261,3 +261,18 @@ WHERE issued_at < @before;
 -- name: DeleteCodeByID :execrows
 DELETE FROM account_email_codes
 WHERE id = @id;
+
+-- SEC04-B durable erasure intents: recorded in the DeleteAccount
+-- transaction before bindings drop, so revocation and intent are
+-- atomic. Replay converges on the natural key.
+
+-- name: InsertErasureIntent :execrows
+INSERT INTO account_erasure_intents (account_id, contributor_id, created_at)
+VALUES (@account_id, @contributor_id, @created_at)
+ON CONFLICT (account_id, contributor_id) DO NOTHING;
+
+-- name: ListErasureIntentsByAccount :many
+SELECT account_id, contributor_id, created_at
+FROM account_erasure_intents
+WHERE account_id = @account_id
+ORDER BY contributor_id;
