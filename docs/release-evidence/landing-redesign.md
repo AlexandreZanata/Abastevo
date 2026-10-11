@@ -32,10 +32,6 @@
 - Validation: `git status --short --branch` clean, `git diff --stat` empty, `git log -5 --oneline`, `git worktree list`, `git diff --check` clean, `bash scripts/scan-secrets.sh` passed. No image-generation call spent; superseded AI concept stays excluded.
 - No deployment, DNS/CDN/VPS, store listing, URL submission, issue/PR/merge/wiki, or production/Android acceptance follows from LR00.
 
-## Next
-
-LR01 — freeze actual capability and claim inventory (depends on LR00).
-
 ## LR29 performance record — 2026-10-11
 
 Measured on emitted `landing/dist` (not projections): CSS gzip 4,075 B
@@ -44,3 +40,13 @@ Measured on emitted `landing/dist` (not projections): CSS gzip 4,075 B
 (new per-file budget 120 KiB, PNG masters refused by the checker). `npm run
 check` green. No new images added; full Core Web Vitals still needs field
 measurement after deployment (owner).
+
+## LR32 accessibility record — 2026-10-11
+
+Measured/static (not browser) exit: text contrast navy/white 16.92,
+`--text-muted` #44506b on white 8.06 / on surface 7.57, blue/white 8.12 both
+ways (all ≥ AA 4.5); primary controls ship ≥44px hit areas with a visible
+3px focus ring; smooth scroll yields to `prefers-reduced-motion`;
+disclosure stays native `details/summary`. Live 200% zoom reflow and
+keyboard-only traversal still need a real browser pass (no browser in this
+environment); automated anchor/heading/skip-link coverage holds.
