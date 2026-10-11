@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR05 2026-10-11: LOCAL_DONE on branch `landing`, public-read marketing set. 6 clean 1220×2712 captures (stations-list, station-detail, station-sources, community-feed, history, week-picker) in media [README](../assets/landing/redesign-20261011/README.md)/manifest (14 total); read-only authorized phone session, Sorriso kept, no mutations; notification + secure-screen frames rejected. 100% visual review + hash/dim checks, diff-check clean, secrets passed. Next: LR06 conditional states.
+
 - Landing redesign LR04 2026-10-11: LOCAL_DONE on branch `landing`, safe capture environment. Standard (pt-BR, 1.0 font, portrait, native res) + seeder ban (`clearAppStorage:262`) + device rule in media [README](../assets/landing/redesign-20261011/README.md)/manifest; no new capture, 8/8 hashes re-verified. Diff-check clean, secrets passed. Next: LR05 marketing capture set (needs device session).
 
 - Landing redesign LR03 2026-10-11: LOCAL_DONE on branch `landing`, visual contract revision. Reference-v2 composition frozen; token supersessions (1152px width, Manrope/Source Sans, teal/pale palette, frame radii + one device shadow) + measured AA contrast + logo provenance in [contract](../product/LANDING_CONTENT_CONTRACT.md). Wireframes well-formed/script-free, diff-check clean, secrets passed. Next: LR04 capture environment.
