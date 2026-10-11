@@ -86,3 +86,23 @@ index verification stays explicitly pending: no Search Console/Bing
 permissions or keys available, site undeployed, nothing submitted, no
 receipts. Owed after publish: ownership verification, crawler-access check,
 sitemap availability and per-URL submission receipts.
+
+## LR39 SEO/AI-search report — 2026-10-11
+
+Verified locally (emitted dist, tests green): normal indexable HTML on 25
+pages; semantic pt-BR text; alt/context on all gallery/tutorial images;
+stable canonical URLs with sitemap↔dist parity and true lastmod-free
+entries; matching JSON-LD (WebSite/Organization/WebPage/CollectionPage/
+Article/BreadcrumbList, no fabricated rating/Offer/FAQ/HowTo); crawlable
+internal links with zero dead ends; preview noindex guard on non-404 pages;
+robots separates search crawlers (allowed, incl. OAI-SearchBot) from
+training crawlers (GPTBot/ClaudeBot disallowed) with user fetchers named
+transparently; llms.txt as optional factual aid (hub/chapters listed), not a
+ranking instrument.
+
+Owed per source, none claimed: Google/Bing indexing and rich results
+(undeployed, no submissions); IndexNow key + submissions (owner action);
+Search Console/Bing Webmaster ownership, diagnostics and receipts;
+answer-engine citations (no guaranteed ranking or AI placement anywhere);
+field Core Web Vitals; live zoom/keyboard browser pass. No doorway pages,
+no keyword stuffing, no hidden bot-only content, no guaranteed ranking.
