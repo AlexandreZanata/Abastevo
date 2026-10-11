@@ -45,7 +45,7 @@ type Service interface {
 	LinkProvider(ctx context.Context, accountID, provider, rawToken, audience, nonce string) (domain.ProviderLink, error)
 	UnlinkProvider(ctx context.Context, accountID, provider string) error
 	ListProviders(ctx context.Context, accountID string) ([]domain.ProviderLink, error)
-	DeleteAccount(ctx context.Context, accountID string) error
+	DeleteAccount(ctx context.Context, accountID string) (application.DeletionReceipt, error)
 	BindContributor(ctx context.Context, familyID, accessToken, contributorID, proof string) (domain.ContributorBinding, error)
 	UnbindContributor(ctx context.Context, familyID, accessToken, contributorID string) error
 	ListBindings(ctx context.Context, familyID, accessToken string) ([]domain.ContributorBinding, error)
@@ -160,6 +160,8 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 	case "key-invalid":
 		status, code, msg = http.StatusUnauthorized, "account.key-invalid", "valid account key required"
 	case "key-collision":
+		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
+	case "erasure-wiring-missing":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
@@ -488,9 +490,10 @@ func bindingJSONOf(b domain.ContributorBinding) bindingJSON {
 }
 
 // deleteAccount erases the session-owned account (P13-T04A rights
-// deletion): status flips to deleted, every session family is revoked
-// and address plus provider bindings drop. The account row stays as an
-// audit record; later signups mint new accounts.
+// deletion + SEC04-B linkage): status flips to deleted, every session
+// family is revoked, bindings drop with durable erasure intents, and
+// owned scope cleanup is enqueued. The response is a receipt of the
+// recorded intent (SEC04-A) — acknowledgement, never completion.
 func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
 		FamilyID    string `json:"family_id"`
@@ -505,11 +508,14 @@ func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if err := h.Service.DeleteAccount(r.Context(), accountID); err != nil {
+	receipt, err := h.Service.DeleteAccount(r.Context(), accountID)
+	if err != nil {
 		fail(w, r, err)
 		return
 	}
-	write(w, r, http.StatusOK, map[string]string{"status": "deleted"})
+	write(w, r, http.StatusOK, map[string]any{
+		"status": "deleted", "erasure_requested": receipt.ErasureRequested,
+	})
 }
 
 // listProviders returns the provider bindings of the session-owned

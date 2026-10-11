@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
@@ -28,6 +29,14 @@ type MemStore struct {
 	keyCreds      map[string]domain.KeyCredential
 	keyByUsername map[string]string
 	keyByLookup   map[string]string
+	// intents holds durable account-erasure intents (SEC04-B):
+	// contributor IDs captured at deletion for scope cleanup.
+	intents map[erasureIntentKey]int64
+}
+
+type erasureIntentKey struct {
+	accountID     string
+	contributorID string
 }
 
 // NewMemStore returns an empty memory store.
@@ -47,6 +56,7 @@ func NewMemStore() *MemStore {
 		keyCreds:      map[string]domain.KeyCredential{},
 		keyByUsername: map[string]string{},
 		keyByLookup:   map[string]string{},
+		intents:       map[erasureIntentKey]int64{},
 	}
 }
 
@@ -576,17 +586,30 @@ func (m *MemStore) ReactivateAccount(_ context.Context, accountID string) error 
 	return m.setStatusLocked(accountID, domain.StatusActive)
 }
 
-// DeleteAccount marks the account deleted, revokes every session family
-// and drops address and provider bindings. The account row stays as an
-// audit record; a later signup with the same address mints a new account
-// without reputation carryover.
-func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) error {
+// DeleteAccount marks the account deleted, revokes every session family,
+// captures contributor bindings into durable erasure intents BEFORE
+// dropping them, and drops address and provider bindings — all under
+// one lock, so revocation and intent are atomic. The account row stays
+// as an audit record; a later signup with the same address mints a new
+// account without reputation carryover. It returns the captured
+// contributor IDs for scope cleanup.
+func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix int64) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.setStatusLocked(accountID, domain.StatusDeleted); err != nil {
-		return err
+		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	var contributors []string
+	if set, ok := m.bindings[accountID]; ok {
+		for contributor := range set {
+			contributors = append(contributors, contributor)
+			delete(m.byContributor, contributor)
+			m.intents[erasureIntentKey{accountID: accountID, contributorID: contributor}] = nowUnix
+		}
+		delete(m.bindings, accountID)
+	}
+	sort.Strings(contributors)
 	for hash, a := range m.accounts {
 		if a.ID == accountID {
 			delete(m.accounts, hash)
@@ -599,13 +622,23 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		}
 		delete(m.links, accountID)
 	}
-	if set, ok := m.bindings[accountID]; ok {
-		for contributor := range set {
-			delete(m.byContributor, contributor)
+	return contributors, nil
+}
+
+// ListErasureIntents returns the durable contributor intents of one
+// account for enqueue replay after a crash between revocation and
+// scope cleanup (SEC04-B/D).
+func (m *MemStore) ListErasureIntents(_ context.Context, accountID string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []string
+	for k := range m.intents {
+		if k.accountID == accountID {
+			out = append(out, k.contributorID)
 		}
-		delete(m.bindings, accountID)
 	}
-	return nil
+	sort.Strings(out)
+	return out, nil
 }
 
 // BindContributor records a verified contributor binding, refusing

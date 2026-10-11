@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -56,7 +57,10 @@ func newProviderHandler(t *testing.T) *providerFixture {
 		Mail:        &testMail{},
 		MailEnabled: true,
 		Store:       application.NewMemStore(),
-		Verifier:    verifier,
+		RequestErasure: func(_ context.Context, _ string, _ []string) error {
+			return nil
+		},
+		Verifier: verifier,
 		CodeGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()
