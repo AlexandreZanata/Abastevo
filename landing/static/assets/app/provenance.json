@@ -1,0 +1,404 @@
+{
+  "date": "2026-10-11",
+  "tool": "PIL",
+  "params": {
+    "format": "WEBP",
+    "quality": 85,
+    "method": 6,
+    "filter": "LANCZOS",
+    "widths": [
+      360,
+      720,
+      1080
+    ]
+  },
+  "need": "Responsive gallery/tutorial delivery without shipping 1220px masters; masters stay canonical under docs/assets.",
+  "note": "Downscale-only, aspect preserved, no crop/retouch/upscale. Not yet referenced by pages or fingerprinted by the build; wiring arrives at LR09. Alt text and per-page choice land with LR11/LR14.",
+  "license": "Same app-capture provenance as masters (manifest); no third-party device templates.",
+  "outputs": [
+    {
+      "file": "anp-prices-360w.webp",
+      "master": "anp-prices.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 19068,
+      "sha256": "1b95cbd3e2bed02efbb853b8ac001a159fb2efb64ceaac7be795fe7ade548a56"
+    },
+    {
+      "file": "anp-prices-720w.webp",
+      "master": "anp-prices.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 43720,
+      "sha256": "6c06aa6db6b83ff8dd2de0fc504d189d7d889f1e8eac1946c96ae83293c75e8f"
+    },
+    {
+      "file": "anp-prices-1080w.webp",
+      "master": "anp-prices.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 68840,
+      "sha256": "5e668ab0059cbfbf2aa2b9747c1ea4d3f8132a2756b834b5be9dabd679a6b982"
+    },
+    {
+      "file": "city-picker-360w.webp",
+      "master": "city-picker.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 11946,
+      "sha256": "f49e47e98fe734bdbcee484a430147c293384ee0f822aed87c94c38505f1df22"
+    },
+    {
+      "file": "city-picker-720w.webp",
+      "master": "city-picker.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 27740,
+      "sha256": "bbd84e5fdebecc06050e4e7c554cc36ae3bdd24a3bf4c3898f90b0978a073455"
+    },
+    {
+      "file": "city-picker-1080w.webp",
+      "master": "city-picker.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 44810,
+      "sha256": "6638550dc42a2870a4a8773cd9b724adee024aa3f9fa69f99a2493fba0946e8c"
+    },
+    {
+      "file": "community-empty-360w.webp",
+      "master": "community-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24194,
+      "sha256": "ab78e69728c749a4e26d9e8b4efbb460dd6f58a3502c28202455dfd07512cefe"
+    },
+    {
+      "file": "community-empty-720w.webp",
+      "master": "community-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 58088,
+      "sha256": "d9e9a9d3530932d0740c87bf470688eaab102fa8e011be54dacfc4bed965a52a"
+    },
+    {
+      "file": "community-empty-1080w.webp",
+      "master": "community-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 88914,
+      "sha256": "04fd68fad8f45fbe1b7dc871ba82d115dc6ceef81311c8a27b73e68d7400d555"
+    },
+    {
+      "file": "community-feed-360w.webp",
+      "master": "community-feed.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24588,
+      "sha256": "1669a446e607d9cbc0683a53f70be00ffbe95643c7188c1a8d06f1d53de5453b"
+    },
+    {
+      "file": "community-feed-720w.webp",
+      "master": "community-feed.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 57502,
+      "sha256": "b1577c52ca6ce80b50fd95d5b1ad4564af491fa92d109544dd95813f5651f2cb"
+    },
+    {
+      "file": "community-feed-1080w.webp",
+      "master": "community-feed.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 90536,
+      "sha256": "450dea486b32c5a7fb2356c5bc140832074792490a669acb9d1c6d2c964dd207"
+    },
+    {
+      "file": "contributions-empty-360w.webp",
+      "master": "contributions-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 12212,
+      "sha256": "5704ce8c60aedbb863ac87c4417e6f4b7f8c53a2c3f5b1228e110c81be2a6af0"
+    },
+    {
+      "file": "contributions-empty-720w.webp",
+      "master": "contributions-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 28568,
+      "sha256": "e05481aac64f3c17a0d62a2be35bb8198cdb23fff65d4b1dcdcf5c20b608bae4"
+    },
+    {
+      "file": "contributions-empty-1080w.webp",
+      "master": "contributions-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 45738,
+      "sha256": "6bc60525437bb64bdc5c461b05bff1cd9c417e37531f64a2b2fe760d0cce574a"
+    },
+    {
+      "file": "explore-dark-360w.webp",
+      "master": "explore-dark.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 27222,
+      "sha256": "58c861db9d8b8e58b0a74c3a5b923f6ada6ce9811d39ec7b32a0de9157bbc45f"
+    },
+    {
+      "file": "explore-dark-720w.webp",
+      "master": "explore-dark.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 61280,
+      "sha256": "c41047b6eaf72f33b34c57960ca8d961c4a8802d3bbe71d0d11ca45663e3a99f"
+    },
+    {
+      "file": "explore-dark-1080w.webp",
+      "master": "explore-dark.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 95430,
+      "sha256": "303ccf6080efd473a8eae2fc6ca4f3fa00b7654e73d8116b32db7d662fc9c85c"
+    },
+    {
+      "file": "explore-light-360w.webp",
+      "master": "explore-light.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 27366,
+      "sha256": "a3a22321940f7c0d2d7256bbd80d2824dd9f01a02fd37ce4946f11e6c64f052a"
+    },
+    {
+      "file": "explore-light-720w.webp",
+      "master": "explore-light.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 61896,
+      "sha256": "51935d2a4f18032e0a8951221ee4e15e9020f0db0b566e731280539dc626d5ed"
+    },
+    {
+      "file": "explore-light-1080w.webp",
+      "master": "explore-light.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 97168,
+      "sha256": "2799f5a9c697f51e841dbf03b38ee2d1ff05d972ae124b88e077c42c48ff75e6"
+    },
+    {
+      "file": "history-360w.webp",
+      "master": "history.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 18460,
+      "sha256": "145982ed289a6617ea3128f2f8d9929cdcd8eab2655f99dfac4f795356a98260"
+    },
+    {
+      "file": "history-720w.webp",
+      "master": "history.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 40720,
+      "sha256": "a9718db7a3bdd410de483d8e09a1851a62c6974a38548f0f475ea74aeea8ec66"
+    },
+    {
+      "file": "history-1080w.webp",
+      "master": "history.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 63820,
+      "sha256": "09fb618830ebbbfa90cc047ceaceff28216fda8050df4628f27785d6b3f6f0e4"
+    },
+    {
+      "file": "profile-guest-360w.webp",
+      "master": "profile-guest.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 25186,
+      "sha256": "6bd448ad621b8e9c02f26b56d3d316a20f77fbabbdd368ccf800b72d13a526be"
+    },
+    {
+      "file": "profile-guest-720w.webp",
+      "master": "profile-guest.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 60904,
+      "sha256": "36bf55d06275d993efabb018d96ae74e32b3c8bdc109626f938fda76c316e3c6"
+    },
+    {
+      "file": "profile-guest-1080w.webp",
+      "master": "profile-guest.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 95832,
+      "sha256": "5115aba8b1d1c83ee79fd1f1155dc9742bfe0b76fc499046191e6237644e37ab"
+    },
+    {
+      "file": "settings-360w.webp",
+      "master": "settings.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 26452,
+      "sha256": "0f50725c9e1addde0465be8003fee248afb15c7cc60d48f436ee2bc307c5fdba"
+    },
+    {
+      "file": "settings-720w.webp",
+      "master": "settings.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 55598,
+      "sha256": "f4ae8cb50108102b9af753768418a26defd49ee04bfbf615100aa022c605b7ec"
+    },
+    {
+      "file": "settings-1080w.webp",
+      "master": "settings.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 87728,
+      "sha256": "dca8567870699c526bb490f42e7daec3376693d494e6389aff2de9fd673a2d68"
+    },
+    {
+      "file": "station-detail-360w.webp",
+      "master": "station-detail.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23704,
+      "sha256": "ea04d50313fe937e468451a148e2a79b57c18384a9aa03c3c6188815594345e3"
+    },
+    {
+      "file": "station-detail-720w.webp",
+      "master": "station-detail.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 51194,
+      "sha256": "b368795a9497a195cc41916c9b15390dfdfa8f7d93b98d5c1ed881b6db9ce238"
+    },
+    {
+      "file": "station-detail-1080w.webp",
+      "master": "station-detail.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 79842,
+      "sha256": "2c0ae2497bedefce4430864b89af1c61431d6f9e857e3b08555f2935d3e543a8"
+    },
+    {
+      "file": "station-sources-360w.webp",
+      "master": "station-sources.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24238,
+      "sha256": "23e8dc5bc149a5f128b942a871ade70103b431fe25dc7c5c80cd5fca7ab40464"
+    },
+    {
+      "file": "station-sources-720w.webp",
+      "master": "station-sources.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 54718,
+      "sha256": "58c35fb1d8dce2b31d5dd5a90eea6c4526f4cb4f8300a4677520b133d93f9db0"
+    },
+    {
+      "file": "station-sources-1080w.webp",
+      "master": "station-sources.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 84172,
+      "sha256": "bd8251090163f64382996b9779b538893a8b634c151e251ed6bbcbdf81dbd810"
+    },
+    {
+      "file": "stations-list-360w.webp",
+      "master": "stations-list.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 23434,
+      "sha256": "64b1a75f1b86613d99c9da516495a1121c823d4f80d3b3552a922d2d407aea5d"
+    },
+    {
+      "file": "stations-list-720w.webp",
+      "master": "stations-list.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 52216,
+      "sha256": "550bbc733b9bb0440e56469c94d55d6c54c5010f4abcdd73ea87bc602d486244"
+    },
+    {
+      "file": "stations-list-1080w.webp",
+      "master": "stations-list.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 81968,
+      "sha256": "e7fb134c3d98b004aca4fd23b38f18d9d168f45868f7e8171b6f85146b0a321f"
+    },
+    {
+      "file": "vehicle-form-360w.webp",
+      "master": "vehicle-form.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 18880,
+      "sha256": "5a6e48fafded536336aedf4d484e85bc03740a6488f87b3ca0aa4ae1e8ad5134"
+    },
+    {
+      "file": "vehicle-form-720w.webp",
+      "master": "vehicle-form.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 41986,
+      "sha256": "4b2c8806b21d8d018b406705ed9555d7c0cb05251dbe6cb6b522317101b3f810"
+    },
+    {
+      "file": "vehicle-form-1080w.webp",
+      "master": "vehicle-form.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 68616,
+      "sha256": "112afb6a5ff44c0cf1c3f49b89f758059800c0992478b91543cf3e04c2b2598d"
+    },
+    {
+      "file": "vehicles-empty-360w.webp",
+      "master": "vehicles-empty.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 7870,
+      "sha256": "147c083a9ec4d9d6c8a73e407336c4b26c87c4afd175b48bb4b8c01dfe8f8b0f"
+    },
+    {
+      "file": "vehicles-empty-720w.webp",
+      "master": "vehicles-empty.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 18470,
+      "sha256": "48e344418f1e1effa204038ffa60cf1c473e0e6b7764d08222deccc59ad1cdce"
+    },
+    {
+      "file": "vehicles-empty-1080w.webp",
+      "master": "vehicles-empty.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 30668,
+      "sha256": "b3b619b3a1602c1253fc9476abbc466521b1827bc4991fab52a5ff7abb64c242"
+    },
+    {
+      "file": "week-picker-360w.webp",
+      "master": "week-picker.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 21968,
+      "sha256": "33e58ce13894d95e8150b42639764e4784ca3a5d88c8cd9159a454e90bf0eccd"
+    },
+    {
+      "file": "week-picker-720w.webp",
+      "master": "week-picker.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 50838,
+      "sha256": "44713d5f6b2a6e726ef1bfb8fd2a4c6c5db9ebefb27d6ca537961e46657a4d88"
+    },
+    {
+      "file": "week-picker-1080w.webp",
+      "master": "week-picker.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 79210,
+      "sha256": "aa68b51c0b4eb6a2b6fee1d348f4a9f38f15ec9687a8eec721cdae9d7de397df"
+    }
+  ]
+}
