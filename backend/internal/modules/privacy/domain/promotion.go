@@ -20,6 +20,11 @@ const (
 	// DerivativeActive marks inventory selectable for training while
 	// the owner's consent stays granted on current terms.
 	DerivativeActive = "ACTIVE"
+	OutputPending    = "PENDING"
+	OutputWriting    = "WRITING"
+	OutputReady      = "READY"
+	OutputPurging    = "PURGING"
+	OutputPurged     = "PURGED"
 	// DerivativeRevoked marks inventory excluded after consent
 	// withdrawal: the receipt stays for the restore filter while the
 	// purge path owns the bytes (CS10B/C).
@@ -80,6 +85,9 @@ type Derivative struct {
 	ConsentRevision  uint64
 	PromotedAt       time.Time
 	RevokedAt        time.Time
+	ObjectKey        string
+	OutputState      string
+	OutputLeaseUntil time.Time
 }
 
 // PromotionReceipt is the minimal auditable outcome: identifiers and
@@ -133,7 +141,7 @@ func ProposeDerivative(candidate PromotionCandidate, consent *Consent, verdict S
 		ContributorRef: consent.ContributorRef, SourceSHA256: strings.TrimSpace(candidate.SourceSHA256),
 		DerivativeSHA256: strings.TrimSpace(derivativeSHA), CapturedAt: candidate.CapturedAt,
 		TermsVersion: consent.TermsVersion, TermsDigest: consent.TermsDigest,
-		State: DerivativeActive, ConsentRevision: consent.Revision, PromotedAt: at,
+		State: DerivativeActive, OutputState: OutputPending, ConsentRevision: consent.Revision, PromotedAt: at,
 	}
 	return d, PromotionReceipt{
 		ImageID: d.ImageID, ContributorID: d.ContributorID,
@@ -166,6 +174,12 @@ func RevokeDerivative(d Derivative, at time.Time) (Derivative, bool, error) {
 // deny without error, so restore replay and worker commits share one
 // filter. Owner mismatch is an error (no oracle).
 func SelectableForTraining(d Derivative, consent *Consent, currentVersion, currentDigest string) bool {
+	return d.OutputState == OutputReady && CoveredByConsent(d, consent, currentVersion, currentDigest)
+}
+
+// CoveredByConsent is the admission gate; output becomes selectable only
+// after a separately verified READY receipt.
+func CoveredByConsent(d Derivative, consent *Consent, currentVersion, currentDigest string) bool {
 	if d.State != DerivativeActive {
 		return false
 	}

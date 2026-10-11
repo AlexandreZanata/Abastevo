@@ -38,6 +38,7 @@ func rowToDerivative(row dbprivacy.PrivacyTrainingDerivative) domain.Derivative 
 		TermsVersion: row.TermsVersion, TermsDigest: row.TermsDigest,
 		State: row.State, ConsentRevision: uint64(row.ConsentRevision),
 		PromotedAt: row.PromotedAt.Time, RevokedAt: row.RevokedAt.Time,
+		ObjectKey: row.ObjectKey, OutputState: row.OutputState, OutputLeaseUntil: row.OutputLeaseUntil.Time,
 	}
 }
 
@@ -62,7 +63,7 @@ func (s *PromotionStore) Put(ctx context.Context, d domain.Derivative) (bool, bo
 		return false, false, err
 	}
 	current := rowToConsent(consent)
-	if d.State != domain.DerivativeActive || !domain.SelectableForTraining(d, &current, d.TermsVersion, d.TermsDigest) {
+	if d.State != domain.DerivativeActive || !domain.CoveredByConsent(d, &current, d.TermsVersion, d.TermsDigest) {
 		return false, false, domain.ErrConsentRequired
 	}
 	fence, err := q.GetTrainingRevocation(ctx, d.ContributorID)
@@ -72,13 +73,17 @@ func (s *PromotionStore) Put(ctx context.Context, d domain.Derivative) (bool, bo
 	if err == nil && d.ConsentRevision <= uint64(fence.Revision) {
 		return false, false, domain.ErrConsentRequired
 	}
+	key := privacyapp.TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+	if key == "" {
+		return false, false, domain.ErrInvalidRequest
+	}
 	row, err := q.PutDerivative(ctx, dbprivacy.PutDerivativeParams{
 		ImageID: d.ImageID, ConsentRevision: int64(d.ConsentRevision),
 		ContributorID: d.ContributorID, ContributorRef: d.ContributorRef,
 		SourceSha256: d.SourceSHA256, DerivativeSha256: d.DerivativeSHA256,
 		CapturedAt: pgTime(d.CapturedAt), TermsVersion: d.TermsVersion,
 		TermsDigest: d.TermsDigest, State: d.State,
-		PromotedAt: pgTime(d.PromotedAt), RevokedAt: pgTime(d.RevokedAt),
+		PromotedAt: pgTime(d.PromotedAt), RevokedAt: pgTime(d.RevokedAt), ObjectKey: key, OutputState: domain.OutputPending,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -190,4 +195,16 @@ func (s *PromotionStore) resolveRevokeMark(ctx context.Context, imageID string, 
 // watermark already excludes all affected rows, even before this repair.
 func (s *PromotionStore) ReconcileRevocations(ctx context.Context) (int64, error) {
 	return dbprivacy.New(s.pool).TombstoneTrainingBatch(ctx)
+}
+
+// Get returns the committed identity; retries never re-derive its date/key.
+func (s *PromotionStore) Get(ctx context.Context, image string, revision uint64) (domain.Derivative, error) {
+	row, err := dbprivacy.New(s.pool).GetDerivative(ctx, dbprivacy.GetDerivativeParams{ImageID: image, ConsentRevision: int64(revision)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Derivative{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.Derivative{}, err
+	}
+	return rowToDerivative(row), nil
 }

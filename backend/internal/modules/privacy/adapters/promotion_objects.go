@@ -2,6 +2,8 @@ package adapters
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -107,6 +109,9 @@ func TrainingObjectsOrRefusal(objects *TrainingObjects) privacyapp.ObjectStore {
 
 // Put lands one minimized derivative under its inventoried key.
 func (s *TrainingObjects) Put(ctx context.Context, key string, body []byte) error {
+	if len(body) == 0 || len(body) > 3<<20 {
+		return errors.New("training objects: invalid byte size")
+	}
 	rawURL, err := s.presign(http.MethodPut, key)
 	if err != nil {
 		return err
@@ -145,4 +150,22 @@ func (s *TrainingObjects) Delete(ctx context.Context, key string) error {
 		return err
 	}
 	return evidencestorage.Delete(ctx, s.client, rawURL)
+}
+
+// HasHash validates bounded private output bytes before READY/replay.
+func (s *TrainingObjects) HasHash(ctx context.Context, key, expected string) (bool, error) {
+	rawURL, err := s.presign(http.MethodGet, key)
+	if err != nil {
+		return false, err
+	}
+	body, err := evidencestorage.Get(ctx, s.client, rawURL, 3<<20)
+	var status *evidencestorage.StatusError
+	if errors.As(err, &status) && status.Status == http.StatusNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:]) == expected, nil
 }

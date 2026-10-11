@@ -772,11 +772,11 @@ func run() error {
 			Propose: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
 				return privacyapp.Propose(ctx, promotePorts, caller, dto)
 			},
-			WriteOutput: func(ctx context.Context, key string, minimized []byte) error {
-				if cfg.R2 == nil {
+			Publish: func(ctx context.Context, result privacyapp.PromotionResult, minimized []byte) error {
+				if trainingObjects == nil {
 					return errors.New("training promotion: storage not configured")
 				}
-				return trainingObjects.Put(ctx, key, minimized)
+				return privacyapp.Publish(ctx, privacyapp.PublishPorts{Store: promotionStore, Objects: trainingObjects, Terms: trainingTerms, NewNonce: jobs.NewUUIDv4, Clock: time.Now}, result, minimized)
 			},
 		},
 		// Training-copy purge (CS10C, AT05): revoked derivatives past

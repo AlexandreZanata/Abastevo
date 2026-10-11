@@ -33,6 +33,7 @@ func (f *fakeTrainingInventory) Put(_ context.Context, d domain.Derivative) (boo
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	key := trainingKey(d.ImageID, d.ConsentRevision)
+	d.ObjectKey = TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
 	if _, ok := f.rows[key]; !ok {
 		f.rows[key] = d
 		return true, false, nil
@@ -246,4 +247,17 @@ func TestEraseTrainingFailsBytesForRetry(t *testing.T) {
 	if _, _, err := EraseTrainingContributor(ctx, trainingErasePorts(consents, inventory, objects), "c1"); err == nil {
 		t.Error("byte outage accepted")
 	}
+}
+
+func (f *fakeTrainingInventory) Get(_ context.Context, image string, revision uint64) (domain.Derivative, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.rows[trainingKey(image, revision)]
+	if !ok {
+		return domain.Derivative{}, domain.ErrNotFound
+	}
+	if d.ObjectKey == "" {
+		d.ObjectKey = TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+	}
+	return d, nil
 }

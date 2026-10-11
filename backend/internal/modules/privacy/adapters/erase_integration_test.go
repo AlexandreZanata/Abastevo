@@ -79,9 +79,9 @@ func seedErasureFixtures(t *testing.T, ctx context.Context, db pgx.Tx) {
 		VALUES ('` + eraseContributorID + `', '` + eraseToken + `', 'training-terms-v1', 'digest-v1', 'GRANTED', 1, now(), now())`)
 	exec(`INSERT INTO privacy_training_derivatives
 		(image_id, consent_revision, contributor_id, contributor_ref, source_sha256,
-		 derivative_sha256, captured_at, terms_version, terms_digest, state, promoted_at)
+		 derivative_sha256, captured_at, terms_version, terms_digest, state, promoted_at,object_key)
 		VALUES ('erase-derivative-1', 1, '` + eraseContributorID + `', '` + eraseToken + `', 'sh-erase',
-		 'dh-erase', now(), 'training-terms-v1', 'digest-v1', 'ACTIVE', now())`)
+		 'dh-erase', now(), 'training-terms-v1', 'digest-v1', 'ACTIVE', now(), 'training/v1/'||to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD')||'/erase-derivative-1-1.jpg')`)
 }
 
 type eraseTerms struct{}

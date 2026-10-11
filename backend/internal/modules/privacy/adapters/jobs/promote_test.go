@@ -2,6 +2,8 @@ package jobs
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -46,12 +48,14 @@ type fakePromoteFlow struct {
 	written  map[string][]byte
 }
 
-func (f *fakePromoteFlow) propose(_ context.Context, _ privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
+func (f *fakePromoteFlow) propose(_ context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
 	f.proposed = append(f.proposed, dto)
 	if f.err != nil {
 		return privacyapp.PromotionResult{}, nil, f.err
 	}
-	return privacyapp.PromotionResult{ImageID: dto.ImageID, DerivativeSHA256: "derivative", Replayed: f.replayed, PromotedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC)}, []byte("minimized"), nil
+	at := time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC)
+	sum := sha256.Sum256([]byte("minimized"))
+	return privacyapp.PromotionResult{ImageID: dto.ImageID, ContributorID: caller.ContributorID, ConsentRevision: dto.ConsentRevision, DerivativeSHA256: hex.EncodeToString(sum[:]), Replayed: f.replayed, PromotedAt: at, ObjectKey: privacyapp.TrainingObjectKey(dto.ImageID, dto.ConsentRevision, at)}, []byte("minimized"), nil
 }
 
 func promoteHandler(f *fakePromoteFlow) Promote {
@@ -64,8 +68,8 @@ func promoteHandler(f *fakePromoteFlow) Promote {
 			return raw, nil
 		},
 		Propose: f.propose,
-		WriteOutput: func(_ context.Context, key string, minimized []byte) error {
-			f.written[key] = minimized
+		Publish: func(_ context.Context, result privacyapp.PromotionResult, minimized []byte) error {
+			f.written[result.ObjectKey] = minimized
 			return nil
 		},
 	}
@@ -88,14 +92,14 @@ func TestPromoteHandleHappyPath(t *testing.T) {
 			t.Errorf("output key escapes the training namespace: %q", key)
 		}
 	}
-	// Replays converge: the handler succeeds without a duplicate write.
+	// Replays delegate output repair using the original committed identity.
 	f.replayed = true
 	f.written = map[string][]byte{}
 	if err := h.Handle(context.Background(), promoteJob(t, validPromotePayload())); err != nil {
 		t.Fatalf("replay handle = %v", err)
 	}
-	if len(f.written) != 0 {
-		t.Errorf("replay rewrote: %v", f.written)
+	if len(f.written) != 1 {
+		t.Errorf("replay skipped repair: %v", f.written)
 	}
 }
 
@@ -146,5 +150,54 @@ func TestPromoteHandleFailsClosed(t *testing.T) {
 	}
 	if len(missing.proposed) != 0 {
 		t.Error("outage proposed without bytes")
+	}
+}
+
+func TestPromotionReplayRepairsFailedOutput(t *testing.T) {
+	f := &fakePromoteFlow{source: map[string][]byte{"img-1": []byte("test")}, written: map[string][]byte{}}
+	h := promoteHandler(f)
+	attempts := 0
+	h.Publish = func(context.Context, privacyapp.PromotionResult, []byte) error {
+		attempts++
+		if attempts == 1 {
+			return errors.New("storage unavailable")
+		}
+		return nil
+	}
+	job := promoteJob(t, validPromotePayload())
+	if err := h.Handle(context.Background(), job); err == nil {
+		t.Fatal("first write must fail")
+	}
+	f.replayed = true
+	if err := h.Handle(context.Background(), job); err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 2 {
+		t.Fatalf("inventory replay skipped missing output: attempts=%d", attempts)
+	}
+}
+
+func TestPromotionRejectsMismatchedCommittedIdentityBeforeOutput(t *testing.T) {
+	for name, mutate := range map[string]func(*privacyapp.PromotionResult){
+		"revision": func(r *privacyapp.PromotionResult) { r.ConsentRevision++ },
+		"owner":    func(r *privacyapp.PromotionResult) { r.ContributorID = "other" },
+		"image":    func(r *privacyapp.PromotionResult) { r.ImageID = "other" },
+		"key":      func(r *privacyapp.PromotionResult) { r.ObjectKey += "other" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakePromoteFlow{source: map[string][]byte{"img-1": []byte("test")}, written: map[string][]byte{}}
+			h := promoteHandler(f)
+			h.Propose = func(ctx context.Context, c privacyapp.Caller, d privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
+				r, b, e := f.propose(ctx, c, d)
+				mutate(&r)
+				return r, b, e
+			}
+			if err := h.Handle(context.Background(), promoteJob(t, validPromotePayload())); err == nil {
+				t.Fatal("mismatched result accepted")
+			}
+			if len(f.written) != 0 {
+				t.Fatal("mismatched result wrote bytes")
+			}
+		})
 	}
 }

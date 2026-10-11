@@ -156,6 +156,10 @@ func TestSelectableForTrainingFiltersRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if SelectableForTraining(d, &c, TrainingTermsV1, "digest-v1") {
+		t.Error("pending output selectable")
+	}
+	d.OutputState = OutputReady
 	if !SelectableForTraining(d, &c, TrainingTermsV1, "digest-v1") {
 		t.Error("active derivative not selectable")
 	}
@@ -207,7 +211,7 @@ func TestPromotionCarriesIdentifiersOnly(t *testing.T) {
 	allowed := map[string]bool{
 		"ImageID": true, "ContributorID": true, "ContributorRef": true,
 		"SourceSHA256": true, "DerivativeSHA256": true, "CapturedAt": true,
-		"TermsVersion": true, "TermsDigest": true, "State": true,
+		"TermsVersion": true, "TermsDigest": true, "State": true, "ObjectKey": true, "OutputState": true, "OutputLeaseUntil": true,
 		"ConsentRevision": true, "PromotedAt": true, "RevokedAt": true,
 	}
 	typ := reflect.TypeOf(Derivative{})

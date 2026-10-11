@@ -73,6 +73,14 @@ func TestDerivativePutPersistsAndReadsBack(t *testing.T) {
 	if err != nil || !stored || replayed {
 		t.Fatalf("put = %v %v %v", stored, replayed, err)
 	}
+	pending, err := s.Get(ctx, "img-1", 1)
+	if err != nil || pending.OutputState != domain.OutputPending {
+		t.Fatal("insert pretended bytes were ready", pending, err)
+	}
+	if selected, err := s.ListActiveByOwner(ctx, "c1"); err != nil || len(selected) != 0 {
+		t.Fatal("pending output selected", selected, err)
+	}
+	readyInventoryFixture(t, s, "img-1")
 	active, err := s.ListActiveByOwner(ctx, "c1")
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +126,7 @@ func TestDerivativeConcurrentPutsAgree(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	active, err := s.ListActiveByOwner(ctx, "c1")
+	active, err := s.ListByOwner(ctx, "c1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,6 +145,8 @@ func TestDerivativeRevokeFlow(t *testing.T) {
 	if _, _, err := s.Put(ctx, mustDerivative(t, "img-2", "c1", 1, base)); err != nil {
 		t.Fatal(err)
 	}
+	readyInventoryFixture(t, s, "img-1")
+	readyInventoryFixture(t, s, "img-2")
 	if err := s.MarkRevoked(ctx, "img-1", 1, base.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
@@ -276,5 +286,14 @@ func TestDerivativeQueriesStayNonDestructive(t *testing.T) {
 	}
 	if !strings.Contains(upper, "STATE = 'ACTIVE'") && !strings.Contains(upper, "D.STATE = 'ACTIVE'") {
 		t.Error("revoke mark lost its state guard")
+	}
+}
+
+// SQL-only selection fixture: byte verification is separately exercised by
+// TestTrainingOutputRecoveryOnPrivateS3. A raw insert is never READY.
+func readyInventoryFixture(t *testing.T, s *PromotionStore, image string) {
+	t.Helper()
+	if _, err := s.pool.Exec(context.Background(), "UPDATE privacy_training_derivatives SET output_state='READY',output_ready_at=now() WHERE image_id=$1", image); err != nil {
+		t.Fatal(err)
 	}
 }

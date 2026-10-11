@@ -72,7 +72,7 @@ func EraseTrainingContributor(ctx context.Context, p TrainingErasePorts, contrib
 	activeBefore := map[string]bool{}
 	for _, d := range before {
 		if d.State == domain.DerivativeActive {
-			activeBefore[TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)] = true
+			activeBefore[inventoriedObjectKey(d)] = true
 		}
 	}
 	if _, _, err := p.Consent.Store.Put(ctx, next); err != nil {
@@ -85,7 +85,10 @@ func EraseTrainingContributor(ctx context.Context, p TrainingErasePorts, contrib
 	}
 	purged := 0
 	for _, d := range rows {
-		key := TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+		if now.Before(d.OutputLeaseUntil) {
+			return flipped, purged, domain.ErrBadState
+		}
+		key := inventoriedObjectKey(d)
 		if key == "" {
 			return flipped, purged, domain.ErrInvalidRequest
 		}

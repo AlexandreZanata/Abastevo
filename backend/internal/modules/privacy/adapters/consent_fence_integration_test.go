@@ -32,6 +32,7 @@ func TestRevocationImmediatelyExcludesAndTombstonesDerivativeOnSQL(t *testing.T)
 	if _, _, err := inventory.Put(ctx, d); err != nil {
 		t.Fatal(err)
 	}
+	readyInventoryFixture(t, inventory, d.ImageID)
 	revoked, _, err := domain.RevokeConsent(&consent, consent.ContributorID, consent.ContributorRef, 2, now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +92,9 @@ func TestRevocationBatchesAndRestoredGrantStayFencedOnSQL(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	for i := 0; i < 65; i++ {
+		readyInventoryFixture(t, inventory, fmt.Sprintf("batch-%03d", i))
+	}
 	revoked, _, err := domain.RevokeConsent(&c, c.ContributorID, c.ContributorRef, 2, now)
 	if err != nil {
 		t.Fatal(err)
@@ -129,6 +133,7 @@ func TestRevocationBatchesAndRestoredGrantStayFencedOnSQL(t *testing.T) {
 	if _, _, err := inventory.Put(ctx, mustDerivative(t, "new-grant", "batch-owner", 3, now.Add(2*time.Hour))); err != nil {
 		t.Fatal(err)
 	}
+	readyInventoryFixture(t, inventory, "new-grant")
 	active, err := inventory.ListActiveByOwner(ctx, c.ContributorID)
 	if err != nil || len(active) != 1 || active[0].ImageID != "new-grant" {
 		t.Fatal(active, err)
@@ -312,6 +317,7 @@ func TestRevocationRollbackKeepsDecisionAndInventoryAtomicOnSQL(t *testing.T) {
 	if _, _, err := inventory.Put(ctx, mustDerivative(t, "rollback-image", c.ContributorID, 1, now)); err != nil {
 		t.Fatal(err)
 	}
+	readyInventoryFixture(t, inventory, "rollback-image")
 	if _, err := pool.Exec(ctx, `CREATE FUNCTION refuse_revocation_fixture() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected revocation failure'; END $$;
  CREATE TRIGGER refuse_revocation_fixture BEFORE INSERT ON privacy_training_revocations FOR EACH ROW EXECUTE FUNCTION refuse_revocation_fixture()`); err != nil {
 		t.Fatal(err)

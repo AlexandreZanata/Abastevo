@@ -50,6 +50,7 @@ func (f *fakeObjectStore) Delete(_ context.Context, key string) error {
 func revokedDerivative(image string, revokedAt time.Time) domain.Derivative {
 	return domain.Derivative{
 		ImageID: image, ContributorID: "c1", ContributorRef: "tok-c1",
+		ObjectKey:    TrainingObjectKey(image, 1, revokedAt.Add(-48*time.Hour)),
 		SourceSHA256: "source", DerivativeSHA256: "derivative",
 		CapturedAt:   revokedAt.Add(-48 * time.Hour),
 		TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1",
@@ -149,7 +150,7 @@ func TestRestoreDrillKeepsRevokedExcluded(t *testing.T) {
 		ImageID: "img-active", ContributorID: "c1", ContributorRef: "tok-c1",
 		SourceSHA256: "s", DerivativeSHA256: "d", CapturedAt: grantedAt.Add(time.Hour),
 		TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1",
-		State: domain.DerivativeActive, ConsentRevision: 2, PromotedAt: grantedAt.Add(2 * time.Hour),
+		State: domain.DerivativeActive, OutputState: domain.OutputReady, ConsentRevision: 2, PromotedAt: grantedAt.Add(2 * time.Hour),
 	}
 	revoked := active
 	revoked.ImageID = "img-revoked"

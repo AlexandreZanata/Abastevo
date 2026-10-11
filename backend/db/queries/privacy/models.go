@@ -61,6 +61,13 @@ type PrivacyTrainingDerivative struct {
 	State            string             `json:"state"`
 	PromotedAt       pgtype.Timestamptz `json:"promoted_at"`
 	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	ObjectKey        string             `json:"object_key"`
+	OutputState      string             `json:"output_state"`
+	OutputNonce      pgtype.UUID        `json:"output_nonce"`
+	OutputLeaseUntil pgtype.Timestamptz `json:"output_lease_until"`
+	OutputAttempts   int32              `json:"output_attempts"`
+	OutputReadyAt    pgtype.Timestamptz `json:"output_ready_at"`
+	OutputPurgedAt   pgtype.Timestamptz `json:"output_purged_at"`
 }
 
 type PrivacyTrainingRevocation struct {

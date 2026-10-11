@@ -20,7 +20,7 @@ WITH due AS (
  WHERE d.contributor_id = @contributor_id AND d.state = 'ACTIVE'
  ORDER BY d.image_id,d.consent_revision LIMIT 32 FOR UPDATE OF d SKIP LOCKED
 )
-UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at
+UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at, output_state = 'PURGING'
 FROM due WHERE target.image_id = due.image_id AND target.consent_revision = due.consent_revision AND target.state = 'ACTIVE';
 
 -- name: TombstoneTrainingBatch :execrows
@@ -32,5 +32,5 @@ WITH due AS (
  WHERE d.state = 'ACTIVE'
  ORDER BY r.revoked_at,d.image_id,d.consent_revision LIMIT 32 FOR UPDATE OF d SKIP LOCKED
 )
-UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at
+UPDATE privacy_training_derivatives target SET state = 'REVOKED', revoked_at = due.revoked_at, output_state = 'PURGING'
 FROM due WHERE target.image_id = due.image_id AND target.consent_revision = due.consent_revision AND target.state = 'ACTIVE';

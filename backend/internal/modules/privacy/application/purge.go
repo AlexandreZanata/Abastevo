@@ -72,6 +72,16 @@ func TrainingObjectKey(imageID string, revision uint64, at time.Time) string {
 	return fmt.Sprintf("%s%s/%s-%d.jpg", TrainingNamespace, at.UTC().Format("2006-01-02"), imageID, revision)
 }
 
+// inventoriedObjectKey refuses corrupt/missing locators rather than deriving
+// a replacement that could silently leave the committed output behind.
+func inventoriedObjectKey(d domain.Derivative) string {
+	expected := TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+	if expected == "" || d.ObjectKey != expected {
+		return ""
+	}
+	return d.ObjectKey
+}
+
 // SweepRevoked purges due revoked copies: rows revoked longer ago
 // than RevokedCopyTTL. Each due key is existence-checked, deleted,
 // and confirmed gone; the report distinguishes purged, already
@@ -89,7 +99,7 @@ func SweepRevoked(ctx context.Context, p PurgePorts) (SweepReport, error) {
 	}
 	report := SweepReport{}
 	for _, d := range due {
-		key := TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+		key := inventoriedObjectKey(d)
 		if key == "" {
 			report.Failures = append(report.Failures, d.ImageID)
 			continue
