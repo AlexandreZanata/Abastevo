@@ -83,25 +83,6 @@ func (f sanitizeFunc) Sanitize(ctx context.Context, source []byte) ([]byte, priv
 	return f(ctx, source)
 }
 
-// refusingObjects keeps the purge pipeline composed while storage is
-// unconfigured: every call refuses explicitly instead of misbehaving.
-type refusingObjects struct{}
-
-func (refusingObjects) Exists(context.Context, string) (bool, error) {
-	return false, errors.New("training purge: storage not configured")
-}
-
-func (refusingObjects) Delete(context.Context, string) error {
-	return errors.New("training purge: storage not configured")
-}
-
-func trainingObjectsOrRefusal(objects *privacyadapters.TrainingObjects) privacyapp.ObjectStore {
-	if objects == nil {
-		return refusingObjects{}
-	}
-	return objects
-}
-
 // sweepJobPorts adapts the platform job lookup to the evidence sweep
 // port: only queued or leased verify jobs count as live leases.
 type sweepJobPorts struct {
@@ -295,49 +276,12 @@ func run() error {
 	// ledgers (P07-T04): identity revocation, community unlinking with
 	// recompute, evidence purge with server-side storage deletes, trust
 	// removal and export-archive purge, all converging on re-run.
-	erasureDelete := func(ctx context.Context, key, namespace string) error {
-		if cfg.R2 == nil {
-			return errors.New("evidence: storage not configured")
-		}
-		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
-			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-			Key: key, Namespace: namespace,
-			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
-		}, storageCreds())
-		if err != nil {
-			return err
-		}
-		return evidencestorage.Delete(ctx, httpClient, pre.URL)
-	}
-	privacyErasePorts := privacyapp.ErasePorts{
-		Clock: time.Now,
-		NewID: jobs.NewUUIDv4,
-		Attribution: func(ctx context.Context, contributorID string) (string, error) {
-			return identityRegistrar.AttributionToken(ctx, contributorID)
-		},
-		Store:        privacyStore,
-		Identity:     identityRegistrar,
-		Community:    communityStore,
-		Evidence:     evidenceStore,
-		Trust:        trustStore,
-		DeleteObject: erasureDelete,
-		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
-			return err
-		},
-	}
-	// retentionPurges runs every inventory category bounded
-	// oldest-first (P07-T05): expired challenges, idempotency windows
-	// and export bytes purge on expiry; long-closed moderation cases
-	// and aged-out ledger rows purge on their horizons; the
-	// observation horizon reports metrics only until an FK-consistent
-	// cascade design lands. Rate windows self-clean on check and
-	// evidence media purges on its hourly sweeper.
-	// Training-derivative promotion and purge ports (CS10C): guarded
-	// consent reads plus the media-mapped sanitizer for offers, and
-	// the namespace object store for the daily revoked-copy sweep.
-	// Storage stays nil-guarded at call time (same convention as
-	// erasure deletes); the quarantine source read lands with the
+	// Training-derivative promotion and purge ports (CS10C/CS10D):
+	// guarded consent reads plus the media-mapped sanitizer for
+	// offers, and the namespace object store for the daily
+	// revoked-copy sweep and the training erasure scope. Storage
+	// stays nil-guarded at call time (same convention as erasure
+	// deletes); the quarantine source read lands with the
 	// client-review producer in CS11.
 	trainingTerms := trainingTermsWorker{digest: cfg.TrainingTermsDigest}
 	consentStore := privacyadapters.NewConsentStore(pool.Underlying())
@@ -364,8 +308,56 @@ func run() error {
 	purgePorts := privacyapp.PurgePorts{
 		Clock:     time.Now,
 		Inventory: promotionStore,
-		Objects:   trainingObjectsOrRefusal(trainingObjects),
+		Objects:   privacyadapters.TrainingObjectsOrRefusal(trainingObjects),
 	}
+	erasureDelete := func(ctx context.Context, key, namespace string) error {
+		if cfg.R2 == nil {
+			return errors.New("evidence: storage not configured")
+		}
+		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
+			Key: key, Namespace: namespace,
+			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, storageCreds())
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Delete(ctx, httpClient, pre.URL)
+	}
+	privacyErasePorts := privacyapp.ErasePorts{
+		Clock: time.Now,
+		NewID: jobs.NewUUIDv4,
+		Attribution: func(ctx context.Context, contributorID string) (string, error) {
+			return identityRegistrar.AttributionToken(ctx, contributorID)
+		},
+		Store:     privacyStore,
+		Identity:  identityRegistrar,
+		Community: communityStore,
+		Evidence:  evidenceStore,
+		Training: privacyadapters.TrainingErasure{
+			Clock: time.Now,
+			Attribution: func(ctx context.Context, contributorID string) (string, error) {
+				return identityRegistrar.AttributionToken(ctx, contributorID)
+			},
+			Consents:  consentStore,
+			Terms:     trainingTerms,
+			Inventory: promotionStore,
+			Objects:   privacyadapters.TrainingObjectsOrRefusal(trainingObjects),
+		},
+		Trust:        trustStore,
+		DeleteObject: erasureDelete,
+		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	// retentionPurges runs every inventory category bounded
+	// oldest-first (P07-T05): expired challenges, idempotency windows
+	// and export bytes purge on expiry; long-closed moderation cases
+	// and aged-out ledger rows purge on their horizons; the
+	// observation horizon reports metrics only until an FK-consistent
+	// cascade design lands. Rate windows self-clean on check and
+	// evidence media purges on its hourly sweeper.
 	retentionPurges := []privacyapp.NamedPurge{
 		{Name: "community-photo-captures", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
 			count, err := communityStore.PurgeExpiredPhotoCaptures(ctx, time.Now(), privacyapp.RetentionBatch)

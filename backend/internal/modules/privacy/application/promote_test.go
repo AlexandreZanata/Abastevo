@@ -77,6 +77,18 @@ func (f *fakePromoteStore) ListRevokedBefore(_ context.Context, before time.Time
 	return out, nil
 }
 
+func (f *fakePromoteStore) ListByOwner(_ context.Context, contributorID string) ([]domain.Derivative, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []domain.Derivative
+	for _, d := range f.rows {
+		if d.ContributorID == contributorID {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
 func promotePorts(store *fakePromoteStore, verdict domain.SanitizeVerdict, sanitizeErr error) PromotePorts {
 	base := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
 	return PromotePorts{

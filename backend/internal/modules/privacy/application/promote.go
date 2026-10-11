@@ -28,12 +28,14 @@ type Sanitizer interface {
 
 // PromotionInventory is the owned derivative-inventory port: converged
 // writes keyed by image plus consent revision, owner-scoped active
-// reads, idempotent revocation marks, and revoked rows due for purge.
+// reads, idempotent revocation marks, revoked rows due for purge,
+// and every owned row for erasure.
 type PromotionInventory interface {
 	Put(ctx context.Context, d domain.Derivative) (stored bool, replayed bool, err error)
 	ListActiveByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error)
 	MarkRevoked(ctx context.Context, imageID string, revision uint64, at time.Time) error
 	ListRevokedBefore(ctx context.Context, before time.Time) ([]domain.Derivative, error)
+	ListByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error)
 }
 
 // PromotePorts wires promotion through the shared consent ports

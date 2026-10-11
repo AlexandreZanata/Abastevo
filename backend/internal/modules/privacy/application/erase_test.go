@@ -156,6 +156,27 @@ func (f *fakeTrust) EraseContributor(_ context.Context, ref, _ string) (int64, e
 	return 2, nil
 }
 
+type fakeTraining struct {
+	erased  map[string]bool
+	revoked int
+	purged  int
+	fail    bool
+}
+
+func (f *fakeTraining) EraseContributor(_ context.Context, id string) (int, int, error) {
+	if f.fail {
+		return 0, 0, errors.New("training down")
+	}
+	if f.erased == nil {
+		f.erased = map[string]bool{}
+	}
+	if f.erased[id] {
+		return 0, 0, nil
+	}
+	f.erased[id] = true
+	return f.revoked, f.purged, nil
+}
+
 func erasePorts(store *fakeEraseStore) ErasePorts {
 	base := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	n := 100
@@ -172,6 +193,7 @@ func erasePorts(store *fakeEraseStore) ErasePorts {
 		Identity:  &fakeIdentity{},
 		Community: &fakeCommunity{},
 		Evidence:  &fakeEvidence{},
+		Training:  &fakeTraining{revoked: 2, purged: 2},
 		Trust:     &fakeTrust{},
 		DeleteObject: func(context.Context, string, string) error {
 			return nil
@@ -197,11 +219,14 @@ func TestEraseRunsAllScopesWithLedger(t *testing.T) {
 	if report.SessionsPurged != 1 || report.ObjectsPurged != 1 {
 		t.Errorf("evidence = %+v", report)
 	}
+	if report.TrainingRevoked != 2 || report.TrainingPurged != 2 {
+		t.Errorf("training = %+v", report)
+	}
 	if report.TrustUnlinked != 2 {
 		t.Errorf("trust = %+v", report)
 	}
-	if len(store.ledger) != 5 {
-		t.Errorf("ledger rows = %d, want 5", len(store.ledger))
+	if len(store.ledger) != 6 {
+		t.Errorf("ledger rows = %d, want 6", len(store.ledger))
 	}
 	got, err := store.Get(context.Background(), report.RequestID)
 	if err != nil || got.Status != domain.StatusReady || got.Type != domain.TypeDeletion {
@@ -223,7 +248,7 @@ func TestEraseConvergesCompletedRequest(t *testing.T) {
 	if !second.Replayed || second.RequestID != first.RequestID {
 		t.Errorf("completed erasure did not converge: %+v", second)
 	}
-	if len(store.ledger) != 5 {
+	if len(store.ledger) != 6 {
 		t.Errorf("replay duplicated ledger rows: %d", len(store.ledger))
 	}
 }
@@ -243,6 +268,30 @@ func TestEraseFailsScopeMarksRequest(t *testing.T) {
 	}
 	if !failed {
 		t.Error("failed erasure left no FAILED receipt")
+	}
+}
+
+func TestEraseFailsTrainingScopeMarksRequest(t *testing.T) {
+	store := newFakeEraseStore()
+	p := erasePorts(store)
+	p.Training = &fakeTraining{fail: true}
+	if _, err := Erase(context.Background(), p, "c1", EraseDTO{ClientSubmissionID: "erase-1", Reason: "r"}); err == nil {
+		t.Error("training failure accepted")
+	}
+	var failed bool
+	for _, r := range store.requests {
+		if r.Status == domain.StatusFailed {
+			failed = true
+		}
+	}
+	if !failed {
+		t.Error("failed erasure left no FAILED receipt")
+	}
+	// The training ledger row is absent: the scope never completed.
+	for _, e := range store.ledger {
+		if e.Scope == domain.ScopeTraining {
+			t.Errorf("failed scope recorded a ledger row: %+v", e)
+		}
 	}
 }
 

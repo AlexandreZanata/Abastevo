@@ -45,6 +45,12 @@ type TrustErasure interface {
 	EraseContributor(ctx context.Context, ref, anon string) (int64, error)
 }
 
+// TrainingErasure revokes one owner's training consent and purges its
+// derivatives and bytes, reporting flipped rows and deleted copies.
+type TrainingErasure interface {
+	EraseContributor(ctx context.Context, contributorID string) (revoked, objectsPurged int, err error)
+}
+
 // ErasePorts wires erasure across the owned modules. Every scope port
 // converges on re-run so crashes and restore replays resume safely.
 type ErasePorts struct {
@@ -55,6 +61,7 @@ type ErasePorts struct {
 	Identity     IdentityErasure
 	Community    CommunityErasure
 	Evidence     EvidenceErasure
+	Training     TrainingErasure
 	Trust        TrustErasure
 	DeleteObject func(ctx context.Context, key, namespace string) error
 	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
@@ -128,13 +135,16 @@ type ErasureReport struct {
 	KeysRecomputed  int
 	SessionsPurged  int64
 	ObjectsPurged   int64
+	TrainingRevoked int
+	TrainingPurged  int
 	TrustUnlinked   int64
 	ArchivesPurged  int64
 }
 
 // Erase revokes one owner's writes and purges/unlinks its data scope
 // by scope (ADR-008, B-BR-016): identity first so no new writes land
-// mid-erasure, then community, evidence, trust and export archives.
+// mid-erasure, then community, evidence with training derivatives
+// right after their source images, trust and export archives.
 // Each scope records its ledger row after success; a failure marks the
 // request FAILED for audited retry, and completed scopes converge on
 // re-run. Price facts stay for history with anonymized references;
@@ -256,6 +266,14 @@ func runScopes(ctx context.Context, p ErasePorts, contributorID, token, anon, re
 	if err := ledger(domain.ScopeEvidence); err != nil {
 		return report, err
 	}
+	revoked, tpurged, err := p.Training.EraseContributor(ctx, contributorID)
+	if err != nil {
+		return report, err
+	}
+	report.TrainingRevoked, report.TrainingPurged = revoked, tpurged
+	if err := ledger(domain.ScopeTraining); err != nil {
+		return report, err
+	}
 	unlinked, err := p.Trust.EraseContributor(ctx, token, anon)
 	if err != nil {
 		return report, err
@@ -337,6 +355,13 @@ func ReplayLedger(ctx context.Context, p ErasePorts, contributorID string) (Eras
 	if err := run(domain.ScopeEvidence, func() error {
 		sess, objs, err := p.Evidence.EraseContributor(ctx, token, p.DeleteObject)
 		report.SessionsPurged, report.ObjectsPurged = sess, objs
+		return err
+	}); err != nil {
+		return report, err
+	}
+	if err := run(domain.ScopeTraining, func() error {
+		revoked, purged, err := p.Training.EraseContributor(ctx, contributorID)
+		report.TrainingRevoked, report.TrainingPurged = revoked, purged
 		return err
 	}); err != nil {
 		return report, err

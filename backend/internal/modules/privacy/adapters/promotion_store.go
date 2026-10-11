@@ -112,6 +112,21 @@ func (s *PromotionStore) ListRevokedBefore(ctx context.Context, before time.Time
 	return out, nil
 }
 
+// ListByOwner returns every owned derivative, active and tombstoned,
+// for erasure. The owner key scopes the read like every other method
+// here; receipts leave only through revocation and purge paths.
+func (s *PromotionStore) ListByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error) {
+	rows, err := dbprivacy.New(s.pool).ListDerivativesByOwner(ctx, contributorID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Derivative, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, rowToDerivative(row))
+	}
+	return out, nil
+}
+
 // MarkRevoked flips one row ACTIVE to REVOKED through the guarded
 // transition. Repeating the mark converges silently; unknown rows
 // read as not found.

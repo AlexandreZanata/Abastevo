@@ -83,6 +83,28 @@ func (s *TrainingObjects) presign(method, key string) (string, error) {
 	}
 }
 
+// refusingTrainingObjects keeps pipelines composed while storage is
+// unconfigured: every call refuses explicitly instead of
+// misbehaving, so erasure and replay park for audited retry.
+type refusingTrainingObjects struct{}
+
+func (refusingTrainingObjects) Exists(context.Context, string) (bool, error) {
+	return false, errors.New("training objects: storage not configured")
+}
+
+func (refusingTrainingObjects) Delete(context.Context, string) error {
+	return errors.New("training objects: storage not configured")
+}
+
+// TrainingObjectsOrRefusal returns the store or an explicit refusal
+// when unconfigured, so callers never nil-pointer on bytes.
+func TrainingObjectsOrRefusal(objects *TrainingObjects) privacyapp.ObjectStore {
+	if objects == nil {
+		return refusingTrainingObjects{}
+	}
+	return objects
+}
+
 // Put lands one minimized derivative under its inventoried key.
 func (s *TrainingObjects) Put(ctx context.Context, key string, body []byte) error {
 	rawURL, err := s.presign(http.MethodPut, key)

@@ -49,3 +49,11 @@ SELECT image_id, consent_revision, contributor_id, contributor_ref,
 FROM privacy_training_derivatives
 WHERE state = 'REVOKED' AND revoked_at < @before
 ORDER BY revoked_at, image_id, consent_revision;
+
+-- name: ListDerivativesByOwner :many
+SELECT image_id, consent_revision, contributor_id, contributor_ref,
+    source_sha256, derivative_sha256, captured_at, terms_version,
+    terms_digest, state, promoted_at, revoked_at
+FROM privacy_training_derivatives
+WHERE contributor_id = @contributor_id
+ORDER BY image_id, consent_revision;
