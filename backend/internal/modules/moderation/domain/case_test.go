@@ -175,3 +175,51 @@ func TestCaseCarriesNoSensitivePayload(t *testing.T) {
 		t.Errorf("valid case should carry no evidence ref by default")
 	}
 }
+
+func TestNewCaseContributionTarget(t *testing.T) {
+	p := validParams()
+	p.TargetType = TargetContribution
+	p.Reason = ContributionReasonSpam
+	if _, _, err := NewCase(p); err != nil {
+		t.Fatalf("CONTRIBUTION rejected: %v", err)
+	}
+	if DefaultPriority(TargetContribution) != PriorityP2 {
+		t.Errorf("contribution default = %q, want P2 like facts", DefaultPriority(TargetContribution))
+	}
+	p.TargetID = "not-a-uuid"
+	if _, _, err := NewCase(p); !errors.Is(err, ErrInvalidCase) {
+		t.Errorf("non-uuid contribution target = %v", err)
+	}
+}
+
+func TestContributionReasonsFrozen(t *testing.T) {
+	for _, reason := range []string{"SPAM", "HARASSMENT", "VOTE_GAMING", "OFF_TOPIC", "OTHER"} {
+		if !ValidContributionReason(reason) {
+			t.Errorf("frozen reason %q refused", reason)
+		}
+		p := validParams()
+		p.TargetType = TargetContribution
+		p.Reason = reason
+		if _, _, err := NewCase(p); err != nil {
+			t.Errorf("contribution reason %q rejected: %v", reason, err)
+		}
+	}
+	for _, reason := range []string{"PRICE_CHANGED", "VALID", "anything goes", ""} {
+		if ValidContributionReason(reason) {
+			t.Errorf("non-frozen reason %q accepted", reason)
+		}
+		p := validParams()
+		p.TargetType = TargetContribution
+		p.Reason = reason
+		if _, _, err := NewCase(p); !errors.Is(err, ErrBadReason) {
+			t.Errorf("contribution reason %q = %v, want ErrBadReason", reason, err)
+		}
+	}
+	// Other targets keep free-text reasons: the freeze binds the new
+	// target only, never existing queues.
+	p := validParams()
+	p.Reason = "anything goes"
+	if _, _, err := NewCase(p); err != nil {
+		t.Errorf("observation free-text reason rejected: %v", err)
+	}
+}

@@ -25,6 +25,9 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	modadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	modapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
+	moddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
@@ -531,5 +534,90 @@ func TestHelpfulnessQuotaExhaustionDeniesWithHonestRetry(t *testing.T) {
 	}
 	if tally.Helpful != 3 || tally.NotHelpful != 0 {
 		t.Fatalf("denied vote must never mutate: %+v", tally)
+	}
+}
+
+func TestContributionInvalidationRemovesEligibilityKeepsAudit(t *testing.T) {
+	s, pool, stationID := freshStore(t)
+	hs := NewHelpfulnessStore(pool)
+	ctx := context.Background()
+	obs := validatedFixture(t, s, stationID, "help-mod-1")
+	ports := helpfulPorts(hs)
+	voter := helpfulCaller("voter-mod")
+	if _, err := application.Cast(ctx, ports, voter, application.CastDTO{
+		ObservationID: obs.ID, DecisionSequence: 2,
+		Choice: domain.ChoiceHelpful, ClientSubmissionID: "mod-vote-1",
+	}); err != nil {
+		t.Fatalf("pre-hide vote must succeed: %v", err)
+	}
+
+	// A contribution report queues through the append-only pipeline
+	// with the frozen reason set and converges per target.
+	modStore := modadapters.NewStore(pool)
+	opened, err := modapp.Open(ctx, modapp.Ports{
+		Clock: time.Now,
+		NewID: func() (string, error) { return helpfulVoteID(), nil },
+		Store: modStore,
+	}, modapp.OpenDTO{
+		TargetType: moddomain.TargetContribution, TargetID: obs.ID,
+		Reason: moddomain.ContributionReasonSpam,
+	})
+	if err != nil {
+		t.Fatalf("open contribution case: %v", err)
+	}
+	var kinds []string
+	acted, err := modapp.Act(ctx, modapp.ActPorts{
+		Clock: time.Now,
+		NewID: func() (string, error) { return helpfulVoteID(), nil },
+		Store: modStore,
+		EnqueueJob: func(_ context.Context, _ pgx.Tx, kind string, payload []byte, _ string) error {
+			kinds = append(kinds, kind)
+			_ = payload
+			return nil
+		},
+	}, modapp.Caller{OperatorID: "op-1"}, modapp.ActDTO{
+		CaseID: opened.CaseID, Action: moddomain.ActionInvalidate, Reason: moddomain.ContributionReasonSpam,
+	})
+	if err != nil {
+		t.Fatalf("invalidate: %v", err)
+	}
+	if acted.ToStatus != moddomain.StatusResolved || len(kinds) != 1 || kinds[0] != "community-consensus" {
+		t.Fatalf("act = %+v kinds = %v", acted, kinds)
+	}
+	// The consensus worker records the invalidation decision; the
+	// observation leaves the eligible set while audit rows stay.
+	now := time.Now()
+	inv, err := domain.Invalidate(obs, domain.StateValidated, domain.ActorModerator, opened.CaseID, []string{"spam"}, now, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordDecision(ctx, inv); err != nil {
+		t.Fatalf("record invalidate: %v", err)
+	}
+	target, err := hs.Target(ctx, obs.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.Eligible() {
+		t.Fatal("invalidated contribution must resolve ineligible")
+	}
+	if _, err := application.Cast(ctx, ports, helpfulCaller("voter-mod-2"), application.CastDTO{
+		ObservationID: obs.ID, DecisionSequence: 3,
+		Choice: domain.ChoiceHelpful, ClientSubmissionID: "mod-vote-2",
+	}); err != application.ErrIneligibleTarget {
+		t.Fatalf("post-hide cast = %v, want ErrIneligibleTarget", err)
+	}
+	if _, err := application.TallyFor(ctx, ports, voter, obs.ID, 2); err != application.ErrIneligibleTarget {
+		t.Fatalf("post-hide tally = %v, want ErrIneligibleTarget", err)
+	}
+	// Audit and aggregates stay exact: the pre-hide vote row and its
+	// tally survive, frozen at 1/0.
+	h, n, rows := liveHelpfulnessRows(t, pool, obs.ID, 2)
+	if h != 1 || n != 0 || rows != 1 {
+		t.Fatalf("audit rows = %d/%d over %d, want 1/0 over 1", h, n, rows)
+	}
+	rebuilt, err := hs.RebuildTally(ctx, obs.ID, 2)
+	if err != nil || rebuilt.Helpful != 1 || rebuilt.NotHelpful != 0 {
+		t.Fatalf("aggregate = %+v %v, want 1/0", rebuilt, err)
 	}
 }
