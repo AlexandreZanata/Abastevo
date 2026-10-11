@@ -2,6 +2,28 @@ package com.anpfuel.app.games
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -164,7 +186,7 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier, prefe
                         }
                     }
                 }
-                if (maxWidth > maxHeight) {
+                if (maxWidth > maxHeight && phase == GamePhase.RUNNING) {
                     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f).fillMaxHeight()) { stage() }
                         Column(Modifier.width(200.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
@@ -174,8 +196,10 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier, prefe
                 } else {
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f).fillMaxWidth()) { stage() }
-                        Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState())) {
-                            GameControls(session.gameId, phase, view::action, view::pause)
+                        if (phase == GamePhase.RUNNING) {
+                            Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState())) {
+                                GameControls(session.gameId, phase, view::action, view::pause)
+                            }
                         }
                     }
                 }
@@ -190,30 +214,76 @@ private fun GamesSelector(
     onSelect: (GameId) -> Unit, onOptions: (GameOptions) -> Unit, modifier: Modifier,
 ) {
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(stringResource(R.string.games_heading), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-        Text(stringResource(R.string.games_subtitle))
-        for (game in GameId.entries) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(gameTitle(game), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(if (game == GameId.FLIGHT) R.string.games_flight_summary else R.string.games_run_summary))
-                    Text(if (loaded) stringResource(R.string.games_local_best, bests[game] ?: 0) else stringResource(R.string.games_loading))
-                    Button(onClick = { onSelect(game) }, enabled = loaded, modifier = Modifier.fillMaxWidth().testTag("games_choose_${game.name}")) {
-                        Text(stringResource(R.string.games_choose, gameTitle(game)))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.games_heading), style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                Text(stringResource(R.string.games_subtitle), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.Default.SportsEsports, null, tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer).padding(12.dp))
+        }
+        Text(stringResource(R.string.games_no_rank), style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 640.dp) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    for (game in GameId.entries) {
+                        GameCard(game, bests[game] ?: 0, loaded, { onSelect(game) }, Modifier.weight(1f))
                     }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    for (game in GameId.entries) GameCard(game, bests[game] ?: 0, loaded, { onSelect(game) })
                 }
             }
         }
-        Text(stringResource(R.string.games_settings), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-        if (loaded) {
-            GameOption(stringResource(R.string.games_muted), options.muted) { onOptions(options.copy(muted = it)) }
-            GameOption(stringResource(R.string.games_reduced_motion), options.reducedMotion) { onOptions(options.copy(reducedMotion = it)) }
-            GameOption(stringResource(R.string.games_low_power), options.lowPower) { onOptions(options.copy(lowPower = it)) }
+        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.games_settings), style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                if (loaded) {
+                    GameOption(stringResource(R.string.games_muted), options.muted) { onOptions(options.copy(muted = it)) }
+                    GameOption(stringResource(R.string.games_reduced_motion), options.reducedMotion) { onOptions(options.copy(reducedMotion = it)) }
+                    GameOption(stringResource(R.string.games_low_power), options.lowPower) { onOptions(options.copy(lowPower = it)) }
+                }
+            }
         }
-        Text(stringResource(R.string.games_no_rank), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun GameCard(game: GameId, best: Int, loaded: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
+    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(2.65f)) {
+            GameArtwork(game, Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC0B1830)))))
+            Text(gameTitle(game), color = Color.White, style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomStart).padding(16.dp))
+        }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(if (game == GameId.FLIGHT) R.string.games_flight_summary else R.string.games_run_summary),
+                style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.EmojiEvents, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(if (loaded) stringResource(R.string.games_local_best, best) else stringResource(R.string.games_loading),
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Button(onChoose, enabled = loaded, shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("games_choose_${game.name}")) {
+                Icon(Icons.Default.PlayArrow, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.games_choose, gameTitle(game)))
+            }
+        }
     }
 }
 
@@ -234,68 +304,104 @@ private fun GameOverlay(
     onStart: () -> Unit, onResume: () -> Unit, onRestart: () -> Unit,
     onSelect: () -> Unit, onRetrySave: () -> Unit,
 ) {
-    Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .97f))
-            .verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-    ) {
-        Text(stringResource(when (phase) {
-            GamePhase.READY -> R.string.games_how_to
-            GamePhase.PAUSED -> R.string.games_paused
-            else -> R.string.games_finish
-        }), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-        when (phase) {
-            GamePhase.READY -> {
-                Text(stringResource(if (session.gameId == GameId.FLIGHT) R.string.games_flight_tutorial else R.string.games_run_tutorial))
-                Text(stringResource(R.string.games_limit_notice), style = MaterialTheme.typography.bodySmall)
-                Button(onStart, Modifier.fillMaxWidth().testTag("games_start")) { Text(stringResource(R.string.games_start)) }
+    Box(Modifier.fillMaxSize().background(Color(0x990B1830)), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.padding(16.dp).widthIn(max = 480.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(when (phase) {
+                    GamePhase.READY -> Icons.Default.SportsEsports
+                    GamePhase.PAUSED -> Icons.Default.Pause
+                    else -> Icons.Default.EmojiEvents
+                }, null, tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer).padding(10.dp))
+                Text(stringResource(when (phase) {
+                    GamePhase.READY -> R.string.games_how_to
+                    GamePhase.PAUSED -> R.string.games_paused
+                    else -> R.string.games_finish
+                }), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f).semantics { heading() })
             }
-            GamePhase.PAUSED -> {
-                Text(stringResource(R.string.games_pause_notice))
-                Button(onResume, Modifier.fillMaxWidth().testTag("games_resume")) { Text(stringResource(R.string.games_continue)) }
-                OutlinedButton(onRestart, Modifier.fillMaxWidth()) { Text(stringResource(R.string.games_restart)) }
-            }
-            GamePhase.FINISHED -> {
-                Text(stringResource(if (session.simulation.end == RunEnd.TIME_LIMIT) R.string.games_time_limit else R.string.games_collision))
-                Text(stringResource(R.string.games_score, session.simulation.score))
-                Text(stringResource(R.string.games_local_best, best))
-                when (saveState) {
-                    SaveState.SAVING -> Text(stringResource(R.string.games_saving))
-                    SaveState.FAILED -> {
-                        Text(stringResource(R.string.games_save_failed))
-                        OutlinedButton(onRetrySave, Modifier.fillMaxWidth()) { Text(stringResource(R.string.games_retry_save)) }
+            when (phase) {
+                GamePhase.READY -> {
+                    Text(stringResource(if (session.gameId == GameId.FLIGHT) R.string.games_flight_tutorial else R.string.games_run_tutorial),
+                        style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.games_limit_notice), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onStart, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("games_start"), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_start))
                     }
-                    else -> Unit
                 }
-                Button(onRestart, Modifier.fillMaxWidth(), enabled = saveState != SaveState.SAVING) { Text(stringResource(R.string.games_restart)) }
+                GamePhase.PAUSED -> {
+                    Text(stringResource(R.string.games_pause_notice))
+                    Button(onResume, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("games_resume"), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_continue))
+                    }
+                    OutlinedButton(onRestart, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_restart))
+                    }
+                }
+                GamePhase.FINISHED -> {
+                    Text(stringResource(if (session.simulation.end == RunEnd.TIME_LIMIT) R.string.games_time_limit else R.string.games_collision))
+                    Text(stringResource(R.string.games_score, session.simulation.score), style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("games_final_score"))
+                    Text(stringResource(R.string.games_local_best, best), style = MaterialTheme.typography.titleMedium)
+                    when (saveState) {
+                        SaveState.SAVING -> Text(stringResource(R.string.games_saving))
+                        SaveState.FAILED -> {
+                            Text(stringResource(R.string.games_save_failed))
+                            OutlinedButton(onRetrySave, Modifier.fillMaxWidth()) { Text(stringResource(R.string.games_retry_save)) }
+                        }
+                        else -> Unit
+                    }
+                    Button(onRestart, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("games_restart"),
+                        shape = RoundedCornerShape(14.dp), enabled = saveState != SaveState.SAVING) {
+                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_restart))
+                    }
+                }
+                else -> Unit
             }
-            else -> Unit
+            TextButton(onSelect, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(stringResource(R.string.games_select_other)) }
         }
-        TextButton(onSelect, Modifier.fillMaxWidth()) { Text(stringResource(R.string.games_select_other)) }
     }
 }
 
 @Composable
 private fun GameControls(game: GameId, phase: GamePhase, onAction: (GameAction) -> Unit, onPause: () -> Unit) {
     val running = phase == GamePhase.RUNNING
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (game == GameId.FLIGHT) {
-            Button({ onAction(GameAction.IMPULSE) }, Modifier.fillMaxWidth().heightIn(min = 48.dp), enabled = running) {
-                Text(stringResource(R.string.games_fly))
-            }
+            ArcadeButton(R.string.games_fly, Icons.Default.ArrowUpward, GameAction.IMPULSE, running, onAction, Modifier.fillMaxWidth())
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button({ onAction(GameAction.LEFT) }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = running) { Text(stringResource(R.string.games_left)) }
-                Button({ onAction(GameAction.RIGHT) }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = running) { Text(stringResource(R.string.games_right)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ArcadeButton(R.string.games_left, Icons.AutoMirrored.Filled.ArrowBack, GameAction.LEFT, running, onAction, Modifier.weight(1f))
+                ArcadeButton(R.string.games_right, Icons.AutoMirrored.Filled.ArrowForward, GameAction.RIGHT, running, onAction, Modifier.weight(1f))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button({ onAction(GameAction.JUMP) }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = running) { Text(stringResource(R.string.games_jump)) }
-                Button({ onAction(GameAction.SLIDE) }, Modifier.weight(1f).heightIn(min = 48.dp), enabled = running) { Text(stringResource(R.string.games_slide)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ArcadeButton(R.string.games_jump, Icons.Default.ArrowUpward, GameAction.JUMP, running, onAction, Modifier.weight(1f))
+                ArcadeButton(R.string.games_slide, Icons.Default.ArrowDownward, GameAction.SLIDE, running, onAction, Modifier.weight(1f))
             }
         }
-        OutlinedButton(onPause, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("games_pause"), enabled = running) {
-            Text(stringResource(R.string.games_pause))
+        OutlinedButton(onPause, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("games_pause"),
+            shape = RoundedCornerShape(14.dp), enabled = running) {
+            Icon(Icons.Default.Pause, null, Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.games_pause))
         }
+    }
+}
+
+@Composable
+private fun ArcadeButton(label: Int, icon: ImageVector, action: GameAction, enabled: Boolean,
+    onAction: (GameAction) -> Unit, modifier: Modifier) {
+    Button({ onAction(action) }, modifier.heightIn(min = 52.dp).testTag("games_action_${action.name}"),
+        shape = RoundedCornerShape(14.dp), enabled = enabled,
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+        Icon(icon, null, Modifier.size(22.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(stringResource(label), textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
     }
 }
 

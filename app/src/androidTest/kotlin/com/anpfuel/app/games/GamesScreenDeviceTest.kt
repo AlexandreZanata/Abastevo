@@ -5,6 +5,16 @@ import android.graphics.Bitmap
 import java.io.File
 import java.io.FileOutputStream
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -102,6 +112,17 @@ class GamesScreenDeviceTest {
         capture("run-play")
         rule.onNodeWithTag("games_pause").performScrollTo().performClick()
         capture("run-paused")
+    }
+
+    @Test fun previewCannotPaintIntoTextAreaBelowItsBounds() {
+        rule.setContent {
+            Column(Modifier.width(200.dp).height(200.dp).background(Color.White).testTag("preview_bounds")) {
+                GameArtwork(GameId.FLIGHT, Modifier.width(200.dp).height(100.dp))
+            }
+        }
+        val image = rule.onNodeWithTag("preview_bounds").captureToImage()
+        val pixels = image.toPixelMap()
+        assertEquals(Color.White.toArgb(), pixels[image.width / 2, image.height * 3 / 4].toArgb())
     }
 
     private fun capture(name: String) {

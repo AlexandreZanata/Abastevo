@@ -75,3 +75,19 @@ system settings. Existing `mobile-v1` domain source is byte-unchanged.
 screenshots visually inspected. No native crash or UI regression in these cases.
 M09 lint PASS (zero errors, 177 existing warnings, no games diagnostic),
 diff/secret review PASS; next M10 shell polish.
+
+
+GME-M10 LOCAL_DONE (scoped shell): illustrated adaptive selection cards share native art without frame
+callbacks; clear play actions, local-best icon/labels, settings group, centered
+scrollable tutorial/pause/results cards over the scene, large primary result,
+and labeled 52dp directional/action controls. Inactive control panels disappear
+from menus. Material ripple and native input rings provide interaction feedback.
+9 affected unit cases PASS; lint/debug/test APK PASS (38s). Visual inspection
+found native preview paint escaping its Compose bounds into descriptive text.
+Added a pixel regression: RED expected white (-1), actual scene (-14524300).
+Explicit native clipping fixes the defect; proportional center-crop avoids
+stretching the mascot. Six emulator cases (including regression) passed after
+clipping (6.86s); final proportional preview check 6/6 PASS (7.389s).
+Final lint/debug/instrumentation APK PASS (39s), zero lint errors and no games
+diagnostic. Final preview inspected: clear text background and undistorted
+mascot. Diff/secret review PASS. Next M11 expanded acceptance.
