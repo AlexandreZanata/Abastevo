@@ -92,3 +92,11 @@ GREEN 7 tests including unsigned PRNG reference, inclusive collision edges,
 Command: `./gradlew :domain:test --tests 'com.anpfuel.domain.games.FuelFlightTest' --offline --console=plain`.
 Diff and tracked secret checks PASS. Push PENDING: automatic approval review
 refused unverified remote egress; only local commits are authorized to proceed.
+
+GME-M03 LOCAL_DONE: Run pure Kotlin; RED 7/7 against stub; GREEN 14 combined
+Flight/Run tests, including exact tick-261 impact, expired defenses, single
+fuel collection, lane clamping, seed reproducibility, bounded entities and
+three-minute/speed caps. Independent Run reference: seed 19, avoidance trace,
+10,800 ticks → score 255, lane 0, speed 20. Command:
+`./gradlew :domain:test --tests 'com.anpfuel.domain.games.Fuel*Test' --offline --console=plain`.
+Diff/secret review PASS. No backend replayer or network behavior.
