@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR32 2026-10-11: LOCAL_DONE on branch `landing`, accessibility exit. Measured contrast (all AA), ≥44px targets, reduced-motion, native disclosure; record in [evidence](../release-evidence/landing-redesign.md). Live zoom/keyboard pass still owed (no browser). Tests 40/40. Next: LR33 final review.
+- Landing redesign LR33 2026-10-11: LOCAL_DONE on branch `landing`, final review. Registry consistent (24/72, 15/15, hub+sitemap parity); restored missing `#tutoriais` home band + llms.txt hub entries; full suite 40/40, build/check green. No redesign. Next: LR34 pending media.
+
+- Landing redesign LR32 2026-10-11: LOCAL_DONE on branch `landing`, accessibility exit.
 
 - Landing redesign LR31 2026-10-11: LOCAL_DONE on branch `landing`, store readiness.
 
