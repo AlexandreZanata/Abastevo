@@ -22,6 +22,8 @@ type fakeSweepStore struct {
 	fdel       []string
 	purged     int64
 	failExpire error
+	health     IntakeHealth
+	healthErr  error
 }
 
 func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
@@ -72,6 +74,10 @@ func (f *fakeSweepStore) MarkFinalDeleted(_ context.Context, id string) error {
 
 func (f *fakeSweepStore) PurgeObjectsBefore(_ context.Context, _ time.Time) (int64, error) {
 	return f.purged, nil
+}
+
+func (f *fakeSweepStore) IntakeHealth(_ context.Context, _, _ time.Time) (IntakeHealth, error) {
+	return f.health, f.healthErr
 }
 
 type fakeSweepJobs struct {

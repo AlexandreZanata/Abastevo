@@ -137,6 +137,26 @@ WHERE id = @id AND final_deleted_at IS NULL;
 DELETE FROM evidence_objects
 WHERE created_at < @cutoff;
 
+-- SEC03-D intake-health accounting (bounded aggregates only: counts,
+-- declared-byte sums and one timestamp — never keys, hashes or
+-- payloads). Reserved = live in-flight sessions; decided splits
+-- READY vs REJECTED created today; oldest incomplete names the lag.
+
+-- name: SumReservedSessions :one
+SELECT count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE expires_at > @now AND status IN ('ISSUED', 'VERIFYING');
+
+-- name: SumDecidedSessions :many
+SELECT status, count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE created_at >= @since AND status IN ('READY', 'REJECTED')
+GROUP BY status;
+
+-- name: OldestIncompleteSession :one
+SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
+WHERE status IN ('ISSUED', 'VERIFYING');
+
 -- name: FindByDHash :many
 SELECT id, session_id, final_key, dhash, created_at
 FROM evidence_objects

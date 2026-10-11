@@ -30,7 +30,9 @@ const (
 
 // SweepStore is the retention inventory port: batched selection plus
 // convergent markers. State flips stay conditional in SQL; markers are
-// set-if-unset so repeated runs converge.
+// set-if-unset so repeated runs converge. IntakeHealth reports the
+// bounded intake posture for monitoring (counts/bytes/timestamp
+// only, never content).
 type SweepStore interface {
 	ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error)
 	ListStuckVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
@@ -41,6 +43,7 @@ type SweepStore interface {
 	OverdueFinals(ctx context.Context, cutoff time.Time, batch int) ([]domain.ObjectRef, error)
 	MarkFinalDeleted(ctx context.Context, id string) error
 	PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error)
+	IntakeHealth(ctx context.Context, since, now time.Time) (IntakeHealth, error)
 }
 
 // SweepJobs reconciles in-flight validation: a session with a live
@@ -69,7 +72,10 @@ type SweepDeps struct {
 
 // SweepReport makes cleanup observable: every deleted or expired unit
 // is counted, storage failures are counted rather than aborting the
-// pass, and only database errors fail the run.
+// pass, and only database errors fail the run. Health carries the
+// intake posture (SEC03-D): reserved/accepted/rejected declared
+// buckets plus the oldest incomplete reservation — counts, bytes
+// and one timestamp, never keys, hashes or payloads.
 type SweepReport struct {
 	ExpiredSessions    int
 	SkippedActive      int
@@ -77,6 +83,22 @@ type SweepReport struct {
 	FinalsDeleted      int
 	ObjectsPurged      int64
 	StorageErrors      int
+	Health             IntakeHealth
+}
+
+// IntakeHealth is the intake posture snapshot: live reserved buckets
+// (in-flight declared bytes), today decided buckets (READY accepted
+// vs REJECTED declared bytes) and the oldest incomplete reservation
+// (zero when none in flight). Byte sums are declared-bucket
+// accounting, not measured wire payloads.
+type IntakeHealth struct {
+	ReservedSessions int
+	ReservedBytes    int64
+	AcceptedToday    int
+	AcceptedBytes    int64
+	RejectedToday    int
+	RejectedBytes    int64
+	OldestIncomplete time.Time
 }
 
 // FinalDue reports whether sanitized bytes must leave storage: past
@@ -214,5 +236,11 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		return rep, err
 	}
 	rep.ObjectsPurged = purged
+	// Intake posture last: monitoring-only aggregates that never fail
+	// the retention pass (a health-query error degrades to a zero
+	// snapshot rather than blocking cleanup).
+	if health, herr := deps.Store.IntakeHealth(ctx, dayStart(now), now); herr == nil {
+		rep.Health = health
+	}
 	return rep, nil
 }

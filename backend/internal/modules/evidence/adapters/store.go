@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	evidence "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/evidence"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 )
 
@@ -643,6 +644,40 @@ func (s *Store) MarkFinalDeleted(ctx context.Context, id string) error {
 // returning the purged count for the observable sweep report.
 func (s *Store) PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	return evidence.New(s.pool).PurgeObjectsBefore(ctx, pgTime(cutoff))
+}
+
+// IntakeHealth reports the bounded intake posture for monitoring
+// (SEC03-D): live reserved buckets, today decided buckets and the
+// oldest incomplete reservation. Counts, declared-byte sums and one
+// timestamp only — never keys, hashes or payloads.
+func (s *Store) IntakeHealth(ctx context.Context, since, now time.Time) (application.IntakeHealth, error) {
+	q := evidence.New(s.pool)
+	var rep application.IntakeHealth
+	reserved, err := q.SumReservedSessions(ctx, pgTime(now))
+	if err != nil {
+		return rep, err
+	}
+	rep.ReservedSessions, rep.ReservedBytes = int(reserved.N), reserved.Bytes
+	decided, err := q.SumDecidedSessions(ctx, pgTime(since))
+	if err != nil {
+		return rep, err
+	}
+	for _, row := range decided {
+		switch row.Status {
+		case domain.StateReady:
+			rep.AcceptedToday, rep.AcceptedBytes = int(row.N), row.Bytes
+		case domain.StateRejected:
+			rep.RejectedToday, rep.RejectedBytes = int(row.N), row.Bytes
+		}
+	}
+	oldest, err := q.OldestIncompleteSession(ctx)
+	if err != nil {
+		return rep, err
+	}
+	if oldest.Valid {
+		rep.OldestIncomplete = oldest.Time
+	}
+	return rep, nil
 }
 
 // FindByDHash resolves recent objects sharing one perceptual hash: the

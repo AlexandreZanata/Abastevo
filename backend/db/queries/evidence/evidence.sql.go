@@ -799,6 +799,18 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 	return result.RowsAffected(), nil
 }
 
+const oldestIncompleteSession = `-- name: OldestIncompleteSession :one
+SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
+WHERE status IN ('ISSUED', 'VERIFYING')
+`
+
+func (q *Queries) OldestIncompleteSession(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestIncompleteSession)
+	var oldest pgtype.Timestamptz
+	err := row.Scan(&oldest)
+	return oldest, err
+}
+
 const overdueFinals = `-- name: OverdueFinals :many
 
 SELECT id, final_key, created_at, received_at
@@ -956,6 +968,39 @@ func (q *Queries) StaleFinalCandidates(ctx context.Context, arg StaleFinalCandid
 	return items, nil
 }
 
+const sumDecidedSessions = `-- name: SumDecidedSessions :many
+SELECT status, count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE created_at >= $1 AND status IN ('READY', 'REJECTED')
+GROUP BY status
+`
+
+type SumDecidedSessionsRow struct {
+	Status string `json:"status"`
+	N      int64  `json:"n"`
+	Bytes  int64  `json:"bytes"`
+}
+
+func (q *Queries) SumDecidedSessions(ctx context.Context, since pgtype.Timestamptz) ([]SumDecidedSessionsRow, error) {
+	rows, err := q.db.Query(ctx, sumDecidedSessions, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumDecidedSessionsRow
+	for rows.Next() {
+		var i SumDecidedSessionsRow
+		if err := rows.Scan(&i.Status, &i.N, &i.Bytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sumLiveBytesSince = `-- name: SumLiveBytesSince :one
 SELECT COALESCE(SUM(declared_bytes), 0)::bigint FROM evidence_sessions
 WHERE contributor_ref = $1 AND created_at >= $2
@@ -976,4 +1021,27 @@ func (q *Queries) SumLiveBytesSince(ctx context.Context, arg SumLiveBytesSincePa
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const sumReservedSessions = `-- name: SumReservedSessions :one
+
+SELECT count(*)::bigint AS n, COALESCE(SUM(declared_bytes), 0)::bigint AS bytes
+FROM evidence_sessions
+WHERE expires_at > $1 AND status IN ('ISSUED', 'VERIFYING')
+`
+
+type SumReservedSessionsRow struct {
+	N     int64 `json:"n"`
+	Bytes int64 `json:"bytes"`
+}
+
+// SEC03-D intake-health accounting (bounded aggregates only: counts,
+// declared-byte sums and one timestamp — never keys, hashes or
+// payloads). Reserved = live in-flight sessions; decided splits
+// READY vs REJECTED created today; oldest incomplete names the lag.
+func (q *Queries) SumReservedSessions(ctx context.Context, now pgtype.Timestamptz) (SumReservedSessionsRow, error) {
+	row := q.db.QueryRow(ctx, sumReservedSessions, now)
+	var i SumReservedSessionsRow
+	err := row.Scan(&i.N, &i.Bytes)
+	return i, err
 }

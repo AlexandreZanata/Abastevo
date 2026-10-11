@@ -49,6 +49,25 @@ func TestBoundarySubstitutedBytesMismatchClaim(t *testing.T) {
 	}
 }
 
+func TestBoundaryDownloadBoundIsMaxPlusOne(t *testing.T) {
+	raw := loadFixture(t)
+	sess := verifyingSession(t, raw)
+	var bound int64
+	f := &fakeTransfer{payloads: [][]byte{raw}}
+	ports := verifyPorts(f)
+	inner := ports.Download
+	ports.Download = func(ctx context.Context, key string, maxBytes int64) ([]byte, error) {
+		bound = maxBytes
+		return inner(ctx, key, maxBytes)
+	}
+	if _, err := Verify(context.Background(), ports, sess); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if bound != sess.MaxBytes+1 {
+		t.Fatalf("download bound = %d, want MaxBytes+1 (%d)", bound, sess.MaxBytes+1)
+	}
+}
+
 // An interrupted transfer (absent object) is transient, never a
 // promotion and never a permanent rejection: the sweeper owns
 // expiry, not the verifier.
