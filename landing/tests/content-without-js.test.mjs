@@ -45,7 +45,13 @@ test('essential content and links are present in static HTML without JS', () => 
 
     // 6. Non-affiliation and licensing
     assert.match(indexHtml, /Não afiliado à ANP/);
+    assert.match(indexHtml, /sem afiliação à ANP/);
     assert.match(indexHtml, /Código aberto sob licença MIT/);
+    assert.match(indexHtml, /gov\.br\/anp/);
+    assert.match(indexHtml, /href="\/guias\/"[^>]*>Guias<\/a>/);
+
+    // 6b. No fabricated trust signals
+    assert.doesNotMatch(indexHtml, /depoimento|5 estrelas|milhares de usuários|mais barato garantido/i);
 
     // 7. Verify legal pages also contain their essential titles and contact paths
     const privHtml = fs.readFileSync(path.join(tmpOut, 'privacidade', 'index.html'), 'utf8');
