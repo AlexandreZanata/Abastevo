@@ -85,10 +85,11 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1:** `abastevo: preços de combustíveis com a comunidade`
+**H1 (LR10):** `Preços de combustíveis. Fonte e data à vista.`
 **Lead:** `Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros, com a fonte e a data de cada informação sempre visíveis. Comunidade e ANP aparecem separadas: uma nunca substitui a outra.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
-**Primary link:** `Ver no GitHub` → repository (ordinary link; same tab).
+**Primary CTA (LR10):** `Conheça o aplicativo` → `#aplicativo` (solid blue button, white text 8.12 contrast; the app gallery anchor exists).
+**Secondary link:** `Ver no GitHub` → repository (outline button; same tab).
 **Store notice [prelaunch]:** `Em breve na Google Play` (plain text). **[published]:** `Ver na Google Play`, one link or the official badge, in one place only.
 
 **Illustrative comparison** (heading `Comunidade e ANP, lado a lado`; label `Exemplo ilustrativo · dados fictícios`): two cards with the fictional place `Posto Exemplo` and the fictional value `R$ X,XX`; the community card reads `Observação enviada por pessoa · há algumas horas · apoio visível`; the ANP card reads `Levantamento publicado pela ANP · semana da pesquisa · não é preço da bomba agora`. Example values are always visibly fictional (no realistic price); text alternative: “Exemplo ilustrativo com dados fictícios: a mesma pergunta respondida pela comunidade e pela referência da ANP.”

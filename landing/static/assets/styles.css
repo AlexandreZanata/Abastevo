@@ -55,7 +55,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-pill: 9999px;
-  --max-width: 60rem; /* ~960px */
+  --max-width: 72rem; /* 1152px content area (LR03 visual revision) */
 }
 
 *, *::before, *::after {
@@ -133,7 +133,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   padding-right: 1.25rem;
 }
 
-h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-copy,
+h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-copy,
 .store-link, .back-to-top, .card-source-tag, .card-price-sample,
 .card-station-name, .step-number, .guide-card-title {
   font-family: var(--font-display);
@@ -261,9 +261,9 @@ section {
 }
 
 .hero-h1 {
-  font-size: clamp(2rem, 4vw + 1rem, 2.75rem);
+  font-size: clamp(2rem, 1rem + 5vw, 3.5rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.12;
   color: var(--ink);
   letter-spacing: -0.02em;
   margin-bottom: 1.25rem;
@@ -303,6 +303,28 @@ section {
   min-height: 48px;
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-sm);
+  background-color: var(--link);
+  color: #ffffff;
+  border: 2px solid var(--link);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
   background-color: #ffffff;
   color: var(--link);
   border: 2px solid var(--link);
@@ -312,7 +334,7 @@ section {
   cursor: pointer;
 }
 
-.btn-primary:hover {
+.btn-secondary:hover {
   background-color: var(--tint-blue);
 }
 

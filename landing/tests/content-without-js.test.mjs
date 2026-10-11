@@ -17,14 +17,20 @@ test('essential content and links are present in static HTML without JS', () => 
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
     // 1. Heading and primary identity
-    assert.match(indexHtml, /<h1[^>]*>abastevo: preços de combustíveis com a comunidade<\/h1>/);
+    assert.match(indexHtml, /<h1[^>]*>Preços de combustíveis\. Fonte e data à vista\.<\/h1>/);
     assert.match(indexHtml, /Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros/);
 
     // 2. Status line
     assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);
 
-    // 3. GitHub repository link
+    // 3. CTA hierarchy: primary to the app gallery, secondary to GitHub
+    assert.match(indexHtml, /href="#aplicativo"[^>]*>Conheça o aplicativo<\/a>/);
     assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*>Ver no GitHub<\/a>/);
+
+    // 3b. Opening hero carries no phone mockup or app screenshot
+    const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
+    assert.doesNotMatch(heroSection, /<img/);
+    assert.doesNotMatch(heroSection, /assets\/app\//);
 
     // 4. Comparison card pair
     assert.match(indexHtml, /Comunidade e ANP, lado a lado/);

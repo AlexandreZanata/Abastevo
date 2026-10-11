@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR10 2026-10-11: LOCAL_DONE on branch `landing`, header/hero revision. Candidate H1 + `Conheça o aplicativo`→#aplicativo primary CTA (contract-amended, checks updated), 1152px width, 32–56px H1, solid AA CTA; hero phone-free (test-guarded). Typecheck/build/check green, 29/29 tests. Tutorial anchor wiring owed at LR15 (no orphan links). Next: LR11 gallery/stories.
+
 - Landing redesign LR09 2026-10-11: LOCAL_DONE on branch `landing`, asset build extension. Provenance-gated `assets/app/` copying (48 WebP hash-verified, masters refused, missing/traversal loud) + 4 build tests; typecheck/build/check green, landing tests 29/29. Chapter route registration owed at LR15 with chapter sources. Next: LR10 header/hero.
 
 - Landing redesign LR08 2026-10-11: LOCAL_DONE on branch `landing`, responsive derivatives. 48 deterministic WebP (360/720/1080w, q85, aspect-preserved, no upscale) + provenance in `landing/static/assets/app/`; 360w legible at 100%, rebuild identical, landing tests 25/25 green. Build wiring/alt assignment owed at LR09/LR11. Next: LR09 asset build.
