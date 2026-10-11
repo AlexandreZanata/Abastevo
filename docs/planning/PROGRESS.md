@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR13 2026-10-11: LOCAL_DONE on branch `landing`, tutorial data contract. `lesson.json` schema + overlay/prev-next rules in [catalog](../product/LANDING_MOBILE_TUTORIAL_CATALOG.md); pure `validateLesson` (`src/tutorial.ts`, test-only, never shipped) + shared chapter styles; 3 validator tests. Typecheck green, 33/33 tests. Next: LR14 three annotated lessons.
+
 - Landing redesign LR12 2026-10-11: LOCAL_DONE on branch `landing`, source/project/footer pass. Explicit ANP non-affiliation + source separation + no-promise copy; legal/GitHub/MIT destinations preserved and test-guarded. Build/check green, 30/30 tests. Conta `zanatateste` logada no aparelho registrada para LR16+; aparelho intocado neste lote. Next: LR13 tutorial data contract.
 
 - Landing redesign LR11 2026-10-11: LOCAL_DONE on branch `landing`, app gallery + stories. 3 authentic figures (srcset 360/720/1080, lazy, alt, captions with status) + static layout; no carousel/autoplay; emitted-asset test. Build/check green, 30/30 tests. Next: LR12 source/privacy/project/footer.

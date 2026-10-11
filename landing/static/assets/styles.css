@@ -943,6 +943,104 @@ section {
   color: var(--text-muted);
 }
 
+/* Tutorial chapters (LR13): annotated steps with native-coordinate SVG overlays */
+.lesson-steps {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+  list-style: none;
+  padding: 0;
+}
+
+.lesson-step {
+  background-color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.lesson-step h3 {
+  font-size: 1.125rem;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-visual {
+  max-width: 22rem;
+  margin: 1rem auto;
+  background-color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+.tutorial-frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.tutorial-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tutorial-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tutorial-overlay rect {
+  fill: none;
+  stroke: #df231b;
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+.tutorial-overlay circle {
+  fill: #df231b;
+}
+
+.tutorial-overlay text {
+  fill: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.lesson-meta {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
+.lesson-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.lesson-availability {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--green-text);
+  background-color: var(--tint-green);
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
 /* Print */
 @media print {
   .site-header, .site-nav, .btn-primary, .store-link, .skip-link {

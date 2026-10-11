@@ -324,6 +324,35 @@ Explicitly gated (no active lesson, no invented screens):
   explanation → actual external legal/contact destination.
 - **Recovery:** offline/no browser/share handler. No automatic message submission.
 
+## Data and annotation contract (LR13) — 2026-10-11
+
+Each chapter ships a `lesson.json` beside its page source under
+`landing/static/como-usar/<slug>/`. Schema (all pt-BR text required):
+
+`lessonId, slug, titlePtBr, appVersion, appSourceSha (nullable), steps[]`.
+Each step: `stepId, image, imageSha256 (hex64), nativeWidth, nativeHeight,
+state, prerequisite, instructionPtBr, controlLabelPtBr, expectedPtBr,
+recoveryPtBr, altPtBr, target? {x,y,width,height in native px},
+availability (Disponível|Em breve|Planejado), claimClass, sourceFiles[],
+capturedAt, privacyReviewed, demoOnly`.
+
+Rules enforced by `landing/src/tutorial.ts` (`validateLesson`, pure, tested)
+and by review:
+
+- `target` rectangles come from inspected accessibility bounds or measured
+  control boxes, never approximations. Result frames omit `target`.
+- Every `target` must lie inside `nativeWidth × nativeHeight`; `stepId`
+  unique per lesson; `imageSha256` must match the manifest master.
+- Rendering is static HTML: full text and inline SVG overlays ship without
+  JS. The SVG uses the image native `viewBox`, transparent fill, red
+  `#df231b` non-scaling stroke, numbered badge beside (never over) the
+  control. Shared styles live in `styles.css` ("Tutorial chapters").
+- Previous/Next are plain anchor links between chapter pages/steps with
+  equivalent readable text; they never call a mobile write API and never
+  submit forms.
+- Steps whose capture is pending ship `availability` Em breve/Planejado with
+  a factual note, never an invented screen or synthetic success.
+
 ## IA freeze (LR02) — 2026-10-11
 
 Hub `/como-usar/` groups chapters as driver/discovery (TU01–TU10),
