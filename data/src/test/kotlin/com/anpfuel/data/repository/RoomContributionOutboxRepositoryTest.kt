@@ -92,6 +92,13 @@ class RoomContributionOutboxRepositoryTest {
             return 1
         }
 
+        override suspend fun markRefused(commandId: String, revision: Int, attempts: Int, neverTick: Long, reason: String): Int {
+            val row = rows[commandId] ?: return 0
+            if (row.revision != revision || row.state != "IN_FLIGHT") return 0
+            rows[commandId] = row.copy(state = "FAILED", attempts = attempts, nextEligibleTick = neverTick, failureReason = reason)
+            return 1
+        }
+
         override suspend fun cancelPending(commandId: String): Int {
             val row = rows[commandId] ?: return 0
             if (row.state !in setOf("QUEUED", "FAILED") || row.remoteStatus != null) return 0
@@ -311,5 +318,56 @@ class RoomContributionOutboxRepositoryTest {
         // Amortized on the write path: enquing converges retention.
         repo.enqueue(draft("cmd-new"), payload())
         assertTrue(dao.rows.size <= 1002)
+    }
+
+    // SEC06-D: server Retry-After overrides the curve but never the
+    // ceiling; permanent refusals park with their reason and stay
+    // parked; transient failures keep bounded backoff.
+    @Test
+    fun `retry hint honored capped and permanent parks distinctly`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        repo.enqueue(draft("cmd-hint"), payload())
+        // Move to IN_FLIGHT via a dispatch claim to mirror the worker.
+        assertEquals(1, dao.claim("cmd-hint", 1, "n1", 1_000L, 2_000L))
+        repo.failDispatch("cmd-hint", 1, "n1", 1_000L, 120_000L)
+        val hinted = dao.rows.getValue("cmd-hint")
+        assertEquals(121_000L, hinted.nextEligibleTick)
+        // Absurd hints cap at the backoff ceiling, never overflow.
+        dao.upsert(hinted.copy(state = "IN_FLIGHT", nonce = "n2"))
+        repo.failDispatch("cmd-hint", 1, "n2", 1_000L, Long.MAX_VALUE)
+        assertEquals(1_000L + com.anpfuel.application.portable.PortableOutbox.MAX_DELAY_TICKS, dao.rows.getValue("cmd-hint").nextEligibleTick)
+        // Permanent refusal parks distinctly with its reason.
+        dao.upsert(hinted.copy(state = "IN_FLIGHT", nonce = "n3"))
+        repo.refusePermanently("cmd-hint", 1, "contribution.owner-or-origin-changed")
+        val parked = dao.rows.getValue("cmd-hint")
+        assertEquals("FAILED", parked.state)
+        assertEquals(com.anpfuel.application.portable.PortableOutbox.MAX_DISPATCH_ATTEMPTS, parked.attempts)
+        assertEquals(Long.MAX_VALUE, parked.nextEligibleTick)
+        assertEquals("contribution.owner-or-origin-changed", parked.failureReason)
+        // A second park is a safe no-op (row left IN_FLIGHT checks).
+        repo.refusePermanently("cmd-hint", 1, "contribution.owner-or-origin-changed")
+        assertEquals(parked, dao.rows.getValue("cmd-hint"))
+        // Parked rows never dispatch again (any realistic clock).
+        assertTrue(repo.listDispatchablePage(Long.MAX_VALUE - 1, 50).isEmpty())
+        assertNull(repo.findDispatchable("cmd-hint", Long.MAX_VALUE - 1))
+    }
+
+    // SEC06-D fairness: no per-owner caps — FIFO order serves both
+    // accounts without starvation.
+    @Test
+    fun `two accounts interleave without starvation`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+        fun scopedPayload(owner: String) =
+            "{\"client_submission_id\":\"x\",\"scope\":{\"owner_scope\":\"$owner\",\"origin\":\"https://teste.abastevo.com.br\"}}"
+        repo.enqueue(draft("cmd-a1"), scopedPayload("owner-a"))
+        repo.enqueue(draft("cmd-b1"), scopedPayload("owner-b"))
+        repo.enqueue(draft("cmd-a2"), scopedPayload("owner-a"))
+        val page = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(listOf("cmd-a1", "cmd-b1", "cmd-a2"), page.map { it.commandId })
+        assertEquals(2, repo.purgeOwned("owner-a"))
+        val rest = repo.listDispatchablePage(2_000_000L, 50)
+        assertEquals(listOf("cmd-b1"), rest.map { it.commandId })
     }
 }

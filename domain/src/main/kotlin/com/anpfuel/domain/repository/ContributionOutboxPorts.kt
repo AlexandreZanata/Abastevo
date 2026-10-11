@@ -2,7 +2,17 @@ package com.anpfuel.domain.repository
 
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
+import java.io.IOException
 import com.anpfuel.domain.model.ContributionScope
+
+/**
+ * SEC06-D rate-limit refusal with the server's retry hint in seconds.
+ * Thrown by gateways on HTTP 429; dispatch honors the hint instead of
+ * the fixed curve. An [IOException] (transient family), never a
+ * [DomainException].
+ */
+class ContributionRateLimited(val retryAfterSeconds: Long) :
+    IOException("contribution.rate-limited")
 
 /**
  * P10-T05 durable contribution ports (BUC-003/004, B-BR-003/005/010/011).
@@ -34,8 +44,25 @@ interface ContributionOutboxRepository {
     suspend fun recordReceipt(receipt: ContributionReceipt, nowMillis: Long): Unit =
         throw DomainException("durable receipt storage unavailable")
     suspend fun receipt(commandId: String): ContributionReceipt? = null
-    suspend fun failDispatch(commandId: String, revision: Int, nonce: String, nowMillis: Long): Unit =
-        throw DomainException("atomic failure storage unavailable")
+    /**
+     * SEC06-D: record a failed attempt. When [retryAfterMillis] carries
+     * the server's Retry-After hint, the next eligible tick honors it
+     * (bounded by the backoff ceiling) instead of the fixed curve.
+     */
+    suspend fun failDispatch(
+        commandId: String,
+        revision: Int,
+        nonce: String,
+        nowMillis: Long,
+        retryAfterMillis: Long? = null,
+    ): Unit = throw DomainException("atomic failure storage unavailable")
+    /**
+     * SEC06-D: persist a permanent refusal distinctly from transient
+     * backoff — parks the row (never eligible again) with the stable
+     * reason. Retrying a permanently refused intent can never help.
+     */
+    suspend fun refusePermanently(commandId: String, revision: Int, reason: String): Unit =
+        throw DomainException("atomic refusal storage unavailable")
     suspend fun enqueue(draft: ContributionDraft, payloadJson: String): QueuedContribution
     /**
      * SEC06-C bounded dispatch selection: one requested command by id

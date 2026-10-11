@@ -11,6 +11,7 @@ import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.domain.portable.PortableAnonymousProof
 import com.anpfuel.domain.portable.PortableAuth
+import com.anpfuel.domain.repository.ContributionRateLimited
 import io.mockk.*
 import java.security.MessageDigest
 import java.util.Base64
@@ -188,5 +189,20 @@ class PhotoProofTransportTest {
             verify(exactly = 3) { identity.requestChallenge(fp, "SIGN") }
             verify(exactly = 1) { identity.register(any(), any(), any(), any()) }
         }
+    }
+
+    // SEC06-D: 429 with a valid Retry-After becomes a rate-limit hint;
+    // anything else stays a plain refusal (existing backoff applies).
+    @Test fun `rate limit mapping honors retry after`() {
+        val hinted = mapErrorStatus(429, "30")
+        assertTrue(hinted is ContributionRateLimited)
+        assertEquals(30L, (hinted as ContributionRateLimited).retryAfterSeconds)
+        assertTrue(mapErrorStatus(429, null) is PhotoOperationRefused)
+        assertTrue(mapErrorStatus(429, "soon") is PhotoOperationRefused)
+        assertTrue(mapErrorStatus(429, "-5") is PhotoOperationRefused)
+        assertTrue((mapErrorStatus(429, "99999") as ContributionRateLimited).retryAfterSeconds <= 3600L)
+        val refused = mapErrorStatus(503, "30")
+        assertTrue(refused is PhotoOperationRefused)
+        assertEquals(503, (refused as PhotoOperationRefused).status)
     }
 }

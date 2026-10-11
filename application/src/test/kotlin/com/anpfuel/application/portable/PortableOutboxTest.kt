@@ -50,13 +50,38 @@ class PortableOutboxTest {
         var cmd = OutboxCommand("cmd-1", "k", "p")
         cmd = PortableOutbox.markFailed(cmd, tickMillis = 0L)
         assertEquals(1, cmd.attempts)
-        assertEquals(1000L, cmd.nextEligibleTick)
+        // ±25% deterministic jitter around the 1000 base.
+        assertTrue(cmd.nextEligibleTick in 750L..1250L)
 
         cmd = PortableOutbox.markFailed(cmd, tickMillis = 1000L)
-        assertEquals(3000L, cmd.nextEligibleTick)
+        // Around the 2000 base, shifted by the tick.
+        assertTrue(cmd.nextEligibleTick in 2500L..3500L)
 
         repeat(30) { cmd = PortableOutbox.markFailed(cmd, tickMillis = 0L) }
-        assertTrue(cmd.nextEligibleTick <= PortableOutbox.MAX_DELAY_TICKS)
+        assertEquals(PortableOutbox.MAX_DISPATCH_ATTEMPTS, cmd.attempts)
+        assertEquals(Long.MAX_VALUE, cmd.nextEligibleTick)
+    }
+
+    // SEC06-D: attempts park instead of retrying forever; jitter
+    // spreads a fleet deterministically per command/attempt.
+    @Test
+    fun attemptsParkAtCapAndJitterSpreads() {
+        var cmd = OutboxCommand("cmd-park", "k", "p")
+        repeat(PortableOutbox.MAX_DISPATCH_ATTEMPTS + 5) {
+            cmd = PortableOutbox.markFailed(cmd, tickMillis = 0L)
+        }
+        assertEquals(PortableOutbox.MAX_DISPATCH_ATTEMPTS, cmd.attempts)
+        assertEquals(Long.MAX_VALUE, cmd.nextEligibleTick)
+        assertEquals(OutboxState.FAILED, cmd.state)
+
+        val a = PortableOutbox.markFailed(OutboxCommand("cmd-a", "k", "p"), 0L).nextEligibleTick
+        val b = PortableOutbox.markFailed(OutboxCommand("cmd-b", "k", "p"), 0L).nextEligibleTick
+        assertTrue(a in 750L..1250L && b in 750L..1250L)
+        // Same command and attempt always agree (test-stable, no RNG).
+        assertEquals(
+            a,
+            PortableOutbox.markFailed(OutboxCommand("cmd-a", "k", "p"), 0L).nextEligibleTick,
+        )
     }
 
     @Test

@@ -63,11 +63,30 @@ class RoomContributionOutboxRepository @Inject constructor(
         }
     }
 
-    override suspend fun failDispatch(commandId: String, revision: Int, nonce: String, nowMillis: Long) {
+    override suspend fun failDispatch(
+        commandId: String,
+        revision: Int,
+        nonce: String,
+        nowMillis: Long,
+        retryAfterMillis: Long?,
+    ) {
         val row = dao.findById(commandId) ?: return
         if (row.revision != revision || row.nonce != nonce || row.state != OutboxState.IN_FLIGHT.name) return
         val failed = PortableOutbox.markFailed(toCommand(row), nowMillis)
-        dao.failClaim(commandId, revision, nonce, failed.attempts, failed.nextEligibleTick)
+        // SEC06-D: a server Retry-After hint overrides the curve,
+        // still bounded by the backoff ceiling.
+        val tick = retryAfterMillis
+            ?.coerceIn(0L, PortableOutbox.MAX_DELAY_TICKS)
+            ?.let { if (nowMillis > Long.MAX_VALUE - it) Long.MAX_VALUE else nowMillis + it }
+            ?: failed.nextEligibleTick
+        dao.failClaim(commandId, revision, nonce, failed.attempts, tick)
+    }
+
+    override suspend fun refusePermanently(commandId: String, revision: Int, reason: String) {
+        if (commandId.isBlank() || reason.isBlank()) return
+        val row = dao.findById(commandId) ?: return
+        if (row.revision != revision || row.state != OutboxState.IN_FLIGHT.name) return
+        dao.markRefused(commandId, revision, PortableOutbox.MAX_DISPATCH_ATTEMPTS, Long.MAX_VALUE, reason)
     }
 
     override suspend fun enqueue(

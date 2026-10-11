@@ -105,6 +105,14 @@ interface ContributionOutboxDao {
         WHERE command_id=:commandId AND revision=:revision AND state='IN_FLIGHT' AND nonce=:nonce""")
     suspend fun failClaim(commandId: String, revision: Int, nonce: String, attempts: Int, nextTick: Long): Int
 
+    /**
+     * SEC06-D permanent refusal: parks the row with its stable reason.
+     * Only live claims park; anything else reports zero rows affected.
+     */
+    @Query("""UPDATE contribution_outbox SET state='FAILED', attempts=:attempts, next_eligible_tick=:neverTick,
+        failure_reason=:reason WHERE command_id=:commandId AND revision=:revision AND state='IN_FLIGHT'""")
+    suspend fun markRefused(commandId: String, revision: Int, attempts: Int, neverTick: Long, reason: String): Int
+
     @Query("UPDATE contribution_outbox SET state='CANCELLED' WHERE command_id=:commandId AND state IN ('QUEUED','FAILED') AND remote_status IS NULL")
     suspend fun cancelPending(commandId: String): Int
 

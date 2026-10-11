@@ -1,6 +1,7 @@
 package com.anpfuel.application.usecase.contribution
 
 import com.anpfuel.domain.repository.*
+import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.exception.ContributionPhotoExpired
 import io.mockk.*
 import java.io.IOException
@@ -58,5 +59,40 @@ class DispatchContributionUseCaseTest {
         try { dispatcher().invoke("row"); fail<Unit>("cancellation swallowed") } catch (_: CancellationException) { }
         coVerify(exactly = 0) { outbox.failDispatch(any(), any(), any(), any()) }
         coVerify(exactly = 0) { outbox.recordReceipt(any(), any()) }
+    }
+
+    // SEC06-D: server Retry-After overrides the curve (bounded by the
+    // ceiling); permanent refusals park distinctly; transient domain
+    // refusals keep backoff; every attempt mints a fresh proof nonce
+    // under the stable operation id.
+    @Test fun `rate limited honors server retry hint`() = runTest {
+        ready()
+        coEvery { gateway.submit(any(), any(), any(), any()) } throws ContributionRateLimited(120)
+        assertEquals(DispatchOutcome.RETRY, dispatcher().invoke("row"))
+        coVerify(exactly = 1) { outbox.failDispatch("row", 1, "lease", 1000, 120_000L) }
+    }
+
+    @Test fun `permanent refusal parks distinctly while transient backoffs`() = runTest {
+        ready()
+        coEvery { gateway.submit(any(), any(), any(), any()) } throws DomainException("contribution.owner-or-origin-changed")
+        assertEquals(DispatchOutcome.REFUSED, dispatcher().invoke("row"))
+        coVerify(exactly = 1) { outbox.refusePermanently("row", 1, "contribution.owner-or-origin-changed") }
+        coVerify(exactly = 0) { outbox.failDispatch(any(), any(), any(), any(), any()) }
+        coEvery { gateway.submit(any(), any(), any(), any()) } throws DomainException("contribution.flaky-remote")
+        assertEquals(DispatchOutcome.REFUSED, dispatcher().invoke("row"))
+        coVerify(exactly = 1) { outbox.failDispatch("row", 1, "lease", 1000) }
+    }
+
+    @Test fun `attempts mint fresh nonces under the stable operation id`() = runTest {
+        ready()
+        val nonces = mutableListOf<String>()
+        coEvery { gateway.submit(any(), any(), any(), capture(nonces)) } throws java.io.IOException("offline") andThen
+            ContributionReceipt("row", 1, ContributionRemoteStatus.VALIDATED, "observation")
+        var attempt = 0
+        val dispatcher = DispatchContributionUseCase(outbox, gateway, { 1000L }, { "nonce-${++attempt}" })
+        coEvery { outbox.claimDispatch("row", 1, any(), any()) } returns true
+        assertEquals(DispatchOutcome.RETRY, dispatcher.invoke("row"))
+        assertEquals(DispatchOutcome.DONE, dispatcher.invoke("row"))
+        assertEquals(listOf("nonce-1", "nonce-2"), nonces)
     }
 }
