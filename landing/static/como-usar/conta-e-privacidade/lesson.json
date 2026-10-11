@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU13",
+  "slug": "conta-e-privacidade",
+  "titlePtBr": "Sessão, privacidade e exclusão",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu13-s1",
+      "image": "/assets/app/profile-connected-720w.webp",
+      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
+      "instructionPtBr": "No Perfil, confirme o estado Conectado da conta demo.",
+      "controlLabelPtBr": "Conectado",
+      "expectedPtBr": "Perfil indica conta gratuita ativa, sem expor chave.",
+      "recoveryPtBr": "Se mostrar visitante, entre com sua chave guardada.",
+      "altPtBr": "Perfil conectado com estado Conectado destacado.",
+      "target": {
+        "x": 204,
+        "y": 396,
+        "width": 238,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu13-s2",
+      "image": "/assets/app/profile-connected-720w.webp",
+      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
+      "instructionPtBr": "Abra Gerenciar conta para login, provedores e exclusão.",
+      "controlLabelPtBr": "Gerenciar conta",
+      "expectedPtBr": "Abre a conta com chave mascarada e ações de cópia, saída e exclusão (telas protegidas contra captura).",
+      "recoveryPtBr": "Nunca mostre, copie ou compartilhe a chave real em capturas.",
+      "altPtBr": "Entrada Gerenciar conta destacada no perfil.",
+      "target": {
+        "x": 216,
+        "y": 1035,
+        "width": 360,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    },
+    {
+      "stepId": "tu13-s3",
+      "image": "/assets/app/profile-connected-720w.webp",
+      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
+      "instructionPtBr": "Entenda intenção, recibo e conclusão antes de excluir.",
+      "controlLabelPtBr": "Excluir minha conta",
+      "expectedPtBr": "Exclusão remove a conta e desconecta o aparelho; fatos anonimizados permanecem.",
+      "recoveryPtBr": "Exclusão exige confirmação e rede; conta demo jamais excluída para captura.",
+      "altPtBr": "Resultado de sessão e exclusão explicados.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": true
+    }
+  ]
+}

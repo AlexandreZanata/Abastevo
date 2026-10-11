@@ -9,7 +9,7 @@ import { build } from '../scripts/build.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
-const CHAPTERS = ['escolher-cidade', 'precos-do-posto', 'comunidade'];
+const CHAPTERS = ['escolher-cidade', 'precos-do-posto', 'comunidade', 'conta-e-privacidade'];
 
 test('driver chapters render full text, true overlays and working prev/next', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-chapters-'));

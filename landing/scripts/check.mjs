@@ -26,6 +26,7 @@ export function checkDist(options = {}) {
     'como-usar/escolher-cidade/index.html',
     'como-usar/precos-do-posto/index.html',
     'como-usar/comunidade/index.html',
+    'como-usar/conta-e-privacidade/index.html',
     '404.html',
     'robots.txt',
     'sitemap.xml',

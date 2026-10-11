@@ -34,6 +34,7 @@ visible state, privacy review and capture limitations. Open individual files:
 - [Community empty state](screenshots/community-empty.png) / [feed, dark](screenshots/community-feed.png) (LR05)
 - [History chart](screenshots/history.png) / [week picker](screenshots/week-picker.png) (LR05)
 - [Contributions empty state](screenshots/contributions-empty.png) / [settings](screenshots/settings.png) (LR06: view-only, no account or toggle change)
+- [Profile connected, demo account](screenshots/profile-connected.png) (LR17: session entries only, no key in pixels)
 - [Guest profile](screenshots/profile-guest.png)
 - [Vehicle list empty state](screenshots/vehicles-empty.png)
 - [Blank vehicle form](screenshots/vehicle-form.png)

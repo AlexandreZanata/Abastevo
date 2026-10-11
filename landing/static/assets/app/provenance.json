@@ -423,6 +423,30 @@
       "height": 2401,
       "bytes": 49474,
       "sha256": "dd1c7c169957a5880604cb636efb31d2ca8bcee448226e3a2970205d4f8a3900"
+    },
+    {
+      "file": "profile-connected-360w.webp",
+      "master": "profile-connected.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 24668,
+      "sha256": "92c21ca20650476add31af5ed1d11a5e3a3892aea994275e852615f465341cb2"
+    },
+    {
+      "file": "profile-connected-720w.webp",
+      "master": "profile-connected.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 58754,
+      "sha256": "8301f88e6858cd7e7bbf81a4c3e50bcce6e5216361af325a92bb3acbf2a3f119"
+    },
+    {
+      "file": "profile-connected-1080w.webp",
+      "master": "profile-connected.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 93436,
+      "sha256": "88cb91b1517b91047a1b70fb621e9bae024ba636bdff2b9ef485c2e65767ccba"
     }
   ]
 }
