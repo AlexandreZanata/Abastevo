@@ -26,7 +26,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
-func testDSN(t *testing.T) string {
+func testDSN(t testing.TB) string {
 	t.Helper()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -42,7 +42,7 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
-func freshStore(t *testing.T) (*Store, *pgxpool.Pool, string) {
+func freshStore(t testing.TB) (*Store, *pgxpool.Pool, string) {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -466,7 +466,7 @@ func TestSignalsSchemaHoldsNoExactPayload(t *testing.T) {
 
 var fixtureSeq atomic.Int64
 
-func validatedFixture(t *testing.T, s *Store, stationID, submission string) domain.Observation {
+func validatedFixture(t testing.TB, s *Store, stationID, submission string) domain.Observation {
 	t.Helper()
 	ctx := context.Background()
 	obs := testObs(stationID, submission)
