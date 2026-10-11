@@ -47,3 +47,18 @@ type PrivacyTrainingConsent struct {
 	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
 	DecidedAt      pgtype.Timestamptz `json:"decided_at"`
 }
+
+type PrivacyTrainingDerivative struct {
+	ImageID          string             `json:"image_id"`
+	ConsentRevision  int64              `json:"consent_revision"`
+	ContributorID    string             `json:"contributor_id"`
+	ContributorRef   string             `json:"contributor_ref"`
+	SourceSha256     string             `json:"source_sha256"`
+	DerivativeSha256 string             `json:"derivative_sha256"`
+	CapturedAt       pgtype.Timestamptz `json:"captured_at"`
+	TermsVersion     string             `json:"terms_version"`
+	TermsDigest      string             `json:"terms_digest"`
+	State            string             `json:"state"`
+	PromotedAt       pgtype.Timestamptz `json:"promoted_at"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+}

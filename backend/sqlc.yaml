@@ -168,6 +168,7 @@ sql:
       - db/migrations/000018_privacy_requests.sql
       - db/migrations/000019_privacy_deletion_ledger.sql
       - db/migrations/000056_privacy_training_consent.sql
+      - db/migrations/000057_privacy_training_derivatives.sql
     gen:
       go:
         package: privacy
