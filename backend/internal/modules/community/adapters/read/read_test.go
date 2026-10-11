@@ -1,6 +1,8 @@
 package read
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,5 +73,20 @@ func TestMapViewKeepsDisputedWithoutAmount(t *testing.T) {
 	view := mapView(row, now)
 	if view.Availability != "DISPUTED" || view.HasAmount {
 		t.Errorf("disputed = %+v", view)
+	}
+}
+
+func TestFeedItemCarriesNoHelpfulnessOrVoterFields(t *testing.T) {
+	// CS04: public feed items must never leak helpfulness tallies, owner
+	// overlays, voter lists or cursor internals; counts travel the
+	// tally endpoint, overlays the signed read path.
+	raw, err := json.Marshal(FeedItem{StationID: "s", StationName: "n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"helpful", "not_helpful", "my_choice", "my_vote", "voter", "contributor", "cursor", "keyid", "fingerprint"} {
+		if strings.Contains(strings.ToLower(string(raw)), leak) {
+			t.Errorf("feed item leaks %q: %s", leak, raw)
+		}
 	}
 }
