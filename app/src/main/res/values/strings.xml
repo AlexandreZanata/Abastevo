@@ -519,6 +519,10 @@
     <string name="training_consent_rejected">Not recorded (%1$s)</string>
     <string name="training_consent_offline">No connection — retry when online.</string>
 
+    <!-- Per-photo training opt-in (CS11C: explicit, default off, consent-gated) -->
+    <string name="training_photo_opt_in">Allow this photo for training review</string>
+    <string name="training_photo_opt_in_locked">Training review needs consent first (Privacy settings)</string>
+
     <!-- Community privacy (P10-T08: what actually leaves the device) -->
     <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
     <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
