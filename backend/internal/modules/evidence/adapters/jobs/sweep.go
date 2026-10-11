@@ -46,8 +46,10 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 	// The report is the observable cleanup outcome: every expired or
 	// deleted unit counted, storage failures counted for the next pass.
 	// Intake posture rides along as counts/bytes/timestamp only — never
-	// keys, hashes or payloads.
-	slog.Info("evidence.sweep",
+	// keys, hashes or payloads. A remaining overdue backlog alarms at
+	// warn level with the worst lag per namespace so the next hourly
+	// run's catch-up is watched, not silent.
+	args := []any{
 		"expired_sessions", rep.ExpiredSessions,
 		"skipped_active", rep.SkippedActive,
 		"quarantines_deleted", rep.QuarantinesDeleted,
@@ -61,6 +63,17 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 		"rejected_today", rep.Health.RejectedToday,
 		"rejected_bytes", rep.Health.RejectedBytes,
 		"oldest_incomplete", rep.Health.OldestIncomplete.UTC().Format(time.RFC3339),
-	)
+		"overdue_finals", rep.Overdue.Count,
+		"overdue_originals", rep.Overdue.Originals,
+	}
+	if rep.Overdue.Unhealthy() {
+		args = append(args,
+			"oldest_overdue_final", rep.Overdue.Oldest.UTC().Format(time.RFC3339),
+			"oldest_overdue_original", rep.Overdue.OldestOriginal.UTC().Format(time.RFC3339),
+		)
+		slog.Warn("evidence.sweep.overdue", args...)
+		return nil
+	}
+	slog.Info("evidence.sweep", args...)
 	return nil
 }

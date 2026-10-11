@@ -88,6 +88,11 @@ type SweepReport struct {
 	ObjectsPurged      int64
 	StorageErrors      int
 	Health             IntakeHealth
+	// Overdue is the post-pass failing-policy signal (SEC05-B):
+	// copies still past deadline after this run's bounded work.
+	// Nonzero means the next hourly run must catch up; alarms name
+	// the namespace and worst lag. Never fails the pass itself.
+	Overdue OverdueReport
 }
 
 // IntakeHealth is the intake posture snapshot: live reserved buckets
@@ -267,6 +272,13 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	// snapshot rather than blocking cleanup).
 	if health, herr := deps.Store.IntakeHealth(ctx, dayStart(now), now); herr == nil {
 		rep.Health = health
+	}
+	// Post-pass overdue signal (SEC05-B): bounded re-audit after this
+	// run's work, so alarms and the next run's catch-up see the
+	// remaining backlog. Errors degrade to a zero signal rather than
+	// failing cleanup that already succeeded.
+	if overdue, oerr := AuditOverdue(ctx, deps.Store, now, deps.Batch); oerr == nil {
+		rep.Overdue = overdue
 	}
 	return rep, nil
 }
