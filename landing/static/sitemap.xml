@@ -46,6 +46,27 @@
     <loc>{{CANONICAL_ORIGIN}}/como-usar/veiculos/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/precos-anp/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/semanas-anp/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/historico/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/postos/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/minhas-contribuicoes/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/perfil-do-posto/</loc>
+  </url>
+  <url>
+    <loc>{{CANONICAL_ORIGIN}}/como-usar/configuracoes/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/guias/como-ler-precos/</loc>
   </url>
 </urlset>

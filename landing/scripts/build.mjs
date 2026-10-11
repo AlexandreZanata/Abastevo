@@ -223,6 +223,13 @@ export function build(options = {}) {
       { srcRel: 'como-usar/fotografar-preco/index.html', destRel: 'como-usar/fotografar-preco/index.html' },
       { srcRel: 'como-usar/denunciar-abuso/index.html', destRel: 'como-usar/denunciar-abuso/index.html' },
       { srcRel: 'como-usar/veiculos/index.html', destRel: 'como-usar/veiculos/index.html' },
+      { srcRel: 'como-usar/precos-anp/index.html', destRel: 'como-usar/precos-anp/index.html' },
+      { srcRel: 'como-usar/semanas-anp/index.html', destRel: 'como-usar/semanas-anp/index.html' },
+      { srcRel: 'como-usar/historico/index.html', destRel: 'como-usar/historico/index.html' },
+      { srcRel: 'como-usar/postos/index.html', destRel: 'como-usar/postos/index.html' },
+      { srcRel: 'como-usar/minhas-contribuicoes/index.html', destRel: 'como-usar/minhas-contribuicoes/index.html' },
+      { srcRel: 'como-usar/perfil-do-posto/index.html', destRel: 'como-usar/perfil-do-posto/index.html' },
+      { srcRel: 'como-usar/configuracoes/index.html', destRel: 'como-usar/configuracoes/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 

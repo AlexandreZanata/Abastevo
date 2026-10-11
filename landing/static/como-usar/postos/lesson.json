@@ -1,0 +1,87 @@
+{
+  "lessonId": "TU08",
+  "slug": "postos",
+  "titlePtBr": "Encontrar e navegar até um posto",
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "steps": [
+    {
+      "stepId": "tu08-s1",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Busque pelo nome do posto.",
+      "controlLabelPtBr": "Buscar por nome do posto",
+      "expectedPtBr": "Filtra a lista sem sair da tela.",
+      "recoveryPtBr": "Limpe a busca para ver todos.",
+      "altPtBr": "Busca por nome destacada.",
+      "target": {
+        "x": 204,
+        "y": 1164,
+        "width": 599,
+        "height": 72
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s2",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Ordene por menor preço primeiro.",
+      "controlLabelPtBr": "Menor preço primeiro",
+      "expectedPtBr": "Lista reordena pelos valores ANP datados.",
+      "recoveryPtBr": "Ordem por distância exige localização.",
+      "altPtBr": "Ordenação destacada.",
+      "target": {
+        "x": 48,
+        "y": 1572,
+        "width": 413,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu08-s3",
+      "image": "/assets/app/stations-list-720w.webp",
+      "imageSha256": "5890225b5bef0a31e5f94449158e20e7fc89c68f7a9a302f196a63eddaad3763",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Toque no cartão para ver detalhes e navegar.",
+      "controlLabelPtBr": "Cartão do posto",
+      "expectedPtBr": "Abre identidade, preços por fonte e botão Ir.",
+      "recoveryPtBr": "Sem preço comunitário, vale a referência ANP.",
+      "altPtBr": "Cartão do posto como resultado.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}
