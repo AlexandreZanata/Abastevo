@@ -1,0 +1,5 @@
+<resources>
+    <string name="games_hud">%1$d points · %2$d s</string>
+    <string name="games_flight_accessibility">Fuel Flight playfield. Tap to fly, or use the Fly button below.</string>
+    <string name="games_run_accessibility">Fuel Run playfield. Swipe sideways to change lanes, up to jump and down to slide. Buttons are also available below.</string>
+</resources>

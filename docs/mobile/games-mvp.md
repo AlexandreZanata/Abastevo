@@ -108,3 +108,13 @@ frozen, restart clean, recreation starts READY. Local best accepts only valid
 FINISHED scores and never decreases. Command: `./gradlew :domain:test --tests
 'com.anpfuel.domain.games.*' --offline --console=plain`. No unfinished snapshot
 or trace persistence. Diff/secret checks PASS.
+
+GME-M05 LOCAL_DONE (source/compilation): native View/Canvas renderer, fixed
+aspect scaling/letterboxing, interpolation, original procedural art, cached HUD,
+display callbacks removed on pause/detach, capped draw cadence, muted-by-default
+optional short audio cues, reduced decorative motion, keyboard/touch controls.
+4 gesture tests pass (threshold, dominant direction, invalid floats, short taps).
+`./gradlew :app:testDebugUnitTest --tests 'com.anpfuel.app.games.GameplayInputTest'
+:app:compileDebugKotlin --offline --console=plain --max-workers=2` PASS.
+Android compilation PASS; native visual/audio/hardware acceptance remains OWED.
+No new dependency or runtime art file. Diff/secret checks PASS.

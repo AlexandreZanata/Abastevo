@@ -1,0 +1,5 @@
+<resources>
+    <string name="games_hud">%1$d pontos · %2$d s</string>
+    <string name="games_flight_accessibility">Pista do Fuel Flight. Toque para voar ou use o botão Voar abaixo.</string>
+    <string name="games_run_accessibility">Pista do Fuel Run. Deslize para os lados para mudar de faixa, para cima para pular e para baixo para deslizar. Também há botões abaixo.</string>
+</resources>
