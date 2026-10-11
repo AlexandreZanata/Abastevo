@@ -1,0 +1,205 @@
+{
+  "format_version": 1,
+  "status": "ASSET_DRAFT_LOCAL_DONE",
+  "license": "MIT",
+  "generator": "scripts/assets/build-fuel-game-assets.py",
+  "units": "metres",
+  "coordinates": "right-handed, Y up, front +Z, base Y=0; artistic scale",
+  "textures": 0,
+  "animations": 0,
+  "total_glb_bytes": 731128,
+  "assets": [
+    {
+      "file": "gasoline_regular.glb",
+      "fuel_product": "GASOLINE_REGULAR",
+      "category_ink": "#FD7805",
+      "bytes": 97932,
+      "triangles": 1868,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.346
+        ]
+      },
+      "sha256": "b0282290113b2882fc8b8fcecdc94e7c74e419bf6b5527e5efc4016ce914a07e",
+      "label": "Gasolina comum",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_gasoline_regular.png",
+      "source_icon_sha256": "d767ed98220b77002b5f4bfd8f5a0d2b14cf6e6be273241370316f1e9130d658"
+    },
+    {
+      "file": "gasoline_additive.glb",
+      "fuel_product": "GASOLINE_PREMIUM",
+      "category_ink": "#D59F05",
+      "bytes": 99928,
+      "triangles": 1912,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.35
+        ]
+      },
+      "sha256": "4e29c2b13243d7572503b92ad1db09e50f627ebd9dc2980d508ccb9effeba5dc",
+      "label": "Gasolina aditivada",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_gasoline_premium.png",
+      "source_icon_sha256": "bf7f17a3cf88c77836ec02212b39b7738ed0c356829397ff408bd0b53775a831"
+    },
+    {
+      "file": "gasoline_premium.glb",
+      "fuel_product": "GASOLINE_PREMIUM_GRADE",
+      "category_ink": "#C2185B",
+      "bytes": 99092,
+      "triangles": 1892,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.346
+        ]
+      },
+      "sha256": "5643a1411ef7e5e4cd1a59413a003030614e0e48d89e9714953ccf57d2221902",
+      "label": "Gasolina premium",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_gasoline_premium_grade.png",
+      "source_icon_sha256": "db5301d03e2cf1b4fc86c208de7c5358275920f21170e66d77ad6f1068c0bf2d"
+    },
+    {
+      "file": "ethanol.glb",
+      "fuel_product": "ETHANOL",
+      "category_ink": "#209437",
+      "bytes": 27768,
+      "triangles": 456,
+      "primitives": 2,
+      "bounds_m": {
+        "min": [
+          -0.49,
+          0,
+          -0.49
+        ],
+        "max": [
+          0.49,
+          1.55,
+          0.56799
+        ]
+      },
+      "sha256": "6ea3dcb7c7ad113cc9b6d9c2ffe0d65973ef5433f619f93897faf002168fc61b",
+      "label": "Etanol",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_ethanol.png",
+      "source_icon_sha256": "fe72467a1a26506d80f67517f20cd7639c0762f430b4497eae43c5a0e6747a56"
+    },
+    {
+      "file": "diesel_s500.glb",
+      "fuel_product": "DIESEL_S500",
+      "category_ink": "#0372F3",
+      "bytes": 120908,
+      "triangles": 2336,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.3525
+        ]
+      },
+      "sha256": "eab489361b6fa719e4571dcf48a82ec4776c6c63f6b2020fb6a6a1965a4acb79",
+      "label": "Diesel S500",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_diesel_s500.png",
+      "source_icon_sha256": "0f72d5ed5b0907a678c1d27174f1ea7893343ec34e3cf61653718f21956ec8a8"
+    },
+    {
+      "file": "diesel_s10.glb",
+      "fuel_product": "DIESEL_S10",
+      "category_ink": "#5D24CF",
+      "bytes": 105592,
+      "triangles": 2024,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.3525
+        ]
+      },
+      "sha256": "8566c9e6e5d1c3c69aba2f8d76f5d4cf09ddbbdb093138394f6a29823e1dd97f",
+      "label": "Diesel S10",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_diesel_s10.png",
+      "source_icon_sha256": "df71e4cebc5c85cb57f80b079ab2ca827d42da7ed98fa29fc0d8789d47522c75"
+    },
+    {
+      "file": "cng.glb",
+      "fuel_product": "CNG",
+      "category_ink": "#FFBF00",
+      "bytes": 126472,
+      "triangles": 2448,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.78,
+          0.0,
+          -0.33
+        ],
+        "max": [
+          1.0,
+          1.73,
+          0.3725
+        ]
+      },
+      "sha256": "3a94840c0efd615754582ad946ac4b12bff0673fc46b1f9169f24561904e1334",
+      "label": "GNV",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_cng.png",
+      "source_icon_sha256": "edad393d14b59b5b847164d4a85db7e0d7aa53dddcb72ca55e3369f1dff002a8"
+    },
+    {
+      "file": "lpg_p13.glb",
+      "fuel_product": "LPG_P13",
+      "category_ink": "#FD6503",
+      "bytes": 53436,
+      "triangles": 1004,
+      "primitives": 3,
+      "bounds_m": {
+        "min": [
+          -0.47,
+          0,
+          -0.47
+        ],
+        "max": [
+          0.47,
+          1.46632,
+          0.52
+        ]
+      },
+      "sha256": "7a6fc5b53e41605486852e58faf3c8cee999d1a779112d6f63abe80518407a93",
+      "label": "GLP P13",
+      "source_icon": "docs/assets/fuel-icons/transparent/ic_fuel_lpg_p13.png",
+      "source_icon_sha256": "314419dd536a70753bbd50165bfcdc822a792fae84d015cef438e11d4cd39b84"
+    }
+  ]
+}

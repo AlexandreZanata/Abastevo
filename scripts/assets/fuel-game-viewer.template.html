@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Original asset-review tooling, MIT. Generated preview embeds exact GLB bytes. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>abastevo — fuel game assets V1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101923;color:#edf2f5;font:15px system-ui,sans-serif}header{padding:28px 36px;border-bottom:1px solid #304151}h1{font-size:25px;margin:8px 0}p{color:#b4c2cd;line-height:1.6;margin:8px 0}.eyebrow{font-size:12px;letter-spacing:2px;color:#b4c2cd}main{max-width:1300px;margin:auto;padding:28px 36px;display:grid;grid-template-columns:260px 1fr;gap:28px}nav{display:flex;flex-direction:column;gap:7px}button{font:inherit;color:inherit;background:#192633;border:1px solid #304151;border-radius:8px;padding:12px 16px;text-align:left;cursor:pointer}button[aria-pressed=true]{background:#304151;border-color:#a8bdcc}button:hover{border-color:#a8bdcc}button:focus-visible,canvas:focus-visible{outline:2px solid #edf2f5;outline-offset:3px}.viewport{position:relative;background:#192633;border-radius:12px;overflow:hidden}canvas{display:block;width:100%;height:510px;touch-action:none}.caption{position:absolute;top:20px;left:24px;pointer-events:none}.caption strong{font-size:22px}.caption p{font-size:13px}#stats{display:flex;gap:24px;margin:20px 0;font-size:13px;color:#b4c2cd}.controls{display:flex;gap:10px;flex-wrap:wrap}.controls button{font-size:13px}footer{max-width:1300px;padding:0 36px 30px;margin:auto}a{color:#edf2f5}#error{color:#f2bd8d;padding:15px;display:none}@media(max-width:760px){main{grid-template-columns:1fr;padding:20px}nav{flex-direction:row;flex-wrap:wrap}nav button{font-size:13px;padding:9px}canvas{height:430px}header{padding:20px}#stats{flex-wrap:wrap;gap:12px}}
+</style></head><body>
+<header><div class="eyebrow">ABASTEVO / GAME ASSET LAB</div><h1>Fuel collection · V1</h1><p>Eight original low-poly 3D assets. Offline inspection of the actual GLB meshes.</p></header>
+<main><aside><nav aria-label="Fuel models" id="models"></nav><p>Drag to orbit. Scroll to zoom.<br>Left / right arrows switch models.</p><p>Draft assets only.<br>Games and national ranking are planned.</p></aside><section>
+<div class="viewport"><canvas id="view" tabindex="0" aria-label="Interactive 3D fuel model"></canvas><div class="caption"><strong id="name"></strong><p id="wire"></p></div><div id="error">WebGL is unavailable. <a href="contact-sheet.png">Open the rendered contact sheet.</a></div></div>
+<div id="stats" aria-live="polite"></div><div class="controls"><button id="rotate" aria-pressed="false">Auto-rotate</button><button id="reset">Reset camera</button><a id="download" download>Download GLB</a></div>
+</section></main>
+<footer><p>Texture-free geometry · 3 PBR materials maximum · Y up / front +Z · MIT</p><p>Preview uses simplified directional lighting; GLB files preserve PBR material parameters. No network, analytics, CDN, game simulation or ranking service.</p></footer>
+<script>
+'use strict';
+const assets=__ASSETS__;
+const canvas=document.getElementById('view'), gl=canvas.getContext('webgl',{antialias:true,alpha:false});
+let selected=0, yaw=-.4, tilt=.18, zoom=1, auto=false, dragging=false, lastX=0,lastY=0,previous=0;
+const buttons=assets.map((asset,i)=>{const button=document.createElement('button');button.textContent=asset.label;button.onclick=()=>select(i);document.getElementById('models').appendChild(button);return button});
+let program, primitives=[];
+function shader(type,source){const sh=gl.createShader(type);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh}
+if(gl){
+program=gl.createProgram();
+gl.attachShader(program,shader(gl.VERTEX_SHADER,`attribute vec3 position; attribute vec3 normal; uniform float yaw,tilt,zoom,aspect; varying vec3 n;
+vec3 rotate(vec3 p){float c=cos(yaw),s=sin(yaw);p=vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);c=cos(tilt);s=sin(tilt);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
+void main(){vec3 p=rotate(position-vec3(0.05,0.85,0.0));n=rotate(normal);gl_Position=vec4(p.x*zoom/(1.15*aspect),p.y*zoom/1.15,-p.z/8.0,1.0);}`));
+gl.attachShader(program,shader(gl.FRAGMENT_SHADER,`precision mediump float; varying vec3 n; uniform vec3 color; void main(){vec3 normal=normalize(n);float light=0.42+0.58*max(0.0,dot(normal,normalize(vec3(-0.4,0.8,1.0))));float rim=pow(1.0-max(0.0,normal.z),3.0)*0.07;gl_FragColor=vec4(color*light+rim,1.0);}`));
+gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+gl.useProgram(program);gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.clearColor(.098,.149,.2,1);
+}else document.getElementById('error').style.display='block';
+function decode(asset){const raw=atob(asset.glb), bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const view=new DataView(bytes.buffer);const jsonSize=view.getUint32(12,true);const doc=JSON.parse(new TextDecoder().decode(bytes.subarray(20,20+jsonSize)));const binary=28+jsonSize;
+function accessor(index){const a=doc.accessors[index],v=doc.bufferViews[a.bufferView],offset=binary+(v.byteOffset||0)+(a.byteOffset||0);return a.componentType===5126?new Float32Array(bytes.buffer,offset,a.count*3):new Uint16Array(bytes.buffer,offset,a.count)}
+return doc.meshes[0].primitives.map(p=>{const buffers=[];for(const values of [accessor(p.attributes.POSITION),accessor(p.attributes.NORMAL),accessor(p.indices)]){const buffer=gl.createBuffer(),target=values instanceof Uint16Array?gl.ELEMENT_ARRAY_BUFFER:gl.ARRAY_BUFFER;gl.bindBuffer(target,buffer);gl.bufferData(target,values,gl.STATIC_DRAW);buffers.push(buffer)}return{buffers,count:doc.accessors[p.indices].count,color:doc.materials[p.material].pbrMetallicRoughness.baseColorFactor.slice(0,3)}})}
+function select(index){selected=(index+assets.length)%assets.length;const asset=assets[selected];buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===selected)));document.getElementById('name').textContent=asset.label;document.getElementById('wire').textContent=asset.fuel_product;document.getElementById('stats').textContent=`${asset.triangles.toLocaleString('en-US')} triangles · ${(asset.bytes/1024).toFixed(1)} KiB · ${asset.primitives} primitives · 0 textures`;document.getElementById('download').href='data:model/gltf-binary;base64,'+asset.glb;document.getElementById('download').download=asset.file;if(gl){primitives.forEach(p=>p.buffers.forEach(b=>gl.deleteBuffer(b)));primitives=decode(asset)}}
+function render(time){const delta=previous?Math.min((time-previous)/1000,.1):0;previous=time;if(auto&&!dragging)yaw+=delta*.35;if(gl){const pixelRatio=Math.min(devicePixelRatio||1,2),w=Math.round(canvas.clientWidth*pixelRatio),h=Math.round(canvas.clientHeight*pixelRatio);if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);for(const [name,value]of Object.entries({yaw,tilt,zoom,aspect:w/h}))gl.uniform1f(gl.getUniformLocation(program,name),value);for(const p of primitives){['position','normal'].forEach((name,i)=>{const location=gl.getAttribLocation(program,name);gl.bindBuffer(gl.ARRAY_BUFFER,p.buffers[i]);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,3,gl.FLOAT,false,0,0)});gl.uniform3fv(gl.getUniformLocation(program,'color'),p.color);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,p.buffers[2]);gl.drawElements(gl.TRIANGLES,p.count,gl.UNSIGNED_SHORT,0)}}requestAnimationFrame(render)}
+canvas.onpointerdown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)};
+canvas.onpointermove=e=>{if(!dragging)return;yaw+=(e.clientX-lastX)*.01;tilt=Math.max(-1.2,Math.min(1.2,tilt+(e.clientY-lastY)*.01));lastX=e.clientX;lastY=e.clientY};
+canvas.onpointerup=canvas.onpointercancel=()=>{dragging=false};
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.55,Math.min(1.8,zoom*Math.exp(-e.deltaY*.001)))},{passive:false});
+document.getElementById('rotate').onclick=e=>{auto=!auto;e.currentTarget.setAttribute('aria-pressed',String(auto))};
+document.getElementById('reset').onclick=()=>{yaw=-.4;tilt=.18;zoom=1};
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();select(selected+1)}if(e.key==='ArrowLeft'){e.preventDefault();select(selected-1)}});
+select(0);requestAnimationFrame(render);
+</script></body></html>

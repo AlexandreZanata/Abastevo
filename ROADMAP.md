@@ -3590,3 +3590,10 @@ Branch: `codex/phase-26-landing-guides`; T01–T05 run sequentially under milest
 - **Files / risk:** `docs/release-evidence/p26-landing-guides.md`, `PROGRESS.md`, `ROADMAP.md`, `landing/README.md`.
 - **Acceptance criteria:** Evidence recorded; quick verification passed; PR review satisfied; guarded merge preserving commits to `main`; wiki synced.
 - **Validation commands:** `bash scripts/quick-verify.sh`, `scripts/git-flow.sh finish --required "Quick verification" --pr <number>`.
+
+## Optional Games mobile MVP — GME
+
+User-selected 2026-10-11: isolated `games` branch, offline Android only.
+See [original plan](docs/planning/GAMES_OFFLINE_PLAN.md) and
+[mobile implementation contract](docs/mobile/games-mvp.md). Backend GME-03 and
+ranked consumer GME-05 remain deferred; no leaderboard or backend change.
