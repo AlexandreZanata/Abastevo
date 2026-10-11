@@ -76,3 +76,30 @@ func TestSEC04BDeleteCapturesIntentsOnRealSQL(t *testing.T) {
 		t.Fatalf("retry contributors = %v, want intent replay", again.ContributorIDs)
 	}
 }
+
+// SEC04-C credential minimization on real PostGIS: key verifiers
+// never survive the owner; the handle is free for a new account.
+func TestSEC04CKeyMinimizationOnRealSQL(t *testing.T) {
+	svc, _, _ := freshService(t)
+	ctx := context.Background()
+	created, err := svc.CreateKeyAccount(ctx, "minimizekey")
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldKey := created.Key
+	if _, err := svc.LoginWithKey(ctx, oldKey); err != nil {
+		t.Fatalf("pre-delete login: %v", err)
+	}
+	if _, err := svc.DeleteAccount(ctx, created.Account.ID); err != nil {
+		t.Fatalf("DeleteAccount: %v", err)
+	}
+	if _, err := svc.LoginWithKey(ctx, oldKey); err != domain.ErrKeyInvalid {
+		t.Fatalf("post-delete login = %v, want key-invalid", err)
+	}
+	if _, found, _ := svc.Store.FindKeyCredentialByUsername(ctx, domain.UsernameHash("minimizekey")); found {
+		t.Fatal("username verifier survived deletion")
+	}
+	if _, found, _ := svc.Store.FindKeyCredentialByLookup(ctx, domain.KeyLookup(oldKey)); found {
+		t.Fatal("key lookup survived deletion")
+	}
+}

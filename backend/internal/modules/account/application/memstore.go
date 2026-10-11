@@ -622,6 +622,12 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		}
 		delete(m.links, accountID)
 	}
+	// SEC04-C: key verifiers never survive the owner.
+	if cred, ok := m.keyCreds[accountID]; ok {
+		delete(m.keyByUsername, cred.UsernameHash)
+		delete(m.keyByLookup, cred.KeyLookup)
+		delete(m.keyCreds, accountID)
+	}
 	return contributors, nil
 }
 

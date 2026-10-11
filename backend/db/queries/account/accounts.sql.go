@@ -132,6 +132,19 @@ func (q *Queries) DeleteAccountBindings(ctx context.Context, accountID pgtype.UU
 	return err
 }
 
+const deleteAccountKeys = `-- name: DeleteAccountKeys :exec
+
+DELETE FROM account_key_credentials WHERE account_id = $1
+`
+
+// SEC04-C credential minimization: key verifiers never survive the
+// owner. The account audit row stays; the secrets that authenticate
+// as it go with deletion.
+func (q *Queries) DeleteAccountKeys(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAccountKeys, accountID)
+	return err
+}
+
 const deleteAccountProviders = `-- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = $1
 `

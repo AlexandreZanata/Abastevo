@@ -115,6 +115,13 @@ DELETE FROM account_addresses WHERE account_id = @account_id;
 -- name: DeleteAccountProviders :exec
 DELETE FROM account_provider_links WHERE account_id = @account_id;
 
+-- SEC04-C credential minimization: key verifiers never survive the
+-- owner. The account audit row stays; the secrets that authenticate
+-- as it go with deletion.
+
+-- name: DeleteAccountKeys :exec
+DELETE FROM account_key_credentials WHERE account_id = @account_id;
+
 -- Contributor bindings and link audit (P13-T04B). One contributor binds
 -- at most one account; the application refuses stolen-ID binds and the
 -- UNIQUE guard closes the concurrent race.
