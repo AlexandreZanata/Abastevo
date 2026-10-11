@@ -37,6 +37,10 @@ type Handler struct {
 	// and preserves peer-only billing. Raw addresses never persist:
 	// quota subjects stay HMAC digests (see domain.HashIPSubject).
 	TrustedProxies []netip.Prefix
+	// GlobalBreaker is the deliberate global ceiling (SEC02-C),
+	// separate from per-client/key fairness. Nil disables global
+	// capping; fairness still applies.
+	GlobalBreaker *GlobalBreaker
 }
 
 func (h Handler) now() time.Time {
@@ -107,7 +111,11 @@ func read(r *http.Request, dst any) error {
 }
 func fail(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, msg := http.StatusServiceUnavailable, "identity.unavailable", "identity service unavailable"
+	var overloaded *BreakerError
 	switch {
+	case errors.As(err, &overloaded):
+		status, code, msg = http.StatusServiceUnavailable, "identity.overloaded", "identity overloaded, retry later"
+		w.Header().Set("Retry-After", strconv.FormatInt(int64(overloaded.RetryAfter.Seconds())+1, 10))
 	case errors.Is(err, domain.ErrQuotaExceeded):
 		status, code, msg = 429, "identity.quota-exceeded", "quota exhausted, retry later"
 	case errors.Is(err, domain.ErrChallengeSpent), errors.Is(err, domain.ErrKeyTakeover):
@@ -123,6 +131,16 @@ func bad(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteError(w, r, 400, "identity.bad-body", "malformed identity request", nil)
 }
 func (h Handler) quota(w http.ResponseWriter, r *http.Request, fp, op string) bool {
+	// SEC02-C: the deliberate global ceiling sheds first, before any
+	// per-subject accounting is consumed, with a distinct 503 shape
+	// (not a fairness 429).
+	if wait, err := h.GlobalBreaker.Check(op, h.now()); err != nil {
+		if wait > 0 {
+			w.Header().Set("Retry-After", strconv.FormatInt(int64(wait.Seconds())+1, 10))
+		}
+		fail(w, r, err)
+		return false
+	}
 	// SEC02-B: the billable address comes from the trusted resolver,
 	// never raw from headers. Untrusted peers bill their TCP peer;
 	// trusted peers bill the proxy-observed forwarding address with

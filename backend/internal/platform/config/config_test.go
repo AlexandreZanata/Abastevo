@@ -212,6 +212,34 @@ func TestLoadMailMode(t *testing.T) {
 	}
 }
 
+// SEC02-C: the deliberate global ceilings default to disabled and
+// refuse negative/non-numeric values at startup with the variable
+// named.
+func TestLoadGlobalQuotas(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.GlobalQuotaChallenge != 0 || cfg.GlobalQuotaRegister != 0 || cfg.GlobalQuotaWrite != 0 {
+		t.Errorf("global quotas must default disabled, got %+v", cfg)
+	}
+	cfg, err = load(envFunc(map[string]string{
+		keyGlobalQuotaChallenge: "1000",
+		keyGlobalQuotaRegister:  "100",
+		keyGlobalQuotaWrite:     "2000",
+	}))
+	if err != nil || cfg.GlobalQuotaChallenge != 1000 || cfg.GlobalQuotaRegister != 100 || cfg.GlobalQuotaWrite != 2000 {
+		t.Errorf("explicit global quotas must apply, got %+v, %v", cfg, err)
+	}
+	for key, bad := range map[string]string{keyGlobalQuotaChallenge: "-1", keyGlobalQuotaRegister: "many", keyGlobalQuotaWrite: "1.5"} {
+		if _, err := load(envFunc(map[string]string{key: bad})); err == nil {
+			t.Errorf("global quota %s=%q accepted", key, bad)
+		} else if !strings.Contains(err.Error(), key) {
+			t.Errorf("error %q must name the variable", err)
+		}
+	}
+}
+
 // SEC02-B: the trusted-proxy allowlist defaults to trusting nothing
 // and refuses non-CIDR values at startup with the variable named.
 func TestLoadTrustedProxies(t *testing.T) {

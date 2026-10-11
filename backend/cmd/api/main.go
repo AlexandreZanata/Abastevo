@@ -295,7 +295,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies}.RegisterRoutes(router)
+	// SEC02-C: deliberate global ceilings, separate from per-client/key
+	// fairness; zero disables an operation (no global cap).
+	globalBreaker := identityhttp.NewGlobalBreaker(cfg.GlobalQuotaChallenge, cfg.GlobalQuotaRegister, cfg.GlobalQuotaWrite)
+	identityhttp.Handler{Registrar: identityRegistrar, Authority: cfg.CanonicalHost, QuotaSecret: cfg.CursorSecret, CheckQuota: identityLimiter.Check, TrustedProxies: trustedProxies, GlobalBreaker: globalBreaker}.RegisterRoutes(router)
 	// FREE email accounts (P13-T02C, SEC01-B). Narrow closure wiring like the other
 	// modules: Postgres store, production generators, and delivery
 	// gated by deployment configuration — off by default (codes never

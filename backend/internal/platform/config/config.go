@@ -57,6 +57,13 @@ const (
 	// (SEC02-B). Empty trusts nothing and preserves peer-only
 	// billing; staging/production set their edge network explicitly.
 	keyTrustedProxies = "ANPFUEL_TRUSTED_PROXIES"
+	// keyGlobalQuotaChallenge/Register/Write carry the deliberate
+	// hourly global ceilings for identity operations (SEC02-C),
+	// separate from per-client/key fairness. Empty or zero disables
+	// that operation (no global cap; fairness still enforced).
+	keyGlobalQuotaChallenge = "ANPFUEL_GLOBAL_QUOTA_CHALLENGE"
+	keyGlobalQuotaRegister  = "ANPFUEL_GLOBAL_QUOTA_REGISTER"
+	keyGlobalQuotaWrite     = "ANPFUEL_GLOBAL_QUOTA_WRITE"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -109,6 +116,12 @@ type Config struct {
 	// trusts nothing. The value carries network ranges, never
 	// secrets, and stays out of logs with the rest of the config.
 	TrustedProxies string
+	// GlobalQuotaChallenge/Register/Write are the deliberate hourly
+	// global ceilings for identity operations (see keyGlobalQuota*).
+	// Zero disables that operation (no global cap).
+	GlobalQuotaChallenge int
+	GlobalQuotaRegister  int
+	GlobalQuotaWrite     int
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -285,6 +298,25 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			}
 		}
 		cfg.TrustedProxies = proxies
+	}
+
+	for _, tc := range []struct {
+		key string
+		dst *int
+	}{
+		{keyGlobalQuotaChallenge, &cfg.GlobalQuotaChallenge},
+		{keyGlobalQuotaRegister, &cfg.GlobalQuotaRegister},
+		{keyGlobalQuotaWrite, &cfg.GlobalQuotaWrite},
+	} {
+		raw, _ := getenv(tc.key)
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(raw))
+		if err != nil || n < 0 {
+			return Config{}, fmt.Errorf("%s must be a non-negative hourly ceiling", tc.key)
+		}
+		*tc.dst = n
 	}
 
 	r2, err := loadR2(getenv)
