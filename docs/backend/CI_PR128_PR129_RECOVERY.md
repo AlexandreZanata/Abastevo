@@ -72,3 +72,37 @@ Parent dev `603d5ba`, reconciled with current main `6f062a4` via normal merge
 
 Next: publish the repair on dev; reconcile landing against that exact dev
 and verify both parent histories. No PR merge has occurred at this checkpoint.
+
+
+## Cold-image startup follow-up
+
+Remote integration at `9c0746e` (run 38172339216 / job 114567382825)
+progressed beyond the image pull, then storage failed at `docker port` with
+`page not found`; the application matrix passed. Both helpers used
+CombinedOutput for successful `docker run -d`: a cold pull writes progress to
+stderr, contaminating the stdout container ID used by later commands.
+
+B-BR-TEST-STARTUP-01: only stdout supplies the Docker container ID; stderr is
+retained for failure diagnostics. A cold-cache diagnostic must not corrupt
+port discovery or cleanup. Reproduce deterministically by injecting a pull
+progress line on stderr before a real Docker startup, preserving the complete
+real-S3 matrix. No Docker image cache eviction or shared-container mutation.
+
+
+`bash scripts/tests/test-s3-startup.sh` deterministically reproduced both
+failures (RED, `docker port` page-not-found). Separating successful stdout
+from captured error stderr made both real-S3 matrices GREEN. The cleanup
+assertion also exposed the storage helper's named-return closure capturing a
+no-op return value; it now registers the actual stop function directly and
+returns only the endpoint. The harness labels its own containers uniquely,
+asserts no leaks after success, and cleans only those containers on failure.
+The four containers created by the local reproductions were identified by
+exact ID, creation instant, pinned image, non-root user and bounded tmpfs,
+then removed; no shared service was stopped.
+
+Final cold-start regression: both matrices PASS under -race, zero skips,
+plus explicit successful cleanup. The harness is retained in
+`scripts/tests/test-s3-startup.sh`; the normal CI naturally exercises cold
+image pulls as well. Shell syntax, gofmt, affected vet/unit tests, whitespace
+and secret checks pass for this follow-up. Remote current-head CI is still
+required; the failed earlier run is not reused as successful evidence.
