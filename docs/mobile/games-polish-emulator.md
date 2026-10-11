@@ -61,3 +61,17 @@ screenshots. Inspected baseline shows text-only selection cards, flat scenery,
 a small player silhouette and unused letterbox space. No behavior defect was
 found in the existing four cases. Next: M09 native scene/HUD/input feedback.
 Diff/secret scan PASS. GitHub branch backup accepted at `b610583`.
+
+
+GME-M09 LOCAL_DONE (scoped renderer): original shared vector scene painter, cached gradients/brush/path/typeface,
+layered Flight landscape and detailed pump silhouettes, dusk Run road/station
+and distinct cone/beam/truck silhouettes, mascot visor/feet/shadows, bounded
+input rings/pickup glow, localized fitting HUD and three-minute progress bar.
+Static preview compositions share this painter without a running session.
+Reduced-motion removes decorative trail/feedback/gait/scroll; input haptics honor
+system settings. Existing `mobile-v1` domain source is byte-unchanged.
+9 games app unit cases PASS; debug and instrumentation APK builds PASS (20s).
+5/5 offline API 26 emulator cases PASS (3.945s); current-frame Flight/Run
+screenshots visually inspected. No native crash or UI regression in these cases.
+M09 lint PASS (zero errors, 177 existing warnings, no games diagnostic),
+diff/secret review PASS; next M10 shell polish.
