@@ -55,7 +55,7 @@ class CommunityPricesViewModelTest {
     }
 
     @Test
-    fun `disabled flag never calls use case`() = runTest {
+    fun `disabled flag never calls use case`() = runTest(dispatcher) {
         enabled = false
         val vm = CommunityPricesViewModel(useCase, flags)
 
@@ -67,7 +67,7 @@ class CommunityPricesViewModelTest {
     }
 
     @Test
-    fun `fresh groups resolve to content`() = runTest {
+    fun `fresh groups resolve to content`() = runTest(dispatcher) {
         enabled = true
         coEvery { useCase.invoke(stationId, null) } returns
             CommunityPriceGroupsOutcome.Fresh(groups())
@@ -80,7 +80,7 @@ class CommunityPricesViewModelTest {
     }
 
     @Test
-    fun `backend down with cache resolves to stale`() = runTest {
+    fun `backend down with cache resolves to stale`() = runTest(dispatcher) {
         enabled = true
         coEvery { useCase.invoke(stationId, null) } returns
             CommunityPriceGroupsOutcome.StaleCache(groups(), IOException("down"), true)
@@ -93,7 +93,7 @@ class CommunityPricesViewModelTest {
     }
 
     @Test
-    fun `backend down without cache resolves to unavailable`() = runTest {
+    fun `backend down without cache resolves to unavailable`() = runTest(dispatcher) {
         enabled = true
         coEvery { useCase.invoke(stationId, null) } returns
             CommunityPriceGroupsOutcome.Unavailable(IOException("down"))
