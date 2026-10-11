@@ -399,6 +399,30 @@
       "height": 2401,
       "bytes": 79210,
       "sha256": "aa68b51c0b4eb6a2b6fee1d348f4a9f38f15ec9687a8eec721cdae9d7de397df"
+    },
+    {
+      "file": "municipios-mt-360w.webp",
+      "master": "municipios-mt.png",
+      "width": 360,
+      "height": 800,
+      "bytes": 13990,
+      "sha256": "0e25a1b264fa694f892f013b9cfc31d00bee8f5552b55cce6f2515e4a3afd86c"
+    },
+    {
+      "file": "municipios-mt-720w.webp",
+      "master": "municipios-mt.png",
+      "width": 720,
+      "height": 1601,
+      "bytes": 30964,
+      "sha256": "5f1c4c91f982aeeda612c52c4f9b2811cbc0ef883bbfbce457f80c5c74be6edc"
+    },
+    {
+      "file": "municipios-mt-1080w.webp",
+      "master": "municipios-mt.png",
+      "width": 1080,
+      "height": 2401,
+      "bytes": 49474,
+      "sha256": "dd1c7c169957a5880604cb636efb31d2ca8bcee448226e3a2970205d4f8a3900"
     }
   ]
 }

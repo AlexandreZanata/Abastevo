@@ -27,7 +27,7 @@ included in `landing/dist`; it does not replace production page markup.
 visible state, privacy review and capture limitations. Open individual files:
 
 - [Explore, light](screenshots/explore-light.png) / [dark](screenshots/explore-dark.png)
-- [City selector](screenshots/city-picker.png)
+- [City selector](screenshots/city-picker.png) / [municipalities](screenshots/municipios-mt.png) (LR14: read-only, no selection, city kept)
 - [ANP price list](screenshots/anp-prices.png)
 - [Station list](screenshots/stations-list.png) (LR05: fuel filters, search, sort)
 - [Station detail](screenshots/station-detail.png) / [source separation](screenshots/station-sources.png) (LR05)

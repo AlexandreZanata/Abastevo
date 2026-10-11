@@ -1,0 +1,87 @@
+{
+  "appVersion": "3.1.0-debug",
+  "appSourceSha": null,
+  "lessonId": "TU10",
+  "slug": "comunidade",
+  "titlePtBr": "Usar a Comunidade",
+  "steps": [
+    {
+      "stepId": "tu10-s1",
+      "image": "/assets/app/community-feed-720w.webp",
+      "imageSha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Ordene o feed por Mais recentes, Mais barato ou Melhor combustível.",
+      "controlLabelPtBr": "Mais recentes",
+      "expectedPtBr": "Reordena os preços da comunidade da cidade.",
+      "recoveryPtBr": "Troque o filtro sem perder a cidade.",
+      "altPtBr": "Filtros de ordenação da comunidade destacados.",
+      "target": {
+        "x": 150,
+        "y": 1212,
+        "width": 273,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu10-s2",
+      "image": "/assets/app/community-feed-720w.webp",
+      "imageSha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Visible state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Filtre por combustível, com rolagem horizontal.",
+      "controlLabelPtBr": "Etanol",
+      "expectedPtBr": "Mostra só observações daquele combustível.",
+      "recoveryPtBr": "Volte para todos os combustíveis.",
+      "altPtBr": "Filtro de combustível Etanol destacado.",
+      "target": {
+        "x": 156,
+        "y": 1392,
+        "width": 122,
+        "height": 60
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu10-s3",
+      "image": "/assets/app/community-feed-720w.webp",
+      "imageSha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
+      "nativeWidth": 1220,
+      "nativeHeight": 2712,
+      "state": "Result state",
+      "prerequisite": "App aberto; dados de demonstração não utilizados.",
+      "instructionPtBr": "Leia o estado vazio honesto e as regras.",
+      "controlLabelPtBr": "Ainda não há preços recentes",
+      "expectedPtBr": "Vazio declarado para Sorriso, sem inventar pessoas ou preços.",
+      "recoveryPtBr": "Experimente outro combustível ou compartilhe um preço real.",
+      "altPtBr": "Estado vazio honesto da comunidade.",
+      "availability": "Disponível",
+      "claimClass": "empty-state",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+      ],
+      "capturedAt": "2026-10-11",
+      "privacyReviewed": true,
+      "demoOnly": false
+    }
+  ]
+}

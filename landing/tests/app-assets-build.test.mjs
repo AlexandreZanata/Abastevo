@@ -14,15 +14,18 @@ test('emitted app derivatives match provenance hashes with no master leakage', (
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-app-assets-'));
   try {
     const result = build({ projectRoot: root, outDir });
-    assert.equal(result.appAssets, 48);
+    const provenance = JSON.parse(
+      fs.readFileSync(path.join(root, 'static', 'assets', 'app', 'provenance.json'), 'utf8'),
+    );
+    assert.equal(result.appAssets, provenance.outputs.length);
     const appOut = path.join(outDir, 'assets', 'app');
     const emitted = fs.readdirSync(appOut).sort();
     assert.ok(emitted.includes('provenance.json'));
     const webp = emitted.filter((f) => f.endsWith('.webp'));
-    assert.equal(webp.length, 48);
+    assert.equal(webp.length, provenance.outputs.length);
     assert.ok(!emitted.some((f) => f.endsWith('.png')), 'masters must never ship');
-    const provenance = JSON.parse(fs.readFileSync(path.join(appOut, 'provenance.json'), 'utf8'));
-    assert.equal(provenance.outputs.length, 48);
+    const emittedProvenance = JSON.parse(fs.readFileSync(path.join(appOut, 'provenance.json'), 'utf8'));
+    assert.equal(emittedProvenance.outputs.length, provenance.outputs.length);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
