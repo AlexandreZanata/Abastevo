@@ -71,11 +71,11 @@ func safety(ctx context.Context, root string, client *http.Client) error {
 	request.Header.Set("User-Agent", "abastevo-rst-qualified/1")
 	response, err := client.Do(request)
 	if err != nil {
-		return fmt.Errorf("Abastevo HTTPS readiness unavailable")
+		return fmt.Errorf("abastevo HTTPS readiness unavailable")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return fmt.Errorf("Abastevo HTTPS readiness refused")
+		return fmt.Errorf("abastevo HTTPS readiness refused")
 	}
 	return nil
 }

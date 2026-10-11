@@ -5,13 +5,14 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
-for tool in docker go sqlc staticcheck govulncheck vacuum python3; do
+for tool in docker go cargo sqlc staticcheck govulncheck vacuum python3; do
     command -v "$tool" >/dev/null || { echo "missing tool: $tool" >&2; exit 1; }
 done
 WORK="$(mktemp -d /tmp/anpfuel-local-suite.XXXXXXXX)"
 REPORT="${ANPFUEL_LOCAL_REPORT_DIR:-$WORK/report}"
 mkdir -p "$REPORT"
-export ANPFUEL_VALIDATION_PROJECT="anpfuel-validation-$(basename "$WORK" | tr '[:upper:].' '[:lower:]-')"
+ANPFUEL_VALIDATION_PROJECT="anpfuel-validation-$(basename "$WORK" | tr '[:upper:].' '[:lower:]-')"
+export ANPFUEL_VALIDATION_PROJECT
 COMPOSE="$ROOT/infra/compose.validation.yml"
 cleanup() {
     docker compose -f "$COMPOSE" down --volumes --remove-orphans >/dev/null 2>&1 || true
@@ -20,6 +21,10 @@ cleanup() {
 trap cleanup EXIT INT TERM
 export GOCACHE="${GOCACHE:-$WORK/go-cache}"
 echo "Local reports: $REPORT"
+# The full Go integration suite invokes the real Rust pipeline; never inherit
+# an external preparer or skip that case when the prerequisite is missing.
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --target-dir "$WORK/rust-target" >"$REPORT/rust-preparer.log" 2>&1
+export ANPFUEL_TEST_PREPARER_PATH="$WORK/rust-target/debug/prepare_registry"
 docker compose -f "$COMPOSE" up -d --wait db storage >"$REPORT/startup.log" 2>&1
 docker compose -f "$COMPOSE" run --rm storage-init >"$REPORT/storage-init.log" 2>&1
 DB_ADDR="$(docker compose -f "$COMPOSE" port db 5432)"
@@ -46,7 +51,7 @@ export ANPFUEL_TEST_DRILL_DSN_PREFIX="postgres://anpfuel:anpfuel@$DB_ADDR"
     go test -json -race -count=1 ./... >"$REPORT/unit.json" 2>"$REPORT/unit.stderr"
     go test -json -race -count=1 -p 2 -timeout 10m -tags=integration ./... >"$REPORT/integration.json" 2>"$REPORT/integration.stderr"
     # Exercise the deliberately unavailable storage path too.
-    ANPFUEL_TEST_STORAGE_ENDPOINT= go test -race -tags=integration -run '^TestPublicProcessIdentityAndSignedWrites$' -count=1 ./cmd/api >"$REPORT/no-storage.log" 2>&1
+    ANPFUEL_TEST_STORAGE_ENDPOINT='' go test -race -tags=integration -run '^TestPublicProcessIdentityAndSignedWrites$' -count=1 ./cmd/api >"$REPORT/no-storage.log" 2>&1
     go vet ./... >"$REPORT/vet.log" 2>&1
     staticcheck ./... >"$REPORT/staticcheck.log" 2>&1
     sqlc vet >"$REPORT/sqlc.log" 2>&1

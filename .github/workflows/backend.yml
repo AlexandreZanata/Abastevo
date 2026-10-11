@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - backend/**
+      - tools/station-prep/**
       - contracts/**
       - infra/**
       - scripts/check-backend-fast.sh
@@ -17,6 +18,7 @@ on:
     branches: [main]
     paths:
       - backend/**
+      - tools/station-prep/**
       - contracts/**
       - infra/**
       - scripts/check-backend-fast.sh
@@ -32,6 +34,7 @@ env:
   # Re-pin deliberately only after verifying staticcheck AND govulncheck
   # against the new toolchain.
   GO_VERSION: '1.27.2'
+  RUST_VERSION: '1.99.0'
   SQLC_VERSION: v1.31.1
   STATICCHECK_VERSION: v0.8.1
   VACUUM_VERSION: v0.30.6
@@ -53,6 +56,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
       - name: Install pinned tools
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}
@@ -89,7 +93,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ env.GO_VERSION_FILE }}
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: backend/go.sum
+      - name: Build locked Rust registry preparer
+        run: |
+          rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal
+          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --target-dir "$RUNNER_TEMP/station-prep-target"
+          echo "ANPFUEL_TEST_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_registry" >> "$GITHUB_ENV"
       - name: Enable PostGIS via the migrator
         run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
       - name: Integration tests (real PostGIS, race detector)

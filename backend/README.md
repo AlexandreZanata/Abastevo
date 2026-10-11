@@ -55,6 +55,8 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --target-dir /tmp/abastevo-integration-rust
+export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
