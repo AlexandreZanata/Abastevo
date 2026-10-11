@@ -919,6 +919,10 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 	if err := q.DeleteAccountProviders(ctx, id); err != nil {
 		return nil, err
 	}
+	// SEC04-C: key verifiers never survive the owner.
+	if err := q.DeleteAccountKeys(ctx, id); err != nil {
+		return nil, err
+	}
 	if err := q.DeleteAccountBindings(ctx, id); err != nil {
 		return nil, err
 	}
