@@ -33,6 +33,7 @@ visible state, privacy review and capture limitations. Open individual files:
 - [Station detail](screenshots/station-detail.png) / [source separation](screenshots/station-sources.png) (LR05)
 - [Community empty state](screenshots/community-empty.png) / [feed, dark](screenshots/community-feed.png) (LR05)
 - [History chart](screenshots/history.png) / [week picker](screenshots/week-picker.png) (LR05)
+- [Contributions empty state](screenshots/contributions-empty.png) / [settings](screenshots/settings.png) (LR06: view-only, no account or toggle change)
 - [Guest profile](screenshots/profile-guest.png)
 - [Vehicle list empty state](screenshots/vehicles-empty.png)
 - [Blank vehicle form](screenshots/vehicle-form.png)
@@ -52,7 +53,13 @@ only — city stayed Sorriso, no account/vote/upload/permission/setting change;
 one shopping notification frame and one secure-screen black frame rejected
 (see manifest). Account creation/key, populated community, photo/OCR, permission
 denials, deletion, alerts, full offline flow and other chapter frames remain
-**MEDIA_PENDING**.
+**MEDIA_PENDING** (see `lr06Pending` in the manifest).
+
+LR06 constraint (2026-10-11, observed): auth/account-key screens set
+FLAG_SECURE — `screencap` returns black while the hierarchy renders — so no
+key content can leak through screenshots, and TU11/TU12 visual frames stay
+pending without invented pixels. The auth layout text itself ("Sem email ou
+senha", "Já tenho uma chave") corroborates the LR01 username/key freeze.
 See the [full catalog](../../../product/LANDING_MOBILE_TUTORIAL_CATALOG.md).
 
 ## Safe capture environment (LR04) — 2026-10-11
