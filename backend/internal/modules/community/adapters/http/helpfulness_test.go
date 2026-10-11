@@ -206,3 +206,20 @@ func TestTallyHelpfulnessMapsNotFound(t *testing.T) {
 		t.Fatalf("code = %d, body %s", w.Code, w.Body.String())
 	}
 }
+
+func TestCastHelpfulnessQuotaDenialMaps429(t *testing.T) {
+	h := helpfulHandler()
+	h.CastHelpfulness = func(_ context.Context, _ application.Caller, _ string, _ application.CastDTO) (application.CastResult, error) {
+		return application.CastResult{}, &application.QuotaDeniedError{RetryAfter: 90 * time.Second}
+	}
+	w := serveVotes(h, http.MethodPost, helpfulTarget, helpfulCastBody)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("code = %d, body %s", w.Code, w.Body.String())
+	}
+	if w.Header().Get("Retry-After") != "90" {
+		t.Errorf("Retry-After = %q, want 90", w.Header().Get("Retry-After"))
+	}
+	if !strings.Contains(w.Body.String(), "community.quota-exceeded") {
+		t.Errorf("body lacks quota-exceeded code: %s", w.Body.String())
+	}
+}

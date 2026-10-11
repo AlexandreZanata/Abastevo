@@ -647,6 +647,17 @@ func run() error {
 		Clock:        time.Now,
 		NewID:        newUUID,
 		CheckAccount: checkAccountGate,
+		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
+			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
+			if err != nil {
+				var denied *identityadapters.QuotaError
+				if errors.As(err, &denied) {
+					return denied.RetryAfter, &communityapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+				}
+				return 0, err
+			}
+			return retryAfter, nil
+		},
 		Store:        communityadapters.NewHelpfulnessStore(pool.Underlying()),
 	}
 	communityhttp.Handler{

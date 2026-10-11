@@ -124,6 +124,7 @@ func (f *fakeHelpfulnessStore) recount() {
 func helpfulPorts(store *fakeHelpfulnessStore) HelpfulnessPorts {
 	n := 0
 	return HelpfulnessPorts{
+		CheckQuota:   func(_ context.Context, _, _ string) (time.Duration, error) { return 0, nil },
 		Clock:        func() time.Time { return time.Unix(1_700_000_000, 0).UTC() },
 		NewID:        func() (string, error) { n++; return "vote-" + strconv.Itoa(n), nil },
 		CheckAccount: func(_ context.Context, _ string) error { return nil },
@@ -306,5 +307,69 @@ func TestInvalidChoiceNeverMutates(t *testing.T) {
 	}
 	if store.casts != 0 {
 		t.Fatal("invalid choice must never reach the store")
+	}
+}
+
+func TestCastQuotaDenialFailsBeforeMutation(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	ports.CheckQuota = func(_ context.Context, subject, operation string) (time.Duration, error) {
+		if subject != "fp" || operation != "write" {
+			t.Errorf("quota subject = %q op = %q, want fp/write", subject, operation)
+		}
+		return 90 * time.Second, &QuotaDeniedError{RetryAfter: 90 * time.Second}
+	}
+	_, err := Cast(context.Background(), ports, helpfulCaller(), helpfulDTO())
+	var denied *QuotaDeniedError
+	if !errors.As(err, &denied) || denied.RetryAfter != 90*time.Second {
+		t.Fatalf("quota denial must surface with retry delay, got %v", err)
+	}
+	if store.casts != 0 {
+		t.Fatal("denied vote must never reach the store")
+	}
+}
+
+func TestSameAccountAcrossDeviceKeysConverges(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	// One account, two device keys: the stable attribution token binds
+	// both to a single vote (tablet/kiosk rule: devices never mint
+	// separate votes for one account).
+	firstKey := Caller{ContributorID: "contrib-a", Fingerprint: "fp-phone", KeyID: "k1", Token: "tok-contrib-a"}
+	secondKey := Caller{ContributorID: "contrib-a", Fingerprint: "fp-tablet", KeyID: "k2", Token: "tok-contrib-a"}
+	first, err := Cast(context.Background(), ports, firstKey, helpfulDTO())
+	if err != nil {
+		t.Fatalf("first key cast must succeed: %v", err)
+	}
+	second, err := Cast(context.Background(), ports, secondKey, helpfulDTO())
+	if err != nil {
+		t.Fatalf("second key cast must succeed: %v", err)
+	}
+	if second.Created || second.Vote.ID != first.Vote.ID {
+		t.Fatalf("second device key must converge onto one vote: %+v", second)
+	}
+	if second.Tally.Helpful != 1 {
+		t.Fatalf("one account holds one vote: %+v", second.Tally)
+	}
+}
+
+func TestSharedDeviceKeepsAccountsSeparate(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	ports := helpfulPorts(store)
+	// One shared fingerprint, two accounts: votes stay separate even
+	// though the write quota subject is shared.
+	a := Caller{ContributorID: "contrib-a", Fingerprint: "fp-kiosk", KeyID: "ka", Token: "tok-contrib-a"}
+	b := Caller{ContributorID: "contrib-b", Fingerprint: "fp-kiosk", KeyID: "kb", Token: "tok-contrib-b"}
+	dto := helpfulDTO()
+	if _, err := Cast(context.Background(), ports, a, dto); err != nil {
+		t.Fatalf("account A must succeed: %v", err)
+	}
+	dto.ClientSubmissionID = "sub-b"
+	res, err := Cast(context.Background(), ports, b, dto)
+	if err != nil {
+		t.Fatalf("account B must succeed: %v", err)
+	}
+	if !res.Created || res.Tally.Helpful != 2 {
+		t.Fatalf("kiosk accounts hold separate votes: %+v", res)
 	}
 }

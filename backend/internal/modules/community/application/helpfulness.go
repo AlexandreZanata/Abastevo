@@ -46,10 +46,13 @@ type HelpfulnessStore interface {
 
 // HelpfulnessPorts wires helpfulness commands through identity and the
 // owned store. Attribution always derives from the verified caller.
+// CheckQuota caps write intake per fingerprint before any store work;
+// denials surface for 429 mapping and never mutate.
 type HelpfulnessPorts struct {
 	Clock        func() time.Time
 	NewID        func() (string, error)
 	CheckAccount func(ctx context.Context, contributorID string) error
+	CheckQuota   func(ctx context.Context, subject, operation string) (time.Duration, error)
 	Store        HelpfulnessStore
 }
 
@@ -102,6 +105,12 @@ func Cast(ctx context.Context, p HelpfulnessPorts, caller Caller, dto CastDTO) (
 		return CastResult{}, domain.ErrInvalidVote
 	}
 	if err := checkHelpfulnessAccount(ctx, p, caller.ContributorID); err != nil {
+		return CastResult{}, err
+	}
+	if p.CheckQuota == nil {
+		return CastResult{}, ErrQuotaDenied
+	}
+	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
 		return CastResult{}, err
 	}
 	target, err := p.Store.Target(ctx, strings.TrimSpace(dto.ObservationID))

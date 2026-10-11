@@ -221,6 +221,7 @@ func helpfulnessTestPorts(pool *pgxpool.Pool) (cast func(context.Context, commun
 		Clock:        time.Now,
 		NewID:        newTestUUID,
 		CheckAccount: func(context.Context, string) error { return nil },
+		CheckQuota:   helpfulnessTestQuota(identityadapters.NewLimiter(pool, identitydomain.DefaultQuotaPolicy())),
 		Store:        communityadapters.NewHelpfulnessStore(pool),
 	}
 	cast = func(ctx context.Context, caller communityapp.Caller, observationID string, dto communityapp.CastDTO) (communityapp.CastResult, error) {
@@ -237,6 +238,22 @@ func helpfulnessTestPorts(pool *pgxpool.Pool) (cast func(context.Context, commun
 		return communityapp.TallyFor(ctx, ports, caller, observationID, sequence)
 	}
 	return cast, remove, tally
+}
+
+// helpfulnessTestQuota mirrors the cmd/api quota wiring: identity
+// denials surface for 429 mapping, anything else fails closed.
+func helpfulnessTestQuota(limiter *identityadapters.Limiter) func(context.Context, string, string) (time.Duration, error) {
+	return func(ctx context.Context, subject, operation string) (time.Duration, error) {
+		retryAfter, err := limiter.Check(ctx, subject, operation)
+		if err != nil {
+			var denied *identityadapters.QuotaError
+			if errors.As(err, &denied) {
+				return denied.RetryAfter, &communityapp.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+			}
+			return 0, err
+		}
+		return retryAfter, nil
+	}
 }
 
 func submitWithKernel(ctx context.Context, ports communityapp.Ports, caller communityapp.Caller, key string, dto communityapp.SubmitDTO, body []byte) (communityapp.SubmitResult, bool, error) {

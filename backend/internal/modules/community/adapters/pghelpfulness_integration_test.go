@@ -4,6 +4,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -22,6 +23,8 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
+	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
@@ -36,6 +39,7 @@ func helpfulPorts(hs *HelpfulnessStore) application.HelpfulnessPorts {
 		Clock:        time.Now,
 		NewID:        func() (string, error) { return helpfulVoteID(), nil },
 		CheckAccount: func(_ context.Context, _ string) error { return nil },
+		CheckQuota:   func(_ context.Context, _, _ string) (time.Duration, error) { return 0, nil },
 		Store:        hs,
 	}
 }
@@ -468,5 +472,64 @@ func TestHelpfulnessQueriesStayNonDestructive(t *testing.T) {
 		if strings.Contains(upper, verb) {
 			t.Errorf("destructive statement present: %s", verb)
 		}
+	}
+}
+
+func TestHelpfulnessQuotaExhaustionDeniesWithHonestRetry(t *testing.T) {
+	s, pool, stationID := freshStore(t)
+	hs := NewHelpfulnessStore(pool)
+	ctx := context.Background()
+	obsID := validatedHelpfulTarget(t, s, stationID, "help-sub-quota")
+
+	policy := identitydomain.QuotaPolicy{
+		Version: 99,
+		Ops: map[string]identitydomain.OperationQuota{
+			identitydomain.OperationWrite: {Limit: 3, Window: time.Hour},
+		},
+	}
+	limiter := identityadapters.NewLimiter(pool, policy)
+	ports := helpfulPorts(hs)
+	ports.CheckQuota = func(ctx context.Context, subject, operation string) (time.Duration, error) {
+		retryAfter, err := limiter.Check(ctx, subject, operation)
+		if err != nil {
+			var denied *identityadapters.QuotaError
+			if errors.As(err, &denied) {
+				return denied.RetryAfter, &application.QuotaDeniedError{RetryAfter: denied.RetryAfter}
+			}
+			return 0, err
+		}
+		return retryAfter, nil
+	}
+	// One shared fingerprint (kiosk NAT-style): three distinct accounts
+	// consume the capped budget, the fourth is denied before mutation.
+	for i := 0; i < 3; i++ {
+		ref := fmt.Sprintf("voter-q-%d", i)
+		caller := application.Caller{ContributorID: ref, Fingerprint: "fp-shared", KeyID: "k", Token: "tok-" + ref}
+		dto := application.CastDTO{
+			ObservationID: obsID, DecisionSequence: 2,
+			Choice: domain.ChoiceHelpful, ClientSubmissionID: fmt.Sprintf("q-%d", i),
+		}
+		if _, err := application.Cast(ctx, ports, caller, dto); err != nil {
+			t.Fatalf("budgeted cast %d must succeed: %v", i, err)
+		}
+	}
+	deniedCaller := application.Caller{ContributorID: "voter-q-9", Fingerprint: "fp-shared", KeyID: "k", Token: "tok-voter-q-9"}
+	_, err := application.Cast(ctx, ports, deniedCaller, application.CastDTO{
+		ObservationID: obsID, DecisionSequence: 2,
+		Choice: domain.ChoiceHelpful, ClientSubmissionID: "q-9",
+	})
+	var denied *application.QuotaDeniedError
+	if !errors.As(err, &denied) {
+		t.Fatalf("exhausted budget must deny with QuotaDeniedError, got %v", err)
+	}
+	if denied.RetryAfter <= 0 || denied.RetryAfter > time.Hour {
+		t.Fatalf("RetryAfter must be honest within the window, got %v", denied.RetryAfter)
+	}
+	tally, _, err := hs.Tally(ctx, obsID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tally.Helpful != 3 || tally.NotHelpful != 0 {
+		t.Fatalf("denied vote must never mutate: %+v", tally)
 	}
 }

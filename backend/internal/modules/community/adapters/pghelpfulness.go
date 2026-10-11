@@ -176,46 +176,58 @@ func helpfulDelta(choice domain.Choice) (int64, int64) {
 // advisory target lock so concurrent rebuilds never overwrite each
 // other with stale snapshots. Nothing here clamps silently.
 func bumpHelpfulnessTally(ctx context.Context, q *community.Queries, obs pgtype.UUID, seq, helpfulDelta, notHelpfulDelta int64, at time.Time) (bool, error) {
-	for attempt := 0; attempt < 3; attempt++ {
-		n, err := q.BumpHelpfulnessTally(ctx, community.BumpHelpfulnessTallyParams{
-			ObservationID: obs, DecisionSequence: seq,
-			HelpfulDelta: helpfulDelta, NotHelpfulDelta: notHelpfulDelta,
-			UpdatedAt: pgTime(at),
-		})
-		if err != nil {
-			return false, err
-		}
-		if n == 1 {
-			return false, nil
-		}
-		if helpfulDelta >= 0 && notHelpfulDelta >= 0 {
-			err = q.InsertHelpfulnessTally(ctx, community.InsertHelpfulnessTallyParams{
-				ObservationID: obs, DecisionSequence: seq,
-				Helpful: helpfulDelta, NotHelpful: notHelpfulDelta, UpdatedAt: pgTime(at),
-			})
-			if err == nil {
-				return false, nil
-			}
-			if !isUniqueViolation(err) {
-				return false, err
-			}
-			continue
-		}
-		if err := lockHelpfulnessTarget(ctx, q, obs, seq); err != nil {
-			return false, err
-		}
-		_, err = q.RebuildHelpfulnessTally(ctx, community.RebuildHelpfulnessTallyParams{
-			ObservationID: obs, DecisionSequence: seq, UpdatedAt: pgTime(at),
-		})
-		if err != nil {
-			if isUniqueViolation(err) {
-				return true, nil
-			}
-			return false, err
-		}
+	n, err := q.BumpHelpfulnessTally(ctx, community.BumpHelpfulnessTallyParams{
+		ObservationID: obs, DecisionSequence: seq,
+		HelpfulDelta: helpfulDelta, NotHelpfulDelta: notHelpfulDelta,
+		UpdatedAt: pgTime(at),
+	})
+	if err != nil {
+		return false, err
+	}
+	if n == 1 {
 		return false, nil
 	}
-	return true, nil
+	// Rare path (first vote on a target, or a tally missing under
+	// corruption): serialize creators on the advisory target lock so
+	// exactly one INSERT can win; lock order stays row-then-advisory
+	// everywhere, matching rebuilds and removals.
+	if err := lockHelpfulnessTarget(ctx, q, obs, seq); err != nil {
+		return false, err
+	}
+	n, err = q.BumpHelpfulnessTally(ctx, community.BumpHelpfulnessTallyParams{
+		ObservationID: obs, DecisionSequence: seq,
+		HelpfulDelta: helpfulDelta, NotHelpfulDelta: notHelpfulDelta,
+		UpdatedAt: pgTime(at),
+	})
+	if err != nil {
+		return false, err
+	}
+	if n == 1 {
+		return false, nil
+	}
+	if helpfulDelta >= 0 && notHelpfulDelta >= 0 {
+		err = q.InsertHelpfulnessTally(ctx, community.InsertHelpfulnessTallyParams{
+			ObservationID: obs, DecisionSequence: seq,
+			Helpful: helpfulDelta, NotHelpful: notHelpfulDelta, UpdatedAt: pgTime(at),
+		})
+		if err == nil {
+			return false, nil
+		}
+		if isUniqueViolation(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	_, err = q.RebuildHelpfulnessTally(ctx, community.RebuildHelpfulnessTallyParams{
+		ObservationID: obs, DecisionSequence: seq, UpdatedAt: pgTime(at),
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
 }
 
 func lockHelpfulnessTarget(ctx context.Context, q *community.Queries, obs pgtype.UUID, seq int64) error {
