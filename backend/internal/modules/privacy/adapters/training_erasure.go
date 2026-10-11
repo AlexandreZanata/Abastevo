@@ -25,15 +25,16 @@ var _ privacyapp.TrainingErasure = (*TrainingErasure)(nil)
 
 // EraseContributor revokes one owner's training consent and purges
 // its derivatives and bytes.
-func (t TrainingErasure) EraseContributor(ctx context.Context, contributorID string) (int, int, error) {
+func (t TrainingErasure) EraseContributor(ctx context.Context, contributorID, contributorRef string) (int, int, error) {
 	clock := t.Clock
 	if clock == nil {
 		clock = time.Now
 	}
+	attribution := func(context.Context, string) (string, error) { return contributorRef, nil }
 	return privacyapp.EraseTrainingContributor(ctx, privacyapp.TrainingErasePorts{
-		Clock: clock, Attribution: t.Attribution,
+		Clock: clock, Attribution: attribution,
 		Consent: privacyapp.ConsentPorts{
-			Clock: clock, Attribution: t.Attribution,
+			Clock: clock, Attribution: attribution,
 			Store: t.Consents, Terms: t.Terms,
 		},
 		Inventory: t.Inventory,

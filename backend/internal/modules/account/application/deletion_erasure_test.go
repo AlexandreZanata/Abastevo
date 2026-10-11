@@ -118,11 +118,11 @@ func TestDeleteCrashReplaysFromIntents(t *testing.T) {
 	svc, _, rec := deletionService()
 	ctx := context.Background()
 	auth := signupBound(t, svc, "erase-c@example.invalid", "482916", "contrib-erase-c")
-	// Crash between revocation and enqueue: enqueue fails, bindings
-	// already dropped, but intents stay durable.
+	// Dispatch fails after revocation: acknowledge the durable intent;
+	// the worker must recover without another authenticated request.
 	rec.err = errors.New("queue down")
-	if _, err := svc.DeleteAccount(ctx, auth.Account.ID); err == nil {
-		t.Fatal("failing enqueue must error")
+	if receipt, err := svc.DeleteAccount(ctx, auth.Account.ID); err != nil || !receipt.ErasureRequested {
+		t.Fatalf("durable intent must be acknowledged despite dispatch failure: %+v %v", receipt, err)
 	}
 	if _, found, _ := svc.Store.FindBindingOwner(ctx, "contrib-erase-c"); found {
 		t.Fatal("bindings must drop in the atomic transaction")
@@ -131,7 +131,8 @@ func TestDeleteCrashReplaysFromIntents(t *testing.T) {
 	if err != nil || len(intents) != 1 {
 		t.Fatalf("intents = %v (%v), want durable capture", intents, err)
 	}
-	// Retry replays from intents (bindings are gone) and converges.
+	// Internal replay converges; session-independent worker recovery is
+	// separately exercised against real SQL.
 	rec.err = nil
 	receipt, err := svc.DeleteAccount(ctx, auth.Account.ID)
 	if err != nil {

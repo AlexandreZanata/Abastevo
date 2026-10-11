@@ -266,3 +266,22 @@ WHERE o.id = @id AND s.id = o.session_id AND s.contributor_ref = @contributor_re
 AND s.photo_capture_id = @capture_id AND s.status = 'READY' AND s.expires_at > @now_at
 AND o.final_deleted_at IS NULL AND o.bound_observation_id IS NULL
 AND (o.bound_capture_id IS NULL OR o.bound_capture_id = @capture_id);
+
+-- name: PendingErasureSessions :many
+SELECT id, quarantine_key FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref AND quarantine_deleted_at IS NULL
+ORDER BY created_at, id LIMIT 32;
+
+-- name: PendingErasureObjects :many
+SELECT o.id, o.final_key FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL
+ORDER BY o.created_at, o.id LIMIT 32;
+
+-- name: ExpireErasureSession :exec
+UPDATE evidence_sessions SET status = 'EXPIRED', updated_at = now()
+WHERE id = @id AND status != 'EXPIRED';
+
+-- name: HasPendingEvidenceErasure :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = @contributor_ref AND s.quarantine_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL) AS pending;

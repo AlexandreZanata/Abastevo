@@ -40,7 +40,7 @@ func TestErasureReplaysTerminal(t *testing.T) {
 	called := false
 	h := Erasure{
 		Load: func(context.Context, string) (privacydomain.Request, error) {
-			return privacydomain.Request{Status: privacydomain.StatusReady}, nil
+			return privacydomain.Request{Type: privacydomain.TypeDeletion, Status: privacydomain.StatusReady}, nil
 		},
 		Erase: func(context.Context, string, privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
 			called = true
@@ -77,7 +77,7 @@ func TestErasureRejectsBadPayload(t *testing.T) {
 func TestErasurePropagatesFailure(t *testing.T) {
 	h := Erasure{
 		Load: func(context.Context, string) (privacydomain.Request, error) {
-			return privacydomain.Request{Status: privacydomain.StatusRequested}, nil
+			return privacydomain.Request{Type: privacydomain.TypeDeletion, Status: privacydomain.StatusRequested}, nil
 		},
 		Erase: func(context.Context, string, privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
 			return privacyapp.ErasureReport{}, errors.New("community down")
@@ -85,5 +85,22 @@ func TestErasurePropagatesFailure(t *testing.T) {
 	}
 	if err := h.Handle(context.Background(), jobs.Job{Payload: []byte(`{"version":1,"request_id":"d1"}`)}); err == nil {
 		t.Error("erase failure accepted")
+	}
+}
+
+func TestErasureRetriesFailedAndRefusesExports(t *testing.T) {
+	req := privacydomain.Request{Type: privacydomain.TypeDeletion, Status: privacydomain.StatusFailed, ContributorID: "c1", ClientSubmissionID: "op1"}
+	calls := 0
+	h := Erasure{Load: func(context.Context, string) (privacydomain.Request, error) { return req, nil }, Erase: func(context.Context, string, privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
+		calls++
+		return privacyapp.ErasureReport{}, nil
+	}}
+	job := jobs.Job{Payload: []byte(`{"version":1,"request_id":"r1"}`)}
+	if err := h.Handle(context.Background(), job); err != nil || calls != 1 {
+		t.Fatal(calls, err)
+	}
+	req.Type = privacydomain.TypeExport
+	if err := h.Handle(context.Background(), job); err == nil {
+		t.Fatal("export accepted as erasure")
 	}
 }

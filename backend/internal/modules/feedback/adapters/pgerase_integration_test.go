@@ -197,3 +197,60 @@ func TestPGConcurrentDoubleEraseConverges(t *testing.T) {
 		t.Fatalf("concurrent erases must tombstone exactly once each (total 2), got %d (%+v)", total, reports)
 	}
 }
+
+func TestAccountErasureUsesBoundedLiveBatchesOnSQL(t *testing.T) {
+	svc, pool := freshService(t)
+	store := svc.Store.(*PGStore)
+	svc.Comments = store
+	svc.Votes = store
+	ctx := context.Background()
+	station := testUUID(9001)
+	owner := seedAccount(t, pool, 71, "active")
+	other := seedAccount(t, pool, 72, "active")
+	if _, err := svc.Rate(ctx, owner, station, "GASOLINE_REGULAR", 5); err != nil {
+		t.Fatal(err)
+	}
+	control, err := svc.SubmitComment(ctx, other, station, "GASOLINE_REGULAR", "retained control")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Vote(ctx, owner, control.ID, domain.VoteValid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO feedback_comments(id,account_id,station_id,product,depth,text,revision,created_at,updated_at)
+ SELECT md5('erasure-comment-'||n)::uuid,$1,$2,'GASOLINE_REGULAR',0,'synthetic erasure fixture',1,now(),now() FROM generate_series(1,75)n`, owner, station); err != nil {
+		t.Fatal(err)
+	}
+	done, err := store.EraseAccountBatch(ctx, owner, svc.Clock.NowUnix())
+	if err != nil || done {
+		t.Fatal("first batch", done, err)
+	}
+	var count int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM feedback_comments WHERE account_id=$1 AND deleted_at IS NOT NULL", owner).Scan(&count); err != nil || count != 32 {
+		t.Fatal("batch exceeds ceiling", count, err)
+	}
+	stats, _, err := store.Stats(ctx, station, "GASOLINE_REGULAR")
+	if err != nil || stats.Count != 0 {
+		t.Fatal("aggregate not atomic", stats, err)
+	}
+	tally, _, err := store.Tally(ctx, control.ID, control.Revision)
+	if err != nil || tally.Valid != 0 {
+		t.Fatal("vote aggregate not atomic", tally, err)
+	}
+	restarted := NewPGStore(pool)
+	for i := 0; i < 2; i++ {
+		done, err = restarted.EraseAccountBatch(ctx, owner, svc.Clock.NowUnix())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !done {
+		t.Fatal("bounded restart failed to finish")
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM feedback_comments WHERE account_id=$1 AND deleted_at IS NULL", other).Scan(&count); err != nil || count != 1 {
+		t.Fatal("other account affected", count, err)
+	}
+	if done, err := restarted.EraseAccountBatch(ctx, owner, svc.Clock.NowUnix()); err != nil || !done {
+		t.Fatal("replay failed", done, err)
+	}
+}

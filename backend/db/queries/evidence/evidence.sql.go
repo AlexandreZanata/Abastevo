@@ -123,6 +123,16 @@ func (q *Queries) CountSessionsSince(ctx context.Context, arg CountSessionsSince
 	return count, err
 }
 
+const expireErasureSession = `-- name: ExpireErasureSession :exec
+UPDATE evidence_sessions SET status = 'EXPIRED', updated_at = now()
+WHERE id = $1 AND status != 'EXPIRED'
+`
+
+func (q *Queries) ExpireErasureSession(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, expireErasureSession, id)
+	return err
+}
+
 const expireIdleSessions = `-- name: ExpireIdleSessions :many
 
 UPDATE evidence_sessions AS s
@@ -529,6 +539,18 @@ func (q *Queries) GetUploadTransfer(ctx context.Context, sessionID pgtype.UUID) 
 	var received_at pgtype.Timestamptz
 	err := row.Scan(&received_at)
 	return received_at, err
+}
+
+const hasPendingEvidenceErasure = `-- name: HasPendingEvidenceErasure :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = $1 AND s.quarantine_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = $1 AND o.final_deleted_at IS NULL) AS pending
+`
+
+func (q *Queries) HasPendingEvidenceErasure(ctx context.Context, contributorRef string) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingEvidenceErasure, contributorRef)
+	var pending pgtype.Bool
+	err := row.Scan(&pending)
+	return pending, err
 }
 
 const insertObject = `-- name: InsertObject :one
@@ -975,6 +997,69 @@ func (q *Queries) OverdueOriginals(ctx context.Context, arg OverdueOriginalsPara
 			&i.Status,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingErasureObjects = `-- name: PendingErasureObjects :many
+SELECT o.id, o.final_key FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = $1 AND o.final_deleted_at IS NULL
+ORDER BY o.created_at, o.id LIMIT 32
+`
+
+type PendingErasureObjectsRow struct {
+	ID       pgtype.UUID `json:"id"`
+	FinalKey string      `json:"final_key"`
+}
+
+func (q *Queries) PendingErasureObjects(ctx context.Context, contributorRef string) ([]PendingErasureObjectsRow, error) {
+	rows, err := q.db.Query(ctx, pendingErasureObjects, contributorRef)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingErasureObjectsRow
+	for rows.Next() {
+		var i PendingErasureObjectsRow
+		if err := rows.Scan(&i.ID, &i.FinalKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingErasureSessions = `-- name: PendingErasureSessions :many
+SELECT id, quarantine_key FROM evidence_sessions
+WHERE contributor_ref = $1 AND quarantine_deleted_at IS NULL
+ORDER BY created_at, id LIMIT 32
+`
+
+type PendingErasureSessionsRow struct {
+	ID            pgtype.UUID `json:"id"`
+	QuarantineKey string      `json:"quarantine_key"`
+}
+
+func (q *Queries) PendingErasureSessions(ctx context.Context, contributorRef string) ([]PendingErasureSessionsRow, error) {
+	rows, err := q.db.Query(ctx, pendingErasureSessions, contributorRef)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingErasureSessionsRow
+	for rows.Next() {
+		var i PendingErasureSessionsRow
+		if err := rows.Scan(&i.ID, &i.QuarantineKey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

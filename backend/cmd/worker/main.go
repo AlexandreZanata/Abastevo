@@ -22,6 +22,8 @@ import (
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/jobs"
+	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
@@ -37,6 +39,7 @@ import (
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
+	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
@@ -348,6 +351,21 @@ func run() error {
 		DeleteObject: erasureDelete,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	accountRecovery := accountapp.ErasureRecovery{
+		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
+		EraseFeedback: func(ctx context.Context, id string) error {
+			done, err := feedbackStore.EraseAccountBatch(ctx, id, time.Now().Unix())
+			if err == nil && !done {
+				return accountapp.ErrErasurePending
+			}
+			return err
+		},
+		EraseContributor: func(ctx context.Context, accountID, contributorID string) error {
+			_, err := privacyapp.Erase(ctx, privacyErasePorts, contributorID, privacyapp.EraseDTO{ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID, Reason: "account-deletion"})
 			return err
 		},
 	}
@@ -732,6 +750,7 @@ func run() error {
 		// Owner erasure (P07-T04): durable deletion requests revoke and
 		// purge scope by scope with ledger rows; terminal replays
 		// converge and scope failures park for audited retry.
+		"account-erasure-reconcile": accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
 				return privacyStore.Get(ctx, requestID)
@@ -866,6 +885,7 @@ func run() error {
 			Interval: time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
+		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
 			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
 			Interval: 24 * time.Hour, Enabled: true,

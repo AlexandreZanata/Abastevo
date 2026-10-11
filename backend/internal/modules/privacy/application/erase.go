@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 type EraseStore interface {
 	RequestDeletion(ctx context.Context, r domain.Request, reason string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (id string, replayed bool, err error)
 	Get(ctx context.Context, id string) (domain.Request, error)
+	FindDeletion(ctx context.Context, contributorID, submissionID string) (domain.Request, bool, error)
 	CompleteDeletionRequest(ctx context.Context, id string, at time.Time) error
 	FailExport(ctx context.Context, id string, at time.Time) error
 	RecordLedger(ctx context.Context, e domain.LedgerEntry) (string, bool, error)
@@ -48,7 +50,7 @@ type TrustErasure interface {
 // TrainingErasure revokes one owner's training consent and purges its
 // derivatives and bytes, reporting flipped rows and deleted copies.
 type TrainingErasure interface {
-	EraseContributor(ctx context.Context, contributorID string) (revoked, objectsPurged int, err error)
+	EraseContributor(ctx context.Context, contributorID, contributorRef string) (revoked, objectsPurged int, err error)
 }
 
 // ErasePorts wires erasure across the owned modules. Every scope port
@@ -85,6 +87,16 @@ func RequestDeletion(ctx context.Context, p ErasePorts, contributorID string, dt
 	}
 	if strings.TrimSpace(dto.ClientSubmissionID) == "" || strings.TrimSpace(dto.Reason) == "" {
 		return RequestDeletionResult{}, domain.ErrInvalidRequest
+	}
+	existing, found, err := p.Store.FindDeletion(ctx, contributorID, strings.TrimSpace(dto.ClientSubmissionID))
+	if err != nil {
+		return RequestDeletionResult{}, err
+	}
+	if found {
+		if existing.Type != domain.TypeDeletion {
+			return RequestDeletionResult{}, domain.ErrConflict
+		}
+		return RequestDeletionResult{RequestID: existing.ID, Replayed: true}, nil
 	}
 	token, err := p.Attribution(ctx, contributorID)
 	if err != nil {
@@ -160,54 +172,50 @@ func Erase(ctx context.Context, p ErasePorts, contributorID string, dto EraseDTO
 	if strings.TrimSpace(dto.Reason) == "" {
 		return ErasureReport{}, domain.ErrInvalidRequest
 	}
-	token, err := p.Attribution(ctx, contributorID)
+	result, err := RequestDeletion(ctx, p, contributorID, dto)
 	if err != nil {
 		return ErasureReport{}, err
 	}
+	existing, err := p.Store.Get(ctx, result.RequestID)
+	if err != nil {
+		return ErasureReport{}, err
+	}
+	if existing.Type != domain.TypeDeletion {
+		return ErasureReport{}, domain.ErrConflict
+	}
+	storedID := existing.ID
+	if existing.Status == domain.StatusReady {
+		return ErasureReport{RequestID: storedID, Replayed: true}, nil
+	}
+	if existing.Status != domain.StatusRequested && existing.Status != domain.StatusFailed {
+		return ErasureReport{}, domain.ErrBadState
+	}
+	// Identity erasure clears its attribution token. Always resume from the
+	// original durable intent, never resolve or mint another owner reference.
+	token := existing.ContributorRef
 	if strings.TrimSpace(token) == "" {
-		return ErasureReport{}, domain.ErrNotFound
+		return ErasureReport{}, domain.ErrInvalidRequest
 	}
 	now := time.Now()
 	if p.Clock != nil {
 		now = p.Clock()
 	}
-	id, err := p.NewID()
-	if err != nil {
-		return ErasureReport{}, err
-	}
-	req, err := domain.NewRequest(domain.RequestParams{
-		ID: id, ContributorID: contributorID, ContributorRef: token,
-		ClientSubmissionID: dto.ClientSubmissionID, Type: domain.TypeDeletion,
-		RequestedAt: now,
-	})
-	if err != nil {
-		return ErasureReport{}, err
-	}
-	storedID, replayed, err := p.Store.RequestDeletion(ctx, req, strings.TrimSpace(dto.Reason),
-		func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-			return p.EnqueueJob(ctx, tx, kind, payload, dedupe)
-		})
-	if err != nil {
-		return ErasureReport{}, err
-	}
-	if replayed {
-		existing, err := p.Store.Get(ctx, storedID)
-		if err != nil {
-			return ErasureReport{}, err
-		}
-		if existing.Status != domain.StatusRequested {
-			return ErasureReport{RequestID: storedID, Replayed: true}, nil
-		}
-	}
 	anon := "erased-" + strings.ReplaceAll(storedID, "-", "")
 	report, err := runScopes(ctx, p, contributorID, token, anon, strings.TrimSpace(dto.Reason), now)
 	if err != nil {
-		_ = p.Store.FailExport(ctx, storedID, now)
+		if markErr := p.Store.FailExport(ctx, storedID, now); markErr != nil && !errors.Is(markErr, domain.ErrBadState) {
+			return ErasureReport{}, errors.Join(err, markErr)
+		}
 		return ErasureReport{}, err
 	}
 	current, err := p.Store.Get(ctx, storedID)
 	if err != nil {
 		return ErasureReport{}, err
+	}
+	if current.Type == domain.TypeDeletion && current.Status == domain.StatusReady {
+		report.RequestID = storedID
+		report.Replayed = true
+		return report, nil
 	}
 	completed, _, err := domain.CompleteDeletion(current, now)
 	if err != nil {
@@ -266,7 +274,7 @@ func runScopes(ctx context.Context, p ErasePorts, contributorID, token, anon, re
 	if err := ledger(domain.ScopeEvidence); err != nil {
 		return report, err
 	}
-	revoked, tpurged, err := p.Training.EraseContributor(ctx, contributorID)
+	revoked, tpurged, err := p.Training.EraseContributor(ctx, contributorID, token)
 	if err != nil {
 		return report, err
 	}
@@ -360,7 +368,7 @@ func ReplayLedger(ctx context.Context, p ErasePorts, contributorID string) (Eras
 		return report, err
 	}
 	if err := run(domain.ScopeTraining, func() error {
-		revoked, purged, err := p.Training.EraseContributor(ctx, contributorID)
+		revoked, purged, err := p.Training.EraseContributor(ctx, contributorID, token)
 		report.TrainingRevoked, report.TrainingPurged = revoked, purged
 		return err
 	}); err != nil {

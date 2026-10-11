@@ -32,7 +32,8 @@ type MemStore struct {
 	keyByLookup   map[string]string
 	// intents holds durable account-erasure intents (SEC04-B):
 	// contributor IDs captured at deletion for scope cleanup.
-	intents map[erasureIntentKey]int64
+	intents         map[erasureIntentKey]int64
+	erasureRequests map[string]int64
 	// refreshHist holds bounded hashed rotation histories (SEC07-A):
 	// newest superseded verifiers first, at most
 	// domain.MaxRefreshHistory per family. Salted hashes only.
@@ -47,22 +48,23 @@ type erasureIntentKey struct {
 // NewMemStore returns an empty memory store.
 func NewMemStore() *MemStore {
 	return &MemStore{
-		byAddr:        map[string][]int{},
-		accounts:      map[string]domain.Account{},
-		accountIDs:    map[string]string{},
-		accountsByID:  map[string]domain.Account{},
-		families:      map[string]*domain.SessionFamily{},
-		links:         map[string]map[string]domain.ProviderLink{},
-		bySubject:     map[string]string{},
-		nonces:        map[string]bool{},
-		bindings:      map[string]map[string]domain.ContributorBinding{},
-		byContributor: map[string]string{},
-		audit:         map[string][]domain.BindingAudit{},
-		keyCreds:      map[string]domain.KeyCredential{},
-		keyByUsername: map[string]string{},
-		keyByLookup:   map[string]string{},
-		intents:       map[erasureIntentKey]int64{},
-		refreshHist:   map[string][]domain.RotatedVerifier{},
+		byAddr:          map[string][]int{},
+		accounts:        map[string]domain.Account{},
+		accountIDs:      map[string]string{},
+		accountsByID:    map[string]domain.Account{},
+		families:        map[string]*domain.SessionFamily{},
+		links:           map[string]map[string]domain.ProviderLink{},
+		bySubject:       map[string]string{},
+		nonces:          map[string]bool{},
+		bindings:        map[string]map[string]domain.ContributorBinding{},
+		byContributor:   map[string]string{},
+		audit:           map[string][]domain.BindingAudit{},
+		keyCreds:        map[string]domain.KeyCredential{},
+		keyByUsername:   map[string]string{},
+		keyByLookup:     map[string]string{},
+		intents:         map[erasureIntentKey]int64{},
+		erasureRequests: map[string]int64{},
+		refreshHist:     map[string][]domain.RotatedVerifier{},
 	}
 }
 
@@ -626,6 +628,9 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	if _, ok := m.erasureRequests[accountID]; !ok {
+		m.erasureRequests[accountID] = nowUnix
+	}
 	var contributors []string
 	if set, ok := m.bindings[accountID]; ok {
 		for contributor := range set {

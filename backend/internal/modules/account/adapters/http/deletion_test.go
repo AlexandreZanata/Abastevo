@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -136,5 +137,19 @@ func TestFailMapsStatusErrors(t *testing.T) {
 		if !strings.Contains(rec.Body.String(), tc.code) {
 			t.Errorf("fail(%v) body must carry %q, got %s", tc.err, tc.code, rec.Body.String())
 		}
+	}
+}
+
+func TestSelfDeleteAcknowledgesDurableIntentWhenDispatchFails(t *testing.T) {
+	f := newProviderHandler(t)
+	sess := f.signup(t, "dispatch-down@example.invalid", "482916")
+	svcOf(t, f).RequestErasure = func(context.Context, string, []string) error { return errors.New("queue down") }
+	rec := f.call(t, "POST", "/v1/accounts/deletion", deleteBody(sess))
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "erasure_requested") {
+		t.Fatalf("durable intent not acknowledged: %d %s", rec.Code, rec.Body.String())
+	}
+	rec = f.call(t, "POST", "/v1/accounts/providers/list", deleteBody(sess))
+	if rec.Code != 410 {
+		t.Fatal("deleted session survived", rec.Code)
 	}
 }

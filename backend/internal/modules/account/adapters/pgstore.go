@@ -957,6 +957,9 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 			return nil, err
 		}
 	}
+	if err := q.InsertAccountErasureRequest(ctx, account.InsertAccountErasureRequestParams{AccountID: id, At: stamp(nowUnix)}); err != nil {
+		return nil, err
+	}
 	if err := q.DeleteAccountAddresses(ctx, id); err != nil {
 		return nil, err
 	}

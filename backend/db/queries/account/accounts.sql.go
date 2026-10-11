@@ -771,15 +771,21 @@ WHERE account_id = $1
 ORDER BY contributor_id
 `
 
-func (q *Queries) ListErasureIntentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]AccountErasureIntent, error) {
+type ListErasureIntentsByAccountRow struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ContributorID string             `json:"contributor_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListErasureIntentsByAccount(ctx context.Context, accountID pgtype.UUID) ([]ListErasureIntentsByAccountRow, error) {
 	rows, err := q.db.Query(ctx, listErasureIntentsByAccount, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []AccountErasureIntent
+	var items []ListErasureIntentsByAccountRow
 	for rows.Next() {
-		var i AccountErasureIntent
+		var i ListErasureIntentsByAccountRow
 		if err := rows.Scan(&i.AccountID, &i.ContributorID, &i.CreatedAt); err != nil {
 			return nil, err
 		}

@@ -323,7 +323,7 @@ func TestNoDestructiveSQLPaths(t *testing.T) {
 	if got := strings.Count(upper, "UPDATE PRIVACY_REQUESTS"); got != 5 {
 		t.Errorf("privacy.sql has %d UPDATEs, want exactly the guarded transitions plus the purges", got)
 	}
-	if strings.Count(upper, "STATUS = 'REQUESTED'") < 3 {
+	if strings.Count(upper, "STATUS = 'REQUESTED'") != 2 || !strings.Contains(upper, "WHERE ID = @ID AND STATUS IN ('REQUESTED', 'FAILED', 'READY') AND TYPE = 'DELETION'") {
 		t.Error("guarded transitions lost their state guard")
 	}
 	if got := strings.Count(upper, "DELETE FROM PRIVACY_"); got != 1 {

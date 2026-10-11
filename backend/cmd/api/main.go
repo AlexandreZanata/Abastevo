@@ -417,38 +417,13 @@ func run() error {
 		},
 		IDGen: newUUID,
 	}
-	// Account deletion linkage (SEC04-B): after atomic revocation and
-	// durable intent capture, enqueue owned scope cleanup — one
-	// privacy deletion intent per captured contributor (durable job
-	// through the deletion ledger) plus synchronous account-social
-	// erasure. Deterministic submission IDs make retries converge;
-	// feedback erasure converges on re-run (second run reports zero).
-	privacyEraseStore := privacyadapters.NewStore(pool.Underlying())
-	accountService.RequestErasure = func(ctx context.Context, accountID string, contributorIDs []string) error {
-		for _, contributorID := range contributorIDs {
-			if _, err := privacyapp.RequestDeletion(ctx, privacyapp.ErasePorts{
-				Clock: time.Now,
-				NewID: newUUID,
-				Attribution: func(ctx context.Context, contributorID string) (string, error) {
-					return identityRegistrar.AttributionToken(ctx, contributorID)
-				},
-				Store: privacyEraseStore,
-				EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-					_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
-					return err
-				},
-			}, contributorID, privacyapp.EraseDTO{
-				ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID,
-				Reason:             "account-deletion",
-			}); err != nil {
-				return err
-			}
-		}
-		if _, err := feedbackService.EraseAccount(ctx, accountID); err != nil {
-			return err
-		}
-		return nil
+	// A dispatch hint accelerates the durable account intent. The recurring
+	// worker recovers independently if this best-effort enqueue is unavailable.
+	accountService.RequestErasure = func(ctx context.Context, _ string, _ []string) error {
+		_, err := platformjobs.Enqueue(ctx, pool.Underlying(), "account-erasure-reconcile", []byte(`{"version":1}`), "account-erasure-hint:"+time.Now().UTC().Format("200601021504"), 5, time.Time{})
+		return err
 	}
+
 	feedbackhttp.Handler{
 		Service: feedbackService,
 		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {

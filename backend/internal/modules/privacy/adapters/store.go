@@ -383,3 +383,17 @@ func (s *Store) PurgeOldLedger(ctx context.Context, cutoff time.Time, batch int3
 		}
 	}
 }
+
+// FindDeletion resolves the stable owner reference before identity erasure
+// unlinks it. The natural key remains private and owner scoped.
+func (s *Store) FindDeletion(ctx context.Context, contributorID, submissionID string) (domain.Request, bool, error) {
+	row, err := dbprivacy.New(s.pool).GetRequestByNaturalKey(ctx, dbprivacy.GetRequestByNaturalKeyParams{ContributorID: contributorID, ClientSubmissionID: submissionID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Request{}, false, nil
+	}
+	if err != nil {
+		return domain.Request{}, false, err
+	}
+	req, err := s.Get(ctx, uuidString(row.ID))
+	return req, err == nil, err
+}

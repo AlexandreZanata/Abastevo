@@ -197,8 +197,8 @@ func (q *Queries) ListLedgerByContributor(ctx context.Context, contributorID str
 
 const markDeletionReady = `-- name: MarkDeletionReady :one
 UPDATE privacy_requests
-SET status = 'READY', ready_at = $1, completed_at = $2
-WHERE id = $3 AND status = 'REQUESTED' AND type = 'DELETION'
+SET status = 'READY', ready_at = COALESCE(ready_at, $1), completed_at = COALESCE(ready_at, $2)
+WHERE id = $3 AND status IN ('REQUESTED', 'FAILED', 'READY') AND type = 'DELETION'
 RETURNING id
 `
 
