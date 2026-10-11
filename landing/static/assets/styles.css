@@ -207,6 +207,102 @@ h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-co
   background-color: var(--tint-blue);
 }
 
+/* Mobile navigation: native disclosure, works without JavaScript */
+.nav-toggle {
+  display: contents;
+}
+
+.nav-button {
+  display: none;
+}
+
+@media (max-width: 47.999rem) {
+  .header-inner {
+    position: relative;
+    flex-wrap: nowrap;
+  }
+
+  .nav-toggle {
+    display: block;
+    margin-left: auto;
+  }
+
+  .nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-sm);
+    background-color: #ffffff;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .nav-button::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-button span,
+  .nav-button span::before,
+  .nav-button span::after {
+    display: block;
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--ink);
+    content: "";
+  }
+
+  .nav-button span {
+    position: relative;
+  }
+
+  .nav-button span::before {
+    position: absolute;
+    top: -7px;
+    left: 0;
+  }
+
+  .nav-button span::after {
+    position: absolute;
+    top: 7px;
+    left: 0;
+  }
+
+  .nav-toggle .site-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 12px 24px rgba(11, 24, 73, 0.08);
+    padding: 0.5rem 1rem 1rem;
+  }
+
+  .nav-toggle[open] .site-nav {
+    display: flex;
+  }
+
+  .nav-toggle .site-nav a {
+    min-height: 48px;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    padding-left: 0.25rem;
+  }
+
+  .nav-toggle .site-nav a:first-child {
+    border-top: none;
+  }
+}
+
 /* Main */
 main {
   flex: 1 0 auto;

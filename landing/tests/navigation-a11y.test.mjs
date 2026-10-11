@@ -66,3 +66,25 @@ test('plain anchors, headings and keyboard affordances hold on every page', () =
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('mobile hamburger menu is native disclosure on every page', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-nav-mobile-'));
+  try {
+    build({ projectRoot: root, outDir });
+    for (const rel of ['index.html', 'como-usar/index.html', 'guias/index.html']) {
+      const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
+      assert.match(html, /<details class="nav-toggle">/, `${rel} disclosure wrapper`);
+      assert.match(
+        html,
+        /<summary class="nav-button" aria-label="[^"]+">/,
+        `${rel} labelled toggle`
+      );
+    }
+    const cssFile = fs.readdirSync(path.join(outDir, 'assets')).find((f) => /^styles\.[a-f0-9]{8}\.css$/.test(f));
+    const css = fs.readFileSync(path.join(outDir, 'assets', cssFile), 'utf8');
+    assert.match(css, /\.nav-toggle\[open\] \.site-nav/);
+    assert.match(css, /max-width:\s*47\.999rem/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});

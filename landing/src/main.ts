@@ -110,17 +110,35 @@ function setupBackToTop(): void {
   });
 }
 
+function setupMobileNav(): void {
+  // Enhancement only: the details/summary menu already works without JavaScript.
+  const toggle = document.querySelector<HTMLDetailsElement>('.nav-toggle');
+  if (!toggle) return;
+  toggle.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      toggle.removeAttribute('open');
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      toggle.removeAttribute('open');
+    }
+  });
+}
+
 function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       setupNavigationHighlight();
       setupCopyHelper();
       setupBackToTop();
+      setupMobileNav();
     });
   } else {
     setupNavigationHighlight();
     setupCopyHelper();
     setupBackToTop();
+    setupMobileNav();
   }
 }
 
