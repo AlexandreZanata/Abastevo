@@ -67,9 +67,9 @@ private enum class SaveState { NONE, SAVING, SAVED, FAILED }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
+fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier, preferences: GamesPreferences? = null) {
     val context = LocalContext.current
-    val preferences = remember(context.applicationContext) { GamesPreferences(context) }
+    val store = remember(context.applicationContext, preferences) { preferences ?: GamesPreferences(context) }
     val scope = rememberCoroutineScope()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     // Deliberately not saveable: recreation never reconstructs an unfinished run.
@@ -82,9 +82,9 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
     var phase by remember(session) { mutableStateOf(session?.phase ?: GamePhase.READY) }
     var saveState by remember(session) { mutableStateOf(SaveState.NONE) }
 
-    LaunchedEffect(preferences) {
+    LaunchedEffect(store) {
         val saved = withContext(Dispatchers.IO) {
-            preferences.options() to GameId.entries.associateWith { preferences.records.best(it) }
+            store.options() to GameId.entries.associateWith { store.records.best(it) }
         }
         options = saved.first; bests = saved.second; loaded = true
     }
@@ -97,7 +97,7 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
             // Navigating away may discard UI state, but an acknowledged completion
             // must finish its tiny disk commit while this process remains alive.
             val saved = withContext(NonCancellable + Dispatchers.IO) {
-                preferences.records.record(gameId, GamePhase.FINISHED, completedScore)
+                store.records.record(gameId, GamePhase.FINISHED, completedScore)
             }
             bests = bests + (gameId to saved.best)
             saveState = if (saved.saved) SaveState.SAVED else SaveState.FAILED
@@ -136,14 +136,24 @@ fun GamesScreen(onNavigateBack: () -> Unit, modifier: Modifier = Modifier) {
             GamesSelector(
                 bests = bests, loaded = loaded, options = options,
                 onSelect = { selected = it },
-                onOptions = { options = it; preferences.saveOptions(it) },
+                onOptions = { options = it; store.saveOptions(it) },
                 modifier = Modifier.padding(padding),
             )
         } else {
             BoxWithConstraints(Modifier.fillMaxSize().padding(padding).padding(8.dp)) {
                 val stage: @Composable () -> Unit = {
                     Box(Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp))) {
-                        AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().testTag("games_playfield"))
+                        AndroidView(
+                            factory = { view },
+                            update = {
+                                val playing = phase == GamePhase.RUNNING
+                                it.isFocusable = playing
+                                it.isClickable = playing
+                                it.importantForAccessibility = if (playing) android.view.View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                                    else android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                            },
+                            modifier = Modifier.fillMaxSize().testTag("games_playfield"),
+                        )
                         if (phase != GamePhase.RUNNING) {
                             GameOverlay(
                                 session, phase, bests[session.gameId] ?: 0, saveState,

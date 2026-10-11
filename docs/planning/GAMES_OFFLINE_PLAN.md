@@ -1,5 +1,10 @@
 # Games — lightweight offline arcade and verified Brazil ranking
 
+2026-10-11 scoped follow-up: the user selected the offline Android MVP on an
+isolated `games` branch. [Mobile contracts and evidence](../mobile/games-mvp.md)
+own that implementation. The dated planning/draft status below is historical;
+backend ranking/sync and the full device/performance matrix remain deferred.
+
 Date: 2026-10-09. Owner: separate optional Games workstream, IDs `GME-*`.
 Status: PLANNING_LOCAL_DONE; GME-00 asset draft LOCAL_DONE / INTEGRATION_PENDING.
 Runtime status: Games tab, playable games, sync and leaderboard NOT_IMPLEMENTED.

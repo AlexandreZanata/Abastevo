@@ -23,6 +23,9 @@ import kotlin.math.min
 
 /** Display-synchronized, bounded native rendering; no Compose work per simulation tick. */
 class ArcadeView(context: Context, val session: ArcadeSession) : View(context), Choreographer.FrameCallback {
+    // Idle preview constructor for Android layout/accessibility tooling.
+    constructor(context: Context) : this(context, ArcadeSession(GameId.FLIGHT, 1))
+
     var onPhaseChanged: (GamePhase) -> Unit = {}
     var reducedMotion = false
     var lowPower = false

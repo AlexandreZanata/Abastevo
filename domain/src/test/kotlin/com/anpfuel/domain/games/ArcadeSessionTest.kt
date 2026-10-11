@@ -13,6 +13,27 @@ class ArcadeSessionTest {
             assertEquals(0f, clock.interpolation)
         }
     }
+    @Test fun invalidClockIsRejectedAndIdleTransitionsDoNothing() {
+        assertThrows(IllegalArgumentException::class.java) { FixedTickClock().frame(-1) {} }
+        val session = ArcadeSession(GameId.RUN, 5)
+        session.pause(); session.resume()
+        assertEquals(GamePhase.READY, session.phase)
+        session.start(); session.start(); session.pause(); session.pause()
+        assertEquals(GamePhase.PAUSED, session.phase)
+        session.enqueue(GameAction.LEFT); session.resume(); session.frame(0); session.frame(20_000_000)
+        assertEquals(0, (session.simulation as FuelRun).lane)
+    }
+    @Test fun fractionalTicksInterpolateAndNoneCannotBlockRealInput() {
+        val clock = FixedTickClock(); var count = 0
+        clock.frame(0) { count++ }; clock.frame(8_333_333) { count++ }
+        assertEquals(0, count)
+        assertTrue(clock.interpolation > .49f && clock.interpolation < .51f)
+        val session = ArcadeSession(GameId.RUN, 5)
+        session.start(); session.frame(0)
+        session.enqueue(GameAction.NONE); session.enqueue(GameAction.RIGHT); session.frame(20_000_000)
+        assertEquals(1, (session.simulation as FuelRun).lane)
+    }
+
     @Test fun stallsCannotCreateUnboundedWorkOrCatchUpAfterReset() {
         val clock = FixedTickClock(); var count = 0
         clock.frame(0) { count++ }

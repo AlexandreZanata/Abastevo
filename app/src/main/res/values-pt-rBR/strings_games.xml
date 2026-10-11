@@ -1,5 +1,5 @@
 <resources>
-    <string name="games_hud">%1$d pontos · %2$d s</string>
+    <string name="games_hud">Pontuação: %1$d · %2$d s</string>
     <string name="games_flight_accessibility">Pista do Fuel Flight. Toque para voar ou use o botão Voar abaixo.</string>
     <string name="games_run_accessibility">Pista do Fuel Run. Deslize para os lados para mudar de faixa, para cima para pular e para baixo para deslizar. Também há botões abaixo.</string>
 
@@ -11,14 +11,14 @@
     <string name="games_run_title">Fuel Run</string>
     <string name="games_flight_summary">Voe entre bombas e colete combustível.</string>
     <string name="games_run_summary">Três faixas. Desvie, pule e deslize.</string>
-    <string name="games_local_best">Recorde local: %1$d pontos</string>
+    <string name="games_local_best">Recorde pessoal local: %1$d</string>
     <string name="games_loading">Carregando recordes locais…</string>
     <string name="games_choose">Escolher %1$s</string>
     <string name="games_settings">Do seu jeito</string>
     <string name="games_muted">Silenciar som</string>
     <string name="games_reduced_motion">Reduzir movimento do cenário</string>
-    <string name="games_low_power">Desenhar em até 30 fps</string>
-    <string name="games_no_rank">MVP de treino · apenas pontuação local</string>
+    <string name="games_low_power">Economizar bateria (até 30 fps)</string>
+    <string name="games_no_rank">Jogos offline · apenas pontuação local</string>
     <string name="games_how_to">Como jogar</string>
     <string name="games_flight_tutorial">Toque na pista ou em Voar para subir. Solte para cair. Passe entre as bombas e colete gotas douradas. Encostar em uma bomba ou na borda encerra a partida.</string>
     <string name="games_run_tutorial">Deslize para os lados para mudar de faixa, para cima para pular e para baixo para deslizar. Você também pode usar os botões. Pule cones, passe sob pórticos e desvie de caminhões. Colete gotas douradas.</string>
@@ -33,7 +33,7 @@
     <string name="games_finish">Partida encerrada</string>
     <string name="games_collision">Você atingiu um obstáculo ou a borda. Tente de novo!</string>
     <string name="games_time_limit">Três minutos completos!</string>
-    <string name="games_score">Sua pontuação: %1$d pontos</string>
+    <string name="games_score">Sua pontuação: %1$d</string>
     <string name="games_saving">Salvando recorde local…</string>
     <string name="games_save_failed">Não foi possível salvar este recorde no aparelho.</string>
     <string name="games_retry_save">Tentar salvar novamente</string>

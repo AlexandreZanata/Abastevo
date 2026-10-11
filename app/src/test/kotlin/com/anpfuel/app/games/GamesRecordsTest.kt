@@ -1,5 +1,8 @@
 package com.anpfuel.app.games
 
+import android.content.SharedPreferences
+import io.mockk.every
+import io.mockk.mockk
 import com.anpfuel.domain.games.GameId
 import com.anpfuel.domain.games.GamePhase
 import org.junit.jupiter.api.Assertions.*
@@ -42,6 +45,30 @@ class GamesRecordsTest {
         disk.writable = true
         assertEquals(BestSave(9, true), records.record(GameId.RUN, GamePhase.FINISHED, 9))
     }
+    @Test fun androidFailedCommitCacheIsRestoredSoRetryReallyWrites() {
+        val preferences = mockk<SharedPreferences>()
+        val editor = mockk<SharedPreferences.Editor>()
+        val memory = mutableMapOf("RUN_mobile-v1_best" to 3)
+        var pendingKey = ""
+        var pendingValue = 0
+        val results = ArrayDeque(listOf(false, true))
+        every { preferences.getInt(any(), any()) } answers { memory[firstArg()] ?: 0 }
+        every { preferences.edit() } returns editor
+        every { editor.putInt(any(), any()) } answers {
+            pendingKey = firstArg(); pendingValue = secondArg(); editor
+        }
+        every { editor.commit() } answers {
+            memory[pendingKey] = pendingValue // Real Android updates memory even on false.
+            results.removeFirst()
+        }
+        every { editor.apply() } answers { memory[pendingKey] = pendingValue; Unit }
+        val records = GamesRecords(PreferenceGameValues(preferences))
+        assertEquals(BestSave(3, false), records.record(GameId.RUN, GamePhase.FINISHED, 9))
+        assertEquals(3, records.best(GameId.RUN))
+        assertEquals(BestSave(9, true), records.record(GameId.RUN, GamePhase.FINISHED, 9))
+        assertTrue(results.isEmpty())
+    }
+
     @Test fun corruptValuesAreNotDisplayedAndAreReplacedByValidCompletedScore() {
         val disk = Disk(); disk.values["RUN_mobile-v1_best"] = Int.MAX_VALUE
         val records = GamesRecords(disk)

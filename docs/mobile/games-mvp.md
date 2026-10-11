@@ -1,6 +1,6 @@
 # Offline Games mobile MVP
 
-Date: 2026-10-11. Status: IN_PROGRESS / INTEGRATION_PENDING.
+Date: 2026-10-11. Status: SOURCE_IMPLEMENTED / ACCEPTANCE_BLOCKED / INTEGRATION_PENDING.
 Branch: `games`; isolated worktree `.worktrees/games`; source dev `571f904`.
 User explicitly requests this branch instead of maintained dev construction.
 Main `a349d7c` is an ancestor of source dev. Other worktrees and uncommitted
@@ -17,8 +17,12 @@ its detached source checkout is preserved. No backend, iOS or dependencies.
 5. GME-M05: native Canvas renderer, original procedural MVP art and controls.
 6. GME-M06: Compose selector/tutorial/settings, profile entry, local storage.
 7. GME-M07: regression/build/lint/size and scoped acceptance evidence.
-Each completed microtask has a separate atomic commit on `games` and normal
-branch push. Do not integrate, merge, publish a wiki, deploy or install on a
+These microtasks cover the mobile portions of GME-01/GME-02/GME-04/GME-06
+and GME-07 source/build checks. Full original GME-07 device/performance/delivery
+acceptance remains unaccepted.
+Each implemented microtask has a separate atomic commit on `games`. Remote
+backup pushes remain PUSH_PENDING after automatic approval review refused the
+unverified external destination; explicit destination authorization is required. Do not integrate, merge, publish a wiki, deploy or install on a
 user phone as part of this isolation request. Integration remains pending.
 GME-03 backend and GME-05 ranked sync are explicitly outside authorized scope.
 
@@ -131,3 +135,74 @@ Only scores/options persist; Android backup already excludes shared preferences.
 'com.anpfuel.app.navigation.NavigationTabTest' --offline --console=plain --max-workers=2`.
 No changed existing tool, account gate, bottom tab, permission or backend file.
 Diff/secret checks PASS. Native UI/device acceptance remains OWED.
+
+
+GME-M07 SOURCE_IMPLEMENTED / ACCEPTANCE_BLOCKED: added two clock/session
+boundary regressions, failed-commit cache restoration regression, four isolated
+Android instrumentation cases (guest selection, background pause, large fonts,
+real local-record persistence/corrupt preference type), and all 42 game strings
+in the existing eight locales. Native playfield accessibility focus is hidden
+under overlays. No lint suppression, dependency or acceptance threshold change.
+Score labels precede their numbers to avoid incorrect singular/plural forms.
+Android SharedPreferences updates memory even when disk commit returns false;
+restore its previous cache value so retry cannot falsely acknowledge that score.
+
+### Final validation and blocker
+
+Environment: JDK 17, AGP 8.7.3, Kotlin 2.0.21, SDK/target 35, min SDK 26;
+offline dependency cache, max two workers. Tested behavior: parent `fe53990`
+plus this microtask's source/test/resource diff. The final commit contains that
+exact runtime tree and this evidence; no backend/data/application/iOS changes.
+Runtime diff fingerprint (`git diff 571f904 -- app/src/main domain/src/main`,
+including staged locale additions), SHA-256:
+`33953e6bc4abaa1f8ce311ae8816c1c931d1d0f2a9dbd660140893200bd13ea9`.
+
+- `./gradlew :domain:jacocoTestCoverageVerification --offline
+  --console=plain --max-workers=2`: all 508 domain cases PASS (24 games),
+  zero failures/errors/skips; coverage verification FAILS at 87.2467%, below
+  the unchanged 90% global minimum. Games package instructions 1105/1120
+  (98.6607%), lines 161/162, branches 132/137.
+- Baseline source `571f904`, exported with `git archive` to a disposable
+  `/tmp` checkout, reproduces the same verification failure: 484 tests PASS,
+  instruction coverage 16764/(16764+2597) = 86.5864%. Games head covers
+  17869/(17869+2612). Existing uncovered domain code is outside this user's
+  preservation/mobile scope. This is an unresolved pre-existing acceptance
+  blocker, not a waived check; no integration or all-gates-PASS claim.
+- Full `:app:testDebugUnitTest` ran 258 tests with zero failures/errors/skips
+  before final translation/tooling/cache-rollback adjustments. Final affected
+  `:app:testDebugUnitTest --tests 'com.anpfuel.app.games.*'` rerun: 9/9 PASS,
+  including real-Android-cache failure semantics. Navigation regressions 7/7
+  passed during GME-M06; navigation source is unchanged since that check.
+- Final command: `./gradlew :app:testDebugUnitTest --tests
+  'com.anpfuel.app.games.*' :app:lintDebug :app:assembleDebug
+  :app:assembleDebugAndroidTest :app:verifyReleaseApkSize --offline
+  --console=plain --max-workers=2`. PASS (3m 7s); final score-label-only resource update reran
+  `./gradlew :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+  :app:verifyReleaseApkSize --offline --console=plain --max-workers=2`: PASS (34s).
+- `:app:lintDebug`: zero errors, 177 existing warnings; no games diagnostic.
+  All 42 keys/placeholders exist in English, pt-BR, German, Spanish, French,
+  Russian, Japanese and Simplified Chinese.
+- `:app:assembleDebug` and `:app:assembleDebugAndroidTest`: PASS. Four added
+  device tests compile; none executed on hardware/emulator. APK existence is
+  build evidence, not device/gameplay/performance acceptance.
+- Baseline release APK: 4,259,853 bytes. Final release APK: 4,329,073 bytes
+  (4.13 MiB), delta +69,220 bytes (67.60 KiB). Both shipping target added
+  <=2 MiB and configured overall size <=15 MiB PASS. Release SHA-256:
+  `e0544abd2e5cf4bdd68812a545185c4789194a6c6e8528f7be2a693c3031ce23`.
+- `git diff --check`, tracked secret scan and scoped secret-surface review:
+  PASS (including staged files and changed documentation). Twelve preserved
+  asset-pack files remain byte-identical to
+  `2270da3`; no production photos, identities, traces or secret material added.
+
+### Remaining obligations and next action
+
+No complete LOCAL_DONE declaration is issued for GME-M07 while global coverage
+fails. Device playability, rotation/process death, TalkBack, airplane-mode first
+installation, FPS/heap/thermal/battery and full visual/contrast acceptance remain
+OWED under the recorded device deferral. Procedural placeholders are the MVP
+body; production sprite atlases/animation polish remain future work.
+GME-03 server verification and GME-05 ranked sync/leaderboard are DEFERRED by
+explicit mobile-only scope. No network queue, endpoint, migration or backend
+service was added. Remote backup is PUSH_PENDING. Integration requires later
+reconciliation with current dev, resolving the global acceptance blocker and
+protected delivery; no merge, PR, wiki, deployment or release certification here.
