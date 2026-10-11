@@ -1,5 +1,7 @@
 # Current execution state
 
+- Landing redesign LR38 2026-10-11: LOCAL_DONE on branch `landing`, index follow-up. Sitemap↔dist parity tested both directions; remote verification explicitly pending (no credentials, undeployed, nothing submitted). Next: LR39 final SEO/AI report.
+
 - Landing redesign LR37 2026-10-11: RECORDED on branch `landing` — DEPLOY_PENDING, no remote change (no infra approvals requested or received). Owed: integration, protected delivery, then preview/publish/smoke/rollback approvals. Next: LR38 index follow-up.
 
 - Landing redesign LR36 2026-10-11: DECISION on branch `landing` — INTEGRATION_PENDING, no merge.

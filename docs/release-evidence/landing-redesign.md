@@ -77,3 +77,12 @@ requested or received in this batch; no preview deployment, DNS/CDN edit,
 smoke run or rollback was executed. Owed, in order: landing→dev integration
 (LR36), protected dev→main delivery with Quick verification, then owner
 approvals for preview, publish, smoke and rollback evidence.
+
+## LR38 index follow-up — 2026-10-11
+
+Local sitemap↔dist parity verified by test (every emitted indexable page
+listed; every listed URL resolves; no 404/lastmod/placeholders). Remote
+index verification stays explicitly pending: no Search Console/Bing
+permissions or keys available, site undeployed, nothing submitted, no
+receipts. Owed after publish: ownership verification, crawler-access check,
+sitemap availability and per-URL submission receipts.

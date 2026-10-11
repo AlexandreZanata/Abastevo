@@ -40,6 +40,34 @@ test('sitemap: valid XML, required indexable URLs present, no 404 and no fabrica
     assert.ok(!sitemapContent.includes('<lastmod>'), 'Sitemap must NOT fabricate lastmod');
     assert.ok(!sitemapContent.includes('localhost'), 'Sitemap must NOT contain localhost');
     assert.ok(!sitemapContent.includes('{{CANONICAL_ORIGIN}}'), 'Sitemap must NOT have unreplaced origin placeholders');
+
+    // LR38 parity: every emitted indexable page is listed, and every listed URL resolves.
+    const emittedPages = [];
+    function collectHtml(rel) {
+      const abs = path.join(tmpOut, rel);
+      for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+        const entryRel = path.join(rel, entry.name);
+        if (entry.isDirectory()) {
+          collectHtml(entryRel);
+        } else if (entry.name === 'index.html' && entryRel !== path.join('index.html')) {
+          emittedPages.push(entryRel);
+        }
+      }
+    }
+    collectHtml('');
+    assert.ok(emittedPages.length >= 20, `expected emitted subpages, got ${emittedPages.length}`);
+    for (const rel of emittedPages) {
+      const urlPath = `/${rel.slice(0, -'/index.html'.length)}/`;
+      assert.ok(
+        sitemapContent.includes(`<loc>https://abastevo.com.br${urlPath}</loc>`),
+        `Emitted page missing from sitemap: ${urlPath}`
+      );
+    }
+    for (const loc of [...sitemapContent.matchAll(/<loc>(https:\/\/abastevo\.com\.br[^<]*)<\/loc>/g)].map((m) => m[1])) {
+      const rel = loc.replace('https://abastevo.com.br/', '');
+      const file = rel === '' ? 'index.html' : `${rel}index.html`;
+      assert.ok(fs.existsSync(path.join(tmpOut, file)), `Sitemap URL has no emitted page: ${loc}`);
+    }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
