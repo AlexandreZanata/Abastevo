@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -253,6 +254,13 @@ fun ProfileScreen(
                 ),
             ) {
                 Column {
+                    ProfileToolItem(
+                        icon = Icons.Default.SportsEsports,
+                        title = stringResource(R.string.games_title),
+                        subtitle = stringResource(R.string.games_profile_subtitle),
+                        onClick = { onNavigate(Routes.GAMES) },
+                    )
+                    HorizontalDivider()
                     ProfileToolItem(
                         icon = Icons.Default.AssignmentTurnedIn,
                         title = stringResource(R.string.profile_tool_contributions_title),

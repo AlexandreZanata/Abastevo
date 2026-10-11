@@ -139,6 +139,9 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
+        composable(Routes.GAMES) {
+            com.anpfuel.app.games.GamesScreen(onNavigateBack = { navController.popBackStack() })
+        }
         composable(Routes.SEARCH) {
             SearchScreen(
                 onNavigateBack = { navController.popBackStack() },

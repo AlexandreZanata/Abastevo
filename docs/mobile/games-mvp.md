@@ -53,7 +53,8 @@ B-BR-GME-M03: READY → RUNNING → PAUSED/FINISHED. Background, detach and Back
 pause immediately; resume requires a user action. Restart resets seed/score and
 clock. Process death abandons unfinished runs; no save-state run snapshot.
 Only FINISHED scores can update monotonic bounded per-game/per-version local
-bests. Best corruption is clamped; two integer keys only, no gameplay history.
+bests. Best corruption is rejected; two integer record keys and three boolean settings,
+no gameplay history. Failed disk commits remain visibly unsaved and retryable.
 BUC-GME-M02: background → no ticks/audio → foreground pause overlay → resume.
 BUC-GME-M03: process recreation → selector; completed best survives.
 
@@ -118,3 +119,15 @@ optional short audio cues, reduced decorative motion, keyboard/touch controls.
 :app:compileDebugKotlin --offline --console=plain --max-workers=2` PASS.
 Android compilation PASS; native visual/audio/hardware acceptance remains OWED.
 No new dependency or runtime art file. Diff/secret checks PASS.
+
+GME-M06 LOCAL_DONE (source/unit): Profile → Games additive route, both selectors,
+English/Portuguese tutorial, READY/PAUSED/FINISHED overlays, labeled controls,
+landscape side controls and scrollable large-font menus, lifecycle observer,
+settings and per-game/version local records. Disk writes run on IO, survive UI
+disposal while process alive, acknowledge commit failure and offer retry.
+Only scores/options persist; Android backup already excludes shared preferences.
+8 games app tests + 7 navigation regressions PASS, Kotlin compilation PASS:
+`./gradlew :app:testDebugUnitTest --tests 'com.anpfuel.app.games.*' --tests
+'com.anpfuel.app.navigation.NavigationTabTest' --offline --console=plain --max-workers=2`.
+No changed existing tool, account gate, bottom tab, permission or backend file.
+Diff/secret checks PASS. Native UI/device acceptance remains OWED.
