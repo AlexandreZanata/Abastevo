@@ -6,10 +6,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"io"
 	"io/fs"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -238,8 +241,22 @@ func TestPreparedMigrationUpgradeFailureAndRecovery(t *testing.T) {
 		t.Fatal("failed migration leaked partial DDL")
 	}
 	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
-	if err != nil || len(applied) != 1 || applied[0] != "000053" {
+	if err != nil {
 		t.Fatalf("upgrade %v %v", applied, err)
+	}
+	// The pending set grows as the chain grows: expect every
+	// migration from 000053 onward, in order, exactly once.
+	var want []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".sql") || len(name) < 6 || name[:6] < "000053" {
+			continue
+		}
+		want = append(want, name[:6])
+	}
+	sort.Strings(want)
+	if fmt.Sprint(applied) != fmt.Sprint(want) {
+		t.Fatalf("upgrade %v, want %v", applied, want)
 	}
 	run, err := store.GetRun(ctx, SourcePrep, "upgrade-retained")
 	if err != nil || run.RunID != id || run.State != "running" {

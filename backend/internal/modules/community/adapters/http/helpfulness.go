@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -184,25 +183,4 @@ func parseHelpfulQuerySequence(raw string) (int64, error) {
 		return 0, errors.New("decision_sequence must be a positive integer")
 	}
 	return n, nil
-}
-
-// helpfulWiring adapts the application commands to the handler func
-// fields with the composition-root ports.
-func helpfulWiring(p application.HelpfulnessPorts) (cast func(context.Context, application.Caller, string, application.CastDTO) (application.CastResult, error),
-	remove func(context.Context, application.Caller, string, int64) (application.TallyResult, error),
-	tally func(context.Context, application.Caller, string, int64) (application.TallyResult, error)) {
-	cast = func(ctx context.Context, caller application.Caller, observationID string, dto application.CastDTO) (application.CastResult, error) {
-		dto.ObservationID = observationID
-		return application.Cast(ctx, p, caller, dto)
-	}
-	remove = func(ctx context.Context, caller application.Caller, observationID string, sequence int64) (application.TallyResult, error) {
-		if err := application.Remove(ctx, p, caller, observationID, sequence); err != nil {
-			return application.TallyResult{}, err
-		}
-		return application.TallyFor(ctx, p, caller, observationID, sequence)
-	}
-	tally = func(ctx context.Context, caller application.Caller, observationID string, sequence int64) (application.TallyResult, error) {
-		return application.TallyFor(ctx, p, caller, observationID, sequence)
-	}
-	return cast, remove, tally
 }

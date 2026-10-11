@@ -37,7 +37,7 @@ func TestBenchHelpfulnessMirrors(t *testing.T) {
 	if !ok {
 		t.Fatal("caller unavailable")
 	}
-	raw, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "..", "..", "db", "queries", "community", "helpfulness.sql"))
+	raw, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "db", "queries", "community", "helpfulness.sql"))
 	if err != nil {
 		t.Fatalf("read helpfulness.sql: %v", err)
 	}
