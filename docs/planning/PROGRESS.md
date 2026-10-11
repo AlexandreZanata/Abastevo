@@ -1,6 +1,8 @@
 # Current execution state
 
-- Landing redesign LR29 2026-10-11: LOCAL_DONE on branch `landing`, performance pass. Measured dist budgets (CSS 4KB/25KB, JS 1.3KB/10KB, fonts 129KB/150KB, WebP ≤97KB/120KB, masters refused); record in [evidence](../release-evidence/landing-redesign.md). Check green. Next: LR30 error/redirect pass.
+- Landing redesign LR30 2026-10-11: LOCAL_DONE on branch `landing`, error/redirect pass. 404 recovers to home + hub without scripts; redirect targets pinned to project repo. Build/check green, 38/38 tests. Next: LR31 store readiness.
+
+- Landing redesign LR29 2026-10-11: LOCAL_DONE on branch `landing`, performance pass.
 
 - Landing redesign LR28 2026-10-11: LOCAL_DONE on branch `landing`, crawler directives.
 
