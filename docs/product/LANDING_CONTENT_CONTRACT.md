@@ -225,6 +225,15 @@ Checks run for this docs-only task: local link and anchor check of this contract
 
 ## LH01 visual amendment — 2026-10-11
 
+LH04 synchronization (2026-10-12, explicit user instruction): adopt the text,
+GitHub/Google Play two-line action buttons and four-point hero strip from the
+local 8099 preview (landing-refresh df2b992). Keep LH01–LH03 authentic mockup,
+six illustrations, external source badges and grayscale theme. Header links
+remain accessible through a native disclosure when the action buttons occupy
+the header row. Prelaunch Play treatment is a non-link status; only the verified
+published build state may turn it into a store link. GitHub opens a separate
+tab with noopener and retains a usable accessible name at narrow widths.
+
 The maintainer explicitly replaces the illustrative comparison in the opening
 with a professional responsive Android mockup using the real home capture.
 This supersedes the prior no-phone opening and illustrative comparison copy

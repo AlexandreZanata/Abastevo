@@ -269,15 +269,13 @@ export function build(options = {}) {
       html = html.replaceAll('{{CANONICAL_ORIGIN}}', origin);
 
       // Store state replacement
+      const playButton = `<a href="${storeUrl}" class="store-btn store-pill" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>Ver na Google Play</strong><small>Baixar o aplicativo</small></span></a>`;
       if (srcRel === 'index.html') {
-        const slotRegex = /<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/;
-        let replacement = '';
+        // Prelaunch keeps the static honest pill; published swaps in the verified link.
         if (storeState === 'published') {
-          replacement = `<a href="${storeUrl}" class="store-link" rel="noopener noreferrer">Ver na Google Play</a>`;
-        } else {
-          replacement = `<span class="store-notice">Em breve na Google Play</span>`;
+          const slotRegex = /<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/;
+          html = html.replace(slotRegex, playButton);
         }
-        html = html.replace(slotRegex, replacement);
 
         if (storeState === 'published') {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', `,\n          "${storeUrl}"`);
@@ -286,6 +284,14 @@ export function build(options = {}) {
         } else {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', '');
           html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', '');
+        }
+      }
+
+      // Header store pill: prelaunch keeps the static honest pill on every page.
+      if (storeState === 'published') {
+        const headerSlotRegex = /<!-- HEADER_STORE_SLOT -->[\s\S]*?<!-- \/HEADER_STORE_SLOT -->/;
+        if (headerSlotRegex.test(html)) {
+          html = html.replace(headerSlotRegex, playButton);
         }
       }
 

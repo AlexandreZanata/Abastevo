@@ -17,15 +17,18 @@ test('essential content and links are present in static HTML without JS', () => 
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
     // 1. Heading and primary identity
-    assert.match(indexHtml, /<h1[^>]*>Preços de combustíveis\. Fonte e data à vista\.<\/h1>/);
-    assert.match(indexHtml, /Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros/);
+    assert.match(indexHtml, /<h1[^>]*>Encontre preços de combustível na sua região\.<\/h1>/);
+    assert.match(indexHtml, /O Abastevo combina dados oficiais da ANP com informações da comunidade/);
 
     // 2. Status line
     assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);
 
-    // 3. CTA hierarchy: primary to the app gallery, secondary to GitHub
-    assert.match(indexHtml, /href="#aplicativo"[^>]*>Conheça o aplicativo<\/a>/);
-    assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*>Ver no GitHub<\/a>/);
+    // LH04 synchronizes truthful copy and branded two-line actions from 8099.
+    assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
+    assert.match(indexHtml, /Projeto open source/);
+    assert.match(indexHtml, /Em breve no Google Play/);
+    assert.match(indexHtml, /Grátis para<\/dt><dd>consultar/);
+    assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|tempo real|milhares de usuários/i);
 
     // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
