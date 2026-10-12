@@ -805,9 +805,9 @@ func run() error {
 			},
 		},
 	}
-	dispatch := &jobs.Dispatcher{
-		Queue: queue, Handlers: handlers,
-		WorkerID: "worker-1", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute,
+	dispatchers, err := workerDispatchers(queue, handlers)
+	if err != nil {
+		return err
 	}
 	scheduler := jobs.NewScheduler(raw, []jobs.Schedule{
 		{
@@ -859,7 +859,7 @@ func run() error {
 	defer stop()
 	dispatchErr := make(chan error, 1)
 	go func() {
-		if err := dispatch.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		if err := runDispatchers(ctx, dispatchers); err != nil && !errors.Is(err, context.Canceled) {
 			dispatchErr <- err
 			return
 		}

@@ -26,6 +26,10 @@ type Dispatcher struct {
 	WorkerID   string
 	LeaseTTL   time.Duration
 	RetryDelay time.Duration
+	// Kind isolates one serial execution slot; empty claims any allowed kind.
+	Kind string
+	// ExcludedKinds reserves selected kinds for independent dispatchers.
+	ExcludedKinds []string
 }
 
 func (d *Dispatcher) leaseTTL() time.Duration {
@@ -45,7 +49,7 @@ func (d *Dispatcher) retryDelay() time.Duration {
 // RunOnce claims and handles a single job of any registered kind,
 // reporting whether work was found.
 func (d *Dispatcher) RunOnce(ctx context.Context) (bool, error) {
-	job, err := d.Queue.Claim(ctx, "", d.WorkerID, d.leaseTTL())
+	job, err := d.Queue.claim(ctx, d.Kind, d.WorkerID, d.leaseTTL(), d.ExcludedKinds)
 	if err != nil {
 		if errors.Is(err, ErrNoJob) {
 			return false, nil

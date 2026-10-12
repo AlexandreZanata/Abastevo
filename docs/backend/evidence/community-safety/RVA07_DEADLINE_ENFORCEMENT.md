@@ -456,3 +456,55 @@ fixture assuming a ten-minute session TTL; both were corrected before green.
 Staged secret review precedes commit. The two-hour reserve is not measured
 capacity certification: B3.3c admission/worker backlog and C autonomous/provider/
 backup/temporary/device proofs remain owed. No VPS, phone or old-soak mutation.
+
+## B3.3c.1 safety-dispatch isolation opening
+
+B-BR-RVA07-9: a long importer/general job must not occupy the only execution
+slot for deadline cleanup or erasure recovery. In the existing worker process,
+use one filtered dispatcher for each of the four minute safety kinds (evidence
+sweep, account-erasure recovery, training revocation reconciliation and training
+copy disposal), plus the existing general dispatcher explicitly excluding them.
+Each dispatcher remains serial: fixed five loops, no per-job goroutine fan-out,
+no additional service/container and no dynamically unbounded concurrency.
+Missing required handlers refuse startup; one dispatcher failure cancels and
+joins its siblings. Existing durable fencing/retry semantics remain intact.
+
+BUC: leave a general handler blocked; evidence cleanup still reaches DONE.
+Safety jobs cannot be claimed by the general dispatcher, and a kind-scoped
+dispatcher cannot claim foreign work. Cancellation joins every loop. SQL
+claims keep SKIP LOCKED/token fencing; a partial kind/created index keeps a
+safety claimant out of unrelated queue history. Test actual SQL claims,
+concurrency and index-only upgrade/replay. This isolates service slots; DB/CPU
+headroom, heartbeat/admission capacity and bounded queue retention remain
+B3.3c.2/RVA12 and require measured evidence before any readiness claim.
+
+## B3.3c.1 local checkpoint — independent serial safety slots
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for dispatcher isolation only.
+Validation: PASS. Tested delta on `dd8095e`. RED against unfiltered dispatch
+stole the older safety job instead of reaching the general handler. GREEN:
+the same worker process has exactly four kind-scoped serial safety loops and
+one general loop excluding all four kinds. No per-job goroutine fan-out or new
+service/container. Required handler absence refuses startup; cancellation joins
+the fixed loops and a real dispatcher error is not hidden by sibling cancellation.
+SQL keeps parameterized filters, SKIP LOCKED and existing lease-token fencing.
+Append-only 000072 adds a partial live-kind/created index.
+
+Actual PostgreSQL test leaves a general handler blocked/leased while the
+evidence dispatcher claims and completes its older cleanup job; the general
+claim cannot steal safety work and the safety claim cannot take another safety
+kind. The general job then resumes and completes. Worker composition pins the
+exact four reserved kinds/five serial loops and missing-handler refusal;
+cancellation joins all loops. The actual ClaimJob EXPLAIN ANALYZE uses the new
+partial index without a queue sequential scan against 10,000 unrelated terminal
+and 10,000 unrelated queued jobs (measurement transaction rolls back).
+000072-only upgrade/replay preserves an active lease, its acknowledgement,
+dedupe identity and foreign queued work. Full jobs SQL race passed (6.281s);
+affected unit race, worker/API/ops consumers, vet, sqlc vet/format/diff passed.
+Staged secret review precedes commit.
+
+Fixed source concurrency is not a measured VPS resource envelope. B3.3c.2 must
+still gate intake on fresh successful cleanup observation, bounded inventory/
+backlog/capacity and safe configuration; RVA12 owns queue receipt retention.
+C autonomous/provider/version/backup/temp/device proof is still owed. This
+source-only checkpoint changes no VPS, phone, old soak or release status.
