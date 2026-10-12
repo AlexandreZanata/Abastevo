@@ -35,6 +35,7 @@ android {
     }
 
     sourceSets {
+        getByName("main").assets.srcDir("$rootDir/backend/internal/platform/legalterms/text")
         getByName("androidTest") {
             assets.srcDir("$projectDir/schemas")
             assets.srcDir("$projectDir/samples")
@@ -43,6 +44,7 @@ android {
         getByName("test") {
             assets.srcDir("src/main/assets")
             resources.srcDir("$projectDir/fixtures")
+            resources.srcDir("$rootDir/backend/internal/platform/legalterms/text")
         }
     }
 
@@ -127,4 +129,9 @@ afterEvaluate {
         maxHeapSize = "64m"
         jvmArgs("-XX:+HeapDumpOnOutOfMemoryError")
     }
+}
+
+// Each synthetic Go harness owns a fresh TLS/database fixture. Never reuse a skipped/cached run.
+tasks.withType<Test> {
+    inputs.property("consentInteropFixture", System.getenv("ANPFUEL_ANDROID_CONSENT_FIXTURE").orEmpty())
 }

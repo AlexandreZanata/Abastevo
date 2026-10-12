@@ -200,9 +200,37 @@ class PhotoProofTransportTest {
         assertTrue(mapErrorStatus(429, null) is PhotoOperationRefused)
         assertTrue(mapErrorStatus(429, "soon") is PhotoOperationRefused)
         assertTrue(mapErrorStatus(429, "-5") is PhotoOperationRefused)
-        assertTrue((mapErrorStatus(429, "99999") as ContributionRateLimited).retryAfterSeconds <= 3600L)
+        assertEquals(99999L,(mapErrorStatus(429, "99999") as ContributionRateLimited).retryAfterSeconds)
         val refused = mapErrorStatus(503, "30")
         assertTrue(refused is PhotoOperationRefused)
         assertEquals(503, (refused as PhotoOperationRefused).status)
+        assertEquals(30L,refused.retryAfterSeconds)
+        assertEquals(7200L,parsePrivacyRetryAfter("Thu, 01 Jan 1970 02:00:00 GMT",0))
+        assertEquals(0L,parsePrivacyRetryAfter("Thu, 01 Jan 1970 00:00:00 GMT",1000))
+        assertEquals(Long.MAX_VALUE,parsePrivacyRetryAfter("9".repeat(100),0))
+        assertNull(parsePrivacyRetryAfter("9".repeat(129),0))
     }
+    @Test fun `structured refusals are bounded sanitized and preserve 503 retry hint`() = runTest {
+        val f=OwnerFixture()
+        every {f.keys.publicJwk()} returns ("synthetic-x" to "synthetic-y")
+        every {f.keys.signDigest(any())} returns ByteArray(64){1}
+        every {f.identity.requestChallenge(any(),any())} answers {
+            AnonymousProofHttpClient.ChallengeResponse("challenge","123e4567-e89b-12d3-a456-426614174000."+"1".repeat(32),firstArg(),secondArg(),"{}")
+        }
+        every {f.identity.register(any(),any(),any(),any())} returns "{\"contributor_id\":\"synthetic\",\"key_id\":\"synthetic\"}"
+        MockWebServer().use {server ->
+            server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After","7200").setBody("{\"error\":{\"code\":\"privacy.unavailable\",\"message\":\"synthetic-private-detail\"}}"))
+            server.enqueue(MockResponse().setResponseCode(409).setBody("{\"error\":{\"code\":\"privacy.stale-revision\",\"message\":\""+"x".repeat(65537)+"\"}}"))
+            server.start()
+            val transport=PhotoProofTransport(f.keys,f.identity,f.auth,server.url("/").toString().trimEnd('/'),OkHttpClient())
+            try {transport.get("/v1/privacy/training-consent",transport.ownerScope());fail<Unit>("503 accepted")}
+            catch(e:PhotoOperationRefused) {
+                assertEquals("privacy.unavailable",e.code);assertEquals(7200L,e.retryAfterSeconds)
+                assertFalse(e.message!!.contains("synthetic-private-detail"))
+            }
+            try {transport.get("/v1/privacy/training-consent",transport.ownerScope());fail<Unit>("409 accepted")}
+            catch(e:PhotoOperationRefused) {assertNull(e.code);assertEquals(409,e.status)}
+        }
+    }
+
 }

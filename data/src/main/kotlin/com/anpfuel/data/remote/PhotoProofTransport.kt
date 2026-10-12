@@ -132,7 +132,17 @@ class PhotoProofTransport internal constructor(
     private fun execute(request: Request): JSONObject {
         client.newCall(request).execute().use { response ->
             if(!response.isSuccessful) {
-                throw mapErrorStatus(response.code, response.header("Retry-After"))
+                val failure = mapErrorStatus(response.code, response.header("Retry-After"))
+                if (failure is PhotoOperationRefused) {
+                    val source = response.body?.source()
+                    val code = try {
+                        if (source == null || source.request(65537)) null
+                        else JSONObject(source.readUtf8()).optJSONObject("error")?.optString("code")
+                            ?.takeIf { it.matches(Regex("[a-z][a-z0-9.-]{0,63}")) }
+                    } catch (_: Exception) { null }
+                    throw PhotoOperationRefused(response.code, code, failure.retryAfterSeconds)
+                }
+                throw failure
             }
             val source=response.body?.source() ?: throw IOException("photo.empty-response")
             if(source.request(65537)) throw IOException("photo.response-size")
@@ -142,18 +152,25 @@ class PhotoProofTransport internal constructor(
     companion object { private val JSON="application/json".toMediaType() }
 }
 
-class PhotoOperationRefused(val status: Int): IOException("photo.operation-refused:$status")
+class PhotoOperationRefused(val status: Int, val code: String? = null, val retryAfterSeconds: Long? = null): IOException("photo.operation-refused:$status")
 
 /**
  * SEC06-D: map an error status to its refusal. A 429 with a valid
- * Retry-After becomes a rate-limit hint (dispatch honors it instead
- * of the fixed curve); malformed/absent values fall back to the
+ * Retry-After becomes a rate-limit hint; 503 retains its hint on the
+ * structured refusal. Malformed/absent values fall back to the
  * plain refusal (existing backoff applies).
  */
-internal fun mapErrorStatus(code: Int, retryAfter: String?): IOException {
-    if (code == 429) {
-        val parsed = retryAfter?.trim()?.toLongOrNull()
-        if (parsed != null && parsed >= 0) return ContributionRateLimited(minOf(parsed, 3600L))
-    }
-    return PhotoOperationRefused(code)
+internal fun mapErrorStatus(code: Int, retryAfter: String?, nowMillis:Long=System.currentTimeMillis()): IOException {
+    val parsed = if(code==429 || code==503) parsePrivacyRetryAfter(retryAfter,nowMillis) else null
+    if(code==429 && parsed!=null) return ContributionRateLimited(parsed)
+    return PhotoOperationRefused(code,retryAfterSeconds=parsed)
+}
+
+internal fun parsePrivacyRetryAfter(value:String?,nowMillis:Long):Long? {
+    val raw=value?.trim()?.takeIf {it.length in 1..128} ?: return null
+    if(raw.all {it in '0'..'9'}) return raw.toLongOrNull() ?: Long.MAX_VALUE
+    return try {
+        val at=java.time.ZonedDateTime.parse(raw,java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().epochSecond
+        maxOf(0,at-Math.floorDiv(nowMillis,1000))
+    } catch(_:Exception) {null}
 }

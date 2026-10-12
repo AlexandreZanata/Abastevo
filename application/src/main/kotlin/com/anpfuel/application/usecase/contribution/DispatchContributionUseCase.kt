@@ -61,7 +61,8 @@ class DispatchContributionUseCase(
             // SEC06-D: honor the server's Retry-After (bounded by the
             // backoff ceiling in the repository) instead of hammering
             // the fixed curve.
-            outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis(),limited.retryAfterSeconds * 1000L)
+            val delay = if (limited.retryAfterSeconds > Long.MAX_VALUE / 1000L) Long.MAX_VALUE else limited.retryAfterSeconds * 1000L
+            outbox.failDispatch(next.commandId,next.revision,attempt,nowMillis(),delay)
             DispatchOutcome.RETRY
         } catch (refused: DomainException) {
             // SEC06-D: permanent refusals park distinctly (never

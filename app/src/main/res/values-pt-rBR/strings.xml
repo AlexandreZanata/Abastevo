@@ -759,4 +759,25 @@
     <string name="training_consent_offline">Sem conexão — tente novamente quando estiver online.</string>
     <string name="training_photo_opt_in">Autorizar esta foto para análise de treinamento</string>
     <string name="training_photo_opt_in_locked">É preciso autorizar o treinamento primeiro nas configurações de privacidade</string>
+
+    <string name="privacy_training_heading">Privacidade · Melhorar o reconhecimento de preços</string>
+    <string name="privacy_training_unavailable">A coleta de imagens para treinamento está desativada. Esta escolha registra uma preferência; ativar a coleta exigirá novos termos e nova autorização.</string>
+    <string name="privacy_training_optional">Opcional. Sua conta gratuita, as consultas de preços e a participação na comunidade não dependem desta escolha.</string>
+    <string name="privacy_terms_language">Documento integral em português do Brasil. Disponível offline.</string>
+    <string name="privacy_read_terms">Ler os termos na íntegra</string>
+    <string name="privacy_terms_unavailable">Não foi possível carregar o documento. A autorização está indisponível; você ainda pode revogar ou exercer seus direitos.</string>
+    <string name="privacy_sign_in">Entrar para gerenciar sua preferência opcional</string>
+    <string name="privacy_revocation_pending">Desativado neste aparelho. A revogação está pendente de recebimento pelo servidor.</string>
+    <string name="privacy_offline">Sem conexão. Nenhuma nova autorização foi enviada. Você pode desativar a preferência aqui.</string>
+    <string name="privacy_request_failed">O serviço não confirmou a decisão. Tente depois; não se presume sucesso.</string>
+    <string name="privacy_preference_received">Preferência autorizada e confirmada pelo servidor. A coleta continua desativada.</string>
+    <string name="privacy_preference_off">Nenhuma autorização confirmada nesta consulta.</string>
+    <string name="privacy_consent_check">Li os termos integrais e autorizo livremente o registro da minha preferência opcional para a finalidade descrita.</string>
+    <string name="privacy_confirm_preference">Confirmar e enviar preferência</string>
+    <string name="privacy_revoke_delete">Desativar e solicitar exclusão das imagens de treinamento</string>
+    <string name="privacy_deletion_receipt_note">O recebimento da solicitação inicia a exclusão; não confirma a exclusão física de todas as cópias.</string>
+    <string name="privacy_digest">SHA-256 do documento: %1$s</string>
+    <string name="privacy_finish_reading">Concluí a leitura · voltar à escolha</string>
+    <string name="privacy_rights_heading">Seus direitos de privacidade</string>
+    <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
 </resources>

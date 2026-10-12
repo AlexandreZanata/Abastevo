@@ -746,4 +746,25 @@
     <string name="training_consent_offline">没有连接，请联网后重试。</string>
     <string name="training_photo_opt_in">允许此照片用于训练审核</string>
     <string name="training_photo_opt_in_locked">请先在隐私设置中同意用于训练</string>
+
+    <string name="privacy_training_heading">隐私 · 改善价格识别</string>
+    <string name="privacy_training_unavailable">训练图片收集已停用。此选择仅记录偏好；启用收集需要新的条款和重新同意。</string>
+    <string name="privacy_training_optional">可选。免费账户、价格查询和社区参与不取决于此选择。</string>
+    <string name="privacy_terms_language">完整文件为巴西葡萄牙语。可离线阅读。</string>
+    <string name="privacy_read_terms">阅读完整条款</string>
+    <string name="privacy_terms_unavailable">无法加载文件。不能授权；仍可撤回或行使您的权利。</string>
+    <string name="privacy_sign_in">登录以管理可选偏好</string>
+    <string name="privacy_revocation_pending">已在此设备停用。撤回请求等待服务器接收。</string>
+    <string name="privacy_offline">离线。未发送新的授权。您可在此停用偏好。</string>
+    <string name="privacy_request_failed">服务未确认决定。请稍后重试；不会假定成功。</string>
+    <string name="privacy_preference_received">偏好授权已获服务器确认。收集仍停用。</string>
+    <string name="privacy_preference_off">此视图中没有已确认的授权。</string>
+    <string name="privacy_consent_check">我已阅读完整条款，自愿授权记录所述目的的可选偏好。</string>
+    <string name="privacy_confirm_preference">确认并发送偏好</string>
+    <string name="privacy_revoke_delete">停用并请求删除训练图片</string>
+    <string name="privacy_deletion_receipt_note">收到请求将启动删除；这不表示所有副本已被物理删除。</string>
+    <string name="privacy_digest">文件 SHA-256：%1$s</string>
+    <string name="privacy_finish_reading">已完成阅读 · 返回选择</string>
+    <string name="privacy_rights_heading">您的隐私权利</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

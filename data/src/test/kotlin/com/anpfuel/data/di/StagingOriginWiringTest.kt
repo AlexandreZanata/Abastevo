@@ -49,13 +49,25 @@ class StagingOriginWiringTest {
                 }
             assertTrue(methods.isNotEmpty(), "${module.javaClass.simpleName} has no client bindings")
             for (method in methods) {
-                val takesOrigin = method.parameterTypes.any { it == ApiEnvironment::class.java }
+                val takesOrigin = method.parameterTypes.any { it == ApiEnvironment::class.java } ||
+                    (method.returnType == com.anpfuel.data.remote.TrainingConsentHttpClient::class.java &&
+                     method.parameterTypes.toList()==listOf(com.anpfuel.data.remote.PhotoProofTransport::class.java))
                 if (!takesOrigin) {
                     offenders += "${module.javaClass.simpleName}.${method.name}"
                 }
             }
         }
         assertTrue(offenders.isEmpty(), "bindings missing shared origin: $offenders")
+    }
+
+    @Test
+    fun `signed transport and scoped device keys inject the same shared environment`() {
+        for(type in listOf(com.anpfuel.data.remote.PhotoProofTransport::class.java,com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys::class.java)) {
+            val injected=type.declaredConstructors.single {it.isAnnotationPresent(javax.inject.Inject::class.java)}
+            val index=injected.parameterTypes.indexOf(ApiEnvironment::class.java)
+            assertTrue(index>=0)
+            assertTrue(injected.parameterAnnotations[index].any {it is javax.inject.Named && it.value=="apiOrigin"})
+        }
     }
 
     @Test

@@ -265,4 +265,19 @@ class TrainingConsentViewModelTest {
         assertEquals(false, (vm.state.value as TrainingConsentUiState.Content).granted)
     }
 
+    @Test fun `OFF can overtake an in flight ON and its late result cannot repaint`() = runTest(dispatcher) {
+        val grant=CompletableDeferred<TrainingConsentOutcome>()
+        coEvery {useCase.syncPending(any())} returns TrainingConsentOutcome.Status(offStatus(),false)
+        coEvery {useCase.grant(any(),any(),any())} coAnswers {grant.await()}
+        coEvery {useCase.revoke(any())} returns TrainingConsentOutcome.RevocationPending
+        val vm=TrainingConsentViewModel(useCase).also {it.ioDispatcher=dispatcher}
+        vm.prepare("acct-1");advanceUntilIdle()
+        vm.setEnabled(true,"training-terms-v1","digest-v1");advanceUntilIdle()
+        vm.setEnabled(false,"","");advanceUntilIdle()
+        assertEquals(TrainingConsentUiState.Pending,vm.state.value)
+        coVerify(exactly=1) {useCase.revoke(caller)}
+        grant.complete(TrainingConsentOutcome.Granted(com.anpfuel.domain.repository.TrainingConsentReceipt("GRANTED",1,"training-terms-v1",false)))
+        advanceUntilIdle();assertEquals(TrainingConsentUiState.Pending,vm.state.value)
+    }
+
 }

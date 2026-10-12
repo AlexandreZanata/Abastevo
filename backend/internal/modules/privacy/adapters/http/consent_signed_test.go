@@ -48,6 +48,10 @@ type signedCaller struct {
 }
 
 func signedConsentFixture(t *testing.T) (chi.Router, *pgxpool.Pool) {
+	return signedConsentFixtureFor(t, "api.example.invalid", testConsentTerms{})
+}
+
+func signedConsentFixtureFor(t *testing.T, authority string, terms privacyapp.TermsProvider) (chi.Router, *pgxpool.Pool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -88,8 +92,7 @@ func signedConsentFixture(t *testing.T) (chi.Router, *pgxpool.Pool) {
 	}
 	t.Cleanup(pool.Close)
 	registrar := identityadapters.NewRegistrar(pool)
-	verifier := &identityauth.Verifier{Pool: pool, Authority: "api.example.invalid"}
-	terms := testConsentTerms{}
+	verifier := &identityauth.Verifier{Pool: pool, Authority: authority}
 	ports := privacyapp.ConsentPorts{
 		Clock: time.Now,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {

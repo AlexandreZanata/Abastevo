@@ -746,4 +746,25 @@
     <string name="training_consent_offline">Keine Verbindung — versuchen Sie es erneut, sobald Sie online sind.</string>
     <string name="training_photo_opt_in">Dieses Foto zur Prüfung für das Training freigeben</string>
     <string name="training_photo_opt_in_locked">Erteilen Sie zuerst die Einwilligung zum Training in den Datenschutzeinstellungen</string>
+
+    <string name="privacy_training_heading">Datenschutz · Preiserkennung verbessern</string>
+    <string name="privacy_training_unavailable">Die Erfassung von Trainingsbildern ist deaktiviert. Diese Auswahl speichert eine Präferenz; die Aktivierung erfordert neue Bedingungen und eine neue Einwilligung.</string>
+    <string name="privacy_training_optional">Freiwillig. Kostenloses Konto, Preissuche und Teilnahme hängen nicht davon ab.</string>
+    <string name="privacy_terms_language">Vollständiges Dokument auf brasilianischem Portugiesisch. Offline verfügbar.</string>
+    <string name="privacy_read_terms">Vollständige Bedingungen lesen</string>
+    <string name="privacy_terms_unavailable">Das Dokument konnte nicht geladen werden. Keine Einwilligung möglich; Widerruf und Ihre Rechte bleiben verfügbar.</string>
+    <string name="privacy_sign_in">Anmelden, um die freiwillige Präferenz zu verwalten</string>
+    <string name="privacy_revocation_pending">Auf diesem Gerät deaktiviert. Widerruf wartet auf Empfang durch den Server.</string>
+    <string name="privacy_offline">Offline. Keine neue Einwilligung gesendet. Sie können die Präferenz hier deaktivieren.</string>
+    <string name="privacy_request_failed">Der Dienst konnte die Entscheidung nicht bestätigen. Später erneut versuchen; kein Erfolg wird angenommen.</string>
+    <string name="privacy_preference_received">Präferenz vom Server bestätigt. Die Erfassung bleibt deaktiviert.</string>
+    <string name="privacy_preference_off">In dieser Ansicht keine Einwilligung bestätigt.</string>
+    <string name="privacy_consent_check">Ich habe die vollständigen Bedingungen gelesen und willige freiwillig in die Speicherung meiner optionalen Präferenz für den beschriebenen Zweck ein.</string>
+    <string name="privacy_confirm_preference">Präferenz bestätigen und senden</string>
+    <string name="privacy_revoke_delete">Deaktivieren und Löschung der Trainingsbilder anfordern</string>
+    <string name="privacy_deletion_receipt_note">Der Empfang startet die Löschung; er bestätigt nicht die physische Löschung aller Kopien.</string>
+    <string name="privacy_digest">SHA-256 des Dokuments: %1$s</string>
+    <string name="privacy_finish_reading">Lesen abgeschlossen · zurück zur Auswahl</string>
+    <string name="privacy_rights_heading">Ihre Datenschutzrechte</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

@@ -746,4 +746,25 @@
     <string name="training_consent_offline">接続されていません。オンラインになってから再試行してください。</string>
     <string name="training_photo_opt_in">この写真の学習用審査を許可する</string>
     <string name="training_photo_opt_in_locked">先にプライバシー設定で学習への同意が必要です</string>
+
+    <string name="privacy_training_heading">プライバシー · 価格認識の改善</string>
+    <string name="privacy_training_unavailable">学習用画像の収集は停止中です。この選択は希望を記録するものです。収集の開始には新しい規約と再同意が必要です。</string>
+    <string name="privacy_training_optional">任意です。無料アカウント、価格検索、コミュニティへの参加に影響しません。</string>
+    <string name="privacy_terms_language">全文はブラジル・ポルトガル語です。オフラインでも読めます。</string>
+    <string name="privacy_read_terms">規約の全文を読む</string>
+    <string name="privacy_terms_unavailable">文書を読み込めません。同意はできませんが、撤回や権利の行使は可能です。</string>
+    <string name="privacy_sign_in">ログインして任意の設定を管理</string>
+    <string name="privacy_revocation_pending">この端末では無効です。撤回はサーバーの受信待ちです。</string>
+    <string name="privacy_offline">オフラインです。新しい同意は送信されていません。ここで設定を無効にできます。</string>
+    <string name="privacy_request_failed">サービスは決定を確認できませんでした。後で再試行してください。成功したとは見なしません。</string>
+    <string name="privacy_preference_received">同意の希望をサーバーが確認しました。収集は引き続き停止中です。</string>
+    <string name="privacy_preference_off">この表示では同意が確認されていません。</string>
+    <string name="privacy_consent_check">規約の全文を読み、記載された目的のために任意の希望を記録することを自由意思で許可します。</string>
+    <string name="privacy_confirm_preference">確認して希望を送信</string>
+    <string name="privacy_revoke_delete">無効にして学習用画像の削除を依頼</string>
+    <string name="privacy_deletion_receipt_note">依頼の受信は削除の開始を意味し、すべてのコピーの物理的削除を保証するものではありません。</string>
+    <string name="privacy_digest">文書の SHA-256：%1$s</string>
+    <string name="privacy_finish_reading">読み終えました · 選択に戻る</string>
+    <string name="privacy_rights_heading">プライバシーに関する権利</string>
+    <string name="privacy_rights_body">学習への同意なしに、アクセス、訂正、撤回、削除を依頼できます。郵送先：ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil。宛名：Privacidade — Abastevo。パスワードや秘密鍵は含めないでください。</string>
 </resources>

@@ -88,6 +88,7 @@ fun SettingsScreen(
         onNavigateToAuth = onNavigateToAuth,
         onOpenNotificationSettings = { viewModel.openNotificationSettings(context) },
         modifier = modifier,
+        privacyContent = { com.anpfuel.app.settings.TrainingConsentSettings(onSignIn=onNavigateToAuth) },
     )
 }
 
@@ -113,6 +114,7 @@ private fun SettingsContent(
     onNavigateToAuth: () -> Unit = {},
     onOpenNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    privacyContent: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val numberFormat = NumberFormat.getIntegerInstance()
@@ -179,6 +181,7 @@ private fun SettingsContent(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    privacyContent()
                     SettingsSection(title = stringResource(R.string.settings_language)) {
                         LanguageFlagGrid(
                             selectedLocaleTag = uiState.preferences.localeTag,
