@@ -27,16 +27,13 @@ test('essential content and links are present in static HTML without JS', () => 
     assert.match(indexHtml, /href="#aplicativo"[^>]*>Conheça o aplicativo<\/a>/);
     assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*>Ver no GitHub<\/a>/);
 
-    // 3b. Opening hero carries no phone mockup or app screenshot
+    // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
-    assert.doesNotMatch(heroSection, /<img/);
-    assert.doesNotMatch(heroSection, /assets\/app\//);
-
-    // 4. Comparison card pair
-    assert.match(indexHtml, /Comunidade e ANP, lado a lado/);
-    assert.match(indexHtml, /Exemplo ilustrativo · dados fictícios/);
-    assert.match(indexHtml, /Observação enviada por pessoa · há algumas horas/);
-    assert.match(indexHtml, /Levantamento publicado pela ANP · semana da pesquisa/);
+    assert.match(heroSection, /assets\/app\/explore-dark-720w\.webp/);
+    assert.match(heroSection, /Captura real do app em desenvolvimento/);
+    assert.match(heroSection, /não preços da bomba agora/);
+    assert.match(heroSection, /representação artística/);
+    assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
 
     // 5. Legal and help links reachable from footer
     assert.match(indexHtml, /href="\/privacidade\/"[^>]*>Privacidade<\/a>/);

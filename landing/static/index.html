@@ -96,6 +96,10 @@
         <a href="/como-usar/">Como usar</a>
         <a href="/guias/">Guias</a>
       </nav>
+      <button type="button" class="theme-toggle" data-theme-toggle hidden aria-label="Ativar tema escuro" title="Ativar tema escuro">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.1A8.5 8.5 0 0 1 10.9 3.5 8.5 8.5 0 1 0 20.5 13.1Z"/></svg>
+        <svg class="theme-icon theme-icon-sun" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+      </button>
     </div>
   </header>
 
@@ -107,8 +111,10 @@
           <div class="status-badge" role="status">
             <span>● Em desenvolvimento · Android não publicado</span>
           </div>
+          <div class="hero-copy">
           <h1 class="hero-h1">Preços de combustíveis. Fonte e data à vista.</h1>
           <p class="hero-lead">Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros, com a fonte e a data de cada informação sempre visíveis. Comunidade e ANP aparecem separadas: uma nunca substitui a outra.</p>
+          </div>
           <div class="hero-actions">
             <a href="#aplicativo" class="btn-primary">Conheça o aplicativo</a>
             <a href="https://github.com/AlexandreZanata/abastevo" class="btn-secondary" id="btn-github">Ver no GitHub</a>
@@ -119,31 +125,26 @@
           </div>
         </div>
 
-        <!-- Comparison Cards -->
-        <div class="comparison-container" aria-label="Exemplo comparativo entre comunidade e ANP">
-          <div class="comparison-meta">
-            <h2 class="comparison-heading" style="font-size: 1.125rem; font-weight: 700; color: var(--ink);">Comunidade e ANP, lado a lado</h2>
-            <span class="comparison-pill">Exemplo ilustrativo · dados fictícios</span>
-          </div>
-
-          <div class="comparison-card card-community">
-            <div class="card-header-line">
-              <span class="card-source-tag tag-community">Comunidade</span>
-              <span class="card-price-sample">R$ X,XX</span>
+        <figure class="product-art" aria-labelledby="product-art-caption">
+          <div class="product-stage">
+            <img class="product-map" src="/assets/art/brazil-map-960w.f514d4f7.webp" srcset="/assets/art/brazil-map-640w.905ed63c.webp 640w, /assets/art/brazil-map-960w.f514d4f7.webp 960w" sizes="(min-width: 64rem) 560px, (min-width: 40rem) 560px, 100vw" width="960" height="640" alt="" fetchpriority="high" decoding="async">
+            <div class="product-phone">
+              <img src="/assets/app/explore-dark-720w.webp" srcset="/assets/app/explore-dark-360w.webp 360w, /assets/app/explore-dark-720w.webp 720w, /assets/app/explore-dark-1080w.webp 1080w" sizes="(max-width: 40rem) 58vw, 270px" width="1220" height="2712" fetchpriority="high" decoding="async" alt="Home real do app Abastevo em tema escuro: Sorriso, MT, semana de 4 a 10 de outubro de 2026, contribuição da comunidade e preços de referência ANP com data visível.">
             </div>
-            <div class="card-station-name">Posto Exemplo</div>
-            <p class="card-details-line">Observação enviada por pessoa · há algumas horas · apoio visível</p>
+            <span class="product-art-label"><span aria-hidden="true"></span> Interface real do Android</span>
           </div>
-
-          <div class="comparison-card card-anp">
-            <div class="card-header-line">
-              <span class="card-source-tag tag-anp">Referência ANP</span>
-              <span class="card-price-sample">R$ X,XX</span>
+          <div class="product-badges">
+            <div class="product-callout product-callout-anp">
+              <span class="product-callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span>
+              <span><strong>Referência ANP</strong><small>Fonte e semana à vista</small></span>
             </div>
-            <div class="card-station-name">Posto Exemplo</div>
-            <p class="card-details-line">Levantamento publicado pela ANP · semana da pesquisa · não é preço da bomba agora</p>
+            <div class="product-callout product-callout-community">
+              <span class="product-callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/></svg></span>
+              <span><strong>Feito em comunidade</strong><small>Motoristas ajudando motoristas</small></span>
+            </div>
           </div>
-        </div>
+          <figcaption id="product-art-caption">Captura real do app em desenvolvimento. Valores da pesquisa exibida, não preços da bomba agora. Brasil e rede de postos: representação artística.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -157,16 +158,19 @@
         <div class="grid-3">
           <div class="step-card">
             <div class="step-number" aria-hidden="true">1</div>
+            <div class="card-art card-art-consult" aria-hidden="true"><img src="/assets/art/consult.d89349f0.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="step-title">Consulte</h3>
             <p class="step-desc">Escolha cidade e combustível e veja os preços disponíveis, cada um com fonte, data e condição.</p>
           </div>
           <div class="step-card">
             <div class="step-number" aria-hidden="true">2</div>
+            <div class="card-art card-art-check" aria-hidden="true"><img src="/assets/art/check.793cfd74.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="step-title">Confira</h3>
             <p class="step-desc">Veja se o preço vem da comunidade ou da referência da ANP e quando foi registrado.</p>
           </div>
           <div class="step-card">
             <div class="step-number" aria-hidden="true">3</div>
+            <div class="card-art card-art-contribute" aria-hidden="true"><img src="/assets/art/contribute.e9bf738d.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="step-title">Contribua</h3>
             <p class="step-desc">Quando o app estiver disponível, será possível enviar a foto de um preço (planejado).</p>
           </div>
@@ -183,14 +187,17 @@
         </div>
         <div class="grid-3">
           <div class="persona-card">
+            <div class="card-art card-art-driver" aria-hidden="true"><img src="/assets/art/driver.c353db3a.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="persona-title">Motorista particular</h3>
             <p class="persona-desc">Quem abastece com frequência e quer comparar informações com fonte e data.</p>
           </div>
           <div class="persona-card">
+            <div class="card-art card-art-ride-driver" aria-hidden="true"><img src="/assets/art/ride-driver.3a119515.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="persona-title">Motorista de aplicativo</h3>
             <p class="persona-desc">Quem roda muito e precisa estimar o custo de encher o tanque.</p>
           </div>
           <div class="persona-card">
+            <div class="card-art card-art-fleet" aria-hidden="true"><img src="/assets/art/fleet.71429a7f.svg" width="88" height="88" alt="" loading="lazy" decoding="async"></div>
             <h3 class="persona-title">Pequeno frotista</h3>
             <p class="persona-desc">Quem cuida de poucos veículos e quer organizar o custo de abastecer.</p>
           </div>

@@ -19,7 +19,7 @@ initial-transfer measurement and inspect layout/contrast after loading/fallback.
 
 The follow-up visual/tutorial request uses branch `landing`; see the
 [bounded redesign plan](../planning/LANDING_REDESIGN_EXECUTION_PLAN.md).
-The home opening is separate from the genuine app gallery and tutorial section.
+The home opening introduces the genuine app gallery and tutorial section.
 Only actual app captures may appear in mockups or step walkthroughs.
 
 ## Page inventory
@@ -40,7 +40,7 @@ Not in scope: blog, city pages, translations, dashboards, forms, analytics, news
 ## Information architecture freeze (LR02) — 2026-10-11
 
 Home section order for the redesign (plan §Visual direction): compact header →
-text hero without phone mockup → quiet principles strip → app gallery
+text hero with an authentic Android-home mockup (LH01 amendment below) → quiet principles strip → app gallery
 (`#aplicativo`, existing anchor kept) → feature stories → tutorial teaser
 (`#tutoriais`, new) → source explanation (`#fontes`, new) → project/privacy
 (`#o-projeto`, existing anchor kept) → FAQ (`#faq`, new) → availability
@@ -222,3 +222,30 @@ Required before T02 opens: **D-L05** (maintainer reviews the wireframes, copy de
 ## Validation record
 
 Checks run for this docs-only task: local link and anchor check of this contract and the plan; SVG well-formedness and absence of script/image/external references in both wireframes; rendered-image inspection of both wireframes at their native widths; contrast computation as listed; character counts of title and description; repository, redirect, releases and registry observations dated above; `git diff --check` and scoped secret/private-data review. No browser acceptance, runtime or publication check is claimed.
+
+## LH01 visual amendment — 2026-10-11
+
+The maintainer explicitly replaces the illustrative comparison in the opening
+with a professional responsive Android mockup using the real home capture.
+This supersedes the prior no-phone opening and illustrative comparison copy
+for this block only. B-BR-L01/L02 and BUC-L01/L02 remain: original app pixels,
+source/week context, explicit development status, no invented prices or live
+map claims. Generated cartography is decorative and labelled illustrative;
+ANP and community callouts remain semantic HTML. The existing source section
+continues to explain the distinction. Theme preference stores only light/dark
+locally, with system default and graceful storage-failure handling.
+
+
+LH03 refinement (2026-10-12, explicit user instruction): replace dark navy/blue
+theme surfaces and accents with black/grayscale surfaces and prominent white
+text. Exactly one theme action icon is visible at any time on desktop/mobile.
+Regenerate the check/clock and contribution-camera artwork, then normalize solid
+ink and trace actual SVG geometry so alpha holes, dark smudges and blurred marks
+cannot appear in the final pictograms. Original PNG inputs remain documented.
+
+LH02 refinement (same user session): the desktop artwork occupies the same grid
+row and exact height as the headline/description. Both semantic source badges
+sit below the artwork, outside the phone screen. Background uses an artistic
+Brazil silhouette with symbolic station lights, without asserting app coverage.
+Six generated-then-traced SVG pictograms illustrate consult/check/contribute
+and private driver/ride-hailing driver/small fleet cards; card text is retained.

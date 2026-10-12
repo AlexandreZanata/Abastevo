@@ -3,6 +3,44 @@
  * Essential content and navigation work completely without JavaScript.
  */
 
+function setupTheme(): void {
+  const root = document.documentElement;
+  const system = window.matchMedia('(prefers-color-scheme: dark)');
+  let preference: string | null = null;
+  try { preference = localStorage.getItem('abastevo-theme'); } catch { /* Storage is optional. */ }
+  if (preference !== 'light' && preference !== 'dark') preference = null;
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+  function apply(dark: boolean): void {
+    root.dataset.theme = dark ? 'dark' : 'light';
+    const label = dark ? 'Ativar tema claro' : 'Ativar tema escuro';
+    for (const button of buttons) {
+      button.hidden = false;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      for (const icon of button.querySelectorAll<SVGElement>('.theme-icon')) {
+        icon.toggleAttribute('hidden', icon.classList.contains('theme-icon-sun') ? !dark : dark);
+      }
+    }
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', dark ? '#090909' : '#ffffff');
+  }
+  apply(preference ? preference === 'dark' : system.matches);
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      preference = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      apply(preference === 'dark');
+      try { localStorage.setItem('abastevo-theme', preference); } catch { /* Switching still works. */ }
+    });
+  }
+  system.addEventListener('change', (event) => { if (!preference) apply(event.matches); });
+  window.addEventListener('storage', (event) => {
+    if (event.key !== 'abastevo-theme' && event.key !== null) return;
+    preference = event.newValue === 'light' || event.newValue === 'dark' ? event.newValue : null;
+    apply(preference ? preference === 'dark' : system.matches);
+  });
+}
+
+setupTheme();
+
 function setupNavigationHighlight(): void {
   if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
     return;
