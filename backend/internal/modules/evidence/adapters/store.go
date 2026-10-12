@@ -250,8 +250,9 @@ func (s *Store) convergeComplete(ctx context.Context, uid pgtype.UUID, sessionID
 // the DB points at the final object only together with the READY state.
 // It returns the object id (fresh or converged): a concurrent terminal
 // converges when it already holds this outcome; the uploaded final bytes
-// stay referenced exactly once, and a commit failure leaves them
-// unreferenced for the orphan sweeper.
+// stay referenced exactly once. This internal metadata compatibility method
+// grants no byte-write authority; production jobs use RecordVerifiedGuarded
+// and inventory the output before invoking private storage.
 func (s *Store) RecordVerified(ctx context.Context, sessionID string, obj ObjectData) (string, error) {
 	sessionUUID, err := mustUUID(sessionID)
 	if err != nil {

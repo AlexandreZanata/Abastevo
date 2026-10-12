@@ -8,6 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EvidenceFinalOutput struct {
+	FinalKey        string             `json:"final_key"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	State           string             `json:"state"`
+	Attempts        int32              `json:"attempts"`
+	LeaseNonce      pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil      pgtype.Timestamptz `json:"lease_until"`
+	DeadlineAt      pgtype.Timestamptz `json:"deadline_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	PurgedAt        pgtype.Timestamptz `json:"purged_at"`
+}
+
 type EvidenceObject struct {
 	ID                      pgtype.UUID        `json:"id"`
 	SessionID               pgtype.UUID        `json:"session_id"`

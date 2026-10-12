@@ -268,8 +268,9 @@ AND o.final_deleted_at IS NULL AND o.bound_observation_id IS NULL
 AND (o.bound_capture_id IS NULL OR o.bound_capture_id = @capture_id);
 
 -- name: PendingErasureSessions :many
-SELECT id, quarantine_key FROM evidence_sessions
-WHERE contributor_ref = @contributor_ref AND quarantine_deleted_at IS NULL
+SELECT id, quarantine_key, quarantine_deleted_at FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref AND (quarantine_deleted_at IS NULL
+ OR EXISTS(SELECT 1 FROM evidence_final_outputs f WHERE f.session_id = evidence_sessions.id AND f.state != 'PURGED'))
 ORDER BY created_at, id LIMIT 32;
 
 -- name: PendingErasureObjects :many
@@ -284,7 +285,8 @@ WHERE id = @id AND status != 'EXPIRED';
 
 -- name: HasPendingEvidenceErasure :one
 SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = @contributor_ref AND s.quarantine_deleted_at IS NULL)
-OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL) AS pending;
+OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_final_outputs f JOIN evidence_sessions r ON r.id=f.session_id WHERE r.contributor_ref = @contributor_ref AND f.state != 'PURGED') AS pending;
 
 -- Ingress serializes with expiry/erasure, never with network I/O.
 -- name: GetUploadSessionForUpdate :one
@@ -297,3 +299,50 @@ SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = @id
  AND s.status IN ('READY','REJECTED','EXPIRED')
  AND NOT EXISTS(SELECT 1 FROM evidence_upload_transfers t
  WHERE t.session_id = s.id AND t.lease_until > @at)) AS allowed;
+
+-- name: LockFinalOutputKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended(@final_key::text, 68001));
+
+-- name: InventoryFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at)
+VALUES (@final_key, @session_id, @sanitized_sha256, 'PENDING', @deadline_at, @created_at)
+ON CONFLICT (final_key) DO NOTHING;
+
+-- name: GetFinalOutputForUpdate :one
+SELECT * FROM evidence_final_outputs WHERE final_key = @final_key FOR UPDATE;
+
+-- name: BeginFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'WRITING', attempts = attempts + 1,
+ sanitized_sha256 = @sanitized_sha256, lease_nonce = @lease_nonce, lease_until = @lease_until
+WHERE final_key = @final_key AND session_id = @session_id
+ AND state = 'PENDING' AND attempts < 5 AND deadline_at > @lease_until;
+
+-- name: FinishFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'READY', lease_nonce = NULL, lease_until = NULL
+WHERE final_key = @final_key AND session_id = @session_id AND state = 'WRITING'
+ AND lease_nonce = @lease_nonce AND lease_until > now() AND deadline_at > now();
+
+-- name: InsertGuardedObject :execrows
+INSERT INTO evidence_objects
+ (id, session_id, final_key, source_sha256, sanitized_sha256, width, height, dhash, created_at, received_at)
+VALUES (@id, @session_id, @final_key, @source_sha256, @sanitized_sha256,
+ @width, @height, @dhash, @created_at, @received_at)
+ON CONFLICT DO NOTHING;
+
+-- name: GetLiveFinalObject :one
+SELECT id, session_id, source_sha256, sanitized_sha256 FROM evidence_objects
+WHERE final_key = @final_key AND final_deleted_at IS NULL;
+
+-- Metadata compatibility also inventories rows created by old workers or
+-- fixture helpers, without accepting a new untracked PUT from production.
+-- name: InventoryExistingFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at, purged_at)
+SELECT o.final_key, o.session_id, o.sanitized_sha256,
+ CASE WHEN o.final_deleted_at IS NULL THEN 'READY' ELSE 'PURGED' END,
+ LEAST(COALESCE(o.received_at, o.created_at), s.created_at) + interval '24 hours',
+ LEAST(o.created_at, s.created_at), o.final_deleted_at
+FROM evidence_objects o JOIN evidence_sessions s ON s.id = o.session_id
+WHERE o.final_key = @final_key
+ON CONFLICT (final_key) DO NOTHING;

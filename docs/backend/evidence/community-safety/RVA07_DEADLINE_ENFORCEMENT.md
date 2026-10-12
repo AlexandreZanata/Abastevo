@@ -181,3 +181,58 @@ HTTP/S3 cross-resource proof for late source/final writers remains B3.2/C.
 No transaction spans network I/O, no provider/24h/release claim and no change to
 existing soaks. Next: inventory/lease final output before PUT and clean failed
 or revoked verification output; then predeadline scheduling and capacity proof.
+
+## B3.2a final-writer admission opening
+
+Inventory a canonical content key, owning session and conservative deadline
+before any final PUT. One content key has one writer authority; a 60s UUID lease
+covers a 20s verification attempt and its bounded commit. No transaction spans
+network I/O. An uncertain PUT/commit keeps its inventory and lease; retries
+cannot overwrite it until cleanup confirms absence. At most five writes are
+admitted per key. Reusing an existing verified key performs no PUT, cannot
+extend its deadline and must match both source and sanitized hashes.
+
+Production outcome commits require the exact live writer nonce (or explicit
+read-only reuse), a still-VERIFYING session and the original output deadline.
+Erasure closes session admission even when quarantine was already deleted,
+and unresolved final inventory prevents a false completed erasure receipt.
+First reservation is the conservative output anchor, never a later retry's
+updated_at. Legacy metadata fixtures retain their explicit internal API;
+production jobs use only the guarded outcome method.
+
+This first subtask establishes inventory/admission/commit fencing. B3.2b must
+consume unconfirmed final inventory with bounded private-storage cleanup,
+nonce acknowledgements and restart proofs; existing object-only sweeping is
+not sufficient. Neither subtask alone certifies the complete 24h SLO.
+
+## B3.2a local checkpoint — inventory before final PUT
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for admission/commit only.
+Validation: PASS. Tested delta on `9fa7ad1`. RED: a valid photo uploaded without
+any inventory authority. GREEN: both verification lanes require a pre-PUT
+port; read-only reuse emits no bytes. Append-only 000068 inventories known
+objects and conservative legacy possible-orphan destinations. New output has
+one content-key owner, bounded five attempts, a UUID/60s lease and immutable
+reservation-based deadline. Production jobs have a 20s attempt and use only
+RecordVerifiedGuarded. SQL rollback/expiry/erasure cannot recreate READY from
+an old verifier snapshot, and unresolved final inventory blocks erasure READY.
+
+Real PostgreSQL tests passed: 12 simultaneous claims yield one writer/attempt;
+stale nonce and expired lease refuse; quarantine-already-deleted erasure still
+closes verification and refuses premature completion; actual insert-trigger
+failure retains inventory and VERIFYING state; caller-supplied later receipt
+cannot extend retention; byte-identical reuse has no new writer/attempt/anchor;
+foreign keys, sixth attempt and lease beyond deadline refuse. 000068-only
+upgrade preserves known copies and inventories possible legacy orphan keys;
+replay is empty. Full evidence adapter SQL race suite passed (14.604s), affected
+application/adapter/worker/API/ops race suites, vet/sqlc/format/diff checks passed.
+Timestamp assertions use reloaded PostgreSQL microsecond precision, not the
+pre-insert nanosecond fixture clock. Explicit codec/transport-only tests use
+fake inventory authority; they are not SQL or deadline evidence.
+
+B3.2b remains required: bounded consumption of this inventory, confirmed byte
+absence, terminal/repair receipts and actual S3 late-writer/restart proofs.
+The historical object-only sweep cannot close these new pending obligations.
+Do not overlap old unfenced workers with the migration/new worker cutover.
+B3.3/C scheduling/capacity/autonomous SLO/backup/provider proofs remain pending.
+No VPS/phone/old-soak mutation, no whole-phase or release certification.

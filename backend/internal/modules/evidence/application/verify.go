@@ -48,10 +48,18 @@ func (e *RejectionError) Unwrap() error { return ErrRejected }
 // single bounded snapshot; Upload stores sanitized bytes under the
 // server-only final key. Real transports land in T04; fakes prove the
 // orchestration here, including the exactly-once download.
+// FinalWrite is either a nonce-fenced new output or explicit read-only reuse.
+// A zero value never grants permission to upload or commit an outcome.
+type FinalWrite struct {
+	Nonce  string
+	Reused bool
+}
+
 type VerifyPorts struct {
-	Clock    func() time.Time
-	Download func(ctx context.Context, key string, maxBytes int64) ([]byte, error)
-	Upload   func(ctx context.Context, key, contentType string, body []byte) error
+	BeforeUpload func(ctx context.Context, key, sanitizedSHA256 string) (FinalWrite, error)
+	Clock        func() time.Time
+	Download     func(ctx context.Context, key string, maxBytes int64) ([]byte, error)
+	Upload       func(ctx context.Context, key, contentType string, body []byte) error
 }
 
 // Outcome binds one verified snapshot: the READY session plus the
@@ -60,6 +68,7 @@ type VerifyPorts struct {
 // carries the forward 24 h copy deadline (P15-T03); the v1 path leaves
 // it zero and the retention sweeper owns that lifecycle instead.
 type Outcome struct {
+	Write           FinalWrite
 	Session         domain.Session
 	FinalKey        string
 	SourceSHA256    string
@@ -112,15 +121,18 @@ func Verify(ctx context.Context, p VerifyPorts, session domain.Session) (Outcome
 		return Outcome{}, err
 	}
 	finalKey := media.FinalKey(snap.Bytes)
-	if err := p.Upload(ctx, finalKey, domain.AllowedMIME, clean); err != nil {
+	sanitizedSum := sha256.Sum256(clean)
+	sanitizedHash := hex.EncodeToString(sanitizedSum[:])
+	authority, err := writeFinal(ctx, p, finalKey, domain.AllowedMIME, sanitizedHash, clean)
+	if err != nil {
 		return Outcome{}, err
 	}
 	ready, _, err := domain.MarkReady(session, now)
 	if err != nil {
 		return Outcome{}, err
 	}
-	sanitizedSum := sha256.Sum256(clean)
 	return Outcome{
+		Write:   authority,
 		Session: ready, FinalKey: finalKey,
 		SourceSHA256:    snap.SourceSHA256,
 		SanitizedSHA256: hex.EncodeToString(sanitizedSum[:]),
@@ -159,4 +171,29 @@ func rejectionFor(err error) error {
 		return err
 	}
 	return &RejectionError{Reasons: reasons}
+}
+
+// writeFinal commits inventory before invoking a transport. Reuse never sends
+// bytes again, so duplicates cannot resurrect a copy or slide its deadline.
+func writeFinal(ctx context.Context, p VerifyPorts, key, mime, sanitizedHash string, body []byte) (FinalWrite, error) {
+	if p.BeforeUpload == nil {
+		return FinalWrite{}, ErrBadState
+	}
+	authority, err := p.BeforeUpload(ctx, key, sanitizedHash)
+	if err != nil {
+		return FinalWrite{}, err
+	}
+	if authority.Reused {
+		if authority.Nonce != "" {
+			return FinalWrite{}, ErrBadState
+		}
+		return authority, nil
+	}
+	if authority.Nonce == "" || p.Upload == nil {
+		return FinalWrite{}, ErrBadState
+	}
+	if err := p.Upload(ctx, key, mime, body); err != nil {
+		return FinalWrite{}, err
+	}
+	return authority, nil
 }

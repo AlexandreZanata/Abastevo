@@ -126,6 +126,9 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 	live.ClaimedSHA256 = sum
 	transfer := &fakeTransferT{payload: raw}
 	out, err := evidenceapp.VerifyForward(ctx, evidenceapp.VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (evidenceapp.FinalWrite, error) {
+			return evidenceapp.FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Clock:    func() time.Time { return firstReceipt.Add(5 * time.Minute) },
 		Download: transfer.download,
 		Upload:   transfer.upload,
@@ -240,6 +243,9 @@ func TestForwardRejectionsStayRedacted(t *testing.T) {
 	live.ClaimedSHA256 = sha256hex([]byte{0xFF, 0xD8, 0x00})
 	transfer := &fakeTransferT{payload: []byte{0xFF, 0xD8, 0x00}}
 	_, err = evidenceapp.VerifyForward(ctx, evidenceapp.VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (evidenceapp.FinalWrite, error) {
+			return evidenceapp.FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Download: transfer.download,
 		Upload:   transfer.upload,
 	}, live)

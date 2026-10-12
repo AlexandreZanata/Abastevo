@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	parent "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
@@ -17,7 +18,7 @@ import (
 // concrete *adapters.Store satisfies it; fakes prove the orchestration.
 type SessionStore interface {
 	Session(ctx context.Context, id string) (domain.Session, error)
-	RecordVerified(ctx context.Context, sessionID string, obj parent.ObjectData) (string, error)
+	RecordVerifiedGuarded(ctx context.Context, sessionID string, obj parent.ObjectData, authority evidenceapp.FinalWrite) (string, error)
 	RecordRejected(ctx context.Context, sessionID string, reasons []string) error
 }
 
@@ -55,6 +56,8 @@ func (v Verify) Handle(ctx context.Context, job jobs.Job) error {
 	if v.Store == nil || v.Verify == nil || v.NewID == nil {
 		return fmt.Errorf("verify: no store, orchestration or ID source configured")
 	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
 	sess, err := v.Store.Session(ctx, payload.UploadID)
 	if err != nil {
 		return err
@@ -75,12 +78,12 @@ func (v Verify) Handle(ctx context.Context, job jobs.Job) error {
 		if err != nil {
 			return err
 		}
-		_, err = v.Store.RecordVerified(ctx, sess.ID, parent.ObjectData{
+		_, err = v.Store.RecordVerifiedGuarded(ctx, sess.ID, parent.ObjectData{
 			ID: id, FinalKey: out.FinalKey, SourceSHA256: out.SourceSHA256,
 			SanitizedSHA256: out.SanitizedSHA256,
 			Width:           out.Width, Height: out.Height, DHash: out.DHash,
-			ReceivedAt: sess.UpdatedAt,
-		})
+			ReceivedAt: sess.CreatedAt,
+		}, out.Write)
 		return err
 	default:
 		return fmt.Errorf("verify: session %s not yet completed", sess.ID)

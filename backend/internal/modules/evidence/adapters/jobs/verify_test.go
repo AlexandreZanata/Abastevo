@@ -37,7 +37,10 @@ func (f *fakeSessions) Session(_ context.Context, id string) (domain.Session, er
 	return s, nil
 }
 
-func (f *fakeSessions) RecordVerified(_ context.Context, sessionID string, obj parent.ObjectData) (string, error) {
+func (f *fakeSessions) RecordVerifiedGuarded(_ context.Context, sessionID string, obj parent.ObjectData, authority evidenceapp.FinalWrite) (string, error) {
+	if authority.Nonce == "" && !authority.Reused {
+		return "", domain.ErrBadTransition
+	}
 	f.verified++
 	return "e0000000-0000-4000-8000-000000000009", nil
 }
@@ -57,7 +60,7 @@ func testHandler(store *fakeSessions, verify func(context.Context, domain.Sessio
 }
 
 func okOutcome() evidenceapp.Outcome {
-	return evidenceapp.Outcome{FinalKey: "f/x", SourceSHA256: "a", Width: 4, Height: 4}
+	return evidenceapp.Outcome{Write: evidenceapp.FinalWrite{Nonce: "fixture-authority"}, FinalKey: "f/x", SourceSHA256: "a", Width: 4, Height: 4}
 }
 
 func TestHandleRejectsBadPayload(t *testing.T) {

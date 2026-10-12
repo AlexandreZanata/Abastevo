@@ -70,15 +70,18 @@ func VerifyForward(ctx context.Context, p VerifyPorts, session domain.Session) (
 		return Outcome{}, err
 	}
 	finalKey := media.FinalKey(snap.Bytes)
-	if err := p.Upload(ctx, finalKey, domain.ForwardWireMIME, clean); err != nil {
+	sanitizedSum := sha256.Sum256(clean)
+	sanitizedHash := hex.EncodeToString(sanitizedSum[:])
+	authority, err := writeFinal(ctx, p, finalKey, domain.ForwardWireMIME, sanitizedHash, clean)
+	if err != nil {
 		return Outcome{}, err
 	}
 	ready, _, err := domain.MarkReady(session, now)
 	if err != nil {
 		return Outcome{}, err
 	}
-	sanitizedSum := sha256.Sum256(clean)
 	return Outcome{
+		Write:   authority,
 		Session: ready, FinalKey: finalKey,
 		SourceSHA256:    snap.SourceSHA256,
 		SanitizedSHA256: hex.EncodeToString(sanitizedSum[:]),

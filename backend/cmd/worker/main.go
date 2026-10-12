@@ -708,6 +708,13 @@ func run() error {
 			NewID: jobs.NewUUIDv4,
 			Verify: func(ctx context.Context, sess evidencedomain.Session) (evidenceapp.Outcome, error) {
 				return evidenceapp.Verify(ctx, evidenceapp.VerifyPorts{
+					BeforeUpload: func(ctx context.Context, key, sanitizedHash string) (evidenceapp.FinalWrite, error) {
+						nonce, err := jobs.NewUUIDv4()
+						if err != nil {
+							return evidenceapp.FinalWrite{}, err
+						}
+						return evidenceStore.BeginVerificationWrite(ctx, sess.ID, key, sanitizedHash, nonce)
+					},
 					Clock:    time.Now,
 					Download: downloadSnapshot,
 					Upload:   uploadFinal,

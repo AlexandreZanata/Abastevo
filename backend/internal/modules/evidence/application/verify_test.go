@@ -90,6 +90,9 @@ func verifyingSession(t *testing.T, raw []byte) domain.Session {
 
 func verifyPorts(f *fakeTransfer) VerifyPorts {
 	return VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (FinalWrite, error) {
+			return FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Clock:    func() time.Time { return time.Date(2026, 9, 30, 12, 5, 0, 0, time.UTC) },
 		Download: f.download,
 		Upload:   f.upload,
