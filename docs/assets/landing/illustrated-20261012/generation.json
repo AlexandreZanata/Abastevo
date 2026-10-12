@@ -1,0 +1,31 @@
+{
+  "tool": "built-in image_gen",
+  "reference": "User-supplied /data/downloads/Untitled.png, 2026-10-12 flat editorial landscape",
+  "entries": [
+    {
+      "name": "hero-4k",
+      "path": "/home/iiii/.codex/generated_images/01a12d64-05f6-7d51-a8be-3a7c7809cd94/exec-fe58f9d8-64e8-44d4-a511-78a62cf5698e.png",
+      "prompt": "Recreate this EXACT supplied illustration as an ultra high quality 4K 3840x2160 16:9 website hero BACKGROUND. Preserve its exact visual language and composition: cream negative-space sky and river on left half, geometric teal/blue Brazilian city on right half with yellow highlights, huge plain yellow sun behind city, flat rounded emerald/teal tree canopies, elegant charcoal highway curving from lower-right into center distance, white lane dashes, thin guardrail, distant simple bridge. Match the reference's clean 2D editorial vector-like illustrated style precisely. Crisp large geometric shapes with very restrained painterly shading, NO 3D plastic/clay objects, NO photorealism, NO tiny leaves, NO photographic haze. Wide full-bleed scene extends naturally to every canvas edge, NOT an isolated island, no vignette, no rectangular inset, no soft edge masking. Keep upper-left 45% predominantly flat warm ivory #fff9e9 for overlaid HTML copy. Keep main city and sun on right 50%. No text, no letters, no price pins, no phone, no UI, no logos, no watermark. Highest possible native output resolution, target 3840 by 2160."
+    },
+    {
+      "name": "trees",
+      "path": "/home/iiii/.codex/generated_images/01a12d64-05f6-7d51-a8be-3a7c7809cd94/exec-96cb2d5b-bf6b-45f5-832e-a03cd59350d2.png",
+      "prompt": "Create an isolated reusable asset in the EXACT clean flat 2D editorial illustration style and palette of this supplied reference: a balanced cluster of three rounded emerald/teal trees and simple green shrubs. Simple scalloped canopy shapes, slender dark navy angular trunks, a few clean geometric highlights, NO tiny leaves, NO photographic texture, NO 3D plastic, NO haze or blurry shadow. Entire trees fully visible, generous transparent margin on all sides, no ground rectangle, true transparent background. No text, logo, phone or UI. High quality crisp edges, reusable small website decoration."
+    },
+    {
+      "name": "skyline",
+      "path": "/home/iiii/.codex/generated_images/01a12d64-05f6-7d51-a8be-3a7c7809cd94/exec-c9e93e06-80ac-4bca-9ddd-61252b91dd28.png",
+      "prompt": "Create an isolated reusable asset in the EXACT clean flat 2D editorial illustration style and palette of this supplied reference: a compact elegant Brazilian city skyline of seven teal/blue geometric buildings with a few yellow-lit planes and simple window geometry, a few emerald shrubs at bases. Simple layered flat vector-like shapes, restrained shading, NO photorealism, NO 3D plastic, NO haze or blurry shadow. Complete skyline fully visible with transparent margin on all sides, no rectangle, transparent background. No text, logo, phone or UI. High quality crisp edges, reusable small website decoration."
+    },
+    {
+      "name": "road",
+      "path": "/home/iiii/.codex/generated_images/01a12d64-05f6-7d51-a8be-3a7c7809cd94/exec-24df6c00-0c05-479a-a218-946a3374889d.png",
+      "prompt": "Create an isolated reusable asset in the EXACT clean flat 2D editorial illustration style and palette of this supplied reference: a short elegant S-shaped charcoal roadway, clean white dashed lane markings, thin silver guardrail, emerald green roadside strips and two rounded teal bushes. No island scene, only this small curved road decoration. Simple flat vector-like shapes with restrained shading, NO photorealism, NO 3D plastic, NO haze. Complete object inside canvas with generous transparent margin, transparent background. No text, letters, logos, phone or UI. High quality crisp edges, reusable website decoration."
+    },
+    {
+      "name": "car",
+      "path": "/home/iiii/.codex/generated_images/01a12d64-05f6-7d51-a8be-3a7c7809cd94/exec-cfacb517-89a9-476b-a404-e1fff0e65fc5.png",
+      "prompt": "Create an isolated reusable asset in the EXACT clean flat 2D editorial illustration style and palette of this supplied reference: one small dark teal compact hatchback car in rear three-quarter view with simple blue-gray windows, dark wheels and tiny amber rear highlights. Simple clean geometric planes, elegant editorial drawing, restrained flat shading, NO photorealism, NO 3D plastic render, NO texture, NO haze. Complete car visible with generous transparent margin, transparent background, no ground rectangle. No text, license plate letters, logos, phone or UI. High quality crisp edges, reusable small website decoration."
+    }
+  ]
+}

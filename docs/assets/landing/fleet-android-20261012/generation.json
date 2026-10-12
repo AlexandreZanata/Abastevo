@@ -1,0 +1,11 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-12",
+  "prompt": "Use case: stylized-concept. Asset type: transparent landing card illustration. Input images are STYLE REFERENCES ONLY: match exactly the polished soft 3D minimal character, materials, clean lighting and visual detail of these two illustrations. Create ONE new illustration for a SMALL FLEET OWNER ORGANIZING FUEL COSTS: a friendly adult fleet manager in a muted rose/pink work shirt in three-quarter view actively marking a clipboard with a pen, standing beside two compact white delivery vans in staggered perspective. The writing action must be clearly visible, the vans remain secondary but recognizable. Clipboard contains only a simple pictographic fuel pump and three neat rows of abstract blocks, absolutely no text, letters, digits, currency or logos. Cohesive elegant composition with one dominant rose #C34579 accent, neutral white and charcoal vehicles; warm friendly professional tone. Same soft polished minimal 3D style as reference, no huge pie chart, no floating graph, no busy scenery. Full character and vehicles visible, generous clear margins, transparent background with intact clean alpha, no floor rectangle, no halos, no blurred cutout holes. Wide 4:3 composition, high quality sharp edges. Subject should fill most of canvas while leaving 8 percent safe padding. No text or watermark.",
+  "references": [
+    "illustrated-20261012/masters/check.png",
+    "illustrated-20261012/masters/driver.png"
+  ],
+  "output": "exec-4c5c3ffe-bc28-471f-8912-babeaa4f6b33.png",
+  "transparent_background": true
+}

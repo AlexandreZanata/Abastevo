@@ -1216,10 +1216,6 @@ html[data-theme="dark"] .btn-github { background-color: #242424; color: #ffffff;
   .header-actions .store-btn { padding: 0.5rem; min-width: 44px; justify-content: center; }
   .header-actions .store-btn-text { display: none; }
   section { scroll-margin-top: 5rem; }
-  .hero-content { text-align: center; }
-  .hero-lead { text-wrap: balance; }
-  .hero-actions { justify-content: center; }
-  .product-art figcaption { text-align: center; }
 }
 @media (max-width: 25rem) {
   .header-actions .btn-github { display: none; }
@@ -1230,3 +1226,92 @@ html[data-theme="dark"] .btn-github { background-color: #242424; color: #ffffff;
   .header-inner .brand-wordmark { height: 0.95rem; }
 }
 @media print { .header-actions, .nav-toggle { display: none; } }
+
+/* LH07: quiet product-led opening, with standard site content bounds. */
+.landing-home .site-header { background: var(--page); }
+.landing-home .header-inner { max-width: var(--max-width); width: 100%; padding-inline: 0.75rem; }
+.desktop-nav { display: none; }
+.landing-home .hero { position: relative; isolation: isolate; display: flex; align-items: center; min-height: calc(100svh - 4.25rem); padding: clamp(2.5rem, 5vh, 4.5rem) 0; background: var(--page); }
+.landing-home .hero-grid { display: grid; grid-template-columns: 1fr; align-items: center; gap: 2.5rem; width: 100%; max-width: var(--max-width); padding-inline: 0.75rem; }
+.landing-home .hero-content { display: block; min-width: 0; }
+.landing-home .status-badge { margin: 0 0 1.75rem; padding: 0.375rem 0.75rem; background: var(--page); color: var(--green-text); border: 1px solid var(--line); font-size: 0.75rem; }
+.landing-home .hero-copy { max-width: 35rem; }
+.landing-home .hero-h1 { max-width: 100%; font-size: clamp(2.5rem, 4.2vw, 4rem); line-height: 1.08; letter-spacing: -0.05em; margin: 0 0 1.5rem; }
+.landing-home .hero-h1 span { display: block; color: #007a4b; }
+.landing-home .hero-lead { max-width: 43ch; margin: 0; font-size: 1.125rem; line-height: 1.65; }
+.hero-release { color: var(--text-muted); font-size: 0.75rem; margin: 1.5rem 0 0.875rem; }
+.landing-home .hero-actions { margin: 0; gap: 0.75rem; align-items: stretch; }
+.hero-discover { gap: 1rem; min-height: 56px; background: #007a4b; border-color: #007a4b; color: #fff; font-size: 0.875rem; }
+.hero-discover:hover { background: #00643e; border-color: #00643e; }
+.landing-home .btn-github { background: transparent; color: var(--ink); border: 1px solid var(--line-interactive); }
+.landing-home .header-actions .store-pill { background: #ffdc49; color: #0b1849; border-color: #edc527; }
+.landing-home .product-art { display: block; grid-column: auto; grid-row: auto; width: 100%; max-width: 32rem; min-width: 0; margin: 0 auto; }
+.landing-home .product-stage { position: relative; width: 100%; height: clamp(420px, calc(100svh - 310px), 620px); min-height: 0; aspect-ratio: auto; background: none; border-radius: 0; overflow: visible; box-shadow: none; }
+.landing-home .product-stage::before { content: ""; position: absolute; z-index: -1; width: 85%; aspect-ratio: 1; border-radius: 50%; left: 7.5%; top: 50%; transform: translateY(-50%); background: #eff5f2; border: 1px solid #e5ede8; }
+.landing-home .product-phone { left: 50%; top: 1%; height: 90%; }
+.landing-home .product-art-label { bottom: 0; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 0.25rem; color: var(--text-muted); font-size: 0.5625rem; letter-spacing: 0.08em; }
+.landing-home .product-badges { grid-column: auto; grid-row: auto; gap: 0.5rem; margin: 1rem 0 0; }
+.landing-home .product-callout { padding: 0.75rem; background: var(--page); border-color: var(--line); box-shadow: none; }
+.landing-home .product-art figcaption { grid-column: auto; grid-row: auto; max-width: 28rem; margin: 0.875rem auto 0; color: var(--text-muted); font-size: 0.6875rem; line-height: 1.5; text-align: center; }
+html[data-theme="dark"] .landing-home .hero-h1 span { color: var(--ink); }
+html[data-theme="dark"] .landing-home .status-badge { color: var(--text-muted); }
+html[data-theme="dark"] .landing-home .hero-discover { color: #111; background: #fff; border-color: #fff; }
+html[data-theme="dark"] .landing-home .product-stage::before { background: #141414; border-color: #252525; }
+html[data-theme="dark"] .landing-home .header-actions .store-pill { background: var(--surface); color: var(--ink); border-color: var(--line); }
+@media (min-width: 64rem) {
+  .landing-home .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 3rem; }
+  .landing-home .hero-content { grid-column: 1; grid-row: 1; }
+  .landing-home .product-art { grid-column: 2; grid-row: 1; }
+}
+@media (min-width: 80rem) {
+  .landing-home .desktop-nav { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-left: auto; }
+  .desktop-nav a { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--font-display); font-size: 0.875rem; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+  .desktop-nav a:hover { text-decoration: underline; }
+  .landing-home .nav-toggle { display: none; }
+  .landing-home .header-actions { margin-left: 0; }
+}
+@media (max-width: 63.999rem) {
+  .landing-home .hero-content { max-width: 38rem; }
+  .landing-home .product-stage { height: 540px; }
+}
+@media (max-width: 47.999rem) {
+  .landing-home .hero { padding: 2rem 0 2.5rem; }
+  .landing-home .hero-grid { gap: 2.5rem; }
+  .landing-home .hero-content { text-align: center; }
+  .landing-home .hero-lead { text-wrap: balance; }
+  .landing-home .hero-actions { justify-content: center; }
+  .landing-home .status-badge { margin-bottom: 1.5rem; }
+  .landing-home .hero-h1 { font-size: clamp(2.25rem, 9.5vw, 3.5rem); margin-bottom: 1.25rem; }
+  .landing-home .hero-lead { font-size: 1rem; }
+  .landing-home .hero-discover { padding: 0.75rem 1rem; }
+  .landing-home .hero-actions .store-btn { padding: 0.6rem 0.75rem; }
+  .landing-home .product-stage { height: clamp(360px, 112vw, 500px); }
+}
+
+/* Existing six action/persona illustrations retained. */
+.landing-home #como-funciona { background: var(--page); }
+.landing-home .section-heading { max-width: 48rem; }
+.landing-home .section-title { letter-spacing: -0.035em; }
+.landing-home .step-card, .landing-home .persona-card { overflow: hidden; padding: 1.5rem; border-radius: 20px; position: relative; text-align: left; box-shadow: 0 10px 30px -24px #133b5860; }
+.landing-home .card-art { display: block; width: calc(100% + 3rem); height: auto; aspect-ratio: 1.75; margin: -1.5rem -1.5rem 1.5rem; border-radius: 0; padding: 1rem 1.5rem 0.5rem; background: radial-gradient(ellipse at 65% 85%, var(--scene-tint), transparent 78%); }
+.landing-home .card-art img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.card-art-consult { --scene-tint: #ddecff; }
+.card-art-check { --scene-tint: #dcf4e3; }
+.card-art-contribute { --scene-tint: #fff0d9; }
+.card-art-driver { --scene-tint: #eee5ff; }
+.card-art-ride-driver { --scene-tint: #dcf6f5; }
+.card-art-fleet { --scene-tint: #fce5ee; }
+.landing-home .step-number { top: 1rem; left: 1rem; right: auto; width: 2rem; height: 2rem; margin: 0; background: var(--card); box-shadow: 0 3px 12px #0000000d; z-index: 1; font-size: 0.875rem; }
+.landing-home .step-title, .landing-home .persona-title { font-size: 1.25rem; letter-spacing: -0.025em; }
+.landing-home .step-desc, .landing-home .persona-desc { font-size: 1rem; line-height: 1.6; }
+html[data-theme="dark"] .landing-home .card-art { background: radial-gradient(ellipse at 65% 85%, #2a2a2a, transparent 78%); }
+@media (max-width: 47.999rem) { .landing-home .card-art { aspect-ratio: 1.9; } }
+
+/* LH06: Android hardware frame; authentic app pixels remain unmodified. */
+.landing-home .android-device { padding: 6px; border-radius: 30px; background: linear-gradient(120deg, #aeb5b8 0%, #303739 10%, #080c0e 24%, #101719 76%, #6d787c 100%); transform: translateX(-50%) perspective(1600px) rotateY(-5deg) rotateZ(3deg); box-shadow: inset 0 0 0 1px #c4cbd0, inset 0 0 0 3px #171d20, 1px 2px 0 1px #3e494f, 15px 24px 38px -15px #13242e80; }
+.landing-home .android-device img { border-radius: 24px; }
+.landing-home .android-device::before, .landing-home .android-device::after { right: -3px; width: 3px; background: linear-gradient(90deg, #252b2f, #9aa5aa, #353d42); box-shadow: 1px 0 1px #0005; }
+.landing-home .android-device::before { top: 18%; height: 10%; }
+.landing-home .android-device::after { top: 32%; height: 5%; }
+.android-camera { position: absolute; z-index: 2; top: 1.5%; left: 50%; width: 2.5%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle at 40% 35%, #24435c 0%, #0c1620 30%, #020506 60%); box-shadow: 0 0 0 1px #1c252c; pointer-events: none; }
+@media (max-width: 47.999rem) { .landing-home .android-device { padding: 4px; border-radius: 22px; } .landing-home .android-device img { border-radius: 18px; } }

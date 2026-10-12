@@ -85,10 +85,10 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1 (fused Codex hero):** `Encontre preços de combustível na sua região.`
+**H1 (fused Codex illustrated hero):** `Preços de combustíveis mais claros para o Brasil.`
 **Lead:** `O Abastevo combina dados oficiais da ANP com informações da comunidade para ajudar você a abastecer com fonte e data — sem prometer preço mínimo.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
-**Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden. Map lights in hero art are decorative, never station coordinates or coverage evidence.
+**Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden. Illustrated scenery and map lights are decorative, never station coordinates or coverage evidence.
 **Secondary action:** `Copiar link` copies the repository URL without navigation.
 **Store notice [prelaunch]:** `Em breve na Google Play` (plain text). **[published]:** `Ver na Google Play`, one link or the official badge, in one place only.
 
@@ -265,3 +265,50 @@ sit below the artwork, outside the phone screen. Background uses an artistic
 Brazil silhouette with symbolic station lights, without asserting app coverage.
 Six generated-then-traced SVG pictograms illustrate consult/check/contribute
 and private driver/ride-hailing driver/small fleet cards; card text is retained.
+
+
+## LH05 illustrated landing amendment — 2026-10-12
+
+The owner requests the warm illustrated landscape composition of the supplied
+reference: cream canvas, green emphasis, city, road, trees and sun around a real
+Android home mockup. Generate a separate text-free landscape and six minimal
+action/persona scenes, each with a unique dominant color (blue, green, orange,
+violet, teal and rose). Keep copy semantic HTML and real app pixels untouched;
+art is illustrative and never coverage or current price evidence. Keep existing
+prelaunch/store semantics and neutral dark mode. Preserve OpenCode changes at
+landing 41d1372: 12px gutters, revised brand scale, removed hero statistics and
+its 404 recovery header. Only hero/cards and necessary responsive styling are
+authorized. Ship responsive hash-named WebP derivatives with explicit dimensions,
+lazy card loading and verified hashes/size budgets; keep masters out of dist.
+
+LH05 follow-up: the owner rejects a contained illustration block and requests
+an edge-to-edge, first-viewport hero using the supplied flat editorial landscape
+reference, with a 3840×2160 master/export and reusable matching trees, skyline,
+road and vehicle assets. The landscape belongs behind the whole hero, outside
+the content-width container. Preserve a readable left copy area, authentic phone,
+source/date disclosure, the completed six category scenes and OpenCode changes.
+The full-height opening supersedes the earlier equal copy/art-height constraint.
+Record generator-native dimensions separately from any 4K export dimensions.
+
+## LH06 fleet action and Android framing amendment — 2026-10-12
+
+The owner authorizes regenerating only the small-fleet illustration: a person
+actively organizing fuel costs beside a few vehicles, in the same soft 3D family
+as the other five cards and retaining the exclusive rose accent. The other five
+artworks remain byte-identical. The landscape remains full bleed, while header
+controls and hero foreground use the site's standard 72rem container and 12px
+gutters. Refine the device as an Android handset with a centered small punch-hole
+camera, subtle metal frame, narrow bezels and side controls; no iOS notch. Keep
+the authentic Android screenshot untouched, selecting at least the existing
+720px derivative for a sharper display. Keep source badges outside the screen.
+
+## LH07 minimal opening amendment — 2026-10-12
+
+The owner explicitly rejects the illustrated hero background and authorizes a
+minimal professional opening instead. Remove the landscape from the homepage
+and emitted runtime art manifest; retain generated masters for later reuse.
+Use a clean neutral background, restrained geometric device support, balanced
+typography/spacing and the existing authentic Android mockup. Header/foreground
+keep the standard container. Preserve six card artworks, current buttons/copy,
+source/date disclosures, prelaunch status and black/grayscale dark mode. The
+latest instruction supersedes the LH05/LH06 landscape presentation requirements.
