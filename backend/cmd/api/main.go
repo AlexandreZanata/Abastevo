@@ -915,14 +915,8 @@ func run() error {
 		IdleTimeout:       httpserver.DefaultIdleTimeout,
 		ShutdownTimeout:   cfg.ShutdownTimeout,
 		MaxBodyBytes:      cfg.MaxBodyBytes,
-		BodyLimit: func(r *http.Request) int64 {
-			parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-			if r.Method == http.MethodPut && len(parts) == 4 && parts[0] == "v1" && parts[1] == "uploads" && parts[3] == "bytes" {
-				return evidencedomain.MaxUploadBytes + 1
-			}
-			return cfg.MaxBodyBytes
-		},
-		Logger: logger,
+		BodyLimit:         requestBodyLimit(cfg),
+		Logger:            logger,
 	}, router)
 	if err != nil {
 		return err
