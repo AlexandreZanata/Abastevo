@@ -17,8 +17,8 @@ test('essential content and links are present in static HTML without JS', () => 
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
     // 1. Heading and primary identity
-    assert.match(indexHtml, /<h1[^>]*>Preços de combustíveis<br>mais claros <span>para o Brasil\.<\/span><\/h1>/);
-    assert.match(indexHtml, /O Abastevo combina dados oficiais da ANP com informações da comunidade/);
+    assert.match(indexHtml, /<h1[^>]*>Mais informação<br>para quem vive<br><span>na estrada\.<\/span><\/h1>/);
+    assert.match(indexHtml, /Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas\./);
 
     // 2. Status line
     assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);

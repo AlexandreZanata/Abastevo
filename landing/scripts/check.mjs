@@ -216,7 +216,7 @@ export function checkDist(options = {}) {
   const indexHtmlPath = path.join(distDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
     const indexContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    if (!indexContent.includes('Preços de combustíveis<br>mais claros <span>para o Brasil.</span>')) {
+    if (!indexContent.includes('Mais informação<br>para quem vive<br><span>na estrada.</span>')) {
       errors.push('index.html is missing main H1 text');
     }
     if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Projeto open source')) {
