@@ -717,4 +717,33 @@
     <string name="capture_queue_retrying">送信はまだ保留中です。自動的に再試行します。コミュニティに戻れます。</string>
     <string name="capture_sent_pending_validation">サーバーが受信しました。検証はまだ進行中です。</string>
     <string name="fuel_product_gasoline_premium_grade">プレミアムガソリン</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">この投稿は役に立ちましたか？</string>
+    <string name="community_helpful_counts">役に立った %1$d · 役に立たなかった %2$d</string>
+    <string name="community_helpful_choice">あなたの選択: %1$s</string>
+    <string name="community_helpful_helpful">役に立った</string>
+    <string name="community_helpful_not_helpful">役に立たなかった</string>
+    <string name="community_helpful_remove">自分の投票を取り消す</string>
+    <string name="community_helpful_voted">投票を記録しました。ご協力ありがとうございます。</string>
+    <string name="community_helpful_replayed">記録済みです。追加の投票は集計されません。</string>
+    <string name="community_helpful_removed">投票を取り消しました。</string>
+    <string name="community_helpful_rejected">記録されませんでした（%1$s）</string>
+    <string name="community_helpful_under_review">コミュニティが集計結果を確認中</string>
+    <string name="community_helpful_report">報告する</string>
+    <string name="community_helpful_guest">投票するには無料アカウントにログインしてください</string>
+    <string name="community_helpful_guest_body">投票には無料アカウントが必要です。同じ識別情報による重複投票は再集計されません。閲覧は引き続き匿名で利用できます。</string>
+    <string name="training_consent_title">価格認識を改善する</string>
+    <string name="training_consent_body">明示的に許可した写真の処理済みコピーを使って、価格認識の改善にご協力ください。元の写真は審査の処理内にとどまり、同意するまで収集は無効です。</string>
+    <string name="training_consent_on">オン</string>
+    <string name="training_consent_off">オフ</string>
+    <string name="training_consent_terms">利用条件: %1$s</string>
+    <string name="training_consent_regrant">前回の確認後に利用条件が変更されました。もう一度確認し、同意してください。</string>
+    <string name="training_consent_pending">同意の撤回は送信待ちです。次回の接続時に送信されます。</string>
+    <string name="training_consent_delete_note">オフにすると、学習への利用停止とコピーの削除のリクエストが保存されます。サーバーの確認には接続が必要な場合があります。</string>
+    <string name="training_consent_rights">権利とお問い合わせ</string>
+    <string name="training_consent_rejected">記録されませんでした（%1$s）</string>
+    <string name="training_consent_offline">接続されていません。オンラインになってから再試行してください。</string>
+    <string name="training_photo_opt_in">この写真の学習用審査を許可する</string>
+    <string name="training_photo_opt_in_locked">先にプライバシー設定で学習への同意が必要です</string>
 </resources>

@@ -717,4 +717,33 @@
     <string name="capture_queue_retrying">L’envoi est toujours en attente. Nous réessaierons automatiquement ; vous pouvez revenir à la communauté.</string>
     <string name="capture_sent_pending_validation">Reçus par le serveur. La validation est toujours en cours.</string>
     <string name="fuel_product_gasoline_premium_grade">Essence premium</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">Cette contribution a-t-elle été utile ?</string>
+    <string name="community_helpful_counts">%1$d utile · %2$d pas utile</string>
+    <string name="community_helpful_choice">Votre choix : %1$s</string>
+    <string name="community_helpful_helpful">Utile</string>
+    <string name="community_helpful_not_helpful">Pas utile</string>
+    <string name="community_helpful_remove">Retirer mon vote</string>
+    <string name="community_helpful_voted">Vote enregistré. Merci pour votre avis.</string>
+    <string name="community_helpful_replayed">Déjà enregistré — aucun vote supplémentaire comptabilisé.</string>
+    <string name="community_helpful_removed">Vote retiré.</string>
+    <string name="community_helpful_rejected">Non enregistré (%1$s)</string>
+    <string name="community_helpful_under_review">Décomptes en cours de vérification par la communauté</string>
+    <string name="community_helpful_report">Signaler</string>
+    <string name="community_helpful_guest">Connectez-vous à un compte gratuit pour voter</string>
+    <string name="community_helpful_guest_body">Un compte gratuit est nécessaire pour voter. Les votes répétés de votre identité ne sont pas comptés à nouveau. La consultation reste anonyme.</string>
+    <string name="training_consent_title">Améliorer la reconnaissance des prix</string>
+    <string name="training_consent_body">Aidez à améliorer la reconnaissance des prix grâce à des copies traitées des photos que vous autorisez explicitement. Les originaux restent dans le processus de vérification et la collecte reste désactivée sans votre accord.</string>
+    <string name="training_consent_on">Activé</string>
+    <string name="training_consent_off">Désactivé</string>
+    <string name="training_consent_terms">Conditions : %1$s</string>
+    <string name="training_consent_regrant">Les conditions ont changé depuis votre dernière lecture — consultez-les et confirmez à nouveau.</string>
+    <string name="training_consent_pending">Révocation en attente — elle sera envoyée à la prochaine connexion.</string>
+    <string name="training_consent_delete_note">La désactivation enregistre votre demande de cesser l’utilisation pour l’entraînement et de supprimer vos copies. La confirmation du serveur peut nécessiter une connexion.</string>
+    <string name="training_consent_rights">Vos droits et contact</string>
+    <string name="training_consent_rejected">Non enregistré (%1$s)</string>
+    <string name="training_consent_offline">Hors connexion — réessayez une fois en ligne.</string>
+    <string name="training_photo_opt_in">Autoriser cette photo pour une vérification destinée à l’entraînement</string>
+    <string name="training_photo_opt_in_locked">Autorisez d’abord l’entraînement dans les paramètres de confidentialité</string>
 </resources>

@@ -8,6 +8,7 @@ import com.anpfuel.domain.repository.TrainingConsentStatus
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -182,4 +183,86 @@ class TrainingConsentViewModelTest {
             (state as TrainingConsentUiState.Rejected).kind,
         )
     }
+
+    @Test
+    fun `late refresh cannot disclose previous account state`() = runTest(dispatcher) {
+        val old = CompletableDeferred<TrainingConsentOutcome>()
+        coEvery { useCase.syncPending(TrainingConsentCaller("acct-A")) } coAnswers { old.await() }
+        coEvery { useCase.syncPending(TrainingConsentCaller("acct-B")) } returns TrainingConsentOutcome.Status(offStatus(), false)
+        val vm = TrainingConsentViewModel(useCase).also { it.ioDispatcher = dispatcher }
+        vm.prepare("acct-A")
+        advanceUntilIdle()
+        vm.prepare("acct-B")
+        advanceUntilIdle()
+        old.complete(TrainingConsentOutcome.Status(grantedStatus(), false))
+        advanceUntilIdle()
+        assertEquals(false, (vm.state.value as TrainingConsentUiState.Content).granted)
+    }
+
+    @Test
+    fun `logout discards in flight result and clears retry authority`() = runTest(dispatcher) {
+        val old = CompletableDeferred<TrainingConsentOutcome>()
+        coEvery { useCase.syncPending(any()) } coAnswers { old.await() }
+        val vm = TrainingConsentViewModel(useCase).also { it.ioDispatcher = dispatcher }
+        vm.prepare("acct-A")
+        advanceUntilIdle()
+        vm.prepare("")
+        old.complete(TrainingConsentOutcome.Status(grantedStatus(), false))
+        advanceUntilIdle()
+        assertEquals(TrainingConsentUiState.Guest, vm.state.value)
+        vm.retry()
+        vm.setEnabled(false, "v1", "digest")
+        advanceUntilIdle()
+        coVerify(exactly = 1) { useCase.syncPending(any()) }
+        coVerify(exactly = 0) { useCase.revoke(any()) }
+    }
+
+    @Test
+    fun `old update cannot reload or release new owner update guard`() = runTest(dispatcher) {
+        val old = CompletableDeferred<TrainingConsentOutcome>()
+        val next = CompletableDeferred<TrainingConsentOutcome>()
+        coEvery { useCase.syncPending(any()) } returns TrainingConsentOutcome.Status(offStatus(), false)
+        coEvery { useCase.revoke(TrainingConsentCaller("acct-A")) } coAnswers { old.await() }
+        coEvery { useCase.revoke(TrainingConsentCaller("acct-B")) } coAnswers { next.await() }
+        val vm = TrainingConsentViewModel(useCase).also { it.ioDispatcher = dispatcher }
+        vm.prepare("acct-A")
+        advanceUntilIdle()
+        vm.setEnabled(false, "v1", "digest")
+        advanceUntilIdle()
+        vm.prepare("acct-B")
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TrainingConsentUiState.Content)
+        vm.setEnabled(false, "v1", "digest")
+        advanceUntilIdle()
+        old.complete(TrainingConsentOutcome.Revoked(
+            com.anpfuel.domain.repository.TrainingConsentReceipt("REVOKED", 2, "v1", false, true),
+        ))
+        advanceUntilIdle()
+        assertEquals(TrainingConsentUiState.Updating, vm.state.value)
+        vm.setEnabled(false, "v1", "digest")
+        advanceUntilIdle()
+        coVerify(exactly = 1) { useCase.revoke(TrainingConsentCaller("acct-B")) }
+        coVerify(exactly = 1) { useCase.syncPending(TrainingConsentCaller("acct-A")) }
+        next.complete(TrainingConsentOutcome.RevocationPending)
+        advanceUntilIdle()
+        assertEquals(TrainingConsentUiState.Pending, vm.state.value)
+    }
+
+    @Test
+    fun `older same owner refresh cannot overwrite newer refresh`() = runTest(dispatcher) {
+        val old = CompletableDeferred<TrainingConsentOutcome>()
+        var calls = 0
+        coEvery { useCase.syncPending(any()) } coAnswers {
+            if (calls++ == 0) old.await() else TrainingConsentOutcome.Status(offStatus(), false)
+        }
+        val vm = TrainingConsentViewModel(useCase).also { it.ioDispatcher = dispatcher }
+        vm.prepare("acct-A")
+        advanceUntilIdle()
+        vm.refresh()
+        advanceUntilIdle()
+        old.complete(TrainingConsentOutcome.Status(grantedStatus(), false))
+        advanceUntilIdle()
+        assertEquals(false, (vm.state.value as TrainingConsentUiState.Content).granted)
+    }
+
 }

@@ -717,4 +717,33 @@
     <string name="capture_queue_retrying">Der Versand steht noch aus. Wir versuchen es automatisch erneut; du kannst zur Community zurückkehren.</string>
     <string name="capture_sent_pending_validation">Vom Server empfangen. Die Prüfung läuft noch.</string>
     <string name="fuel_product_gasoline_premium_grade">Premiumbenzin</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">War dieser Beitrag hilfreich?</string>
+    <string name="community_helpful_counts">%1$d hilfreich · %2$d nicht hilfreich</string>
+    <string name="community_helpful_choice">Ihre Auswahl: %1$s</string>
+    <string name="community_helpful_helpful">Hilfreich</string>
+    <string name="community_helpful_not_helpful">Nicht hilfreich</string>
+    <string name="community_helpful_remove">Meine Stimme entfernen</string>
+    <string name="community_helpful_voted">Stimme gespeichert. Vielen Dank für Ihre Bewertung.</string>
+    <string name="community_helpful_replayed">Bereits gespeichert — keine zusätzliche Stimme gezählt.</string>
+    <string name="community_helpful_removed">Stimme entfernt.</string>
+    <string name="community_helpful_rejected">Nicht gespeichert (%1$s)</string>
+    <string name="community_helpful_under_review">Stimmenzahlen werden von der Community geprüft</string>
+    <string name="community_helpful_report">Melden</string>
+    <string name="community_helpful_guest">Zum Abstimmen bei einem kostenlosen Konto anmelden</string>
+    <string name="community_helpful_guest_body">Zum Abstimmen ist ein kostenloses Konto erforderlich. Wiederholte Stimmen Ihrer Identität werden nicht erneut gezählt. Das Lesen bleibt anonym.</string>
+    <string name="training_consent_title">Preiserkennung verbessern</string>
+    <string name="training_consent_body">Helfen Sie, die Preiserkennung mit bearbeiteten Kopien ausdrücklich freigegebener Fotos zu verbessern. Originale bleiben im Prüfprozess. Die Erfassung bleibt ohne Ihre Einwilligung ausgeschaltet.</string>
+    <string name="training_consent_on">Ein</string>
+    <string name="training_consent_off">Aus</string>
+    <string name="training_consent_terms">Bedingungen: %1$s</string>
+    <string name="training_consent_regrant">Die Bedingungen haben sich seit Ihrer letzten Prüfung geändert — bitte erneut lesen und bestätigen.</string>
+    <string name="training_consent_pending">Widerruf ausstehend — wird bei der nächsten Verbindung gesendet.</string>
+    <string name="training_consent_delete_note">Beim Ausschalten wird Ihre Anfrage gespeichert, die Trainingsnutzung zu beenden und Ihre Kopien zu löschen. Die Serverbestätigung kann eine Verbindung erfordern.</string>
+    <string name="training_consent_rights">Ihre Rechte und Kontakt</string>
+    <string name="training_consent_rejected">Nicht gespeichert (%1$s)</string>
+    <string name="training_consent_offline">Keine Verbindung — versuchen Sie es erneut, sobald Sie online sind.</string>
+    <string name="training_photo_opt_in">Dieses Foto zur Prüfung für das Training freigeben</string>
+    <string name="training_photo_opt_in_locked">Erteilen Sie zuerst die Einwilligung zum Training in den Datenschutzeinstellungen</string>
 </resources>

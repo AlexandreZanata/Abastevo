@@ -717,4 +717,33 @@
     <string name="capture_queue_retrying">发送仍在等待中。我们将自动重试；您可以返回社区。</string>
     <string name="capture_sent_pending_validation">服务器已收到。验证仍在进行中。</string>
     <string name="fuel_product_gasoline_premium_grade">高标号汽油</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">这条贡献有帮助吗？</string>
+    <string name="community_helpful_counts">%1$d 有帮助 · %2$d 没有帮助</string>
+    <string name="community_helpful_choice">你的选择：%1$s</string>
+    <string name="community_helpful_helpful">有帮助</string>
+    <string name="community_helpful_not_helpful">没有帮助</string>
+    <string name="community_helpful_remove">撤销我的投票</string>
+    <string name="community_helpful_voted">投票已记录。感谢你的评价。</string>
+    <string name="community_helpful_replayed">已经记录，未重复计票。</string>
+    <string name="community_helpful_removed">投票已撤销。</string>
+    <string name="community_helpful_rejected">未记录（%1$s）</string>
+    <string name="community_helpful_under_review">社区正在审核计票结果</string>
+    <string name="community_helpful_report">举报</string>
+    <string name="community_helpful_guest">登录免费账户即可投票</string>
+    <string name="community_helpful_guest_body">投票需要免费账户。同一身份的重复投票不会重复计票。浏览仍可匿名进行。</string>
+    <string name="training_consent_title">改进价格识别</string>
+    <string name="training_consent_body">你可以明确授权使用照片的处理后副本，帮助改进价格识别。原始照片保留在审核流程中，未经你同意，收集功能保持关闭。</string>
+    <string name="training_consent_on">开启</string>
+    <string name="training_consent_off">关闭</string>
+    <string name="training_consent_terms">条款：%1$s</string>
+    <string name="training_consent_regrant">自你上次查看后条款已更改，请重新查看并确认。</string>
+    <string name="training_consent_pending">撤回同意的请求待发送，将在下次连接时发送。</string>
+    <string name="training_consent_delete_note">关闭后，会保存停止用于训练和删除副本的请求。服务器确认可能需要网络连接。</string>
+    <string name="training_consent_rights">你的权利与联系方式</string>
+    <string name="training_consent_rejected">未记录（%1$s）</string>
+    <string name="training_consent_offline">没有连接，请联网后重试。</string>
+    <string name="training_photo_opt_in">允许此照片用于训练审核</string>
+    <string name="training_photo_opt_in_locked">请先在隐私设置中同意用于训练</string>
 </resources>

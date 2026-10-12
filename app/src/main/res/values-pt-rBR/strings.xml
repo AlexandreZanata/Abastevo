@@ -730,4 +730,33 @@
     <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
     <string name="developer_capture_change_station">Trocar de posto</string>
     <string name="fuel_product_gasoline_premium_grade">Gasolina premium</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">Esta contribuição foi útil?</string>
+    <string name="community_helpful_counts">%1$d útil · %2$d não útil</string>
+    <string name="community_helpful_choice">Sua escolha: %1$s</string>
+    <string name="community_helpful_helpful">Útil</string>
+    <string name="community_helpful_not_helpful">Não útil</string>
+    <string name="community_helpful_remove">Remover meu voto</string>
+    <string name="community_helpful_voted">Voto registrado. Obrigado pela avaliação.</string>
+    <string name="community_helpful_replayed">Já registrado — nenhum voto adicional foi contado.</string>
+    <string name="community_helpful_removed">Voto removido.</string>
+    <string name="community_helpful_rejected">Não registrado (%1$s)</string>
+    <string name="community_helpful_under_review">Contagens em análise pela comunidade</string>
+    <string name="community_helpful_report">Denunciar</string>
+    <string name="community_helpful_guest">Entre em uma conta gratuita para votar</string>
+    <string name="community_helpful_guest_body">É preciso ter uma conta gratuita para votar. Votos repetidos da sua identidade não são contados novamente. A consulta continua anônima.</string>
+    <string name="training_consent_title">Melhorar o reconhecimento de preços</string>
+    <string name="training_consent_body">Ajude a melhorar o reconhecimento de preços com cópias tratadas das fotos que você autorizar explicitamente. Os originais permanecem no fluxo de análise e a coleta fica desativada até sua autorização.</string>
+    <string name="training_consent_on">Ativado</string>
+    <string name="training_consent_off">Desativado</string>
+    <string name="training_consent_terms">Termos: %1$s</string>
+    <string name="training_consent_regrant">Os termos mudaram desde sua última análise — leia e confirme novamente.</string>
+    <string name="training_consent_pending">Revogação pendente — será enviada na próxima conexão.</string>
+    <string name="training_consent_delete_note">Ao desativar, seu pedido para interromper o uso no treinamento e excluir as cópias é salvo. A confirmação do servidor pode exigir conexão.</string>
+    <string name="training_consent_rights">Seus direitos e contato</string>
+    <string name="training_consent_rejected">Não registrado (%1$s)</string>
+    <string name="training_consent_offline">Sem conexão — tente novamente quando estiver online.</string>
+    <string name="training_photo_opt_in">Autorizar esta foto para análise de treinamento</string>
+    <string name="training_photo_opt_in_locked">É preciso autorizar o treinamento primeiro nas configurações de privacidade</string>
 </resources>

@@ -717,4 +717,33 @@
     <string name="capture_queue_retrying">Отправка ещё ожидается. Мы автоматически повторим попытку; можно вернуться в сообщество.</string>
     <string name="capture_sent_pending_validation">Получено сервером. Проверка ещё продолжается.</string>
     <string name="fuel_product_gasoline_premium_grade">Премиальный бензин</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">Был ли этот вклад полезен?</string>
+    <string name="community_helpful_counts">%1$d полезно · %2$d не полезно</string>
+    <string name="community_helpful_choice">Ваш выбор: %1$s</string>
+    <string name="community_helpful_helpful">Полезно</string>
+    <string name="community_helpful_not_helpful">Не полезно</string>
+    <string name="community_helpful_remove">Удалить мой голос</string>
+    <string name="community_helpful_voted">Голос сохранён. Спасибо за оценку.</string>
+    <string name="community_helpful_replayed">Уже сохранено — дополнительный голос не учтён.</string>
+    <string name="community_helpful_removed">Голос удалён.</string>
+    <string name="community_helpful_rejected">Не сохранено (%1$s)</string>
+    <string name="community_helpful_under_review">Сообщество проверяет результаты голосования</string>
+    <string name="community_helpful_report">Пожаловаться</string>
+    <string name="community_helpful_guest">Войдите в бесплатный аккаунт, чтобы голосовать</string>
+    <string name="community_helpful_guest_body">Для голосования нужен бесплатный аккаунт. Повторные голоса вашей идентичности не учитываются снова. Просмотр остаётся анонимным.</string>
+    <string name="training_consent_title">Улучшение распознавания цен</string>
+    <string name="training_consent_body">Помогите улучшить распознавание цен с помощью обработанных копий фотографий, которые вы явно разрешили использовать. Оригиналы остаются в процессе проверки, а сбор выключен без вашего согласия.</string>
+    <string name="training_consent_on">Включено</string>
+    <string name="training_consent_off">Выключено</string>
+    <string name="training_consent_terms">Условия: %1$s</string>
+    <string name="training_consent_regrant">Условия изменились с момента вашего последнего ознакомления — прочитайте и подтвердите их снова.</string>
+    <string name="training_consent_pending">Отзыв согласия ожидает отправки — он будет отправлен при следующем подключении.</string>
+    <string name="training_consent_delete_note">При выключении сохраняется ваш запрос прекратить использование для обучения и удалить копии. Для подтверждения сервера может потребоваться подключение.</string>
+    <string name="training_consent_rights">Ваши права и контакты</string>
+    <string name="training_consent_rejected">Не сохранено (%1$s)</string>
+    <string name="training_consent_offline">Нет подключения — повторите попытку, когда будете онлайн.</string>
+    <string name="training_photo_opt_in">Разрешить проверку этой фотографии для обучения</string>
+    <string name="training_photo_opt_in_locked">Сначала разрешите обучение в настройках конфиденциальности</string>
 </resources>

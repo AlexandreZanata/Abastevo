@@ -504,7 +504,7 @@
     <string name="community_helpful_under_review">Counts under community review</string>
     <string name="community_helpful_report">Report</string>
     <string name="community_helpful_guest">Sign in to a free account to vote</string>
-    <string name="community_helpful_guest_body">Votes need a free account so one person holds one vote. Browsing stays anonymous.</string>
+    <string name="community_helpful_guest_body">Votes need a free account. Repeated votes from your identity are not counted again. Browsing stays anonymous.</string>
 
     <!-- Training consent (CS11B: optional, default OFF, server authoritative) -->
     <string name="training_consent_title">Improve price recognition</string>
@@ -514,7 +514,7 @@
     <string name="training_consent_terms">Terms: %1$s</string>
     <string name="training_consent_regrant">Terms changed since your last review — please review and confirm again.</string>
     <string name="training_consent_pending">Revocation pending — it uploads on the next connection.</string>
-    <string name="training_consent_delete_note">Turning off stops new permissions immediately and deletes your training copies.</string>
+    <string name="training_consent_delete_note">Turning off saves your request to stop training use and delete your training copies. Server confirmation may require a connection.</string>
     <string name="training_consent_rights">Your rights and contact</string>
     <string name="training_consent_rejected">Not recorded (%1$s)</string>
     <string name="training_consent_offline">No connection — retry when online.</string>

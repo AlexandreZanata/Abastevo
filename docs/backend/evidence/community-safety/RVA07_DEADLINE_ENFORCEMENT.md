@@ -604,3 +604,10 @@ repeat the full evidence SQL/S3 race and affected unit/vet matrix, and verify
 the source SHA-256 before/after testing and exact Git blob at commit. Earlier
 results describe the tested working tree, not that incomplete commit. No push
 or merge occurred. The corrected successor supersedes that closure claim.
+
+Corrected successor `7f3c9e7` passed the repeated full evidence SQL/private-S3
+race matrix (37.961s store), affected unit race and vet. SHA-256 before/after
+testing and the committed Store blob all matched
+`f495194cda7304ad0bb2949a1db80d09acf24de9976b4ab0f60a847a8fc5c525`.
+Use this successor for the B3.3c.2 local checkpoint. External C proofs and
+measured deployment budget remain owed.
