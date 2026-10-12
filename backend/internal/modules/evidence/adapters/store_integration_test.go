@@ -408,6 +408,11 @@ func TestNoDestructivePaths(t *testing.T) {
 	if n := strings.Count(upper, "DELETE FROM EVIDENCE_OBJECTS"); n != 1 {
 		t.Errorf("objects deletes = %d, want exactly the 90-day purge", n)
 	}
+	for _, guard := range []string{"O.FINAL_DELETED_AT IS NOT NULL", "F.STATE = 'PURGED' AND F.PURGED_AT IS NOT NULL", "LIMIT 100\n    FOR UPDATE OF O SKIP LOCKED"} {
+		if !strings.Contains(upper, guard) {
+			t.Errorf("missing confirmed bounded hash purge guard: %s", guard)
+		}
+	}
 }
 
 func testSessionAt(id, client string, createdAt time.Time) domain.Session {
@@ -569,8 +574,15 @@ func TestStaleFinalsPurgeAndDHashSignals(t *testing.T) {
 		t.Fatalf("dhash matches = %d, %v (want all three)", len(matches), err)
 	}
 	n, err := s.PurgeObjectsBefore(ctx, now.Add(-90*24*time.Hour))
+	if err != nil || n != 0 {
+		t.Fatalf("purged unconfirmed ancient copy = %d, %v", n, err)
+	}
+	if deleted, err := s.DeleteFinalCopy(ctx, ancientObj.ID, ancientObj.FinalKey, now, func(context.Context, string) error { return nil }); err != nil || !deleted {
+		t.Fatal("confirm synthetic absence", deleted, err)
+	}
+	n, err = s.PurgeObjectsBefore(ctx, now.Add(-90*24*time.Hour))
 	if err != nil || n != 1 {
-		t.Fatalf("purged = %d, %v (want the ancient row)", n, err)
+		t.Fatalf("confirmed purge = %d, %v (want the ancient row)", n, err)
 	}
 	matches, err = s.FindByDHash(ctx, 123, now.Add(-100*24*time.Hour))
 	if err != nil || len(matches) != 2 {

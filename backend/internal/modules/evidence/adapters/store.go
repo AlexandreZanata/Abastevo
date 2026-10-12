@@ -683,8 +683,8 @@ func (s *Store) MarkFinalDeleted(ctx context.Context, id string) error {
 	return nil
 }
 
-// PurgeObjectsBefore deletes object rows past the hash-retention bound,
-// returning the purged count for the observable sweep report.
+// PurgeObjectsBefore deletes at most 100 old hash rows with both confirmed
+// byte-deletion receipts. Uncertain destinations retain recovery inventory.
 func (s *Store) PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	return evidence.New(s.pool).PurgeObjectsBefore(ctx, pgTime(cutoff))
 }

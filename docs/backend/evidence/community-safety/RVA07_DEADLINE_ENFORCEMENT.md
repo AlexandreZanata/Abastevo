@@ -301,3 +301,45 @@ predeadline dispatch/margin, total pass/admission/capacity envelope, bounded
 metadata retention, actual autonomous wall-time run, provider/version/backup/
 temporary-copy and device acceptance. These tests inject lease/deadline state;
 they do not certify elapsed 24h compliance or production readiness.
+
+## B3.3a metadata-retention opening
+
+B-BR-RVA07-5: a 90-day hash purge may remove at most 100 object rows per
+invocation, oldest first with a stable ID tie-break. It must retain every
+unconfirmed destination: require both the object deletion receipt and the
+matching terminal PURGED output receipt. Missing inventory is uncertainty, not
+proof of absence. Concurrent passes skip locked candidates; no network effect
+is performed by this metadata transaction. A partial hot index excludes live
+object rows. Keep the copy inventory itself for the separate receipt-retention
+review, rather than erasing recovery authority in a hash cleanup.
+
+BUC: an ancient live object survives cleanup; a deletion marker alone also
+survives without matching terminal inventory. Confirmed copies drain in
+100-row resumable batches across store reconstruction. An injected transaction
+failure commits no deletion. Upgrade adds only the partial index and replay
+is empty. EXPLAIN the actual purge over terminal/live history. This checkpoint
+does not close scheduling, admission capacity or autonomous deadline proof.
+
+## B3.3a local checkpoint — confirmed bounded metadata purge
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for metadata purge only.
+Validation: PASS. Tested delta on `0bd5fc3`. RED: the old purge removed an
+ancient object while its final bytes were unconfirmed. GREEN: a single
+statement selects at most 100 oldest confirmed objects with a stable ID
+tie-break and SKIP LOCKED, requiring both the object deletion marker and
+terminal PURGED inventory receipt. Missing or pending inventory is retained.
+Append-only 000070 adds the partial confirmed-object index; no applied
+migration or historical evidence was rewritten. Copy receipts remain intact.
+
+Real PostgreSQL tests passed for missing/unconfirmed receipts, 205-row
+100/100/5/0 restart convergence, 12 concurrent invocations with no lost/double
+count, actual delete-trigger failure with atomic rollback, and 000070-only
+upgrade/replay retaining an unconfirmed copy. EXPLAIN ANALYZE of the actual
+query against 10,000 live objects uses the partial purge index without an
+object sequential scan (the test transaction rolls back its measured DELETE).
+The prior hash test now requires confirmed cleanup before removing metadata.
+Targeted SQL race passed (3.119s), full evidence SQL/private S3 race passed
+(22.238s), affected evidence/API/worker/ops unit race, vet, sqlc vet, gofmt and
+diff checks passed. Staged secret review runs before commit. No provider,
+autonomous 24h or release claim. Next: B3.3b predeadline cadence/pass fairness
+and fresh lease clocks, then B3.3c admission/capacity and C external proofs.

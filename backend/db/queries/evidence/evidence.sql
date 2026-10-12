@@ -170,8 +170,16 @@ SET final_deleted_at = now()
 WHERE id = @id AND final_deleted_at IS NULL;
 
 -- name: PurgeObjectsBefore :execrows
-DELETE FROM evidence_objects
-WHERE created_at < @cutoff;
+WITH confirmed AS (
+    SELECT o.id FROM evidence_objects o
+    JOIN evidence_final_outputs f ON f.final_key = o.final_key
+    WHERE o.created_at < @cutoff AND o.final_deleted_at IS NOT NULL
+      AND f.state = 'PURGED' AND f.purged_at IS NOT NULL
+    ORDER BY o.created_at, o.id
+    LIMIT 100
+    FOR UPDATE OF o SKIP LOCKED
+)
+DELETE FROM evidence_objects o USING confirmed c WHERE o.id = c.id;
 
 -- SEC03-D intake-health accounting (bounded aggregates only: counts,
 -- declared-byte sums and one timestamp — never keys, hashes or

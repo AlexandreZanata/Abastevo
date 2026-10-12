@@ -1460,8 +1460,16 @@ func (q *Queries) PendingErasureSessions(ctx context.Context, contributorRef str
 }
 
 const purgeObjectsBefore = `-- name: PurgeObjectsBefore :execrows
-DELETE FROM evidence_objects
-WHERE created_at < $1
+WITH confirmed AS (
+    SELECT o.id FROM evidence_objects o
+    JOIN evidence_final_outputs f ON f.final_key = o.final_key
+    WHERE o.created_at < $1 AND o.final_deleted_at IS NOT NULL
+      AND f.state = 'PURGED' AND f.purged_at IS NOT NULL
+    ORDER BY o.created_at, o.id
+    LIMIT 100
+    FOR UPDATE OF o SKIP LOCKED
+)
+DELETE FROM evidence_objects o USING confirmed c WHERE o.id = c.id
 `
 
 func (q *Queries) PurgeObjectsBefore(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
