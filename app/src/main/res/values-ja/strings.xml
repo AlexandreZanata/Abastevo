@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">記録されませんでした（%1$s）</string>
 
     <!-- コミュニティプライバシー（P10-T08：デバイスから送信される内容） -->
-    <string name="community_privacy_footnote">匿名：アカウント不要です。ステーション、価格、条件を送信します — 写真を添付した場合のみ 24 時間写真も送信されます。</string>
+    <string name="community_privacy_footnote">送信内容はステーション、価格、条件です。添付写真は確認に使用します。プライバシー情報は設定で確認できます。</string>
     <string name="community_privacy_keys">お使いのデバイスが唯一の鍵を保持します。紛失するとこの匿名 ID は終了します。</string>
 
     <!-- コミュニティキャプチャ（P10-T08 i18n） -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">コミュニティ</string>
     <string name="community_header_subtitle">地域の給油所の活動と合意による検証</string>
     <string name="community_empty_title">最近の更新はありません</string>
-    <string name="community_empty_hint">燃料価格を投稿して地域の運転者を支援しましょう。写真は一時的な監査証拠として最大24時間保存されます。</string>
+    <string name="community_empty_hint">燃料価格を投稿して地域の運転者を支援しましょう。添付写真は確認のため一時的に使用します。プライバシー情報は設定で確認できます。</string>
     <string name="community_action_contribute">価格を投稿</string>
     <string name="community_rules_title">コミュニティの検証ルール</string>
     <string name="community_rules_body">価格は投稿者の合意で検証されます。日付付きのANPデータと最新の投稿は混同しません。</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">通報と異議申立て</string>
     <string name="help_report_body">有効なアカウントは不正を通報できます。自動削除はされず、権限を持つ管理者が審査します。異議申立ての新しい理由は新規案件として扱われます。</string>
     <string name="help_privacy_title">プライバシー</string>
-    <string name="help_privacy_body">匿名閲覧にアカウントは不要で、座標は保存しません。監査用写真は最大24時間保存されます。</string>
+    <string name="help_privacy_body">匿名閲覧にアカウントは不要です。正確なGPS位置は公開しません。写真の利用方法と権利については設定をご覧ください。</string>
     <string name="profile_tool_week_picker_title">調査週</string>
     <string name="profile_tool_week_picker_subtitle">過去のANP週次調査を選択</string>
     <string name="profile_privacy_section">プライバシーと参加</string>
-    <string name="profile_privacy_body">正確なGPS位置は公開しません。検証写真の全コピーは24時間以内に失効します。有料機能は順位や信頼に影響しません。</string>
+    <string name="profile_privacy_body">正確なGPS位置は公開しません。写真は確認のため一時的に使用します。プライバシー情報は設定で確認できます。有料機能は順位や信頼に影響しません。</string>
     <string name="onboarding_title_contribute">正直に投稿する</string>
     <string name="onboarding_body_contribute">安全な公共の場所から価格表示を撮影し、金額を読みやすく保ち、正確な条件を選んでください。価格や人を捏造しないでください。</string>
     <string name="station_detail_anp_title">ANP参考価格</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">代表権と管理</string>
     <string name="station_claim_title">給油所の代表権</string>
     <string name="station_claim_explanation">無料アカウントで範囲を限定した代表権を申請できます。独立審査で署名と企業の権限を検証します。書類の送信だけではアクセス権は付与されません。</string>
-    <string name="station_claim_privacy">秘密鍵、パスワード、PFX、P12は送信しないでください。署名済みPDFのみ、最大5 MiBです。スキャンを含むファイルの保存は最大24時間です。</string>
+    <string name="station_claim_privacy">秘密鍵、パスワード、PFX、P12は送信しないでください。署名済みPDFのみ、最大5 MiBです。送信前にプライバシー条件をご確認ください。</string>
     <string name="station_claim_role">申請する役割</string>
     <string name="station_claim_manager">管理担当者</string>
     <string name="station_claim_administrator">管理責任者</string>

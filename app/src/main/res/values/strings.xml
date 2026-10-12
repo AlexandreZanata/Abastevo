@@ -30,7 +30,7 @@
     <string name="community_screen_title">Community</string>
     <string name="community_header_subtitle">Local station activity and consensus verification</string>
     <string name="community_empty_title">No recent community updates</string>
-    <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Photos are transient audit evidence kept for up to 24 hours.</string>
+    <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Attached photos are temporary verification evidence. See privacy information in Settings.</string>
     <string name="community_action_contribute">Contribute price</string>
     <string name="community_rules_title">Community verification rules</string>
     <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
@@ -85,11 +85,11 @@
     <string name="help_report_title">Report and appeal</string>
     <string name="help_report_body">Any active account can report abuse. Reports never delete content by themselves; restricted moderators review every case. Disagree? Report again with the new reason — appeals reopen as a new reviewed case.</string>
     <string name="help_privacy_title">Privacy</string>
-    <string name="help_privacy_body">Anonymous browsing needs no account and coordinates are not stored. Photos are transient audit evidence kept for up to 24 hours.</string>
+    <string name="help_privacy_body">Anonymous browsing needs no account. Precise GPS is not published. See photo use and your privacy rights in Settings.</string>
     <string name="profile_tool_week_picker_title">Survey week</string>
     <string name="profile_tool_week_picker_subtitle">Select archived weekly ANP surveys</string>
     <string name="profile_privacy_section">Privacy and participation</string>
-    <string name="profile_privacy_body">No precise GPS is shared publicly. Verification photos expire across all copies within 24 hours. Paid features never affect ranking or trust.</string>
+    <string name="profile_privacy_body">Precise GPS is not published. Photos are temporary verification evidence. See privacy information in Settings. Paid features never affect ranking or trust.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
@@ -524,7 +524,7 @@
     <string name="training_photo_opt_in_locked">Training review needs consent first (Privacy settings)</string>
 
     <!-- Community privacy (P10-T08: what actually leaves the device) -->
-    <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
+    <string name="community_privacy_footnote">Submissions include station, price and conditions. An attached photo is used for verification. See privacy information in Settings.</string>
     <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
 
     <!-- Community capture (P10-T08 i18n: extracted from CaptureScreen) -->
@@ -581,7 +581,7 @@
     <string name="station_profile_claim">Representation and management</string>
     <string name="station_claim_title">Station representation</string>
     <string name="station_claim_explanation">A free account may request scoped representation. Independent review checks the signature and corporate authority. Sending a document grants no access.</string>
-    <string name="station_claim_privacy">Never send private keys, passwords, PFX or P12 files. Signed PDF only, up to 5 MiB. Files with scans use the 24-hour retention cap.</string>
+    <string name="station_claim_privacy">Never send private keys, passwords, PFX or P12 files. Signed PDFs only, up to 5 MiB. Review the privacy conditions before submitting.</string>
     <string name="station_claim_role">Requested role</string>
     <string name="station_claim_manager">Manager</string>
     <string name="station_claim_administrator">Administrator</string>

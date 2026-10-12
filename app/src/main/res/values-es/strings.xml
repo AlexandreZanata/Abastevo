@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">No registrada (%1$s)</string>
 
     <!-- Privacidad de la comunidad (P10-T08: lo que sale del dispositivo) -->
-    <string name="community_privacy_footnote">Anónimo: sin cuenta. Envía estación, precio y condición — y tu foto solo por 24h cuando adjuntas una.</string>
+    <string name="community_privacy_footnote">El envío incluye estación, precio y condiciones. La foto adjunta se usa para verificación. Consulta la privacidad en Ajustes.</string>
     <string name="community_privacy_keys">Tu dispositivo guarda la única clave. Perderla termina esta identidad anónima.</string>
 
     <!-- Captura de la comunidad (P10-T08 i18n) -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">Comunidad</string>
     <string name="community_header_subtitle">Actividad local de estaciones y verificación por consenso</string>
     <string name="community_empty_title">Sin actualizaciones recientes</string>
-    <string name="community_empty_hint">Comparte precios para ayudar a los conductores de tu ciudad. Las fotos son pruebas temporales conservadas hasta 24 horas.</string>
+    <string name="community_empty_hint">Comparte precios para ayudar a los conductores de tu ciudad. Las fotos adjuntas son pruebas temporales de verificación. Consulta la privacidad en Ajustes.</string>
     <string name="community_action_contribute">Aportar precio</string>
     <string name="community_rules_title">Reglas de verificación comunitaria</string>
     <string name="community_rules_body">Los precios se validan por consenso. Los datos ANP fechados nunca se mezclan con reportes actuales de la comunidad.</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">Denunciar y apelar</string>
     <string name="help_report_body">Toda cuenta activa puede denunciar abusos. Las denuncias no borran contenido; moderadores autorizados revisan cada caso. Un motivo nuevo de apelación abre un caso nuevo.</string>
     <string name="help_privacy_title">Privacidad</string>
-    <string name="help_privacy_body">La consulta anónima no requiere cuenta y no guarda coordenadas. Las fotos de auditoría se conservan hasta 24 horas.</string>
+    <string name="help_privacy_body">La consulta anónima no requiere cuenta. El GPS preciso no se publica. Consulta el uso de fotos y tus derechos en Ajustes.</string>
     <string name="profile_tool_week_picker_title">Semana de encuesta</string>
     <string name="profile_tool_week_picker_subtitle">Seleccionar encuestas semanales ANP archivadas</string>
     <string name="profile_privacy_section">Privacidad y participación</string>
-    <string name="profile_privacy_body">No se comparte GPS preciso públicamente. Todas las copias de fotos de verificación caducan en 24 horas. Las funciones de pago no afectan posición ni confianza.</string>
+    <string name="profile_privacy_body">El GPS preciso no se publica. Las fotos son pruebas temporales de verificación. Consulta la privacidad en Ajustes. Las funciones de pago no afectan posición ni confianza.</string>
     <string name="onboarding_title_contribute">Aporta con honestidad</string>
     <string name="onboarding_body_contribute">Fotografía paneles desde lugares públicos seguros, conserva los importes legibles y elige la condición exacta; no inventes precios ni personas.</string>
     <string name="station_detail_anp_title">Precio de referencia ANP</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">Representación y gestión</string>
     <string name="station_claim_title">Representación de la estación</string>
     <string name="station_claim_explanation">Una cuenta gratuita puede solicitar representación limitada. La revisión independiente verifica firma y poderes empresariales. Enviar documentos no concede acceso.</string>
-    <string name="station_claim_privacy">Nunca envíes claves privadas, contraseñas ni archivos PFX/P12. Solo PDF firmado de hasta 5 MiB. Los archivos con escaneos se conservan hasta 24 horas.</string>
+    <string name="station_claim_privacy">Nunca envíes claves privadas, contraseñas ni archivos PFX/P12. Solo PDF firmado de hasta 5 MiB. Consulta las condiciones de privacidad antes de enviar.</string>
     <string name="station_claim_role">Rol solicitado</string>
     <string name="station_claim_manager">Gestor</string>
     <string name="station_claim_administrator">Administrador</string>

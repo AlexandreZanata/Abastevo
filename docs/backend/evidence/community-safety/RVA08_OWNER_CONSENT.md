@@ -229,3 +229,112 @@ The original dev reservation-gate removal remains preserved outside this branch.
 Checkpoint a05cba7 was backed up on GitHub at `codex/owner-consent`; no PR, protected
 merge, main advancement or deployment was performed. Integration waits for the
 remaining authorized construction batch and fresh protected checks, per ADR-018.
+
+## D physical Android consent validation opening — 2026-10-12
+
+B-BR-RVA08-05: the real Settings route must expose the same complete bundled
+terms and independent rights card. Reading is not consent; checking and sending
+remain explicit. Public privacy summaries must not claim unqualified deletion
+of every copy within 24h, or absence of all coordinate storage, while the
+provider/backup/elapsed acceptance remains OWED. The 24h operational requirement
+is unchanged. Summaries point to the actual Settings privacy information.
+
+BUC: on the connected physical Android device, run the native checkbox,
+account-key, disk-persistence and credential-continuity cases without clearing
+application data. Verify the complete bundled terms are readable without a
+network-backed source; a synthetic OFF survives reopening the real Android
+preferences, cannot be consumed by another owner, performs no offline IO,
+honors a persisted server retry deadline, and is cleared only by its matching
+receipt. Exercise the actual Profile → Settings → full terms route without
+changing the real user's optional decision. No new training permission, real
+photo, VPS write, emulator result or simulated clock qualifies as elapsed
+production retention evidence.
+
+Physical-route inspection also reproduced a reader layout defect: with Android
+three-button navigation, the final reading button remained underneath the
+system navigation area even at the end of the scroll. B-BR-RVA08-06: the full
+reading action must fit wholly inside the usable window above system bars;
+scrolling to the end must never require tapping behind a system control.
+Add a native full-visibility regression before repairing the dialog insets.
+
+### D native consent checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Scope: the consent settings/reader and native owner persistence/recovery subset;
+whole RVA08 and the offline/operational program remain IN_PROGRESS. Tested from
+parent b4f6f00 plus the reader, privacy-copy and native-test changes in this
+checkpoint. Physical USB device model 2311DRK48G, API36, three-button navigation;
+serial and account identifiers deliberately omitted. Both debug APKs installed
+with `adb install -r`; no uninstall, package-data clear, radio setting change,
+real-user consent decision, production photo or VPS mutation.
+
+RED: the complete bundled document exposed a defect missed by the original short
+synthetic reader test. `performScrollTo().assertIsDisplayed()` failed for its
+final action; actual Profile → Settings → reader inspection reproduced a button
+underneath system navigation. Adding insets alone did not repair the incorrect
+window constraint. Inspection of the pinned Compose 1.7.6 `DialogLayout` bytecode
+confirmed its non-default-width branch replaces the platform height constraint
+with configuration screen height. The reader now retains platform measurement,
+expands its own window to MATCH_PARENT, and applies safe drawing padding. No
+library upgrade, fixed display size, authentication bypass or assertion weakening.
+
+GREEN: eight native cases, zero failures/skips, `OK (8 tests)`, 10.794s:
+
+- Complete actual asset/version/hash, full reading action visible and unclipped;
+  physical window bounds checked on API29+ using WindowInspector. All API levels
+  still run the visibility/unclipped geometry and explicit-decision assertions.
+  An unavailable UiAutomation tree caused intermediate test-harness failures;
+  direct inspection of the app's own window replaces that external dependency.
+- Reading alone does not grant; the checkbox starts OFF, owner change invalidates
+  review and only a subsequent explicit confirmation invokes the synthetic grant.
+- OFF and rights remain available without terms or connectivity.
+- Real Android Keystore separates two synthetic owners and retains the original
+  key across logout; only test-owned aliases are removed afterward.
+- Real synchronous SharedPreferences XML contains OFF, reopens with its revision
+  and hides the raw owner; another account has no pending decision.
+- Synthetic offline OFF reopens, cannot be consumed by B, performs no offline IO,
+  persists a 120s server retry hint and reuses exactly command `native-off` /
+  revision 101 after that simulated deadline. Matching receipt alone clears it.
+- Read-only observation of the real Application/Hilt WorkManager confirms one
+  CONNECTED periodic recovery at 15 minutes and a SUCCEEDED startup worker.
+  This does not claim delivery of a real user's pending server revocation.
+- Existing native account credential/reopen/explicit-logout continuity passes.
+
+Actual route inspection confirms the full final action at screen rectangle
+[60,2366]–[1160,2510], above the device navigation bar; the real user's preference
+was not toggled or submitted. Privacy summaries in all eight locales now describe
+temporary verification evidence and point to Settings, rather than claiming
+unqualified 24h deletion across every copy or no coordinate storage. This does
+not relax the 24h backend requirement or change collection, storage or deletion
+behavior. Training collection remains OFF.
+
+Commands: JDK17/installed SDK, Gradle offline/max-workers=2,
+`:app:assembleDebug :app:assembleDebugAndroidTest`; final `:app:lintDebug` PASS
+(4s; existing nonfatal warnings/deprecations remain); explicit-device
+`am instrument -w -r -e class` selecting TrainingConsentDeviceTest,
+TrainingConsentKeyStoreDeviceTest, TrainingConsentPersistenceDeviceTest,
+TrainingConsentRecoveryDeviceTest and AuthAccountContinuityDeviceTest with
+`com.anpfuel.app.debug.test/androidx.test.runner.AndroidJUnitRunner`. No
+orchestrator clearPackageData. Diff whitespace and staged secret review apply.
+No backend/SQL/dependency change in this checkpoint; preceding immediate SQL,
+race and Kotlin→Go/TLS verifier acceptance remains recorded above.
+
+Reproducible final artifact SHA-256 (APKs are not committed):
+
+- Reader source: `859e1e19a4812dfe7dde9bf430dcc87b228d3af849096b91b03feda9d499037f`.
+- Debug APK: `09988f5fced795b7734e467bc6adac9149a8bcce56908cca442edc035ee116b2`.
+- Native-test APK: `8d8cd89081604f9034b354c62fed9a32bd0b7dc8159b341ebdb4331ac3febb7e`.
+- Corrected predecessor evidence Store stays `f495194cda7304ad0bb2949a1db80d09acf24de9976b4ab0f60a847a8fc5c525`.
+
+Operational qualification remains open: a bounded public GET to
+`https://teste.abastevo.com.br/v1/privacy/training-terms` returned HTTP404 in this
+session. That deployment/route must be reconciled with the exact bundled text
+and config digest before staging end-to-end consent can be accepted. No live
+backend consent write is claimed. Disk reopen is not an actual process-death
+or radio-off test; simulated time is not elapsed retention proof. RVA07.C real
+24h/provider/version/backup/temp-copy and measured deployment budget remain OWED.
+Remaining RVA08 helpfulness integration and RVA10–14/CS15–25 are not closed by
+these eight cases. Protected integration/main/wiki remain pending the batch.
+The original dev checkout's unrelated Store edit remains untouched/excluded.

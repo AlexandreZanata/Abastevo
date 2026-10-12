@@ -1,5 +1,6 @@
 package com.anpfuel.app.settings
 
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
@@ -10,11 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -101,9 +104,13 @@ internal fun TrainingConsentContent(
         }
     }
     if(reader && document!=null) {
-        Dialog(onDismissRequest={reader=false},properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        Dialog(onDismissRequest={reader=false},properties=DialogProperties()) {
+            // Compose 1.7.6's non-default width path replaces the real height constraint
+            // with screenHeightDp. Keep bounded platform measurement; expand this window.
+            val window=(LocalView.current.parent as DialogWindowProvider).window
+            LaunchedEffect(window) {window.setLayout(MATCH_PARENT,MATCH_PARENT)}
             Surface(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().padding(20.dp)) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp)) {
                     Text(stringResource(R.string.privacy_read_terms),style=MaterialTheme.typography.titleLarge)
                     TextButton(onClick={reader=false}) {Text(stringResource(R.string.action_back))}
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(16.dp)) {

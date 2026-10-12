@@ -30,7 +30,7 @@
     <string name="community_screen_title">Comunidade</string>
     <string name="community_header_subtitle">Atividade local recente e verificação por consenso</string>
     <string name="community_empty_title">Nenhuma atualização recente</string>
-    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos anexadas são evidências temporárias de verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_action_contribute">Colaborar com preço</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
@@ -85,11 +85,11 @@
     <string name="help_report_title">Denúncia e recurso</string>
     <string name="help_report_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas; moderadores restritos revisam cada caso. Discorda? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado.</string>
     <string name="help_privacy_title">Privacidade</string>
-    <string name="help_privacy_body">A navegação anônima não precisa de conta e coordenadas não são guardadas. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="help_privacy_body">A navegação anônima não precisa de conta. GPS preciso não é publicado. Consulte o uso das fotos e seus direitos nas Configurações.</string>
     <string name="profile_tool_week_picker_title">Semana de pesquisa</string>
     <string name="profile_tool_week_picker_subtitle">Selecione semanas anteriores arquivadas da ANP</string>
     <string name="profile_privacy_section">Privacidade e participação</string>
-    <string name="profile_privacy_body">Nenhum GPS exato é compartilhado publicamente. Fotos de verificação expiram em todas as cópias em 24 horas. Recursos pagos nunca afetam ranking ou confiança.</string>
+    <string name="profile_privacy_body">GPS preciso não é publicado. Fotos são evidências temporárias de verificação. Consulte a privacidade nas Configurações. Recursos pagos nunca afetam ranking ou confiança.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
@@ -490,7 +490,7 @@
     <string name="community_vote_rejected">Não registrada (%1$s)</string>
 
     <!-- Privacidade da comunidade (P10-T08: o que sai do aparelho) -->
-    <string name="community_privacy_footnote">Anônimo: sem conta. Envia posto, preço e condição — e sua foto por 24h só quando você anexa uma.</string>
+    <string name="community_privacy_footnote">O envio inclui posto, preço e condições. A foto anexada é usada para verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_privacy_keys">Seu aparelho guarda a única chave. Perdê-la encerra esta identidade anônima.</string>
 
     <!-- Captura da comunidade (P10-T08 i18n: extraído do CaptureScreen) -->
@@ -547,7 +547,7 @@
     <string name="station_profile_claim">Representação e gestão</string>
     <string name="station_claim_title">Representação do posto</string>
     <string name="station_claim_explanation">Uma conta gratuita pode solicitar representação com escopo definido. A análise independente verifica a assinatura e os poderes empresariais. Enviar um documento não concede acesso.</string>
-    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Arquivos com digitalizações seguem o limite de retenção de 24 horas.</string>
+    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Consulte as condições de privacidade antes do envio.</string>
     <string name="station_claim_role">Função solicitada</string>
     <string name="station_claim_manager">Gestor</string>
     <string name="station_claim_administrator">Administrador</string>

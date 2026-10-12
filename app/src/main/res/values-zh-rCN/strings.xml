@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">未记录（%1$s）</string>
 
     <!-- 社区隐私（P10-T08：离开设备的内容） -->
-    <string name="community_privacy_footnote">匿名：无需帐户。发送站点、价格和条件 — 仅当您附加照片时，照片会保留 24 小时。</string>
+    <string name="community_privacy_footnote">提交内容包括站点、价格和条件。附加照片用于核验。请在设置中查看隐私信息。</string>
     <string name="community_privacy_keys">您的设备持有唯一密钥。丢失密钥将终止此匿名身份。</string>
 
     <!-- 社区采集（P10-T08 i18n） -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">社区</string>
     <string name="community_header_subtitle">本地加油站动态与共识验证</string>
     <string name="community_empty_title">暂无近期更新</string>
-    <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。照片仅作临时审核证据，最多保留24小时。</string>
+    <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。附加照片仅临时用于核验。请在设置中查看隐私信息。</string>
     <string name="community_action_contribute">分享价格</string>
     <string name="community_rules_title">社区验证规则</string>
     <string name="community_rules_body">价格由贡献者共识验证。带日期的ANP数据不会与社区实时报告混合。</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">举报与申诉</string>
     <string name="help_report_body">活跃账户可举报违规。举报不会自动删除内容；获授权的审核员逐案处理。新的申诉理由将开启新的审核案件。</string>
     <string name="help_privacy_title">隐私</string>
-    <string name="help_privacy_body">匿名浏览无需账户，坐标不会被保存。审核照片最多保留24小时。</string>
+    <string name="help_privacy_body">匿名浏览无需账户。精确GPS位置不会公开。请在设置中查看照片用途和您的权利。</string>
     <string name="profile_tool_week_picker_title">调查周</string>
     <string name="profile_tool_week_picker_subtitle">选择存档的ANP每周调查</string>
     <string name="profile_privacy_section">隐私与参与</string>
-    <string name="profile_privacy_body">精确GPS位置不会公开。所有验证照片副本会在24小时内过期。付费功能不影响排名或信任。</string>
+    <string name="profile_privacy_body">精确GPS位置不会公开。照片仅临时用于核验。请在设置中查看隐私信息。付费功能不影响排名或信任。</string>
     <string name="onboarding_title_contribute">诚信贡献</string>
     <string name="onboarding_body_contribute">从安全的公共场所拍摄价格牌，保持金额清晰并选择准确条件。不得捏造价格或人物。</string>
     <string name="station_detail_anp_title">ANP参考价格</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">代表资格与管理</string>
     <string name="station_claim_title">加油站代表资格</string>
     <string name="station_claim_explanation">免费账户可申请限定范围的代表资格。独立审核将验证签名及企业授权。发送文件不会授予访问权限。</string>
-    <string name="station_claim_privacy">切勿发送私钥、密码或PFX/P12文件。仅接受已签名PDF，最大5 MiB。包含扫描图像的文件最多保留24小时。</string>
+    <string name="station_claim_privacy">切勿发送私钥、密码或PFX/P12文件。仅接受签名PDF，最大5 MiB。提交前请阅读隐私条件。</string>
     <string name="station_claim_role">申请的角色</string>
     <string name="station_claim_manager">经理</string>
     <string name="station_claim_administrator">管理员</string>
