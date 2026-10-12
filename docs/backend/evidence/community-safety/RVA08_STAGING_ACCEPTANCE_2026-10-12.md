@@ -287,3 +287,13 @@ compressed CPU bytes verify; focused Android consent suite ran 13 tests with
 zero failures/errors. Secret scan and staged diff check pass. Legacy schema
 annotation still said 000053 despite the verified 000074 ledger; reconcile only
 the Abastevo annotations before handoff, preserving the per-container revisions.
+
+Annotation reconciliation completed on Abastevo only; schema annotation now
+000074, aggregate source b058a60, explicit worker source 610bdd9 preserved.
+The replacement pod became 3/3 ready with zero restart, identical binaries,
+resource caps and persistent volume. Post-reconciliation actual HTTPS readiness
+and terms are 200/no-store with the exact published digest and collection OFF.
+Read-only inspection at 2026-10-12T23:15:00Z again confirms nine copy absences
+and the single correctly retained READY final. No active load/observer remains.
+No elapsed proof, edge change, device pass, capacity certificate, main merge or
+completion of remaining synchronization phases is inferred.
