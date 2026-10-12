@@ -977,6 +977,72 @@ func (q *Queries) ResumePreparedRun(ctx context.Context, id pgtype.UUID) (int64,
 	return result.RowsAffected(), nil
 }
 
+const searchPageReferences = `-- name: SearchPageReferences :many
+SELECT p.station_id::uuid AS station_id, COALESCE(i.normalized_value, '')::text AS cnpj,
+    COALESCE(a.source, '')::text AS official_source,
+    COALESCE(a.display_name, '')::text AS official_display_name,
+    a.municipality_code AS official_municipality, a.state AS official_state,
+    a.run_finished_at AS official_finished_at
+FROM unnest($1::uuid[]) AS p(station_id)
+LEFT JOIN LATERAL (
+    SELECT normalized_value FROM directory_identifiers
+    WHERE station_id = p.station_id AND kind = 'CNPJ' AND valid_to IS NULL
+    LIMIT 1
+) AS i ON TRUE
+LEFT JOIN LATERAL (
+    SELECT a.source, a.display_name, a.municipality_code, a.state,
+        r.finished_at AS run_finished_at
+    FROM registry_assertions AS a
+    JOIN registry_source_runs AS r ON r.id = a.run_id
+    WHERE a.source_key = i.normalized_value
+        AND a.source IN ('registry-csv', 'registry-api')
+        AND r.state = 'complete'
+    ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
+    LIMIT 1
+) AS a ON TRUE
+`
+
+type SearchPageReferencesRow struct {
+	StationID            pgtype.UUID        `json:"station_id"`
+	Cnpj                 string             `json:"cnpj"`
+	OfficialSource       string             `json:"official_source"`
+	OfficialDisplayName  string             `json:"official_display_name"`
+	OfficialMunicipality pgtype.Text        `json:"official_municipality"`
+	OfficialState        pgtype.Text        `json:"official_state"`
+	OfficialFinishedAt   pgtype.Timestamptz `json:"official_finished_at"`
+}
+
+// Resolve references only for the bounded search page; do not walk the catalog.
+// Keep the same active identifier and complete official-source predicates as
+// StationCNPJ/FindOfficialAssertion. No prepared/community trust is promoted.
+func (q *Queries) SearchPageReferences(ctx context.Context, stationIds []pgtype.UUID) ([]SearchPageReferencesRow, error) {
+	rows, err := q.db.Query(ctx, searchPageReferences, stationIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchPageReferencesRow
+	for rows.Next() {
+		var i SearchPageReferencesRow
+		if err := rows.Scan(
+			&i.StationID,
+			&i.Cnpj,
+			&i.OfficialSource,
+			&i.OfficialDisplayName,
+			&i.OfficialMunicipality,
+			&i.OfficialState,
+			&i.OfficialFinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setAssertionStation = `-- name: SetAssertionStation :execrows
 UPDATE registry_assertions
 SET station_id = $1

@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -334,5 +337,149 @@ func TestByCNPJDoesNotCreateOrResolveRetiredIdentifier(t *testing.T) {
 	}
 	if after != before {
 		t.Fatal("read created a station")
+	}
+}
+
+// Count real wire queries without recording SQL text, station names or values.
+type pageQueryCounter struct{ count atomic.Int32 }
+
+func (c *pageQueryCounter) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	c.count.Add(1)
+	return ctx
+}
+func (c *pageQueryCounter) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func TestSearchEnrichmentHasConstantRoundTripsAndDetailParity(t *testing.T) {
+	pool := freshPool(t)
+	stageHandoff(t, pool)
+	ctx := context.Background()
+	for i := 1; i <= 37; i++ {
+		var id string
+		if err := pool.QueryRow(ctx, `INSERT INTO directory_stations(id,display_name,state,municipality_code) VALUES(md5($1)::uuid,'[READ-BATCH-TEST] COMMUNITY','SP','3550308') RETURNING id::text`, fmt.Sprint("batch-station-", i)).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO directory_identifiers(id,station_id,kind,normalized_value) VALUES(md5($1)::uuid,$2::uuid,'CNPJ',$3)`, "identifier-"+id, id, fmt.Sprintf("%014d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO directory_stations(id,display_name,state,municipality_code) VALUES(md5('no-identifier')::uuid,'[READ-BATCH-TEST] UNIDENTIFIED','SP','3550308')`); err != nil {
+		t.Fatal(err)
+	}
+	counter := &pageQueryCounter{}
+	cfg := pool.Config()
+	cfg.ConnConfig.Tracer = counter
+	cfg.MaxConns = 2
+	counted, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer counted.Close()
+	reader := NewReader(counted)
+	for _, limit := range []int{1, 20, 100} {
+		counter.count.Store(0)
+		items, next, err := reader.Search(ctx, application.SearchFilter{State: "SP", Municipality: "3550308", Limit: limit})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n := counter.count.Load(); n > 2 {
+			t.Errorf("page %d: %d queries, want at most two", limit, n)
+		}
+		want := limit
+		if want > 41 {
+			want = 41
+		}
+		if len(items) != want {
+			t.Fatalf("page %d: %d rows", limit, len(items))
+		}
+		if (limit < 41) != (next != "") {
+			t.Fatal("cursor/page mismatch")
+		}
+		for _, item := range items {
+			detail, err := reader.Detail(ctx, item.ID)
+			if err != nil || !reflect.DeepEqual(item, detail) {
+				t.Fatalf("batch changed detail: %v", err)
+			}
+		}
+	}
+	var wg sync.WaitGroup
+	counter.count.Store(0)
+	for i := 0; i < 12; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			items, _, err := reader.Search(ctx, application.SearchFilter{Limit: 20})
+			if err != nil || len(items) != 20 {
+				t.Errorf("concurrent page: %d %v", len(items), err)
+			}
+		}()
+	}
+	wg.Wait()
+	if n := counter.count.Load(); n != 24 {
+		t.Errorf("concurrent page queries: %d, want 24", n)
+	}
+
+}
+
+func TestSearchEnrichmentFailureRefusesPartialPageAndRecovers(t *testing.T) {
+	pool := freshPool(t)
+	stageHandoff(t, pool)
+	ctx := context.Background()
+	reader := NewReader(pool)
+	if _, err := pool.Exec(ctx, `ALTER TABLE registry_assertions RENAME TO read_batch_unavailable`); err != nil {
+		t.Fatal(err)
+	}
+	items, next, err := reader.Search(ctx, application.SearchFilter{Limit: 20})
+	if err == nil || items != nil || next != "" {
+		t.Fatal("partial/false-success page during enrichment outage")
+	}
+	if _, err := pool.Exec(ctx, `ALTER TABLE read_batch_unavailable RENAME TO registry_assertions`); err != nil {
+		t.Fatal(err)
+	}
+	if items, _, err := reader.Search(ctx, application.SearchFilter{Limit: 20}); err != nil || len(items) != 3 {
+		t.Fatal("page did not recover", err)
+	}
+}
+
+func TestSearchBatchRejectsIncompleteAndPreparedOfficialAnchors(t *testing.T) {
+	pool := freshPool(t)
+	stageHandoff(t, pool)
+	ctx := context.Background()
+	for _, tc := range []struct{ source, state string }{{"station-prep", "complete"}, {"registry-api", "running"}, {"registry-api", "failed"}, {"registry-api", "quarantined"}} {
+		key := tc.source + tc.state
+		if _, err := pool.Exec(ctx, `INSERT INTO registry_source_runs(id,source,snapshot_identity,checksum,parser_version,state,finished_at) VALUES(md5($1)::uuid,$2,$1,$1,'test',$3,now()+interval '1 hour')`, key, tc.source, tc.state); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO registry_assertions(id,run_id,source,source_key,checksum,display_name) VALUES(md5($1||'-assertion')::uuid,md5($1)::uuid,$2,'04218406000104',$1,'[READ-BATCH-TEST] UNTRUSTED')`, key, tc.source); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reader := NewReader(pool)
+	items, _, err := reader.Search(ctx, application.SearchFilter{Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items {
+		if item.Official == nil || item.Official.Source != "registry-csv" || item.Official.DisplayName == "[READ-BATCH-TEST] UNTRUSTED" {
+			t.Fatal("source isolation changed")
+		}
+	}
+	if _, err := pool.Exec(ctx, `UPDATE registry_source_runs SET state='complete' WHERE snapshot_identity='registry-apirunning'`); err != nil {
+		t.Fatal(err)
+	}
+	items, _, err = reader.Search(ctx, application.SearchFilter{Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range items {
+		if item.CNPJNormalized != nil && *item.CNPJNormalized == "04218406000104" {
+			found = true
+			if item.Official == nil || item.Official.Source != "registry-api" || item.Official.DisplayName != "[READ-BATCH-TEST] UNTRUSTED" {
+				t.Fatal("new completed official anchor missing")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("fixture station missing")
 	}
 }

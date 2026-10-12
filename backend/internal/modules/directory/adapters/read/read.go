@@ -100,14 +100,6 @@ func wktString(v any) string {
 // surface only when a reviewed point exists; otherwise quality reports
 // unknown and coordinates stay null — honest, never fabricated.
 func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UUID, display string, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte) (application.Station, error) {
-	coords, err := parseWKT(wktString(wkt))
-	if err != nil {
-		return application.Station{}, err
-	}
-	qualityName := quality.String
-	if coords == nil {
-		qualityName = domain.QualityUnknown
-	}
 	var cnpj *string
 	if value, err := q.StationCNPJ(ctx, id); err == nil {
 		cnpj = &value
@@ -116,8 +108,8 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 	}
 	// Source-separated official anchor: latest complete official
 	// evidence for this CNPJ, or nil for community-only stations. The
-	// lookup follows the existing per-row pattern and stays bounded by
-	// page limits; no trust flows either direction.
+	// lookup is used by single-station/nearby reads; search resolves
+	// the same source predicates in a bounded batch.
 	var official *application.OfficialAnchor
 	if cnpj != nil {
 		if anchor, err := q.FindOfficialAssertion(ctx, *cnpj); err == nil {
@@ -134,6 +126,19 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 		} else if !errors.Is(err, pgx.ErrNoRows) {
 			return application.Station{}, err
 		}
+	}
+	return stationView(id, display, muni, state, wkt, quality, rev, address, cnpj, official)
+}
+
+// stationView maps the same DTO for single and batched reference reads.
+func stationView(id pgtype.UUID, display string, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte, cnpj *string, official *application.OfficialAnchor) (application.Station, error) {
+	coords, err := parseWKT(wktString(wkt))
+	if err != nil {
+		return application.Station{}, err
+	}
+	qualityName := quality.String
+	if coords == nil {
+		qualityName = domain.QualityUnknown
 	}
 	var addr map[string]any
 	if len(address) > 0 && string(address) != "{}" {
@@ -173,10 +178,44 @@ func (r *Reader) Search(ctx context.Context, f application.SearchFilter) ([]appl
 	if err != nil {
 		return nil, "", err
 	}
+	ids := make([]pgtype.UUID, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	references := map[pgtype.UUID]directory.SearchPageReferencesRow{}
+	if len(ids) > 0 {
+		refs, err := q.SearchPageReferences(ctx, ids)
+		if err != nil {
+			return nil, "", err
+		}
+		for _, ref := range refs {
+			references[ref.StationID] = ref
+		}
+	}
 	var out []application.Station
 	for _, row := range rows {
-		st, err := r.station(ctx, q, row.ID, row.DisplayName, row.MunicipalityCode, row.State,
-			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address)
+		ref, ok := references[row.ID]
+		if !ok {
+			return nil, "", errors.New("read: incomplete page references")
+		}
+		var cnpj *string
+		if ref.Cnpj != "" {
+			value := ref.Cnpj
+			cnpj = &value
+		}
+		var official *application.OfficialAnchor
+		if ref.OfficialSource != "" {
+			official = &application.OfficialAnchor{
+				Source: ref.OfficialSource, DisplayName: ref.OfficialDisplayName,
+				MunicipalityCode: textPtr(ref.OfficialMunicipality), State: textPtr(ref.OfficialState),
+			}
+			if ref.OfficialFinishedAt.Valid {
+				finished := ref.OfficialFinishedAt.Time
+				official.FinishedAt = &finished
+			}
+		}
+		st, err := stationView(row.ID, row.DisplayName, row.MunicipalityCode, row.State,
+			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address, cnpj, official)
 		if err != nil {
 			return nil, "", err
 		}

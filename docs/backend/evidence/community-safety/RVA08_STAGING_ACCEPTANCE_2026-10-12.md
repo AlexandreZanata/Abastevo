@@ -218,3 +218,33 @@ Telemetry: host available 24,138 MiB; API 2 MiB, worker 3 MiB, private storage
 Read-only own-cgroup inspection before rollout found no API/worker CPU
 throttling or memory OOM events; that snapshot does not explain failed pilots.
 ADB enumerates zero devices, so no fresh physical-device acceptance occurred.
+
+## Bounded directory read follow-up opening
+
+Post-074 HTTPS warm-up 50/50 passed, but the next 120s window stopped at
+33.471s: 155 offered, 151 successful, three timeouts, one drop. Actual API logs
+include three 500 responses and durations up to 3003ms. No API/worker CPU
+throttling, IO pressure or OOM was recorded. A bounded PostgreSQL observer
+sampled only idle client sessions (not a proof of no query waits); custom/generic
+synthetic-key official-anchor plans were ~0.06ms. City custom/generic plans were
+~20/14ms; national ~40/47ms. These observations do not identify the full cause.
+
+B-BR-RVA08-10: directory search resolves page CNPJ/official references in one
+owned SQL batch, bounded by the existing limit+1 IDs (at most 101). Search has
+at most two SQL round trips regardless of page length, preserving keyset order,
+cursor, nullable location, active identifiers and completed official-source
+provenance. Prepared/community/incomplete sources never gain official trust.
+DB failures refuse the whole response rather than returning partial enrichment.
+BUC: real-PostGIS query tracer with pages 1/20/100, parity against detail DTOs
+and source-separated fixtures, failure recovery, then same guarded live pilot.
+This reduces a demonstrated N+1 cost; it is not presumed to cure all pauses.
+
+Search batch RED recorded 5/43/81 real SQL calls for limits 1/20/100. GREEN
+uses two calls per nonempty page and one for empty pages; read parity and
+keyset pagination pass, including unknown location and absent identifiers.
+Twelve concurrent readers over a two-connection pool make exactly 24 calls.
+Incomplete/failed/quarantined/prepared anchors are excluded; completing the
+new official run makes it visible. Broken enrichment storage returns no partial
+page, then recovery passes. Full read and HTTP integration/race suites pass
+(24.633s / 2.671s). sqlc/vet/staticcheck/diff checks pass; no migration/dependency
+is added by this optimization. The same guarded 5 req/s pilot remains next.
