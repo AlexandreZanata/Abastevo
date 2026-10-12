@@ -258,3 +258,27 @@ sit below the artwork, outside the phone screen. Background uses an artistic
 Brazil silhouette with symbolic station lights, without asserting app coverage.
 Six generated-then-traced SVG pictograms illustrate consult/check/contribute
 and private driver/ride-hailing driver/small fleet cards; card text is retained.
+
+
+## LH05 illustrated landing amendment — 2026-10-12
+
+The owner requests the warm illustrated landscape composition of the supplied
+reference: cream canvas, green emphasis, city, road, trees and sun around a real
+Android home mockup. Generate a separate text-free landscape and six minimal
+action/persona scenes, each with a unique dominant color (blue, green, orange,
+violet, teal and rose). Keep copy semantic HTML and real app pixels untouched;
+art is illustrative and never coverage or current price evidence. Keep existing
+prelaunch/store semantics and neutral dark mode. Preserve OpenCode changes at
+landing 41d1372: 12px gutters, revised brand scale, removed hero statistics and
+its 404 recovery header. Only hero/cards and necessary responsive styling are
+authorized. Ship responsive hash-named WebP derivatives with explicit dimensions,
+lazy card loading and verified hashes/size budgets; keep masters out of dist.
+
+LH05 follow-up: the owner rejects a contained illustration block and requests
+an edge-to-edge, first-viewport hero using the supplied flat editorial landscape
+reference, with a 3840×2160 master/export and reusable matching trees, skyline,
+road and vehicle assets. The landscape belongs behind the whole hero, outside
+the content-width container. Preserve a readable left copy area, authentic phone,
+source/date disclosure, the completed six category scenes and OpenCode changes.
+The full-height opening supersedes the earlier equal copy/art-height constraint.
+Record generator-native dimensions separately from any 4K export dimensions.

@@ -17,7 +17,7 @@ test('essential content and links are present in static HTML without JS', () => 
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
     // 1. Heading and primary identity
-    assert.match(indexHtml, /<h1[^>]*>Encontre preços de combustível na sua região\.<\/h1>/);
+    assert.match(indexHtml, /<h1[^>]*>Preços de combustíveis<br>mais claros <span>para o Brasil\.<\/span><\/h1>/);
     assert.match(indexHtml, /O Abastevo combina dados oficiais da ANP com informações da comunidade/);
 
     // 2. Status line
@@ -27,12 +27,11 @@ test('essential content and links are present in static HTML without JS', () => 
     assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
     assert.match(indexHtml, /Projeto open source/);
     assert.match(indexHtml, /Em breve no Google Play/);
-    assert.match(indexHtml, /Grátis para<\/dt><dd>consultar/);
     assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|tempo real|milhares de usuários/i);
 
     // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
-    assert.match(heroSection, /assets\/app\/explore-dark-720w\.webp/);
+    assert.match(heroSection, /assets\/app\/explore-light-720w\.webp/);
     assert.match(heroSection, /Captura real do app em desenvolvimento/);
     assert.match(heroSection, /não preços da bomba agora/);
     assert.match(heroSection, /representação artística/);
