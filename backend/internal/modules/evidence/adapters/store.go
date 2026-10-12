@@ -108,7 +108,17 @@ func pgTime(t time.Time) pgtype.Timestamptz {
 // fresh rows refuse with domain.ErrQuotaDenied. It returns the
 // stored row — the winner on convergence — so callers presign from
 // persisted facts, never from loser intent.
-func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget domain.ReserveBudget) (domain.Session, bool, error) {
+func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget domain.ReserveBudget) (stored domain.Session, replayed bool, err error) {
+	if s.intakeConfigured {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+	}
+	defer func() {
+		if s.intakeConfigured && err != nil && !errors.Is(err, domain.ErrConflict) && !errors.Is(err, domain.ErrQuotaDenied) {
+			err = errors.Join(application.ErrEnforcementUnhealthy, err)
+		}
+	}()
 	uid, err := mustUUID(sess.ID)
 	if err != nil {
 		return domain.Session{}, false, err
@@ -157,6 +167,14 @@ func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget 
 	}
 	if int(dayCount) >= budget.MaxCount || liveBytes+sess.DeclaredBytes > budget.MaxBytes {
 		return domain.Session{}, false, domain.ErrQuotaDenied
+	}
+	if s.intakeConfigured {
+		if err := tq.LockIntakeAdmission(ctx); err != nil {
+			return domain.Session{}, false, err
+		}
+		if err := s.requireIntake(ctx, tq, 1); err != nil {
+			return domain.Session{}, false, err
+		}
 	}
 	inserted, err := tq.InsertSession(ctx, evidence.InsertSessionParams{
 		ID: uid, ContributorRef: sess.ContributorRef,

@@ -595,3 +595,12 @@ device proofs and measured deployment budget are owed. Old soaks, VPS and phone
 were untouched. Training collection remains OFF. Continue C proof preparation,
 then independent RVA08 source work with these external obligations retained;
 no capacity, release, GitHub publication or merge claim belongs to this record.
+
+### Reservation checkpoint correction
+
+Post-commit review found that 89fe92a omitted the tested reservation body. That
+commit is not a valid B3.3c.2 closure. Restore the gated body in a new commit;
+repeat the full evidence SQL/S3 race and affected unit/vet matrix, and verify
+the source SHA-256 before/after testing and exact Git blob at commit. Earlier
+results describe the tested working tree, not that incomplete commit. No push
+or merge occurred. The corrected successor supersedes that closure claim.
