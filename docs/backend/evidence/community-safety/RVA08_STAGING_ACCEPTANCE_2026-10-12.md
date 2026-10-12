@@ -248,3 +248,42 @@ new official run makes it visible. Broken enrichment storage returns no partial
 page, then recovery passes. Full read and HTTP integration/race suites pass
 (24.633s / 2.671s). sqlc/vet/staticcheck/diff checks pass; no migration/dependency
 is added by this optimization. The same guarded 5 req/s pilot remains next.
+
+## Batched search deployment and honest repeat result
+
+API source b058a60fdeb3ad494a075cf85e9fd3dd5d46b5e5 deployed with SHA-256
+7d011f871c122bc85408eaaea9995f9d8650988294b36f92a359d1521acacb8d. Worker
+610bdd9 and schema 000074 retained. No resource limit changed. Real process
+SQL/S3 regression passes (16.449s); actual 16-case signed HTTPS consent passes
+again at 22:55:07Z, both synthetic owners OFF. No real account decision changed.
+
+[Versioned raw manifests/CSV/guards, CPU diagnostic and reproduction](rva08-staging-20261012/README.md)
+preserve failures alongside successes. First full 120s pilot passed 600/600
+without errors/drops (city/national p95 59.55/153.12ms). Repeat failed after
+115.428s with eight timeouts/one drop plus telemetry timeout; second planned
+repeat never ran. The diagnostic window later passed 600/600 with p95
+74.05/164.55ms. This does not qualify sustained stability or supported users.
+
+A 150s aggregate-only CPU observation recorded 16.75% weighted overall steal,
+83.16% over one 0.102s interval and 53.97% over a 5.020s window. PostgreSQL CPU
+used 22.106s, throttled 0.690s. These counters were collected during the later
+passing campaign, so they do not establish causality for the failed repeat.
+No further load increase, PostgreSQL/host tuning or other workload mutation.
+The deployment is retained with the demonstrated N+1 reduction; infrastructure
+contention and stable repeat qualification remain unresolved.
+
+Read-only follow-up at 22:58:07Z still confirms canary original/abandoned-copy
+absence and READY retention; six synthetic consent rows are REVOKED, zero
+training derivatives. Two historical DEAD verify-evidence jobs from October 8
+reference EXPIRED sessions; no replay or photo restoration was attempted.
+Shared-edge approval and ADB connection remain pending. Full offline/helpfulness
+phases and account/device/provider acceptance are not closed by this checkpoint.
+
+Final read-only health at 23:12:33Z: all four containers ready, zero new restart
+or OOM, API 8 MiB, worker 4 MiB, storage 228 MiB, database 191 MiB; host reserve
+24,669 MiB, load1 1.36, no lock/import backlog. Retention canary remains in the
+correct pre-deadline state. Staged CSV/guard hashes match their manifests and
+compressed CPU bytes verify; focused Android consent suite ran 13 tests with
+zero failures/errors. Secret scan and staged diff check pass. Legacy schema
+annotation still said 000053 despite the verified 000074 ledger; reconcile only
+the Abastevo annotations before handoff, preserving the per-container revisions.

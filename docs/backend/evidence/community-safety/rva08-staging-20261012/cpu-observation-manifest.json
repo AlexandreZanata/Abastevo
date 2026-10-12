@@ -1,0 +1,9 @@
+{
+  "raw_sha256": "fa91770e735561c8ed6916d11e39a3dd62d28397257b98c0fedf75efc4630aeb",
+  "compressed_sha256": "e5aaa82d66ed3cb74607c6944d0876460d7e4ac7a33158f4023080365f4795cf",
+  "raw_bytes": 681180,
+  "requested_seconds": 150,
+  "requested_sampling_seconds": 0.1,
+  "scope": "aggregate host CPU ticks and exact Abastevo PostgreSQL cgroup only",
+  "causal_attribution": "not proven; no counters were collected during the failed confirmation window"
+}
