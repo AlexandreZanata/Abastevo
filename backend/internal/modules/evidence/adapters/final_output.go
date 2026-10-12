@@ -48,7 +48,7 @@ func (s *Store) BeginVerificationWrite(ctx context.Context, sessionID, key, sani
 		return none, err
 	}
 	now := time.Now()
-	if sess.Status != domain.StateVerifying || key != "f/"+sess.ClaimedSha256 || !canonicalDigest(sess.ClaimedSha256) || !now.Add(finalWriteLease).Before(sess.CreatedAt.Time.Add(application.CopyRetention)) {
+	if sess.Status != domain.StateVerifying || key != "f/"+sess.ClaimedSha256 || !canonicalDigest(sess.ClaimedSha256) || !now.Add(finalWriteLease).Before(sess.CreatedAt.Time.Add(application.CopyRetention-application.CleanupMargin)) {
 		return none, domain.ErrBadTransition
 	}
 	if err := q.InventoryExistingFinalOutput(ctx, key); err != nil {
@@ -61,7 +61,7 @@ func (s *Store) BeginVerificationWrite(ctx context.Context, sessionID, key, sani
 	if err != nil {
 		return none, err
 	}
-	if !now.Add(finalWriteLease).Before(row.DeadlineAt.Time) {
+	if !now.Add(finalWriteLease).Before(row.DeadlineAt.Time.Add(-application.CleanupMargin)) {
 		return none, domain.ErrBadTransition
 	}
 	if row.State == "READY" {
@@ -127,7 +127,7 @@ func (s *Store) RecordVerifiedGuarded(ctx context.Context, sessionID string, obj
 		return "", err
 	}
 	now := time.Now()
-	if !now.Before(row.DeadlineAt.Time) || !now.Before(sess.CreatedAt.Time.Add(application.CopyRetention)) || row.SanitizedSha256 != obj.SanitizedSHA256 {
+	if !now.Before(row.DeadlineAt.Time.Add(-application.CleanupMargin)) || !now.Before(sess.CreatedAt.Time.Add(application.CopyRetention-application.CleanupMargin)) || row.SanitizedSha256 != obj.SanitizedSHA256 {
 		return "", domain.ErrBadTransition
 	}
 	id := obj.ID

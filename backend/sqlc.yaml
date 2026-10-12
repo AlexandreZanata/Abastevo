@@ -83,6 +83,7 @@ sql:
       - db/migrations/000068_evidence_final_output.sql
       - db/migrations/000069_evidence_final_cleanup_index.sql
       - db/migrations/000070_evidence_confirmed_hash_purge.sql
+      - db/migrations/000071_evidence_original_cleanup_index.sql
     gen:
       go:
         package: evidence

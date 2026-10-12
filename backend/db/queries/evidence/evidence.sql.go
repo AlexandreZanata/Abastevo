@@ -215,16 +215,18 @@ UPDATE evidence_sessions AS s
 SET status = 'EXPIRED', updated_at = now()
 WHERE s.id IN (
     SELECT inner_s.id FROM evidence_sessions AS inner_s
-    WHERE inner_s.status = 'ISSUED' AND inner_s.expires_at <= $1
-    ORDER BY inner_s.expires_at ASC
-    LIMIT $2
+    WHERE inner_s.status = 'ISSUED'
+      AND (inner_s.expires_at <= $1 OR inner_s.created_at <= $2)
+    ORDER BY inner_s.created_at ASC, inner_s.id ASC
+    LIMIT $3
 )
 RETURNING s.id, s.quarantine_key
 `
 
 type ExpireIdleSessionsParams struct {
-	Now   pgtype.Timestamptz `json:"now"`
-	Batch int32              `json:"batch"`
+	Now           pgtype.Timestamptz `json:"now"`
+	CleanupCutoff pgtype.Timestamptz `json:"cleanup_cutoff"`
+	Batch         int32              `json:"batch"`
 }
 
 type ExpireIdleSessionsRow struct {
@@ -237,7 +239,7 @@ type ExpireIdleSessionsRow struct {
 // UPDATE takes no LIMIT, so batched transitions select their keys in a
 // subquery instead.
 func (q *Queries) ExpireIdleSessions(ctx context.Context, arg ExpireIdleSessionsParams) ([]ExpireIdleSessionsRow, error) {
-	rows, err := q.db.Query(ctx, expireIdleSessions, arg.Now, arg.Batch)
+	rows, err := q.db.Query(ctx, expireIdleSessions, arg.Now, arg.CleanupCutoff, arg.Batch)
 	if err != nil {
 		return nil, err
 	}
@@ -1484,7 +1486,9 @@ const quarantineCandidates = `-- name: QuarantineCandidates :many
 SELECT id, quarantine_key, status, created_at FROM evidence_sessions
 WHERE quarantine_deleted_at IS NULL
     AND (status IN ('READY', 'REJECTED', 'EXPIRED') OR created_at <= $1)
-ORDER BY created_at ASC
+    AND NOT EXISTS (SELECT 1 FROM evidence_upload_transfers t
+                    WHERE t.session_id = evidence_sessions.id AND t.lease_until > now())
+ORDER BY created_at ASC, id ASC
 LIMIT $2
 `
 

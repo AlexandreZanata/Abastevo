@@ -386,3 +386,73 @@ force a schedule. Minute cadence increases queue work; service/admission/queue
 retention bounds and predeadline cleanup remain B3.3b.2/B3.3c/RVA12. This is
 not proof of capacity, successful autonomous deletion, provider readiness or
 release certification. No VPS/phone/old-soak changes.
+
+## B3.3b.2 predeadline and bounded-pass opening
+
+B-BR-RVA07-7: begin operational cleanup two hours before the immutable
+24h deadline. This reserve is an engineering policy, not a measured capacity
+guarantee. Refuse new source/final writer leases and final commits at that cleanup boundary;
+no repair to PENDING after it. A queued validation job does not extend photo
+retention. Expiry closes old VERIFYING admission; actual upload/final writer
+leases remain protected using fresh live time independent of policy clocks.
+
+B-BR-RVA07-8: one pass has a 45s parent context, at most 32 original and
+32 final candidates, separate 20s original/final slices and 5s copy contexts.
+Original expiry is DB-only, followed by a single oldest-first eligible-source
+scan; source failure cannot consume the final slice. Confirmed final receipt
+acknowledgement may finish within its existing 3s cancellation-independent
+bound; uncertainty remains inventoried. Metadata purge remains 100 rows.
+Failure/cancellation prevents successful job acknowledgement; partial effects
+and unknown observations stay visible. No live lease is evaluated against an
+advanced policy clock, and active writers are filtered from source scans.
+
+BUC: photos just before the 22h boundary remain, at/after it are eligible
+without moving their 24h anchors. A live source PUT is not deleted even when
+policy time advances; its later completion is cleaned by a resumed pass.
+Stalled/failed original deletion leaves finals serviceable within their own
+slice, and a huge requested batch cannot enlarge the hard ceilings. Test real
+SQL/private storage, boundary writer refusal, cancellation and query bounds.
+Queue capacity/admission, autonomous/provider/backup proof remain separate.
+
+## B3.3b.2 local checkpoint — predeadline bounded disposal
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for cleanup policy/pass bounds.
+Validation: PASS. Tested delta on `e26d418`. RED reproduced physical source
+deletion under a still-live upload when policy time advanced, no final cleanup
+at 22h, and admission of a final writer inside the cleanup margin. GREEN:
+operational cleanup starts at 22h against the immutable 24h deadline; source
+and final leases must fit before that boundary, final commits/repair refuse
+after it. Idle and stuck VERIFYING sessions close at the earlier cleanup
+boundary even if validation work is queued. Source disposal always uses fresh
+live time, and its single oldest-first query excludes actual live transfers.
+
+The whole pass carries a 45s context, original/final work separate 20s slices,
+at most 32 source plus 32 final candidates, and each copy a 5s context. Final
+absence receipt retains its existing independent 3s acknowledgement bound.
+Original failures still allow final cleanup/observations; cancellation and
+partial/query failures propagate. Audit lists clamp at 100; metadata purge
+remains 100 confirmed rows. Append-only 000071 supplies the partial original
+hot index. The production queued-job lookup was removed; compatibility-only
+harness ports remain and cannot extend retention.
+
+Real PostgreSQL/private S3 proofs pass: a live source PUT survives an advanced
+policy clock with no deletion marker, then completion/restart removes bytes;
+a final remains immediately before 22h and is physically absent/PURGED at the
+boundary with its 24h anchor unchanged. Final writer admission/commit and
+source leases crossing the cleanup boundary refuse; refused ingress does not
+charge another attempt; incomplete cleanup cannot reopen PENDING in the margin.
+The actual source query excludes a live writer from a 32-row eligible batch
+and EXPLAIN ANALYZE uses the partial hot index against 10,000 terminal receipts
+without a session sequential scan. 000071-only upgrade/replay preserves a live
+writer fence. Unit tests pin huge-batch ceilings, 5s copy/20s slice/45s parent
+contexts, source-failure/final-service separation, cancellation and distinct
+22h-cleanup/24h-overdue boundaries. The old +25h test is explicitly named as
+post-deadline recovery, not within-deadline compliance.
+
+Full evidence SQL/private S3 race passed (20.163s), dependent privacy erasure/
+restore race passed (4.585s), affected unit race/vet/sqlc vet/format/diff checks
+passed. Initial verification exposed unused removed-lookup imports and a
+fixture assuming a ten-minute session TTL; both were corrected before green.
+Staged secret review precedes commit. The two-hour reserve is not measured
+capacity certification: B3.3c admission/worker backlog and C autonomous/provider/
+backup/temporary/device proofs remain owed. No VPS, phone or old-soak mutation.

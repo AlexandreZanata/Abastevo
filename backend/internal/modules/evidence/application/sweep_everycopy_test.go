@@ -8,15 +8,11 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 )
 
-// SEC05-E every-copy deadline compliance in compressed time (AUD-06,
-// B-BR-M01/M04): one sweep at now = first-receipt + 25 h deletes and
-// marks every app-owned copy — idle quarantine original, terminal
-// quarantine original, stale sanitized final and aged-out object row
-// — with zero storage errors and a quiet post-pass signal. The wall
-// clock observation this compresses rides the seeded real soak
-// (SOAK_RUNNING, proof due after the wall clock).
+// This injected-clock test covers post-deadline recovery, not within-deadline
+// compliance. At first receipt +25h it deletes/marks all scripted copies.
+// Actual elapsed-time acceptance requires the separate autonomous soak.
 
-func TestSweepEveryCopyMeetsDeadline(t *testing.T) {
+func TestSweepEveryCopyRecoversAfterDeadline(t *testing.T) {
 	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
 	old := now.Add(-25 * time.Hour)
 	store := &fakeSweepStore{

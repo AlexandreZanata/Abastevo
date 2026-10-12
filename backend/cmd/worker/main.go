@@ -20,7 +20,6 @@ import (
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
-	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accountjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/jobs"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -59,7 +58,6 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // inventoryFunc adapts a closure to the privacy inventory port.
@@ -84,16 +82,6 @@ type sanitizeFunc func(ctx context.Context, source []byte) ([]byte, privacydomai
 
 func (f sanitizeFunc) Sanitize(ctx context.Context, source []byte) ([]byte, privacydomain.SanitizeVerdict, error) {
 	return f(ctx, source)
-}
-
-// sweepJobPorts adapts the platform job lookup to the evidence sweep
-// port: only queued or leased verify jobs count as live leases.
-type sweepJobPorts struct {
-	hasLive func(ctx context.Context, sessionID string) (bool, error)
-}
-
-func (s sweepJobPorts) HasLiveJob(ctx context.Context, sessionID string) (bool, error) {
-	return s.hasLive(ctx, sessionID)
 }
 
 // sweepStoragePorts adapts presigned deletes to the sweep storage port,
@@ -809,26 +797,9 @@ func run() error {
 		"evidence-sweep": evidencejobs.Sweep{
 			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
 				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
-					Clock: time.Now,
-					Batch: evidenceapp.DefaultSweepBatch,
-					Store: evidenceStore,
-					Jobs: sweepJobPorts{hasLive: func(ctx context.Context, sessionID string) (bool, error) {
-						id, err := dbplatform.New(raw).GetJobByDedupe(ctx, pgtype.Text{String: "verify:" + sessionID, Valid: true})
-						if err != nil {
-							if errors.Is(err, pgx.ErrNoRows) {
-								return false, nil
-							}
-							return false, err
-						}
-						row, err := dbplatform.New(raw).GetJob(ctx, id)
-						if err != nil {
-							if errors.Is(err, pgx.ErrNoRows) {
-								return false, nil
-							}
-							return false, err
-						}
-						return row.Status == "queued" || row.Status == "leased", nil
-					}},
+					Clock:   time.Now,
+					Batch:   evidenceapp.DefaultSweepBatch,
+					Store:   evidenceStore,
 					Storage: sweepStoragePorts{deleteKey: erasureDelete},
 				})
 			},

@@ -60,7 +60,7 @@ func (s *Store) claimFinalCleanup(ctx context.Context, key, owner string, policy
 		sess.Status = domain.StateExpired
 	}
 	now := time.Now()
-	if row.State == "PURGED" && (owner != "" || !policyNow.Before(row.DeadlineAt.Time)) {
+	if row.State == "PURGED" && (owner != "" || !policyNow.Add(application.CleanupMargin).Before(row.DeadlineAt.Time)) {
 		reopened, err := q.ReopenRestoredFinalOutput(ctx, key)
 		if err != nil {
 			return none, false, err
@@ -75,7 +75,7 @@ func (s *Store) claimFinalCleanup(ctx context.Context, key, owner string, policy
 	if row.State == "PURGED" || (row.LeaseUntil.Valid && now.Before(row.LeaseUntil.Time)) {
 		return none, false, tx.Commit(ctx)
 	}
-	due := owner != "" || row.State == "WRITING" || row.State == "PURGING" || row.Attempts >= 5 || !policyNow.Before(row.DeadlineAt.Time) || sess.Status == domain.StateExpired || sess.Status == domain.StateRejected
+	due := owner != "" || row.State == "WRITING" || row.State == "PURGING" || row.Attempts >= 5 || !policyNow.Add(application.CleanupMargin).Before(row.DeadlineAt.Time) || sess.Status == domain.StateExpired || sess.Status == domain.StateRejected
 	if !due {
 		return none, false, nil
 	}
@@ -119,7 +119,7 @@ func (s *Store) finishFinalCleanup(ctx context.Context, key string, nonce pgtype
 	if objectErr != nil && !errors.Is(objectErr, pgx.ErrNoRows) {
 		return objectErr
 	}
-	if errors.Is(objectErr, pgx.ErrNoRows) && sess.Status == domain.StateVerifying && row.Attempts < 5 && time.Now().Before(row.DeadlineAt.Time) {
+	if errors.Is(objectErr, pgx.ErrNoRows) && sess.Status == domain.StateVerifying && row.Attempts < 5 && time.Now().Before(row.DeadlineAt.Time.Add(-application.CleanupMargin)) {
 		next = "PENDING"
 	}
 	if err := q.MarkFinalKeyDeleted(ctx, key); err != nil {
@@ -181,7 +181,7 @@ func (s *Store) reconcileFinalOutputs(ctx context.Context, owner string, policyN
 		var key string
 		var err error
 		if owner == "" {
-			key, err = q.NextFinalOutputCleanup(ctx, evidence.NextFinalOutputCleanupParams{At: pgTime(time.Now()), DueCutoff: pgTime(policyNow)})
+			key, err = q.NextFinalOutputCleanup(ctx, evidence.NextFinalOutputCleanupParams{At: pgTime(time.Now()), DueCutoff: pgTime(policyNow.Add(application.CleanupMargin))})
 		} else {
 			key, err = q.NextOwnerFinalOutputCleanup(ctx, evidence.NextOwnerFinalOutputCleanupParams{At: pgTime(time.Now()), ContributorRef: owner})
 		}

@@ -446,15 +446,15 @@ func checkBatch(batch int) (int32, error) {
 	return int32(batch), nil
 }
 
-// ExpireIdleSessions flips past-deadline ISSUED sessions to EXPIRED,
-// returning their quarantine keys for object cleanup.
+// ExpireIdleSessions closes ISSUED admission at expiry or the earlier cleanup
+// boundary. Actual writer leases remain protected by the disposal check.
 func (s *Store) ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error) {
 	n, err := checkBatch(batch)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := evidence.New(s.pool).ExpireIdleSessions(ctx, evidence.ExpireIdleSessionsParams{
-		Now: pgTime(now), Batch: n,
+		Now: pgTime(now), CleanupCutoff: pgTime(now.Add(-application.CopyRetention + application.CleanupMargin)), Batch: n,
 	})
 	if err != nil {
 		return nil, err
@@ -513,8 +513,9 @@ func (s *Store) ListYoungVerifying(ctx context.Context, cutoff time.Time, batch 
 	return out, nil
 }
 
-// ExpireStuckSession flips one stuck VERIFYING session to EXPIRED after
-// the sweeper confirmed no live job holds it. The age cutoff rides in
+// ExpireStuckSession closes a stuck VERIFYING session at the cleanup boundary.
+// A queued job cannot extend retention; actual writer leases guard disposal.
+// The age cutoff rides in
 // the guarded statement itself, so a young session can never expire
 // through this path even if a caller skips the list step.
 func (s *Store) ExpireStuckSession(ctx context.Context, id string, cutoff time.Time) error {
@@ -575,7 +576,7 @@ func (s *Store) QuarantineCandidates(ctx context.Context, oldCutoff time.Time, b
 // StaleFinalCandidates lists sanitized objects past the copy deadline
 // cutoff for policy evaluation in Go. The SQL preselects on first
 // receipt (received_at, falling back to created_at); the caller
-// passes now minus 24 h.
+// passes the predeadline cleanup cutoff.
 func (s *Store) StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error) {
 	n, err := checkBatch(batch)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	evidence "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/evidence"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	"github.com/jackc/pgx/v5"
 )
@@ -28,7 +29,7 @@ func (s *Store) ClaimUpload(ctx context.Context, id, nonce string, now time.Time
 		return domain.Session{}, false, err
 	}
 	session := mapSession(row.ID, row.ContributorRef, row.ClientSessionID, row.Mime, row.DeclaredBytes, row.ClaimedSha256, row.QuarantineKey, row.Status, row.CreatedAt, row.ExpiresAt, row.UpdatedAt, row.PolicyVersion, row.PhotoCaptureID)
-	if nonce == "" || session.Status != domain.StateIssued || row.QuarantineDeletedAt.Valid || !now.Before(session.ExpiresAt) {
+	if nonce == "" || session.Status != domain.StateIssued || row.QuarantineDeletedAt.Valid || !now.Before(session.ExpiresAt) || !now.Add(30*time.Second).Before(session.CreatedAt.Add(application.CopyRetention-application.CleanupMargin)) {
 		return domain.Session{}, false, domain.ErrBadTransition
 	}
 	receipt, err := q.GetUploadTransfer(ctx, uid)
@@ -64,10 +65,10 @@ func (s *Store) FinishUpload(ctx context.Context, id, nonce string, completed bo
 }
 
 // CanDeleteQuarantine uses a fresh snapshot after admission has been closed.
-func (s *Store) CanDeleteQuarantine(ctx context.Context, id string, now time.Time) (bool, error) {
+func (s *Store) CanDeleteQuarantine(ctx context.Context, id string) (bool, error) {
 	uid, err := mustUUID(id)
 	if err != nil {
 		return false, err
 	}
-	return evidence.New(s.pool).CanDeleteQuarantine(ctx, evidence.CanDeleteQuarantineParams{ID: uid, At: pgTime(now)})
+	return evidence.New(s.pool).CanDeleteQuarantine(ctx, evidence.CanDeleteQuarantineParams{ID: uid, At: pgTime(time.Now())})
 }

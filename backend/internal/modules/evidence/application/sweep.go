@@ -17,6 +17,12 @@ import (
 // Personal erasure belongs to the rights workflow (P07).
 const (
 	SessionHardCap = 24 * time.Hour
+	// CleanupMargin reserves retry/queue time; it is not a capacity claim.
+	CleanupMargin         = 2 * time.Hour
+	SweepTimeout          = 45 * time.Second
+	NamespaceSweepTimeout = 20 * time.Second
+	CopyDisposalTimeout   = 5 * time.Second
+	OriginalCleanupBatch  = 32
 	// CopyRetention is the single deadline for every app-owned copy:
 	// first receipt + 24 h. Retries, processing, copying, disputes
 	// and downloads never extend it.
@@ -44,7 +50,7 @@ type FinalCleanupReport struct {
 type SweepStore interface {
 	ReconcileFinalOutputs(context.Context, time.Time, int, func(context.Context, string) error) (FinalCleanupReport, error)
 	DeleteFinalCopy(context.Context, string, string, time.Time, func(context.Context, string) error) (bool, error)
-	CanDeleteQuarantine(context.Context, string, time.Time) (bool, error)
+	CanDeleteQuarantine(context.Context, string) (bool, error)
 	ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error)
 	ListStuckVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
 	ExpireStuckSession(ctx context.Context, id string, cutoff time.Time) error
@@ -60,8 +66,9 @@ type SweepStore interface {
 	IntakeHealth(ctx context.Context, since, now time.Time) (IntakeHealth, error)
 }
 
-// SweepJobs reconciles in-flight validation: a session with a live
-// verify job is untouchable, whatever its age.
+// SweepJobs is retained for existing internal harnesses. A queued job cannot
+// extend retention; actual writer leases guard cleanup. Sweep no longer uses
+// the job-state lookup.
 type SweepJobs interface {
 	HasLiveJob(ctx context.Context, sessionID string) (bool, error)
 }
@@ -102,8 +109,8 @@ type SweepReport struct {
 	Health             IntakeHealth
 	// Overdue is the post-pass failing-policy signal (SEC05-B):
 	// copies still past deadline after this run's bounded work.
-	// Nonzero means the next hourly run must catch up; alarms name
-	// the namespace and worst lag. Never fails the pass itself.
+	// Nonzero means enforcement is behind; alarms name the namespace and
+	// worst lag. The job handler refuses successful acknowledgement.
 	Overdue OverdueReport
 }
 
@@ -152,6 +159,7 @@ func AuditOverdue(ctx context.Context, store SweepStore, now time.Time, batch in
 	if batch < 1 {
 		return rep, errors.New("evidence: audit batch must be positive")
 	}
+	batch = min(batch, DefaultSweepBatch)
 	rows, err := store.OverdueFinals(ctx, now.Add(-CopyRetention), batch)
 	if err != nil {
 		return rep, err
@@ -181,147 +189,30 @@ func (r OverdueReport) Unhealthy() bool {
 	return r.Count > 0 || r.Originals > 0
 }
 
-// Sweep runs one retention pass in dependency order: idle expiry first
-// (DB truth advances even if storage is down), then stuck validation
-// with live-job guard, terminal quarantine cleanup, stale sanitized
-// bytes under policy, and finally the 90-day hash purge. Storage
-// failures are best-effort with counts; database failures abort the run
-// for retry, and every step converges on repeat.
+// Sweep runs two independently bounded disposal slices. Expiry closes new
+// source admission; one oldest-first scan serves originals. A failed original
+// slice does not consume the finals slice. Partial effects survive failures.
 func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	var rep SweepReport
-	var failures error
-	if deps.Batch < 1 {
-		return rep, errors.New("evidence: sweep batch must be positive")
+	if deps.Batch < 1 || deps.Store == nil || deps.Storage == nil {
+		return rep, errors.New("evidence: sweep requires a positive batch, store and storage")
 	}
+	ctx, cancel := context.WithTimeout(ctx, SweepTimeout)
+	defer cancel()
 	now := time.Now()
 	if deps.Clock != nil {
 		now = deps.Clock()
 	}
-
-	expired, err := deps.Store.ExpireIdleSessions(ctx, now, deps.Batch)
-	if err != nil {
-		return rep, err
-	}
-	for _, sess := range expired {
-		rep.ExpiredSessions++
-		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
-		if err != nil {
-			return rep, err
-		}
-		if !allowed {
-			rep.SkippedActive++
-			continue
-		}
-		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
-			rep.StorageErrors++
-			continue
-		}
-		if err := deps.Store.MarkQuarantineDeleted(ctx, sess.ID); err != nil {
-			return rep, err
-		}
-		rep.QuarantinesDeleted++
-	}
-
-	hardCutoff := now.Add(-SessionHardCap)
-	stuck, err := deps.Store.ListStuckVerifying(ctx, hardCutoff, deps.Batch)
-	if err != nil {
-		return rep, err
-	}
-	for _, sess := range stuck {
-		live, err := deps.Jobs.HasLiveJob(ctx, sess.ID)
-		if err != nil {
-			return rep, err
-		}
-		if live {
-			rep.SkippedActive++
-			continue
-		}
-		if err := deps.Store.ExpireStuckSession(ctx, sess.ID, hardCutoff); err != nil {
-			return rep, err
-		}
-		rep.ExpiredSessions++
-		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
-		if err != nil {
-			return rep, err
-		}
-		if !allowed {
-			rep.SkippedActive++
-			continue
-		}
-		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
-			rep.StorageErrors++
-			continue
-		}
-		if err := deps.Store.MarkQuarantineDeleted(ctx, sess.ID); err != nil {
-			return rep, err
-		}
-		rep.QuarantinesDeleted++
-	}
-
-	cands, err := deps.Store.QuarantineCandidates(ctx, now.Add(-SessionHardCap), deps.Batch)
-	if err != nil {
-		return rep, err
-	}
-	for _, sess := range cands {
-		allowed, err := deps.Store.CanDeleteQuarantine(ctx, sess.ID, now)
-		if err != nil {
-			return rep, err
-		}
-		if !allowed {
-			rep.SkippedActive++
-			continue
-		}
-		if err := deps.Storage.DeleteQuarantine(ctx, sess.QuarantineKey); err != nil {
-			rep.StorageErrors++
-			continue
-		}
-		if err := deps.Store.MarkQuarantineDeleted(ctx, sess.ID); err != nil {
-			return rep, err
-		}
-		rep.QuarantinesDeleted++
-	}
-
-	cleanup, cleanupErr := deps.Store.ReconcileFinalOutputs(ctx, now, deps.Batch, deps.Storage.DeleteFinal)
-	rep.FinalsDeleted += cleanup.Purged
-	rep.SkippedActive += cleanup.Skipped
-	rep.StorageErrors += cleanup.Failures
-	if cleanupErr != nil {
-		failures = errors.Join(failures, cleanupErr)
-	}
-	remaining := FinalCleanupBatch - cleanup.Checked
-	if remaining > deps.Batch {
-		remaining = deps.Batch
-	}
-	var finals []domain.ObjectRef
-	if remaining > 0 {
-		finals, err = deps.Store.StaleFinalCandidates(ctx, now.Add(-CopyRetention), remaining)
-	}
-	if err != nil {
-		return rep, err
-	}
-	for _, obj := range finals {
-		if !FinalDue(obj, now) {
-			continue
-		}
-		deleted, err := deps.Store.DeleteFinalCopy(ctx, obj.ID, obj.FinalKey, now, deps.Storage.DeleteFinal)
-		if err != nil {
-			rep.StorageErrors++
-			continue
-		}
-		if !deleted {
-			rep.SkippedActive++
-			continue
-		}
-		rep.FinalsDeleted++
-	}
-
+	sourceCtx, stopSource := context.WithTimeout(ctx, NamespaceSweepTimeout)
+	failures := sweepOriginals(sourceCtx, deps, now, &rep)
+	stopSource()
+	finalCtx, stopFinal := context.WithTimeout(ctx, NamespaceSweepTimeout)
+	failures = errors.Join(failures, sweepFinals(finalCtx, deps, now, &rep))
+	stopFinal()
 	purged, err := deps.Store.PurgeObjectsBefore(ctx, now.Add(-HashRetention))
-	if err != nil {
-		return rep, err
-	}
 	rep.ObjectsPurged = purged
-	// Cleanup effects are retained even if monitoring fails. UNKNOWN is
-	// explicit and errors propagate; a missing observation is never healthy zero.
+	failures = errors.Join(failures, err)
+	// UNKNOWN is explicit; failed observations cannot become healthy zero.
 	health, healthErr := deps.Store.IntakeHealth(ctx, dayStart(now), now)
 	if healthErr != nil {
 		failures = errors.Join(failures, healthErr)
@@ -339,5 +230,108 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	if rep.StorageErrors > 0 {
 		failures = errors.Join(failures, errors.New("evidence: incomplete storage cleanup"))
 	}
-	return rep, failures
+	return rep, errors.Join(failures, ctx.Err())
+}
+
+func sweepOriginals(ctx context.Context, deps SweepDeps, now time.Time, rep *SweepReport) error {
+	batch := min(deps.Batch, OriginalCleanupBatch)
+	expired, err := deps.Store.ExpireIdleSessions(ctx, now, batch)
+	if err != nil {
+		return err
+	}
+	rep.ExpiredSessions += len(expired)
+	cutoff := now.Add(-SessionHardCap + CleanupMargin)
+	stuck, err := deps.Store.ListStuckVerifying(ctx, cutoff, batch)
+	if err != nil {
+		return err
+	}
+	for _, sess := range stuck {
+		// A queued/stalled validator is not byte authority. Expiry and guarded
+		// final commit share the session row lock; an admitted PUT stays leased.
+		if err := deps.Store.ExpireStuckSession(ctx, sess.ID, cutoff); err != nil {
+			return err
+		}
+		rep.ExpiredSessions++
+	}
+	cands, err := deps.Store.QuarantineCandidates(ctx, cutoff, batch)
+	if err != nil {
+		return err
+	}
+	var failures error
+	for _, sess := range cands {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures, err)
+		}
+		copyCtx, stop := context.WithTimeout(ctx, CopyDisposalTimeout)
+		allowed, err := deps.Store.CanDeleteQuarantine(copyCtx, sess.ID)
+		if err != nil {
+			stop()
+			return errors.Join(failures, err)
+		}
+		if !allowed {
+			stop()
+			rep.SkippedActive++
+			continue
+		}
+		err = deps.Storage.DeleteQuarantine(copyCtx, sess.QuarantineKey)
+		if err != nil {
+			stop()
+			rep.StorageErrors++
+			failures = errors.Join(failures, err)
+			continue
+		}
+		err = deps.Store.MarkQuarantineDeleted(copyCtx, sess.ID)
+		stop()
+		if err != nil {
+			return errors.Join(failures, err)
+		}
+		rep.QuarantinesDeleted++
+	}
+	return errors.Join(failures, ctx.Err())
+}
+
+// FinalCleanupDue starts disposal before the hard deadline without moving
+// it or changing the separate overdue audit's actual 24h boundary.
+func FinalCleanupDue(obj domain.ObjectRef, now time.Time) bool {
+	return !now.Before(obj.ReceivedOrCreated().Add(CopyRetention - CleanupMargin))
+}
+
+func sweepFinals(ctx context.Context, deps SweepDeps, now time.Time, rep *SweepReport) error {
+	batch := min(deps.Batch, FinalCleanupBatch)
+	cleanup, failures := deps.Store.ReconcileFinalOutputs(ctx, now, batch, deps.Storage.DeleteFinal)
+	rep.FinalsDeleted += cleanup.Purged
+	rep.SkippedActive += cleanup.Skipped
+	rep.StorageErrors += cleanup.Failures
+	remaining := batch - cleanup.Checked
+	if remaining <= 0 {
+		return errors.Join(failures, ctx.Err())
+	}
+	finals, err := deps.Store.StaleFinalCandidates(ctx, now.Add(-CopyRetention+CleanupMargin), remaining)
+	if err != nil {
+		return errors.Join(failures, err)
+	}
+	for _, obj := range finals {
+		if err := ctx.Err(); err != nil {
+			return errors.Join(failures, err)
+		}
+		if !FinalCleanupDue(obj, now) {
+			continue
+		}
+		deleted, err := deps.Store.DeleteFinalCopy(ctx, obj.ID, obj.FinalKey, now, func(ctx context.Context, key string) error {
+			copyCtx, stop := context.WithTimeout(ctx, CopyDisposalTimeout)
+			defer stop()
+			return deps.Storage.DeleteFinal(copyCtx, key)
+		})
+		if err != nil {
+			rep.StorageErrors++
+			failures = errors.Join(failures, err)
+			continue
+		}
+		if !deleted {
+			rep.SkippedActive++
+			continue
+		}
+		rep.FinalsDeleted++
+	}
+	return errors.Join(failures, ctx.Err())
 }

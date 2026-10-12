@@ -829,7 +829,7 @@ func run() error {
 		Enforcement: func(ctx context.Context) error {
 			// Intake circuit breaker (B-BR-M04): any copy past its
 			// 24 h deadline with bytes still present stops new
-			// intake until the hourly sweeper catches up.
+			// intake until the every-minute sweeper catches up.
 			// SEC05-A: finals AND quarantine originals — an
 			// overdue original with a failed deletion trips the
 			// breaker exactly like an overdue final.

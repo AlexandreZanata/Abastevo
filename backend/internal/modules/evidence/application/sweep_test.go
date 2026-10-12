@@ -42,12 +42,15 @@ func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, batc
 	}
 	out := f.idle[:n]
 	f.idle = f.idle[n:]
+	f.cands = append(f.cands, out...)
 	return out, nil
 }
 
-func (f *fakeSweepStore) ListStuckVerifying(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
-	out := f.stuck
-	f.stuck = nil
+func (f *fakeSweepStore) ListStuckVerifying(_ context.Context, _ time.Time, batch int) ([]domain.SessionRef, error) {
+	n := min(len(f.stuck), batch)
+	out := f.stuck[:n]
+	f.stuck = f.stuck[n:]
+	f.cands = append(f.cands, out...)
 	return out, nil
 }
 
@@ -61,9 +64,10 @@ func (f *fakeSweepStore) MarkQuarantineDeleted(_ context.Context, id string) err
 	return nil
 }
 
-func (f *fakeSweepStore) QuarantineCandidates(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
-	out := f.cands
-	f.cands = nil
+func (f *fakeSweepStore) QuarantineCandidates(_ context.Context, _ time.Time, batch int) ([]domain.SessionRef, error) {
+	n := min(len(f.cands), batch)
+	out := f.cands[:n]
+	f.cands = f.cands[n:]
 	return out, nil
 }
 
@@ -192,21 +196,21 @@ func TestSweepExpiresIdleAndDeletesQuarantine(t *testing.T) {
 	}
 }
 
-func TestSweepSkipsActiveLease(t *testing.T) {
-	// A VERIFYING session with a live verify job is untouchable: no
-	// expiry, no quarantine delete, counted as skipped.
-	store := &fakeSweepStore{stuck: []domain.SessionRef{ref("s9", "q/c")}}
+func TestSweepExpiresStuckDespiteQueuedJobAndProtectsLiveUpload(t *testing.T) {
+	// A queued job cannot extend retention. Expiry closes admission while
+	// an actual admitted source upload remains protected from deletion.
+	store := &fakeSweepStore{stuck: []domain.SessionRef{ref("s9", "q/c")}, liveUploads: map[string]bool{"s9": true}}
 	deps := sweepDeps(store)
 	deps.Jobs = &fakeSweepJobs{live: map[string]bool{"s9": true}}
 	rep, err := Sweep(context.Background(), deps)
 	if err != nil {
 		t.Fatalf("sweep = %v", err)
 	}
-	if rep.SkippedActive != 1 || rep.ExpiredSessions != 0 || rep.QuarantinesDeleted != 0 {
+	if rep.SkippedActive != 1 || rep.ExpiredSessions != 1 || rep.QuarantinesDeleted != 0 {
 		t.Errorf("report = %+v", rep)
 	}
-	if len(store.expired) != 0 || len(store.qdel) != 0 {
-		t.Errorf("active lease mutated: %v %v", store.expired, store.qdel)
+	if len(store.expired) != 1 || len(store.qdel) != 0 {
+		t.Errorf("live upload incorrectly deleted: %v %v", store.expired, store.qdel)
 	}
 }
 
@@ -365,7 +369,7 @@ func TestSweepRejectsBadBatch(t *testing.T) {
 	}
 }
 
-func (f *fakeSweepStore) CanDeleteQuarantine(_ context.Context, id string, _ time.Time) (bool, error) {
+func (f *fakeSweepStore) CanDeleteQuarantine(_ context.Context, id string) (bool, error) {
 	return !f.liveUploads[id], nil
 }
 func TestSweepCannotAcknowledgeLiveUpload(t *testing.T) {

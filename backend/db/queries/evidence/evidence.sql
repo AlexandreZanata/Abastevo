@@ -99,8 +99,9 @@ UPDATE evidence_sessions AS s
 SET status = 'EXPIRED', updated_at = now()
 WHERE s.id IN (
     SELECT inner_s.id FROM evidence_sessions AS inner_s
-    WHERE inner_s.status = 'ISSUED' AND inner_s.expires_at <= @now
-    ORDER BY inner_s.expires_at ASC
+    WHERE inner_s.status = 'ISSUED'
+      AND (inner_s.expires_at <= @now OR inner_s.created_at <= @cleanup_cutoff)
+    ORDER BY inner_s.created_at ASC, inner_s.id ASC
     LIMIT @batch
 )
 RETURNING s.id, s.quarantine_key;
@@ -126,7 +127,9 @@ WHERE id = @id AND quarantine_deleted_at IS NULL;
 SELECT id, quarantine_key, status, created_at FROM evidence_sessions
 WHERE quarantine_deleted_at IS NULL
     AND (status IN ('READY', 'REJECTED', 'EXPIRED') OR created_at <= @old_cutoff)
-ORDER BY created_at ASC
+    AND NOT EXISTS (SELECT 1 FROM evidence_upload_transfers t
+                    WHERE t.session_id = evidence_sessions.id AND t.lease_until > now())
+ORDER BY created_at ASC, id ASC
 LIMIT @batch;
 
 -- name: StaleFinalCandidates :many

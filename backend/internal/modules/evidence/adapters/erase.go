@@ -28,7 +28,7 @@ func (s *Store) EraseContributor(ctx context.Context, ref string, deleteKey func
 		if sess.QuarantineDeletedAt.Valid {
 			continue
 		}
-		allowed, err := s.CanDeleteQuarantine(ctx, uuidString(sess.ID), time.Now())
+		allowed, err := s.CanDeleteQuarantine(ctx, uuidString(sess.ID))
 		if err != nil {
 			return purgedSessions, purgedObjects, err
 		}

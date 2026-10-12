@@ -45,7 +45,7 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 	// deleted unit counted, storage failures counted for the next pass.
 	// Intake posture rides along as counts/bytes/timestamp only — never
 	// keys, hashes or payloads. A remaining overdue backlog alarms at
-	// warn level with the worst lag per namespace so the next hourly
+	// warn level with the worst lag per namespace so the next minute
 	// run's catch-up is watched, not silent.
 	args := []any{
 		"expired_sessions", rep.ExpiredSessions,
