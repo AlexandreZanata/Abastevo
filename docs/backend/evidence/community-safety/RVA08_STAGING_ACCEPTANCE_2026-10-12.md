@@ -194,3 +194,27 @@ HTTP client covers first OFF and retryable 503 (focused JVM suite green).
 OpenAPI documents unavailable responses; vet/sqlc/diff-check pass. OpenAPI lint
 reports zero errors and existing warnings. No live database fault was injected.
 Deployment/rehearsal and 16-case signed HTTPS acceptance remain next.
+
+## First-OFF staging deployment
+
+Immutable source 610bdd9b74e5f03b922c8723d0c555dba2199457, API SHA-256
+956cba5bd829999b8b3d619e4f14eb8b686b5e476244488e3d50ca041bb0a14e; worker
+0c8f81f41b1e57c096a1f06828286cf0d9650817165b08176b3e93ac85c0cf88; migrator
+c1b790db44e4aa1e0d25bd72ad96a5c895ca899cafb24ba3c9e4243166d4f6e5.
+A new private pre-074 backup restored into an isolated Abastevo rehearsal DB.
+Only 000074 applied; replay was empty, two prior REVOKED rows and zero training
+derivatives were preserved. Old API/worker stopped before live migration.
+Owned service restored after all three new pod containers became ready. Resource
+limits, zero intake, training OFF and persistent private media preserved.
+
+Real HTTPS acceptance at 2026-10-12T22:40:51Z: all 16 cases PASS, 31 requests;
+new-owner OFF and exact empty-review replay now included. Both synthetic owners
+finish OFF. Real process API/worker local SQL/S3 regression also passes (17.487s).
+Readiness after rollout is 200; no new container restart/OOM. Retention inspection
+at 22:40:46Z still confirms all five originals/four abandoned finals absent,
+with one READY final correctly retained and the elapsed deadline still pending.
+Telemetry: host available 24,138 MiB; API 2 MiB, worker 3 MiB, private storage
+336 MiB, PostgreSQL 196 MiB (snapshots, not peak/soak claims); no lock backlog.
+Read-only own-cgroup inspection before rollout found no API/worker CPU
+throttling or memory OOM events; that snapshot does not explain failed pilots.
+ADB enumerates zero devices, so no fresh physical-device acceptance occurred.
