@@ -18,13 +18,8 @@ test('illustrated scenes ship responsive bounded derivatives with distinct categ
       assert.ok(html.includes(output.file), `missing responsive scene ${output.file}`);
     }
   }
-  for (const output of art.outputs.filter(output => output.role === 'hero-background')) {
-    assert.ok(output.bytes <= 96 * 1024, 'hero landscape exceeds budget');
-    assert.ok(html.includes(output.file));
-  }
-  assert.equal(art.outputs.filter(output => output.role === 'hero-background').length, 4);
-  assert.match(html, /<section class="hero">\s*<picture class="hero-landscape"/);
-  assert.doesNotMatch(html, /class="product-map"/);
+  assert.equal(art.outputs.filter(output => output.role === 'hero-background').length, 0);
+  assert.doesNotMatch(html, /hero-landscape|hero-background-|class="product-map"/);
   const master = fs.readFileSync(path.resolve(root, '..', art.export4k.master));
   assert.equal(master.readUInt32BE(16), 3840);
   assert.equal(master.readUInt32BE(20), 2160);

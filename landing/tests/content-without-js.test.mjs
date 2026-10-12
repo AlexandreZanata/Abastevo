@@ -34,7 +34,6 @@ test('essential content and links are present in static HTML without JS', () => 
     assert.match(heroSection, /assets\/app\/explore-light-720w\.webp/);
     assert.match(heroSection, /Captura real do app em desenvolvimento/);
     assert.match(heroSection, /não preços da bomba agora/);
-    assert.match(heroSection, /representação artística/);
     assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
 
     // 5. Legal and help links reachable from footer

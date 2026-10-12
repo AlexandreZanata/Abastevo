@@ -1,7 +1,7 @@
 {
   "generator": "built-in image_gen",
   "generatedDate": "2026-10-12",
-  "role": "Full-bleed editorial landscape, six unique-color action/persona scenes and four reusable flat-style decorations; illustrative only",
+  "role": "Six unique-color action/persona scenes and four reusable flat-style decorations; hero landscape archived and no longer emitted",
   "screen": "Unmodified authentic explore-light derivatives; app provenance retained",
   "optimization": "ImageMagick resize and WebP method 6 only; action scenes quality 82, hero/reusable assets quality 80; original alpha retained. 4K export is a Lanczos resize, not native generation.",
   "sources": [
@@ -157,34 +157,6 @@
       "bytes": 28112,
       "width": 640,
       "role": "fleet"
-    },
-    {
-      "file": "hero-background-640w.35f9fc83.webp",
-      "sha256": "35f9fc83a5770484ffc8c59d22153fb967d82521054c3fdf9bce033ebbc9d70e",
-      "bytes": 18168,
-      "width": 640,
-      "role": "hero-background"
-    },
-    {
-      "file": "hero-background-1280w.cc7354bd.webp",
-      "sha256": "cc7354bddc034d8802d0323cca53621bcd0bafc8aab7ad057bba28b6456785bf",
-      "bytes": 44266,
-      "width": 1280,
-      "role": "hero-background"
-    },
-    {
-      "file": "hero-background-1920w.4cb89b80.webp",
-      "sha256": "4cb89b8026434ab1ac32918129d0220521c59f5ad5270e60a68e2c60c44a1fe4",
-      "bytes": 69720,
-      "width": 1920,
-      "role": "hero-background"
-    },
-    {
-      "file": "hero-background-2560w.9b32e13a.webp",
-      "sha256": "9b32e13a4dc71bab433fbc8ba5c9e674babd89cedac963d7ae7bce3da5e5cb23",
-      "bytes": 95000,
-      "width": 2560,
-      "role": "hero-background"
     },
     {
       "file": "trees-320w.75aff4bf.webp",

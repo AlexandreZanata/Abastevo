@@ -294,3 +294,14 @@ gutters. Refine the device as an Android handset with a centered small punch-hol
 camera, subtle metal frame, narrow bezels and side controls; no iOS notch. Keep
 the authentic Android screenshot untouched, selecting at least the existing
 720px derivative for a sharper display. Keep source badges outside the screen.
+
+## LH07 minimal opening amendment — 2026-10-12
+
+The owner explicitly rejects the illustrated hero background and authorizes a
+minimal professional opening instead. Remove the landscape from the homepage
+and emitted runtime art manifest; retain generated masters for later reuse.
+Use a clean neutral background, restrained geometric device support, balanced
+typography/spacing and the existing authentic Android mockup. Header/foreground
+keep the standard container. Preserve six card artworks, current buttons/copy,
+source/date disclosures, prelaunch status and black/grayscale dark mode. The
+latest instruction supersedes the LH05/LH06 landscape presentation requirements.
