@@ -65,9 +65,12 @@ func writeConsentError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusConflict, "privacy.stale-revision", "decision superseded; bind the current revision", nil)
 	case errors.Is(err, privacydomain.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "privacy.conflict", "same revision, different decision", nil)
-	default:
+	case errors.Is(err, privacydomain.ErrInvalidRequest):
 		httpapi.WriteError(w, r, http.StatusBadRequest, "privacy.invalid", "invalid consent request",
 			[]httpapi.Detail{{Field: "body", Code: "invalid"}})
+	default:
+		w.Header().Set("Retry-After", "5")
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "privacy.unavailable", "consent temporarily unavailable", nil)
 	}
 }
 

@@ -188,4 +188,23 @@ class TrainingConsentHttpClientTest {
         catch(_:kotlinx.coroutines.CancellationException) { }
     }
 
+    @Test fun `storage unavailable keeps OFF retryable with server deadline`() = runTest {
+        val client = client()
+        coEvery { proof.post(any(), any(), any(), scope.ownerScope) } throws PhotoOperationRefused(503, "privacy.unavailable", 5)
+        try { client.revokeConsent(scope, 1, "same-off"); fail<Unit>("unavailable accepted") }
+        catch (e: TrainingConsentException) {
+            assertEquals(TrainingConsentRejectKind.TRANSPORT, e.kind)
+            assertEquals(5L, e.retryAfterSeconds)
+        }
+    }
+
+    @Test fun `first OFF receipt has no fictitious terms review`() = runTest {
+        enqueue(200, """{"state":"REVOKED","revision":1,"terms_version":"","replayed":false,"delete_owned_training_assets":true}""")
+        val receipt = client().revokeConsent(scope, 1, "first-off")
+        assertEquals("REVOKED", receipt.state)
+        assertEquals("", receipt.termsVersion)
+        assertEquals(1L, receipt.revision)
+        assertEquals("{\"revision\":1}", lastBody)
+    }
+
 }

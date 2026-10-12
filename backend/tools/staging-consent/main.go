@@ -317,6 +317,19 @@ func (p *probe) run(ctx context.Context) (runErr error) {
 		return errors.New("foreign owner leaked decision")
 	}
 	p.checks = append(p.checks, "foreign-owner-isolation")
+	firstOff := []byte(`{"revision":1}`)
+	_, err = p.decision(ctx, b, "/revoke", firstOff, 200, "REVOKED", 1)
+	if err = p.check("first-off-without-grant", err); err != nil {
+		return err
+	}
+	v, err = p.decision(ctx, b, "/revoke", firstOff, 200, "REVOKED", 1)
+	if err != nil {
+		return err
+	}
+	if v["replayed"] != true || v["terms_version"] != "" {
+		return errors.New("first OFF did not replay without reviewed terms")
+	}
+	p.checks = append(p.checks, "first-off-replay-no-invented-review")
 	r, err = p.signed(ctx, a, "POST", consentPath+"/revoke", []byte(`{"revision":2}`), true)
 	if err != nil {
 		return err

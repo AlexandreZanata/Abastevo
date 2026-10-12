@@ -312,3 +312,105 @@ func TestConsentQueriesStayNonDestructive(t *testing.T) {
 		t.Error("upsert lost its revision guard")
 	}
 }
+
+func TestFirstOFFPersistsWithoutReviewedTermsAndConverges(t *testing.T) {
+	s := consentPG(t)
+	ctx := context.Background()
+	p := consentAppPorts(s)
+	caller := privacyapp.Caller{ContributorID: "never-granted"}
+	first, err := privacyapp.RevokeConsent(ctx, p, caller, privacyapp.RevokeDTO{Revision: 1})
+	if err != nil {
+		t.Fatalf("first OFF: %v", err)
+	}
+	if first.State != domain.StateRevoked || first.TermsVersion != "" {
+		t.Fatalf("OFF invented review: %+v", first)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			got, err := privacyapp.RevokeConsent(ctx, p, caller, privacyapp.RevokeDTO{Revision: 1})
+			if err != nil || got.State != domain.StateRevoked || !got.Replayed {
+				t.Errorf("OFF retry: %+v %v", got, err)
+			}
+		}()
+	}
+	wg.Wait()
+	_, err = privacyapp.GrantConsent(ctx, p, caller, privacyapp.GrantDTO{TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1", Revision: 1})
+	if !errors.Is(err, domain.ErrStaleConsent) {
+		t.Fatalf("stale ON: %v", err)
+	}
+	got, err := s.Get(ctx, caller.ContributorID)
+	if err != nil || got.State != domain.StateRevoked || got.Revision != 1 || got.TermsDigest != "" {
+		t.Fatalf("stored OFF: %+v %v", got, err)
+	}
+	invalid := mustConsent(t, "invalid-empty-grant", 1, time.Now())
+	invalid.TermsDigest = ""
+	if _, _, err := s.Put(ctx, invalid); err == nil {
+		t.Fatal("empty-term grant stored")
+	}
+}
+
+func TestFirstOFFUpgradeAppliesOnly000074AndPreservesConsent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	previous, target := fstest.MapFS{}, fstest.MapFS{}
+	files, err := fs.Glob(dbmigrations.Files, "*.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range files {
+		if name > "000074_privacy_first_off.sql" {
+			continue
+		}
+		data, err := fs.ReadFile(dbmigrations.Files, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		target[name] = &fstest.MapFile{Data: data}
+		if name < "000074_privacy_first_off.sql" {
+			previous[name] = &fstest.MapFile{Data: data}
+		}
+	}
+	dsn := freshPre056DB(t, testDSN(t))
+	if _, err := migrate.Apply(ctx, dsn, previous); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(ctx)
+	if _, err := conn.Exec(ctx, `INSERT INTO privacy_training_consents(contributor_id,contributor_ref,terms_version,terms_digest,state,revision,decided_at) VALUES('retained-on','ref-on','training-terms-v1','digest-v1','GRANTED',7,now()),('retained-off','ref-off','training-terms-v1','digest-v1','REVOKED',8,now())`); err != nil {
+		t.Fatal(err)
+	}
+	var before, after string
+	const snapshot = `SELECT jsonb_agg(to_jsonb(c) ORDER BY contributor_id)::text FROM privacy_training_consents c WHERE contributor_id LIKE 'retained-%'`
+	if err := conn.QueryRow(ctx, snapshot).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	applied, err := migrate.Apply(ctx, dsn, target)
+	if err != nil || len(applied) != 1 || applied[0] != "000074" {
+		t.Fatalf("upgrade: %v %v", applied, err)
+	}
+	if err := conn.QueryRow(ctx, snapshot).Scan(&after); err != nil || before != after {
+		t.Fatalf("consent history changed: %v", err)
+	}
+	if _, err := conn.Exec(ctx, `INSERT INTO privacy_training_consents(contributor_id,contributor_ref,terms_version,terms_digest,state,revision,revoked_at,decided_at) VALUES('new-off','ref-off','','','REVOKED',1,now(),now())`); err != nil {
+		t.Fatalf("baseline OFF: %v", err)
+	}
+	for _, state := range []string{"GRANTED", "REVOKED"} {
+		version := ""
+		if state == "REVOKED" {
+			version = "unreviewed"
+		}
+		if _, err := conn.Exec(ctx, `INSERT INTO privacy_training_consents(contributor_id,contributor_ref,terms_version,terms_digest,state,revision,decided_at) VALUES($1,'invalid',$2,'',$3,1,now())`, "invalid-"+state, version, state); err == nil {
+			t.Fatalf("invalid empty terms accepted for %s", state)
+		}
+	}
+	again, err := migrate.Apply(ctx, dsn, target)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("replay: %v %v", again, err)
+	}
+}

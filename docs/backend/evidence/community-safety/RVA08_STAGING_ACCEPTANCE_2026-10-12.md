@@ -156,3 +156,41 @@ but errors/drops invalidate campaign acceptance despite the latency pass.
 Resource guards remained healthy. This is NOT a passed two-minute campaign or
 capacity certificate. Preserve the failed artifacts; do not replace them with
 only successful percentiles. Further root-cause/stability qualification is owed.
+
+## Consent outage classification opening
+
+B-BR-RVA08-08: infrastructure failures while reading/recording a consent
+decision return retryable 503/privacy.unavailable with no-store and Retry-After 5.
+Only actual invalid domain requests return 400/privacy.invalid. Never report a
+DB error as a malformed owner decision or include SQL/provider text in responses.
+BUC: independently break the consent table only in an exclusive disposable
+PostGIS fixture, preserving the real signature verifier; signed read/grant/OFF
+refuse as unavailable, then restored storage acknowledges the same OFF revision.
+No live VPS database outage is needed or authorized by this test.
+
+Internal loopback fault-isolation campaign also stopped: 133/134 completed
+steady requests, one client drop, p95 above 1.3s; resource guard healthy. It rules
+out an explanation based solely on the external client path but does not yet
+identify SQL, container scheduling or host IO as the cause. Stability remains owed.
+
+B-BR-RVA08-09: an explicit OFF from an owner who never granted training must
+persist without inventing a reviewed terms pair. Empty terms are allowed only
+for a REVOKED baseline; grants still require the current reviewed terms. The
+same OFF revision replays, concurrent identical OFF decisions converge, and a
+same/older ON remains fenced. Migration 000074 is append-only, preserves prior
+consent rows and replays as a no-op.
+BUC: real disposable PostGIS first-OFF/replay/concurrency, invalid empty-term
+grant rejection and 000073→000074 upgrade/replay with retained history.
+
+First-OFF RED reproduced PostgreSQL check violation 23514 on schema 000073.
+The append-only 000074 permits an empty reviewed-terms pair only for REVOKED
+baselines. GREEN: first OFF, eight concurrent identical retries, stale ON
+refusal, invalid empty-term grants and partial baseline rejection; real
+000073→000074 upgrade retains byte-equivalent prior decisions, then no-op replay.
+Signed DB-outage GET/grant/revoke now return 503/no-store/Retry-After 5 without
+SQL text, and the same OFF succeeds after storage restoration. All privacy
+packages plus migrator and staging probe pass real-PostGIS race tests; Android
+HTTP client covers first OFF and retryable 503 (focused JVM suite green).
+OpenAPI documents unavailable responses; vet/sqlc/diff-check pass. OpenAPI lint
+reports zero errors and existing warnings. No live database fault was injected.
+Deployment/rehearsal and 16-case signed HTTPS acceptance remain next.

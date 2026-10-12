@@ -646,6 +646,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent/revoke:
     post:
       summary: Revoke training-image consent and request owned training-asset deletion (signed, idempotent).
@@ -686,6 +688,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent:
     get:
       summary: Own training-consent state (signed, owner only).
@@ -711,6 +715,8 @@ paths:
                 decided_at: '2026-10-11T00:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
