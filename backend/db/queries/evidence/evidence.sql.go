@@ -40,6 +40,21 @@ func (q *Queries) BeginFinalOutputWrite(ctx context.Context, arg BeginFinalOutpu
 	return result.RowsAffected(), nil
 }
 
+const beginSweepObservation = `-- name: BeginSweepObservation :one
+INSERT INTO evidence_sweep_observation(singleton,epoch,started_at)
+VALUES (true,1,now())
+ON CONFLICT(singleton) DO UPDATE
+SET epoch=evidence_sweep_observation.epoch+1,started_at=now(),finished_at=NULL,healthy=false
+RETURNING epoch
+`
+
+func (q *Queries) BeginSweepObservation(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, beginSweepObservation)
+	var epoch int64
+	err := row.Scan(&epoch)
+	return epoch, err
+}
+
 const canDeleteQuarantine = `-- name: CanDeleteQuarantine :one
 SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = $1
  AND s.status IN ('READY','REJECTED','EXPIRED')
@@ -180,6 +195,31 @@ func (q *Queries) ClaimVerifying(ctx context.Context, id pgtype.UUID) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const countPendingPhotoSessions = `-- name: CountPendingPhotoSessions :one
+WITH originals AS MATERIALIZED (
+ SELECT id FROM evidence_sessions WHERE quarantine_deleted_at IS NULL
+ ORDER BY created_at,id LIMIT $1
+), finals AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_final_outputs WHERE state != 'PURGED'
+ ORDER BY session_id LIMIT $1
+), legacy AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_objects WHERE final_deleted_at IS NULL
+ ORDER BY session_id LIMIT $1
+)
+SELECT count(DISTINCT pending.id) FROM (
+ SELECT id FROM originals UNION ALL SELECT id FROM finals UNION ALL SELECT id FROM legacy
+) pending
+`
+
+// Each ordered distinct branch is capped before the cross-branch count;
+// duplicate keys/session never hide additional pending photo sessions.
+func (q *Queries) CountPendingPhotoSessions(ctx context.Context, scanLimit int32) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingPhotoSessions, scanLimit)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countSessionsSince = `-- name: CountSessionsSince :one
@@ -373,6 +413,27 @@ type FinishFinalOutputWriteParams struct {
 
 func (q *Queries) FinishFinalOutputWrite(ctx context.Context, arg FinishFinalOutputWriteParams) (int64, error) {
 	result, err := q.db.Exec(ctx, finishFinalOutputWrite, arg.FinalKey, arg.SessionID, arg.LeaseNonce)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishSweepObservation = `-- name: FinishSweepObservation :execrows
+UPDATE evidence_sweep_observation
+SET finished_at=now(),healthy= $1,
+ last_success_at=CASE WHEN $1::boolean THEN now() ELSE last_success_at END
+WHERE singleton AND epoch= $2 AND finished_at IS NULL
+ AND (NOT $1::boolean OR started_at > now()-interval '1 minute')
+`
+
+type FinishSweepObservationParams struct {
+	Healthy bool  `json:"healthy"`
+	Epoch   int64 `json:"epoch"`
+}
+
+func (q *Queries) FinishSweepObservation(ctx context.Context, arg FinishSweepObservationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishSweepObservation, arg.Healthy, arg.Epoch)
 	if err != nil {
 		return 0, err
 	}
@@ -882,6 +943,22 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (p
 	return id, err
 }
 
+const intakeObservationHealthy = `-- name: IntakeObservationHealthy :one
+SELECT healthy AND finished_at IS NOT NULL AND finished_at >= started_at
+ AND last_success_at > now()-interval '3 minutes'
+ AND last_success_at <= now() AND started_at <= now()
+ AND started_at > now()-interval '3 minutes' AS healthy
+FROM evidence_sweep_observation WHERE singleton
+`
+
+// Running, failed and missing attempts stay closed until a fenced success.
+func (q *Queries) IntakeObservationHealthy(ctx context.Context) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, intakeObservationHealthy)
+	var healthy pgtype.Bool
+	err := row.Scan(&healthy)
+	return healthy, err
+}
+
 const inventoryExistingFinalOutput = `-- name: InventoryExistingFinalOutput :exec
 INSERT INTO evidence_final_outputs
  (final_key, session_id, sanitized_sha256, state, deadline_at, created_at, purged_at)
@@ -1104,6 +1181,15 @@ SELECT pg_advisory_xact_lock(hashtextextended($1::text, 68001))
 
 func (q *Queries) LockFinalOutputKey(ctx context.Context, finalKey string) error {
 	_, err := q.db.Exec(ctx, lockFinalOutputKey, finalKey)
+	return err
+}
+
+const lockIntakeAdmission = `-- name: LockIntakeAdmission :exec
+SELECT pg_advisory_xact_lock(73001)
+`
+
+func (q *Queries) LockIntakeAdmission(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockIntakeAdmission)
 	return err
 }
 

@@ -64,6 +64,7 @@ const (
 	keyGlobalQuotaChallenge = "ANPFUEL_GLOBAL_QUOTA_CHALLENGE"
 	keyGlobalQuotaRegister  = "ANPFUEL_GLOBAL_QUOTA_REGISTER"
 	keyGlobalQuotaWrite     = "ANPFUEL_GLOBAL_QUOTA_WRITE"
+	keyEvidenceMaxPending   = "ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -122,6 +123,8 @@ type Config struct {
 	GlobalQuotaChallenge int
 	GlobalQuotaRegister  int
 	GlobalQuotaWrite     int
+	// Zero keeps photo intake closed pending a measured resource budget.
+	EvidenceMaxPendingPhotos int
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -324,6 +327,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.R2 = r2
+	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > 100 {
+			return Config{}, fmt.Errorf("%s must be 0..100 pending photos", keyEvidenceMaxPending)
+		}
+		cfg.EvidenceMaxPendingPhotos = n
+	}
 
 	if raw, present := getenv("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL"); present && raw != "" {
 		deadline, err := time.Parse(time.RFC3339, raw)

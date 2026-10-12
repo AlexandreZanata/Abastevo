@@ -567,7 +567,7 @@ func run() error {
 	// review against the contributor's last site. The transient fix
 	// never persists: only bands survive the call.
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
-	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
+	evidenceStore := evidenceadapters.NewIntakeStore(pool.Underlying(), cfg.EvidenceMaxPendingPhotos)
 	communityPorts := communityapp.Ports{
 		DevelopmentPhotoPreviewUntil: cfg.DevelopmentPhotoPreviewUntil,
 		CheckDevelopmentStation: func(ctx context.Context, id string) error {
@@ -827,20 +827,10 @@ func run() error {
 	evidencePorts := evidenceapp.Ports{
 		Clock: time.Now,
 		Enforcement: func(ctx context.Context) error {
-			// Intake circuit breaker (B-BR-M04): any copy past its
-			// 24 h deadline with bytes still present stops new
-			// intake until the every-minute sweeper catches up.
-			// SEC05-A: finals AND quarantine originals — an
-			// overdue original with a failed deletion trips the
-			// breaker exactly like an overdue final.
-			overdue, err := evidenceapp.AuditOverdue(ctx, evidenceStore, time.Now(), 1)
-			if err != nil {
-				return err
+			if cfg.R2 == nil {
+				return evidenceapp.ErrStorageUnavailable
 			}
-			if overdue.Unhealthy() {
-				return evidenceapp.ErrEnforcementUnhealthy
-			}
-			return nil
+			return evidenceStore.CheckIntake(ctx)
 		},
 		NewID: newUUID,
 		NewKey: func() (string, error) {

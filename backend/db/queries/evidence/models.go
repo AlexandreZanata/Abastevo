@@ -57,6 +57,15 @@ type EvidenceSession struct {
 	QuarantineDeletedAt pgtype.Timestamptz `json:"quarantine_deleted_at"`
 }
 
+type EvidenceSweepObservation struct {
+	Singleton     bool               `json:"singleton"`
+	Epoch         int64              `json:"epoch"`
+	StartedAt     pgtype.Timestamptz `json:"started_at"`
+	FinishedAt    pgtype.Timestamptz `json:"finished_at"`
+	Healthy       bool               `json:"healthy"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+}
+
 type EvidenceUploadTransfer struct {
 	SessionID   pgtype.UUID        `json:"session_id"`
 	Attempts    int32              `json:"attempts"`

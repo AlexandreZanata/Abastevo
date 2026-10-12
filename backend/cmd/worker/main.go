@@ -795,6 +795,8 @@ func run() error {
 			},
 		},
 		"evidence-sweep": evidencejobs.Sweep{
+			BeginObservation:  evidenceStore.BeginSweepObservation,
+			FinishObservation: evidenceStore.FinishSweepObservation,
 			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
 				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
 					Clock:   time.Now,

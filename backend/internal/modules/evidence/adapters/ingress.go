@@ -14,6 +14,11 @@ import (
 // ClaimUpload charges every transfer attempt durably before reading bytes.
 // No DB connection/transaction is held during client or storage I/O.
 func (s *Store) ClaimUpload(ctx context.Context, id, nonce string, now time.Time) (domain.Session, bool, error) {
+	if s.intakeConfigured {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+	}
 	uid, err := mustUUID(id)
 	if err != nil {
 		return domain.Session{}, false, err
@@ -38,6 +43,14 @@ func (s *Store) ClaimUpload(ctx context.Context, id, nonce string, now time.Time
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return domain.Session{}, false, err
+	}
+	if s.intakeConfigured {
+		if err := q.LockIntakeAdmission(ctx); err != nil {
+			return domain.Session{}, false, errors.Join(application.ErrEnforcementUnhealthy, err)
+		}
+		if err := s.requireIntake(ctx, q, 0); err != nil {
+			return domain.Session{}, false, err
+		}
 	}
 	n, err := q.ClaimUploadTransfer(ctx, evidence.ClaimUploadTransferParams{SessionID: uid, LeaseNonce: nonce, LeaseUntil: pgTime(now.Add(30 * time.Second)), At: pgTime(now)})
 	if err != nil {

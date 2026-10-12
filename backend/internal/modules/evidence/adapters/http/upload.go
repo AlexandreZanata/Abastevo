@@ -114,6 +114,7 @@ func (g *UploadGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "30")
 			refuse(429, "upload-budget")
 		} else {
+			w.Header().Set("Retry-After", "5")
 			refuse(503, "upload-unavailable")
 		}
 		return

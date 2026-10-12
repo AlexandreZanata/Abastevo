@@ -30,12 +30,20 @@ var (
 
 // Store persists sessions and verified objects.
 type Store struct {
-	pool *pgxpool.Pool
+	pool             *pgxpool.Pool
+	intakeConfigured bool
+	maxPendingPhotos int
 }
 
 // NewStore wires the owned generated queries to a pool.
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
+}
+
+// NewIntakeStore is mandatory for production admission. Zero keeps photos
+// closed until the deployment supplies a measured pending-photo budget.
+func NewIntakeStore(pool *pgxpool.Pool, maxPendingPhotos int) *Store {
+	return &Store{pool: pool, intakeConfigured: true, maxPendingPhotos: maxPendingPhotos}
 }
 
 // ObjectData carries one verified snapshot for atomic persistence.

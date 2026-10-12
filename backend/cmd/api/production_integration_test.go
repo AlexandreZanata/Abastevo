@@ -205,6 +205,10 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 		}
 	}
 	cmd.Env = append(cmd.Env, "ANPFUEL_ANP_DISCOVERY_ENABLED=false", "ANPFUEL_API_HELPER=1", "ANPFUEL_ENV=development", "ANPFUEL_DATABASE_URL="+testDSN, "ANPFUEL_HTTP_ADDR="+addr, "ANPFUEL_METRICS_ADDR=", "ANPFUEL_CANONICAL_HOST=test.invalid", "ANPFUEL_CURSOR_SECRET="+strings.Repeat("synthetic", 8))
+	if storageEndpoint != "" {
+		// Synthetic fixture budget, not a deployment-capacity recommendation.
+		cmd.Env = append(cmd.Env, "ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS=8")
+	}
 	if development {
 		cmd.Env = append(cmd.Env, "ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL="+time.Now().UTC().Add(time.Hour).Format(time.RFC3339))
 	}
@@ -312,6 +316,8 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 	if storageEndpoint == "" {
 		h.call(h.signed(a, "POST", "/v1/uploads", upload), 503)
 	} else {
+		// Storage availability alone cannot admit photos before a successful worker pass.
+		h.call(h.signed(a, "POST", "/v1/uploads", upload), 503)
 		workerPath := filepath.Join(t.TempDir(), "worker")
 		build := exec.Command("go", "build", "-race", "-o", workerPath, "../worker")
 		if out, err := build.CombinedOutput(); err != nil {
@@ -345,6 +351,7 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 				time.Sleep(50 * time.Millisecond)
 			}
 		}
+		waitSQL("SELECT EXISTS(SELECT 1 FROM evidence_sweep_observation WHERE healthy AND finished_at IS NOT NULL)")
 		waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", id)
 		h.call(h.signed(a, "POST", "/v1/observations/"+id+"/confirmations", []byte(`{"client_submission_id":"validated-self"}`)), 403)
 		h.call(h.signed(b, "POST", "/v1/observations/"+id+"/confirmations", []byte(`{"client_submission_id":"independent-vote"}`)), 201)

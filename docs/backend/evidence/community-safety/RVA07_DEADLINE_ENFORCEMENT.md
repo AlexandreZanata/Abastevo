@@ -508,3 +508,90 @@ still gate intake on fresh successful cleanup observation, bounded inventory/
 backlog/capacity and safe configuration; RVA12 owns queue receipt retention.
 C autonomous/provider/version/backup/temp/device proof is still owed. This
 source-only checkpoint changes no VPS, phone, old soak or release status.
+
+## B3.3c.2 intake assurance and atomic capacity opening
+
+B-BR-RVA07-10: production photo intake requires a successful worker cleanup
+observation no older than three minutes, no failed/running/unknown latest
+attempt, no original/final destination already at the 22h cleanup boundary,
+and an explicitly configured bounded pending-photo budget. A missing budget
+(default zero), missing observation, DB error, stale/future observation or
+unsafe backlog refuses new photos. No supported-user/VPS throughput claim
+comes from a configuration value. The source ceiling is 100 pending photo
+sessions (each may have an original and a final); deployment must choose a
+lower measured budget and keep it identical across API replicas. Raising the
+source ceiling requires renewed capacity evidence. This conservative resource
+ceiling is not a business quota or automatic production qualification.
+
+B-BR-RVA07-11: reserve replay-first semantics remain; fresh reservations take
+one global transaction advisory lock for health/capacity check plus insert,
+alongside the existing per-owner quota. Pending sessions include unconfirmed
+originals, final inventory and legacy final objects; a marker alone does not
+refund unresolved cleanup. Each branch selects at most budget+1 distinct
+sessions before the bounded cross-branch count. Start of a new byte transfer
+rechecks fresh health/boundary before charging a lease; an already confirmed
+byte replay performs no PUT. Production uses the gated constructor; internal
+metadata fixtures explicitly retain their legacy trusted store. A static
+composition regression prevents accidental production fallback.
+
+B-BR-RVA07-12: the worker records each sweep attempt with an increasing DB
+epoch; starting an attempt closes intake until its own fenced success. Only
+that latest attempt may acknowledge healthy/failed. Healthy means
+cleanup returned no error, observations are known, and no remaining overdue
+copy/storage failure exists. A failed acknowledgement fails the job; an older
+worker cannot overwrite a newer failure. Keep only singleton counts/timestamps/
+state, no copy keys or contributor data. Successful admission never certifies
+provider availability for the future or replaces deadline/backup acceptance.
+
+BUC: startup/disabled/stale/failed/unknown health refuses before quota/PUT;
+recovery opens after a verified pass. Many owners concurrently compete for a
+four-photo test budget: exactly four fresh reservations, no extra on replay,
+and no refund while any copy remains unconfirmed. Upload authorization created
+before a failure cannot introduce new bytes afterward. Out-of-order health
+acknowledgement refuses; DB receipt fault cannot report success. Actual SQL
+upgrade/replay and large-history bounded query plans precede closure. Provider
+headroom/default activation/autonomous acceptance remain PROOF_OWED.
+
+### B3.3c.2 local checkpoint — 2026-10-12
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The first targeted SQL run reproduced the unpublished admission omission:
+unknown health reserved a photo and 40 owners all won a four-slot budget.
+Fresh insertion now checks health/capacity under the global transaction lock;
+configured reservations/claims/checks have a three-second bound. Observation
+start and finish share that lock, epoch/one-shot acknowledgements fence stale
+workers, and a cancelled run cannot acknowledge healthy. SQL timeout is a
+retryable enforcement failure, not an invalid user contribution. HTTP returns
+503 with Retry-After 5 for unsafe admission; confirmed transfer replay remains
+read-only. Default budget zero intentionally keeps production photo intake
+closed until its measured explicit configuration exists.
+
+Real PostgreSQL 18/PostGIS tests cover missing/disabled/failed/stale/future/
+running health, out-of-order and duplicate acknowledgements, receipt rollback,
+observation-table outage, lock timeout without a leaked reservation, exactly
+four winners among 40 owners, full-budget replay, existing-reservation transfer,
+all three near-deadline namespaces, unresolved and legacy final capacity,
+duplicate final keys, and 000073-only upgrade/replay preserving live ingress.
+Actual bounded-count EXPLAIN uses both new partial indexes across 10k purged
+outputs and 10k deleted objects without scanning terminal history. Metadata
+absence callbacks are synthetic store proofs, not provider deletion evidence.
+
+Validation from backend/: full evidence adapters SQL/private-S3 race matrix
+passed (29.009s store; media/storage/HTTP/jobs also green); dependent privacy
+Erase/Erasure/Restore SQL/private-S3 race passed (5.243s); affected evidence,
+config, API/worker/ops unit race, vet, sqlc vet and diff-check passed. Additional
+observation regression covers running and duplicate receipts. Both actual
+API/worker signed-process flows passed with real local SQL/S3 (20.132s): photos
+refuse before worker startup, then proceed only after an autonomously recorded
+successful cleanup. Fixture budget eight is explicitly synthetic. No manually
+inserted healthy receipt authorizes those process flows. Staged secret review
+precedes commit.
+
+Only exclusive local project abastevo-rva-20261011-9e0a831 was used. Whole
+RVA07 remains IN_PROGRESS: elapsed autonomous 24h, provider/version/backup/temp/
+device proofs and measured deployment budget are owed. Old soaks, VPS and phone
+were untouched. Training collection remains OFF. Continue C proof preparation,
+then independent RVA08 source work with these external obligations retained;
+no capacity, release, GitHub publication or merge claim belongs to this record.

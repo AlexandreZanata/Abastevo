@@ -17,7 +17,9 @@ import (
 // retry with backoff until the cap. Storage failures, unknown health and
 // overdue copies are observable partial failures, never successful runs.
 type Sweep struct {
-	Run func(ctx context.Context) (evidenceapp.SweepReport, error)
+	Run               func(ctx context.Context) (evidenceapp.SweepReport, error)
+	BeginObservation  func(context.Context) (int64, error)
+	FinishObservation func(context.Context, int64, bool) error
 }
 
 // Kind implements jobs.Handler.
@@ -37,10 +39,22 @@ func (v Sweep) Handle(ctx context.Context, job jobs.Job) error {
 	if payload.Version != 1 {
 		return fmt.Errorf("sweep: bad payload")
 	}
-	if v.Run == nil {
-		return fmt.Errorf("sweep: no sweep configured")
+	if v.Run == nil || v.BeginObservation == nil || v.FinishObservation == nil {
+		return fmt.Errorf("sweep: sweep/observation ports required")
+	}
+	beginCtx, stop := context.WithTimeout(ctx, 3*time.Second)
+	epoch, err := v.BeginObservation(beginCtx)
+	stop()
+	if err != nil || epoch < 1 {
+		return errors.Join(err, errors.New("evidence sweep: observation could not start"))
 	}
 	rep, err := v.Run(ctx)
+	err = errors.Join(err, ctx.Err())
+	healthy := err == nil && rep.HealthKnown && rep.OverdueKnown && rep.StorageErrors == 0 && !rep.Overdue.Unhealthy()
+	ackCtx, finish := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	ackErr := v.FinishObservation(ackCtx, epoch, healthy)
+	finish()
+	err = errors.Join(err, ackErr)
 	// The report is the observable cleanup outcome: every expired or
 	// deleted unit counted, storage failures counted for the next pass.
 	// Intake posture rides along as counts/bytes/timestamp only — never

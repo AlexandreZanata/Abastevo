@@ -99,3 +99,25 @@ validates TLS 1.2/1.3, health and route isolation, and checks synthetic location
 signature/cookie markers are absent from logs. It does not modify system trust
 or obtain public certificates. The test edge and its keys are removed on exit.
 Local test success is distinct from G09 certification and public deployment.
+
+### Photo-intake safety budget (RVA07)
+
+`ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` defaults to **0 (closed)**. The API
+requires an explicit measured budget in 1..100 pending photo sessions and
+private storage configuration. Keep the same budget across API replicas;
+the source ceiling is a conservative guard, never a supported-user or VPS
+capacity claim. A session can require both an original and a final copy.
+Qualify the current binary/provider/DB resource envelope and deadline margin
+before enabling intake in staging/production; record the measured lower
+budget in deployment evidence. Increasing the source ceiling requires renewed
+qualification. There is no production activation in this source checkpoint.
+
+Every-minute evidence cleanup records a singleton epoch-fenced observation.
+Startup, a running/failed/unknown pass, a successful observation older than
+three minutes, a copy at its 22h cleanup boundary, a full pending budget or
+a DB outage pauses new bytes. Missing configuration is not healthy by default.
+Fresh reservations serialize the global capacity check and insertion;
+confirmed byte replay emits no PUT. The existing worker process has four
+serial safety dispatchers alongside one general dispatcher, with no new service.
+The operational copy deadline stays first receipt +24h; cleanup starts at 22h.
+Provider/version/backup and autonomous elapsed-time proof remain required.

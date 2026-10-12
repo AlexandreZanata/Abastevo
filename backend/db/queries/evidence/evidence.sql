@@ -411,3 +411,45 @@ UPDATE evidence_final_outputs f SET state='PENDING',purged_at=NULL
 WHERE f.final_key = @final_key AND f.state='PURGED'
  AND EXISTS(SELECT 1 FROM evidence_objects o
             WHERE o.final_key=f.final_key AND o.final_deleted_at IS NULL);
+
+-- name: LockIntakeAdmission :exec
+SELECT pg_advisory_xact_lock(73001);
+
+-- name: BeginSweepObservation :one
+INSERT INTO evidence_sweep_observation(singleton,epoch,started_at)
+VALUES (true,1,now())
+ON CONFLICT(singleton) DO UPDATE
+SET epoch=evidence_sweep_observation.epoch+1,started_at=now(),finished_at=NULL,healthy=false
+RETURNING epoch;
+
+-- name: FinishSweepObservation :execrows
+UPDATE evidence_sweep_observation
+SET finished_at=now(),healthy= @healthy,
+ last_success_at=CASE WHEN @healthy::boolean THEN now() ELSE last_success_at END
+WHERE singleton AND epoch= @epoch AND finished_at IS NULL
+ AND (NOT @healthy::boolean OR started_at > now()-interval '1 minute');
+
+-- Running, failed and missing attempts stay closed until a fenced success.
+-- name: IntakeObservationHealthy :one
+SELECT healthy AND finished_at IS NOT NULL AND finished_at >= started_at
+ AND last_success_at > now()-interval '3 minutes'
+ AND last_success_at <= now() AND started_at <= now()
+ AND started_at > now()-interval '3 minutes' AS healthy
+FROM evidence_sweep_observation WHERE singleton;
+
+-- Each ordered distinct branch is capped before the cross-branch count;
+-- duplicate keys/session never hide additional pending photo sessions.
+-- name: CountPendingPhotoSessions :one
+WITH originals AS MATERIALIZED (
+ SELECT id FROM evidence_sessions WHERE quarantine_deleted_at IS NULL
+ ORDER BY created_at,id LIMIT @scan_limit
+), finals AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_final_outputs WHERE state != 'PURGED'
+ ORDER BY session_id LIMIT @scan_limit
+), legacy AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_objects WHERE final_deleted_at IS NULL
+ ORDER BY session_id LIMIT @scan_limit
+)
+SELECT count(DISTINCT pending.id) FROM (
+ SELECT id FROM originals UNION ALL SELECT id FROM finals UNION ALL SELECT id FROM legacy
+) pending;
