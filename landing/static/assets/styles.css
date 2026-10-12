@@ -1321,8 +1321,8 @@ html[data-theme="dark"] .landing-home .card-art { background: radial-gradient(el
 .hero-landscape { position: absolute; z-index: -2; inset: 0; display: block; pointer-events: none; }
 .hero-landscape img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
 .landing-home .hero::after { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(90deg, #fff9e9ed 0%, #fff9e9d9 29%, #fff9e900 62%); }
-.landing-home .header-inner { max-width: none; width: 100%; padding-inline: clamp(0.75rem, 4vw, 5rem); }
-.landing-home .hero-grid { max-width: none; width: 100%; padding-inline: clamp(1.25rem, 5vw, 6rem); }
+.landing-home .header-inner { max-width: var(--max-width); width: 100%; padding-inline: 0.75rem; }
+.landing-home .hero-grid { max-width: var(--max-width); width: 100%; padding-inline: 0.75rem; }
 .landing-home .hero-copy { max-width: 38rem; }
 .landing-home .hero-h1 { font-size: clamp(2.5rem, 4vw, 4.5rem); }
 .landing-home .hero-lead { max-width: 42ch; }
@@ -1334,10 +1334,10 @@ html[data-theme="dark"] .landing-home .card-art { background: radial-gradient(el
 .landing-home .product-art figcaption { max-width: 35rem; padding: 0.375rem 0.625rem; border-radius: 8px; background: #fffdf5ed; }
 html[data-theme="dark"] .landing-home .hero::after { background: linear-gradient(90deg, #080808 0%, #080808f5 30%, #0808083d 85%); }
 html[data-theme="dark"] .landing-home .product-art-label, html[data-theme="dark"] .landing-home .product-art figcaption { background: #111111ed; color: var(--text-muted); }
-@media (min-width: 80rem) { .landing-home .desktop-nav { gap: clamp(1rem, 2vw, 2rem); } .desktop-nav a { font-size: 0.875rem; } }
+@media (min-width: 80rem) { .landing-home .desktop-nav { gap: 1rem; } .desktop-nav a { font-size: 0.875rem; } }
 @media (max-width: 63.999rem) {
   .landing-home .hero { min-height: calc(100svh - 4.25rem); padding-top: 2rem; }
-  .landing-home .hero-grid { max-width: 48rem; }
+  .landing-home .hero-grid { max-width: var(--max-width); }
   .hero-landscape { top: auto; height: 50%; }
   .hero-landscape img { object-position: 70% bottom; }
   .landing-home .hero::after { background: linear-gradient(180deg, #fff9e9 0%, #fff9e9 40%, #fff9e900 76%); }
@@ -1346,3 +1346,12 @@ html[data-theme="dark"] .landing-home .product-art-label, html[data-theme="dark"
   .landing-home .product-phone { left: 26%; }
 }
 @media (max-width: 47.999rem) { .landing-home .hero-h1 { font-size: clamp(2.25rem, 9.5vw, 3.5rem); } }
+
+/* LH06: Android hardware frame; authentic app pixels remain unmodified. */
+.landing-home .android-device { padding: 6px; border-radius: 30px; background: linear-gradient(120deg, #aeb5b8 0%, #303739 10%, #080c0e 24%, #101719 76%, #6d787c 100%); transform: perspective(1600px) rotateY(-9deg) rotateZ(4deg); box-shadow: inset 0 0 0 1px #c4cbd0, inset 0 0 0 3px #171d20, 1px 2px 0 1px #3e494f, 15px 24px 38px -15px #13242e80; }
+.landing-home .android-device img { border-radius: 24px; }
+.landing-home .android-device::before, .landing-home .android-device::after { right: -3px; width: 3px; background: linear-gradient(90deg, #252b2f, #9aa5aa, #353d42); box-shadow: 1px 0 1px #0005; }
+.landing-home .android-device::before { top: 18%; height: 10%; }
+.landing-home .android-device::after { top: 32%; height: 5%; }
+.android-camera { position: absolute; z-index: 2; top: 1.5%; left: 50%; width: 2.5%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle at 40% 35%, #24435c 0%, #0c1620 30%, #020506 60%); box-shadow: 0 0 0 1px #1c252c; pointer-events: none; }
+@media (max-width: 47.999rem) { .landing-home .android-device { padding: 4px; border-radius: 22px; } .landing-home .android-device img { border-radius: 18px; } }

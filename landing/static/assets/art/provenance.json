@@ -37,9 +37,10 @@
     },
     {
       "name": "fleet",
-      "master": "docs/assets/landing/illustrated-20261012/masters/fleet.png",
-      "sha256": "941ba862c7b16836ebf34a8e76af222fdad992fc5612e8186477e3b19ba7b0b5",
-      "accent": "#C34579"
+      "master": "docs/assets/landing/fleet-android-20261012/fleet-native.png",
+      "sha256": "2fdbafa4144348b4bde996031afc430232a0a323ae6078e7d6c0f300135079c5",
+      "accent": "#C34579",
+      "nativeDimensions": "1448x1086"
     },
     {
       "name": "hero-background",
@@ -144,16 +145,16 @@
       "role": "ride-driver"
     },
     {
-      "file": "fleet-scene-320w.f251db59.webp",
-      "sha256": "f251db59f0f661a7dc0b04e82b3c2ebc5b70bad24a0b494246da831b01a1e583",
-      "bytes": 7802,
+      "file": "fleet-scene-320w.9966cf64.webp",
+      "sha256": "9966cf64dab8e29b17928640476539fdfa1cf01e06fe98c1a672508d2e1b7ddd",
+      "bytes": 11332,
       "width": 320,
       "role": "fleet"
     },
     {
-      "file": "fleet-scene-640w.03ea2fe6.webp",
-      "sha256": "03ea2fe6efad09d2258d884104e3ef854e603ce30034aac48ee0b615c23a2003",
-      "bytes": 20408,
+      "file": "fleet-scene-640w.2075e078.webp",
+      "sha256": "2075e078210ce029726efcb00086ca0d5e596deb4b9a682be91cd584f7824411",
+      "bytes": 28112,
       "width": 640,
       "role": "fleet"
     },

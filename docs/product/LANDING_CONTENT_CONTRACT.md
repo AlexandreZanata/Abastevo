@@ -282,3 +282,15 @@ the content-width container. Preserve a readable left copy area, authentic phone
 source/date disclosure, the completed six category scenes and OpenCode changes.
 The full-height opening supersedes the earlier equal copy/art-height constraint.
 Record generator-native dimensions separately from any 4K export dimensions.
+
+## LH06 fleet action and Android framing amendment — 2026-10-12
+
+The owner authorizes regenerating only the small-fleet illustration: a person
+actively organizing fuel costs beside a few vehicles, in the same soft 3D family
+as the other five cards and retaining the exclusive rose accent. The other five
+artworks remain byte-identical. The landscape remains full bleed, while header
+controls and hero foreground use the site's standard 72rem container and 12px
+gutters. Refine the device as an Android handset with a centered small punch-hole
+camera, subtle metal frame, narrow bezels and side controls; no iOS notch. Keep
+the authentic Android screenshot untouched, selecting at least the existing
+720px derivative for a sharper display. Keep source badges outside the screen.
