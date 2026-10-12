@@ -211,3 +211,21 @@ compiled, not executed. Actual terms SHA-256:
 The evidence Store retains corrected predecessor hash
 `f495194cda7304ad0bb2949a1db80d09acf24de9976b4ab0f60a847a8fc5c525`.
 No original dirty checkout change has been copied or discarded.
+
+
+### Bounded native execution attempt
+
+At tested source a05cba7, a temporary API26 AVD was created under
+`/tmp/abastevo-consent-native-20261012`, using only the SDK system image and a
+copy of hardware configuration; the existing user's AVD/userdata was untouched.
+There is no `/dev/kvm`. Software boot took 132.136s with two virtual cores and
+1536MiB guest RAM. Targeted installation of the debug APK on emulator-5580 had
+not completed after five minutes; the owned emulator was then explicitly stopped
+with `adb -s emulator-5580 emu kill`. No instrumentation case executed and no
+native/physical-phone pass is claimed. A protected airplane-mode broadcast was
+refused by Android; that refusal was not bypassed. No VPS or real phone was
+changed. Debug/native-test APK compilation remains PASS; execution remains OWED.
+The original dev reservation-gate removal remains preserved outside this branch.
+Checkpoint a05cba7 was backed up on GitHub at `codex/owner-consent`; no PR, protected
+merge, main advancement or deployment was performed. Integration waits for the
+remaining authorized construction batch and fresh protected checks, per ADR-018.
