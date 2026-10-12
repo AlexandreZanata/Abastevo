@@ -32,8 +32,8 @@ test('essential content and links are present in static HTML without JS', () => 
     // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
     assert.match(heroSection, /assets\/app\/explore-light-720w\.webp/);
-    assert.match(heroSection, /Captura real do app em desenvolvimento/);
-    assert.match(heroSection, /não preços da bomba agora/);
+    assert.doesNotMatch(heroSection, /Captura real do app em desenvolvimento/);
+    assert.match(heroSection, /semana de 4 a 10 de outubro de 2026/);
     assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
 
     // 5. Legal and help links reachable from footer
