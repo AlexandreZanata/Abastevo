@@ -23,21 +23,19 @@ test('essential content and links are present in static HTML without JS', () => 
     // 2. Status line
     assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);
 
-    // 3. Store buttons open new tabs; no cheapest/savings promises
+    // LH04 synchronizes truthful copy and branded two-line actions from 8099.
     assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
+    assert.match(indexHtml, /Projeto open source/);
     assert.match(indexHtml, /Em breve no Google Play/);
-    assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|milhares de postos|tempo real|avaliações\)/i);
+    assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|tempo real|milhares de usuários/i);
 
-    // 3b. Opening hero carries no phone mockup or app screenshot
+    // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
-    assert.doesNotMatch(heroSection, /<img/);
-    assert.doesNotMatch(heroSection, /assets\/app\//);
-
-    // 4. Comparison card pair
-    assert.match(indexHtml, /Comunidade e ANP, lado a lado/);
-    assert.match(indexHtml, /Exemplo ilustrativo · dados fictícios/);
-    assert.match(indexHtml, /Observação enviada por pessoa · há algumas horas/);
-    assert.match(indexHtml, /Levantamento publicado pela ANP · semana da pesquisa/);
+    assert.match(heroSection, /assets\/app\/explore-dark-720w\.webp/);
+    assert.match(heroSection, /Captura real do app em desenvolvimento/);
+    assert.match(heroSection, /não preços da bomba agora/);
+    assert.match(heroSection, /representação artística/);
+    assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
 
     // 5. Legal and help links reachable from footer
     assert.match(indexHtml, /href="\/privacidade\/"[^>]*>Privacidade<\/a>/);

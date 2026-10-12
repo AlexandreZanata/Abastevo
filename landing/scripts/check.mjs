@@ -219,8 +219,8 @@ export function checkDist(options = {}) {
     if (!indexContent.includes('Encontre preços de combustível na sua região.')) {
       errors.push('index.html is missing main H1 text');
     }
-    if (!indexContent.includes('target="_blank"') || !indexContent.includes('Ver no GitHub')) {
-      errors.push('index.html store buttons must open new tabs');
+    if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Projeto open source')) {
+      errors.push('index.html is missing primary GitHub action');
     }
     if (!indexContent.includes('https://github.com/AlexandreZanata/abastevo')) {
       errors.push('index.html is missing repository link');

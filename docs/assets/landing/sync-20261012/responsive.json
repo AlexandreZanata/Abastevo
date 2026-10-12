@@ -1,0 +1,72 @@
+[
+  {
+    "artHeight": 265,
+    "badgesOutsidePhone": true,
+    "copyHeight": 271.46875,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 320,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 320,
+    "badgesOutsidePhone": true,
+    "copyHeight": 251.90625,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 375,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 335,
+    "badgesOutsidePhone": true,
+    "copyHeight": 254.4375,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 390,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 346,
+    "badgesOutsidePhone": true,
+    "copyHeight": 256.265625,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 401,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 576,
+    "badgesOutsidePhone": true,
+    "copyHeight": 199.4375,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 768,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 294.546875,
+    "badgesOutsidePhone": true,
+    "copyHeight": 294.546875,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 1024,
+    "visibleThemeIcons": 1
+  },
+  {
+    "artHeight": 294.546875,
+    "badgesOutsidePhone": true,
+    "copyHeight": 294.546875,
+    "headerFits": true,
+    "overflow": 0,
+    "phoneContained": true,
+    "viewport": 1440,
+    "visibleThemeIcons": 1
+  }
+]

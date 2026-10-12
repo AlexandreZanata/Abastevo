@@ -1,0 +1,77 @@
+{
+  "method": "Flat ink/white normalization, enclosed alpha-dropout repair, established 2.4px edge filter, 2x trace sampling, real VTracer spline contours, Inkscape render comparison; no embedded bitmap",
+  "outputs": [
+    {
+      "file": "consult.d89349f0.svg",
+      "sha256": "d89349f04e43333ed31e56682fffb047dde02683cbe6478693c30ca3752cb9d8",
+      "bytes": 170497,
+      "gzipBytes": 57455,
+      "ink": "#1478DD",
+      "sourceSha256": "4aa5e0ff5fa36de1e1ea72f61816ddb98c06ba2b3415e573c0230ff6265dadd9",
+      "paths": 7,
+      "silhouetteIou": 0.998879,
+      "ink_iou": 0.996117,
+      "white_iou": 0.997742
+    },
+    {
+      "file": "check.793cfd74.svg",
+      "sha256": "793cfd74853a0289629230fd54d5b2aca96730565a6aefadda7222703e8248c8",
+      "bytes": 315825,
+      "gzipBytes": 75286,
+      "ink": "#209437",
+      "sourceSha256": "c6ec30e726ff06a44b4688bdb91a1bb5bf3a7c6380cf50b4dd6aea77e712c904",
+      "paths": 5,
+      "silhouetteIou": 0.999632,
+      "ink_iou": 0.998512,
+      "white_iou": 0.997134
+    },
+    {
+      "file": "contribute.e9bf738d.svg",
+      "sha256": "e9bf738dd44e716d221e490746ff6ac3c39b4bc1e307c566540c31106b303e88",
+      "bytes": 215132,
+      "gzipBytes": 70570,
+      "ink": "#F57C00",
+      "sourceSha256": "c3b6eb3bc9ba428c0ba2a6a550c9ab3772331971dcfb66eeb5e4fd9419239388",
+      "paths": 6,
+      "silhouetteIou": 0.999752,
+      "ink_iou": 0.998089,
+      "white_iou": 0.995535
+    },
+    {
+      "file": "driver.c353db3a.svg",
+      "sha256": "c353db3a379c6b411a951e827dbd274199838af2d700d8062d0da635d814df79",
+      "bytes": 124790,
+      "gzipBytes": 43209,
+      "ink": "#1478DD",
+      "sourceSha256": "fb1a4b77843d13de0ad564079d67f95a369e96c0f73047aad93007f9fbe407e3",
+      "paths": 4,
+      "silhouetteIou": 0.999505,
+      "ink_iou": 0.998029,
+      "white_iou": 0.997162
+    },
+    {
+      "file": "ride-driver.3a119515.svg",
+      "sha256": "3a119515655aad2b1a35be015d0ef6a083a2accff01eea86efdbc5ee773b953d",
+      "bytes": 162873,
+      "gzipBytes": 53641,
+      "ink": "#209437",
+      "sourceSha256": "23244e8eece26067cce9367c41862f1aeb375536c561c73e9c3577c7f014a4a5",
+      "paths": 6,
+      "silhouetteIou": 0.999154,
+      "ink_iou": 0.997198,
+      "white_iou": 0.995664
+    },
+    {
+      "file": "fleet.71429a7f.svg",
+      "sha256": "71429a7f3c544c6c96d312c17a99937ef3acda245492453a4d7207837a4756ce",
+      "bytes": 130330,
+      "gzipBytes": 50560,
+      "ink": "#F57C00",
+      "sourceSha256": "c18a48b36bf396250661828ce5d2b97d4c076e4567f480445a4168c1aa43ae7a",
+      "paths": 12,
+      "silhouetteIou": 0.998958,
+      "ink_iou": 0.996632,
+      "white_iou": 0.996255
+    }
+  ]
+}

@@ -19,7 +19,7 @@ initial-transfer measurement and inspect layout/contrast after loading/fallback.
 
 The follow-up visual/tutorial request uses branch `landing`; see the
 [bounded redesign plan](../planning/LANDING_REDESIGN_EXECUTION_PLAN.md).
-The home opening is separate from the genuine app gallery and tutorial section.
+The home opening introduces the genuine app gallery and tutorial section.
 Only actual app captures may appear in mockups or step walkthroughs.
 
 ## Page inventory
@@ -40,7 +40,7 @@ Not in scope: blog, city pages, translations, dashboards, forms, analytics, news
 ## Information architecture freeze (LR02) — 2026-10-11
 
 Home section order for the redesign (plan §Visual direction): compact header →
-text hero without phone mockup → quiet principles strip → app gallery
+text hero with an authentic Android-home mockup (LH01 amendment below) → quiet principles strip → app gallery
 (`#aplicativo`, existing anchor kept) → feature stories → tutorial teaser
 (`#tutoriais`, new) → source explanation (`#fontes`, new) → project/privacy
 (`#o-projeto`, existing anchor kept) → FAQ (`#faq`, new) → availability
@@ -85,12 +85,11 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1 (user review):** `Encontre preços de combustível na sua região.`
+**H1 (fused Codex hero):** `Encontre preços de combustível na sua região.`
 **Lead:** `O Abastevo combina dados oficiais da ANP com informações da comunidade para ajudar você a abastecer com fonte e data — sem prometer preço mínimo.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
-**Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden.
+**Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden. Map lights in hero art are decorative, never station coordinates or coverage evidence.
 **Secondary action:** `Copiar link` copies the repository URL without navigation.
-**Stats strip:** ANP official data, community prices, source-and-date always, free to browse — each factual, none a ranking or coverage claim.
 **Store notice [prelaunch]:** `Em breve na Google Play` (plain text). **[published]:** `Ver na Google Play`, one link or the official badge, in one place only.
 
 **Illustrative comparison** (heading `Comunidade e ANP, lado a lado`; label `Exemplo ilustrativo · dados fictícios`): two cards with the fictional place `Posto Exemplo` and the fictional value `R$ X,XX`; the community card reads `Observação enviada por pessoa · há algumas horas · apoio visível`; the ANP card reads `Levantamento publicado pela ANP · semana da pesquisa · não é preço da bomba agora`. Example values are always visibly fictional (no realistic price); text alternative: “Exemplo ilustrativo com dados fictícios: a mesma pergunta respondida pela comunidade e pela referência da ANP.”
@@ -180,12 +179,11 @@ Contrast ratios computed from the WCAG relative-luminance formula on 2026-10-05:
 | `#7b87a3` interactive boundary on white | 3.60 | Non-text 3 |
 | `#c5cee0` decorative outline on white | 1.58 | Decorative only; never the sole indicator of a control |
 
-**Dark appearance (user-authorized exception, 2026-10-11):** the site follows
-the OS scheme with a header toggle and persisted choice; the navy wordmark is
-shown through a CSS presentation filter only in dark mode because no
-light-background wordmark variant exists. Dark pairs measured AA (body
-16.42, muted 10.30, links 8.62, green 10.85, white-on-brand-blue 5.92);
-solid buttons keep white text on brand blue in both themes.
+**Dark appearance (fused Codex grayscale, owner-authorized 2026-10-11/12):**
+the site follows the OS scheme with a header toggle and persisted choice;
+the navy wordmark is shown through a CSS presentation filter only in dark
+mode because no light-background wordmark variant exists. Measured dark
+pairs AA (body 19.08, muted 10.48, links 17.47, dark-text-on-button 16.13).
 
 **New-tab policy:** store and GitHub CTA buttons open a new tab with
 `rel="noopener"`; text and legal links keep same-tab navigation.
@@ -231,3 +229,39 @@ Required before T02 opens: **D-L05** (maintainer reviews the wireframes, copy de
 ## Validation record
 
 Checks run for this docs-only task: local link and anchor check of this contract and the plan; SVG well-formedness and absence of script/image/external references in both wireframes; rendered-image inspection of both wireframes at their native widths; contrast computation as listed; character counts of title and description; repository, redirect, releases and registry observations dated above; `git diff --check` and scoped secret/private-data review. No browser acceptance, runtime or publication check is claimed.
+
+## LH01 visual amendment — 2026-10-11
+
+LH04 synchronization (2026-10-12, explicit user instruction): adopt the text,
+GitHub/Google Play two-line action buttons and four-point hero strip from the
+local 8099 preview (landing-refresh df2b992). Keep LH01–LH03 authentic mockup,
+six illustrations, external source badges and grayscale theme. Header links
+remain accessible through a native disclosure when the action buttons occupy
+the header row. Prelaunch Play treatment is a non-link status; only the verified
+published build state may turn it into a store link. GitHub opens a separate
+tab with noopener and retains a usable accessible name at narrow widths.
+
+The maintainer explicitly replaces the illustrative comparison in the opening
+with a professional responsive Android mockup using the real home capture.
+This supersedes the prior no-phone opening and illustrative comparison copy
+for this block only. B-BR-L01/L02 and BUC-L01/L02 remain: original app pixels,
+source/week context, explicit development status, no invented prices or live
+map claims. Generated cartography is decorative and labelled illustrative;
+ANP and community callouts remain semantic HTML. The existing source section
+continues to explain the distinction. Theme preference stores only light/dark
+locally, with system default and graceful storage-failure handling.
+
+
+LH03 refinement (2026-10-12, explicit user instruction): replace dark navy/blue
+theme surfaces and accents with black/grayscale surfaces and prominent white
+text. Exactly one theme action icon is visible at any time on desktop/mobile.
+Regenerate the check/clock and contribution-camera artwork, then normalize solid
+ink and trace actual SVG geometry so alpha holes, dark smudges and blurred marks
+cannot appear in the final pictograms. Original PNG inputs remain documented.
+
+LH02 refinement (same user session): the desktop artwork occupies the same grid
+row and exact height as the headline/description. Both semantic source badges
+sit below the artwork, outside the phone screen. Background uses an artistic
+Brazil silhouette with symbolic station lights, without asserting app coverage.
+Six generated-then-traced SVG pictograms illustrate consult/check/contribute
+and private driver/ride-hailing driver/small fleet cards; card text is retained.

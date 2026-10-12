@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -174,6 +175,24 @@ export function build(options = {}) {
       path.join(staticDir, 'assets', 'app'),
       path.join(outDir, 'assets', 'app'),
     );
+
+    // LH01 generated decoration: declared, immutable WebP and traced SVG derivatives only.
+    const artDir = path.join(staticDir, 'assets', 'art');
+    const artManifest = JSON.parse(fs.readFileSync(path.join(artDir, 'provenance.json'), 'utf8'));
+    const artOut = path.join(outDir, 'assets', 'art');
+    fs.mkdirSync(artOut, { recursive: true });
+    for (const output of artManifest.outputs) {
+      if (!/^[a-z0-9-]+\.[a-f0-9]{8}\.(webp|svg)$/.test(output.file)) throw new Error('Invalid decorative art filename');
+      const bytes = fs.readFileSync(path.join(artDir, output.file));
+      const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+      if (digest !== output.sha256 || !output.file.includes(`.${digest.slice(0, 8)}.`)) throw new Error('Decorative art hash mismatch');
+      const limit = output.file.endsWith('.svg') ? 1024 * 1024 : 120 * 1024;
+      if (bytes.length > limit) throw new Error('Decorative art exceeds its transfer budget');
+      if (output.file.endsWith('.svg') && zlib.gzipSync(bytes).length > 80 * 1024) throw new Error('Decorative SVG exceeds 80 KiB gzip budget');
+      if (output.file.endsWith('.svg') && /<(?:script|image|foreignObject)\b|\bon\w+\s*=|\bhref\s*=/i.test(bytes.toString('utf8'))) throw new Error('Decorative SVG must contain only local vector geometry');
+      fs.writeFileSync(path.join(artOut, output.file), bytes);
+    }
+    fs.copyFileSync(path.join(artDir, 'provenance.json'), path.join(artOut, 'provenance.json'));
 
     // 6. Copy and substitute static configuration files
     const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];

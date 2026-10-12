@@ -71,7 +71,7 @@ test('mobile hamburger menu is native disclosure on every page', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-nav-mobile-'));
   try {
     build({ projectRoot: root, outDir });
-    for (const rel of ['index.html', 'como-usar/index.html', 'guias/index.html']) {
+    for (const rel of emittedHtml(outDir)) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
       assert.match(html, /<details class="nav-toggle">/, `${rel} disclosure wrapper`);
       assert.match(
@@ -93,10 +93,10 @@ test('header theme toggle and store buttons ship on every page', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-header-'));
   try {
     build({ projectRoot: root, outDir });
-    for (const rel of ['index.html', 'como-usar/index.html', 'guias/index.html']) {
+    for (const rel of emittedHtml(outDir)) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
       assert.match(html, /data-theme-toggle/, `${rel} theme toggle`);
-      assert.match(html, /aria-label="Alternar tema claro e escuro"/, `${rel} toggle label`);
+      assert.match(html, /aria-label="Ativar tema escuro"/, `${rel} toggle label`);
       assert.match(
         html,
         /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/,
@@ -107,7 +107,7 @@ test('header theme toggle and store buttons ship on every page', () => {
     const cssFile = fs.readdirSync(path.join(outDir, 'assets')).find((f) => /^styles\.[a-f0-9]{8}\.css$/.test(f));
     const css = fs.readFileSync(path.join(outDir, 'assets', cssFile), 'utf8');
     assert.match(css, /\[data-theme="dark"\]/);
-    assert.match(css, /prefers-color-scheme:\s*dark/);
+    assert.match(css, /\.theme-toggle \.theme-icon\[hidden\]/);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }

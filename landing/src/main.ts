@@ -3,6 +3,44 @@
  * Essential content and navigation work completely without JavaScript.
  */
 
+function setupTheme(): void {
+  const root = document.documentElement;
+  const system = window.matchMedia('(prefers-color-scheme: dark)');
+  let preference: string | null = null;
+  try { preference = localStorage.getItem('abastevo-theme'); } catch { /* Storage is optional. */ }
+  if (preference !== 'light' && preference !== 'dark') preference = null;
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+  function apply(dark: boolean): void {
+    root.dataset.theme = dark ? 'dark' : 'light';
+    const label = dark ? 'Ativar tema claro' : 'Ativar tema escuro';
+    for (const button of buttons) {
+      button.hidden = false;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      for (const icon of button.querySelectorAll<SVGElement>('.theme-icon')) {
+        icon.toggleAttribute('hidden', icon.classList.contains('theme-icon-sun') ? !dark : dark);
+      }
+    }
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', dark ? '#090909' : '#ffffff');
+  }
+  apply(preference ? preference === 'dark' : system.matches);
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      preference = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      apply(preference === 'dark');
+      try { localStorage.setItem('abastevo-theme', preference); } catch { /* Switching still works. */ }
+    });
+  }
+  system.addEventListener('change', (event) => { if (!preference) apply(event.matches); });
+  window.addEventListener('storage', (event) => {
+    if (event.key !== 'abastevo-theme' && event.key !== null) return;
+    preference = event.newValue === 'light' || event.newValue === 'dark' ? event.newValue : null;
+    apply(preference ? preference === 'dark' : system.matches);
+  });
+}
+
+setupTheme();
+
 function setupNavigationHighlight(): void {
   if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
     return;
@@ -111,84 +149,29 @@ function setupBackToTop(): void {
 }
 
 function setupMobileNav(): void {
-  // Enhancement only: the details/summary menu already works without JavaScript.
   const toggle = document.querySelector<HTMLDetailsElement>('.nav-toggle');
   if (!toggle) return;
   toggle.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => {
-      toggle.removeAttribute('open');
-    });
+    link.addEventListener('click', () => { toggle.removeAttribute('open'); });
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      toggle.removeAttribute('open');
-    }
-  });
-}
-
-function setupTheme(): void {
-  // Enhancement: without JavaScript the OS-level dark scheme still applies via CSS.
-  const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
-  if (!toggle) return;
-  const root = document.documentElement;
-  const sun = toggle.querySelector('.icon-sun');
-  const moon = toggle.querySelector('.icon-moon');
-  const apply = (theme: string): void => {
-    root.setAttribute('data-theme', theme);
-    const dark = theme === 'dark';
-    if (sun) {
-      if (dark) {
-        sun.setAttribute('hidden', '');
-      } else {
-        sun.removeAttribute('hidden');
-      }
-    }
-    if (moon) {
-      if (dark) {
-        moon.removeAttribute('hidden');
-      } else {
-        moon.setAttribute('hidden', '');
-      }
-    }
-  };
-  let initial = 'light';
-  try {
-    const stored = window.localStorage.getItem('abastevo-theme');
-    if (stored === 'light' || stored === 'dark') {
-      initial = stored;
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      initial = 'dark';
-    }
-  } catch {
-    initial = 'light';
-  }
-  apply(initial);
-  toggle.addEventListener('click', () => {
-    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    try {
-      window.localStorage.setItem('abastevo-theme', next);
-    } catch {
-      // Private mode: keep the session-only choice.
-    }
-    apply(next);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') toggle.removeAttribute('open');
   });
 }
 
 function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      setupMobileNav();
       setupNavigationHighlight();
       setupCopyHelper();
       setupBackToTop();
-      setupMobileNav();
-      setupTheme();
     });
   } else {
+    setupMobileNav();
     setupNavigationHighlight();
     setupCopyHelper();
     setupBackToTop();
-    setupMobileNav();
-    setupTheme();
   }
 }
 
