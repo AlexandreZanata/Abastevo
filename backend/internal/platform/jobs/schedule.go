@@ -10,7 +10,7 @@ import (
 )
 
 // Schedule is one recurring enqueue rule. Period buckets the cadence
-// (daily, hourly); the dedupe key joins schedule, period and payload hash,
+// (including minutes); the dedupe key joins schedule, period and payload hash,
 // so restarts and overlapping ticks converge on a single row instead of
 // duplicating work. Disabled schedules never enqueue; re-enabling resumes
 // from the current period without backfill.
@@ -38,13 +38,19 @@ func NewScheduler(pool *pgxpool.Pool, schedules []Schedule) *Scheduler {
 
 // Period formats the bucket for an interval at a time.
 func Period(interval time.Duration, at time.Time) string {
-	switch {
-	case interval >= 24*time.Hour:
+	if interval <= 0 {
+		return ""
+	}
+	at = at.UTC()
+	switch interval {
+	case 24 * time.Hour:
 		y, m, d := at.Date()
 		return fmt.Sprintf("%04d-%02d-%02d", y, m, d)
-	default:
+	case time.Hour:
 		y, m, d := at.Date()
 		return fmt.Sprintf("%04d-%02d-%02dT%02d", y, m, d, at.Hour())
+	default:
+		return at.Truncate(interval).Format(time.RFC3339Nano)
 	}
 }
 

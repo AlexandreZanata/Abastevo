@@ -792,7 +792,7 @@ func run() error {
 		},
 		// Retention sweep (P07-T05): every inventory category purges
 		// bounded oldest-first with per-category metrics; evidence
-		// media keeps its own hourly sweeper, and the 24-month
+		// media keeps its own every-minute sweeper, and the 24-month
 		// observation horizon reports metrics only.
 		"privacy-retention": privacyjobs.Retention{
 			Run: func(ctx context.Context) (privacyapp.RetentionReport, error) {
@@ -870,11 +870,7 @@ func run() error {
 				return map[string]any{"version": 1, "batch": 25}
 			},
 		},
-		{
-			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
-			Interval: time.Hour, Enabled: true,
-			Build: func(string) map[string]any { return map[string]any{"version": 1} },
-		},
+		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
 			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,

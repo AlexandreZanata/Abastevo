@@ -343,3 +343,46 @@ Targeted SQL race passed (3.119s), full evidence SQL/private S3 race passed
 diff checks passed. Staged secret review runs before commit. No provider,
 autonomous 24h or release claim. Next: B3.3b predeadline cadence/pass fairness
 and fresh lease clocks, then B3.3c admission/capacity and C external proofs.
+
+## B3.3b.1 actual minute-dispatch opening
+
+B-BR-RVA07-6: recurring schedule dedupe buckets must honor the declared
+interval, including minute intervals; same-bucket restart/overlap converges,
+while the next minute permits a distinct job. Use UTC interval boundaries,
+keep existing exact hourly/daily key formats and reject nonpositive intervals.
+Evidence cleanup must request a minute cadence instead of hourly dispatch.
+This makes earlier every-minute declarations executable; it does not prove
+queue service capacity or wall-clock cleanup deadlines by itself.
+
+BUC: two ticks in one minute produce one queued job; the next minute produces
+one new job; overlapping ticks in the next minute still produce one; restart
+in that minute converges. Exact hourly/daily buckets remain compatible. A
+sub-minute or non-hour interval uses its real duration, never a coarse hour.
+A composition test exercises the actual evidence schedule returned to the
+worker. Other existing minute schedules consume the same corrected scheduler.
+
+## B3.3b.1 local checkpoint — actual minute cadence
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for dispatch identity only.
+Validation: PASS. Tested delta on `cc48bdd`. RED: a second minute still had
+four jobs rather than eight because Period collapsed all sub-day intervals
+to an hour. This affected account-erasure and training minute schedules too;
+earlier declarations of a minute interval were not actual dispatch proof.
+GREEN: UTC interval buckets honor their exact duration, nonpositive intervals
+are refused, and exact hourly/daily key formats remain compatible. The worker
+uses an enabled every-minute evidence schedule with a version-1 payload.
+
+Real PostgreSQL race test: four safety schedules, three minute boundaries,
+12 concurrent reconstructed scheduler instances per minute produce exactly
+four/eight/twelve jobs, with valid queued envelopes and no duplicate identity.
+Same-minute restart converges. Unit boundaries cover minute/30s/90m/weekly,
+invalid intervals and host timezone independence; actual worker composition
+is tested. Full platform jobs SQL race passed (6.710s), affected unit race
+and vet passed, format/diff checks passed; staged secret review precedes commit.
+
+Cutover may leave already queued legacy hourly work alongside the first new
+minute job; effects are idempotent and leased, never delete queue history to
+force a schedule. Minute cadence increases queue work; service/admission/queue
+retention bounds and predeadline cleanup remain B3.3b.2/B3.3c/RVA12. This is
+not proof of capacity, successful autonomous deletion, provider readiness or
+release certification. No VPS/phone/old-soak changes.
