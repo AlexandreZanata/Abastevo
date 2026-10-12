@@ -178,13 +178,13 @@ h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-co
 }
 
 .brand-logo {
-  height: 3rem;
+  height: 1.5rem;
   width: auto;
   display: block;
 }
 
 .brand-wordmark {
-  height: 2.025rem; /* 32.4px, -10% */
+  height: 1.1rem;
   width: auto;
   display: block;
 }
@@ -1216,6 +1216,10 @@ html[data-theme="dark"] .btn-github { background-color: #242424; color: #ffffff;
   .header-actions .store-btn { padding: 0.5rem; min-width: 44px; justify-content: center; }
   .header-actions .store-btn-text { display: none; }
   section { scroll-margin-top: 5rem; }
+  .hero-content { text-align: center; }
+  .hero-lead { text-wrap: balance; }
+  .hero-actions { justify-content: center; }
+  .product-art figcaption { text-align: center; }
 }
 @media (max-width: 25rem) {
   .header-actions .btn-github { display: none; }
