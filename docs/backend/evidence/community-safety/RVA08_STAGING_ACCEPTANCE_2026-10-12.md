@@ -148,3 +148,11 @@ Default Python User-Agent was refused at Cloudflare (403); the explicit existing
 Abastevo pilot User-Agent succeeded. Do not weaken or disable WAF for tests.
 A bounded VPS-origin HTTPS comparison is independent evidence, not a substitute
 for the failed external path. No supported-user count is inferred.
+
+VPS-origin HTTPS campaign: warm-up 75/75 successful, no drops; steady window
+stopped at 99.194s with 485 offered, 483 successful, one timeout/error and one
+client drop (4.869 successful req/s). City/national p95 were 95.67/167.13 ms,
+but errors/drops invalidate campaign acceptance despite the latency pass.
+Resource guards remained healthy. This is NOT a passed two-minute campaign or
+capacity certificate. Preserve the failed artifacts; do not replace them with
+only successful percentiles. Further root-cause/stability qualification is owed.
