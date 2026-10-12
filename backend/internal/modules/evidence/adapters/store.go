@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -624,6 +625,23 @@ func (s *Store) OverdueFinals(ctx context.Context, cutoff time.Time, batch int) 
 			CreatedAt:  row.CreatedAt.Time,
 			ReceivedAt: row.ReceivedAt.Time,
 		})
+	}
+	pending, err := evidence.New(s.pool).OverdueUnconfirmedFinalOutputs(ctx, evidence.OverdueUnconfirmedFinalOutputsParams{Deadline: pgTime(cutoff.Add(application.CopyRetention)), Batch: n})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range pending {
+		out = append(out, domain.ObjectRef{ID: uuidString(row.ID), FinalKey: row.FinalKey, CreatedAt: row.CreatedAt.Time, ReceivedAt: row.ReceivedAt.Time})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i].ReceivedOrCreated(), out[j].ReceivedOrCreated()
+		if a.Equal(b) {
+			return out[i].FinalKey < out[j].FinalKey
+		}
+		return a.Before(b)
+	})
+	if len(out) > int(n) {
+		out = out[:int(n)]
 	}
 	return out, nil
 }

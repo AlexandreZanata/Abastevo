@@ -236,3 +236,68 @@ The historical object-only sweep cannot close these new pending obligations.
 Do not overlap old unfenced workers with the migration/new worker cutover.
 B3.3/C scheduling/capacity/autonomous SLO/backup/provider proofs remain pending.
 No VPS/phone/old-soak mutation, no whole-phase or release certification.
+
+## B3.2b cleanup opening
+
+Consume final inventory in oldest-first batches of at most 32, one 60s UUID
+claim at a time, a 45s pass and a 5s private deletion/absence check. A live writer
+or cleaner is never bypassed. Failed/ambiguous storage keeps PURGING inventory
+for lease-expiry recovery; a stale acknowledgement cannot finish another claim.
+Confirmed absence atomically updates the object receipt and returns an active
+incomplete attempt to PENDING, or acknowledges PURGED for terminal/exhausted/
+expired work. Legacy object-only cleanup first inventories its exact existing
+owner/key, then uses the same authority. Erasure shares the 32-final budget,
+closes admission and cannot erase a foreign owner's duplicate reference.
+Production DELETE must be followed by a successful private HEAD 404 before
+any absence acknowledgement; access-denied/outage/present are failures.
+Restore remains a separate closed-traffic protocol, not implied by a marker.
+
+## B3.2b local checkpoint — bounded final cleanup/recovery
+
+Status: LOCAL_DONE / INTEGRATION_PENDING for final cleanup/recovery.
+Validation: PASS. Tested delta on `6fef50d`; completed 2026-10-12. New inventory
+and legacy object paths share UUID-fenced disposal, at most 32 finals/pass,
+45s reconciliation and 5s private transfer; 60s leases survive uncertain effects.
+Every production evidence deletion now requires DELETE plus private HEAD 404.
+An expired/stale cleanup token is checked again before any storage effect;
+both verification entry points carry a 20s transport context. Confirmed absence
+atomically updates object and inventory receipts; an active incomplete attempt
+can repair to PENDING, terminal/exhausted/expired work becomes PURGED.
+
+Real PostgreSQL/private S3 proofs passed: pause final PUT across owner erasure,
+refuse late READY, retain inventory for its actual provider effect, then restart
+and delete it; lost PUT reply, failed DELETE retaining bytes/lease, expired-lease
+repair to PENDING and successful re-verification; stale cleaner performs zero
+storage calls and cannot acknowledge a replacement claim; duplicate reuse
+performs no PUT and a foreign owner's erasure preserves the first copy. Twelve
+concurrent cleaner claims yield exactly one authority. A receipt-update trigger
+fails after real byte deletion: both object/inventory markers roll back, retry
+confirms absence and commits both, while the old token refuses.
+
+65 unresolved copies drain 32/32/1/0 with explicit per-copy time bounds. The
+actual cleanup query EXPLAIN ANALYZE uses the 000069 partial index with 10,000
+terminal receipts and no inventory sequential scan. 000069-only upgrade/replay
+preserves a live writer. Overdue audit includes unconfirmed destinations and
+uses the conservative inventory anchor for known objects, without double count.
+Full evidence SQL race passed (16.346s); dependent privacy erasure/restore SQL
+passed (1.824s); affected units, HTTP refusal matrix, worker/API/ops, vet, sqlc,
+format/diff checks passed. Secret review is performed before this checkpoint's
+commit. The default CI fixture mode also passed (2.657s) with its own bounded
+pinned local MinIO created and removed; an initial approval-review usage-limit
+failure executed nothing and is not counted as test evidence.
+
+The full SQL run caught the old static mutation guard's exact update count;
+it now permits only the additional key-scoped, set-if-unset deletion marker and
+checks that guard explicitly. The forward outage test now proves a live cleanup
+lease cannot be bypassed, then explicitly expires that fixture lease for restart.
+Privacy restore RED exposed a newer PURGED receipt beside a restored live object
+marker: forced erasure reopens only this contradictory known object under the
+same owner/key lock, closes admission and repeats confirmed deletion. The replay
+regression is green. Storage-only restores beside unchanged terminal markers
+still require the separate closed-traffic restore protocol/proof in RVA14.C.
+
+No old soak was touched or treated as passing. Remaining B3.3/C obligations:
+predeadline dispatch/margin, total pass/admission/capacity envelope, bounded
+metadata retention, actual autonomous wall-time run, provider/version/backup/
+temporary-copy and device acceptance. These tests inject lease/deadline state;
+they do not certify elapsed 24h compliance or production readiness.

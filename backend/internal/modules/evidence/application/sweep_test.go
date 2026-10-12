@@ -379,3 +379,13 @@ func TestSweepCannotAcknowledgeLiveUpload(t *testing.T) {
 		t.Fatal("live upload bytes deleted")
 	}
 }
+
+func (f *fakeSweepStore) ReconcileFinalOutputs(context.Context, time.Time, int, func(context.Context, string) error) (FinalCleanupReport, error) {
+	return FinalCleanupReport{}, nil
+}
+func (f *fakeSweepStore) DeleteFinalCopy(ctx context.Context, id, key string, _ time.Time, del func(context.Context, string) error) (bool, error) {
+	if err := del(ctx, key); err != nil {
+		return false, err
+	}
+	return true, f.MarkFinalDeleted(ctx, id)
+}

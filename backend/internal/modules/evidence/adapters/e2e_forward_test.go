@@ -188,6 +188,14 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 	}
 
 	storage.fail = map[string]bool{}
+	// Restoring the provider does not bypass a still-live ambiguous-delete lease.
+	rep, err = evidenceapp.Sweep(ctx, deps())
+	if err != nil || rep.FinalsDeleted != 0 || rep.SkippedActive != 1 {
+		t.Fatal("live cleanup lease bypassed", rep, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE evidence_final_outputs SET lease_until=now()-interval '1 second' WHERE final_key=$1 AND state='PURGING'`, out.FinalKey); err != nil {
+		t.Fatal(err)
+	}
 	rep, err = evidenceapp.Sweep(ctx, deps())
 	if err != nil {
 		t.Fatalf("catch-up sweep: %v", err)

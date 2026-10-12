@@ -143,11 +143,12 @@ LIMIT @batch;
 -- deadline first is unnecessary; oldest first surfaces the worst lag.
 
 -- name: OverdueFinals :many
-SELECT id, final_key, created_at, received_at
-FROM evidence_objects
-WHERE final_deleted_at IS NULL
-    AND COALESCE(received_at, created_at) < @cutoff
-ORDER BY COALESCE(received_at, created_at) ASC
+SELECT o.id, o.final_key, o.created_at,
+ LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_objects o LEFT JOIN evidence_final_outputs f ON f.final_key = o.final_key
+WHERE o.final_deleted_at IS NULL
+ AND LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours') <= @cutoff
+ORDER BY LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours'),o.final_key
 LIMIT @batch;
 
 -- SEC05-A overdue originals: quarantine originals past their 24 h
@@ -346,3 +347,56 @@ SELECT o.final_key, o.session_id, o.sanitized_sha256,
 FROM evidence_objects o JOIN evidence_sessions s ON s.id = o.session_id
 WHERE o.final_key = @final_key
 ON CONFLICT (final_key) DO NOTHING;
+
+-- name: NextFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= @at)
+ AND (f.state IN ('WRITING','PURGING') OR f.attempts >= 5
+      OR f.deadline_at <= @due_cutoff OR s.status IN ('EXPIRED','REJECTED'))
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1;
+
+-- name: NextOwnerFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE s.contributor_ref = @contributor_ref AND f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= @at)
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1;
+
+-- name: ClaimFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state='PURGING',lease_nonce= @lease_nonce,lease_until= @lease_until
+WHERE final_key= @final_key AND state != 'PURGED'
+ AND (lease_until IS NULL OR lease_until <= @at);
+
+-- name: FinishFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state= @next_state,
+ lease_nonce=NULL,lease_until=NULL,
+ purged_at=CASE WHEN @next_state::text='PURGED' THEN now() ELSE purged_at END
+WHERE final_key= @final_key AND state='PURGING' AND lease_nonce= @lease_nonce
+ AND lease_until > now();
+
+-- name: MarkFinalKeyDeleted :exec
+UPDATE evidence_objects SET final_deleted_at=now()
+WHERE final_key= @final_key AND final_deleted_at IS NULL;
+
+-- name: TryLockFinalOutputKey :one
+SELECT pg_try_advisory_xact_lock(hashtextextended(@final_key::text, 68001)) AS acquired;
+
+-- name: OverdueUnconfirmedFinalOutputs :many
+SELECT f.session_id AS id, f.final_key, f.created_at,
+       (f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_final_outputs f
+WHERE f.state != 'PURGED' AND f.deadline_at <= @deadline
+ AND NOT EXISTS(SELECT 1 FROM evidence_objects o
+                WHERE o.final_key = f.final_key AND o.final_deleted_at IS NULL)
+ORDER BY f.deadline_at,f.final_key LIMIT @batch;
+
+-- A closed-traffic database restore can bring a live object marker back
+-- beside a newer terminal output receipt. Reopen only this contradictory
+-- known object; never treat a retained PURGED receipt as authority to write.
+-- name: ReopenRestoredFinalOutput :execrows
+UPDATE evidence_final_outputs f SET state='PENDING',purged_at=NULL
+WHERE f.final_key = @final_key AND f.state='PURGED'
+ AND EXISTS(SELECT 1 FROM evidence_objects o
+            WHERE o.final_key=f.final_key AND o.final_deleted_at IS NULL);

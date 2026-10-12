@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	"time"
 
 	evidence "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/evidence"
@@ -44,19 +45,29 @@ func (s *Store) EraseContributor(ctx context.Context, ref string, deleteKey func
 		}
 		purgedSessions++
 	}
+	finals, cleanupErr := s.reconcileFinalOutputs(ctx, ref, time.Now(), application.FinalCleanupBatch, func(ctx context.Context, key string) error { return deleteKey(ctx, key, "f/") })
+	purgedObjects += int64(finals.Purged)
+	if cleanupErr != nil {
+		return purgedSessions, purgedObjects, cleanupErr
+	}
+	remaining := application.FinalCleanupBatch - finals.Checked
 	objects, err := q.PendingErasureObjects(ctx, ref)
 	if err != nil {
 		return purgedSessions, purgedObjects, err
 	}
 	for _, obj := range objects {
-		if deleteKey != nil && obj.FinalKey != "" {
-			if derr := deleteKey(ctx, obj.FinalKey, "f/"); derr != nil {
-				return purgedSessions, purgedObjects, derr
-			}
+		if remaining <= 0 {
+			break
 		}
-		if _, merr := q.MarkFinalDeleted(ctx, obj.ID); merr != nil {
-			return purgedSessions, purgedObjects, merr
+		remaining--
+		deleted, err := s.deleteFinalCopy(ctx, obj.FinalKey, ref, time.Now(), func(ctx context.Context, key string) error { return deleteKey(ctx, key, "f/") })
+		if err != nil {
+			return purgedSessions, purgedObjects, err
 		}
+		if !deleted {
+			return purgedSessions, purgedObjects, errors.New("evidence: erasure waits for final output")
+		}
+
 		purgedObjects++
 	}
 	pending, err := q.HasPendingEvidenceErasure(ctx, ref)

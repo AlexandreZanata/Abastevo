@@ -81,6 +81,7 @@ sql:
       - db/migrations/000029_evidence_received_at.sql
       - db/migrations/000061_evidence_ingress.sql
       - db/migrations/000068_evidence_final_output.sql
+      - db/migrations/000069_evidence_final_cleanup_index.sql
     gen:
       go:
         package: evidence

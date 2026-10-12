@@ -317,15 +317,12 @@ func run() error {
 		if cfg.R2 == nil {
 			return errors.New("evidence: storage not configured")
 		}
-		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
-			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-			Key: key, Namespace: namespace,
+		copyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return evidencestorage.DeleteConfirmed(copyCtx, httpClient, evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Key: key, Namespace: namespace,
 			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
 		}, storageCreds())
-		if err != nil {
-			return err
-		}
-		return evidencestorage.Delete(ctx, httpClient, pre.URL)
 	}
 	privacyErasePorts := privacyapp.ErasePorts{
 		Clock: time.Now,
@@ -832,20 +829,7 @@ func run() error {
 						}
 						return row.Status == "queued" || row.Status == "leased", nil
 					}},
-					Storage: sweepStoragePorts{deleteKey: func(ctx context.Context, key, namespace string) error {
-						if cfg.R2 == nil {
-							return errors.New("evidence: storage not configured")
-						}
-						pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
-							Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-							Key: key, Namespace: namespace,
-							TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
-						}, storageCreds())
-						if err != nil {
-							return err
-						}
-						return evidencestorage.Delete(ctx, httpClient, pre.URL)
-					}},
+					Storage: sweepStoragePorts{deleteKey: erasureDelete},
 				})
 			},
 		},

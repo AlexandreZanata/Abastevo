@@ -33,6 +33,8 @@ func VerifyForward(ctx context.Context, p VerifyPorts, session domain.Session) (
 	if session.Status != domain.StateVerifying {
 		return Outcome{}, ErrBadState
 	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
 	now := time.Now()
 	if p.Clock != nil {
 		now = p.Clock()

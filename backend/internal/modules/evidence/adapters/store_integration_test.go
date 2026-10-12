@@ -391,10 +391,11 @@ func TestNoDestructivePaths(t *testing.T) {
 	if strings.Contains(upper, "DELETE FROM EVIDENCE_SESSIONS") {
 		t.Error("destructive statement present: session deletes")
 	}
-	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 3 {
-		t.Errorf("objects updates = %d, want exactly the two exclusive bind claims plus final-deleted marker", n)
+	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 4 {
+		t.Errorf("objects updates = %d, want two exclusive bind claims and deletion markers by ID/key", n)
 	}
 	for _, guard := range []string{
+		"UPDATE EVIDENCE_OBJECTS SET FINAL_DELETED_AT=NOW()\nWHERE FINAL_KEY= @FINAL_KEY AND FINAL_DELETED_AT IS NULL;",
 		"BOUND_CAPTURE_ID IS NULL AND (BOUND_OBSERVATION_ID IS NULL",
 		"S.PHOTO_CAPTURE_ID = @CAPTURE_ID AND S.STATUS = 'READY' AND S.EXPIRES_AT > @NOW_AT",
 		"O.FINAL_DELETED_AT IS NULL AND O.BOUND_OBSERVATION_ID IS NULL",

@@ -61,6 +61,32 @@ func (q *Queries) CanDeleteQuarantine(ctx context.Context, arg CanDeleteQuaranti
 	return allowed, err
 }
 
+const claimFinalOutputCleanup = `-- name: ClaimFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state='PURGING',lease_nonce= $1,lease_until= $2
+WHERE final_key= $3 AND state != 'PURGED'
+ AND (lease_until IS NULL OR lease_until <= $4)
+`
+
+type ClaimFinalOutputCleanupParams struct {
+	LeaseNonce pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	FinalKey   string             `json:"final_key"`
+	At         pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) ClaimFinalOutputCleanup(ctx context.Context, arg ClaimFinalOutputCleanupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimFinalOutputCleanup,
+		arg.LeaseNonce,
+		arg.LeaseUntil,
+		arg.FinalKey,
+		arg.At,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimObjectBinding = `-- name: ClaimObjectBinding :execrows
 UPDATE evidence_objects
 SET bound_observation_id = $1
@@ -307,6 +333,28 @@ func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]Fin
 		return nil, err
 	}
 	return items, nil
+}
+
+const finishFinalOutputCleanup = `-- name: FinishFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state= $1,
+ lease_nonce=NULL,lease_until=NULL,
+ purged_at=CASE WHEN $1::text='PURGED' THEN now() ELSE purged_at END
+WHERE final_key= $2 AND state='PURGING' AND lease_nonce= $3
+ AND lease_until > now()
+`
+
+type FinishFinalOutputCleanupParams struct {
+	NextState  string      `json:"next_state"`
+	FinalKey   string      `json:"final_key"`
+	LeaseNonce pgtype.UUID `json:"lease_nonce"`
+}
+
+func (q *Queries) FinishFinalOutputCleanup(ctx context.Context, arg FinishFinalOutputCleanupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishFinalOutputCleanup, arg.NextState, arg.FinalKey, arg.LeaseNonce)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const finishFinalOutputWrite = `-- name: FinishFinalOutputWrite :execrows
@@ -1071,6 +1119,16 @@ func (q *Queries) MarkFinalDeleted(ctx context.Context, id pgtype.UUID) (int64, 
 	return result.RowsAffected(), nil
 }
 
+const markFinalKeyDeleted = `-- name: MarkFinalKeyDeleted :exec
+UPDATE evidence_objects SET final_deleted_at=now()
+WHERE final_key= $1 AND final_deleted_at IS NULL
+`
+
+func (q *Queries) MarkFinalKeyDeleted(ctx context.Context, finalKey string) error {
+	_, err := q.db.Exec(ctx, markFinalKeyDeleted, finalKey)
+	return err
+}
+
 const markQuarantineDeleted = `-- name: MarkQuarantineDeleted :execrows
 UPDATE evidence_sessions
 SET quarantine_deleted_at = now()
@@ -1132,6 +1190,48 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 	return result.RowsAffected(), nil
 }
 
+const nextFinalOutputCleanup = `-- name: NextFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= $1)
+ AND (f.state IN ('WRITING','PURGING') OR f.attempts >= 5
+      OR f.deadline_at <= $2 OR s.status IN ('EXPIRED','REJECTED'))
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1
+`
+
+type NextFinalOutputCleanupParams struct {
+	At        pgtype.Timestamptz `json:"at"`
+	DueCutoff pgtype.Timestamptz `json:"due_cutoff"`
+}
+
+func (q *Queries) NextFinalOutputCleanup(ctx context.Context, arg NextFinalOutputCleanupParams) (string, error) {
+	row := q.db.QueryRow(ctx, nextFinalOutputCleanup, arg.At, arg.DueCutoff)
+	var final_key string
+	err := row.Scan(&final_key)
+	return final_key, err
+}
+
+const nextOwnerFinalOutputCleanup = `-- name: NextOwnerFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE s.contributor_ref = $1 AND f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= $2)
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1
+`
+
+type NextOwnerFinalOutputCleanupParams struct {
+	ContributorRef string             `json:"contributor_ref"`
+	At             pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) NextOwnerFinalOutputCleanup(ctx context.Context, arg NextOwnerFinalOutputCleanupParams) (string, error) {
+	row := q.db.QueryRow(ctx, nextOwnerFinalOutputCleanup, arg.ContributorRef, arg.At)
+	var final_key string
+	err := row.Scan(&final_key)
+	return final_key, err
+}
+
 const oldestIncompleteSession = `-- name: OldestIncompleteSession :one
 SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
 WHERE status IN ('ISSUED', 'VERIFYING')
@@ -1146,11 +1246,12 @@ func (q *Queries) OldestIncompleteSession(ctx context.Context) (pgtype.Timestamp
 
 const overdueFinals = `-- name: OverdueFinals :many
 
-SELECT id, final_key, created_at, received_at
-FROM evidence_objects
-WHERE final_deleted_at IS NULL
-    AND COALESCE(received_at, created_at) < $1
-ORDER BY COALESCE(received_at, created_at) ASC
+SELECT o.id, o.final_key, o.created_at,
+ LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_objects o LEFT JOIN evidence_final_outputs f ON f.final_key = o.final_key
+WHERE o.final_deleted_at IS NULL
+ AND LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours') <= $1
+ORDER BY LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours'),o.final_key
 LIMIT $2
 `
 
@@ -1235,6 +1336,53 @@ func (q *Queries) OverdueOriginals(ctx context.Context, arg OverdueOriginalsPara
 			&i.QuarantineKey,
 			&i.Status,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const overdueUnconfirmedFinalOutputs = `-- name: OverdueUnconfirmedFinalOutputs :many
+SELECT f.session_id AS id, f.final_key, f.created_at,
+       (f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_final_outputs f
+WHERE f.state != 'PURGED' AND f.deadline_at <= $1
+ AND NOT EXISTS(SELECT 1 FROM evidence_objects o
+                WHERE o.final_key = f.final_key AND o.final_deleted_at IS NULL)
+ORDER BY f.deadline_at,f.final_key LIMIT $2
+`
+
+type OverdueUnconfirmedFinalOutputsParams struct {
+	Deadline pgtype.Timestamptz `json:"deadline"`
+	Batch    int32              `json:"batch"`
+}
+
+type OverdueUnconfirmedFinalOutputsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	FinalKey   string             `json:"final_key"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+func (q *Queries) OverdueUnconfirmedFinalOutputs(ctx context.Context, arg OverdueUnconfirmedFinalOutputsParams) ([]OverdueUnconfirmedFinalOutputsRow, error) {
+	rows, err := q.db.Query(ctx, overdueUnconfirmedFinalOutputs, arg.Deadline, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OverdueUnconfirmedFinalOutputsRow
+	for rows.Next() {
+		var i OverdueUnconfirmedFinalOutputsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FinalKey,
+			&i.CreatedAt,
+			&i.ReceivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1369,6 +1517,24 @@ func (q *Queries) QuarantineCandidates(ctx context.Context, arg QuarantineCandid
 	return items, nil
 }
 
+const reopenRestoredFinalOutput = `-- name: ReopenRestoredFinalOutput :execrows
+UPDATE evidence_final_outputs f SET state='PENDING',purged_at=NULL
+WHERE f.final_key = $1 AND f.state='PURGED'
+ AND EXISTS(SELECT 1 FROM evidence_objects o
+            WHERE o.final_key=f.final_key AND o.final_deleted_at IS NULL)
+`
+
+// A closed-traffic database restore can bring a live object marker back
+// beside a newer terminal output receipt. Reopen only this contradictory
+// known object; never treat a retained PURGED receipt as authority to write.
+func (q *Queries) ReopenRestoredFinalOutput(ctx context.Context, finalKey string) (int64, error) {
+	result, err := q.db.Exec(ctx, reopenRestoredFinalOutput, finalKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const staleFinalCandidates = `-- name: StaleFinalCandidates :many
 SELECT id, final_key, created_at, received_at, retention_extended_until
 FROM evidence_objects
@@ -1493,4 +1659,15 @@ func (q *Queries) SumReservedSessions(ctx context.Context, now pgtype.Timestampt
 	var i SumReservedSessionsRow
 	err := row.Scan(&i.N, &i.Bytes)
 	return i, err
+}
+
+const tryLockFinalOutputKey = `-- name: TryLockFinalOutputKey :one
+SELECT pg_try_advisory_xact_lock(hashtextextended($1::text, 68001)) AS acquired
+`
+
+func (q *Queries) TryLockFinalOutputKey(ctx context.Context, finalKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockFinalOutputKey, finalKey)
+	var acquired bool
+	err := row.Scan(&acquired)
+	return acquired, err
 }

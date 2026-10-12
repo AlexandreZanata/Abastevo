@@ -174,6 +174,9 @@ func TestFinalOutputUpgradeInventoriesLegacyCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range names {
+		if name > "000068_evidence_final_output.sql" {
+			continue
+		}
 		raw, err := fs.ReadFile(dbmigrations.Files, name)
 		if err != nil {
 			t.Fatal(err)

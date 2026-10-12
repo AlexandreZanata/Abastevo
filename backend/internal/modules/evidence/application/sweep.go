@@ -26,6 +26,7 @@ const (
 	// is steady-state and resumable, so small batches converge without
 	// long transactions.
 	DefaultSweepBatch = 100
+	FinalCleanupBatch = 32
 )
 
 // SweepStore is the retention inventory port: batched selection plus
@@ -33,7 +34,16 @@ const (
 // set-if-unset so repeated runs converge. IntakeHealth reports the
 // bounded intake posture for monitoring (counts/bytes/timestamp
 // only, never content).
+type FinalCleanupReport struct {
+	Checked  int
+	Purged   int
+	Skipped  int
+	Failures int
+}
+
 type SweepStore interface {
+	ReconcileFinalOutputs(context.Context, time.Time, int, func(context.Context, string) error) (FinalCleanupReport, error)
+	DeleteFinalCopy(context.Context, string, string, time.Time, func(context.Context, string) error) (bool, error)
 	CanDeleteQuarantine(context.Context, string, time.Time) (bool, error)
 	ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error)
 	ListStuckVerifying(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
@@ -46,7 +56,6 @@ type SweepStore interface {
 	// with bytes possibly present (SEC05-A): the originals half of
 	// the failing-policy signal. Bounded oldest-first.
 	OverdueOriginals(ctx context.Context, cutoff time.Time, batch int) ([]domain.SessionRef, error)
-	MarkFinalDeleted(ctx context.Context, id string) error
 	PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error)
 	IntakeHealth(ctx context.Context, since, now time.Time) (IntakeHealth, error)
 }
@@ -180,6 +189,7 @@ func (r OverdueReport) Unhealthy() bool {
 // for retry, and every step converges on repeat.
 func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	var rep SweepReport
+	var failures error
 	if deps.Batch < 1 {
 		return rep, errors.New("evidence: sweep batch must be positive")
 	}
@@ -271,7 +281,21 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		rep.QuarantinesDeleted++
 	}
 
-	finals, err := deps.Store.StaleFinalCandidates(ctx, now.Add(-CopyRetention), deps.Batch)
+	cleanup, cleanupErr := deps.Store.ReconcileFinalOutputs(ctx, now, deps.Batch, deps.Storage.DeleteFinal)
+	rep.FinalsDeleted += cleanup.Purged
+	rep.SkippedActive += cleanup.Skipped
+	rep.StorageErrors += cleanup.Failures
+	if cleanupErr != nil {
+		failures = errors.Join(failures, cleanupErr)
+	}
+	remaining := FinalCleanupBatch - cleanup.Checked
+	if remaining > deps.Batch {
+		remaining = deps.Batch
+	}
+	var finals []domain.ObjectRef
+	if remaining > 0 {
+		finals, err = deps.Store.StaleFinalCandidates(ctx, now.Add(-CopyRetention), remaining)
+	}
 	if err != nil {
 		return rep, err
 	}
@@ -279,12 +303,14 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 		if !FinalDue(obj, now) {
 			continue
 		}
-		if err := deps.Storage.DeleteFinal(ctx, obj.FinalKey); err != nil {
+		deleted, err := deps.Store.DeleteFinalCopy(ctx, obj.ID, obj.FinalKey, now, deps.Storage.DeleteFinal)
+		if err != nil {
 			rep.StorageErrors++
 			continue
 		}
-		if err := deps.Store.MarkFinalDeleted(ctx, obj.ID); err != nil {
-			return rep, err
+		if !deleted {
+			rep.SkippedActive++
+			continue
 		}
 		rep.FinalsDeleted++
 	}
@@ -296,7 +322,6 @@ func Sweep(ctx context.Context, deps SweepDeps) (SweepReport, error) {
 	rep.ObjectsPurged = purged
 	// Cleanup effects are retained even if monitoring fails. UNKNOWN is
 	// explicit and errors propagate; a missing observation is never healthy zero.
-	var failures error
 	health, healthErr := deps.Store.IntakeHealth(ctx, dayStart(now), now)
 	if healthErr != nil {
 		failures = errors.Join(failures, healthErr)
