@@ -59,7 +59,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-pill: 9999px;
-  --max-width: 80rem; /* 1280px content area (widened per user review) */
+  --max-width: 72rem; /* 1152px content area, matching reference default */
 }
 
 /* Dark appearance (owner-authorized): same tokens, inverted surfaces.
@@ -206,8 +206,8 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   max-width: var(--max-width);
   margin-left: auto;
   margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
 h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-copy,
@@ -247,13 +247,13 @@ h1, h2, h3, h4, h5, h6, button, .site-nav, .btn-primary, .btn-secondary, .btn-co
 }
 
 .brand-logo {
-  height: 2.6296875rem; /* 42.075px, -10% */
+  height: 1.5rem;
   width: auto;
   display: block;
 }
 
 .brand-wordmark {
-  height: 1.434375rem; /* 22.95px, -10% */
+  height: 1.1rem;
   width: auto;
   display: block;
 }
@@ -590,41 +590,6 @@ section {
 .hero-actions .store-btn {
   min-height: 56px;
   padding: 0.6rem 1.1rem;
-}
-
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem 2rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--line);
-}
-
-.hero-stats div {
-  display: flex;
-  flex-direction: column;
-}
-
-.hero-stats dt {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  order: 1;
-}
-
-.hero-stats dd {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--ink);
-  order: 2;
-}
-
-@media (min-width: 48rem) {
-  .hero-stats {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 .btn-primary {
