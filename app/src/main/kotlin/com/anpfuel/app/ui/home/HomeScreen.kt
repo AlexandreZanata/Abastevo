@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -222,6 +225,8 @@ internal fun HomeContent(
                     estimates = uiState.tankFillCostEstimates,
                     onNavigate = onNavigate,
                 )
+            } else if (uiState.isLoading && uiState.hasVehicle) {
+                VehicleCarouselSkeleton()
             } else {
                 HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
             }
@@ -401,6 +406,34 @@ private fun HomePriceSortDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Placeholder mirroring a tank-fill card while loading for drivers with
+ * a registered vehicle, so the hero banner never flashes first.
+ */
+@Composable
+private fun VehicleCarouselSkeleton(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 112.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SkeletonLine(width = 150.dp, height = 14.dp)
+            SkeletonLine(width = 190.dp, height = 32.dp)
+            SkeletonLine(width = 170.dp, height = 20.dp)
+            SkeletonLine(modifier = Modifier.padding(top = 4.dp), height = 44.dp)
         }
     }
 }

@@ -54,6 +54,7 @@ class HomeViewModelTest {
     private val syncPriceTablesUseCase = mockk<SyncPriceTablesUseCase>()
     private val listVehiclesUseCase = mockk<ListVehiclesUseCase>()
     private val getTankFillCostEstimatesUseCase = mockk<GetTankFillCostEstimatesUseCase>()
+    private val homeVehiclePresenceStore = mockk<com.anpfuel.data.local.preferences.HomeVehiclePresenceStore>()
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
 
     private lateinit var viewModel: HomeViewModel
@@ -66,6 +67,8 @@ class HomeViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         every { observeNetworkConnectivityUseCase.invoke() } returns flowOf(true)
+        every { homeVehiclePresenceStore.hasVehicle() } returns false
+        every { homeVehiclePresenceStore.setHasVehicle(any()) } returns Unit
         viewModel = HomeViewModel(
             getDataReadinessUseCase = getDataReadinessUseCase,
             getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
@@ -73,6 +76,7 @@ class HomeViewModelTest {
             syncPriceTablesUseCase = syncPriceTablesUseCase,
             listVehiclesUseCase = listVehiclesUseCase,
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
+            homeVehiclePresenceStore = homeVehiclePresenceStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
         )
     }
@@ -187,6 +191,37 @@ class HomeViewModelTest {
             listOf("Gol", "Onix"),
             viewModel.uiState.value.tankFillCostEstimates.map { it.displayName },
         )
+    }
+
+    @Test
+    fun cachedVehiclePresenceShowsBeforeFirstLoad() {
+        every { homeVehiclePresenceStore.hasVehicle() } returns true
+        viewModel = HomeViewModel(
+            getDataReadinessUseCase = getDataReadinessUseCase,
+            getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
+            selectLocationUseCase = selectLocationUseCase,
+            syncPriceTablesUseCase = syncPriceTablesUseCase,
+            listVehiclesUseCase = listVehiclesUseCase,
+            getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
+            homeVehiclePresenceStore = homeVehiclePresenceStore,
+            observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+        )
+
+        assertTrue(viewModel.uiState.value.hasVehicle)
+    }
+
+    @Test
+    fun loadRefreshesVehiclePresenceCache() = runTest(dispatcher) {
+        stubReadyHome(
+            vehicles = listOf(sampleVehicle("Gol")),
+            tankItems = emptyList(),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.hasVehicle)
+        coVerify { homeVehiclePresenceStore.setHasVehicle(true) }
     }
 
     private fun stubReadyHome(
