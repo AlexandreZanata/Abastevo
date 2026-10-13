@@ -164,7 +164,7 @@ func TestLedgerBoundsFiltersPagesAndErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if page.Next == "" {
-		t.Skip("single page")
+		t.Fatal("missing next cursor for two-row probe")
 	}
 	next := strings.TrimSuffix(base, "}") + `,"cursor":"` + page.Next + `"}`
 	if w = call(h, "/v1/ledger/records", next); w.Code != 200 {

@@ -528,6 +528,8 @@ Entry: PRM01–PRM07 locally complete; no Android feature UI yet (a test-only pu
 
 ### PRM08-T05 — Pin complete backend checkpoint and consumer contract
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01–T04; G-PR-BACKEND manifest.
 - **Outcome/areas:** complete requirement/task/result matrix, exact tested revision/config/schema/contracts, known nonblocking release-only obligations and minimal Android integration guide.
 - **Tests first:** audit missing/skipped/zero-test selectors, stale evidence after source changes, unimplemented endpoint/job/provider rows and all free-preservation regressions.

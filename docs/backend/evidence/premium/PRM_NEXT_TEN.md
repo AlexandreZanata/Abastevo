@@ -269,3 +269,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Boundary review found no synthetic premium-grant switch and no log or print statements in the cloud, ledger, alerts and metrics modules. Stale sessions, forged tokens, nil services and secret-bearing inputs all fail closed without echoing secrets. Cross-owner comparisons stay incompatible with foreign amounts absent from bodies. Operator runbook: rotate signing keys and provider credentials through restricted configuration with restarts, replay manifests with revision checks, recover keys under the documented policy, and roll back by redeploying the last accepted revision with no migration downgrades. Deployable configuration carries no grant switch. Real Play sandbox proof stays PROOF_OWED and staging object and push provider proofs stay owed, so those gates remain INCOMPLETE. No deployment is authorized by this runbook. Real PostGIS PASS (handoff suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM08-T05. Real payments OFF.
+
+## PRM08-T05 — Pin complete backend checkpoint and consumer contract
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Pinned `b3149241` with 76 append-only migrations, v1 `1.0.0-draft` with 104 live operationIds, 147 API goldens plus 15 financial vectors, and the gate matrix with per-phase checkpoints at `docs/backend/evidence/premium/PRM08_T05_GATE_MATRIX.md`. Audits record 32 verified evidence SHAs, 4 justified skips with 1 dead skip removed and re-proven, ports-only zero-test packages, 15 superseded planned envelopes, job rows with platform retention, and owed Play, object and push provider proofs. Free preservation re-proven by full unit suites plus cloudsync, ledger and alerts integration suites with `-race` at this revision. The minimal Android guide ships alongside. Only a full backend gate PASS permits PRM09; this checkpoint is not production certification. No merge/deploy/mobile edit.
+Next PRM09-T01. Real payments OFF.
