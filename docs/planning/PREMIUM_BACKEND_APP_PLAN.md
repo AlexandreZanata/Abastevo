@@ -228,6 +228,8 @@ Entry: PRM02. Exit: two-device convergence/conflicts/deletion recovery, without 
 
 ### PRM03-T02 — Atomic write batches and recoverable conflicts
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PR08/09.
 - **Outcome/areas:** conditionally apply stable commands, return per-operation results and base/current/proposed conflict data; field/set merge only where frozen.
 - **Tests first:** two devices edit same/different fields, delete versus update, partial batch refusal, lost response/replay, entitlement expiry and SQL rollback.

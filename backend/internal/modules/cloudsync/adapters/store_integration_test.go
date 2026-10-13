@@ -854,3 +854,163 @@ func TestPullIsolationRevocationConsentAndPlans(t *testing.T) {
 		t.Fatal("unpaid pull admitted")
 	}
 }
+
+func secondDevice(t *testing.T, pool *pgxpool.Pool, store *Store, p app.Principal) app.Principal {
+	t.Helper()
+	other := p
+	other.FamilyID = newid(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, "INSERT INTO account_session_families(id,account_id,refresh_salt,refresh_hash,access_salt,access_hash,access_expires,issued_at) VALUES($1,$2,'s','h','s','h',clock_timestamp()+interval '1 hour',clock_timestamp())", other.FamilyID, other.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	d, err := store.RegisterDevice(ctx, other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.DeviceID = d.ID
+	return other
+}
+
+func TestPushConflictsRecoverable(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	other := secondDevice(t, pool, store, p)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	stale := v
+	stale.Name = "Device B stale edit"
+	staleCmd := vehicleCommand(t, stale, 1)
+	updated := v
+	updated.Name = "Device A current edit"
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, updated, 1)}}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := store.Apply(ctx, other, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{staleCmd}})
+	var conflict *app.ConflictError
+	if !errors.As(err, &conflict) || !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("stale arrival overwrote current %v", err)
+	}
+	if conflict.Conflict.ExpectedRevision != 1 || conflict.Conflict.CurrentRevision != 2 || conflict.Conflict.Erased {
+		t.Fatalf("conflict base/current wrong %+v", conflict.Conflict)
+	}
+	if len(conflict.Conflict.ProposedPayload) == 0 || len(conflict.Conflict.CurrentPayload) == 0 {
+		t.Fatal("conflict missing base/current/proposed")
+	}
+	rows, err := store.List(ctx, p, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 {
+		t.Fatal("list after conflict", err)
+	}
+	var kept domain.Vehicle
+	if err = json.Unmarshal(rows[0].Payload, &kept); err != nil || kept.Name != "Device A current edit" {
+		t.Fatal("last arrival overwrote", kept)
+	}
+	fresh := stale
+	fresh.Name = "Device B resolved edit"
+	resolved, err := store.Apply(ctx, other, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, fresh, 2)}})
+	if err != nil || resolved.Results[0].Revision != 3 {
+		t.Fatal("fresh revision resolution", err)
+	}
+	independent := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0), vehicleCommand(t, vehicle(t), 0)}}
+	merged, err := store.Apply(ctx, p, independent)
+	if err != nil || len(merged.Results) != 2 {
+		t.Fatal("independent merge refused", err)
+	}
+	prefs := domain.Preferences{Version: 1, State: "MT", Municipality: "5103403", Locale: "pt-BR", RadiusKm: 3, ShowPriceHistory: true}
+	rawPrefs, _ := json.Marshal(prefs)
+	replayCmd := app.Command{OperationID: newid(t), Dataset: "preferences", ID: domain.PreferencesID, ExpectedRevision: 0, Payload: rawPrefs}
+	first, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{replayCmd}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{replayCmd}})
+	if err != nil || !again.Results[0].Replayed || again.Results[0].Revision != first.Results[0].Revision {
+		t.Fatal("lost response replay", err)
+	}
+	divergent := replayCmd
+	changedPrefs := prefs
+	changedPrefs.RadiusKm = 5
+	divergent.Payload, _ = json.Marshal(changedPrefs)
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{divergent}}); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("changed operation reuse accepted")
+	}
+}
+
+func TestPushDeleteConflictAndRollback(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	other := secondDevice(t, pool, store, p)
+	ctx := context.Background()
+	store.Station = dirread.NewReader(pool).ActiveReference
+	station := newid(t)
+	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic station')", station); err != nil {
+		t.Fatal(err)
+	}
+	rawFav, _ := json.Marshal(domain.Favorite{StationID: station})
+	createFav := app.Command{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 0, Payload: rawFav}
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{createFav}}); err != nil {
+		t.Fatal(err)
+	}
+	deleteFav := app.Command{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 1, Delete: true}
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{deleteFav}}); err != nil {
+		t.Fatal(err)
+	}
+	staleUpdate := app.Command{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 1, Payload: rawFav}
+	_, err := store.Apply(ctx, other, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{staleUpdate}})
+	var conflict *app.ConflictError
+	if !errors.As(err, &conflict) || !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("delete versus update accepted %v", err)
+	}
+	if !conflict.Conflict.Erased || len(conflict.Conflict.CurrentPayload) != 0 || len(conflict.Conflict.ProposedPayload) == 0 {
+		t.Fatalf("delete conflict missing erased fence %+v", conflict.Conflict)
+	}
+	var receiptBody string
+	if err = pool.QueryRow(ctx, "SELECT coalesce(string_agg(receipt::text,''), '') FROM cloud_operations WHERE account_id=$1", p.AccountID).Scan(&receiptBody); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(receiptBody, "Synthetic station") || strings.Contains(receiptBody, "display_name") {
+		t.Fatal("conflict receipt retained private content")
+	}
+	good := vehicleCommand(t, vehicle(t), 0)
+	bad := vehicleCommand(t, vForRollback(t, pool, p, store), 99)
+	before := counts(t, pool)
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{good, bad}}); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("partial batch accepted")
+	}
+	if after := counts(t, pool); after != before {
+		t.Fatalf("conflict batch left effects %v want %v", after, before)
+	}
+	var success *time.Time
+	if err = pool.QueryRow(ctx, "SELECT last_success_at FROM cloud_devices WHERE id=$1", p.DeviceID).Scan(&success); err != nil {
+		t.Fatal(err)
+	}
+	store.Paid = nil
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("expired entitlement push admitted")
+	}
+}
+
+func vForRollback(t *testing.T, pool *pgxpool.Pool, p app.Principal, store *Store) domain.Vehicle {
+	t.Helper()
+	v := vehicle(t)
+	ctx := context.Background()
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+func counts(t *testing.T, pool *pgxpool.Pool) string {
+	t.Helper()
+	var records, changes, receipts int
+	if err := pool.QueryRow(context.Background(), "SELECT (SELECT count(*) FROM cloud_records),(SELECT count(*) FROM cloud_changes),(SELECT count(*) FROM cloud_operations)").Scan(&records, &changes, &receipts); err != nil {
+		t.Fatal(err)
+	}
+	return fmt.Sprintf("%d/%d/%d", records, changes, receipts)
+}

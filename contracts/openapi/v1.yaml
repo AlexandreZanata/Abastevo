@@ -3839,6 +3839,50 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/push:
+    post:
+      tags:
+      - premium
+      summary: Push owned cloud commands with recoverable conflicts
+      description: Reuses the atomic bounded Apply with receipts. No silent last-arrival
+        overwrite. Stale expected revisions return base/current/proposed conflict data
+        and roll back the full batch. Resolution is a new command at the current revision
+        with a fresh operation ID; only independent documented operations merge in one
+        batch. Conflict receipts never persist deleted private content. All responses
+        are no-store without ETags. Paid production ports remain disabled.
+      operationId: cloudSyncPush
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict with base/current/proposed data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncPushConflictResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -4334,6 +4378,65 @@ components:
       - epoch
       - revision
       - results
+    CloudConflict:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        current_revision:
+          type: integer
+          minimum: 0
+        current_deleted:
+          type: boolean
+        current_payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+        proposed_payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+        erased:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - expected_revision
+      - current_revision
+      - current_deleted
+      - erased
+    CloudSyncPushConflictResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        conflicts:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudConflict'
+      required:
+      - epoch
+      - revision
+      - conflicts
     PremiumExportRequest:
       type: object
       additionalProperties: false

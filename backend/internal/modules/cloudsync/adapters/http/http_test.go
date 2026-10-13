@@ -240,3 +240,111 @@ func TestSyncPullExpiredCursorRequiresResnapshot(t *testing.T) {
 		t.Fatalf("expired cursor did not require resnapshot %d", w.Code)
 	}
 }
+
+func pushHandler(p *probe) Handler {
+	who := owner
+	return Handler{
+		Service:      p,
+		Origin:       "one.example.test",
+		CursorSecret: []byte(strings.Repeat("s", 32)),
+		Sessions: func(_ context.Context, f, a string) (string, error) {
+			if f != family || a != "synthetic" {
+				return "", domain.ErrUnauthorized
+			}
+			return who, nil
+		},
+		SignedOwner: func(_ *http.Request, account string) (string, string, error) {
+			return "33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444", nil
+		},
+	}
+}
+
+func TestSyncPushSuccessAndValidation(t *testing.T) {
+	p := &probe{}
+	h := pushHandler(p)
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"55555555-5555-4555-8555-555555555555","epoch":1,"consent_revision":1,"commands":[{"operation_id":"66666666-6666-4666-8666-666666666666","dataset":"vehicles","id":"77777777-7777-4777-8777-777777777777","expected_revision":0,"payload":{"id":"77777777-7777-4777-8777-777777777777","display_name":"Synthetic","capacity_milli":50000,"fuel_product":"ETHANOL","unit":"L","price_source":"CHEAPEST_STATION","price_drop_alert_enabled":false,"sort_order":0,"archived":false}}]}`
+	w := call(h, "/v1/cloud/sync/push", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("push success %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/sync/push", base); w.Code != 401 || p.commands != 1 {
+		t.Fatal("unsigned push admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"device_id"`, `"account_id"`, 1),
+		strings.Replace(base, `"device_id":"55555555-5555-4555-8555-555555555555"`, `"device_id":"not-a-uuid"`, 1),
+		strings.Replace(base, `"commands":[`, `"commands":[], "extra":1, "x":[`, 1),
+	} {
+		before := p.commands
+		if w = call(h, "/v1/cloud/sync/push", bad); w.Code != 400 || p.commands != before {
+			t.Fatalf("bad push admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrDenied
+	if w = call(h, "/v1/cloud/sync/push", base); w.Code != 403 {
+		t.Fatal("expired entitlement hidden")
+	}
+	p.err = domain.ErrResnapshot
+	if w = call(h, "/v1/cloud/sync/push", base); w.Code != 409 {
+		t.Fatal("stale epoch hidden")
+	}
+	p.err = nil
+}
+
+func TestSyncPushConflictDetailsWithoutPrivateLeak(t *testing.T) {
+	p := &probe{}
+	h := pushHandler(p)
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"55555555-5555-4555-8555-555555555555","epoch":1,"consent_revision":1,"commands":[{"operation_id":"66666666-6666-4666-8666-666666666666","dataset":"vehicles","id":"77777777-7777-4777-8777-777777777777","expected_revision":1,"payload":{"id":"77777777-7777-4777-8777-777777777777","display_name":"Proposed","capacity_milli":50000,"fuel_product":"ETHANOL","unit":"L","price_source":"CHEAPEST_STATION","price_drop_alert_enabled":false,"sort_order":0,"archived":false}}]}`
+	p.err = &app.ConflictError{
+		Epoch:    1,
+		Revision: 2,
+		Conflict: app.Conflict{
+			OperationID:      "66666666-6666-4666-8666-666666666666",
+			Dataset:          "vehicles",
+			ID:               "77777777-7777-4777-8777-777777777777",
+			ExpectedRevision: 1,
+			CurrentRevision:  2,
+			CurrentPayload:   json.RawMessage(`{"id":"77777777-7777-4777-8777-777777777777","display_name":"Current"}`),
+			ProposedPayload:  json.RawMessage(`{"id":"77777777-7777-4777-8777-777777777777","display_name":"Proposed"}`),
+		},
+	}
+	w := call(h, "/v1/cloud/sync/push", base)
+	if w.Code != 409 || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("ETag") != "" {
+		t.Fatalf("conflict not recoverable %d", w.Code)
+	}
+	var body struct {
+		Epoch     int64          `json:"epoch"`
+		Revision  int64          `json:"revision"`
+		Conflicts []app.Conflict `json:"conflicts"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || len(body.Conflicts) != 1 {
+		t.Fatal("conflict body", err)
+	}
+	got := body.Conflicts[0]
+	if got.ExpectedRevision != 1 || got.CurrentRevision != 2 || len(got.ProposedPayload) == 0 || len(got.CurrentPayload) == 0 {
+		t.Fatalf("conflict base/current/proposed %+v", got)
+	}
+	p.err = &app.ConflictError{
+		Epoch:    1,
+		Revision: 3,
+		Conflict: app.Conflict{OperationID: "66666666-6666-4666-8666-666666666666", Dataset: "favorites", ID: "88888888-8888-4888-8888-888888888888", ExpectedRevision: 1, CurrentDeleted: true, Erased: true},
+	}
+	if w = call(h, "/v1/cloud/sync/push", base); w.Code != 409 {
+		t.Fatal("erased conflict hidden")
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal("deleted conflict body", err)
+	}
+	if payload := string(body.Conflicts[0].CurrentPayload); payload != "" && payload != "null" {
+		t.Fatalf("deleted conflict leaked content %q", payload)
+	}
+	if strings.Contains(w.Body.String(), "Synthetic") {
+		t.Fatal("conflict leaked private bytes")
+	}
+	p.err = domain.ErrConflict
+	if w = call(h, "/v1/cloud/sync/push", base); w.Code != 409 {
+		t.Fatal("generic conflict hidden")
+	}
+	p.err = nil
+}

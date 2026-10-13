@@ -142,6 +142,12 @@ func (s *Store) Apply(ctx context.Context, p app.Principal, b app.Batch) (app.Ba
 		}
 		revision, e := s.applyOne(ctx, tx, query, p, c)
 		if e != nil {
+			var conflict *app.ConflictError
+			if errors.As(e, &conflict) {
+				conflict.Epoch = state.Epoch
+				conflict.Revision = state.Revision
+				return app.BatchResult{}, conflict
+			}
 			return app.BatchResult{}, e
 		}
 		sequence, e := query.NextRevision(ctx, uid(p.AccountID))
@@ -170,22 +176,33 @@ func (s *Store) Apply(ctx context.Context, p app.Principal, b app.Batch) (app.Ba
 	}
 	return result, nil
 }
+func proposedForConflict(c app.Command) json.RawMessage {
+	if c.Delete || len(c.Payload) == 0 {
+		return nil
+	}
+	return json.RawMessage(append([]byte(nil), c.Payload...))
+}
+
 func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app.Principal, c app.Command) (int64, error) {
 	erased, err := query.ErasedID(ctx, q.ErasedIDParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID)})
 	if err != nil {
 		return 0, domain.ErrUnavailable
 	}
 	if erased {
-		return 0, domain.ErrConflict
+		return 0, &app.ConflictError{Conflict: app.Conflict{OperationID: c.OperationID, Dataset: c.Dataset, ID: c.ID, ExpectedRevision: c.ExpectedRevision, Erased: true, ProposedPayload: proposedForConflict(c)}}
 	}
 	old, err := query.GetRecord(ctx, q.GetRecordParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID)})
 	if err == nil {
 		if old.Deleted || old.Revision != c.ExpectedRevision {
-			return 0, domain.ErrConflict
+			var current json.RawMessage
+			if !old.Deleted && len(old.Payload) > 0 {
+				current = json.RawMessage(append([]byte(nil), old.Payload...))
+			}
+			return 0, &app.ConflictError{Conflict: app.Conflict{OperationID: c.OperationID, Dataset: c.Dataset, ID: c.ID, ExpectedRevision: c.ExpectedRevision, CurrentRevision: old.Revision, CurrentDeleted: old.Deleted, CurrentPayload: current, ProposedPayload: proposedForConflict(c)}}
 		}
 	} else if errors.Is(err, pgx.ErrNoRows) {
 		if c.ExpectedRevision != 0 || c.Delete {
-			return 0, domain.ErrConflict
+			return 0, &app.ConflictError{Conflict: app.Conflict{OperationID: c.OperationID, Dataset: c.Dataset, ID: c.ID, ExpectedRevision: c.ExpectedRevision, ProposedPayload: proposedForConflict(c)}}
 		}
 		count, e := query.CountDataset(ctx, q.CountDatasetParams{AccountID: uid(p.AccountID), Dataset: c.Dataset})
 		if e != nil {

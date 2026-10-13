@@ -117,6 +117,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/cloud/commands", h.commands)
 	r.Post("/v1/cloud/erase", h.erase)
 	r.Post("/v1/cloud/sync/pull", h.syncPull)
+	r.Post("/v1/cloud/sync/push", h.syncPush)
 }
 func (h Handler) status(w http.ResponseWriter, r *http.Request) {
 	var dto session

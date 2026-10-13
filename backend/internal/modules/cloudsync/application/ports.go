@@ -67,6 +67,26 @@ type BatchStore interface {
 	Apply(context.Context, Principal, Batch) (BatchResult, error)
 }
 
+type Conflict struct {
+	OperationID      string          `json:"operation_id"`
+	Dataset          string          `json:"dataset"`
+	ID               string          `json:"id"`
+	ExpectedRevision int64           `json:"expected_revision"`
+	CurrentRevision  int64           `json:"current_revision"`
+	CurrentDeleted   bool            `json:"current_deleted"`
+	CurrentPayload   json.RawMessage `json:"current_payload"`
+	ProposedPayload  json.RawMessage `json:"proposed_payload"`
+	Erased           bool            `json:"erased"`
+}
+type ConflictError struct {
+	Conflict Conflict
+	Epoch    int64
+	Revision int64
+}
+
+func (e *ConflictError) Error() string { return "cloud: revision conflict" }
+func (e *ConflictError) Unwrap() error { return domain.ErrConflict }
+
 type Status struct {
 	Epoch           int64    `json:"epoch"`
 	Revision        int64    `json:"revision"`
