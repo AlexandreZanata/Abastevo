@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,23 +20,31 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -102,6 +111,7 @@ fun HomeScreen(
         onRefresh = { viewModel.refresh(locale) },
         onRetry = { viewModel.load(locale, showLoadingIndicator = true) },
         onWeekChanged = { viewModel.load(locale, showLoadingIndicator = true) },
+        onPriceSortChanged = viewModel::onPriceSortChanged,
         modifier = modifier,
     )
 }
@@ -118,9 +128,21 @@ internal fun HomeContent(
     onWeekChanged: () -> Unit,
     modifier: Modifier = Modifier,
     includeSurveyWeekChip: Boolean = true,
+    onPriceSortChanged: (HomePriceSortOrder) -> Unit = {},
 ) {
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
+    }
+    var filterOpen by rememberSaveable { mutableStateOf(false) }
+    if (filterOpen) {
+        HomePriceSortDialog(
+            current = uiState.priceSort,
+            onSelect = { order ->
+                filterOpen = false
+                onPriceSortChanged(order)
+            },
+            onDismiss = { filterOpen = false },
+        )
     }
 
     AnpScaffold(
@@ -248,6 +270,10 @@ internal fun HomeContent(
                         }
                     }
                     PriceMetadata(uiState = uiState)
+                    HomePriceFilterButton(
+                        current = uiState.priceSort,
+                        onOpenFilters = { filterOpen = true },
+                    )
                     uiState.prices.forEach { price ->
                         HomeReferencePriceCard(
                             price = price,
@@ -272,6 +298,90 @@ internal fun HomeContent(
             }
         }
     }
+}
+
+/**
+ * Quick price filter entry: current order stays visible, options open in
+ * a single-choice dialog and apply instantly without reloading.
+ */
+@Composable
+private fun HomePriceFilterButton(
+    current: HomePriceSortOrder,
+    onOpenFilters: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedCard(
+        onClick = onOpenFilters,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.FilterList,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.home_filter_button),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(current.labelRes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomePriceSortDialog(
+    current: HomePriceSortOrder,
+    onSelect: (HomePriceSortOrder) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.home_filter_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                HomePriceSortOrder.entries.forEach { order ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                role = Role.RadioButton,
+                                onClick = { onSelect(order) },
+                            )
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        RadioButton(
+                            selected = order == current,
+                            onClick = null,
+                        )
+                        Text(
+                            text = stringResource(order.labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+    )
 }
 
 @Composable

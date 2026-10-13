@@ -25,6 +25,7 @@ import com.anpfuel.domain.valueobject.SurveyWeek
 import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import java.util.Locale
@@ -135,6 +136,54 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun priceSortAscendingOrdersByAverageWithMissingLast() = runTest(dispatcher) {
+        stubReadyHome(
+            vehicles = emptyList(),
+            tankItems = emptyList(),
+            prices = listOf(
+                sampleAveragePrice(FuelProduct.GASOLINE_REGULAR, "6.83"),
+                sampleAveragePrice(FuelProduct.DIESEL_S500, null),
+                sampleAveragePrice(FuelProduct.ETHANOL, "3.96"),
+            ),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        viewModel.onPriceSortChanged(HomePriceSortOrder.PRICE_ASC)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(FuelProduct.ETHANOL, FuelProduct.GASOLINE_REGULAR, FuelProduct.DIESEL_S500),
+            viewModel.uiState.value.prices.map { it.fuelProduct },
+        )
+    }
+
+    @Test
+    fun priceSortDescendingPutsMissingLastWithoutReloading() = runTest(dispatcher) {
+        stubReadyHome(
+            vehicles = emptyList(),
+            tankItems = emptyList(),
+            prices = listOf(
+                sampleAveragePrice(FuelProduct.ETHANOL, "3.96"),
+                sampleAveragePrice(FuelProduct.DIESEL_S500, null),
+                sampleAveragePrice(FuelProduct.GASOLINE_REGULAR, "6.83"),
+            ),
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.onPriceSortChanged(HomePriceSortOrder.PRICE_DESC)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(FuelProduct.GASOLINE_REGULAR, FuelProduct.ETHANOL, FuelProduct.DIESEL_S500),
+            viewModel.uiState.value.prices.map { it.fuelProduct },
+        )
+        coVerify(exactly = 1) { getMunicipalityPricesUseCase.invoke() }
+    }
+
+    @Test
     fun loadMapsMultipleTankFillCardsInOrder() = runTest(dispatcher) {
         val first = sampleVehicle("Gol", sortOrder = 0)
         val second = sampleVehicle("Onix", sortOrder = 1)
@@ -164,6 +213,7 @@ class HomeViewModelTest {
     private fun stubReadyHome(
         vehicles: List<Vehicle>,
         tankItems: List<VehicleTankFillCostEstimate>,
+        prices: List<com.anpfuel.domain.model.AveragePrice> = emptyList(),
     ) {
         coEvery { getDataReadinessUseCase.invoke() } returns DataReadinessResult(
             readiness = DataReadinessState.READY,
@@ -180,7 +230,7 @@ class HomeViewModelTest {
             surveyWeek = surveyWeek,
             state = state,
             municipality = municipality,
-            prices = emptyList(),
+            prices = prices,
             dataAvailability = DataAvailability.HAS_DATA,
         )
         coEvery {
@@ -205,6 +255,16 @@ class HomeViewModelTest {
             fuelProduct = FuelProduct.GASOLINE_REGULAR,
             priceSource = VehiclePriceSource.cheapest(),
             sortOrder = sortOrder,
+        )
+
+    private fun sampleAveragePrice(product: FuelProduct, average: String?) =
+        com.anpfuel.domain.model.AveragePrice.create(
+            priceSurveyId = com.anpfuel.domain.valueobject.DomainId.generate(),
+            surveyWeek = surveyWeek,
+            state = state,
+            municipality = municipality,
+            fuelProduct = product,
+            average = average?.let { PriceAmount.of(it) },
         )
 
     private fun tankEstimate(vehicle: Vehicle, total: String): TankFillCostEstimate =

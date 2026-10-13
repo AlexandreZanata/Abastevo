@@ -554,6 +554,11 @@
     <string name="home_benefits_dismiss">Masquer les avantages</string>
     <string name="home_reference_prices_title">Prix dans votre ville</string>
     <string name="home_view_all">Tout voir</string>
+    <string name="home_filter_button">Filtres</string>
+    <string name="home_filter_title">Trier les prix</string>
+    <string name="home_filter_default">Ordre par défaut</string>
+    <string name="home_filter_lowest">Prix le plus bas</string>
+    <string name="home_filter_highest">Prix le plus élevé</string>
     <string name="home_change_city">Ma ville</string>
     <string name="home_reference_period">Référence ANP • %1$s</string>
     <string name="home_shortcut_stations">Voir les stations</string>

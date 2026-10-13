@@ -39,6 +39,7 @@ data class HomeUiState(
     val surveyWeek: SurveyWeek? = null,
     val prices: List<AveragePriceUiModel> = emptyList(),
     val tankFillCostEstimates: List<TankFillCostEstimateUiModel> = emptyList(),
+    val priceSort: HomePriceSortOrder = HomePriceSortOrder.DEFAULT,
     val hasLocation: Boolean = false,
     val hasCachedData: Boolean = false,
     val isEmptyMunicipality: Boolean = false,
@@ -133,7 +134,7 @@ class HomeViewModel @Inject constructor(
                         municipality = pricesResult.municipality,
                         state = pricesResult.state,
                         surveyWeek = pricesResult.surveyWeek,
-                        prices = uiPrices,
+                        prices = it.priceSort.sort(uiPrices),
                         tankFillCostEstimates = uiTankFillEstimates,
                         isEmptyMunicipality = pricesResult.isEmpty,
                         dataAvailability = pricesResult.dataAvailability,
@@ -153,6 +154,10 @@ class HomeViewModel @Inject constructor(
                 hasPresentedContent = true
             }
         }
+    }
+
+    fun onPriceSortChanged(order: HomePriceSortOrder) {
+        _uiState.update { it.copy(priceSort = order, prices = order.sort(it.prices)) }
     }
 
     fun refresh(locale: Locale) {

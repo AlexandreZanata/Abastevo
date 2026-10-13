@@ -554,6 +554,11 @@
     <string name="home_benefits_dismiss">特典を非表示</string>
     <string name="home_reference_prices_title">街の価格</string>
     <string name="home_view_all">すべて表示</string>
+    <string name="home_filter_button">絞り込み</string>
+    <string name="home_filter_title">価格を並べ替え</string>
+    <string name="home_filter_default">標準の順序</string>
+    <string name="home_filter_lowest">価格が安い順</string>
+    <string name="home_filter_highest">価格が高い順</string>
     <string name="home_change_city">自分の街</string>
     <string name="home_reference_period">ANP参考価格 • %1$s</string>
     <string name="home_shortcut_stations">給油所を探す</string>
