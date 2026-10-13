@@ -126,7 +126,7 @@ internal fun TrainingConsentContent(
                     Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
-                        .padding(bottom = 24.dp + maxOf(frameworkBottom, shellBottom)),
+                        .padding(bottom = 32.dp + maxOf(frameworkBottom, shellBottom)),
                 ) {
                     AnpTopAppBar(
                         title = { Text(stringResource(R.string.privacy_read_terms)) },
