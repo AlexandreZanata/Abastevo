@@ -50,6 +50,7 @@ class NavigationTabTest {
 
     @Test
     fun fromRouteReturnsNullForNonTopLevelRoutes() {
+        assertNull(NavigationTab.fromRoute(Routes.GAMES))
         assertNull(NavigationTab.fromRoute(Routes.LOCATION))
         assertNull(NavigationTab.fromRoute(Routes.HISTORY))
         assertNull(NavigationTab.fromRoute(Routes.STATIONS))

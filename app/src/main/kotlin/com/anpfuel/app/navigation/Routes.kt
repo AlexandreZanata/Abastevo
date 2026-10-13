@@ -10,6 +10,7 @@ object Routes {
     const val EXPLORE = "home"
     const val COMMUNITY = "community"
     const val PROFILE = "profile"
+    const val GAMES = "games"
     const val LOCATION = "location"
     const val HISTORY = "history"
     const val STATIONS = "stations"

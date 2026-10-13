@@ -128,6 +128,9 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
+        composable(Routes.GAMES) {
+            com.anpfuel.app.games.GamesScreen(onNavigateBack = { navController.popBackStack() })
+        }
         composable(Routes.LOCATION) {
             LocationPickerScreen(
                 onNavigateBack = { navController.popBackStack() },
