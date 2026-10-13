@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -24,6 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.rawSystemBottom
 import com.anpfuel.domain.repository.TrainingConsentReview
 
 @Composable
@@ -111,11 +114,19 @@ internal fun TrainingConsentContent(
             ),
         ) {
             Surface(Modifier.fillMaxSize()) {
+                // The dialog window has no consuming scaffolds above it, but
+                // raw platform insets back the framework value: whichever is
+                // larger keeps the footer clear of the navigation bar.
+                val frameworkBottom =
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val rawBottom = with(LocalDensity.current) {
+                    rawSystemBottom(LocalView.current).toDp()
+                }
                 Column(
                     Modifier
                         .fillMaxSize()
                         .systemBarsPadding()
-                        .padding(bottom = 16.dp),
+                        .padding(bottom = 16.dp + maxOf(frameworkBottom, rawBottom)),
                 ) {
                     AnpTopAppBar(
                         title = { Text(stringResource(R.string.privacy_read_terms)) },
@@ -125,9 +136,14 @@ internal fun TrainingConsentContent(
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                         SelectionContainer {Text(document.text)}
                         Text(stringResource(R.string.privacy_digest,document.digest),style=MaterialTheme.typography.bodySmall)
-                        Button(onClick={review=review.finishReading();reader=false},modifier=Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.privacy_finish_reading))
-                        }
+                    }
+                    Button(
+                        onClick = { review = review.finishReading(); reader = false },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                    ) {
+                        Text(stringResource(R.string.privacy_finish_reading))
                     }
                 }
             }

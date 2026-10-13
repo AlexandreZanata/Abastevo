@@ -47,7 +47,7 @@ private fun rawSystemTop(view: View): Int {
     return maxOf(bars, cutout)
 }
 
-private fun rawSystemBottom(view: View): Int {
+internal fun rawSystemBottom(view: View): Int {
     val root = ViewCompat.getRootWindowInsets(view) ?: return 0
     val bars = root.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
     val cutout = root.getInsets(WindowInsetsCompat.Type.displayCutout()).bottom
