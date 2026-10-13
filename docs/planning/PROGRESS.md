@@ -1,6 +1,6 @@
 # Current execution state
 
-- Premium next-five 2026-10-13: IN_PROGRESS on isolated codex/premium-backend / PR131 (draft during construction), batch parent 8553b7a; authorized PRM03-T02..T05 + PRM04-T01, one commit each. Completed sequentially through PRM04-T01, tested working tree atop e8991e5; task SQL/race/static checks PASS. [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md). Next PRM04-T02. Payments/real Play sandbox deferred, dev/mobile preserved; no merge/deploy.
+- Premium next-five 2026-10-13: IN_PROGRESS on isolated codex/premium-backend / PR131 (draft during construction), batch parent 8553b7a; authorized PRM04-T02..T06, one commit each. Completed sequentially through PRM04-T02, tested working tree atop 3f8c955; task SQL/race/static checks PASS. [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md). Next PRM04-T03. Payments/real Play sandbox deferred, dev/mobile preserved; no merge/deploy.
 
 - OneSignal notification planning 2026-10-13: CONTENT/PLAN LOCAL_DONE; PRM11–PRM14 implementation PLANNED. [Bodies/cost/identity contract](../product/NOTIFICATION_CONTENT_CONTRACT.md), [extended Premium plan](PREMIUM_BACKEND_APP_PLAN.md). Added 17 microtasks without renumbering the original 62; source order integrates OneSignal backend before G-PR-BACKEND and app/provider acceptance before commercialization. No SDK/credential/send/deploy/mobile edit. First-ten backend batch source complete on PR131; real payments deferred.
 

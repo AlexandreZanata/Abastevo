@@ -154,3 +154,23 @@ DELETE FROM cloud_operations o WHERE o.ctid IN (SELECT o2.ctid FROM cloud_operat
 
 -- name: AdvanceFloor :one
 UPDATE cloud_state SET compacted_through=GREATEST(compacted_through,sqlc.arg(floor)::bigint) WHERE account_id=sqlc.arg(account_id)::uuid RETURNING compacted_through;
+
+-- name: InsertSnapshot :one
+INSERT INTO cloud_snapshots(account_id,snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key)
+VALUES(sqlc.arg(account_id)::uuid,sqlc.arg(snapshot_id)::uuid,sqlc.arg(revision)::bigint,sqlc.arg(epoch)::bigint,sqlc.arg(consent_revision)::bigint,sqlc.arg(byte_size)::bigint,sqlc.arg(checksum)::text,'PENDING',sqlc.arg(object_key)::text)
+ON CONFLICT DO NOTHING RETURNING snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at;
+
+-- name: GetSnapshot :one
+SELECT snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2;
+
+-- name: ListReadySnapshots :many
+SELECT snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at FROM cloud_snapshots WHERE account_id=$1 AND status='READY' ORDER BY revision DESC, created_at DESC LIMIT $2;
+
+-- name: MarkSnapshotReady :execrows
+UPDATE cloud_snapshots SET status='READY',verified_at=clock_timestamp() WHERE account_id=$1 AND snapshot_id=$2 AND status='PENDING' AND checksum=$3;
+
+-- name: MarkSnapshotFailed :execrows
+UPDATE cloud_snapshots SET status='FAILED' WHERE account_id=$1 AND snapshot_id=$2 AND status='PENDING';
+
+-- name: DeleteSnapshotObject :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='FAILED';

@@ -277,6 +277,8 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T02 — Private encrypted snapshot storage and inventory
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PR10/12; frozen key recovery.
 - **Outcome/areas:** restricted bucket/prefix, approved encryption/key management, immutable object keys and metadata-first fenced receipts; integrity readback before READY.
 - **Tests first:** missing key, corrupt bytes, lost PUT/HEAD response, crash between metadata/object/receipt, duplicate jobs, late writer and cross-owner object access.

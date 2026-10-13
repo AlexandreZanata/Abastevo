@@ -20,6 +20,7 @@ type Store struct {
 	Station func(context.Context, pgx.Tx, string) (bool, error)
 	Pool    *pgxpool.Pool
 	Paid    func(context.Context, pgx.Tx, string) error
+	Objects app.SnapshotObjectStore
 }
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }

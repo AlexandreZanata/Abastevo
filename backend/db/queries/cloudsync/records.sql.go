@@ -166,6 +166,20 @@ func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) (int
 	return revision, err
 }
 
+const deleteSnapshotObject = `-- name: DeleteSnapshotObject :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='FAILED'
+`
+
+type DeleteSnapshotObjectParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	SnapshotID pgtype.UUID `json:"snapshot_id"`
+}
+
+func (q *Queries) DeleteSnapshotObject(ctx context.Context, arg DeleteSnapshotObjectParams) error {
+	_, err := q.db.Exec(ctx, deleteSnapshotObject, arg.AccountID, arg.SnapshotID)
+	return err
+}
+
 const deviceSuccess = `-- name: DeviceSuccess :execrows
 UPDATE cloud_devices SET last_success_at=clock_timestamp() WHERE id=$1 AND account_id=$2 AND origin=$3 AND revoked_at IS NULL
 `
@@ -394,6 +408,46 @@ func (q *Queries) GetRecord(ctx context.Context, arg GetRecordParams) (GetRecord
 	return i, err
 }
 
+const getSnapshot = `-- name: GetSnapshot :one
+SELECT snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2
+`
+
+type GetSnapshotParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	SnapshotID pgtype.UUID `json:"snapshot_id"`
+}
+
+type GetSnapshotRow struct {
+	SnapshotID      pgtype.UUID        `json:"snapshot_id"`
+	Revision        int64              `json:"revision"`
+	Epoch           int64              `json:"epoch"`
+	ConsentRevision int64              `json:"consent_revision"`
+	ByteSize        int64              `json:"byte_size"`
+	Checksum        string             `json:"checksum"`
+	Status          string             `json:"status"`
+	ObjectKey       string             `json:"object_key"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	VerifiedAt      pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) GetSnapshot(ctx context.Context, arg GetSnapshotParams) (GetSnapshotRow, error) {
+	row := q.db.QueryRow(ctx, getSnapshot, arg.AccountID, arg.SnapshotID)
+	var i GetSnapshotRow
+	err := row.Scan(
+		&i.SnapshotID,
+		&i.Revision,
+		&i.Epoch,
+		&i.ConsentRevision,
+		&i.ByteSize,
+		&i.Checksum,
+		&i.Status,
+		&i.ObjectKey,
+		&i.CreatedAt,
+		&i.VerifiedAt,
+	)
+	return i, err
+}
+
 const getState = `-- name: GetState :one
 SELECT account_id, epoch, revision, compacted_through, consent_mask, consent_revision FROM cloud_state WHERE account_id=$1 FOR UPDATE
 `
@@ -408,6 +462,63 @@ func (q *Queries) GetState(ctx context.Context, accountID pgtype.UUID) (CloudSta
 		&i.CompactedThrough,
 		&i.ConsentMask,
 		&i.ConsentRevision,
+	)
+	return i, err
+}
+
+const insertSnapshot = `-- name: InsertSnapshot :one
+INSERT INTO cloud_snapshots(account_id,snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key)
+VALUES($1::uuid,$2::uuid,$3::bigint,$4::bigint,$5::bigint,$6::bigint,$7::text,'PENDING',$8::text)
+ON CONFLICT DO NOTHING RETURNING snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at
+`
+
+type InsertSnapshotParams struct {
+	AccountID       pgtype.UUID `json:"account_id"`
+	SnapshotID      pgtype.UUID `json:"snapshot_id"`
+	Revision        int64       `json:"revision"`
+	Epoch           int64       `json:"epoch"`
+	ConsentRevision int64       `json:"consent_revision"`
+	ByteSize        int64       `json:"byte_size"`
+	Checksum        string      `json:"checksum"`
+	ObjectKey       string      `json:"object_key"`
+}
+
+type InsertSnapshotRow struct {
+	SnapshotID      pgtype.UUID        `json:"snapshot_id"`
+	Revision        int64              `json:"revision"`
+	Epoch           int64              `json:"epoch"`
+	ConsentRevision int64              `json:"consent_revision"`
+	ByteSize        int64              `json:"byte_size"`
+	Checksum        string             `json:"checksum"`
+	Status          string             `json:"status"`
+	ObjectKey       string             `json:"object_key"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	VerifiedAt      pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) (InsertSnapshotRow, error) {
+	row := q.db.QueryRow(ctx, insertSnapshot,
+		arg.AccountID,
+		arg.SnapshotID,
+		arg.Revision,
+		arg.Epoch,
+		arg.ConsentRevision,
+		arg.ByteSize,
+		arg.Checksum,
+		arg.ObjectKey,
+	)
+	var i InsertSnapshotRow
+	err := row.Scan(
+		&i.SnapshotID,
+		&i.Revision,
+		&i.Epoch,
+		&i.ConsentRevision,
+		&i.ByteSize,
+		&i.Checksum,
+		&i.Status,
+		&i.ObjectKey,
+		&i.CreatedAt,
+		&i.VerifiedAt,
 	)
 	return i, err
 }
@@ -507,6 +618,59 @@ func (q *Queries) ListDevices(ctx context.Context, arg ListDevicesParams) ([]Lis
 			&i.CreatedAt,
 			&i.LastSuccessAt,
 			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReadySnapshots = `-- name: ListReadySnapshots :many
+SELECT snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at FROM cloud_snapshots WHERE account_id=$1 AND status='READY' ORDER BY revision DESC, created_at DESC LIMIT $2
+`
+
+type ListReadySnapshotsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Limit     int32       `json:"limit"`
+}
+
+type ListReadySnapshotsRow struct {
+	SnapshotID      pgtype.UUID        `json:"snapshot_id"`
+	Revision        int64              `json:"revision"`
+	Epoch           int64              `json:"epoch"`
+	ConsentRevision int64              `json:"consent_revision"`
+	ByteSize        int64              `json:"byte_size"`
+	Checksum        string             `json:"checksum"`
+	Status          string             `json:"status"`
+	ObjectKey       string             `json:"object_key"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	VerifiedAt      pgtype.Timestamptz `json:"verified_at"`
+}
+
+func (q *Queries) ListReadySnapshots(ctx context.Context, arg ListReadySnapshotsParams) ([]ListReadySnapshotsRow, error) {
+	rows, err := q.db.Query(ctx, listReadySnapshots, arg.AccountID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReadySnapshotsRow
+	for rows.Next() {
+		var i ListReadySnapshotsRow
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.Revision,
+			&i.Epoch,
+			&i.ConsentRevision,
+			&i.ByteSize,
+			&i.Checksum,
+			&i.Status,
+			&i.ObjectKey,
+			&i.CreatedAt,
+			&i.VerifiedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -659,6 +823,41 @@ func (q *Queries) LockSigningKey(ctx context.Context, arg LockSigningKeyParams) 
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const markSnapshotFailed = `-- name: MarkSnapshotFailed :execrows
+UPDATE cloud_snapshots SET status='FAILED' WHERE account_id=$1 AND snapshot_id=$2 AND status='PENDING'
+`
+
+type MarkSnapshotFailedParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	SnapshotID pgtype.UUID `json:"snapshot_id"`
+}
+
+func (q *Queries) MarkSnapshotFailed(ctx context.Context, arg MarkSnapshotFailedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markSnapshotFailed, arg.AccountID, arg.SnapshotID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markSnapshotReady = `-- name: MarkSnapshotReady :execrows
+UPDATE cloud_snapshots SET status='READY',verified_at=clock_timestamp() WHERE account_id=$1 AND snapshot_id=$2 AND status='PENDING' AND checksum=$3
+`
+
+type MarkSnapshotReadyParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	SnapshotID pgtype.UUID `json:"snapshot_id"`
+	Checksum   string      `json:"checksum"`
+}
+
+func (q *Queries) MarkSnapshotReady(ctx context.Context, arg MarkSnapshotReadyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markSnapshotReady, arg.AccountID, arg.SnapshotID, arg.Checksum)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const needsErasure = `-- name: NeedsErasure :one

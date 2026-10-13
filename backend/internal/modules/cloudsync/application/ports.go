@@ -178,3 +178,25 @@ type BackupManifest struct {
 type BackupStore interface {
 	Manifest(context.Context, Principal) (BackupManifest, error)
 }
+
+type SnapshotObjectStore interface {
+	Put(ctx context.Context, key string, data []byte) error
+	Head(ctx context.Context, key string) (int64, error)
+	Get(ctx context.Context, key string) ([]byte, error)
+	Delete(ctx context.Context, key string) error
+}
+type StoredSnapshot struct {
+	SnapshotID      string `json:"snapshot_id"`
+	Revision        int64  `json:"revision"`
+	Epoch           int64  `json:"epoch"`
+	ConsentRevision int64  `json:"consent_revision"`
+	ByteSize        int64  `json:"byte_size"`
+	Checksum        string `json:"checksum"`
+	Status          string `json:"status"`
+	ObjectKey       string `json:"object_key"`
+}
+type SnapshotStorageStore interface {
+	StoreSnapshot(ctx context.Context, p Principal, snapshotID string, revision, epoch, consentRevision int64, data []byte) (StoredSnapshot, error)
+	ReadSnapshot(ctx context.Context, p Principal, snapshotID string) ([]byte, error)
+	ListSnapshots(ctx context.Context, p Principal, limit int) ([]StoredSnapshot, error)
+}

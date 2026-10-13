@@ -114,6 +114,20 @@ type CloudRecord struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type CloudSnapshot struct {
+	AccountID       pgtype.UUID        `json:"account_id"`
+	SnapshotID      pgtype.UUID        `json:"snapshot_id"`
+	Revision        int64              `json:"revision"`
+	Epoch           int64              `json:"epoch"`
+	ConsentRevision int64              `json:"consent_revision"`
+	ByteSize        int64              `json:"byte_size"`
+	Checksum        string             `json:"checksum"`
+	Status          string             `json:"status"`
+	ObjectKey       string             `json:"object_key"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	VerifiedAt      pgtype.Timestamptz `json:"verified_at"`
+}
+
 type CloudState struct {
 	AccountID        pgtype.UUID `json:"account_id"`
 	Epoch            int64       `json:"epoch"`
