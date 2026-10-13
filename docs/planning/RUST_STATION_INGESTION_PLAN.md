@@ -1,5 +1,7 @@
 # Rust station preparation module: national catalog and trustworthy locations
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 Status: planning overlay; implementation acceptance is recorded per task in
 current PROGRESS and linked evidence. Additional RST-10–21 benchmarks are PLANNED.
 Research date: 2026-10-09. User requested the plan alongside the separate premium

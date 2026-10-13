@@ -1,5 +1,7 @@
 # Community evaluation, abuse protection, reads and privacy
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 Date: 2026-10-11. Status: PLANNING_LOCAL_DONE / IMPLEMENTATION_NOT_STARTED.
 Opening source: maintained `dev`, `0f3601c`. This document authorizes no runtime
 change by itself. [Execution prompt](COMMUNITY_SAFETY_EXECUTION_PROMPT.md).

@@ -1,5 +1,7 @@
 # Android photo price contribution plan
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 State: PREPARATION_LOCAL_DONE / IMPLEMENTATION_PLANNED, 2026-10-07. Owner: P37-T01–T03, following P34–P36 source integration. This record prepares the user's requested flow and private real-photo evaluation; it does not certify OCR, proximity, uploads, training storage or production. Develop one bounded task at a time on maintained `dev` under ADR-020. Backend contracts and critical tests precede affected Android consumers. iOS remains deferred.
 
 ## Accepted product decisions

@@ -1,5 +1,7 @@
 # Economical-agent handoff: one bounded Rust preparation task
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 Copy the prompt below into a coding task. It starts the audit; it does not ask
 an inexpensive model to implement and certify the whole national platform in
 one turn. After each checkpoint, request the next numbered task with its actual
