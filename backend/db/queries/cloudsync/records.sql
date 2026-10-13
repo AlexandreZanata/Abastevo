@@ -186,3 +186,12 @@ SELECT snapshot_id,pre_revision,post_revision,receipt FROM cloud_restores WHERE 
 
 -- name: SaveRestore :exec
 INSERT INTO cloud_restores(account_id,restore_id,snapshot_id,pre_revision,post_revision,receipt) VALUES($1,$2,$3,$4,$5,$6);
+
+-- name: ListSnapshotKeys :many
+SELECT object_key FROM cloud_snapshots WHERE account_id=$1;
+
+-- name: PurgeSnapshots :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1;
+
+-- name: PurgeRestores :exec
+DELETE FROM cloud_restores WHERE account_id=$1;

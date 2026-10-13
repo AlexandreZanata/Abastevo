@@ -22,6 +22,7 @@ type fakeObjects struct {
 	failHead        bool
 	failGet         bool
 	corruptGet      bool
+	failDelete      bool
 	puts            int
 }
 
@@ -79,6 +80,9 @@ func (f *fakeObjects) Get(_ context.Context, key string) ([]byte, error) {
 func (f *fakeObjects) Delete(_ context.Context, key string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.failDelete {
+		return domain.ErrUnavailable
+	}
 	delete(f.data, key)
 	return nil
 }

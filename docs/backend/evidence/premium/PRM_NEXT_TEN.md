@@ -115,3 +115,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 0c290fd. Idempotent POST /v1/cloud/restore/commit with preview-revision binding and 15-minute expiry, live session, key, device and capability checks, explicit create-or-converge merge with conflict abort, erased and deleted exclusions, quota guards and metadata-only receipts in cloud_restores. Append-only 000084 with snapshot index; sqlc GetRestore and SaveRestore vet/diff clean. Real PostGIS PASS (restore commit suites): double confirmation replay with unchanged counts, stale and expired preview refusal, receipt metadata scan, crash-trigger rollback with retry, concurrent-edit resnapshot, revoked-device unauthorized, lapsed denied, and malicious commit conflict without writes. Unit/race PASS cloudsync/http/apicontract/cmd/api; HTTP commit success, unsigned, validation, resnapshot, denied and detailed conflict mapping PASS. OpenAPI commit request and response plus three goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM04-T06. Real payments OFF.
+
+## PRM04-T06 — Snapshot erasure, expiry and infrastructure recovery proof
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 642f0c0. Erase purges snapshot and restore metadata with record fences in one transaction and deletes objects before commit; outages fail closed, old IDs and stale devices stay blocked, restored bytes remain fenced, and unconfirmed bytes stay inventoried for retry. New ListSnapshotKeys, PurgeSnapshots and PurgeRestores queries vet/diff clean; no migration. Real PostGIS PASS (erasure suites): stale-device plus old-snapshot blocking with object purge counts, retry convergence, outage inventory preservation with retry, restored-byte fencing, and idempotent erase. Unit/race PASS cloudsync/http/apicontract/cmd/api. No HTTP or OpenAPI surface; staging provider proof remains owed. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM05-T01. Real payments OFF.

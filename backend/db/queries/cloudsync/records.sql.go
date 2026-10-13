@@ -804,6 +804,30 @@ func (q *Queries) ListRecords(ctx context.Context, arg ListRecordsParams) ([]Lis
 	return items, nil
 }
 
+const listSnapshotKeys = `-- name: ListSnapshotKeys :many
+SELECT object_key FROM cloud_snapshots WHERE account_id=$1
+`
+
+func (q *Queries) ListSnapshotKeys(ctx context.Context, accountID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listSnapshotKeys, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var object_key string
+		if err := rows.Scan(&object_key); err != nil {
+			return nil, err
+		}
+		items = append(items, object_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBinding = `-- name: LockBinding :one
 SELECT contributor_id FROM account_contributor_bindings
 WHERE account_id=$1::uuid AND contributor_id=$2::text FOR SHARE
@@ -959,6 +983,24 @@ func (q *Queries) NextRevision(ctx context.Context, accountID pgtype.UUID) (int6
 	var revision int64
 	err := row.Scan(&revision)
 	return revision, err
+}
+
+const purgeRestores = `-- name: PurgeRestores :exec
+DELETE FROM cloud_restores WHERE account_id=$1
+`
+
+func (q *Queries) PurgeRestores(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, purgeRestores, accountID)
+	return err
+}
+
+const purgeSnapshots = `-- name: PurgeSnapshots :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1
+`
+
+func (q *Queries) PurgeSnapshots(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, purgeSnapshots, accountID)
+	return err
 }
 
 const recordDeviceRevocation = `-- name: RecordDeviceRevocation :exec

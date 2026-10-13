@@ -155,6 +155,23 @@ func (s *Store) Erase(ctx context.Context, p app.Principal, dataset, id string) 
 	if err = query.EraseSelectedChanges(ctx, q.EraseSelectedChangesParams(args)); err != nil {
 		return 0, domain.ErrUnavailable
 	}
+	keys, err := query.ListSnapshotKeys(ctx, uid(p.AccountID))
+	if err != nil {
+		return 0, domain.ErrUnavailable
+	}
+	if s.Objects != nil {
+		for _, key := range keys {
+			if err = s.Objects.Delete(ctx, key); err != nil {
+				return 0, domain.ErrUnavailable
+			}
+		}
+	}
+	if err = query.PurgeSnapshots(ctx, uid(p.AccountID)); err != nil {
+		return 0, domain.ErrUnavailable
+	}
+	if err = query.PurgeRestores(ctx, uid(p.AccountID)); err != nil {
+		return 0, domain.ErrUnavailable
+	}
 	if dataset == "all" {
 		if err = query.RevokeAllCloudDevices(ctx, uid(p.AccountID)); err != nil {
 			return 0, domain.ErrUnavailable

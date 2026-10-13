@@ -313,6 +313,9 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T06 — Snapshot erasure, expiry and infrastructure recovery proof
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
+
 - **Dependencies/rules:** T05; PR04/12; existing privacy/backup runbooks.
 - **Outcome/areas:** owner/record erasure fences, object purge receipts, retention notices/exit download and deletion-ledger replay after database/object backup recovery.
 - **Tests first:** offline stale device plus old snapshot, late PUT during erasure, provider outage, restored bytes beside purge receipts, retry exhaustion and lost delete reply.
