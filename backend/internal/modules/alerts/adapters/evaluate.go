@@ -114,7 +114,7 @@ func (s *Store) Evaluate(ctx context.Context, accountID, ruleID, afterStationID 
 				}
 				dedupe := accountID + "|" + ruleID + "|" + string(source) + "|" + price.StationID + "|" + string(p.Fuel) + "|" + string(p.Unit) + "|" + string(price.Condition) + "|" + price.ID
 				inboxID := deterministicInboxID(dedupe)
-				payload, _ := json.Marshal(map[string]any{"rule_id": ruleID, "source": string(source), "station_id": price.StationID, "price_id": price.ID, "milli": price.Price.Milli, "at": price.Price.At.Format(time.RFC3339), "dedupe": dedupe})
+				payload, _ := json.Marshal(map[string]any{"rule_id": ruleID, "rule_revision": stored.Revision, "source": string(source), "station_id": price.StationID, "price_id": price.ID, "milli": price.Price.Milli, "at": price.Price.At.Format(time.RFC3339), "dedupe": dedupe})
 				n, err := query.InsertInboxCandidate(ctx, q.InsertInboxCandidateParams{AccountID: uid(accountID), InboxID: uid(inboxID), RuleID: uid(ruleID), Payload: payload})
 				if err != nil {
 					return application.EvaluateResult{}, errUnavailable()

@@ -249,6 +249,20 @@ func inWindow(minutes, start, end int) bool {
 	return minutes >= start || minutes < end
 }
 
+// WindowContains reports whether local minutes fall inside a HH:MM window.
+// Equal bounds select the full day; inverted bounds wrap past midnight.
+func WindowContains(minutes int, start, end string) (bool, error) {
+	from, err := parseMinutes(start)
+	if err != nil {
+		return false, err
+	}
+	to, err := parseMinutes(end)
+	if err != nil {
+		return false, err
+	}
+	return inWindow(minutes, from, to), nil
+}
+
 func Evaluate(rule Rule, price Price, baseline *Price, now time.Time, lastDispatched *time.Time) (bool, []string) {
 	reasons := []string{}
 	loc, err := time.LoadLocation(rule.Schedule.Timezone)

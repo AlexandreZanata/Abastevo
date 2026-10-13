@@ -36,6 +36,15 @@ SELECT inbox_id,rule_id,payload,status FROM alert_inbox WHERE account_id=$1 ORDE
 -- name: ListRules :many
 SELECT rule_id,revision,enabled,payload FROM alert_rules WHERE account_id=$1 AND NOT deleted ORDER BY rule_id;
 
+-- name: DueInbox :many
+SELECT account_id,inbox_id,rule_id,payload FROM alert_inbox WHERE status='evaluated' ORDER BY created_at,inbox_id LIMIT $1 FOR UPDATE SKIP LOCKED;
+
+-- name: MarkInbox :execrows
+UPDATE alert_inbox SET status=$3,payload=$4 WHERE account_id=$1 AND inbox_id=$2 AND status='evaluated';
+
+-- name: LastDispatch :one
+SELECT MAX(created_at)::timestamptz FROM alert_inbox WHERE account_id=$1 AND rule_id=$2 AND status='dispatched';
+
 -- name: CommunityPrices :many
 SELECT o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
 WHERE o.station_id=ANY($1::uuid[]) AND o.fuel_product=$2 AND o.unit=$3 AND o.received_at>$4

@@ -155,6 +155,42 @@ func (q *Queries) DeleteRule(ctx context.Context, arg DeleteRuleParams) (int64, 
 	return revision, err
 }
 
+const dueInbox = `-- name: DueInbox :many
+SELECT account_id,inbox_id,rule_id,payload FROM alert_inbox WHERE status='evaluated' ORDER BY created_at,inbox_id LIMIT $1 FOR UPDATE SKIP LOCKED
+`
+
+type DueInboxRow struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	InboxID   pgtype.UUID `json:"inbox_id"`
+	RuleID    pgtype.UUID `json:"rule_id"`
+	Payload   []byte      `json:"payload"`
+}
+
+func (q *Queries) DueInbox(ctx context.Context, limit int32) ([]DueInboxRow, error) {
+	rows, err := q.db.Query(ctx, dueInbox, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DueInboxRow
+	for rows.Next() {
+		var i DueInboxRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.InboxID,
+			&i.RuleID,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const eraseAlertInbox = `-- name: EraseAlertInbox :exec
 DELETE FROM alert_inbox WHERE account_id=$1
 `
@@ -246,6 +282,22 @@ func (q *Queries) InsertInboxCandidate(ctx context.Context, arg InsertInboxCandi
 	return result.RowsAffected(), nil
 }
 
+const lastDispatch = `-- name: LastDispatch :one
+SELECT MAX(created_at)::timestamptz FROM alert_inbox WHERE account_id=$1 AND rule_id=$2 AND status='dispatched'
+`
+
+type LastDispatchParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	RuleID    pgtype.UUID `json:"rule_id"`
+}
+
+func (q *Queries) LastDispatch(ctx context.Context, arg LastDispatchParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, lastDispatch, arg.AccountID, arg.RuleID)
+	var column_1 pgtype.Timestamptz
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const listInbox = `-- name: ListInbox :many
 SELECT inbox_id,rule_id,payload,status FROM alert_inbox WHERE account_id=$1 ORDER BY created_at,inbox_id LIMIT $2
 `
@@ -321,6 +373,30 @@ func (q *Queries) ListRules(ctx context.Context, accountID pgtype.UUID) ([]ListR
 		return nil, err
 	}
 	return items, nil
+}
+
+const markInbox = `-- name: MarkInbox :execrows
+UPDATE alert_inbox SET status=$3,payload=$4 WHERE account_id=$1 AND inbox_id=$2 AND status='evaluated'
+`
+
+type MarkInboxParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	InboxID   pgtype.UUID `json:"inbox_id"`
+	Status    string      `json:"status"`
+	Payload   []byte      `json:"payload"`
+}
+
+func (q *Queries) MarkInbox(ctx context.Context, arg MarkInboxParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markInbox,
+		arg.AccountID,
+		arg.InboxID,
+		arg.Status,
+		arg.Payload,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const officialBaseline = `-- name: OfficialBaseline :many

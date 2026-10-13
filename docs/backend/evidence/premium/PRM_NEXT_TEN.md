@@ -220,3 +220,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop c3f76915. Bounded per-rule evaluation over station targets with fresh community and official snapshots, TTL and VALIDATED-decision freshness, exact condition matching and deterministic T01 interpretation. Candidates carry frozen dedupe keys with deterministic inbox IDs and transactional dispatch-job enqueue; duplicates converge with no second cost and parallel evaluators serialize on the rule row. Public price tables stay read-only. Real PostGIS PASS (evaluation suites): threshold match with duplicate convergence and inbox counts, expired and rejected prices skipped, second-page retries, crash-trigger rollback with retry, indexed price plans and no public writes. Unit/race PASS alerts domain. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. City fanout and durable cursor persistence ride dispatch jobs. No merge/deploy/mobile edit.
 Next PRM07-T04. Real payments OFF.
+
+## PRM07-T04 — Window dispatch, dedupe and late-candidate expiry
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop d3349042. Due-window Dispatch over evaluated inbox rows with SKIP LOCKED, rule liveness and revision rechecks, paid skip, quiet and cooldown holds, price freshness rechecks and honest dispatched, dropped, unknown and skipped outcomes with reasons recorded. Retries never duplicate meaning and deletion stays paid-independent. Real PostGIS PASS (dispatch suites): restart convergence, expired-price drops, changed, lapsed, deleted and revision-mismatched drops with skips, quiet holds with delayed backlogs, and reclaimed stale job leases. Unit/race PASS alerts domain. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. Provider sending rides PRM07-T05. No merge/deploy/mobile edit.
+Next PRM07-T05. Real payments OFF.

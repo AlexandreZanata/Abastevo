@@ -60,3 +60,13 @@ type EvaluateResult struct {
 type EvaluateStore interface {
 	Evaluate(ctx context.Context, accountID, ruleID, afterStationID string, limit int, now time.Time) (EvaluateResult, error)
 }
+
+type DispatchResult struct {
+	Dispatched int `json:"dispatched"`
+	Dropped    int `json:"dropped"`
+	Skipped    int `json:"skipped"`
+}
+
+type DispatchStore interface {
+	Dispatch(ctx context.Context, now time.Time, limit int) (DispatchResult, error)
+}

@@ -461,6 +461,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T04 — Window dispatch, dedupe and late-candidate expiry
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR04/22/23.
 - **Outcome/areas:** due-window jobs, quiet-hour/cooldown handling, source/rule/account/entitlement recheck, TTL and distinct evaluated/queued/dispatched states.
 - **Tests first:** scheduler restart/duplicate minute, expired price while queued, changed rule, unfollow/logout/lapse/delete race, stale lease and delayed backlog after quiet hours.
