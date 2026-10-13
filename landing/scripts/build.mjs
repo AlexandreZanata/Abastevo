@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -175,6 +176,24 @@ export function build(options = {}) {
       path.join(outDir, 'assets', 'app'),
     );
 
+    // LH01 generated decoration: declared, immutable WebP and traced SVG derivatives only.
+    const artDir = path.join(staticDir, 'assets', 'art');
+    const artManifest = JSON.parse(fs.readFileSync(path.join(artDir, 'provenance.json'), 'utf8'));
+    const artOut = path.join(outDir, 'assets', 'art');
+    fs.mkdirSync(artOut, { recursive: true });
+    for (const output of artManifest.outputs) {
+      if (!/^[a-z0-9-]+\.[a-f0-9]{8}\.(webp|svg)$/.test(output.file)) throw new Error('Invalid decorative art filename');
+      const bytes = fs.readFileSync(path.join(artDir, output.file));
+      const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+      if (digest !== output.sha256 || !output.file.includes(`.${digest.slice(0, 8)}.`)) throw new Error('Decorative art hash mismatch');
+      const limit = output.file.endsWith('.svg') ? 1024 * 1024 : 120 * 1024;
+      if (bytes.length > limit) throw new Error('Decorative art exceeds its transfer budget');
+      if (output.file.endsWith('.svg') && zlib.gzipSync(bytes).length > 80 * 1024) throw new Error('Decorative SVG exceeds 80 KiB gzip budget');
+      if (output.file.endsWith('.svg') && /<(?:script|image|foreignObject)\b|\bon\w+\s*=|\bhref\s*=/i.test(bytes.toString('utf8'))) throw new Error('Decorative SVG must contain only local vector geometry');
+      fs.writeFileSync(path.join(artOut, output.file), bytes);
+    }
+    fs.copyFileSync(path.join(artDir, 'provenance.json'), path.join(artOut, 'provenance.json'));
+
     // 6. Copy and substitute static configuration files
     const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
     for (const file of configFiles) {
@@ -250,15 +269,13 @@ export function build(options = {}) {
       html = html.replaceAll('{{CANONICAL_ORIGIN}}', origin);
 
       // Store state replacement
+      const playButton = `<a href="${storeUrl}" class="store-btn store-pill" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>Ver na Google Play</strong><small>Baixar o aplicativo</small></span></a>`;
       if (srcRel === 'index.html') {
-        const slotRegex = /<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/;
-        let replacement = '';
+        // Prelaunch keeps the static honest pill; published swaps in the verified link.
         if (storeState === 'published') {
-          replacement = `<a href="${storeUrl}" class="store-link" rel="noopener noreferrer">Ver na Google Play</a>`;
-        } else {
-          replacement = `<span class="store-notice">Em breve na Google Play</span>`;
+          const slotRegex = /<!-- STORE_STATE_SLOT -->[\s\S]*?<!-- \/STORE_STATE_SLOT -->/;
+          html = html.replace(slotRegex, playButton);
         }
-        html = html.replace(slotRegex, replacement);
 
         if (storeState === 'published') {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', `,\n          "${storeUrl}"`);
@@ -267,6 +284,14 @@ export function build(options = {}) {
         } else {
           html = html.replaceAll('{{STORE_SAME_AS_EXTRA}}', '');
           html = html.replaceAll('{{STORE_APP_SCHEMA_NODE}}', '');
+        }
+      }
+
+      // Header store pill: prelaunch keeps the static honest pill on every page.
+      if (storeState === 'published') {
+        const headerSlotRegex = /<!-- HEADER_STORE_SLOT -->[\s\S]*?<!-- \/HEADER_STORE_SLOT -->/;
+        if (headerSlotRegex.test(html)) {
+          html = html.replace(headerSlotRegex, playButton);
         }
       }
 

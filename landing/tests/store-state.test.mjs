@@ -15,7 +15,8 @@ test('store state: prelaunch displays honest notice and no fake store links', ()
     build({ projectRoot: root, outDir: tmpOut, storeState: 'prelaunch' });
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
-    assert.match(indexHtml, /<span class="store-notice">Em breve na Google Play<\/span>/);
+    assert.match(indexHtml, /Em breve no Google Play/);
+    assert.match(indexHtml, /aria-disabled="true"/);
     assert.doesNotMatch(indexHtml, /play\.google\.com\/store/);
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
@@ -28,7 +29,7 @@ test('store state: default build stays prelaunch until a verified listing exists
     build({ projectRoot: root, outDir: tmpOut });
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
-    assert.match(indexHtml, /<span class="store-notice">Em breve na Google Play<\/span>/);
+    assert.match(indexHtml, /Em breve no Google Play/);
     assert.doesNotMatch(indexHtml, /play\.google\.com\/store/);
     assert.doesNotMatch(indexHtml, /Baixar (agora|o app|na Google Play)/i);
   } finally {
@@ -48,9 +49,11 @@ test('store state: published with valid URL renders verified Play Store link', (
     });
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
-    assert.match(indexHtml, /<a href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.anpfuel" class="store-link"/);
-    assert.match(indexHtml, /Ver na Google Play<\/a>/);
-    assert.doesNotMatch(indexHtml, /<span class="store-notice">Em breve na Google Play<\/span>/);
+    assert.match(indexHtml, /<a href="https:\/\/play\.google\.com\/store\/apps\/details\?id=com\.anpfuel"[^>]*target="_blank"[^>]*rel="noopener"/);
+    assert.match(indexHtml, /Ver na Google Play<\/strong>/);
+    assert.doesNotMatch(indexHtml, /Em breve no Google Play/);
+    const hubHtml = fs.readFileSync(path.join(tmpOut, 'como-usar', 'index.html'), 'utf8');
+    assert.match(hubHtml, /play\.google\.com\/store\/apps\/details\?id=com\.anpfuel/);
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
