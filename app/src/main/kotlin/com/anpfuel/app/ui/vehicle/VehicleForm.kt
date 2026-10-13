@@ -17,12 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -41,9 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +48,8 @@ import com.anpfuel.app.R
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.anpfuel.app.ui.components.ActionCardButton
+import com.anpfuel.app.ui.components.ActionCardStyle
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonLine
@@ -255,19 +251,19 @@ fun VehicleForm(
             )
         }
 
-        VehicleActionButton(
+        ActionCardButton(
             label = stringResource(R.string.vehicle_save),
             icon = Icons.Default.Check,
             onClick = onSave,
-            style = VehicleActionStyle.Primary,
+            style = ActionCardStyle.Primary,
             enabled = !isSaving,
         )
 
-        VehicleActionButton(
+        ActionCardButton(
             label = stringResource(R.string.action_cancel),
             icon = Icons.Default.Close,
             onClick = onCancel,
-            style = VehicleActionStyle.Destructive,
+            style = ActionCardStyle.Destructive,
             enabled = !isSaving,
         )
     }
@@ -363,83 +359,6 @@ private fun VehiclePendingPhotoPreview(
             modifier = modifier,
         )
     }
-}
-
-/**
- * Action button following the settings screen standardization: full-width
- * card with leading icon, label and trailing chevron.
- */
-@Composable
-private fun VehicleActionButton(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    style: VehicleActionStyle = VehicleActionStyle.Outlined,
-    enabled: Boolean = true,
-) {
-    val containerColor = when (style) {
-        VehicleActionStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
-        VehicleActionStyle.Outlined -> Color.Transparent
-        VehicleActionStyle.Destructive -> Color.Transparent
-    }
-    val contentColor = when (style) {
-        VehicleActionStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
-        VehicleActionStyle.Outlined -> MaterialTheme.colorScheme.onSurface
-        VehicleActionStyle.Destructive -> MaterialTheme.colorScheme.error
-    }
-    val border = when (style) {
-        VehicleActionStyle.Primary -> null
-        VehicleActionStyle.Outlined ->
-            BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outline,
-            )
-        VehicleActionStyle.Destructive ->
-            BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.error,
-            )
-    }
-    Card(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
-        border = border,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-            )
-        }
-    }
-}
-
-private enum class VehicleActionStyle {
-    Primary,
-    Outlined,
-    Destructive,
 }
 
 @Composable

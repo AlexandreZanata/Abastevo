@@ -3,7 +3,6 @@ package com.anpfuel.app.ui.settings
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,6 +37,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.anpfuel.app.ui.components.ActionCardButton
+import com.anpfuel.app.ui.components.ActionCardStyle
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -247,7 +248,7 @@ private fun SettingsContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            SettingsActionButton(
+                            ActionCardButton(
                                 label = stringResource(R.string.settings_open_notification_settings),
                                 icon = Icons.Default.Notifications,
                                 onClick = onOpenNotificationSettings,
@@ -324,7 +325,7 @@ private fun SettingsContent(
                     }
 
                     SettingsSection(title = stringResource(R.string.settings_sync_section)) {
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(
                                 if (uiState.isSyncing) {
                                     R.string.banner_syncing
@@ -334,10 +335,10 @@ private fun SettingsContent(
                             ),
                             icon = Icons.Default.Sync,
                             onClick = onSyncNow,
-                            style = SettingsActionStyle.Primary,
+                            style = ActionCardStyle.Primary,
                             enabled = !uiState.isSyncing,
                         )
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.settings_change_survey_week),
                             icon = Icons.Default.CalendarMonth,
                             onClick = onNavigateToWeekPicker,
@@ -354,7 +355,7 @@ private fun SettingsContent(
                     }
 
                     SettingsSection(title = stringResource(R.string.auth_account_row)) {
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.auth_account_row),
                             icon = Icons.Default.PersonOutline,
                             onClick = onNavigateToAuth,
@@ -362,7 +363,7 @@ private fun SettingsContent(
                     }
 
                     SettingsSection(title = stringResource(R.string.settings_share_section)) {
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.settings_share_app),
                             icon = Icons.Default.Share,
                             onClick = {
@@ -384,17 +385,17 @@ private fun SettingsContent(
                     }
 
                     SettingsSection(title = stringResource(R.string.settings_clear_cache)) {
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.settings_clear_station_cache),
                             icon = Icons.Default.Storage,
                             onClick = onClearStationCache,
                             enabled = !uiState.isClearingCache,
                         )
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.settings_clear_all_cache),
                             icon = Icons.Default.DeleteOutline,
                             onClick = onRequestClearAllCache,
-                            style = SettingsActionStyle.Destructive,
+                            style = ActionCardStyle.Destructive,
                             enabled = !uiState.isClearingCache,
                         )
                     }
@@ -408,7 +409,7 @@ private fun SettingsContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        SettingsActionButton(
+                        ActionCardButton(
                             label = stringResource(R.string.settings_anp_attribution_link),
                             icon = Icons.Default.OpenInNew,
                             onClick = {
@@ -480,80 +481,6 @@ private fun PrivacyRedirectCard(
         }
     }
 }
-
-@Composable
-private fun SettingsActionButton(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    style: SettingsActionStyle = SettingsActionStyle.Outlined,
-    enabled: Boolean = true,
-) {
-    val containerColor = when (style) {
-        SettingsActionStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
-        SettingsActionStyle.Outlined -> Color.Transparent
-        SettingsActionStyle.Destructive -> Color.Transparent
-    }
-    val contentColor = when (style) {
-        SettingsActionStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
-        SettingsActionStyle.Outlined -> MaterialTheme.colorScheme.onSurface
-        SettingsActionStyle.Destructive -> MaterialTheme.colorScheme.error
-    }
-    val border = when (style) {
-        SettingsActionStyle.Primary -> null
-        SettingsActionStyle.Outlined ->
-            BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outline,
-            )
-        SettingsActionStyle.Destructive ->
-            BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.error,
-            )
-    }
-    Card(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
-        border = border,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-            )
-        }
-    }
-}
-
-private enum class SettingsActionStyle {
-    Primary,
-    Outlined,
-    Destructive,
-}
-
 @Composable
 private fun SettingsSection(
     title: String,
