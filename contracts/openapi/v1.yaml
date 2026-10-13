@@ -4261,6 +4261,76 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/ledger/consent:
+    post:
+      tags:
+      - premium
+      summary: Set explicit professional consent
+      description: Separate opt-in for private financial uploads. Disabling stops new uploads without affecting cloud or free data. Deletes stay free. All responses are no-store without ETags.
+      operationId: ledgerConsent
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerConsentRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerConsentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase private ledger data free of charge
+      description: Owner tombstones records and clears segments and gaps with consent revoked. Snapshots holding erased facts stay unrestorable via fences. All responses are no-store without ETags.
+      operationId: ledgerErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -5476,6 +5546,66 @@ components:
           minimum: 1
       required:
       - revision
+    LedgerConsentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        datasets:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - refuel
+            - expense
+        enabled:
+          type: boolean
+      required:
+      - family_id
+      - access_token
+      - datasets
+      - enabled
+    LedgerConsentResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        datasets:
+          type: array
+          items:
+            type: string
+            enum:
+            - refuel
+            - expense
+          uniqueItems: true
+      required:
+      - revision
+      - datasets
+    LedgerEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    LedgerEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+      required:
+      - status
     PremiumExportRequest:
       type: object
       additionalProperties: false

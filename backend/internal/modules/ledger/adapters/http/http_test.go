@@ -52,6 +52,12 @@ func (p *probe) Delete(_ context.Context, _ string, _ string, _ string) (int64, 
 	return 2, nil
 }
 
+func (p *probe) SetConsent(_ context.Context, _ string, _ []string, _ bool) (application.ConsentStatus, error) {
+	return application.ConsentStatus{}, p.err
+}
+
+func (p *probe) EraseAll(_ context.Context, _ string) error { return p.err }
+
 func deniedError() error { return errDenied() }
 
 func errDenied() error { return &ledgerError{"ledger: capability required"} }
@@ -159,4 +165,34 @@ func TestLedgerBoundsFiltersPagesAndErrors(t *testing.T) {
 		t.Fatal("cursor crossover leaked")
 	}
 	who = owner
+}
+
+func TestLedgerConsentEraseValidation(t *testing.T) {
+	who := owner
+	p := &probe{}
+	h := testHandler(p, &who)
+	consent := `{"family_id":"` + family + `","access_token":"synthetic","datasets":["refuel"],"enabled":true}`
+	if w := call(h, "/v1/ledger/consent", consent); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("consent %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w := call(unsigned, "/v1/ledger/consent", consent); w.Code != 401 {
+		t.Fatal("unsigned consent admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(consent, `"enabled":true`, `"enabled":true,"enabled":false`, 1),
+		strings.Replace(consent, `"datasets"`, `"mask"`, 1),
+		`{"family_id":"` + family + `","access_token":"synthetic","datasets":["refuel"]}`,
+	} {
+		if w := call(h, "/v1/ledger/consent", bad); w.Code != 400 {
+			t.Fatalf("bad consent admitted %d", w.Code)
+		}
+	}
+	erase := `{"family_id":"` + family + `","access_token":"synthetic"}`
+	if w := call(h, "/v1/ledger/erase", erase); w.Code != 200 {
+		t.Fatalf("erase %d", w.Code)
+	}
+	if w := call(unsigned, "/v1/ledger/erase", erase); w.Code != 401 {
+		t.Fatal("unsigned erase admitted")
+	}
 }

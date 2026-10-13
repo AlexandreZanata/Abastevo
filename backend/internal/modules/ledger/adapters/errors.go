@@ -14,14 +14,16 @@ import (
 func newLedgerOperationID() (string, error) { return jobs.NewUUIDv4() }
 
 var (
-	errInvalidValue   = errors.New("ledger: invalid input")
-	errConflictValue  = errors.New("ledger: revision conflict")
+	errInvalidValue  = errors.New("ledger: invalid input")
+	errConflictValue = errors.New("ledger: revision conflict")
 	errUnavailableVal = errors.New("ledger: service unavailable")
+	errDeniedValue   = errors.New("ledger: capability required")
 )
 
 func errInvalid() error     { return errInvalidValue }
 func errConflict() error    { return errConflictValue }
 func errUnavailable() error { return errUnavailableVal }
+func errDenied() error      { return errDeniedValue }
 
 func errInvalidSentinel() error { return errInvalidValue }
 

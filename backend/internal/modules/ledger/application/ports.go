@@ -55,3 +55,13 @@ type OdometerStore interface {
 	OpenSegment(ctx context.Context, accountID, vehicleID, reason string) (int64, error)
 	DeclareGap(ctx context.Context, accountID, vehicleID, gapID, afterID, beforeID, note string) (string, error)
 }
+
+type ConsentStatus struct {
+	Revision int64    `json:"revision"`
+	Datasets []string `json:"datasets"`
+}
+
+type ConsentStore interface {
+	SetConsent(ctx context.Context, accountID string, datasets []string, enabled bool) (ConsentStatus, error)
+	EraseAll(ctx context.Context, accountID string) error
+}

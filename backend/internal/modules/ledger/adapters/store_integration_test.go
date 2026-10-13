@@ -112,12 +112,21 @@ func counts(t *testing.T, pool *pgxpool.Pool) (int, int, int) {
 	return ledger, operations, cloud
 }
 
+func ensureConsent(t *testing.T, store *Store, accountID string) {
+	t.Helper()
+	if _, err := store.SetConsent(context.Background(), accountID, []string{"refuel", "expense"}, true); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLedgerForeignArchivedAndReplay(t *testing.T) {
 	pool := freshDB(t)
 	owner := newAccount(t, pool)
 	foreign := newAccount(t, pool)
 	vehicle := newVehicle(t, pool, owner)
 	store := NewStore(pool)
+	ensureConsent(t, store, owner)
+	ensureConsent(t, store, foreign)
 	ctx := context.Background()
 	foreignCmd := refuelCommand(t, newid(t), vehicle, 0)
 	if _, err := store.Apply(ctx, foreign, application.Batch{Commands: []application.Command{foreignCmd}}); err == nil {
@@ -153,6 +162,7 @@ func TestLedgerSimultaneousBackdatedRollbackMaxAndPlans(t *testing.T) {
 	owner := newAccount(t, pool)
 	vehicle := newVehicle(t, pool, owner)
 	store := NewStore(pool)
+	ensureConsent(t, store, owner)
 	ctx := context.Background()
 	id := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{refuelCommand(t, id, vehicle, 0)}}); err != nil {
@@ -247,6 +257,7 @@ func TestLedgerListFiltersPaginationAndDelete(t *testing.T) {
 	vehicle := newVehicle(t, pool, owner)
 	otherVehicle := newVehicle(t, pool, owner)
 	store := NewStore(pool)
+	ensureConsent(t, store, owner)
 	ctx := context.Background()
 	first := newid(t)
 	second := newid(t)

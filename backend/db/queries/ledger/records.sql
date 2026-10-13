@@ -46,6 +46,24 @@ SELECT COALESCE(MAX((payload->>'odometer_metres')::bigint),-1)::bigint FROM ledg
 -- name: DeclareGap :one
 INSERT INTO ledger_gaps(account_id,gap_id,vehicle_id,after_id,before_id,note) VALUES($1,$2,$3,$4,$5,$6) RETURNING gap_id;
 
+-- name: EnsureLedgerConsent :exec
+INSERT INTO ledger_consent(account_id) VALUES($1) ON CONFLICT DO NOTHING;
+
+-- name: GetLedgerConsent :one
+SELECT mask,revision FROM ledger_consent WHERE account_id=$1;
+
+-- name: SetLedgerConsent :one
+UPDATE ledger_consent SET mask=CASE WHEN sqlc.arg(enabled)::boolean THEN mask | sqlc.arg(mask)::integer ELSE mask & (~sqlc.arg(mask)::integer) END, revision=revision+1, updated_at=clock_timestamp() WHERE account_id=sqlc.arg(account_id)::uuid RETURNING mask,revision;
+
+-- name: EraseLedgerRecords :exec
+UPDATE ledger_records SET payload='{}',deleted=true,revision=revision+1,updated_at=clock_timestamp() WHERE account_id=$1 AND NOT deleted;
+
+-- name: ClearLedgerGaps :exec
+DELETE FROM ledger_gaps WHERE account_id=$1;
+
+-- name: ClearLedgerSegments :exec
+DELETE FROM ledger_segments WHERE account_id=$1;
+
 -- name: ListLedger :many
 SELECT dataset,id,vehicle_id,occurred_at,revision,voided,deleted,payload FROM ledger_records
 WHERE account_id=$1 AND dataset=$2 AND NOT deleted

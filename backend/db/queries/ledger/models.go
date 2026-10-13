@@ -54,6 +54,13 @@ type CloudRecord struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type LedgerConsent struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Mask      int32              `json:"mask"`
+	Revision  int64              `json:"revision"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type LedgerGap struct {
 	AccountID pgtype.UUID        `json:"account_id"`
 	GapID     pgtype.UUID        `json:"gap_id"`

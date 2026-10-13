@@ -22,6 +22,7 @@ func TestOdometerRegressionIdenticalAndReset(t *testing.T) {
 	owner := newAccount(t, pool)
 	vehicle := newVehicle(t, pool, owner)
 	store := NewStore(pool)
+	ensureConsent(t, store, owner)
 	ctx := context.Background()
 	first := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{odometerRefuel(t, first, vehicle, 0, 100000)}}); err != nil {
@@ -62,6 +63,7 @@ func TestMissingGapArchiveAndConcurrent(t *testing.T) {
 	owner := newAccount(t, pool)
 	vehicle := newVehicle(t, pool, owner)
 	store := NewStore(pool)
+	ensureConsent(t, store, owner)
 	ctx := context.Background()
 	first := newid(t)
 	second := newid(t)

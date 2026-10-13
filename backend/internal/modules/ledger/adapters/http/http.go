@@ -19,6 +19,8 @@ type Service interface {
 	Apply(ctx context.Context, accountID string, batch application.Batch) (application.BatchResult, error)
 	List(ctx context.Context, accountID, dataset, vehicleID, category, from, to, afterTime, afterID string, limit int) ([]application.Record, error)
 	Delete(ctx context.Context, accountID, dataset, id string) (int64, error)
+	SetConsent(ctx context.Context, accountID string, datasets []string, enabled bool) (application.ConsentStatus, error)
+	EraseAll(ctx context.Context, accountID string) error
 }
 
 type Handler struct {
@@ -134,6 +136,8 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/ledger/commands", h.commands)
 	r.Post("/v1/ledger/records", h.records)
 	r.Post("/v1/ledger/delete", h.delete)
+	r.Post("/v1/ledger/consent", h.consent)
+	r.Post("/v1/ledger/erase", h.erase)
 }
 
 func (h Handler) commands(w http.ResponseWriter, r *http.Request) {
@@ -253,4 +257,51 @@ func (h Handler) delete(w http.ResponseWriter, r *http.Request) {
 	write(w, r, struct {
 		Revision int64 `json:"revision"`
 	}{revision})
+}
+
+func (h Handler) consent(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		session
+		Datasets []string `json:"datasets"`
+		Enabled  *bool    `json:"enabled"`
+	}
+	if err := read(r, &dto); err != nil {
+		fail(w, r, err)
+		return
+	}
+	if dto.Enabled == nil {
+		fail(w, r, errors.New("ledger: invalid input"))
+		return
+	}
+	owner, err := h.principal(r, dto.session, true)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	got, err := h.Service.SetConsent(r.Context(), owner, dto.Datasets, *dto.Enabled)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, got)
+}
+
+func (h Handler) erase(w http.ResponseWriter, r *http.Request) {
+	var dto session
+	if err := read(r, &dto); err != nil {
+		fail(w, r, err)
+		return
+	}
+	owner, err := h.principal(r, dto, true)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if err = h.Service.EraseAll(r.Context(), owner); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, struct {
+		Status string `json:"status"`
+	}{"erased"})
 }

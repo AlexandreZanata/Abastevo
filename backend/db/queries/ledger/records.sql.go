@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearLedgerGaps = `-- name: ClearLedgerGaps :exec
+DELETE FROM ledger_gaps WHERE account_id=$1
+`
+
+func (q *Queries) ClearLedgerGaps(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearLedgerGaps, accountID)
+	return err
+}
+
+const clearLedgerSegments = `-- name: ClearLedgerSegments :exec
+DELETE FROM ledger_segments WHERE account_id=$1
+`
+
+func (q *Queries) ClearLedgerSegments(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearLedgerSegments, accountID)
+	return err
+}
+
 const countLedgerDataset = `-- name: CountLedgerDataset :one
 SELECT count(*) FROM ledger_records WHERE account_id=$1 AND dataset=$2 AND NOT deleted
 `
@@ -70,6 +88,40 @@ func (q *Queries) DeleteLedgerRecord(ctx context.Context, arg DeleteLedgerRecord
 	var revision int64
 	err := row.Scan(&revision)
 	return revision, err
+}
+
+const ensureLedgerConsent = `-- name: EnsureLedgerConsent :exec
+INSERT INTO ledger_consent(account_id) VALUES($1) ON CONFLICT DO NOTHING
+`
+
+func (q *Queries) EnsureLedgerConsent(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, ensureLedgerConsent, accountID)
+	return err
+}
+
+const eraseLedgerRecords = `-- name: EraseLedgerRecords :exec
+UPDATE ledger_records SET payload='{}',deleted=true,revision=revision+1,updated_at=clock_timestamp() WHERE account_id=$1 AND NOT deleted
+`
+
+func (q *Queries) EraseLedgerRecords(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, eraseLedgerRecords, accountID)
+	return err
+}
+
+const getLedgerConsent = `-- name: GetLedgerConsent :one
+SELECT mask,revision FROM ledger_consent WHERE account_id=$1
+`
+
+type GetLedgerConsentRow struct {
+	Mask     int32 `json:"mask"`
+	Revision int64 `json:"revision"`
+}
+
+func (q *Queries) GetLedgerConsent(ctx context.Context, accountID pgtype.UUID) (GetLedgerConsentRow, error) {
+	row := q.db.QueryRow(ctx, getLedgerConsent, accountID)
+	var i GetLedgerConsentRow
+	err := row.Scan(&i.Mask, &i.Revision)
+	return i, err
 }
 
 const getLedgerOperation = `-- name: GetLedgerOperation :one
@@ -370,6 +422,28 @@ func (q *Queries) SaveLedgerRecord(ctx context.Context, arg SaveLedgerRecordPara
 		&i.Deleted,
 		&i.Payload,
 	)
+	return i, err
+}
+
+const setLedgerConsent = `-- name: SetLedgerConsent :one
+UPDATE ledger_consent SET mask=CASE WHEN $1::boolean THEN mask | $2::integer ELSE mask & (~$2::integer) END, revision=revision+1, updated_at=clock_timestamp() WHERE account_id=$3::uuid RETURNING mask,revision
+`
+
+type SetLedgerConsentParams struct {
+	Enabled   bool        `json:"enabled"`
+	Mask      int32       `json:"mask"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+type SetLedgerConsentRow struct {
+	Mask     int32 `json:"mask"`
+	Revision int64 `json:"revision"`
+}
+
+func (q *Queries) SetLedgerConsent(ctx context.Context, arg SetLedgerConsentParams) (SetLedgerConsentRow, error) {
+	row := q.db.QueryRow(ctx, setLedgerConsent, arg.Enabled, arg.Mask, arg.AccountID)
+	var i SetLedgerConsentRow
+	err := row.Scan(&i.Mask, &i.Revision)
 	return i, err
 }
 

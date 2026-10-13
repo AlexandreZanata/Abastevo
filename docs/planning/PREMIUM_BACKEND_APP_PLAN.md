@@ -363,6 +363,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T05 — Ledger sync, snapshots and privacy registration
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; PRM03/04; PR06–PR12/15.
 - **Outcome/areas:** professional dataset opt-in, revision delta/export/snapshot/restore adapters and erasure inventory; explicit separate consent for private financial uploads.
 - **Tests first:** two-device edit/delete conflict, interrupted snapshot, stale restore after ledger deletion, cascade/expiry, foreign account/origin and replay of offline local correction.

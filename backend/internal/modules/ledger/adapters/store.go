@@ -140,6 +140,13 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		}
 	}
 	query := q.New(tx)
+	if err = query.EnsureLedgerConsent(ctx, uid(accountID)); err != nil {
+		return application.BatchResult{}, errUnavailable()
+	}
+	consent, err := query.GetLedgerConsent(ctx, uid(accountID))
+	if err != nil {
+		return application.BatchResult{}, errUnavailable()
+	}
 	result := application.BatchResult{Results: []application.CommandResult{}}
 	for _, c := range batch.Commands {
 		hashInput, _ := json.Marshal(struct {
@@ -163,6 +170,9 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return application.BatchResult{}, errUnavailable()
+		}
+		if !c.Delete && consent.Mask&ledgerBit(c.Dataset) == 0 {
+			return application.BatchResult{}, errDenied()
 		}
 		revision, err := s.applyOne(ctx, query, accountID, c)
 		if err != nil {
