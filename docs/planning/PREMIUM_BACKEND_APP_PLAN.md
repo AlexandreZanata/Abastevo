@@ -510,6 +510,8 @@ Entry: PRM01–PRM07 locally complete; no Android feature UI yet (a test-only pu
 
 ### PRM08-T03 — API/worker integrated Premium backend journeys
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; all BUC-PR01–PR07.
 - **Outcome/areas:** actual signed/authenticated HTTP clients execute verified capability→two-device data→backup/restore→ledger→monthly/comparison→rule/inbox→lapse→free export/delete.
 - **Tests first:** reverse-order retries, response loss, crash/restart, stale revisions, IDOR/account switch, lifecycle changes and negative cases from every owning phase.

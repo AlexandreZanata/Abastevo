@@ -255,3 +255,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Frozen profile measured on disposable localhost PostGIS under the race detector in a single run; ceilings alone are not deployment capacity proof. Ledger, report, sync, snapshot and alert workloads ran together with free traffic unstarved: abusive pages, periods and batches refused in about 8ms with no 500s; device caps held at 3 with 2 late registrations admitted and rule caps at 20 of 22 attempts; 10k-row histories paged 100 rows in about 2ms via indexes; 200-job floods enqueued in about 38ms and drained fully; 50 paid writes beside 10 free reads completed with zero errors; 50 invalid requests all failed closed. Full object storage bound at 10 MiB enforced at the store. Real PostGIS PASS (budget suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Failed budgets would retune within scope; none failed. No merge/deploy/mobile edit.
 Next PRM08-T03. Real payments OFF.
+
+## PRM08-T03 — API worker integrated Premium backend journeys
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 3f3d6e88. Real signed HTTP clients with real stores and disposable PostGIS traverse capability gates, two-device cloud revisions, manifest with matching revisions, snapshot preview and commit, ledger consent with refuels, monthly reports matching SQL totals, cross-vehicle comparisons, rule creation with evaluated and dispatched candidates, token enrollment with provider sends, lapse denials with free reads, and free deletes and erasures. Negatives prove order enforcement, replayed retries, crash recovery with restarts, stale conflicts, IDOR isolation with account-switch refusal, lifecycle corrections and per-phase 400s. Exact revisions and totals asserted at every step; no mock substitutes for any gate. Real PostGIS PASS (journey suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM08-T04. Real payments OFF.
