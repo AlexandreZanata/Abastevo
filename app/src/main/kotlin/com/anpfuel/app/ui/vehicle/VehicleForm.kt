@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +45,8 @@ import com.anpfuel.app.R
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.anpfuel.app.mapper.FuelProductI18n
-import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -117,30 +118,26 @@ fun VehicleForm(
             onRemovePhoto = onRemovePhoto,
         )
 
+        var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
         Text(
             text = stringResource(R.string.vehicle_fuel_product_label),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        FlowRow(
+        FuelProductSelectorButton(
+            selected = form.fuelProduct,
+            onClick = { fuelPickerOpen = true },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FuelProduct.entries.forEach { product ->
-                FilterChip(
-                    selected = form.fuelProduct == product,
-                    onClick = { onFuelProductSelected(product) },
-                    label = { Text(text = stringResource(FuelProductI18n.toStringRes(product))) },
-                    leadingIcon = {
-                        FuelProductIcon(
-                            product = product,
-                            size = 18.dp,
-                            contentDescription = null,
-                        )
-                    },
-                )
-            }
+        )
+        if (fuelPickerOpen) {
+            FuelProductSelectorDialog(
+                selected = form.fuelProduct,
+                onSelect = { product ->
+                    fuelPickerOpen = false
+                    onFuelProductSelected(product)
+                },
+                onDismiss = { fuelPickerOpen = false },
+            )
         }
 
         Text(
