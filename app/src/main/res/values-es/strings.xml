@@ -551,6 +551,7 @@
     <string name="home_benefit_savings">Ahorra más</string>
     <string name="home_benefit_community">Comunidad</string>
     <string name="home_benefit_trust">Fuentes claras</string>
+    <string name="home_benefits_dismiss">Ocultar beneficios</string>
     <string name="home_reference_prices_title">Precios en tu ciudad</string>
     <string name="home_view_all">Ver todos</string>
     <string name="home_change_city">Mi ciudad</string>

@@ -551,6 +551,7 @@
     <string name="home_benefit_savings">节省更多</string>
     <string name="home_benefit_community">社区</string>
     <string name="home_benefit_trust">明确来源</string>
+    <string name="home_benefits_dismiss">隐藏优点</string>
     <string name="home_reference_prices_title">您所在城市的价格</string>
     <string name="home_view_all">查看全部</string>
     <string name="home_change_city">我的城市</string>

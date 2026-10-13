@@ -653,6 +653,7 @@
     <string name="home_benefit_savings">Save more</string>
     <string name="home_benefit_community">Community</string>
     <string name="home_benefit_trust">Clear sources</string>
+    <string name="home_benefits_dismiss">Hide benefits</string>
     <string name="home_reference_prices_title">Prices in your city</string>
     <string name="home_view_all">View all</string>
     <string name="home_change_city">My city</string>
