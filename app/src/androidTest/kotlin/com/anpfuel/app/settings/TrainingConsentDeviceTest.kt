@@ -69,6 +69,7 @@ class TrainingConsentDeviceTest {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 TrainingConsentContent(ConsentHostState(true,caller,null),TrainingConsentUiState.Offline,
                     {enabled,_,_ ->assertFalse(enabled);revoked=true},{},{})
+                TrainingConsentRightsCard()
             }
         }}
         compose.onNodeWithText(text(R.string.privacy_revoke_delete)).performScrollTo().performClick()
@@ -87,6 +88,7 @@ class TrainingConsentDeviceTest {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 TrainingConsentContent(host.value,TrainingConsentUiState.Offline,
                     {_,_,_ -> decisions++},{}, {})
+                TrainingConsentRightsCard()
             }
         }}
         compose.onNodeWithText(text(R.string.privacy_read_terms)).performScrollTo().performClick()

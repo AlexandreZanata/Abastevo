@@ -74,6 +74,8 @@
     <string name="profile_tool_privacy_title">Privacy</string>
     <string name="profile_tool_privacy_subtitle">Training consent, rights and photo expiry</string>
     <string name="privacy_screen_title">Privacy</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_privacy_subtitle">Training consent, rights and photo expiry</string>
     <string name="profile_tool_contributions_title">My contributions</string>
     <string name="profile_tool_contributions_subtitle">Track uploads, queue and cancellations</string>
     <string name="contributions_screen_subtitle">This device only — nothing here is public.</string>

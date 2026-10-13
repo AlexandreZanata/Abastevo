@@ -259,6 +259,7 @@ fun AnpNavGraph(
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAuth = { navController.navigate(Routes.AUTH) },
+                onNavigateToPrivacy = { navController.navigate(Routes.PRIVACY) },
                 onNavigateToOnboarding = {
                     navController.navigate(Routes.ONBOARDING) {
                         popUpTo(Routes.HOME) { inclusive = true }

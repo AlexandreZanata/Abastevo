@@ -370,6 +370,11 @@
     <string name="profile_tool_settings_subtitle">离线缓存、Wi-Fi同步、通知及主题</string>
     <string name="profile_tool_help_title">帮助与社区规则</string>
     <string name="profile_tool_help_subtitle">贡献指南、举报、审核及隐私</string>
+    <string name="profile_tool_privacy_title">隐私</string>
+    <string name="profile_tool_privacy_subtitle">训练同意、权利与照片有效期</string>
+    <string name="privacy_screen_title">隐私</string>
+    <string name="settings_privacy_title">隐私</string>
+    <string name="settings_privacy_subtitle">训练同意、权利与照片有效期</string>
     <string name="profile_tool_contributions_title">我的贡献</string>
     <string name="profile_tool_contributions_subtitle">跟踪上传、队列和取消</string>
     <string name="contributions_screen_subtitle">仅此设备 — 此处内容不公开。</string>

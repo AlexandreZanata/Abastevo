@@ -280,4 +280,57 @@ class TrainingConsentViewModelTest {
         advanceUntilIdle();assertEquals(TrainingConsentUiState.Pending,vm.state.value)
     }
 
+    @Test
+    fun `repeat foreground entry within TTL reuses snapshot without polling`() = runTest(dispatcher) {
+        coEvery { useCase.syncPending(any()) } returns
+            TrainingConsentOutcome.Status(grantedStatus(), false)
+        var now = 1_000_000L
+        val vm = TrainingConsentViewModel(useCase).also {
+            it.ioDispatcher = dispatcher
+            it.clock = { now }
+        }
+        vm.prepare("acct-1")
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TrainingConsentUiState.Content)
+        vm.prepare("acct-1")
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TrainingConsentUiState.Content)
+        coVerify(exactly = 1) { useCase.syncPending(any()) }
+    }
+
+    @Test
+    fun `foreground entry after TTL polls again`() = runTest(dispatcher) {
+        coEvery { useCase.syncPending(any()) } returns
+            TrainingConsentOutcome.Status(grantedStatus(), false)
+        var now = 1_000_000L
+        val vm = TrainingConsentViewModel(useCase).also {
+            it.ioDispatcher = dispatcher
+            it.clock = { now }
+        }
+        vm.prepare("acct-1")
+        advanceUntilIdle()
+        now += TrainingConsentViewModel.STATUS_CACHE_TTL_MILLIS
+        vm.prepare("acct-1")
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TrainingConsentUiState.Content)
+        coVerify(exactly = 2) { useCase.syncPending(any()) }
+    }
+
+    @Test
+    fun `account change always polls despite fresh snapshot`() = runTest(dispatcher) {
+        coEvery { useCase.syncPending(any()) } returns
+            TrainingConsentOutcome.Status(grantedStatus(), false)
+        var now = 1_000_000L
+        val vm = TrainingConsentViewModel(useCase).also {
+            it.ioDispatcher = dispatcher
+            it.clock = { now }
+        }
+        vm.prepare("acct-A")
+        advanceUntilIdle()
+        vm.prepare("acct-B")
+        advanceUntilIdle()
+        assertTrue(vm.state.value is TrainingConsentUiState.Content)
+        coVerify(exactly = 2) { useCase.syncPending(any()) }
+    }
+
 }

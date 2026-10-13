@@ -7,16 +7,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -52,6 +61,7 @@ fun SettingsScreen(
     onNavigateToOnboarding: () -> Unit,
     onNavigateToWeekPicker: () -> Unit,
     onNavigateToAuth: () -> Unit = {},
+    onNavigateToPrivacy: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -86,9 +96,9 @@ fun SettingsScreen(
         onRetry = viewModel::load,
         onNavigateToWeekPicker = onNavigateToWeekPicker,
         onNavigateToAuth = onNavigateToAuth,
+        onNavigateToPrivacy = onNavigateToPrivacy,
         onOpenNotificationSettings = { viewModel.openNotificationSettings(context) },
         modifier = modifier,
-        privacyContent = { com.anpfuel.app.settings.TrainingConsentSettings(onSignIn=onNavigateToAuth) },
     )
 }
 
@@ -112,9 +122,9 @@ private fun SettingsContent(
     onRetry: () -> Unit,
     onNavigateToWeekPicker: () -> Unit,
     onNavigateToAuth: () -> Unit = {},
+    onNavigateToPrivacy: () -> Unit = {},
     onOpenNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    privacyContent: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val numberFormat = NumberFormat.getIntegerInstance()
@@ -181,7 +191,7 @@ private fun SettingsContent(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    privacyContent()
+                    PrivacyRedirectCard(onClick = onNavigateToPrivacy)
                     SettingsSection(title = stringResource(R.string.settings_language)) {
                         LanguageFlagGrid(
                             selectedLocaleTag = uiState.preferences.localeTag,
@@ -407,6 +417,52 @@ private fun SettingsContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyRedirectCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_privacy_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.settings_privacy_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

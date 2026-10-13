@@ -27,7 +27,10 @@ import kotlinx.coroutines.withContext
  * generation checks. Account changes/logout and newer refreshes invalidate
  * earlier results, including old update completion/single-flight release.
  * Pending states stay explicit with [retry]; terminal rejection
- * carries a fixed kind label and a sanitized message.
+ * carries a fixed kind label and a sanitized message. Repeat
+ * foreground entries within [STATUS_CACHE_TTL_MILLIS] reuse the last
+ * confirmed server snapshot instead of polling again (429 guard);
+ * decisions, retry and non-Content states always hit the network.
  */
 sealed interface TrainingConsentUiState {
     data object Guest : TrainingConsentUiState
@@ -59,6 +62,12 @@ class TrainingConsentViewModel @Inject constructor(
     internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher =
         kotlinx.coroutines.Dispatchers.IO
 
+    /** Test seam for the status-snapshot clock (unit tests control time). */
+    internal var clock: () -> Long = System::currentTimeMillis
+
+    private var cachedCaller: TrainingConsentCaller? = null
+    private var cachedAtMillis: Long = 0
+
     private val _state =
         MutableStateFlow<TrainingConsentUiState>(TrainingConsentUiState.Loading)
     val state: StateFlow<TrainingConsentUiState> = _state.asStateFlow()
@@ -74,10 +83,18 @@ class TrainingConsentViewModel @Inject constructor(
         revoking = false
         caller = null
         if (accountId.isBlank()) {
+            cachedCaller = null
             _state.value = TrainingConsentUiState.Guest
             return
         }
-        caller = TrainingConsentCaller(accountId, scope)
+        val next = TrainingConsentCaller(accountId, scope)
+        if (next == cachedCaller && _state.value is TrainingConsentUiState.Content &&
+            clock() - cachedAtMillis < STATUS_CACHE_TTL_MILLIS) {
+            caller = next
+            return
+        }
+        cachedCaller = null
+        caller = next
         _state.value = TrainingConsentUiState.Loading
         refresh()
     }
@@ -90,7 +107,7 @@ class TrainingConsentViewModel @Inject constructor(
         viewModelScope.launch {
             val outcome = withContext(ioDispatcher) { useCase.syncPending(current) }
             if (generation != request) return@launch
-            _state.value = when (outcome) {
+            val next = when (outcome) {
                 is TrainingConsentOutcome.Guest ->
                     TrainingConsentUiState.Guest
                 is TrainingConsentOutcome.Offline ->
@@ -111,6 +128,13 @@ class TrainingConsentViewModel @Inject constructor(
                 is TrainingConsentOutcome.Rejected ->
                     TrainingConsentUiState.Rejected(outcome.kind, outcome.message)
             }
+            if (next is TrainingConsentUiState.Content) {
+                cachedCaller = current
+                cachedAtMillis = clock()
+            } else {
+                cachedCaller = null
+            }
+            _state.value = next
         }
     }
 
@@ -171,6 +195,13 @@ class TrainingConsentViewModel @Inject constructor(
                     TrainingConsentRejectKind.TRANSPORT,
                     "consent update failed",
                 )
+        }.also { next ->
+            if (next is TrainingConsentUiState.Content) {
+                cachedCaller = current
+                cachedAtMillis = clock()
+            } else {
+                cachedCaller = null
+            }
         }
     }
 
@@ -191,4 +222,9 @@ class TrainingConsentViewModel @Inject constructor(
         pendingRevocation = pendingRevocation,
         needsRegrant = needsRegrant,
     )
+
+    companion object {
+        /** Repeat foreground entries reuse the confirmed snapshot within this window. */
+        const val STATUS_CACHE_TTL_MILLIS = 60_000L
+    }
 }

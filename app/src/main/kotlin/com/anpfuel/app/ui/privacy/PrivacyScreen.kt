@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -24,6 +25,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.settings.TrainingConsentRightsCard
 import com.anpfuel.app.settings.TrainingConsentSettings
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
@@ -31,12 +33,13 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 /**
  * Perfil > Privacidade (B-BR-CS06 / BUC-CS05).
  *
- * Privacy guarantees (no public precise GPS, 24h photo expiry across
- * all copies, free account independent of the training choice) plus
- * the shared optional training-consent settings (default OFF,
- * server authoritative, explicit terms review). Reached from the
- * Perfil tools list below Help; same component instance shape as
- * Configurações uses, no forked consent logic.
+ * Guarantees (no public precise GPS, 24h photo expiry across
+ * all copies, free account independent of the training choice),
+ * rights contact and the shared optional training-consent settings
+ * (default OFF, server authoritative, explicit terms review) in one
+ * account-container standard column. Reached from the Perfil tools
+ * list below Help; same consent component Configurações linked to,
+ * no forked consent logic.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,17 +67,18 @@ fun PrivacyScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
@@ -83,17 +87,19 @@ fun PrivacyScreen(
                         )
                         Text(
                             text = stringResource(R.string.profile_privacy_section),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleLarge,
                             modifier = Modifier.semantics { heading() },
                         )
                     }
                     Text(
                         text = stringResource(R.string.profile_privacy_body),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+
+            TrainingConsentRightsCard()
 
             TrainingConsentSettings(onSignIn = onNavigateToAuth)
         }

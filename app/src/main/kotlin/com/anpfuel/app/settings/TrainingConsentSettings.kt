@@ -3,6 +3,7 @@ package com.anpfuel.app.settings
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -99,12 +100,6 @@ internal fun TrainingConsentContent(
             }
         }
     }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.privacy_rights_heading),style=MaterialTheme.typography.titleMedium,modifier=Modifier.semantics {heading()})
-            SelectionContainer {Text(stringResource(R.string.privacy_rights_body))}
-        }
-    }
     if(reader && document!=null) {
         Dialog(onDismissRequest={reader=false},properties=DialogProperties()) {
             // Compose 1.7.6's non-default width path replaces the real height constraint
@@ -125,6 +120,41 @@ internal fun TrainingConsentContent(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Rights contact card (B-BR-CS06): access, correction, revocation or
+ * erasure without accepting training. Account-container standard
+ * (rounded 24 dp, low container, 24 dp padding), same formatting as
+ * the guarantees card; shown right below it on the Privacy screen.
+ */
+@Composable
+fun TrainingConsentRightsCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.privacy_rights_heading),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
+            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.privacy_rights_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
