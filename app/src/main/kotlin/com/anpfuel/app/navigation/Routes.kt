@@ -11,7 +11,6 @@ object Routes {
     const val COMMUNITY = "community"
     const val PROFILE = "profile"
     const val LOCATION = "location"
-    const val PRICES = "prices"
     const val HISTORY = "history"
     const val STATIONS = "stations"
     const val STATIONS_WITH_FUEL = "stations/{fuelProduct}"

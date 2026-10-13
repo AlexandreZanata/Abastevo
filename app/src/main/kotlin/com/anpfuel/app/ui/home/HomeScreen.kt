@@ -270,21 +270,12 @@ internal fun HomeContent(
                 }
 
                 else -> {
-                    Row(
+                    Text(
+                        stringResource(R.string.home_reference_prices_title),
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.home_reference_prices_title),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        TextButton(onClick = { onNavigate(Routes.PRICES) }) {
-                            Text(stringResource(R.string.home_view_all))
-                        }
-                    }
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
                     PriceMetadata(uiState = uiState)
                     HomePriceFilterButton(
                         current = uiState.priceSort,
@@ -297,12 +288,6 @@ internal fun HomeContent(
                             onClick = { onNavigate(Routes.stations(price.fuelProduct)) },
                             priceSort = uiState.priceSort,
                         )
-                    }
-                    TextButton(
-                        onClick = { onNavigate(Routes.PRICES) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.home_view_price_details))
                     }
                     RowActions(onNavigate = onNavigate)
                 }

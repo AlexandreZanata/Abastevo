@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PersonOutline
-import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -67,10 +66,9 @@ import com.anpfuel.app.ui.components.SkeletonLine
  *
  * Implements the frozen IA Perfil hub (P19-T02 / B-BR-C05 / BUC-C01 / BUC-C03):
  * - Free account / guest exploration status and sign-in entry point
- * - Preserves all legacy expert tools under clearly named entries (none removed):
+ * - Preserves all legacy expert tools under clearly named entries:
  *   - Vehicles (3 free vehicles, tank fill estimation) -> Routes.VEHICLES
  *   - ANP historical series -> Routes.HISTORY
- *   - Full price analysis table -> Routes.PRICES
  *   - Surveyed stations -> Routes.STATIONS
  *   - Survey week picker -> Routes.WEEK_PICKER
  *   - App settings & offline cache -> Routes.SETTINGS
@@ -294,13 +292,6 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_history_title),
                         subtitle = stringResource(R.string.profile_tool_history_subtitle),
                         onClick = { onNavigate(Routes.HISTORY) },
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.QueryStats,
-                        title = stringResource(R.string.profile_tool_prices_title),
-                        subtitle = stringResource(R.string.profile_tool_prices_subtitle),
-                        onClick = { onNavigate(Routes.PRICES) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(

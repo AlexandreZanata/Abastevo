@@ -55,7 +55,6 @@ class AppendixA2PostSyncTest {
   private lateinit var operationalNoteBannerLabel: String
   private lateinit var downloadWeekLabel: String
   private lateinit var ethanolLabel: String
-  private lateinit var pricesNavLabel: String
   private lateinit var stationsTitle: String
   private lateinit var backLabel: String
   private lateinit var homeEmptyMessage: String
@@ -78,7 +77,6 @@ class AppendixA2PostSyncTest {
     operationalNoteBannerLabel = context.getString(R.string.week_picker_operational_note_banner)
     downloadWeekLabel = context.getString(R.string.week_picker_download_week)
     ethanolLabel = context.getString(R.string.fuel_product_ethanol)
-    pricesNavLabel = context.getString(R.string.nav_prices)
     stationsTitle = context.getString(R.string.stations_title)
     backLabel = context.getString(R.string.action_back)
     homeEmptyMessage = context.getString(R.string.home_empty_message)
