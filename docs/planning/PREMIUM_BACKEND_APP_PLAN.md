@@ -519,6 +519,8 @@ Entry: PRM01–PRM07 locally complete; no Android feature UI yet (a test-only pu
 
 ### PRM08-T04 — Operations, security and provider acceptance handoff
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; current security/remediation evidence.
 - **Outcome/areas:** route/import boundary review, dependency/image checks, credential rotation, minimal metrics, private operator replay, backup/key recovery and scoped deploy/rollback runbooks. Complete real Play sandbox and selected object/push provider proofs.
 - **Tests first:** stale/forged entitlement, cross-owner imports, exposed metrics/logs/CSV, provider notification forgery, revoked keys and fail-closed startup/missing config.

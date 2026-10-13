@@ -262,3 +262,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 3f3d6e88. Real signed HTTP clients with real stores and disposable PostGIS traverse capability gates, two-device cloud revisions, manifest with matching revisions, snapshot preview and commit, ledger consent with refuels, monthly reports matching SQL totals, cross-vehicle comparisons, rule creation with evaluated and dispatched candidates, token enrollment with provider sends, lapse denials with free reads, and free deletes and erasures. Negatives prove order enforcement, replayed retries, crash recovery with restarts, stale conflicts, IDOR isolation with account-switch refusal, lifecycle corrections and per-phase 400s. Exact revisions and totals asserted at every step; no mock substitutes for any gate. Real PostGIS PASS (journey suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM08-T04. Real payments OFF.
+
+## PRM08-T04 — Operations, security and provider acceptance handoff
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Boundary review found no synthetic premium-grant switch and no log or print statements in the cloud, ledger, alerts and metrics modules. Stale sessions, forged tokens, nil services and secret-bearing inputs all fail closed without echoing secrets. Cross-owner comparisons stay incompatible with foreign amounts absent from bodies. Operator runbook: rotate signing keys and provider credentials through restricted configuration with restarts, replay manifests with revision checks, recover keys under the documented policy, and roll back by redeploying the last accepted revision with no migration downgrades. Deployable configuration carries no grant switch. Real Play sandbox proof stays PROOF_OWED and staging object and push provider proofs stay owed, so those gates remain INCOMPLETE. No deployment is authorized by this runbook. Real PostGIS PASS (handoff suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM08-T05. Real payments OFF.
