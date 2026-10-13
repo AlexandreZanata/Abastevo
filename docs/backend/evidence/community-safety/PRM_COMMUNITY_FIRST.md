@@ -47,3 +47,7 @@ LOCAL_DONE / INTEGRATION_PENDING: RED no-GPS regression failed with capture-inel
 ## PRM18-T02
 
 LOCAL_DONE / INTEGRATION_PENDING: legacy/v2 receipt-use matrix checks wrong owner/key/station/policy/session, immutable capture instant, expiry and future timestamps for both policies. Added forged optional claim and missing station-port refusal; absent location remains valid. Application/evidence application race suites PASS (1.053s/1.078s), preserving reservation/body/owner/media-capacity gates and all existing binding/replay behavior. Downstream geometric trust is replaced in PRM20 before Android consumption.
+
+## PRM18-T03
+
+LOCAL_DONE / INTEGRATION_PENDING: extended actual signed API/worker campaign runs the capture-bound two-fuel upload/submit flow in normal no-GPS mode as well as debug preview, checking provenance, private owner reads, validated observation decisions and malformed evidence refusal. `go test -race -count=1 -tags=integration ./cmd/api -run '^TestPublicProcess(IdentityAndSignedWrites|DevelopmentPhotoPreview)$'` PASS (22.549s) with unique disposable PostGIS and private MinIO. Receipt/observation decisions are not price-consensus certification. No VPS/device mutation or live retention proof claimed.

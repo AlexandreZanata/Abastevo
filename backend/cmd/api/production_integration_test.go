@@ -426,18 +426,22 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 		photoID := h.call(photoReq, 201)["id"].(string)
 		waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", photoID)
 		h.call(h.signed(b, "POST", "/v1/observations/"+photoID+"/disputes", []byte(`{"client_submission_id":"process-dispute","reason":"PRICE_CHANGED"}`)), 201)
-		if development {
+		{ // Both normal no-GPS and isolated development capture use the actual media pipeline.
 			// A distinct photo must not reuse evidence already bound above.
 			img.Reset()
 			if err := jpeg.Encode(&img, image.NewRGBA(image.Rect(0, 0, 6, 6)), &jpeg.Options{Quality: 85}); err != nil {
 				t.Fatal(err)
 			}
-			captureBody := []byte(fmt.Sprintf(`{"client_capture_id":"development-camera","station_id":%q,"development_preview":true}`, station))
+			captureBody := []byte(fmt.Sprintf(`{"client_capture_id":"development-camera","station_id":%q,"development_preview":%t}`, station, development))
 			captureRequest := h.signed(a, "POST", "/v1/photo-captures", captureBody)
 			captureRequest.Header.Set("Idempotency-Key", "development-camera")
 			capture := h.call(captureRequest, 201)
-			if capture["policy_version"] != "photo-capture-ui-test-v1" {
-				t.Fatal("wrong development provenance")
+			expectedPolicy := "photo-capture-community-v2"
+			if development {
+				expectedPolicy = "photo-capture-ui-test-v1"
+			}
+			if capture["policy_version"] != expectedPolicy {
+				t.Fatal("wrong capture policy")
 			}
 			captureID := capture["capture_id"].(string)
 			capturedAt := time.Now().UTC().Truncate(time.Millisecond).Format(time.RFC3339Nano)
