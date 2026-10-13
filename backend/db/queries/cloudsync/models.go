@@ -58,6 +58,18 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type CloudChange struct {
+	AccountID      pgtype.UUID        `json:"account_id"`
+	Sequence       int64              `json:"sequence"`
+	Epoch          int64              `json:"epoch"`
+	Dataset        string             `json:"dataset"`
+	ID             pgtype.UUID        `json:"id"`
+	RecordRevision int64              `json:"record_revision"`
+	Deleted        bool               `json:"deleted"`
+	Payload        []byte             `json:"payload"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type CloudDevice struct {
 	ID            pgtype.UUID        `json:"id"`
 	AccountID     pgtype.UUID        `json:"account_id"`
@@ -76,6 +88,21 @@ type CloudDeviceRevocation struct {
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type CloudErasedID struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Dataset   string             `json:"dataset"`
+	ID        pgtype.UUID        `json:"id"`
+	ErasedAt  pgtype.Timestamptz `json:"erased_at"`
+}
+
+type CloudOperation struct {
+	AccountID   pgtype.UUID        `json:"account_id"`
+	OperationID pgtype.UUID        `json:"operation_id"`
+	PayloadHash string             `json:"payload_hash"`
+	Receipt     []byte             `json:"receipt"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
 type CloudRecord struct {
 	AccountID     pgtype.UUID        `json:"account_id"`
 	Dataset       string             `json:"dataset"`
@@ -85,6 +112,15 @@ type CloudRecord struct {
 	Payload       []byte             `json:"payload"`
 	Deleted       bool               `json:"deleted"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CloudState struct {
+	AccountID        pgtype.UUID `json:"account_id"`
+	Epoch            int64       `json:"epoch"`
+	Revision         int64       `json:"revision"`
+	CompactedThrough int64       `json:"compacted_through"`
+	ConsentMask      int32       `json:"consent_mask"`
+	ConsentRevision  int64       `json:"consent_revision"`
 }
 
 type IdentityChallenge struct {

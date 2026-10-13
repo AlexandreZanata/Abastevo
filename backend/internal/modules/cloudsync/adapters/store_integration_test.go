@@ -5,6 +5,7 @@ package adapters
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
@@ -404,5 +405,167 @@ func TestDeviceCapConcurrentSessionsAndFreeRevoke(t *testing.T) {
 	var live int
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM cloud_devices WHERE account_id=$1 AND revoked_at IS NULL", owner.AccountID).Scan(&live); err != nil || live != 0 {
 		t.Fatal("deletion device fence", err)
+	}
+}
+
+func TestCloudAtomicCommandsReplayAndEpoch(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	store.Origin = "one.example.test"
+	ctx := context.Background()
+	d, err := store.RegisterDevice(ctx, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.DeviceID = d.ID
+	if err = store.EnsureState(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE cloud_state SET consent_mask=7,consent_revision=1 WHERE account_id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	v := vehicle(t)
+	raw, _ := json.Marshal(v)
+	batch := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{{OperationID: newid(t), Dataset: "vehicles", ID: v.ID, Payload: raw}}}
+	result, err := store.Apply(ctx, p, batch)
+	if err != nil || len(result.Results) != 1 || result.Results[0].Revision != 1 {
+		t.Fatal("atomic create", err)
+	}
+	replay, err := store.Apply(ctx, p, batch)
+	if err != nil || !replay.Results[0].Replayed || replay.Results[0].Revision != 1 {
+		t.Fatal("receipt replay", err)
+	}
+	changed := batch
+	changed.Commands = append([]app.Command{}, batch.Commands...)
+	v.Name = "Changed payload"
+	changed.Commands[0].Payload, _ = json.Marshal(v)
+	if _, err = store.Apply(ctx, p, changed); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("changed operation reuse", err)
+	}
+	batch.Epoch = 2
+	if _, err = store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("stale epoch", err)
+	}
+}
+
+func readyDevice(t *testing.T, store *Store, p app.Principal) app.Principal {
+	t.Helper()
+	store.Origin = "one.example.test"
+	ctx := context.Background()
+	d, e := store.RegisterDevice(ctx, p)
+	if e != nil {
+		t.Fatal(e)
+	}
+	p.DeviceID = d.ID
+	if e = store.EnsureState(ctx, p); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = store.Pool.Exec(ctx, "UPDATE cloud_state SET consent_mask=7,consent_revision=1 WHERE account_id=$1", p.AccountID); e != nil {
+		t.Fatal(e)
+	}
+	return p
+}
+func vehicleCommand(t *testing.T, v domain.Vehicle, expected int64) app.Command {
+	raw, _ := json.Marshal(v)
+	return app.Command{OperationID: newid(t), Dataset: "vehicles", ID: v.ID, ExpectedRevision: expected, Payload: raw}
+}
+func TestCloudBatchRollbackAndTwelveWayReplay(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	first := vehicleCommand(t, vehicle(t), 0)
+	second := vehicleCommand(t, vehicle(t), 99)
+	batch := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{first, second}}
+	if _, err := store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("partial batch accepted", err)
+	}
+	var records, changes, receipts int
+	var success *time.Time
+	if err := pool.QueryRow(ctx, "SELECT (SELECT count(*) FROM cloud_records),(SELECT count(*) FROM cloud_changes),(SELECT count(*) FROM cloud_operations)").Scan(&records, &changes, &receipts); err != nil || records+changes+receipts != 0 {
+		t.Fatal("partial SQL effects", err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT last_success_at FROM cloud_devices WHERE id=$1", p.DeviceID).Scan(&success); err != nil || success != nil {
+		t.Fatal("failed batch marked success", err)
+	}
+	if _, err := pool.Exec(ctx, `CREATE FUNCTION reject_cloud_receipt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic'; END $$; CREATE TRIGGER reject_cloud_receipt BEFORE INSERT ON cloud_operations FOR EACH ROW EXECUTE FUNCTION reject_cloud_receipt()`); err != nil {
+		t.Fatal(err)
+	}
+	batch.Commands = []app.Command{first}
+	if _, err := store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatal("receipt failure hidden", err)
+	}
+	if _, err := pool.Exec(ctx, "DROP TRIGGER reject_cloud_receipt ON cloud_operations"); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 12)
+	fresh := make(chan bool, 12)
+	for i := 0; i < 12; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, e := store.Apply(ctx, p, batch)
+			errs <- e
+			if e == nil {
+				fresh <- !r.Results[0].Replayed
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	close(fresh)
+	for e := range errs {
+		if e != nil {
+			t.Fatal(e)
+		}
+	}
+	wins := 0
+	for f := range fresh {
+		if f {
+			wins++
+		}
+	}
+	if wins != 1 {
+		t.Fatalf("replay effects %d want 1", wins)
+	}
+	if err := pool.QueryRow(ctx, "SELECT (SELECT count(*) FROM cloud_records),(SELECT count(*) FROM cloud_changes),(SELECT count(*) FROM cloud_operations)").Scan(&records, &changes, &receipts); err != nil || records != 1 || changes != 1 || receipts != 1 {
+		t.Fatal("duplicate effects", err)
+	}
+	if err := store.RevokeDevice(ctx, p, p.DeviceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("receipt recovered revoked device", err)
+	}
+}
+func TestCloudConsentLimitsAndDeletedEpoch(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	batch := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}
+	if _, err := pool.Exec(ctx, "UPDATE cloud_state SET consent_mask=0 WHERE account_id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("no-consent upload", err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, p, batch); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("deleted owner batch", err)
+	}
+	var epoch int64
+	if err := pool.QueryRow(ctx, "SELECT epoch FROM cloud_state WHERE account_id=$1", p.AccountID).Scan(&epoch); err != nil || epoch != 2 {
+		t.Fatal("deletion epoch not fenced", err)
+	}
+	batch.Commands = make([]app.Command, 51)
+	if _, err := normalizeBatch(batch); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unbounded batch", err)
 	}
 }

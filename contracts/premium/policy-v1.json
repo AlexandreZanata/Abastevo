@@ -34,5 +34,10 @@
   "notification_admission_per_minute": 60,
   "max_favorites_per_account": 1000,
   "portable_preferences_schema": 1,
-  "cloud_record_max_bytes": 8192
+  "cloud_record_max_bytes": 8192,
+  "cloud_batch_max_bytes": 65536,
+  "cloud_max_commands_per_hour": 600,
+  "cloud_max_receipts_per_account": 10000,
+  "cloud_receipt_retention_days": 30,
+  "cloud_change_retention_days": 30
 }

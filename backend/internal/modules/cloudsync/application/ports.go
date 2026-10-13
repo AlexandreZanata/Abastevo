@@ -36,3 +36,33 @@ type DeviceStore interface {
 	RevokeDevice(context.Context, Principal, string) error
 	CheckDevice(context.Context, Principal) error
 }
+
+type Command struct {
+	OperationID      string          `json:"operation_id"`
+	Dataset          string          `json:"dataset"`
+	ID               string          `json:"id"`
+	ExpectedRevision int64           `json:"expected_revision"`
+	Delete           bool            `json:"delete"`
+	Payload          json.RawMessage `json:"payload"`
+}
+type Batch struct {
+	Epoch           int64     `json:"epoch"`
+	ConsentRevision int64     `json:"consent_revision"`
+	Commands        []Command `json:"commands"`
+}
+type CommandResult struct {
+	OperationID string `json:"operation_id"`
+	Dataset     string `json:"dataset"`
+	ID          string `json:"id"`
+	Revision    int64  `json:"revision"`
+	Status      string `json:"status"`
+	Replayed    bool   `json:"replayed"`
+}
+type BatchResult struct {
+	Epoch    int64           `json:"epoch"`
+	Revision int64           `json:"revision"`
+	Results  []CommandResult `json:"results"`
+}
+type BatchStore interface {
+	Apply(context.Context, Principal, Batch) (BatchResult, error)
+}

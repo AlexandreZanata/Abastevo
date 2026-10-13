@@ -197,6 +197,8 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 
 ### PRM02-T04 — Versioned commands, limits and deletion epochs
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR08/09/12.
 - **Outcome/areas:** common cloud command receipts, expected revisions, account deletion epoch, bounded batch transactions and per-owner limits using existing admission/idempotency patterns.
 - **Tests first:** exact/divergent retries, 12-way updates, byte/page/quota bounds, malformed IDs, stale epoch after account deletion, cancellation and transaction rollback.

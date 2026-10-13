@@ -11,6 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearChangePayloads = `-- name: ClearChangePayloads :exec
+UPDATE cloud_changes SET payload=NULL,deleted=true WHERE account_id=$1 AND dataset=$2 AND id=$3
+`
+
+type ClearChangePayloadsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) ClearChangePayloads(ctx context.Context, arg ClearChangePayloadsParams) error {
+	_, err := q.db.Exec(ctx, clearChangePayloads, arg.AccountID, arg.Dataset, arg.ID)
+	return err
+}
+
+const cloudAdmission = `-- name: CloudAdmission :one
+SELECT count(*)::bigint AS total,count(*) FILTER(WHERE created_at>clock_timestamp()-interval '1 hour')::bigint AS hourly
+FROM cloud_operations WHERE account_id=$1
+`
+
+type CloudAdmissionRow struct {
+	Total  int64 `json:"total"`
+	Hourly int64 `json:"hourly"`
+}
+
+func (q *Queries) CloudAdmission(ctx context.Context, accountID pgtype.UUID) (CloudAdmissionRow, error) {
+	row := q.db.QueryRow(ctx, cloudAdmission, accountID)
+	var i CloudAdmissionRow
+	err := row.Scan(&i.Total, &i.Hourly)
+	return i, err
+}
+
 const countDataset = `-- name: CountDataset :one
 SELECT count(*) FROM cloud_records WHERE account_id=$1 AND dataset=$2 AND NOT deleted
 `
@@ -49,6 +81,24 @@ func (q *Queries) CountVehicles(ctx context.Context, accountID pgtype.UUID) (int
 	return count, err
 }
 
+const deleteRecord = `-- name: DeleteRecord :one
+UPDATE cloud_records SET payload=NULL,deleted=true,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id=$1 AND dataset=$2 AND id=$3 AND NOT deleted RETURNING revision
+`
+
+type DeleteRecordParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) (int64, error) {
+	row := q.db.QueryRow(ctx, deleteRecord, arg.AccountID, arg.Dataset, arg.ID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const deviceSuccess = `-- name: DeviceSuccess :execrows
 UPDATE cloud_devices SET last_success_at=clock_timestamp() WHERE id=$1 AND account_id=$2 AND origin=$3 AND revoked_at IS NULL
 `
@@ -65,6 +115,47 @@ func (q *Queries) DeviceSuccess(ctx context.Context, arg DeviceSuccessParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const ensureState = `-- name: EnsureState :exec
+INSERT INTO cloud_state(account_id) VALUES($1) ON CONFLICT DO NOTHING
+`
+
+func (q *Queries) EnsureState(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, ensureState, accountID)
+	return err
+}
+
+const eraseID = `-- name: EraseID :exec
+INSERT INTO cloud_erased_ids(account_id,dataset,id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING
+`
+
+type EraseIDParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) EraseID(ctx context.Context, arg EraseIDParams) error {
+	_, err := q.db.Exec(ctx, eraseID, arg.AccountID, arg.Dataset, arg.ID)
+	return err
+}
+
+const erasedID = `-- name: ErasedID :one
+SELECT EXISTS(SELECT 1 FROM cloud_erased_ids WHERE account_id=$1 AND dataset=$2 AND id=$3)
+`
+
+type ErasedIDParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) ErasedID(ctx context.Context, arg ErasedIDParams) (bool, error) {
+	row := q.db.QueryRow(ctx, erasedID, arg.AccountID, arg.Dataset, arg.ID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const existingDevice = `-- name: ExistingDevice :one
@@ -115,6 +206,27 @@ func (q *Queries) FenceRestoredDevices(ctx context.Context, accountID pgtype.UUI
 	return err
 }
 
+const getCloudOperation = `-- name: GetCloudOperation :one
+SELECT payload_hash,receipt FROM cloud_operations WHERE account_id=$1 AND operation_id=$2
+`
+
+type GetCloudOperationParams struct {
+	AccountID   pgtype.UUID `json:"account_id"`
+	OperationID pgtype.UUID `json:"operation_id"`
+}
+
+type GetCloudOperationRow struct {
+	PayloadHash string `json:"payload_hash"`
+	Receipt     []byte `json:"receipt"`
+}
+
+func (q *Queries) GetCloudOperation(ctx context.Context, arg GetCloudOperationParams) (GetCloudOperationRow, error) {
+	row := q.db.QueryRow(ctx, getCloudOperation, arg.AccountID, arg.OperationID)
+	var i GetCloudOperationRow
+	err := row.Scan(&i.PayloadHash, &i.Receipt)
+	return i, err
+}
+
 const getRecord = `-- name: GetRecord :one
 SELECT dataset,id,revision,deleted,payload FROM cloud_records
 WHERE account_id=$1 AND dataset=$2 AND id=$3 FOR UPDATE
@@ -143,6 +255,24 @@ func (q *Queries) GetRecord(ctx context.Context, arg GetRecordParams) (GetRecord
 		&i.Revision,
 		&i.Deleted,
 		&i.Payload,
+	)
+	return i, err
+}
+
+const getState = `-- name: GetState :one
+SELECT account_id, epoch, revision, compacted_through, consent_mask, consent_revision FROM cloud_state WHERE account_id=$1 FOR UPDATE
+`
+
+func (q *Queries) GetState(ctx context.Context, accountID pgtype.UUID) (CloudState, error) {
+	row := q.db.QueryRow(ctx, getState, accountID)
+	var i CloudState
+	err := row.Scan(
+		&i.AccountID,
+		&i.Epoch,
+		&i.Revision,
+		&i.CompactedThrough,
+		&i.ConsentMask,
+		&i.ConsentRevision,
 	)
 	return i, err
 }
@@ -239,6 +369,17 @@ func (q *Queries) LockSigningKey(ctx context.Context, arg LockSigningKeyParams) 
 	return id, err
 }
 
+const nextRevision = `-- name: NextRevision :one
+UPDATE cloud_state SET revision=revision+1 WHERE account_id=$1 RETURNING revision
+`
+
+func (q *Queries) NextRevision(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, nextRevision, accountID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const recordDeviceRevocation = `-- name: RecordDeviceRevocation :exec
 INSERT INTO cloud_device_revocations(device_id,account_id)
 SELECT d.id,d.account_id FROM cloud_devices d WHERE d.id=$1 AND d.account_id=$2 AND d.origin=$3 ON CONFLICT DO NOTHING
@@ -313,6 +454,56 @@ func (q *Queries) RevokeDevice(ctx context.Context, arg RevokeDeviceParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const saveChange = `-- name: SaveChange :exec
+INSERT INTO cloud_changes(account_id,sequence,epoch,dataset,id,record_revision,deleted,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+`
+
+type SaveChangeParams struct {
+	AccountID      pgtype.UUID `json:"account_id"`
+	Sequence       int64       `json:"sequence"`
+	Epoch          int64       `json:"epoch"`
+	Dataset        string      `json:"dataset"`
+	ID             pgtype.UUID `json:"id"`
+	RecordRevision int64       `json:"record_revision"`
+	Deleted        bool        `json:"deleted"`
+	Payload        []byte      `json:"payload"`
+}
+
+func (q *Queries) SaveChange(ctx context.Context, arg SaveChangeParams) error {
+	_, err := q.db.Exec(ctx, saveChange,
+		arg.AccountID,
+		arg.Sequence,
+		arg.Epoch,
+		arg.Dataset,
+		arg.ID,
+		arg.RecordRevision,
+		arg.Deleted,
+		arg.Payload,
+	)
+	return err
+}
+
+const saveCloudOperation = `-- name: SaveCloudOperation :exec
+INSERT INTO cloud_operations(account_id,operation_id,payload_hash,receipt) VALUES($1,$2,$3,$4)
+`
+
+type SaveCloudOperationParams struct {
+	AccountID   pgtype.UUID `json:"account_id"`
+	OperationID pgtype.UUID `json:"operation_id"`
+	PayloadHash string      `json:"payload_hash"`
+	Receipt     []byte      `json:"receipt"`
+}
+
+func (q *Queries) SaveCloudOperation(ctx context.Context, arg SaveCloudOperationParams) error {
+	_, err := q.db.Exec(ctx, saveCloudOperation,
+		arg.AccountID,
+		arg.OperationID,
+		arg.PayloadHash,
+		arg.Receipt,
+	)
+	return err
 }
 
 const saveRecord = `-- name: SaveRecord :one

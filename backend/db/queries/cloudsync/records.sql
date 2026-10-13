@@ -60,3 +60,38 @@ AND EXISTS(SELECT 1 FROM cloud_device_revocations r WHERE r.device_id=d.id);
 -- name: RecordDeviceRevocation :exec
 INSERT INTO cloud_device_revocations(device_id,account_id)
 SELECT d.id,d.account_id FROM cloud_devices d WHERE d.id=$1 AND d.account_id=$2 AND d.origin=$3 ON CONFLICT DO NOTHING;
+
+-- name: EnsureState :exec
+INSERT INTO cloud_state(account_id) VALUES($1) ON CONFLICT DO NOTHING;
+
+-- name: GetState :one
+SELECT * FROM cloud_state WHERE account_id=$1 FOR UPDATE;
+
+-- name: GetCloudOperation :one
+SELECT payload_hash,receipt FROM cloud_operations WHERE account_id=$1 AND operation_id=$2;
+
+-- name: CloudAdmission :one
+SELECT count(*)::bigint AS total,count(*) FILTER(WHERE created_at>clock_timestamp()-interval '1 hour')::bigint AS hourly
+FROM cloud_operations WHERE account_id=$1;
+
+-- name: SaveCloudOperation :exec
+INSERT INTO cloud_operations(account_id,operation_id,payload_hash,receipt) VALUES($1,$2,$3,$4);
+
+-- name: NextRevision :one
+UPDATE cloud_state SET revision=revision+1 WHERE account_id=$1 RETURNING revision;
+
+-- name: ErasedID :one
+SELECT EXISTS(SELECT 1 FROM cloud_erased_ids WHERE account_id=$1 AND dataset=$2 AND id=$3);
+
+-- name: EraseID :exec
+INSERT INTO cloud_erased_ids(account_id,dataset,id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING;
+
+-- name: DeleteRecord :one
+UPDATE cloud_records SET payload=NULL,deleted=true,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id=$1 AND dataset=$2 AND id=$3 AND NOT deleted RETURNING revision;
+
+-- name: ClearChangePayloads :exec
+UPDATE cloud_changes SET payload=NULL,deleted=true WHERE account_id=$1 AND dataset=$2 AND id=$3;
+
+-- name: SaveChange :exec
+INSERT INTO cloud_changes(account_id,sequence,epoch,dataset,id,record_revision,deleted,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8);
