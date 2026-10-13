@@ -42,6 +42,9 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -213,16 +216,19 @@ private fun SettingsContent(
                             checked = uiState.preferences.syncStationDetail,
                             onCheckedChange = onSyncStationDetailChanged,
                         )
+                        HorizontalDivider()
                         SettingsToggleRow(
                             label = stringResource(R.string.settings_auto_download_latest_week),
                             checked = uiState.preferences.autoDownloadLatestWeek,
                             onCheckedChange = onAutoDownloadLatestWeekChanged,
                         )
+                        HorizontalDivider()
                         SettingsToggleRow(
                             label = stringResource(R.string.settings_sync_wifi_only),
                             checked = uiState.preferences.autoSyncOnWifi,
                             onCheckedChange = onAutoSyncOnWifiChanged,
                         )
+                        HorizontalDivider()
                         SettingsToggleRow(
                             label = stringResource(R.string.settings_show_price_history),
                             checked = uiState.preferences.showPriceHistory,
@@ -574,6 +580,7 @@ private fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var lineCount by remember { mutableIntStateOf(1) }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -581,7 +588,7 @@ private fun SettingsToggleRow(
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = if (lineCount > 1) Alignment.Top else Alignment.CenterVertically,
         ) {
             Text(
                 text = label,
@@ -589,6 +596,7 @@ private fun SettingsToggleRow(
                 modifier = Modifier
                     .weight(1f)
                     .padding(end = 12.dp),
+                onTextLayout = { lineCount = it.lineCount },
             )
             Switch(
                 checked = checked,
