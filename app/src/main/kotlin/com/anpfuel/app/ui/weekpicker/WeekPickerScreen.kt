@@ -38,8 +38,8 @@ import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
-import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
 import com.anpfuel.domain.valueobject.SurveyWeek
@@ -232,7 +232,15 @@ fun WeekPickerContent(
 @Composable
 private fun WeekPickerLoadingSkeleton() {
     SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-        repeat(4) { SkeletonCard(height = 60.dp) }
+        repeat(3) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SkeletonLine(width = 180.dp, height = 20.dp)
+                SkeletonLine(height = 16.dp)
+                SkeletonLine(height = 16.dp)
+                SkeletonLine(width = 140.dp, height = 14.dp)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
     }
 }
 

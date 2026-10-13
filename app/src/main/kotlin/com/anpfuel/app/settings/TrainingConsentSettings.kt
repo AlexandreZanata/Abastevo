@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.rememberRawSystemBottomPadding
+import com.anpfuel.app.ui.components.rememberRawSystemTopPadding
 import com.anpfuel.domain.repository.TrainingConsentReview
 
 @Composable
@@ -103,6 +105,8 @@ internal fun TrainingConsentContent(
         }
     }
     if(reader && document!=null) {
+        val topSafePadding = rememberRawSystemTopPadding()
+        val bottomSafePadding = rememberRawSystemBottomPadding()
         Dialog(
             onDismissRequest = { reader = false },
             properties = DialogProperties(
@@ -111,7 +115,14 @@ internal fun TrainingConsentContent(
             ),
         ) {
             Surface(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(
+                            top = topSafePadding,
+                            bottom = bottomSafePadding,
+                        ),
+                ) {
                     AnpTopAppBar(
                         title = { Text(stringResource(R.string.privacy_read_terms)) },
                         onNavigateUp = { reader = false },
