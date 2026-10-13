@@ -14,3 +14,12 @@ Free inventory: three local vehicles/tank estimates, ANP history/analysis, offli
 User clarification: no Play subscription/payment module exists. Backend source/local fault testing is authorized; real provider/catalog/payment wiring/sandbox proof is deferred, sales OFF. Prices/trials/public activation require later configuration/release acceptance. Original planning commit e9b3c25 is incorporated within this task rather than importing unrelated dev/mobile source ancestry.
 
 Checks: source/free-inventory review, local document links, repository baseline/secret guard and staged whitespace/changed-document secret review. No runtime suite claimed for this documentation task. Next: PRM00-T02.
+
+## PRM00-T02 — Lifecycle, retention and bounded source policy
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS (source-policy scenario review)
+
+Frozen PREMIUM_SOURCE_POLICY and policy-v1.json with exact source ceilings, state/access mapping, 900s fresh proof, bounded offline lease, expiry/export/deletion policy, snapshot/queue/device/request limits and token key ownership. Reviewed cancel-paid-through, pending/unknown/outage, revoke during work, stale device, owner switch and old-backup resurrection scenarios. Admission remains zero; limits are conservative local source bounds, explicitly not measured VPS/paid capacity. Prices/catalog/credentials/provider proofs remain deferred by user.
+
+Checks: JSON parse, positive bounds, zero admission/sales flags, no raised free vehicle allowance, staged diff/secret review. No retention/job/provider behavior is claimed implemented by this policy task. Next PRM00-T03.
