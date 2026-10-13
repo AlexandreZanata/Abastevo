@@ -533,3 +533,146 @@ func TestProviderReceiptDeduplicationAndRefreshFence(t *testing.T) {
 		t.Fatal("changed-payload message replay accepted", err)
 	}
 }
+
+func TestPendingReplacementKeepsOldPaidAccess(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	owner := seedOwner(t, pool)
+	ctx := context.Background()
+	old, err := store.Begin(ctx, attempt(t, owner, "old-paid-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := verified()
+	v.Snapshot.Acknowledged = true
+	if err = store.Commit(ctx, old, v); err != nil {
+		t.Fatal(err)
+	}
+	next, err := store.Begin(ctx, attempt(t, owner, "pending-new-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := verified()
+	pending.Snapshot.State = domain.Pending
+	pending.Snapshot.ValidUntil = time.Time{}
+	pending.LinkedDigest = old.Digest
+	if err = store.Commit(ctx, next, pending); err != nil {
+		t.Fatal(err)
+	}
+	status, err := store.Status(ctx, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(domain.Evaluate(status, time.Now(), true).Capabilities) != 6 {
+		t.Fatal("pending replacement prematurely retired paid predecessor")
+	}
+}
+
+func TestReplacementReconciliationAndCanonicalRevocation(t *testing.T) {
+	pool := freshDB(t)
+	owner := seedOwner(t, pool)
+	store := NewStore(pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	pending := true
+	gone := false
+	svc.Provider = verifyFunc(func(_ context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
+		if gone {
+			return app.ProviderPurchase{}, domain.ErrNotFound
+		}
+		v := verified().Snapshot
+		v.Acknowledged = true
+		linked := ""
+		if r.Token == "new-chain-token" {
+			linked = "old-chain-token"
+			if pending {
+				v.State = domain.Pending
+				v.ValidUntil = time.Time{}
+			}
+		}
+		return app.ProviderPurchase{Snapshot: v, LinkedToken: linked}, nil
+	})
+	ctx := context.Background()
+	if _, err := svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "old-chain-token", Kind: "verify"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "new-chain-token", Kind: "verify"}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := svc.Status(ctx, owner)
+	if err != nil || len(before.Capabilities) != 6 {
+		t.Fatal("pending replacement removed rights", err)
+	}
+	pending = false
+	digest := domain.TokenDigest("test", "com.anpfuel", "new-chain-token")
+	notice := app.Notification{Environment: "test", PackageName: "com.anpfuel", MessageID: "chain-active", Digest: digest, PayloadHash: strings.Repeat("c", 64)}
+	if _, err = store.ReceiveNotification(ctx, notice); err != nil {
+		t.Fatal(err)
+	}
+	dispatcher := jobs.Dispatcher{Queue: jobs.NewQueue(pool), WorkerID: "refresh-test", Handlers: map[string]jobs.Handler{"subscription-refresh": subjobs.Handler{Name: "subscription-refresh", RunWithID: svc.Refresh}}}
+	if found, err := dispatcher.RunOnce(ctx); err != nil || !found {
+		t.Fatal("canonical refresh did not execute", err)
+	}
+	if _, err = svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "old-chain-token", Kind: "restore"}); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("retired predecessor restored", err)
+	}
+	late, err := store.Begin(ctx, attempt(t, owner, "new-chain-token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gone = true
+	notice.MessageID = "chain-revoked"
+	notice.PayloadHash = strings.Repeat("d", 64)
+	if _, err = store.ReceiveNotification(ctx, notice); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Refresh(ctx, digest, newid(t)); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.Commit(ctx, late, verified()); !errors.Is(err, domain.ErrStale) {
+		t.Fatal("late renewal superseded revocation", err)
+	}
+	gone = false
+	if err = svc.Refresh(ctx, digest, newid(t)); err != nil {
+		t.Fatal(err)
+	}
+	after, err := svc.Status(ctx, owner)
+	if err != nil || after.State != domain.Revoked || len(after.Capabilities) != 0 || !after.RetainedDataAccess {
+		t.Fatal("revoked chain reactivated", err)
+	}
+	var copies int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM subscription_purchases WHERE token_digest=$1 AND token_cipher IS NOT NULL", digest).Scan(&copies); err != nil || copies != 0 {
+		t.Fatal("revoked token bytes retained")
+	}
+}
+func TestProviderRefreshOutageCannotRefreshRights(t *testing.T) {
+	pool := freshDB(t)
+	owner := seedOwner(t, pool)
+	store := NewStore(pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	svc := &app.Service{Store: store, Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding, Provider: verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+		v := verified().Snapshot
+		v.Acknowledged = true
+		return app.ProviderPurchase{Snapshot: v}, nil
+	})}
+	ctx := context.Background()
+	if _, err := svc.Admit(ctx, owner, app.Command{OperationID: newid(t), Token: "outage-token", Kind: "verify"}); err != nil {
+		t.Fatal(err)
+	}
+	digest := domain.TokenDigest("test", "com.anpfuel", "outage-token")
+	if _, err := store.ReceiveNotification(ctx, app.Notification{Environment: "test", PackageName: "com.anpfuel", MessageID: "outage", Digest: digest, PayloadHash: strings.Repeat("e", 64)}); err != nil {
+		t.Fatal(err)
+	}
+	svc.Provider = verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+		return app.ProviderPurchase{}, domain.ErrUnavailable
+	})
+	if err := svc.Refresh(ctx, digest, newid(t)); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatal("provider outage hidden")
+	}
+	got, err := svc.Status(ctx, owner)
+	if err != nil || len(got.Capabilities) != 0 {
+		t.Fatal("outage granted fresh rights")
+	}
+}

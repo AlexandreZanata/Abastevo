@@ -479,6 +479,7 @@ func run() error {
 	// Payment ports remain deliberately nil until the future payment module is configured.
 	premiumService := &subscriptionapp.Service{Store: subscriptionadapters.NewStore(raw), Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
 	handlers := map[string]jobs.Handler{
+		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,

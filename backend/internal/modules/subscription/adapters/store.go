@@ -247,15 +247,22 @@ func (s *Store) Commit(ctx context.Context, a app.Attempt, v app.VerifiedPurchas
 		} else if e != nil && !errors.Is(e, pgx.ErrNoRows) {
 			return domain.ErrUnavailable
 		}
-		if _, err = q.RetireToken(ctx, qsub.RetireTokenParams{TokenDigest: v.LinkedDigest, AccountID: uid(a.Principal.AccountID)}); err != nil {
-			return domain.ErrDenied
+		if (v.Snapshot.State == domain.Active || v.Snapshot.State == domain.Canceled || v.Snapshot.State == domain.Grace) && now.Before(v.Snapshot.ValidUntil) {
+			if _, err = q.RetireToken(ctx, qsub.RetireTokenParams{TokenDigest: v.LinkedDigest, AccountID: uid(a.Principal.AccountID)}); err != nil {
+				return domain.ErrDenied
+			}
+			if err = q.RetirePurchase(ctx, qsub.RetirePurchaseParams{TokenDigest: v.LinkedDigest, AccountID: uid(a.Principal.AccountID)}); err != nil {
+				return domain.ErrUnavailable
+			}
 		}
-		if err = q.RetirePurchase(ctx, qsub.RetirePurchaseParams{TokenDigest: v.LinkedDigest, AccountID: uid(a.Principal.AccountID)}); err != nil {
-			return domain.ErrUnavailable
-		}
+
 		linked = pgtype.Text{String: v.LinkedDigest, Valid: true}
 	}
-	if _, err = q.SavePurchase(ctx, qsub.SavePurchaseParams{TokenDigest: a.Digest, AccountID: uid(a.Principal.AccountID), Environment: a.Environment, PackageName: a.PackageName, ProductID: v.Snapshot.ProductID, BasePlanID: v.Snapshot.BasePlanID, State: string(v.Snapshot.State), ValidUntil: stamp(v.Snapshot.ValidUntil), VerifiedAt: stamp(v.Snapshot.VerifiedAt), TokenCipher: a.CipherToken, Acknowledged: v.Snapshot.Acknowledged, LinkedDigest: linked}); err != nil {
+	cipherToken := a.CipherToken
+	if v.Snapshot.State == domain.Revoked {
+		cipherToken = nil
+	}
+	if _, err = q.SavePurchase(ctx, qsub.SavePurchaseParams{TokenDigest: a.Digest, AccountID: uid(a.Principal.AccountID), Environment: a.Environment, PackageName: a.PackageName, ProductID: v.Snapshot.ProductID, BasePlanID: v.Snapshot.BasePlanID, State: string(v.Snapshot.State), ValidUntil: stamp(v.Snapshot.ValidUntil), VerifiedAt: stamp(v.Snapshot.VerifiedAt), TokenCipher: cipherToken, Acknowledged: v.Snapshot.Acknowledged, LinkedDigest: linked}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrDenied
 		}

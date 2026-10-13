@@ -69,3 +69,7 @@ type Notification struct{ Environment, PackageName, MessageID, Digest, PayloadHa
 type Acknowledger interface {
 	Acknowledge(context.Context, ProviderRequest, string) error
 }
+
+type RefreshStore interface {
+	BeginRefresh(context.Context, StoredToken, string) (Attempt, error)
+}

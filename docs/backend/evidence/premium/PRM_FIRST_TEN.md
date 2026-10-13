@@ -83,3 +83,14 @@ Append-only 000076 records bounded immutable notification receipts. RSA-2048/RS2
 Tests: actual generated RSA signatures/tamper/issuer/audience/service identity/expiry; private HTTP missing/forged/duplicate auth, wrong subscription, stale/oversize/duplicate JSON; local TLS canonical acknowledgement; actual PostGIS 12-way duplicate receipt produces one refresh job and immediately fences stale rights; real dispatcher lost acknowledgement reply recovers by canonical acknowledged lookup with one external acknowledge effect. Migration upgrade/replay remains explicit through 000076.
 
 Commands: affected subscription unit/race and SQL integration suites, go vet/staticcheck, sqlc vet/diff and worker build to /tmp. Passed. Private provider sandbox is not claimed. Next PRM01-T05; no OneSignal implementation (that remains planning only).
+
+## PRM01-T05 — Canonical lifecycle reconciliation and retired chains
+
+Status: LOCAL_DONE / INTEGRATION_PENDING (source only)
+Validation: PASS
+
+RED: a pending replacement prematurely retired its paid predecessor. GREEN: only a currently eligible paid replacement retires the previous token; pending/unknown replacement preserves existing paid-through rights. Durable refresh uses the stable worker job UUID as its operation ID, canonical provider lookup, generation fences and current owner proof. Linked tokens cannot cross owners or regain rights; canonical absence of an already-bound token revokes and destroys its provider bytes. Acknowledgement is monotonic and missing-token acknowledgement queues a fenced canonical refresh.
+
+Real PostGIS/dispatcher proofs: pending→active replacement, old-token restore denial, notification→actual refresh handler, revocation after a renewal lookup invalidates the late generation, later stale/active response cannot reinstate a revoked chain, provider outage cannot refresh rights, and retained-data access remains independent of subscription. Strict digest-only job payloads reject unknown/raw-token fields. Existing worker registers both acknowledgement and refresh with provider ports still nil.
+
+Commands: affected integration/race suite (6.024s), all subscription unit/race tests, go vet/staticcheck, sqlc vet/diff and worker build to /tmp. Passed. Recurring reconciliation/operator runbook and real provider proof remain PRM01-T07, outside this batch and user-deferred. Next PRM01-T06.

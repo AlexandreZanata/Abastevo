@@ -73,7 +73,7 @@ INSERT INTO subscription_purchases(token_digest,account_id,environment,package_n
 VALUES(sqlc.arg(token_digest),sqlc.arg(account_id),sqlc.arg(environment),sqlc.arg(package_name),sqlc.arg(product_id),sqlc.arg(base_plan_id),sqlc.arg(state),sqlc.narg(valid_until),sqlc.arg(verified_at),sqlc.arg(token_cipher),sqlc.arg(acknowledged),sqlc.narg(linked_digest))
 ON CONFLICT (token_digest) DO UPDATE SET state=EXCLUDED.state,valid_until=EXCLUDED.valid_until,
 verified_at=EXCLUDED.verified_at,revision=subscription_purchases.revision+1,refresh_required=false,
-token_cipher=EXCLUDED.token_cipher,acknowledged=EXCLUDED.acknowledged,linked_digest=EXCLUDED.linked_digest,
+token_cipher=EXCLUDED.token_cipher,acknowledged=(subscription_purchases.acknowledged OR EXCLUDED.acknowledged),linked_digest=EXCLUDED.linked_digest,
 product_id=EXCLUDED.product_id,base_plan_id=EXCLUDED.base_plan_id
 WHERE subscription_purchases.account_id=EXCLUDED.account_id AND NOT subscription_purchases.retired AND subscription_purchases.state<>'REVOKED'
 RETURNING token_digest;
