@@ -1,6 +1,12 @@
 package com.anpfuel.application.usecase.directory
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.StationDirectoryScopeProvider
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.repository.ServerStationCache
@@ -36,19 +42,55 @@ class GetServerStationsUseCase(
     private val flagProvider: CommunityReadsFlagProvider,
     private val gateway: ServerStationGateway,
     private val cache: ServerStationCache,
+    private val scopeProvider: StationDirectoryScopeProvider? = null,
 ) {
-    suspend operator fun invoke(limit: Int = 20, cursor: String? = null): ServerStationsOutcome {
+    private val refreshLock = Mutex()
+
+    suspend fun cached(): ServerStationsOutcome {
         if (!flagProvider.isEnabled()) return ServerStationsOutcome.Disabled
+        val cause = java.io.IOException("directory offline")
         return try {
-            val page = gateway.list(limit, cursor)
-            cache.savePage(page)
-            ServerStationsOutcome.Fresh(page)
+            val scope = scopeProvider?.municipalityCode()
+            if (scopeProvider != null && scope == null) return ServerStationsOutcome.Unavailable(cause)
+            loadCache(scope)?.let { ServerStationsOutcome.StaleCache(it, cause) }
+                ?: ServerStationsOutcome.Unavailable(cause)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
-            val cached = runCatching { cache.loadPage() }.getOrNull()
+            ServerStationsOutcome.Unavailable(error)
+        }
+    }
+
+    suspend operator fun invoke(limit: Int = 20, cursor: String? = null): ServerStationsOutcome = refreshLock.withLock {
+        if (!flagProvider.isEnabled()) return@withLock ServerStationsOutcome.Disabled
+        val scope = try {
+            scopeProvider?.municipalityCode()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            return@withLock ServerStationsOutcome.Unavailable(error)
+        }
+        if (scopeProvider != null && scope == null) {
+            return@withLock ServerStationsOutcome.Unavailable(java.io.IOException("directory city unavailable"))
+        }
+        try {
+            val page = if (scope == null) gateway.list(limit, cursor)
+                else gateway.listInMunicipality(scope, limit, cursor)
+            require(scope == null || page.items.all { it.municipalityCode == scope }) { "directory city mismatch" }
+            currentCoroutineContext().ensureActive()
+            if (scope == null) cache.savePage(page) else cache.saveScopedPage(scope, page)
+            ServerStationsOutcome.Fresh(page)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            val cached = runCatching { loadCache(scope) }.onFailure { if (it is CancellationException) throw it }.getOrNull()
             if (cached != null) ServerStationsOutcome.StaleCache(cached, error)
             else ServerStationsOutcome.Unavailable(error)
         }
     }
+
+    private suspend fun loadCache(scope: String?): ServerStationPage? =
+        if (scope == null) cache.loadPage() else cache.loadScopedPage(scope)
 }
 
 class GetServerStationDetailUseCase(
@@ -61,10 +103,13 @@ class GetServerStationDetailUseCase(
         if (stationId.isBlank()) throw IllegalArgumentException("station_id is blank")
         return try {
             val station = gateway.detail(stationId)
+            currentCoroutineContext().ensureActive()
             cache.saveDetail(station)
             ServerStationDetailOutcome.Fresh(station)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
-            val cached = runCatching { cache.loadDetail(stationId) }.getOrNull()
+            val cached = runCatching { cache.loadDetail(stationId) }.onFailure { if (it is CancellationException) throw it }.getOrNull()
             if (cached != null) ServerStationDetailOutcome.StaleCache(cached, error)
             else ServerStationDetailOutcome.Unavailable(error)
         }
@@ -99,6 +144,8 @@ class GetNearbyServerStationsUseCase(
         if (!flagProvider.isEnabled()) return NearbyServerStationsOutcome.Disabled
         return try {
             NearbyServerStationsOutcome.Fresh(gateway.nearby(lat, lon, radiusMeters, limit))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             NearbyServerStationsOutcome.Unavailable(error)
         }

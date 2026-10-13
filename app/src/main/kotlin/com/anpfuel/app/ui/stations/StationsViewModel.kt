@@ -48,6 +48,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 data class StationsUiState(
     val isLoading: Boolean = true,
@@ -167,10 +172,13 @@ class StationsViewModel @Inject constructor(
     private var lastStations: List<com.anpfuel.domain.model.StationPrice> = emptyList()
     private var lastLocale: Locale? = null
 
+    private val connectivity = MutableStateFlow<Boolean?>(null)
+
     init {
         viewModelScope.launch {
             observeNetworkConnectivityUseCase().collect { isConnected ->
                 _uiState.update { it.copy(isOffline = !isConnected) }
+                connectivity.value = isConnected
             }
         }
     }
@@ -343,12 +351,44 @@ class StationsViewModel @Inject constructor(
      */
     private var serverLoadJob: kotlinx.coroutines.Job? = null
 
-    fun loadServerStations(limit: Int = 20) {
+    /** Called inside the screen's resumed lifecycle; cancellation stops polling and pending reads. */
+    suspend fun syncServerStationsWhileVisible() {
+        try {
+            connectivity.filterNotNull().collectLatest { connected ->
+                if (!connected) {
+                    serverDetailJob?.cancel()
+                    _uiState.update {
+                        it.copy(
+                            serverFromCache = it.serverStations.isNotEmpty(),
+                            serverDetailFromCache = it.selectedServerStation != null,
+                        )
+                    }
+                    loadServerStations(cachedOnly = true)
+                    serverLoadJob?.join()
+                } else {
+                    while (true) {
+                        if (serverLoadJob?.isActive != true) refreshServerStations()
+                        serverLoadJob?.join()
+                        serverDetailJob?.join()
+                        delay(SERVER_REFRESH_INTERVAL_MILLIS)
+                    }
+                }
+            }
+        } finally {
+            serverLoadJob?.cancel()
+            serverDetailJob?.cancel()
+            _uiState.update { it.copy(isServerLoading = false) }
+        }
+    }
+
+    fun loadServerStations(limit: Int = 100, cachedOnly: Boolean = false) {
         val useCase = getServerStationsUseCase ?: return
         serverLoadJob?.cancel()
         serverLoadJob = viewModelScope.launch {
             _uiState.update { it.copy(isServerLoading = true, serverError = null) }
-            when (val outcome = useCase(limit, null)) {
+            val outcome = if (cachedOnly) useCase.cached() else useCase(limit, null)
+            currentCoroutineContext().ensureActive()
+            when (outcome) {
                 is ServerStationsOutcome.Disabled ->
                     _uiState.update { it.copy(isServerLoading = false) }
                 is ServerStationsOutcome.Fresh ->
@@ -386,7 +426,7 @@ class StationsViewModel @Inject constructor(
      * detail when it is still present; a failed refresh keeps cached
      * stations exactly like the legacy P20-T02 recovery.
      */
-    fun refreshServerStations(limit: Int = 20) {
+    fun refreshServerStations(limit: Int = 100) {
         val selected = _uiState.value.selectedServerStation?.stationId
         loadServerStations(limit)
         if (selected != null) {
@@ -399,6 +439,8 @@ class StationsViewModel @Inject constructor(
      * community-first detail. Unknown UUID (or disabled reads) yields no
      * detail, never an invented card. Stale cache is labelled explicitly.
      */
+    private var serverDetailJob: kotlinx.coroutines.Job? = null
+
     fun onServerStationSelected(stationId: String) {
         val useCase = getServerStationDetailUseCase ?: return
         // P36-T03 — bind the caller-held account id once per selection so
@@ -406,8 +448,11 @@ class StationsViewModel @Inject constructor(
         // blank (reads only). Store failures fail closed to guest.
         val accountId = runCatching { sessionStore?.load()?.accountId.orEmpty() }.getOrDefault("")
         _uiState.update { it.copy(serverAccountId = accountId) }
-        viewModelScope.launch {
-            when (val outcome = useCase(stationId)) {
+        serverDetailJob?.cancel()
+        serverDetailJob = viewModelScope.launch {
+            val outcome = useCase(stationId)
+            currentCoroutineContext().ensureActive()
+            when (outcome) {
                 is ServerStationDetailOutcome.Disabled ->
                     _uiState.update { it.copy(selectedServerStation = null) }
                 is ServerStationDetailOutcome.Fresh ->
@@ -439,6 +484,7 @@ class StationsViewModel @Inject constructor(
     }
 
     fun onServerDetailDismissed() {
+        serverDetailJob?.cancel()
         _uiState.update { it.copy(selectedServerStation = null, serverDetailFromCache = false) }
     }
 
@@ -665,6 +711,7 @@ class StationsViewModel @Inject constructor(
     }
 
     companion object {
+        internal const val SERVER_REFRESH_INTERVAL_MILLIS = 60_000L
         private const val ARG_FUEL_PRODUCT = "fuelProduct"
         private const val ARG_SEARCH_QUERY = "discoverySearch"
     }

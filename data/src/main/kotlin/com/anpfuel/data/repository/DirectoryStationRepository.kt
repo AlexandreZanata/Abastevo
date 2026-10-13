@@ -7,6 +7,9 @@ import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.repository.ServerStationGateway
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,47 +27,58 @@ class DirectoryStationGatewayImpl @Inject constructor(
     private val httpClient: DirectoryStationHttpClient,
 ) : ServerStationGateway {
 
-    override suspend fun list(limit: Int, cursor: String?): ServerStationPage {
+    override suspend fun list(limit: Int, cursor: String?): ServerStationPage = withContext(Dispatchers.IO) {
         val raw = try {
-            httpClient.list(limit, cursor)
+            httpClient.awaitList(limit, cursor)
         } catch (error: IOException) {
+            throw error
+        } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             throw IOException("directory list failed", error)
         }
-        return DirectoryStationJsonCodec.decodeList(raw)
+        DirectoryStationJsonCodec.decodeList(raw)
     }
 
+    override suspend fun listInMunicipality(municipalityCode: String, limit: Int, cursor: String?): ServerStationPage =
+        withContext(Dispatchers.IO) {
+            DirectoryStationJsonCodec.decodeList(httpClient.awaitCityList(municipalityCode, limit, cursor))
+        }
+
     override suspend fun search(municipalityCode: String, query: String, limit: Int): ServerStationPage =
-        DirectoryStationJsonCodec.decodeList(httpClient.search(municipalityCode, query, limit))
+        withContext(Dispatchers.IO) { DirectoryStationJsonCodec.decodeList(httpClient.search(municipalityCode, query, limit)) }
 
     override suspend fun nearby(
         lat: Double,
         lon: Double,
         radiusMeters: Int,
         limit: Int,
-    ): List<NearbyServerStation> {
+    ): List<NearbyServerStation> = withContext(Dispatchers.IO) {
         val raw = try {
             httpClient.nearby(lat, lon, radiusMeters, limit)
         } catch (error: IOException) {
             throw error
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             throw IOException("directory nearby failed", error)
         }
-        return DirectoryStationJsonCodec.decodeNearby(raw)
+        DirectoryStationJsonCodec.decodeNearby(raw)
     }
 
     override suspend fun byCnpj(cnpj: String): ServerStation? =
-        httpClient.byCnpj(cnpj)?.let(DirectoryStationJsonCodec::decodeStation)
+        withContext(Dispatchers.IO) { httpClient.byCnpj(cnpj)?.let(DirectoryStationJsonCodec::decodeStation) }
 
-    override suspend fun detail(stationId: String): ServerStation {
+    override suspend fun detail(stationId: String): ServerStation = withContext(Dispatchers.IO) {
         val raw = try {
-            httpClient.detail(stationId)
+            httpClient.awaitDetail(stationId)
         } catch (error: IOException) {
+            throw error
+        } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             throw IOException("directory detail failed", error)
         }
-        return DirectoryStationJsonCodec.decodeStation(raw)
+        DirectoryStationJsonCodec.decodeStation(raw)
     }
 }

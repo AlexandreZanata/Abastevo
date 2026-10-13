@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.anpfuel.data.local.entity.ServerCatalogMetaEntity
 import com.anpfuel.data.local.entity.ServerStationCacheEntity
 
@@ -18,6 +19,18 @@ import com.anpfuel.data.local.entity.ServerStationCacheEntity
 @Dao
 interface ServerStationCacheDao {
 
+    @Transaction
+    suspend fun replacePage(entities: List<ServerStationCacheEntity>, meta: ServerCatalogMetaEntity) {
+        clearPageRows()
+        upsertAll(entities)
+        clearMeta()
+        upsertMeta(meta)
+    }
+
+    @Transaction
+    suspend fun pageSnapshot(key: String = ServerCatalogMetaEntity.PAGE_KEY): Pair<List<ServerStationCacheEntity>, ServerCatalogMetaEntity?> =
+        loadPage() to findMeta(key)
+
     @Query("SELECT * FROM server_station_cache ORDER BY position ASC")
     suspend fun loadPage(): List<ServerStationCacheEntity>
 
@@ -29,6 +42,9 @@ interface ServerStationCacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ServerStationCacheEntity)
+
+    @Query("DELETE FROM server_station_cache WHERE position != 2147483647")
+    suspend fun clearPageRows()
 
     @Query("DELETE FROM server_station_cache")
     suspend fun clearStations()

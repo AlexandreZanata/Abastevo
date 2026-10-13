@@ -11,6 +11,13 @@ import org.junit.jupiter.api.Test
 class DirectoryStationJsonCodecTest {
 
     @Test
+    fun `malformed list envelope cannot clear a good cache`() {
+        listOf("{}", "{\"items\":null}", "{\"items\":{}}").forEach { payload ->
+            assertThrows(Exception::class.java) { DirectoryStationJsonCodec.decodeList(payload) }
+        }
+    }
+
+    @Test
     fun `decodes station list with reviewed and unknown locations`() {
         val payload = """
         {

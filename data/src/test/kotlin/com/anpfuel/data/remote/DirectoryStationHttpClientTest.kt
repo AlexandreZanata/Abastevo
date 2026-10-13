@@ -1,6 +1,8 @@
 package com.anpfuel.data.remote
 
 import java.io.IOException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class DirectoryStationHttpClientTest {
 
     private fun client(server: MockWebServer): DirectoryStationHttpClient =
@@ -20,6 +23,38 @@ class DirectoryStationHttpClientTest {
                 .build(),
             baseUrl = server.url("/").toString(),
         )
+
+    @Test
+    fun `automatic city list carries scope and encoded cursor`() = kotlinx.coroutines.test.runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setBody("{\"items\":[]}"))
+            client(server).awaitCityList("5107925", 100, "cursor&next")
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("5107925", url.queryParameter("municipality_code"))
+            assertEquals("100", url.queryParameter("limit"))
+            assertEquals("cursor&next", url.queryParameter("cursor"))
+        } finally { server.shutdown() }
+    }
+
+    @Test
+    fun `cancelling a directory read cancels the actual HTTP call`() = kotlinx.coroutines.test.runTest {
+        val server = MockWebServer()
+        val failed = java.util.concurrent.CountDownLatch(1)
+        try {
+            server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
+            val http = OkHttpClient.Builder().eventListener(object : okhttp3.EventListener() {
+                override fun callFailed(call: okhttp3.Call, ioe: IOException) { failed.countDown() }
+            }).build()
+            val reader = DirectoryStationHttpClient(http, server.url("/").toString())
+            val pending = launch { reader.awaitList(20, null) }
+            runCurrent()
+            org.junit.jupiter.api.Assertions.assertNotNull(server.takeRequest(3, TimeUnit.SECONDS))
+            pending.cancel()
+            pending.join()
+            assertTrue(failed.await(3, TimeUnit.SECONDS), "cancel must close the HTTP call")
+        } finally { server.shutdown() }
+    }
 
     @Test
     fun `city scoped station name search encodes input and rejects malformed bounds`() {
