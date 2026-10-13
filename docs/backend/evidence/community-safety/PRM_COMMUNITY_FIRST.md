@@ -35,3 +35,7 @@ LOCAL_DONE / INTEGRATION_PENDING: new real-PostGIS regression finds two homonymo
 ## PRM17-T02
 
 LOCAL_DONE / INTEGRATION_PENDING: existing bounded parametrized/literal-escaped name search reused; documented case/accents, page bounds, stable cursor and address disambiguation. Full real-PostGIS Directory campaign `go test -race -count=1 -tags=integration ./internal/modules/directory/adapters/...` PASS (nine package summaries in /tmp/prm-directory-tests.log), including constant-round-trip/failure recovery/query plan/municipal/HTTP/cursor/source trust cases. Scoped read regression PASS above.
+
+## PRM17-T03
+
+LOCAL_DONE / INTEGRATION_PENDING: extended real prepared publication→anonymous HTTP name search→profile verifies nominal address and explicit null coordinates; actual canonical IDs preserved. Targeted TestPreparedPublicationThroughHTTPAndProfiles race/PostGIS PASS (2.042s). Broader Directory nine-package race/PostGIS campaign PASS. Ready for normal capture consumer; no live deployment claimed.
