@@ -129,6 +129,11 @@
     <string name="vehicle_save">Salvar</string>
     <string name="vehicle_delete">Excluir</string>
     <string name="vehicle_delete_confirm">Remover este veículo?</string>
+    <string name="vehicle_photo_label">Foto do veículo</string>
+    <string name="vehicle_add_photo">Adicionar foto</string>
+    <string name="vehicle_change_photo">Trocar foto</string>
+    <string name="vehicle_remove_photo">Remover foto</string>
+    <string name="vehicle_photo_content">Foto do veículo</string>
     <string name="vehicle_empty_message">Nenhum veículo cadastrado</string>
     <string name="vehicle_empty_hint">Adicione até 3 veículos para acompanhar o custo do tanque.</string>
     <string name="vehicle_max_reached">Limite de 3 veículos atingido</string>

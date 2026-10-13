@@ -1,30 +1,49 @@
 package com.anpfuel.app.ui.vehicle
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.data.local.media.BoundedPhotoBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.valueobject.Cnpj
@@ -47,6 +66,9 @@ fun VehicleForm(
     onPriceSourceModeSelected: (VehiclePriceSourceMode) -> Unit,
     onStationSelected: (Cnpj) -> Unit,
     onPriceDropAlertChanged: (Boolean) -> Unit,
+    existingPhotoPath: String?,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
@@ -85,6 +107,13 @@ fun VehicleForm(
             } else {
                 null
             },
+        )
+
+        VehicleFormPhotoSection(
+            existingPhotoPath = existingPhotoPath,
+            pendingPhotoBytes = form.pendingPhotoBytes,
+            onPickPhoto = onPickPhoto,
+            onRemovePhoto = onRemovePhoto,
         )
 
         Text(
@@ -216,6 +245,98 @@ fun VehicleForm(
         ) {
             Text(text = stringResource(R.string.action_cancel))
         }
+    }
+}
+
+@Composable
+private fun VehicleFormPhotoSection(
+    existingPhotoPath: String?,
+    pendingPhotoBytes: ByteArray?,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.vehicle_photo_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (pendingPhotoBytes != null) {
+                VehiclePendingPhotoPreview(
+                    bytes = pendingPhotoBytes,
+                    size = 96.dp,
+                )
+            } else {
+                VehiclePhotoThumbnail(
+                    photoPath = existingPhotoPath,
+                    size = 96.dp,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = onPickPhoto) {
+                    Text(
+                        text = stringResource(
+                            if (pendingPhotoBytes != null || existingPhotoPath != null) {
+                                R.string.vehicle_change_photo
+                            } else {
+                                R.string.vehicle_add_photo
+                            },
+                        ),
+                    )
+                }
+                if (pendingPhotoBytes != null || existingPhotoPath != null) {
+                    TextButton(onClick = onRemovePhoto) {
+                        Text(text = stringResource(R.string.vehicle_remove_photo))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VehiclePendingPhotoPreview(
+    bytes: ByteArray,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    var bitmap by remember(bytes) {
+        mutableStateOf<Bitmap?>(null)
+    }
+    LaunchedEffect(bytes) {
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                BoundedPhotoBitmap.decode(bytes, 512)
+            }.getOrNull()
+        }
+    }
+    val current = bitmap
+    if (current != null) {
+        Image(
+            bitmap = current.asImageBitmap(),
+            contentDescription = stringResource(R.string.vehicle_photo_content),
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(size)
+                .clip(RoundedCornerShape(12.dp)),
+        )
+    } else {
+        VehiclePhotoThumbnail(
+            photoPath = null,
+            size = size,
+            modifier = modifier,
+        )
     }
 }
 

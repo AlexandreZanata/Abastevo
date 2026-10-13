@@ -45,6 +45,11 @@
     <string name="vehicle_save">Enregistrer</string>
     <string name="vehicle_delete">Supprimer</string>
     <string name="vehicle_delete_confirm">Supprimer ce véhicule ?</string>
+    <string name="vehicle_photo_label">Photo du véhicule</string>
+    <string name="vehicle_add_photo">Ajouter une photo</string>
+    <string name="vehicle_change_photo">Changer la photo</string>
+    <string name="vehicle_remove_photo">Supprimer la photo</string>
+    <string name="vehicle_photo_content">Photo du véhicule</string>
     <string name="vehicle_empty_message">Aucun véhicule pour le moment</string>
     <string name="vehicle_empty_hint">Ajoutez jusqu\'à 3 véhicules pour suivre le coût du plein.</string>
     <string name="vehicle_max_reached">Maximum de 3 véhicules atteint</string>

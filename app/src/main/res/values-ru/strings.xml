@@ -45,6 +45,11 @@
     <string name="vehicle_save">Сохранить</string>
     <string name="vehicle_delete">Удалить</string>
     <string name="vehicle_delete_confirm">Удалить этот транспорт?</string>
+    <string name="vehicle_photo_label">Фото транспорта</string>
+    <string name="vehicle_add_photo">Добавить фото</string>
+    <string name="vehicle_change_photo">Заменить фото</string>
+    <string name="vehicle_remove_photo">Удалить фото</string>
+    <string name="vehicle_photo_content">Фото транспорта</string>
     <string name="vehicle_empty_message">Транспорт ещё не добавлен</string>
     <string name="vehicle_empty_hint">Добавьте до 3 единиц транспорта для отслеживания стоимости бака.</string>
     <string name="vehicle_max_reached">Достигнут максимум — 3 транспорта</string>

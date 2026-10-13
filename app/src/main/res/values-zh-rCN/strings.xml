@@ -45,6 +45,11 @@
     <string name="vehicle_save">保存</string>
     <string name="vehicle_delete">删除</string>
     <string name="vehicle_delete_confirm">移除此车辆？</string>
+    <string name="vehicle_photo_label">车辆照片</string>
+    <string name="vehicle_add_photo">添加照片</string>
+    <string name="vehicle_change_photo">更换照片</string>
+    <string name="vehicle_remove_photo">删除照片</string>
+    <string name="vehicle_photo_content">车辆照片</string>
     <string name="vehicle_empty_message">尚无车辆</string>
     <string name="vehicle_empty_hint">最多添加 3 辆车以跟踪满箱费用。</string>
     <string name="vehicle_max_reached">已达 3 辆车上限</string>

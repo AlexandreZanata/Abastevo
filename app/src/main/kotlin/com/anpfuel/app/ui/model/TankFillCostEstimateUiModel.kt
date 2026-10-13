@@ -14,4 +14,5 @@ data class TankFillCostEstimateUiModel(
     val stationDisplayName: String?,
     val stationNavigationQuery: String?,
     val unitPriceSource: TankFillCostUnitPriceSource?,
+    val photoPath: String? = null,
 )

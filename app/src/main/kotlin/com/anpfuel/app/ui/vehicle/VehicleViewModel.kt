@@ -21,9 +21,11 @@ import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 import com.anpfuel.app.mapper.StationPriceUiMapper
+import com.anpfuel.data.local.media.VehiclePhotoStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class VehicleStationOptionUiModel(
     val cnpj: Cnpj,
@@ -47,6 +50,8 @@ data class VehicleFormState(
     val selectedStationCnpj: Cnpj? = null,
     val priceDropAlertEnabled: Boolean = false,
     val validationErrorKey: VehicleFormValidationError? = null,
+    val pendingPhotoBytes: ByteArray? = null,
+    val removeExistingPhoto: Boolean = false,
 )
 
 enum class VehicleFormValidationError {
@@ -80,10 +85,15 @@ class VehicleViewModel @Inject constructor(
     private val getStationPricesUseCase: GetStationPricesUseCase,
     private val configurePriceDropAlertUseCase: ConfigurePriceDropAlertUseCase,
     private val notificationPermissionHandler: NotificationPermissionHandler,
+    private val vehiclePhotoStore: VehiclePhotoStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehicleUiState())
     val uiState: StateFlow<VehicleUiState> = _uiState.asStateFlow()
+
+    /** Test seam for photo file IO (unit tests inject the test dispatcher). */
+    internal var photoIoDispatcher: kotlinx.coroutines.CoroutineDispatcher =
+        kotlinx.coroutines.Dispatchers.IO
 
     private val _notificationPermissionRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val notificationPermissionRequest: SharedFlow<Unit> = _notificationPermissionRequest.asSharedFlow()
@@ -164,6 +174,37 @@ class VehicleViewModel @Inject constructor(
                 stationOptions = emptyList(),
                 showNotificationPermissionHint = false,
             )
+        }
+    }
+
+    fun onPhotoPicked(bytes: ByteArray) {
+        _uiState.update {
+            it.copy(
+                form = it.form.copy(
+                    pendingPhotoBytes = bytes,
+                    removeExistingPhoto = false,
+                    validationErrorKey = null,
+                ),
+            )
+        }
+    }
+
+    fun onPhotoRemoved() {
+        _uiState.update {
+            it.copy(
+                form = it.form.copy(
+                    pendingPhotoBytes = null,
+                    removeExistingPhoto = true,
+                    validationErrorKey = null,
+                ),
+            )
+        }
+    }
+
+    fun onPhotoPickFailed(error: Throwable) {
+        val appError = AppErrorResolver.fromThrowable(error)
+        _uiState.update {
+            it.copy(error = appError, errorMessage = error.message)
         }
     }
 
@@ -296,6 +337,7 @@ class VehicleViewModel @Inject constructor(
             runCatching {
                 deleteVehicleUseCase(vehicleId)
             }.onSuccess {
+                runCatching { vehiclePhotoStore.deletePhoto(vehicleId) }
                 dismissDeleteConfirm()
                 load()
             }.onFailure { error ->
@@ -337,28 +379,42 @@ class VehicleViewModel @Inject constructor(
         val previousVehicle = editingId?.let { id ->
             _uiState.value.vehicles.firstOrNull { it.id == id }
         }
-        val vehicle = if (editingId == null) {
-            Vehicle.create(
-                displayName = form.displayName,
-                tankCapacity = tankCapacity,
-                fuelProduct = form.fuelProduct,
-                priceSource = priceSource,
-                priceDropAlertEnabled = form.priceDropAlertEnabled,
-                sortOrder = _uiState.value.vehicles.size,
-            )
-        } else {
-            val existing = _uiState.value.vehicles.first { it.id == editingId }
-            existing
-                .withDisplayName(form.displayName)
-                .withTankCapacity(tankCapacity)
-                .withFuelProduct(form.fuelProduct)
-                .withPriceSource(priceSource)
-                .withPriceDropAlertEnabled(form.priceDropAlertEnabled)
-        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, error = null, errorMessage = null) }
             runCatching {
+                val targetId = editingId ?: DomainId.generate()
+                var photoPath = previousVehicle?.photoPath
+                if (form.removeExistingPhoto && photoPath != null) {
+                    vehiclePhotoStore.deletePhoto(targetId)
+                    photoPath = null
+                }
+                form.pendingPhotoBytes?.let { bytes ->
+                    photoPath = withContext(photoIoDispatcher) {
+                        vehiclePhotoStore.savePhoto(targetId, bytes)
+                    }
+                }
+                val vehicle = if (editingId == null) {
+                    Vehicle.create(
+                        displayName = form.displayName,
+                        tankCapacity = tankCapacity,
+                        fuelProduct = form.fuelProduct,
+                        priceSource = priceSource,
+                        priceDropAlertEnabled = form.priceDropAlertEnabled,
+                        sortOrder = _uiState.value.vehicles.size,
+                        id = targetId,
+                        photoPath = photoPath,
+                    )
+                } else {
+                    val existing = _uiState.value.vehicles.first { it.id == editingId }
+                    existing
+                        .withDisplayName(form.displayName)
+                        .withTankCapacity(tankCapacity)
+                        .withFuelProduct(form.fuelProduct)
+                        .withPriceSource(priceSource)
+                        .withPriceDropAlertEnabled(form.priceDropAlertEnabled)
+                        .withPhotoPath(photoPath)
+                }
                 saveVehicleUseCase(vehicle)
                 configurePriceDropAlertUseCase(updated = vehicle, previous = previousVehicle)
             }.onSuccess {

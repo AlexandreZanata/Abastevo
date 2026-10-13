@@ -17,6 +17,11 @@ class Vehicle private constructor(
     val priceSource: VehiclePriceSource,
     val priceDropAlertEnabled: Boolean,
     val sortOrder: Int,
+    /**
+     * Local-only photo file name (private app storage). Cloud sync is a
+     * future premium feature; the photo never leaves the device today.
+     */
+    val photoPath: String? = null,
 ) {
     init {
         if (displayName.isBlank()) {
@@ -39,6 +44,8 @@ class Vehicle private constructor(
 
     fun withSortOrder(sortOrder: Int): Vehicle = copy(sortOrder = sortOrder)
 
+    fun withPhotoPath(photoPath: String?): Vehicle = copy(photoPath = photoPath)
+
     private fun copy(
         displayName: String = this.displayName,
         tankCapacity: TankCapacity = this.tankCapacity,
@@ -46,6 +53,7 @@ class Vehicle private constructor(
         priceSource: VehiclePriceSource = this.priceSource,
         priceDropAlertEnabled: Boolean = this.priceDropAlertEnabled,
         sortOrder: Int = this.sortOrder,
+        photoPath: String? = this.photoPath,
     ): Vehicle = Vehicle(
         id = id,
         displayName = displayName,
@@ -54,6 +62,7 @@ class Vehicle private constructor(
         priceSource = priceSource,
         priceDropAlertEnabled = priceDropAlertEnabled,
         sortOrder = sortOrder,
+        photoPath = photoPath,
     )
 
     companion object {
@@ -65,6 +74,7 @@ class Vehicle private constructor(
             priceDropAlertEnabled: Boolean = false,
             sortOrder: Int = 0,
             id: DomainId = DomainId.generate(),
+            photoPath: String? = null,
         ): Vehicle = Vehicle(
             id = id,
             displayName = displayName.trim(),
@@ -73,6 +83,7 @@ class Vehicle private constructor(
             priceSource = priceSource,
             priceDropAlertEnabled = priceDropAlertEnabled,
             sortOrder = sortOrder,
+            photoPath = photoPath,
         )
 
         fun restore(
@@ -83,6 +94,7 @@ class Vehicle private constructor(
             priceSource: VehiclePriceSource,
             priceDropAlertEnabled: Boolean,
             sortOrder: Int,
+            photoPath: String? = null,
         ): Vehicle = Vehicle(
             id = id,
             displayName = displayName,
@@ -91,6 +103,7 @@ class Vehicle private constructor(
             priceSource = priceSource,
             priceDropAlertEnabled = priceDropAlertEnabled,
             sortOrder = sortOrder,
+            photoPath = photoPath,
         )
     }
 }

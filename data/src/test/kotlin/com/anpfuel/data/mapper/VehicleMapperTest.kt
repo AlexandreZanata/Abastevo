@@ -23,6 +23,7 @@ class VehicleMapperTest {
             priceSource = VehiclePriceSource.specific(Cnpj.parse("12345678000195")),
             priceDropAlertEnabled = true,
             sortOrder = 2,
+            photoPath = "vehicle-1.jpg",
         )
 
         val entity = VehicleMapper.toEntity(vehicle)
@@ -38,10 +39,12 @@ class VehicleMapperTest {
                 specificStationCnpj = "12345678000195",
                 priceDropAlertEnabled = true,
                 sortOrder = 2,
+                photoPath = "vehicle-1.jpg",
             ),
             entity,
         )
         assertEquals(vehicle.displayName, restored.displayName)
+        assertEquals("vehicle-1.jpg", restored.photoPath)
         assertEquals(vehicle.tankCapacity, restored.tankCapacity)
         assertEquals(vehicle.fuelProduct, restored.fuelProduct)
         assertEquals(vehicle.priceSource, restored.priceSource)

@@ -45,6 +45,11 @@
     <string name="vehicle_save">Speichern</string>
     <string name="vehicle_delete">Löschen</string>
     <string name="vehicle_delete_confirm">Dieses Fahrzeug entfernen?</string>
+    <string name="vehicle_photo_label">Fahrzeugfoto</string>
+    <string name="vehicle_add_photo">Foto hinzufügen</string>
+    <string name="vehicle_change_photo">Foto ändern</string>
+    <string name="vehicle_remove_photo">Foto entfernen</string>
+    <string name="vehicle_photo_content">Fahrzeugfoto</string>
     <string name="vehicle_empty_message">Noch keine Fahrzeuge</string>
     <string name="vehicle_empty_hint">Fügen Sie bis zu 3 Fahrzeuge hinzu, um Tankfüllkosten zu verfolgen.</string>
     <string name="vehicle_max_reached">Maximal 3 Fahrzeuge erreicht</string>

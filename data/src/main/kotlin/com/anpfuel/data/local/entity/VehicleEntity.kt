@@ -14,4 +14,5 @@ data class VehicleEntity(
     @ColumnInfo(name = "specific_station_cnpj") val specificStationCnpj: String?,
     @ColumnInfo(name = "price_drop_alert_enabled") val priceDropAlertEnabled: Boolean,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
+    @ColumnInfo(name = "photo_path") val photoPath: String? = null,
 )

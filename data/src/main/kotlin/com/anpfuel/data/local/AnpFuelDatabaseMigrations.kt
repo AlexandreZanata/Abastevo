@@ -341,5 +341,12 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_photo_upload_sessions_owner_scope` ON `photo_upload_sessions` (`owner_scope`)")
         }
     }
+    val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Local-only vehicle photo file name; null keeps every
+            // existing row untouched, no data movement.
+            db.execSQL("ALTER TABLE `vehicle` ADD COLUMN `photo_path` TEXT DEFAULT NULL")
+        }
+    }
 
 }

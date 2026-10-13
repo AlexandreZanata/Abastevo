@@ -3,7 +3,6 @@ package com.anpfuel.app.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import com.anpfuel.domain.valueobject.FuelProduct
 
 val AnpBlue = Color(0xFF1565C0)
@@ -30,22 +29,6 @@ val AbastevoActionBlue = AnpBlue
 val AbastevoActionBlueDark = AnpBlueDark
 val AbastevoCommunityGreen = AnpGreen
 val AbastevoCommunityGreenDark = AnpGreenDark
-
-/**
- * Chrome container for top and bottom bars: the light surface darkened by
- * 15%, dark scheme untouched. Luminance decides so dynamic schemes follow
- * without threading a theme flag through every bar.
- */
-fun Color.chromeContainer(): Color =
-    if (luminance() > 0.5f) {
-        copy(
-            red = (red * 0.85f).coerceIn(0f, 1f),
-            green = (green * 0.85f).coerceIn(0f, 1f),
-            blue = (blue * 0.85f).coerceIn(0f, 1f),
-        )
-    } else {
-        this
-    }
 
 internal object ColorTokens {
     val White = Color.White

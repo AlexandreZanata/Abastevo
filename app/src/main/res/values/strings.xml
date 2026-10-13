@@ -129,6 +129,11 @@
     <string name="vehicle_save">Save</string>
     <string name="vehicle_delete">Delete</string>
     <string name="vehicle_delete_confirm">Remove this vehicle?</string>
+    <string name="vehicle_photo_label">Vehicle photo</string>
+    <string name="vehicle_add_photo">Add photo</string>
+    <string name="vehicle_change_photo">Change photo</string>
+    <string name="vehicle_remove_photo">Remove photo</string>
+    <string name="vehicle_photo_content">Vehicle photo</string>
     <string name="vehicle_empty_message">No vehicles yet</string>
     <string name="vehicle_empty_hint">Add up to 3 vehicles to track tank fill costs.</string>
     <string name="vehicle_max_reached">Maximum of 3 vehicles reached</string>
