@@ -323,39 +323,12 @@ fun ProfileScreen(
                         subtitle = stringResource(R.string.profile_tool_help_subtitle),
                         onClick = { onNavigate(Routes.HELP) },
                     )
-                }
-            }
-
-            // Rights and privacy section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_privacy_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.profile_privacy_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Lock,
+                        title = stringResource(R.string.profile_tool_privacy_title),
+                        subtitle = stringResource(R.string.profile_tool_privacy_subtitle),
+                        onClick = { onNavigate(Routes.PRIVACY) },
                     )
                 }
             }

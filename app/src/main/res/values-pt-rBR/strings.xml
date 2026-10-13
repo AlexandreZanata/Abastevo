@@ -71,6 +71,9 @@
     <string name="profile_tool_settings_subtitle">Cache offline, sincronização Wi-Fi, notificações e tema</string>
     <string name="profile_tool_help_title">Ajuda e regras da comunidade</string>
     <string name="profile_tool_help_subtitle">Orientações de colaboração, denúncias, moderação e privacidade</string>
+    <string name="profile_tool_privacy_title">Privacidade</string>
+    <string name="profile_tool_privacy_subtitle">Consentimento de treinamento, direitos e expiração de fotos</string>
+    <string name="privacy_screen_title">Privacidade</string>
     <string name="profile_tool_contributions_title">Minhas contribuições</string>
     <string name="profile_tool_contributions_subtitle">Acompanhe envios, fila e cancelamentos</string>
     <string name="contributions_screen_subtitle">Somente neste aparelho — nada aqui é público.</string>

@@ -28,6 +28,7 @@ import com.anpfuel.app.ui.home.HomeScreen
 import com.anpfuel.app.ui.location.LocationPickerScreen
 import com.anpfuel.app.ui.onboarding.OnboardingScreen
 import com.anpfuel.app.ui.prices.PricesScreen
+import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
 import com.anpfuel.app.ui.search.SearchScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
@@ -298,6 +299,12 @@ fun AnpNavGraph(
         }
         composable(Routes.HELP) {
             HelpScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Routes.PRIVACY) {
+            PrivacyScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAuth = { navController.navigate(Routes.AUTH) },
+            )
         }
         composable(Routes.WEEK_PICKER) {
             val canNavigateBack = navController.previousBackStackEntry != null
