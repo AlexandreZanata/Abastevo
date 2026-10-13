@@ -27,3 +27,7 @@ LOCAL_DONE / INTEGRATION_PENDING: rejected optional PMQC coordinates cannot remo
 ## PRM16-T03
 
 LOCAL_DONE / INTEGRATION_PENDING: actual Rust prepare_registry→Go loader/reconciliation/HTTP publication, replay, refresh and overlap cases passed in directory/adapters real disposable-PostGIS suite (25.095s). Prepared refresh preserves UUIDs and reviewed points, absent points stay unknown; no consumer schema/parser change required. `CARGO_TARGET_DIR=/tmp/prm-community-rust bash scripts/check-rust-fast.sh`: fmt/clippy/locked tests PASS. Broader Directory subpackage campaign recorded below.
+
+## PRM17-T01
+
+LOCAL_DONE / INTEGRATION_PENDING: new real-PostGIS regression finds two homonymous address-only establishments, preserves their distinct UUIDs and addresses through stable pagination/detail, and keeps coordinates null/quality unknown. `go test -race -count=1 -tags=integration ./internal/modules/directory/adapters/read -run '^(TestCommunityFirst|TestSearch|TestHandoff)'` PASS (9.830s). Canonical schema/reads already support optional points; no migration required.
