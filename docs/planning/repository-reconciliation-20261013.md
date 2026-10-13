@@ -1,6 +1,6 @@
 # Repository reconciliation — 2026-10-13
 
-Status: IN_PROGRESS. User authorization: reconcile all progress branches into protected main with valid CI, preserving every completed change and unfinished draft. This supersedes the earlier chat-only publication restriction. No deployment or release certification is authorized by this integration.
+Status: INTEGRATION_PENDING. User authorization: reconcile all progress branches into protected main with valid CI, preserving every completed change and unfinished draft. This supersedes the earlier chat-only publication restriction. No deployment or release certification is authorized by this integration. Local integration is complete on `codex/main-reconciliation` at `3dfeb9fd`; dev promotion, cumulative PR/CI and guarded merge remain pending (no PR/CI/merge waits during construction per ADR-018).
 
 ## Rules before conflict resolution
 
@@ -12,3 +12,11 @@ Status: IN_PROGRESS. User authorization: reconcile all progress branches into pr
 Private recovery snapshot: `.local/reconcile-main-20261013/all-refs.bundle`, 22 worktree tip archive refs, five dirty-worktree patches and non-ignored untracked documents. Original checkouts/files untouched. Work is isolated in `.worktrees/main-reconciliation`.
 
 [Exact preserved dirty snapshots](history/reconciliation-20261013/README.md) retain all five drafts without overwriting current specifications.
+
+## Integrated merges (local, `codex/main-reconciliation` @ `3dfeb9fd`)
+
+- `games` `b11501b6` → merge `5c5acca1`. Five resolved files keep the Games route/screen/Profile tool and the newer removal of SEARCH/PRICES; PROGRESS keeps current records plus the games paragraph. Targeted games JVM tests passed pre-commit; full `:domain:test` + `:app:testDebugUnitTest` re-run post-integration: 846 tests, 0 failures/errors/skips.
+- `refs/heads/landing` `c0b6e408` → merge `04195dab`. Only PROGRESS conflicted; 143 files (landing pages, assets, guides) auto-merged. Landing typecheck/build/check + 45/45 node tests PASS on the merged tree.
+- `codex/landing-hero-art` `dbd1a2aa` → merge `83e6ec22`. Five files conflicted (headline/copy/brand/hero style + PROGRESS); every hunk resolved to the newer landing fusion intent ("codex wins", road-life headline, trimmed brand, green emphasis, dropped caption), verified as zero removed lines vs HEAD with hero-art-only additions preserved. Landing suite re-run: 45/45 PASS.
+- `codex/landing-local-dev` `ae018992` → ancestry-only merge `3dfeb9fd` (`-s ours`, empty content diff). Its 13 unique 2026-10-11 commits (SEC01-D..SEC04-C) are superseded by newer SEC01..SEC09 + intake assurance + migrations 59..90 on this line; a content merge would revert tested gates (proven: branch tip drops Store intake locking/health/timeout). No security regression; old planning records not promoted.
+- Ancestor proof on `3dfeb9fd`: `games`, `landing`, `codex/landing-hero-art`, `codex/landing-local-dev`, `codex/premium-backend`, `codex/mobile-sync-delivery`, `origin/main` (`b7800b2b`), plus retirement candidates `account-keyboard-fix`, `android-dev-preview-key`, `owner-consent`, `ingestion-bench-plan`, `premium-fuel`, `landing-reconcile-dev`. Backend/ has zero diff vs `dca4dbce`; prior premium/Room evidence stands. Full cumulative CI gates the dev → main PR before any merge.
