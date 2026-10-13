@@ -394,6 +394,8 @@ Entry: PRM05. Exit: exact explainable metrics and private bounded reports/export
 
 ### PRM06-T02 — Cost/km and matching-window aggregates
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PR17/18.
 - **Outcome/areas:** purchase-based interval fuel cost, all-expense matched-window cost, weighted totals and explicit incomplete-month results.
 - **Tests first:** zero denominator, unmatched month cost/distance, double-counted fuel category, discounts, unequal distances and odometer boundary corrections.

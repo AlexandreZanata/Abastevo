@@ -34,6 +34,7 @@ type Interval struct {
 type Result struct {
 	EligibleQuantityMilli int64
 	EligibleCostCentavos  int64
+	DistanceMetres        int64
 	KmPerUnit             string
 	CentavosPerKm         string
 	Unknown               string
@@ -130,6 +131,7 @@ func (in Interval) Compute() (Result, error) {
 	return Result{
 		EligibleQuantityMilli: quantity,
 		EligibleCostCentavos:  cost,
+		DistanceMetres:        in.DistanceMetres,
 		KmPerUnit:             rational(in.DistanceMetres, quantity),
 		CentavosPerKm:         rational(cost*1000, in.DistanceMetres),
 	}, nil

@@ -171,3 +171,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop bd6ad1c. Pure metrics engine with exact integer and reduced rational math, starting-fill exclusion, partial accumulation, mixed-fuel, segment and gap exclusion and frozen UNKNOWN reasons. Executes 13 of 15 frozen vectors with exact eligible sums and rational strings; month and comparison vectors ride PRM06-T03 and T04. Recomputes from raw inputs after repair with no stored state. Unit/race PASS metrics frozen vectors. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
 Next PRM06-T02. Real payments OFF.
+
+## PRM06-T02 — Cost per kilometre and matching-window aggregates
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 9ce463a. Pure fuel-purchase interval cost from actual totals, matched-window all-expense cost with explicit odometer and time endpoints, deduplicated expense inclusion, weighted cross-interval sums and frozen UNKNOWN reasons. Every ratio exposes numerator, denominator, window and method with calculation version 1; rollback regenerates without touching raw inputs. Unit/race PASS metrics cost cases with zero denominators, unmatched windows, double counts, discounts, unequal weights and boundary corrections. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
+Next PRM06-T03. Real payments OFF.
