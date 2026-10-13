@@ -54,3 +54,15 @@ only those three already-public SVG bytes into the allowed assets path and
 rewrite their embeds; preserve all original evidence files/hashes. No exporter
 allowlist or security guard is relaxed. Validate byte equivalence, focused wiki
 harness and complete dry-run before publication from the eventual merged SHA.
+
+## PR 130 current-head formatting repair
+
+The concurrently published Privacy destination was reconciled normally into
+dev; it hosts the existing owner-scoped TrainingConsentSettings without a
+second consent implementation. Current-head CI on e042157 passed Android JVM
+and real backend integration, but Quick verification and backend fast both
+refused the same unformatted sweep_catchup_test.go. Apply gofmt only: no test
+assertion, behavior or gate is removed. The evidence application package passes
+`go test ./internal/modules/evidence/application`; tracked Go formatting,
+`git diff --check` and `bash scripts/scan-secrets.sh` pass. New CI evidence is
+required for the corrected head before guarded integration.

@@ -32,13 +32,15 @@ func TestSweepCatchUpConvergesGrowingBacklog(t *testing.T) {
 	deps.Storage = &fakeSweepStorage{keys: keys, fail: map[string]bool{}}
 	deleted := 0
 	runs := (250 + FinalCleanupBatch - 1) / FinalCleanupBatch
- for run := 0; run < runs; run++ {
+	for run := 0; run < runs; run++ {
 		rep, err := Sweep(context.Background(), deps)
 		if err != nil {
 			t.Fatalf("run %d: %v", run, err)
 		}
-		if rep.FinalsDeleted > FinalCleanupBatch { t.Fatalf("unbounded final pass: %d",rep.FinalsDeleted) }
- deleted += rep.FinalsDeleted
+		if rep.FinalsDeleted > FinalCleanupBatch {
+			t.Fatalf("unbounded final pass: %d", rep.FinalsDeleted)
+		}
+		deleted += rep.FinalsDeleted
 		if run < runs-1 && rep.Overdue.Count == 0 {
 			t.Fatalf("run %d must still report backlog, got %+v", run, rep.Overdue)
 		}
