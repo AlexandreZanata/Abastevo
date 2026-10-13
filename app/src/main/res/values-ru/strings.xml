@@ -45,6 +45,11 @@
     <string name="vehicle_save">Сохранить</string>
     <string name="vehicle_delete">Удалить</string>
     <string name="vehicle_delete_confirm">Удалить этот транспорт?</string>
+    <string name="vehicle_photo_label">Фото транспорта</string>
+    <string name="vehicle_add_photo">Добавить фото</string>
+    <string name="vehicle_change_photo">Заменить фото</string>
+    <string name="vehicle_remove_photo">Удалить фото</string>
+    <string name="vehicle_photo_content">Фото транспорта</string>
     <string name="vehicle_empty_message">Транспорт ещё не добавлен</string>
     <string name="vehicle_empty_hint">Добавьте до 3 единиц транспорта для отслеживания стоимости бака.</string>
     <string name="vehicle_max_reached">Достигнут максимум — 3 транспорта</string>
@@ -313,7 +318,7 @@
     <string name="community_vote_rejected">Не записано (%1$s)</string>
 
     <!-- Приватность сообщества (P10-T08: что покидает устройство) -->
-    <string name="community_privacy_footnote">Анонимно: аккаунт не нужен. Отправляются станция, цена и условия — и ваше фото только на 24 ч, если вы его прикрепили.</string>
+    <string name="community_privacy_footnote">Отправляются станция, цена и условия. Прикреплённое фото используется для проверки. Условия конфиденциальности доступны в настройках.</string>
     <string name="community_privacy_keys">Ваше устройство хранит единственный ключ. Его потеря завершает эту анонимную личность.</string>
 
     <!-- Захват сообщества (P10-T08 i18n) -->
@@ -334,7 +339,7 @@
     <string name="community_screen_title">Сообщество</string>
     <string name="community_header_subtitle">Активность местных АЗС и проверка консенсусом</string>
     <string name="community_empty_title">Нет недавних обновлений</string>
-    <string name="community_empty_hint">Сообщайте цены, помогая водителям города. Фото — временные доказательства для проверки, хранятся не более 24 часов.</string>
+    <string name="community_empty_hint">Сообщайте цены, помогая водителям города. Прикреплённые фото временно используются для проверки. Условия конфиденциальности доступны в настройках.</string>
     <string name="community_action_contribute">Сообщить цену</string>
     <string name="community_rules_title">Правила проверки сообщества</string>
     <string name="community_rules_body">Цены проверяются консенсусом участников. Датированные данные ANP не смешиваются с текущими сообщениями.</string>
@@ -353,7 +358,7 @@
     <string name="profile_contributions_empty">На этом устройстве пока нет сообщений.</string>
     <string name="profile_contributions_error">Не удалось загрузить сообщения.</string>
     <string name="profile_contributions_state_queued">В очереди на отправку</string>
-    <string name="profile_contributions_state_retrying">В очереди · автоматическая повторная попытка</string>
+    <string name="profile_contributions_state_retrying">Повторная отправка</string>
     <string name="profile_contributions_state_cancelled">Отменено · не отправлено</string>
     <string name="profile_contributions_revision_attempts">рев. %1$d · попыток: %2$d</string>
     <string name="profile_contributions_cancel">Отменить отправку</string>
@@ -370,6 +375,11 @@
     <string name="profile_tool_settings_subtitle">Офлайн-кэш, синхронизация по Wi-Fi, уведомления и тема</string>
     <string name="profile_tool_help_title">Помощь и правила сообщества</string>
     <string name="profile_tool_help_subtitle">Правила публикаций, жалобы, модерация и приватность</string>
+    <string name="profile_tool_privacy_title">Конфиденциальность</string>
+    <string name="profile_tool_privacy_subtitle">Согласие на обучение, права и срок хранения фото</string>
+    <string name="privacy_screen_title">Конфиденциальность</string>
+    <string name="settings_privacy_title">Конфиденциальность</string>
+    <string name="settings_privacy_subtitle">Согласие на обучение, права и срок хранения фото</string>
     <string name="profile_tool_contributions_title">Мои вклады</string>
     <string name="profile_tool_contributions_subtitle">Отслеживайте отправки, очередь и отмены</string>
     <string name="contributions_screen_subtitle">Только это устройство — здесь ничего публичного.</string>
@@ -384,11 +394,11 @@
     <string name="help_report_title">Жалобы и апелляции</string>
     <string name="help_report_body">Активный аккаунт может сообщить о нарушении. Жалобы ничего не удаляют; уполномоченные модераторы проверяют каждый случай. Новая причина апелляции открывает новое дело.</string>
     <string name="help_privacy_title">Приватность</string>
-    <string name="help_privacy_body">Анонимный просмотр не требует аккаунта; координаты не сохраняются. Фото проверки хранятся не более 24 часов.</string>
+    <string name="help_privacy_body">Анонимный просмотр не требует аккаунта. Точные GPS-координаты не публикуются. Об использовании фото и ваших правах читайте в настройках.</string>
     <string name="profile_tool_week_picker_title">Неделя обследования</string>
     <string name="profile_tool_week_picker_subtitle">Выберите архивные еженедельные обследования ANP</string>
     <string name="profile_privacy_section">Приватность и участие</string>
-    <string name="profile_privacy_body">Точные GPS-данные не публикуются. Все копии фото проверки удаляются в течение 24 часов. Платные функции не влияют на рейтинг и доверие.</string>
+    <string name="profile_privacy_body">Точные GPS-координаты не публикуются. Фото временно используются для проверки. Условия конфиденциальности доступны в настройках. Платные функции не влияют на рейтинг и доверие.</string>
     <string name="onboarding_title_contribute">Публикуйте честно</string>
     <string name="onboarding_body_contribute">Снимайте табло из безопасных общественных мест, сохраняйте читаемость и выбирайте точное условие. Не выдумывайте цены или людей.</string>
     <string name="station_detail_anp_title">Ориентировочная цена ANP</string>
@@ -479,7 +489,7 @@
     <string name="station_profile_claim">Представительство и управление</string>
     <string name="station_claim_title">Представительство АЗС</string>
     <string name="station_claim_explanation">Бесплатный аккаунт может запросить ограниченное представительство. Независимая проверка подтверждает подпись и корпоративные полномочия. Отправка документа не даёт доступа.</string>
-    <string name="station_claim_privacy">Не отправляйте приватные ключи, пароли, PFX или P12. Только подписанный PDF до 5 MiB. Файлы со сканами хранятся не более 24 часов.</string>
+    <string name="station_claim_privacy">Не отправляйте закрытые ключи, пароли, файлы PFX или P12. Только подписанный PDF до 5 МиБ. Перед отправкой прочитайте условия конфиденциальности.</string>
     <string name="station_claim_role">Запрашиваемая роль</string>
     <string name="station_claim_manager">Управляющий</string>
     <string name="station_claim_administrator">Администратор</string>
@@ -546,8 +556,14 @@
     <string name="home_benefit_savings">Больше экономии</string>
     <string name="home_benefit_community">Сообщество</string>
     <string name="home_benefit_trust">Ясные источники</string>
+    <string name="home_benefits_dismiss">Скрыть преимущества</string>
     <string name="home_reference_prices_title">Цены в вашем городе</string>
     <string name="home_view_all">Все цены</string>
+    <string name="home_filter_button">Фильтры</string>
+    <string name="home_filter_title">Сортировать цены</string>
+    <string name="home_filter_default">Средняя цена</string>
+    <string name="home_filter_lowest">Самая низкая цена</string>
+    <string name="home_filter_highest">Самая высокая цена</string>
     <string name="home_change_city">Мой город</string>
     <string name="home_reference_period">Ориентир ANP • %1$s</string>
     <string name="home_shortcut_stations">Найти АЗС</string>
@@ -717,4 +733,54 @@
     <string name="capture_queue_retrying">Отправка ещё ожидается. Мы автоматически повторим попытку; можно вернуться в сообщество.</string>
     <string name="capture_sent_pending_validation">Получено сервером. Проверка ещё продолжается.</string>
     <string name="fuel_product_gasoline_premium_grade">Премиальный бензин</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">Был ли этот вклад полезен?</string>
+    <string name="community_helpful_counts">%1$d полезно · %2$d не полезно</string>
+    <string name="community_helpful_choice">Ваш выбор: %1$s</string>
+    <string name="community_helpful_helpful">Полезно</string>
+    <string name="community_helpful_not_helpful">Не полезно</string>
+    <string name="community_helpful_remove">Удалить мой голос</string>
+    <string name="community_helpful_voted">Голос сохранён. Спасибо за оценку.</string>
+    <string name="community_helpful_replayed">Уже сохранено — дополнительный голос не учтён.</string>
+    <string name="community_helpful_removed">Голос удалён.</string>
+    <string name="community_helpful_rejected">Не сохранено (%1$s)</string>
+    <string name="community_helpful_under_review">Сообщество проверяет результаты голосования</string>
+    <string name="community_helpful_report">Пожаловаться</string>
+    <string name="community_helpful_guest">Войдите в бесплатный аккаунт, чтобы голосовать</string>
+    <string name="community_helpful_guest_body">Для голосования нужен бесплатный аккаунт. Повторные голоса вашей идентичности не учитываются снова. Просмотр остаётся анонимным.</string>
+    <string name="training_consent_title">Улучшение распознавания цен</string>
+    <string name="training_consent_body">Помогите улучшить распознавание цен с помощью обработанных копий фотографий, которые вы явно разрешили использовать. Оригиналы остаются в процессе проверки, а сбор выключен без вашего согласия.</string>
+    <string name="training_consent_on">Включено</string>
+    <string name="training_consent_off">Выключено</string>
+    <string name="training_consent_terms">Условия: %1$s</string>
+    <string name="training_consent_regrant">Условия изменились с момента вашего последнего ознакомления — прочитайте и подтвердите их снова.</string>
+    <string name="training_consent_pending">Отзыв согласия ожидает отправки — он будет отправлен при следующем подключении.</string>
+    <string name="training_consent_delete_note">При выключении сохраняется ваш запрос прекратить использование для обучения и удалить копии. Для подтверждения сервера может потребоваться подключение.</string>
+    <string name="training_consent_rights">Ваши права и контакты</string>
+    <string name="training_consent_rejected">Не сохранено (%1$s)</string>
+    <string name="training_consent_offline">Нет подключения — повторите попытку, когда будете онлайн.</string>
+    <string name="training_photo_opt_in">Разрешить проверку этой фотографии для обучения</string>
+    <string name="training_photo_opt_in_locked">Сначала разрешите обучение в настройках конфиденциальности</string>
+
+    <string name="privacy_training_heading">Конфиденциальность · Улучшение распознавания цен</string>
+    <string name="privacy_training_unavailable">Сбор изображений для обучения отключён. Выбор сохраняет предпочтение; включение потребует новых условий и нового согласия.</string>
+    <string name="privacy_training_optional">Необязательно. Бесплатная учётная запись, поиск и участие не зависят от этого выбора.</string>
+    <string name="privacy_terms_language">Полный документ на бразильском португальском. Доступен офлайн.</string>
+    <string name="privacy_read_terms">Прочитать полные условия</string>
+    <string name="privacy_terms_unavailable">Документ не загружен. Согласие недоступно; отзыв и ваши права остаются доступны.</string>
+    <string name="privacy_sign_in">Войти для управления необязательным предпочтением</string>
+    <string name="privacy_revocation_pending">Отключено на этом устройстве. Отзыв ожидает получения сервером.</string>
+    <string name="privacy_offline">Нет подключения. Новое согласие не отправлено. Здесь можно отключить предпочтение.</string>
+    <string name="privacy_request_failed">Сервис не подтвердил решение. Повторите позже; успех не предполагается.</string>
+    <string name="privacy_preference_received">Предпочтение подтверждено сервером. Сбор остаётся отключённым.</string>
+    <string name="privacy_preference_off">В этом представлении нет подтверждённого согласия.</string>
+    <string name="privacy_consent_check">Я прочитал полные условия и добровольно разрешаю запись необязательного предпочтения для указанной цели.</string>
+    <string name="privacy_confirm_preference">Подтвердить и отправить предпочтение</string>
+    <string name="privacy_revoke_delete">Отключить и удалить изображения</string>
+    <string name="privacy_deletion_receipt_note">Получение запускает удаление; оно не подтверждает физическое удаление всех копий.</string>
+    <string name="privacy_digest">SHA-256 документа: %1$s</string>
+    <string name="privacy_finish_reading">Чтение завершено · вернуться к выбору</string>
+    <string name="privacy_rights_heading">Ваши права на конфиденциальность</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

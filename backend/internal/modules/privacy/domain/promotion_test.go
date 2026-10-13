@@ -156,6 +156,10 @@ func TestSelectableForTrainingFiltersRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if SelectableForTraining(d, &c, TrainingTermsV1, "digest-v1") {
+		t.Error("pending output selectable")
+	}
+	d.OutputState = OutputReady
 	if !SelectableForTraining(d, &c, TrainingTermsV1, "digest-v1") {
 		t.Error("active derivative not selectable")
 	}
@@ -183,6 +187,18 @@ func TestSelectableForTrainingFiltersRestore(t *testing.T) {
 	if SelectableForTraining(revoked, &fresh, TrainingTermsV1, "digest-v1") {
 		t.Error("revoked derivative resurrected by fresh grant")
 	}
+	// A forged future capture cannot make an earlier grant revision valid
+	// under a later grant. Terms on the derivative must match too.
+	future := d
+	future.CapturedAt = fresh.GrantedAt.Add(time.Hour)
+	if SelectableForTraining(future, &fresh, TrainingTermsV1, "digest-v1") {
+		t.Error("old revision reselected under later grant")
+	}
+	altered := d
+	altered.TermsDigest = "other-digest"
+	if SelectableForTraining(altered, &c, TrainingTermsV1, "digest-v1") {
+		t.Error("derivative terms mismatch selected")
+	}
 	// Absent consent denies without error (default OFF everywhere).
 	if SelectableForTraining(d, nil, TrainingTermsV1, "digest-v1") {
 		t.Error("absent consent selects")
@@ -195,7 +211,7 @@ func TestPromotionCarriesIdentifiersOnly(t *testing.T) {
 	allowed := map[string]bool{
 		"ImageID": true, "ContributorID": true, "ContributorRef": true,
 		"SourceSHA256": true, "DerivativeSHA256": true, "CapturedAt": true,
-		"TermsVersion": true, "TermsDigest": true, "State": true,
+		"TermsVersion": true, "TermsDigest": true, "State": true, "ObjectKey": true, "OutputState": true, "OutputLeaseUntil": true,
 		"ConsentRevision": true, "PromotedAt": true, "RevokedAt": true,
 	}
 	typ := reflect.TypeOf(Derivative{})

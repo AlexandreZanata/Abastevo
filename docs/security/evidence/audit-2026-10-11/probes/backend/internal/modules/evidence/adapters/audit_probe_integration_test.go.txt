@@ -1,0 +1,67 @@
+//go:build integration
+
+package adapters
+
+import (
+	"context"
+	"fmt"
+	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+type auditSQLBarrierStore struct {
+	*Store
+	entered sync.WaitGroup
+	release chan struct{}
+}
+
+func (s *auditSQLBarrierStore) CountSince(ctx context.Context, ref string, since time.Time) (int, error) {
+	n, e := s.Store.CountSince(ctx, ref, since)
+	s.entered.Done()
+	<-s.release
+	return n, e
+}
+func TestAuditRealSQLConcurrentDailyBudget(t *testing.T) {
+	store, _ := freshStore(t)
+	now := time.Now().UTC()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	p := app.Ports{Store: store, Clock: func() time.Time { return now }, NewID: newUUIDv4, NewKey: func() (string, error) { k, e := newUUIDv4(); return "q/" + strings.ReplaceAll(k, "-", ""), e }, CheckQuota: func(context.Context, string, string) (time.Duration, error) { return 0, nil }, Presign: func(context.Context, string, string, int64, time.Time) (string, map[string]string, time.Time, error) {
+		return "https://audit.example.invalid", nil, now.Add(5 * time.Minute), nil
+	}}
+	caller := app.Caller{ContributorID: "audit-contributor", Token: "audit-token"}
+	intent := func(i int) app.Intent {
+		return app.Intent{ClientSessionID: fmt.Sprintf("audit-%d", i), MIME: "image/jpeg", DeclaredBytes: 1, ClaimedSHA256: strings.Repeat("a", 64)}
+	}
+	for i := 0; i < 9; i++ {
+		if _, e := app.Reserve(ctx, p, caller, intent(i)); e != nil {
+			t.Fatal(e)
+		}
+	}
+	const n = 12
+	b := &auditSQLBarrierStore{Store: store, release: make(chan struct{})}
+	b.entered.Add(n)
+	p.Store = b
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func(i int) { _, e := app.Reserve(ctx, p, caller, intent(i+9)); errs <- e }(i)
+	}
+	b.entered.Wait()
+	close(b.release)
+	for i := 0; i < n; i++ {
+		if e := <-errs; e != nil {
+			t.Fatal(e)
+		}
+	}
+	used, e := store.CountSince(ctx, caller.Token, time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if used != 21 {
+		t.Fatal(used)
+	}
+	t.Logf("real PostGIS: %d distinct durable reservations accepted; daily budget=%d", used, app.MaxReservesPerDay)
+}

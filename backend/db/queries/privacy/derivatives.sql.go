@@ -14,7 +14,7 @@ import (
 const getDerivative = `-- name: GetDerivative :one
 SELECT image_id, consent_revision, contributor_id, contributor_ref,
     source_sha256, derivative_sha256, captured_at, terms_version,
-    terms_digest, state, promoted_at, revoked_at
+    terms_digest, state, promoted_at, revoked_at, object_key, output_state, output_nonce, output_lease_until, output_attempts, output_ready_at, output_purged_at
 FROM privacy_training_derivatives
 WHERE image_id = $1 AND consent_revision = $2
 `
@@ -40,17 +40,28 @@ func (q *Queries) GetDerivative(ctx context.Context, arg GetDerivativeParams) (P
 		&i.State,
 		&i.PromotedAt,
 		&i.RevokedAt,
+		&i.ObjectKey,
+		&i.OutputState,
+		&i.OutputNonce,
+		&i.OutputLeaseUntil,
+		&i.OutputAttempts,
+		&i.OutputReadyAt,
+		&i.OutputPurgedAt,
 	)
 	return i, err
 }
 
 const listActiveDerivativesByOwner = `-- name: ListActiveDerivativesByOwner :many
-SELECT image_id, consent_revision, contributor_id, contributor_ref,
-    source_sha256, derivative_sha256, captured_at, terms_version,
-    terms_digest, state, promoted_at, revoked_at
-FROM privacy_training_derivatives
-WHERE contributor_id = $1 AND state = 'ACTIVE'
-ORDER BY image_id, consent_revision
+SELECT d.image_id, d.consent_revision, d.contributor_id, d.contributor_ref,
+ d.source_sha256, d.derivative_sha256, d.captured_at, d.terms_version,
+ d.terms_digest, d.state, d.promoted_at, d.revoked_at, d.object_key, d.output_state, d.output_nonce, d.output_lease_until, d.output_attempts, d.output_ready_at, d.output_purged_at
+FROM privacy_training_derivatives d
+WHERE d.contributor_id = $1 AND d.state = 'ACTIVE' AND d.output_state = 'READY'
+AND EXISTS (SELECT 1 FROM privacy_training_consents c WHERE c.contributor_id=d.contributor_id
+ AND c.contributor_ref=d.contributor_ref AND c.state='GRANTED' AND c.revision=d.consent_revision
+ AND c.terms_version=d.terms_version AND c.terms_digest=d.terms_digest AND d.captured_at>=c.granted_at)
+AND NOT EXISTS (SELECT 1 FROM privacy_training_revocations r WHERE r.contributor_id=d.contributor_id AND d.consent_revision<=r.revision)
+ORDER BY d.image_id, d.consent_revision
 `
 
 func (q *Queries) ListActiveDerivativesByOwner(ctx context.Context, contributorID string) ([]PrivacyTrainingDerivative, error) {
@@ -75,6 +86,13 @@ func (q *Queries) ListActiveDerivativesByOwner(ctx context.Context, contributorI
 			&i.State,
 			&i.PromotedAt,
 			&i.RevokedAt,
+			&i.ObjectKey,
+			&i.OutputState,
+			&i.OutputNonce,
+			&i.OutputLeaseUntil,
+			&i.OutputAttempts,
+			&i.OutputReadyAt,
+			&i.OutputPurgedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -89,7 +107,7 @@ func (q *Queries) ListActiveDerivativesByOwner(ctx context.Context, contributorI
 const listDerivativesByOwner = `-- name: ListDerivativesByOwner :many
 SELECT image_id, consent_revision, contributor_id, contributor_ref,
     source_sha256, derivative_sha256, captured_at, terms_version,
-    terms_digest, state, promoted_at, revoked_at
+    terms_digest, state, promoted_at, revoked_at, object_key, output_state, output_nonce, output_lease_until, output_attempts, output_ready_at, output_purged_at
 FROM privacy_training_derivatives
 WHERE contributor_id = $1
 ORDER BY image_id, consent_revision
@@ -117,6 +135,13 @@ func (q *Queries) ListDerivativesByOwner(ctx context.Context, contributorID stri
 			&i.State,
 			&i.PromotedAt,
 			&i.RevokedAt,
+			&i.ObjectKey,
+			&i.OutputState,
+			&i.OutputNonce,
+			&i.OutputLeaseUntil,
+			&i.OutputAttempts,
+			&i.OutputReadyAt,
+			&i.OutputPurgedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -131,10 +156,12 @@ func (q *Queries) ListDerivativesByOwner(ctx context.Context, contributorID stri
 const listRevokedDerivativesBefore = `-- name: ListRevokedDerivativesBefore :many
 SELECT image_id, consent_revision, contributor_id, contributor_ref,
     source_sha256, derivative_sha256, captured_at, terms_version,
-    terms_digest, state, promoted_at, revoked_at
+    terms_digest, state, promoted_at, revoked_at, object_key, output_state, output_nonce, output_lease_until, output_attempts, output_ready_at, output_purged_at
 FROM privacy_training_derivatives
-WHERE state = 'REVOKED' AND revoked_at < $1
+WHERE state = 'REVOKED' AND revoked_at < $1 AND output_state != 'PURGED'
+AND (output_lease_until IS NULL OR output_lease_until <= now())
 ORDER BY revoked_at, image_id, consent_revision
+LIMIT 32
 `
 
 func (q *Queries) ListRevokedDerivativesBefore(ctx context.Context, before pgtype.Timestamptz) ([]PrivacyTrainingDerivative, error) {
@@ -159,6 +186,13 @@ func (q *Queries) ListRevokedDerivativesBefore(ctx context.Context, before pgtyp
 			&i.State,
 			&i.PromotedAt,
 			&i.RevokedAt,
+			&i.ObjectKey,
+			&i.OutputState,
+			&i.OutputNonce,
+			&i.OutputLeaseUntil,
+			&i.OutputAttempts,
+			&i.OutputReadyAt,
+			&i.OutputPurgedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -172,7 +206,7 @@ func (q *Queries) ListRevokedDerivativesBefore(ctx context.Context, before pgtyp
 
 const markDerivativeRevoked = `-- name: MarkDerivativeRevoked :one
 UPDATE privacy_training_derivatives
-SET state = 'REVOKED', revoked_at = $1
+SET state = 'REVOKED', revoked_at = $1, output_state = 'PURGING'
 WHERE image_id = $2 AND consent_revision = $3
   AND state = 'ACTIVE'
 RETURNING image_id
@@ -196,14 +230,14 @@ const putDerivative = `-- name: PutDerivative :one
 INSERT INTO privacy_training_derivatives
     (image_id, consent_revision, contributor_id, contributor_ref,
      source_sha256, derivative_sha256, captured_at, terms_version,
-     terms_digest, state, promoted_at, revoked_at)
+     terms_digest, state, promoted_at, revoked_at, object_key, output_state)
 VALUES ($1, $2, $3, $4,
     $5, $6, $7, $8,
-    $9, $10, $11, $12)
+    $9, $10, $11, $12, $13, $14)
 ON CONFLICT DO NOTHING
 RETURNING image_id, consent_revision, contributor_id, contributor_ref,
     source_sha256, derivative_sha256, captured_at, terms_version,
-    terms_digest, state, promoted_at, revoked_at
+    terms_digest, state, promoted_at, revoked_at, object_key, output_state, output_nonce, output_lease_until, output_attempts, output_ready_at, output_purged_at
 `
 
 type PutDerivativeParams struct {
@@ -219,6 +253,8 @@ type PutDerivativeParams struct {
 	State            string             `json:"state"`
 	PromotedAt       pgtype.Timestamptz `json:"promoted_at"`
 	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	ObjectKey        string             `json:"object_key"`
+	OutputState      string             `json:"output_state"`
 }
 
 // Owned by privacy (CS10B). Training-derivative inventory rows: one
@@ -243,6 +279,8 @@ func (q *Queries) PutDerivative(ctx context.Context, arg PutDerivativeParams) (P
 		arg.State,
 		arg.PromotedAt,
 		arg.RevokedAt,
+		arg.ObjectKey,
+		arg.OutputState,
 	)
 	var i PrivacyTrainingDerivative
 	err := row.Scan(
@@ -258,6 +296,13 @@ func (q *Queries) PutDerivative(ctx context.Context, arg PutDerivativeParams) (P
 		&i.State,
 		&i.PromotedAt,
 		&i.RevokedAt,
+		&i.ObjectKey,
+		&i.OutputState,
+		&i.OutputNonce,
+		&i.OutputLeaseUntil,
+		&i.OutputAttempts,
+		&i.OutputReadyAt,
+		&i.OutputPurgedAt,
 	)
 	return i, err
 }

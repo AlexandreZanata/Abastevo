@@ -1,0 +1,1 @@
+PASS: 748-byte XLSX with one distant column causes heap exhaustion in isolated 32 MiB JVM

@@ -43,7 +43,10 @@ type Options struct {
 	IdleTimeout       time.Duration
 	ShutdownTimeout   time.Duration
 	MaxBodyBytes      int64
-	Logger            *telemetry.Logger
+	// BodyLimit optionally supplies a route-specific cap. Nonpositive values
+	// preserve the default; the composition root owns exceptional routes.
+	BodyLimit func(*http.Request) int64
+	Logger    *telemetry.Logger
 }
 
 // Server is a gracefully draining HTTP server bound at construction.
@@ -84,7 +87,17 @@ func New(opts Options, handler http.Handler) (*Server, error) {
 	// access logging lives inside the router where the matched template is
 	// visible (chi skips Use middlewares on its default 404 path, which is
 	// why NewRouter sets explicit handlers below).
-	chained := requestID(http.MaxBytesHandler(handler, opts.MaxBodyBytes))
+	bounded := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limit := opts.MaxBodyBytes
+		if opts.BodyLimit != nil {
+			if selected := opts.BodyLimit(r); selected > 0 {
+				limit = selected
+			}
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
+		handler.ServeHTTP(w, r)
+	})
+	chained := requestID(bounded)
 	return &Server{
 		http: &http.Server{
 			Handler:           chained,

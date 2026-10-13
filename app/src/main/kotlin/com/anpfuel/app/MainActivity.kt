@@ -6,11 +6,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
+import com.anpfuel.app.ui.components.LocalBottomSafePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -83,13 +88,23 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 dynamicColor = true,
             ) {
-                AnpAppNavHost(
-                    navController = navController,
-                    darkTheme = darkTheme,
-                    onToggleTheme = {
-                        darkThemeOverride = !(darkThemeOverride ?: systemDarkTheme)
-                    },
-                )
+                // Capture the bottom system inset before the nav shell and
+                // screen scaffolds consume it; bottom-anchored surfaces
+                // (dialogs) read it back via LocalBottomSafePadding.
+                val bottomSafePadding = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding()
+                CompositionLocalProvider(
+                    LocalBottomSafePadding provides bottomSafePadding,
+                ) {
+                    AnpAppNavHost(
+                        navController = navController,
+                        darkTheme = darkTheme,
+                        onToggleTheme = {
+                            darkThemeOverride = !(darkThemeOverride ?: systemDarkTheme)
+                        },
+                    )
+                }
             }
         }
     }

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,6 +49,10 @@ type signedCaller struct {
 }
 
 func signedConsentFixture(t *testing.T) (chi.Router, *pgxpool.Pool) {
+	return signedConsentFixtureFor(t, "api.example.invalid", testConsentTerms{})
+}
+
+func signedConsentFixtureFor(t *testing.T, authority string, terms privacyapp.TermsProvider) (chi.Router, *pgxpool.Pool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -88,8 +93,7 @@ func signedConsentFixture(t *testing.T) (chi.Router, *pgxpool.Pool) {
 	}
 	t.Cleanup(pool.Close)
 	registrar := identityadapters.NewRegistrar(pool)
-	verifier := &identityauth.Verifier{Pool: pool, Authority: "api.example.invalid"}
-	terms := testConsentTerms{}
+	verifier := &identityauth.Verifier{Pool: pool, Authority: authority}
 	ports := privacyapp.ConsentPorts{
 		Clock: time.Now,
 		Attribution: func(ctx context.Context, contributorID string) (string, error) {
@@ -419,5 +423,44 @@ func TestStaleTermsRefuseLive(t *testing.T) {
 	}
 	if inner, _ := errBody["error"].(map[string]any); inner["code"] != "privacy.terms-outdated" {
 		t.Errorf("code = %v", inner["code"])
+	}
+}
+
+func TestSignedConsentStorageOutageIsRetryableAndOFFRecovers(t *testing.T) {
+	router, pool := signedConsentFixture(t)
+	owner := enrollSignedCaller(t, pool)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, "ALTER TABLE privacy_training_consents RENAME TO rva08_unavailable_consents"); err != nil {
+		t.Fatal(err)
+	}
+	restored := false
+	defer func() {
+		if !restored {
+			if _, err := pool.Exec(ctx, "ALTER TABLE rva08_unavailable_consents RENAME TO privacy_training_consents"); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	for _, tc := range []struct{ method, path, body string }{
+		{"GET", "/v1/privacy/training-consent", ""},
+		{"POST", "/v1/privacy/training-consent/grant", `{"terms_version":"training-terms-v1","terms_digest":"d","revision":1}`},
+		{"POST", "/v1/privacy/training-consent/revoke", `{"revision":1}`},
+	} {
+		req := signedConsentRequest(t, pool, owner, tc.method, tc.path, tc.body)
+		response := doSigned(t, router, req)
+		if response.Code != 503 || response.Header().Get("Retry-After") != "5" || response.Header().Get("Cache-Control") != "no-store" {
+			t.Errorf("%s %s outage status=%d retry=%q", tc.method, tc.path, response.Code, response.Header().Get("Retry-After"))
+		}
+		if !strings.Contains(response.Body.String(), "privacy.unavailable") || strings.Contains(response.Body.String(), "rva08_unavailable") || strings.Contains(response.Body.String(), "SQLSTATE") {
+			t.Error("unsafe/non-retryable outage response")
+		}
+	}
+	if _, err := pool.Exec(ctx, "ALTER TABLE rva08_unavailable_consents RENAME TO privacy_training_consents"); err != nil {
+		t.Fatal(err)
+	}
+	restored = true
+	response := doSigned(t, router, signedConsentRequest(t, pool, owner, "POST", "/v1/privacy/training-consent/revoke", `{"revision":1}`))
+	if response.Code != 200 || !strings.Contains(response.Body.String(), `"state":"REVOKED"`) {
+		t.Fatal("same OFF did not recover after storage return", response.Code)
 	}
 }

@@ -1,0 +1,57 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	"testing"
+)
+
+func TestAuditDistinctAccountsAndMailNoAggregateBudget(t *testing.T) {
+	s := testKeyService()
+	ctx := context.Background()
+	for i := 0; i < 100; i++ {
+		if _, err := s.CreateKeyAccount(ctx, fmt.Sprintf("audituser%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	created, err := s.CreateKeyAccount(ctx, "auditsessions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 100; i++ {
+		if _, err := s.LoginWithKey(ctx, created.Key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ms, _, mail := testService()
+	for i := 0; i < 100; i++ {
+		if err := ms.RequestCode(ctx, fmt.Sprintf("audit-%d@example.invalid", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if mail.count() != 100 {
+		t.Fatal(mail.count())
+	}
+	t.Log("101 distinct accounts + 100 sessions + 100 email issuances accepted without aggregate quota; memory store only")
+}
+func TestAuditInvalidRefreshRevokesKnownFamily(t *testing.T) {
+	s := testKeyService()
+	ctx := context.Background()
+	c, err := s.CreateKeyAccount(ctx, "auditrefresh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := s.LoginWithKey(ctx, c.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Refresh(ctx, a.Session.FamilyID, "invalid-never-issued-token"); !errors.Is(err, domain.ErrSessionReuse) {
+		t.Fatal(err)
+	}
+	if _, err = s.ValidateAccess(ctx, a.Session.FamilyID, a.Session.AccessToken); !errors.Is(err, domain.ErrSessionRevoked) {
+		t.Fatal(err)
+	}
+	t.Log("invalid token + known family ID revoked the owner's valid session")
+}

@@ -116,3 +116,48 @@ func privateClient(client *http.Client) *http.Client {
 	clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &clone
 }
+
+// Exists distinguishes confirmed absence from provider/access/transport failure.
+// Redirects are refused and HEAD transfers no object body.
+func Exists(ctx context.Context, client *http.Client, rawURL string) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, rawURL, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := privateClient(client).Do(req)
+	if err != nil {
+		return false, errors.New("storage: transport unavailable")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+	return false, statusError(resp)
+}
+
+// DeleteConfirmed requires a distinct authenticated absence observation. A
+// successful DELETE alone is not a byte-erasure receipt.
+func DeleteConfirmed(ctx context.Context, client *http.Client, in PresignInput, cred Credentials) error {
+	del, err := PresignDELETE(in, cred)
+	if err != nil {
+		return err
+	}
+	if err := Delete(ctx, client, del.URL); err != nil {
+		return err
+	}
+	head, err := PresignHEAD(in, cred)
+	if err != nil {
+		return err
+	}
+	present, err := Exists(ctx, client, head.URL)
+	if err != nil {
+		return err
+	}
+	if present {
+		return errors.New("storage: deleted copy still present")
+	}
+	return nil
+}

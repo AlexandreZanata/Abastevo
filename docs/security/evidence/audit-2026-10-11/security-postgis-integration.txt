@@ -1,0 +1,8 @@
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters	10.750s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters	12.068s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters	8.799s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters	8.122s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters	10.711s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters	5.784s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters	4.598s
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters	5.855s

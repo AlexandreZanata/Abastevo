@@ -12,18 +12,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * CS11B training-consent settings state (B-BR-CS06, BUC-CS05).
  *
- * Guests see [UiState.Guest] with the free-login explanation and no
+ * Guests see [TrainingConsentUiState.Guest] with the free-login explanation and no
  * network IO. [prepare] syncs any pending offline revocation first
  * and then renders the exact server state; the toggle grants (ON)
  * or revokes (OFF) and reloads the server state so the switch never
  * shows a claim the server does not hold. A second tap while
- * [UiState.Updating] is ignored (single flight). Offline and
- * pending states stay explicit with [retry]; terminal rejection
- * carries a fixed kind label and a sanitized message.
+ * [TrainingConsentUiState.Updating] is ignored (single flight).
+ * UI decisions are serialized on Main; IO returns to that dispatcher before
+ * generation checks. Account changes/logout and newer refreshes invalidate
+ * earlier results, including old update completion/single-flight release.
+ * Pending states stay explicit with [retry]; terminal rejection
+ * carries a fixed kind label and a sanitized message. Repeat
+ * foreground entries within [STATUS_CACHE_TTL_MILLIS] reuse the last
+ * confirmed server snapshot instead of polling again (429 guard);
+ * decisions, retry and non-Content states always hit the network.
  */
 sealed interface TrainingConsentUiState {
     data object Guest : TrainingConsentUiState
@@ -55,28 +62,52 @@ class TrainingConsentViewModel @Inject constructor(
     internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher =
         kotlinx.coroutines.Dispatchers.IO
 
+    /** Test seam for the status-snapshot clock (unit tests control time). */
+    internal var clock: () -> Long = System::currentTimeMillis
+
+    private var cachedCaller: TrainingConsentCaller? = null
+    private var cachedAtMillis: Long = 0
+
     private val _state =
         MutableStateFlow<TrainingConsentUiState>(TrainingConsentUiState.Loading)
     val state: StateFlow<TrainingConsentUiState> = _state.asStateFlow()
 
     private var caller: TrainingConsentCaller? = null
     private var updating = false
+    private var revoking = false
+    private var generation = 0L
 
-    fun prepare(accountId: String) {
+    fun prepare(accountId: String, scope: com.anpfuel.domain.model.ContributionScope? = null) {
+        generation += 1
+        updating = false
+        revoking = false
+        caller = null
         if (accountId.isBlank()) {
+            cachedCaller = null
             _state.value = TrainingConsentUiState.Guest
             return
         }
-        caller = TrainingConsentCaller(accountId)
+        val next = TrainingConsentCaller(accountId, scope)
+        if (next == cachedCaller && _state.value is TrainingConsentUiState.Content &&
+            clock() - cachedAtMillis < STATUS_CACHE_TTL_MILLIS) {
+            caller = next
+            return
+        }
+        cachedCaller = null
+        caller = next
+        _state.value = TrainingConsentUiState.Loading
         refresh()
     }
 
     fun refresh() {
         val current = caller ?: return
         if (_state.value is TrainingConsentUiState.Updating) return
+        val request = ++generation
         _state.value = TrainingConsentUiState.Loading
-        viewModelScope.launch(ioDispatcher) {
-            _state.value = when (val outcome = useCase.syncPending(current)) {
+        viewModelScope.launch {
+            val outcome = withContext(ioDispatcher) { useCase.syncPending(current) }
+            if (generation != request) return@launch
+            val next = when (outcome) {
                 is TrainingConsentOutcome.Guest ->
                     TrainingConsentUiState.Guest
                 is TrainingConsentOutcome.Offline ->
@@ -97,23 +128,31 @@ class TrainingConsentViewModel @Inject constructor(
                 is TrainingConsentOutcome.Rejected ->
                     TrainingConsentUiState.Rejected(outcome.kind, outcome.message)
             }
+            if (next is TrainingConsentUiState.Content) {
+                cachedCaller = current
+                cachedAtMillis = clock()
+            } else {
+                cachedCaller = null
+            }
+            _state.value = next
         }
     }
 
     fun setEnabled(enabled: Boolean, termsVersion: String, termsDigest: String) {
         val current = caller ?: return
-        if (_state.value is TrainingConsentUiState.Updating) return
-        if (updating) return
+        if (updating && (enabled || revoking)) return
+        val request = ++generation
         updating = true
+        revoking = !enabled
         _state.value = TrainingConsentUiState.Updating
-        viewModelScope.launch(ioDispatcher) {
+        viewModelScope.launch {
             try {
-                val outcome = if (enabled) {
-                    useCase.grant(current, termsVersion, termsDigest)
-                } else {
-                    useCase.revoke(current)
+                val outcome = withContext(ioDispatcher) {
+                    if (enabled) useCase.grant(current, termsVersion, termsDigest)
+                    else useCase.revoke(current)
                 }
-                _state.value = when (outcome) {
+                if (generation != request) return@launch
+                val next = when (outcome) {
                     is TrainingConsentOutcome.Guest ->
                         TrainingConsentUiState.Guest
                     is TrainingConsentOutcome.Offline ->
@@ -123,12 +162,13 @@ class TrainingConsentViewModel @Inject constructor(
                     is TrainingConsentOutcome.Granted,
                     is TrainingConsentOutcome.Revoked,
                     is TrainingConsentOutcome.Status,
-                    -> reload(current)
+                    -> withContext(ioDispatcher) { reload(current) }
                     is TrainingConsentOutcome.Rejected ->
                         TrainingConsentUiState.Rejected(outcome.kind, outcome.message)
                 }
+                if (generation == request) _state.value = next
             } finally {
-                updating = false
+                if (generation == request) { updating = false; revoking = false }
             }
         }
     }
@@ -155,6 +195,13 @@ class TrainingConsentViewModel @Inject constructor(
                     TrainingConsentRejectKind.TRANSPORT,
                     "consent update failed",
                 )
+        }.also { next ->
+            if (next is TrainingConsentUiState.Content) {
+                cachedCaller = current
+                cachedAtMillis = clock()
+            } else {
+                cachedCaller = null
+            }
         }
     }
 
@@ -175,4 +222,9 @@ class TrainingConsentViewModel @Inject constructor(
         pendingRevocation = pendingRevocation,
         needsRegrant = needsRegrant,
     )
+
+    companion object {
+        /** Repeat foreground entries reuse the confirmed snapshot within this window. */
+        const val STATUS_CACHE_TTL_MILLIS = 60_000L
+    }
 }

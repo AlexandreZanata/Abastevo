@@ -63,32 +63,63 @@ func (s *ConsentStore) Get(ctx context.Context, contributorID string) (domain.Co
 // revisions refuse as stale — so a racing stale offline ON can never
 // undo a revocation.
 func (s *ConsentStore) Put(ctx context.Context, c domain.Consent) (bool, bool, error) {
-	row, err := dbprivacy.New(s.pool).UpsertTrainingConsent(ctx, dbprivacy.UpsertTrainingConsentParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := dbprivacy.New(tx)
+	if err := q.LockTrainingOwner(ctx, c.ContributorID); err != nil {
+		return false, false, err
+	}
+	fence, fenceErr := q.GetTrainingRevocation(ctx, c.ContributorID)
+	if fenceErr != nil && !errors.Is(fenceErr, pgx.ErrNoRows) {
+		return false, false, fenceErr
+	}
+	if fenceErr == nil && (c.Revision < uint64(fence.Revision) || (c.State == domain.StateGranted && c.Revision <= uint64(fence.Revision))) {
+		return false, false, domain.ErrStaleConsent
+	}
+	row, err := q.UpsertTrainingConsent(ctx, dbprivacy.UpsertTrainingConsentParams{
 		ContributorID: c.ContributorID, ContributorRef: c.ContributorRef,
 		Purpose: c.Purpose, TermsVersion: c.TermsVersion, TermsDigest: c.TermsDigest,
 		State: c.State, Revision: int64(c.Revision),
 		GrantedAt: pgTime(c.GrantedAt), RevokedAt: pgTime(c.RevokedAt),
 		DecidedAt: pgTime(c.DecidedAt),
 	})
+	stored, replayed := true, false
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return s.resolveConsentConflict(ctx, c)
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return false, false, err
 		}
-		return false, false, err
+		current, loadErr := q.GetTrainingConsent(ctx, c.ContributorID)
+		if loadErr != nil {
+			return false, false, loadErr
+		}
+		stored, replayed, err = resolveConsentConflict(c, rowToConsent(current))
+		if err != nil {
+			return false, false, err
+		}
 	}
 	_ = row
-	return true, false, nil
+	if c.State == domain.StateRevoked {
+		if err := q.RecordTrainingRevocation(ctx, dbprivacy.RecordTrainingRevocationParams{ContributorID: c.ContributorID, Revision: int64(c.Revision), RevokedAt: pgTime(c.RevokedAt)}); err != nil {
+			return false, false, err
+		}
+		if _, err := q.TombstoneOwnerTrainingBatch(ctx, c.ContributorID); err != nil {
+			return false, false, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, false, err
+	}
+	return stored, replayed, nil
 }
 
 // resolveConsentConflict compares a guarded-out write against the
 // stored row. Identical retries converge on the stored row regardless
 // of the race; divergent same-revision payloads conflict instead of
 // forking the singleton; smaller revisions are stale.
-func (s *ConsentStore) resolveConsentConflict(ctx context.Context, c domain.Consent) (bool, bool, error) {
-	stored, err := s.Get(ctx, c.ContributorID)
-	if err != nil {
-		return false, false, err
-	}
+func resolveConsentConflict(c, stored domain.Consent) (bool, bool, error) {
 	if c.Revision < stored.Revision {
 		return false, false, domain.ErrStaleConsent
 	}

@@ -13,18 +13,19 @@ import (
 // fakeSweepStore scripts inventory per method and records every marker,
 // so repeated runs prove convergence instead of double work.
 type fakeSweepStore struct {
-	idle       []domain.SessionRef
-	stuck      []domain.SessionRef
-	cands      []domain.SessionRef
-	finals     []domain.ObjectRef
-	overdue    []domain.ObjectRef
-	expired    []string
-	qdel       []string
-	fdel       []string
-	purged     int64
-	failExpire error
-	health     IntakeHealth
-	healthErr  error
+	idle        []domain.SessionRef
+	stuck       []domain.SessionRef
+	cands       []domain.SessionRef
+	finals      []domain.ObjectRef
+	overdue     []domain.ObjectRef
+	expired     []string
+	qdel        []string
+	fdel        []string
+	purged      int64
+	failExpire  error
+	health      IntakeHealth
+	healthErr   error
+	liveUploads map[string]bool
 	// overdueOriginals scripts the SEC05-A originals audit.
 	overdueOriginals []domain.SessionRef
 }
@@ -41,12 +42,15 @@ func (f *fakeSweepStore) ExpireIdleSessions(_ context.Context, _ time.Time, batc
 	}
 	out := f.idle[:n]
 	f.idle = f.idle[n:]
+	f.cands = append(f.cands, out...)
 	return out, nil
 }
 
-func (f *fakeSweepStore) ListStuckVerifying(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
-	out := f.stuck
-	f.stuck = nil
+func (f *fakeSweepStore) ListStuckVerifying(_ context.Context, _ time.Time, batch int) ([]domain.SessionRef, error) {
+	n := min(len(f.stuck), batch)
+	out := f.stuck[:n]
+	f.stuck = f.stuck[n:]
+	f.cands = append(f.cands, out...)
 	return out, nil
 }
 
@@ -60,9 +64,10 @@ func (f *fakeSweepStore) MarkQuarantineDeleted(_ context.Context, id string) err
 	return nil
 }
 
-func (f *fakeSweepStore) QuarantineCandidates(_ context.Context, _ time.Time, _ int) ([]domain.SessionRef, error) {
-	out := f.cands
-	f.cands = nil
+func (f *fakeSweepStore) QuarantineCandidates(_ context.Context, _ time.Time, batch int) ([]domain.SessionRef, error) {
+	n := min(len(f.cands), batch)
+	out := f.cands[:n]
+	f.cands = f.cands[n:]
 	return out, nil
 }
 
@@ -191,21 +196,21 @@ func TestSweepExpiresIdleAndDeletesQuarantine(t *testing.T) {
 	}
 }
 
-func TestSweepSkipsActiveLease(t *testing.T) {
-	// A VERIFYING session with a live verify job is untouchable: no
-	// expiry, no quarantine delete, counted as skipped.
-	store := &fakeSweepStore{stuck: []domain.SessionRef{ref("s9", "q/c")}}
+func TestSweepExpiresStuckDespiteQueuedJobAndProtectsLiveUpload(t *testing.T) {
+	// A queued job cannot extend retention. Expiry closes admission while
+	// an actual admitted source upload remains protected from deletion.
+	store := &fakeSweepStore{stuck: []domain.SessionRef{ref("s9", "q/c")}, liveUploads: map[string]bool{"s9": true}}
 	deps := sweepDeps(store)
 	deps.Jobs = &fakeSweepJobs{live: map[string]bool{"s9": true}}
 	rep, err := Sweep(context.Background(), deps)
 	if err != nil {
 		t.Fatalf("sweep = %v", err)
 	}
-	if rep.SkippedActive != 1 || rep.ExpiredSessions != 0 || rep.QuarantinesDeleted != 0 {
+	if rep.SkippedActive != 1 || rep.ExpiredSessions != 1 || rep.QuarantinesDeleted != 0 {
 		t.Errorf("report = %+v", rep)
 	}
-	if len(store.expired) != 0 || len(store.qdel) != 0 {
-		t.Errorf("active lease mutated: %v %v", store.expired, store.qdel)
+	if len(store.expired) != 1 || len(store.qdel) != 0 {
+		t.Errorf("live upload incorrectly deleted: %v %v", store.expired, store.qdel)
 	}
 }
 
@@ -249,8 +254,8 @@ func TestSweepContinuesPastStorageErrors(t *testing.T) {
 	deps := sweepDeps(store)
 	deps.Storage.(*fakeSweepStorage).fail["q/a"] = true
 	rep, err := Sweep(context.Background(), deps)
-	if err != nil {
-		t.Fatalf("sweep = %v", err)
+	if err == nil {
+		t.Fatal("partial storage failure was acknowledged")
 	}
 	if rep.QuarantinesDeleted != 1 || rep.StorageErrors != 1 {
 		t.Errorf("report = %+v", rep)
@@ -362,4 +367,29 @@ func TestSweepRejectsBadBatch(t *testing.T) {
 	if _, err := Sweep(context.Background(), deps); err == nil {
 		t.Error("zero batch accepted")
 	}
+}
+
+func (f *fakeSweepStore) CanDeleteQuarantine(_ context.Context, id string) (bool, error) {
+	return !f.liveUploads[id], nil
+}
+func TestSweepCannotAcknowledgeLiveUpload(t *testing.T) {
+	store := &fakeSweepStore{idle: []domain.SessionRef{ref("inflight", "q/a")}, liveUploads: map[string]bool{"inflight": true}}
+	deps := sweepDeps(store)
+	rep, err := Sweep(context.Background(), deps)
+	if err != nil || rep.SkippedActive != 1 || rep.QuarantinesDeleted != 0 || len(store.qdel) != 0 {
+		t.Fatal("live writer deletion acknowledged", rep, err)
+	}
+	if !deps.Storage.(*fakeSweepStorage).keys["q/a"] {
+		t.Fatal("live upload bytes deleted")
+	}
+}
+
+func (f *fakeSweepStore) ReconcileFinalOutputs(context.Context, time.Time, int, func(context.Context, string) error) (FinalCleanupReport, error) {
+	return FinalCleanupReport{}, nil
+}
+func (f *fakeSweepStore) DeleteFinalCopy(ctx context.Context, id, key string, _ time.Time, del func(context.Context, string) error) (bool, error) {
+	if err := del(ctx, key); err != nil {
+		return false, err
+	}
+	return true, f.MarkFinalDeleted(ctx, id)
 }

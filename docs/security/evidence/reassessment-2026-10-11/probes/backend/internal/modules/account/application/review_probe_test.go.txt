@@ -1,0 +1,48 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	"testing"
+)
+
+func TestReviewFailedDeletionCannotPassRouteAuthOnRetry(t *testing.T) {
+	svc, _, rec := deletionService()
+	ctx := context.Background()
+	auth := signupBound(t, svc, "review-deletion@example.invalid", "482916", "review-contributor")
+	rec.err = errors.New("synthetic erasure-enqueue outage")
+	if _, err := svc.DeleteAccount(ctx, auth.Account.ID); err == nil {
+		t.Fatal("expected failed enqueue")
+	}
+	rec.err = nil
+	if _, err := svc.ValidateAccess(ctx, auth.Session.FamilyID, auth.Session.AccessToken); err == nil {
+		t.Fatal("route retry unexpectedly authenticated")
+	}
+	intents, err := svc.Store.ListErasureIntents(ctx, auth.Account.ID)
+	if err != nil || len(intents) != 1 {
+		t.Fatalf("intents=%v err=%v", intents, err)
+	}
+	t.Log("durable intent exists; same route's mandatory ValidateAccess rejects retry before cleanup callback")
+}
+
+func TestReviewDeleteReleasesHourlySignupBudget(t *testing.T) {
+	svc := testKeyService()
+	ctx := context.Background()
+	svc.RequestErasure = func(context.Context, string, []string) error { return nil }
+	for i := 0; i < domain.MaxKeyAccountsPerHour+1; i++ {
+		acc, err := svc.CreateKeyAccount(ctx, fmt.Sprintf("reviewcycle%d", i))
+		if err != nil {
+			t.Fatalf("creation %d: %v", i, err)
+		}
+		if _, err := svc.DeleteAccount(ctx, acc.Account.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := svc.Store.CountKeyAccountsSince(ctx, svc.Clock.NowUnix()-3600)
+	if err != nil || n != 0 {
+		t.Fatalf("budget=%d error=%v", n, err)
+	}
+	t.Log("101 creations at fixed clock passed 100/hour cap by deleting credentials after each signup")
+}

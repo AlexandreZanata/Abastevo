@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"sync"
@@ -61,6 +62,10 @@ func testUUID(n int) string {
 }
 
 func freshService(t *testing.T) (*application.Service, *integClock, *integMail) {
+	return freshServiceSchema(t, dbmigrations.Files)
+}
+
+func freshServiceSchema(t *testing.T, schema fs.FS) (*application.Service, *integClock, *integMail) {
 	t.Helper()
 	adminDSN := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if adminDSN == "" {
@@ -96,7 +101,7 @@ func freshService(t *testing.T) (*application.Service, *integClock, *integMail) 
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	applied, err := migrate.Apply(ctx, dsn, schema)
 	if err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

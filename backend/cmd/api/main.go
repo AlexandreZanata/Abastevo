@@ -47,6 +47,7 @@ import (
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
+	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	feedbackhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http"
 	feedbackapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
@@ -416,38 +417,13 @@ func run() error {
 		},
 		IDGen: newUUID,
 	}
-	// Account deletion linkage (SEC04-B): after atomic revocation and
-	// durable intent capture, enqueue owned scope cleanup — one
-	// privacy deletion intent per captured contributor (durable job
-	// through the deletion ledger) plus synchronous account-social
-	// erasure. Deterministic submission IDs make retries converge;
-	// feedback erasure converges on re-run (second run reports zero).
-	privacyEraseStore := privacyadapters.NewStore(pool.Underlying())
-	accountService.RequestErasure = func(ctx context.Context, accountID string, contributorIDs []string) error {
-		for _, contributorID := range contributorIDs {
-			if _, err := privacyapp.RequestDeletion(ctx, privacyapp.ErasePorts{
-				Clock: time.Now,
-				NewID: newUUID,
-				Attribution: func(ctx context.Context, contributorID string) (string, error) {
-					return identityRegistrar.AttributionToken(ctx, contributorID)
-				},
-				Store: privacyEraseStore,
-				EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-					_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
-					return err
-				},
-			}, contributorID, privacyapp.EraseDTO{
-				ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID,
-				Reason:             "account-deletion",
-			}); err != nil {
-				return err
-			}
-		}
-		if _, err := feedbackService.EraseAccount(ctx, accountID); err != nil {
-			return err
-		}
-		return nil
+	// A dispatch hint accelerates the durable account intent. The recurring
+	// worker recovers independently if this best-effort enqueue is unavailable.
+	accountService.RequestErasure = func(ctx context.Context, _ string, _ []string) error {
+		_, err := platformjobs.Enqueue(ctx, pool.Underlying(), "account-erasure-reconcile", []byte(`{"version":1}`), "account-erasure-hint:"+time.Now().UTC().Format("200601021504"), 5, time.Time{})
+		return err
 	}
+
 	feedbackhttp.Handler{
 		Service: feedbackService,
 		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
@@ -591,7 +567,7 @@ func run() error {
 	// review against the contributor's last site. The transient fix
 	// never persists: only bands survive the call.
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
-	evidenceStore := evidenceadapters.NewStore(pool.Underlying())
+	evidenceStore := evidenceadapters.NewIntakeStore(pool.Underlying(), cfg.EvidenceMaxPendingPhotos)
 	communityPorts := communityapp.Ports{
 		DevelopmentPhotoPreviewUntil: cfg.DevelopmentPhotoPreviewUntil,
 		CheckDevelopmentStation: func(ctx context.Context, id string) error {
@@ -831,23 +807,30 @@ func run() error {
 	// presigned issuance arrives as a narrow port built here from the
 	// configured storage identity; unset storage refuses explicitly
 	// with 503 instead of misbehaving.
+	uploadGateway := evidencehttp.NewUploadGateway(cfg.CursorSecret, "https://"+cfg.CanonicalHost, time.Now)
+	uploadGateway.Claim = evidenceStore.ClaimUpload
+	uploadGateway.Finish = evidenceStore.FinishUpload
+	uploadGateway.Put = func(ctx context.Context, key, mime string, raw []byte) error {
+		if cfg.R2 == nil {
+			return evidenceapp.ErrStorageUnavailable
+		}
+		pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Key: key, Namespace: "q/",
+			ContentType: mime, MaxBytes: int64(len(raw)), TTL: time.Minute, Region: cfg.R2.Region, Now: time.Now(),
+		}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
+		if err != nil {
+			return err
+		}
+		return evidencestorage.Put(ctx, nil, pre.URL, mime, raw)
+	}
+	router.Put("/v1/uploads/{upload_id}/bytes", uploadGateway.ServeHTTP)
 	evidencePorts := evidenceapp.Ports{
 		Clock: time.Now,
 		Enforcement: func(ctx context.Context) error {
-			// Intake circuit breaker (B-BR-M04): any copy past its
-			// 24 h deadline with bytes still present stops new
-			// intake until the hourly sweeper catches up.
-			// SEC05-A: finals AND quarantine originals — an
-			// overdue original with a failed deletion trips the
-			// breaker exactly like an overdue final.
-			overdue, err := evidenceapp.AuditOverdue(ctx, evidenceStore, time.Now(), 1)
-			if err != nil {
-				return err
+			if cfg.R2 == nil {
+				return evidenceapp.ErrStorageUnavailable
 			}
-			if overdue.Unhealthy() {
-				return evidenceapp.ErrEnforcementUnhealthy
-			}
-			return nil
+			return evidenceStore.CheckIntake(ctx)
 		},
 		NewID: newUUID,
 		NewKey: func() (string, error) {
@@ -868,25 +851,11 @@ func run() error {
 			}
 			return retryAfter, nil
 		},
-		Presign: func(ctx context.Context, key, mime string, maxBytes int64, deadline time.Time) (string, map[string]string, time.Time, error) {
+		AuthorizeUpload: func(ctx context.Context, session evidencedomain.Session) (string, map[string]string, time.Time, error) {
 			if cfg.R2 == nil {
 				return "", nil, time.Time{}, evidenceapp.ErrStorageUnavailable
 			}
-			now := time.Now()
-			ttl := min(5*time.Minute, deadline.Sub(now))
-			if ttl <= 0 {
-				return "", nil, time.Time{}, evidenceapp.ErrReservationFailed
-			}
-			pre, err := evidencestorage.PresignPUT(evidencestorage.PresignInput{
-				Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-				Key: key, Namespace: "q/",
-				ContentType: mime, MaxBytes: maxBytes,
-				TTL: ttl, Region: cfg.R2.Region, Now: now,
-			}, evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey})
-			if err != nil {
-				return "", nil, time.Time{}, err
-			}
-			return pre.URL, pre.RequiredHeaders, pre.ExpiresAt, nil
+			return uploadGateway.Authorize(ctx, session)
 		},
 		Store: evidenceStore,
 		ValidatePhotoCapture: func(ctx context.Context, caller evidenceapp.Caller, in evidenceapp.Intent) (time.Time, error) {
@@ -946,6 +915,7 @@ func run() error {
 		IdleTimeout:       httpserver.DefaultIdleTimeout,
 		ShutdownTimeout:   cfg.ShutdownTimeout,
 		MaxBodyBytes:      cfg.MaxBodyBytes,
+		BodyLimit:         requestBodyLimit(cfg),
 		Logger:            logger,
 	}, router)
 	if err != nil {

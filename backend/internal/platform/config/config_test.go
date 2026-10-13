@@ -178,13 +178,13 @@ func TestLoadTrainingTermsDigest(t *testing.T) {
 		t.Fatalf("load: %v", err)
 	}
 	if cfg.TrainingTermsDigest != defaultTrainingTermsDigest {
-		t.Errorf("TrainingTermsDigest = %q, want the frozen provisional default", cfg.TrainingTermsDigest)
+		t.Errorf("TrainingTermsDigest = %q, want the published text digest", cfg.TrainingTermsDigest)
 	}
-	cfg, err = load(envFunc(map[string]string{keyTrainingTermsDigest: "ab12"}))
-	if err != nil || cfg.TrainingTermsDigest != "ab12" {
+	cfg, err = load(envFunc(map[string]string{keyTrainingTermsDigest: defaultTrainingTermsDigest}))
+	if err != nil || cfg.TrainingTermsDigest != defaultTrainingTermsDigest {
 		t.Errorf("explicit digest must apply, got %q, %v", cfg.TrainingTermsDigest, err)
 	}
-	for _, bad := range []string{"UPPERCASE", "not hex!", strings.Repeat("a", 129), "0x12"} {
+	for _, bad := range []string{"ab12", strings.Repeat("a", 64), "741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48", "UPPERCASE", "not hex!", strings.Repeat("a", 129), "0x12"} {
 		if _, err := load(envFunc(map[string]string{keyTrainingTermsDigest: bad})); err == nil {
 			t.Errorf("digest %q accepted", bad)
 		} else if !strings.Contains(err.Error(), keyTrainingTermsDigest) {

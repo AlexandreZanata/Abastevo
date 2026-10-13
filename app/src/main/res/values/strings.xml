@@ -30,7 +30,7 @@
     <string name="community_screen_title">Community</string>
     <string name="community_header_subtitle">Local station activity and consensus verification</string>
     <string name="community_empty_title">No recent community updates</string>
-    <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Photos are transient audit evidence kept for up to 24 hours.</string>
+    <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Attached photos are temporary verification evidence. See privacy information in Settings.</string>
     <string name="community_action_contribute">Contribute price</string>
     <string name="community_rules_title">Community verification rules</string>
     <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
@@ -54,7 +54,7 @@
     <string name="profile_contributions_empty">No contributions on this device yet.</string>
     <string name="profile_contributions_error">Could not load your contributions.</string>
     <string name="profile_contributions_state_queued">Queued for upload</string>
-    <string name="profile_contributions_state_retrying">Queued — retrying automatically</string>
+    <string name="profile_contributions_state_retrying">Retrying send</string>
     <string name="profile_contributions_state_cancelled">Cancelled — never sent</string>
     <string name="profile_contributions_revision_attempts">rev %1$d · %2$d attempts</string>
     <string name="profile_contributions_cancel">Cancel upload</string>
@@ -71,6 +71,11 @@
     <string name="profile_tool_settings_subtitle">Offline cache, Wi-Fi sync, notifications and theme</string>
     <string name="profile_tool_help_title">Help and community rules</string>
     <string name="profile_tool_help_subtitle">Contribute guidance, reporting, moderation and privacy</string>
+    <string name="profile_tool_privacy_title">Privacy</string>
+    <string name="profile_tool_privacy_subtitle">Training consent, rights and photo expiry</string>
+    <string name="privacy_screen_title">Privacy</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_privacy_subtitle">Training consent, rights and photo expiry</string>
     <string name="profile_tool_contributions_title">My contributions</string>
     <string name="profile_tool_contributions_subtitle">Track uploads, queue and cancellations</string>
     <string name="contributions_screen_subtitle">This device only — nothing here is public.</string>
@@ -85,11 +90,11 @@
     <string name="help_report_title">Report and appeal</string>
     <string name="help_report_body">Any active account can report abuse. Reports never delete content by themselves; restricted moderators review every case. Disagree? Report again with the new reason — appeals reopen as a new reviewed case.</string>
     <string name="help_privacy_title">Privacy</string>
-    <string name="help_privacy_body">Anonymous browsing needs no account and coordinates are not stored. Photos are transient audit evidence kept for up to 24 hours.</string>
+    <string name="help_privacy_body">Anonymous browsing needs no account. Precise GPS is not published. See photo use and your privacy rights in Settings.</string>
     <string name="profile_tool_week_picker_title">Survey week</string>
     <string name="profile_tool_week_picker_subtitle">Select archived weekly ANP surveys</string>
     <string name="profile_privacy_section">Privacy and participation</string>
-    <string name="profile_privacy_body">No precise GPS is shared publicly. Verification photos expire across all copies within 24 hours. Paid features never affect ranking or trust.</string>
+    <string name="profile_privacy_body">Precise GPS is not published. Photos are temporary verification evidence. See privacy information in Settings. Paid features never affect ranking or trust.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
@@ -124,6 +129,11 @@
     <string name="vehicle_save">Save</string>
     <string name="vehicle_delete">Delete</string>
     <string name="vehicle_delete_confirm">Remove this vehicle?</string>
+    <string name="vehicle_photo_label">Vehicle photo</string>
+    <string name="vehicle_add_photo">Add photo</string>
+    <string name="vehicle_change_photo">Change photo</string>
+    <string name="vehicle_remove_photo">Remove photo</string>
+    <string name="vehicle_photo_content">Vehicle photo</string>
     <string name="vehicle_empty_message">No vehicles yet</string>
     <string name="vehicle_empty_hint">Add up to 3 vehicles to track tank fill costs.</string>
     <string name="vehicle_max_reached">Maximum of 3 vehicles reached</string>
@@ -504,7 +514,7 @@
     <string name="community_helpful_under_review">Counts under community review</string>
     <string name="community_helpful_report">Report</string>
     <string name="community_helpful_guest">Sign in to a free account to vote</string>
-    <string name="community_helpful_guest_body">Votes need a free account so one person holds one vote. Browsing stays anonymous.</string>
+    <string name="community_helpful_guest_body">Votes need a free account. Repeated votes from your identity are not counted again. Browsing stays anonymous.</string>
 
     <!-- Training consent (CS11B: optional, default OFF, server authoritative) -->
     <string name="training_consent_title">Improve price recognition</string>
@@ -514,7 +524,7 @@
     <string name="training_consent_terms">Terms: %1$s</string>
     <string name="training_consent_regrant">Terms changed since your last review — please review and confirm again.</string>
     <string name="training_consent_pending">Revocation pending — it uploads on the next connection.</string>
-    <string name="training_consent_delete_note">Turning off stops new permissions immediately and deletes your training copies.</string>
+    <string name="training_consent_delete_note">Turning off saves your request to stop training use and delete your training copies. Server confirmation may require a connection.</string>
     <string name="training_consent_rights">Your rights and contact</string>
     <string name="training_consent_rejected">Not recorded (%1$s)</string>
     <string name="training_consent_offline">No connection — retry when online.</string>
@@ -524,7 +534,7 @@
     <string name="training_photo_opt_in_locked">Training review needs consent first (Privacy settings)</string>
 
     <!-- Community privacy (P10-T08: what actually leaves the device) -->
-    <string name="community_privacy_footnote">Anonymous: no account needed. Sends station, price and condition — and your photo for 24h only when you attach one.</string>
+    <string name="community_privacy_footnote">Submissions include station, price and conditions. An attached photo is used for verification. See privacy information in Settings.</string>
     <string name="community_privacy_keys">Your device holds the only key. Losing it ends this anonymous identity.</string>
 
     <!-- Community capture (P10-T08 i18n: extracted from CaptureScreen) -->
@@ -581,7 +591,7 @@
     <string name="station_profile_claim">Representation and management</string>
     <string name="station_claim_title">Station representation</string>
     <string name="station_claim_explanation">A free account may request scoped representation. Independent review checks the signature and corporate authority. Sending a document grants no access.</string>
-    <string name="station_claim_privacy">Never send private keys, passwords, PFX or P12 files. Signed PDF only, up to 5 MiB. Files with scans use the 24-hour retention cap.</string>
+    <string name="station_claim_privacy">Never send private keys, passwords, PFX or P12 files. Signed PDFs only, up to 5 MiB. Review the privacy conditions before submitting.</string>
     <string name="station_claim_role">Requested role</string>
     <string name="station_claim_manager">Manager</string>
     <string name="station_claim_administrator">Administrator</string>
@@ -648,8 +658,14 @@
     <string name="home_benefit_savings">Save more</string>
     <string name="home_benefit_community">Community</string>
     <string name="home_benefit_trust">Clear sources</string>
+    <string name="home_benefits_dismiss">Hide benefits</string>
     <string name="home_reference_prices_title">Prices in your city</string>
     <string name="home_view_all">View all</string>
+    <string name="home_filter_button">Filters</string>
+    <string name="home_filter_title">Sort prices</string>
+    <string name="home_filter_default">Average price</string>
+    <string name="home_filter_lowest">Lowest price</string>
+    <string name="home_filter_highest">Highest price</string>
     <string name="home_change_city">My city</string>
     <string name="home_reference_period">ANP reference • %1$s</string>
     <string name="home_shortcut_stations">Find stations</string>
@@ -765,4 +781,25 @@
     <string name="developer_capture_no_station">No matching station in this city. Try another name.</string>
     <string name="developer_capture_change_station">Change station</string>
     <string name="fuel_product_gasoline_premium_grade">Premium gasoline</string>
+
+    <string name="privacy_training_heading">Privacy · Improve price recognition</string>
+    <string name="privacy_training_unavailable">Training image collection is disabled. This choice records a preference; activating collection will require new terms and fresh consent.</string>
+    <string name="privacy_training_optional">Optional. Your free account, price searches and community participation do not depend on this choice.</string>
+    <string name="privacy_terms_language">Full document in Brazilian Portuguese. Available offline.</string>
+    <string name="privacy_read_terms">Read the full terms</string>
+    <string name="privacy_terms_unavailable">The document could not be loaded. Authorization is unavailable; you can still revoke or request your rights.</string>
+    <string name="privacy_sign_in">Sign in to manage your optional preference</string>
+    <string name="privacy_revocation_pending">Disabled on this device. Revocation is pending receipt by the server.</string>
+    <string name="privacy_offline">Offline. No new authorization was sent. You can disable the preference here.</string>
+    <string name="privacy_request_failed">The service could not confirm the decision. Retry later; no success is assumed.</string>
+    <string name="privacy_preference_received">Preference authorized and confirmed by the server. Collection remains disabled.</string>
+    <string name="privacy_preference_off">No authorization confirmed in this view.</string>
+    <string name="privacy_consent_check">I have read the full terms and freely authorize the recording of my optional preference for the stated purpose.</string>
+    <string name="privacy_confirm_preference">Confirm and send preference</string>
+    <string name="privacy_revoke_delete">Disable and delete images</string>
+    <string name="privacy_deletion_receipt_note">A received request starts deletion; it does not confirm physical deletion of all copies.</string>
+    <string name="privacy_digest">Document SHA-256: %1$s</string>
+    <string name="privacy_finish_reading">I have finished reading · return to the choice</string>
+    <string name="privacy_rights_heading">Your privacy rights</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

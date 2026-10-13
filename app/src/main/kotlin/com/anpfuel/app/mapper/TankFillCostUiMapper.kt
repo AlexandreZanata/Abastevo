@@ -42,6 +42,7 @@ object TankFillCostUiMapper {
                 )
             },
             unitPriceSource = estimate?.unitPriceSource,
+            photoPath = item.vehicle.photoPath,
         )
     }
 }

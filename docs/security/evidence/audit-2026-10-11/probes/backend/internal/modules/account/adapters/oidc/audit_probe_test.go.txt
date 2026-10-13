@@ -1,0 +1,34 @@
+package oidc
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+type auditKeySource struct{ calls map[string]int }
+
+func (s *auditKeySource) Fetch(_ context.Context, issuer string) ([]JSONWebKey, error) {
+	s.calls[issuer]++
+	return []JSONWebKey{{Kid: issuer}}, nil
+}
+func TestAuditJWKSProviderRefreshExtendsOtherProviderTTL(t *testing.T) {
+	now := time.Unix(1800000000, 0)
+	source := &auditKeySource{calls: map[string]int{}}
+	c := CachedKeys{Source: source, TTL: time.Hour, Now: func() time.Time { return now }}
+	if _, e := c.Fetch(context.Background(), "google"); e != nil {
+		t.Fatal(e)
+	}
+	now = now.Add(50 * time.Minute)
+	if _, e := c.Fetch(context.Background(), "apple"); e != nil {
+		t.Fatal(e)
+	}
+	now = now.Add(20 * time.Minute)
+	if _, e := c.Fetch(context.Background(), "google"); e != nil {
+		t.Fatal(e)
+	}
+	if source.calls["google"] != 1 {
+		t.Fatal(source.calls)
+	}
+	t.Log("Google keyset still cached at age 70 min despite 60 min TTL, because Apple refresh changed shared timestamp")
+}

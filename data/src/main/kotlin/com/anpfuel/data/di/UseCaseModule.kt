@@ -621,10 +621,12 @@ object UseCaseModule {
         local: TrainingConsentLocalStore,
         gateway: TrainingConsentGateway,
         network: NetworkConnectivityGateway,
+        scopes: com.anpfuel.application.port.ContributionScopeProvider,
     ): TrainingConsentUseCase = TrainingConsentUseCase(
         local = local,
         gateway = gateway,
         network = network,
+        scopes = scopes,
     )
 
     @Provides

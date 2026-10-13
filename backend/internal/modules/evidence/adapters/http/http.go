@@ -62,6 +62,7 @@ func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, application.ErrStorageUnavailable):
 		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "evidence.storage-unavailable", "upload storage not configured", nil)
 	case errors.Is(err, application.ErrEnforcementUnhealthy):
+		w.Header().Set("Retry-After", "5")
 		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "evidence.enforcement-unhealthy", "photo intake paused while retention catches up", nil)
 	case errors.Is(err, domain.ErrUnsupportedMedia),
 		errors.Is(err, domain.ErrSizeOutOfBounds),

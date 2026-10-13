@@ -1,0 +1,93 @@
+{
+  "audited_commit": "954a8d800576fec24acc9edfd3b93aad2ac15450",
+  "scope": "source snapshot, local synthetic services only; no VPS",
+  "go_unit_tested_packages": 67,
+  "go_unit_failed_packages": 0,
+  "postgis_tested_packages": 8,
+  "govulncheck": {
+    "exit_code": 0,
+    "config": {
+      "protocol_version": "v1.0.0",
+      "scanner_name": "govulncheck",
+      "scanner_version": "v1.8.0",
+      "db": "https://vuln.go.dev",
+      "db_last_modified": "2026-10-08T22:31:09Z",
+      "go_version": "go1.27.2",
+      "scan_level": "symbol",
+      "scan_mode": "source"
+    },
+    "finding_events": 0,
+    "advisories_received": 201
+  },
+  "rustsec": {
+    "database": {
+      "advisory-count": 1296,
+      "last-commit": "7eebec69c352c7191b1f13eb95dd510eeca5d1de",
+      "last-updated": "2026-10-09T10:12:02+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 25
+    },
+    "settings": {
+      "target_arch": [],
+      "target_os": [],
+      "severity": null,
+      "ignore": [],
+      "informational_warnings": [
+        "unmaintained",
+        "unsound",
+        "notice"
+      ]
+    },
+    "vulnerabilities": {
+      "found": false,
+      "count": 0,
+      "list": []
+    },
+    "warnings": {}
+  },
+  "probes": [
+    {
+      "source_path": "backend/internal/modules/account/adapters/oidc/audit_probe_test.go",
+      "sha256": "fb7eafab5013e63c14b6427c30aafe5d3557d082dfb7a4d8f9e45f5740e6fbea"
+    },
+    {
+      "source_path": "backend/internal/modules/account/application/audit_probe_test.go",
+      "sha256": "d5d0ca1c73182b1d5558e91bcaf5fbf4eb72aa5d0dde4627fe1e77a7bb4b207d"
+    },
+    {
+      "source_path": "backend/internal/modules/community/application/audit_probe_test.go",
+      "sha256": "787cc90cac6f8354450920d5b3c8788bf50bc028882ca170d5e7d81ffa994528"
+    },
+    {
+      "source_path": "backend/internal/modules/evidence/adapters/audit_probe_integration_test.go",
+      "sha256": "652574bb8a5f4c5cae57606567795531842177d6ef7142c8e3fc85761a69aaca"
+    },
+    {
+      "source_path": "backend/internal/modules/evidence/adapters/storage/audit_probe_test.go",
+      "sha256": "c7df40ba63cb56b7419ea33d35bfcf523206e179f917d9435f515e54a5e70f23"
+    },
+    {
+      "source_path": "backend/internal/modules/evidence/application/audit_probe_test.go",
+      "sha256": "00071577e21aeb3b1d43d621e664dec643bca623f83dd836f914572afb0e1855"
+    },
+    {
+      "source_path": "backend/internal/modules/evidence/application/audit_retention_probe_test.go",
+      "sha256": "7076621ae0f3c3d0c81be1ec13f70b1644170a5c1a2e8f916062d8cafab6ab07"
+    },
+    {
+      "source_path": "backend/internal/modules/feedback/adapters/audit_probe_integration_test.go",
+      "sha256": "30b6f67642a8aa07520e600ba058e395d1736c4fc4d93ca6985a28e748bba5ef"
+    },
+    {
+      "source_path": "backend/internal/modules/identity/adapters/http/audit_probe_test.go",
+      "sha256": "5bf89ece325294ad7ed50f59d28d0f7520a98e3370858de17bf7040b8fc6dc72"
+    }
+  ],
+  "limitations": [
+    "No deployed configuration or production exploitation verification",
+    "No full Android build/device/backup restoration or Android/container vulnerability scan",
+    "No full HTTP API or S3-provider integration in this audit",
+    "Inventory is not proof of every-line review or absence of vulnerabilities"
+  ]
+}

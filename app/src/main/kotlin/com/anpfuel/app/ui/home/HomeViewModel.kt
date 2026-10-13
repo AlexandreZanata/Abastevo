@@ -11,6 +11,7 @@ import com.anpfuel.application.usecase.readiness.GetDataReadinessUseCase
 import com.anpfuel.application.usecase.sync.SyncPriceTablesUseCase
 import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
+import com.anpfuel.data.local.preferences.HomeVehiclePresenceStore
 import com.anpfuel.app.mapper.TankFillCostUiMapper
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
@@ -39,6 +40,8 @@ data class HomeUiState(
     val surveyWeek: SurveyWeek? = null,
     val prices: List<AveragePriceUiModel> = emptyList(),
     val tankFillCostEstimates: List<TankFillCostEstimateUiModel> = emptyList(),
+    val priceSort: HomePriceSortOrder = HomePriceSortOrder.DEFAULT,
+    val hasVehicle: Boolean = false,
     val hasLocation: Boolean = false,
     val hasCachedData: Boolean = false,
     val isEmptyMunicipality: Boolean = false,
@@ -56,10 +59,13 @@ class HomeViewModel @Inject constructor(
     private val syncPriceTablesUseCase: SyncPriceTablesUseCase,
     private val listVehiclesUseCase: ListVehiclesUseCase,
     private val getTankFillCostEstimatesUseCase: GetTankFillCostEstimatesUseCase,
+    private val homeVehiclePresenceStore: HomeVehiclePresenceStore,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(
+        HomeUiState(hasVehicle = homeVehiclePresenceStore.hasVehicle()),
+    )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var hasPresentedContent = false
@@ -86,6 +92,7 @@ class HomeViewModel @Inject constructor(
                 val vehicles = listVehiclesUseCase()
 
                 if (preferred == null || !readinessResult.hasCachedData) {
+                    homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -100,6 +107,7 @@ class HomeViewModel @Inject constructor(
                             isEmptyMunicipality = false,
                             dataAvailability = null,
                             operationalNote = null,
+                            hasVehicle = vehicles.isNotEmpty(),
                         )
                     }
                     hasPresentedContent = true
@@ -124,6 +132,7 @@ class HomeViewModel @Inject constructor(
                     municipality = tankFillResult.municipality,
                 )
 
+                homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -138,6 +147,7 @@ class HomeViewModel @Inject constructor(
                         isEmptyMunicipality = pricesResult.isEmpty,
                         dataAvailability = pricesResult.dataAvailability,
                         operationalNote = pricesResult.operationalNote,
+                        hasVehicle = vehicles.isNotEmpty(),
                     )
                 }
                 hasPresentedContent = true
@@ -153,6 +163,10 @@ class HomeViewModel @Inject constructor(
                 hasPresentedContent = true
             }
         }
+    }
+
+    fun onPriceSortChanged(order: HomePriceSortOrder) {
+        _uiState.update { it.copy(priceSort = order) }
     }
 
     fun refresh(locale: Locale) {

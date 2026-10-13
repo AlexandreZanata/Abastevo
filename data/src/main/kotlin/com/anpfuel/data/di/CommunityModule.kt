@@ -82,10 +82,7 @@ object CommunityModule {
     @Provides
     @Singleton
     fun provideTrainingConsentHttpClient(
-        @Named("apiOrigin") environment: ApiEnvironment,
-    ): TrainingConsentHttpClient =
-        TrainingConsentHttpClient(
-            client = OkHttpClientFactory.create(),
-            baseUrl = environment.origin,
-        )
+        proof: com.anpfuel.data.remote.PhotoProofTransport,
+    ): TrainingConsentHttpClient = TrainingConsentHttpClient(proof)
+
 }

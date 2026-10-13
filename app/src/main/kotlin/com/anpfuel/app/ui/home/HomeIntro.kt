@@ -17,15 +17,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,16 +123,19 @@ private data class HomeBenefit(val icon: Int, val title: Int, val tint: Color)
 
 @Composable
 internal fun HomeBenefits() {
+    var visible by rememberSaveable { mutableStateOf(true) }
+    if (!visible) return
     val benefits = listOf(
         HomeBenefit(R.drawable.ic_home_savings, R.string.home_benefit_savings, Color(0xFF209437)),
         HomeBenefit(R.drawable.ic_home_community, R.string.home_benefit_community, Color(0xFF1478DD)),
         HomeBenefit(R.drawable.ic_home_trust, R.string.home_benefit_trust, Color(0xFFF57C00)),
     )
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 16.dp)) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 16.dp)) {
             benefits.forEachIndexed { index, benefit ->
                 Column(
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
@@ -148,7 +157,22 @@ internal fun HomeBenefits() {
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     )
                 }
+                }
             }
+        }
+        IconButton(
+            onClick = { visible = false },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 4.dp, end = 4.dp)
+                .size(32.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.home_benefits_dismiss),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

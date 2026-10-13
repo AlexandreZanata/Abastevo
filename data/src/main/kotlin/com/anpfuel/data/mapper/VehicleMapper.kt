@@ -34,6 +34,7 @@ object VehicleMapper {
             priceSource = priceSource,
             priceDropAlertEnabled = entity.priceDropAlertEnabled,
             sortOrder = entity.sortOrder,
+            photoPath = entity.photoPath,
         )
     }
 
@@ -46,5 +47,6 @@ object VehicleMapper {
         specificStationCnpj = vehicle.priceSource.specificStationCnpj?.digits,
         priceDropAlertEnabled = vehicle.priceDropAlertEnabled,
         sortOrder = vehicle.sortOrder,
+        photoPath = vehicle.photoPath,
     )
 }

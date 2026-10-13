@@ -45,6 +45,11 @@
     <string name="vehicle_save">保存</string>
     <string name="vehicle_delete">削除</string>
     <string name="vehicle_delete_confirm">この車両を削除しますか？</string>
+    <string name="vehicle_photo_label">車両の写真</string>
+    <string name="vehicle_add_photo">写真を追加</string>
+    <string name="vehicle_change_photo">写真を変更</string>
+    <string name="vehicle_remove_photo">写真を削除</string>
+    <string name="vehicle_photo_content">車両の写真</string>
     <string name="vehicle_empty_message">車両がまだありません</string>
     <string name="vehicle_empty_hint">最大3台まで追加して満タンコストを追跡できます。</string>
     <string name="vehicle_max_reached">車両は最大3台までです</string>
@@ -313,7 +318,7 @@
     <string name="community_vote_rejected">記録されませんでした（%1$s）</string>
 
     <!-- コミュニティプライバシー（P10-T08：デバイスから送信される内容） -->
-    <string name="community_privacy_footnote">匿名：アカウント不要です。ステーション、価格、条件を送信します — 写真を添付した場合のみ 24 時間写真も送信されます。</string>
+    <string name="community_privacy_footnote">送信内容はステーション、価格、条件です。添付写真は確認に使用します。プライバシー情報は設定で確認できます。</string>
     <string name="community_privacy_keys">お使いのデバイスが唯一の鍵を保持します。紛失するとこの匿名 ID は終了します。</string>
 
     <!-- コミュニティキャプチャ（P10-T08 i18n） -->
@@ -334,7 +339,7 @@
     <string name="community_screen_title">コミュニティ</string>
     <string name="community_header_subtitle">地域の給油所の活動と合意による検証</string>
     <string name="community_empty_title">最近の更新はありません</string>
-    <string name="community_empty_hint">燃料価格を投稿して地域の運転者を支援しましょう。写真は一時的な監査証拠として最大24時間保存されます。</string>
+    <string name="community_empty_hint">燃料価格を投稿して地域の運転者を支援しましょう。添付写真は確認のため一時的に使用します。プライバシー情報は設定で確認できます。</string>
     <string name="community_action_contribute">価格を投稿</string>
     <string name="community_rules_title">コミュニティの検証ルール</string>
     <string name="community_rules_body">価格は投稿者の合意で検証されます。日付付きのANPデータと最新の投稿は混同しません。</string>
@@ -353,7 +358,7 @@
     <string name="profile_contributions_empty">この端末にはまだ投稿がありません。</string>
     <string name="profile_contributions_error">投稿を読み込めませんでした。</string>
     <string name="profile_contributions_state_queued">アップロード待ち</string>
-    <string name="profile_contributions_state_retrying">待機中・自動再試行</string>
+    <string name="profile_contributions_state_retrying">再送中</string>
     <string name="profile_contributions_state_cancelled">キャンセル済み・未送信</string>
     <string name="profile_contributions_revision_attempts">版%1$d・%2$d回試行</string>
     <string name="profile_contributions_cancel">アップロードを取消</string>
@@ -370,6 +375,11 @@
     <string name="profile_tool_settings_subtitle">オフライン保存、Wi-Fi同期、通知、テーマ</string>
     <string name="profile_tool_help_title">ヘルプとコミュニティルール</string>
     <string name="profile_tool_help_subtitle">投稿案内、通報、管理、プライバシー</string>
+    <string name="profile_tool_privacy_title">プライバシー</string>
+    <string name="profile_tool_privacy_subtitle">トレーニングの同意、権利、写真の保存期限</string>
+    <string name="privacy_screen_title">プライバシー</string>
+    <string name="settings_privacy_title">プライバシー</string>
+    <string name="settings_privacy_subtitle">トレーニングの同意、権利、写真の保存期限</string>
     <string name="profile_tool_contributions_title">自分の投稿</string>
     <string name="profile_tool_contributions_subtitle">送信・キュー・キャンセルを確認</string>
     <string name="contributions_screen_subtitle">この端末のみ — 公開されません。</string>
@@ -384,11 +394,11 @@
     <string name="help_report_title">通報と異議申立て</string>
     <string name="help_report_body">有効なアカウントは不正を通報できます。自動削除はされず、権限を持つ管理者が審査します。異議申立ての新しい理由は新規案件として扱われます。</string>
     <string name="help_privacy_title">プライバシー</string>
-    <string name="help_privacy_body">匿名閲覧にアカウントは不要で、座標は保存しません。監査用写真は最大24時間保存されます。</string>
+    <string name="help_privacy_body">匿名閲覧にアカウントは不要です。正確なGPS位置は公開しません。写真の利用方法と権利については設定をご覧ください。</string>
     <string name="profile_tool_week_picker_title">調査週</string>
     <string name="profile_tool_week_picker_subtitle">過去のANP週次調査を選択</string>
     <string name="profile_privacy_section">プライバシーと参加</string>
-    <string name="profile_privacy_body">正確なGPS位置は公開しません。検証写真の全コピーは24時間以内に失効します。有料機能は順位や信頼に影響しません。</string>
+    <string name="profile_privacy_body">正確なGPS位置は公開しません。写真は確認のため一時的に使用します。プライバシー情報は設定で確認できます。有料機能は順位や信頼に影響しません。</string>
     <string name="onboarding_title_contribute">正直に投稿する</string>
     <string name="onboarding_body_contribute">安全な公共の場所から価格表示を撮影し、金額を読みやすく保ち、正確な条件を選んでください。価格や人を捏造しないでください。</string>
     <string name="station_detail_anp_title">ANP参考価格</string>
@@ -479,7 +489,7 @@
     <string name="station_profile_claim">代表権と管理</string>
     <string name="station_claim_title">給油所の代表権</string>
     <string name="station_claim_explanation">無料アカウントで範囲を限定した代表権を申請できます。独立審査で署名と企業の権限を検証します。書類の送信だけではアクセス権は付与されません。</string>
-    <string name="station_claim_privacy">秘密鍵、パスワード、PFX、P12は送信しないでください。署名済みPDFのみ、最大5 MiBです。スキャンを含むファイルの保存は最大24時間です。</string>
+    <string name="station_claim_privacy">秘密鍵、パスワード、PFX、P12は送信しないでください。署名済みPDFのみ、最大5 MiBです。送信前にプライバシー条件をご確認ください。</string>
     <string name="station_claim_role">申請する役割</string>
     <string name="station_claim_manager">管理担当者</string>
     <string name="station_claim_administrator">管理責任者</string>
@@ -546,8 +556,14 @@
     <string name="home_benefit_savings">もっと節約</string>
     <string name="home_benefit_community">コミュニティ</string>
     <string name="home_benefit_trust">明確な情報源</string>
+    <string name="home_benefits_dismiss">特典を非表示</string>
     <string name="home_reference_prices_title">街の価格</string>
     <string name="home_view_all">すべて表示</string>
+    <string name="home_filter_button">絞り込み</string>
+    <string name="home_filter_title">価格を並べ替え</string>
+    <string name="home_filter_default">平均価格</string>
+    <string name="home_filter_lowest">価格が安い順</string>
+    <string name="home_filter_highest">価格が高い順</string>
     <string name="home_change_city">自分の街</string>
     <string name="home_reference_period">ANP参考価格 • %1$s</string>
     <string name="home_shortcut_stations">給油所を探す</string>
@@ -717,4 +733,54 @@
     <string name="capture_queue_retrying">送信はまだ保留中です。自動的に再試行します。コミュニティに戻れます。</string>
     <string name="capture_sent_pending_validation">サーバーが受信しました。検証はまだ進行中です。</string>
     <string name="fuel_product_gasoline_premium_grade">プレミアムガソリン</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">この投稿は役に立ちましたか？</string>
+    <string name="community_helpful_counts">役に立った %1$d · 役に立たなかった %2$d</string>
+    <string name="community_helpful_choice">あなたの選択: %1$s</string>
+    <string name="community_helpful_helpful">役に立った</string>
+    <string name="community_helpful_not_helpful">役に立たなかった</string>
+    <string name="community_helpful_remove">自分の投票を取り消す</string>
+    <string name="community_helpful_voted">投票を記録しました。ご協力ありがとうございます。</string>
+    <string name="community_helpful_replayed">記録済みです。追加の投票は集計されません。</string>
+    <string name="community_helpful_removed">投票を取り消しました。</string>
+    <string name="community_helpful_rejected">記録されませんでした（%1$s）</string>
+    <string name="community_helpful_under_review">コミュニティが集計結果を確認中</string>
+    <string name="community_helpful_report">報告する</string>
+    <string name="community_helpful_guest">投票するには無料アカウントにログインしてください</string>
+    <string name="community_helpful_guest_body">投票には無料アカウントが必要です。同じ識別情報による重複投票は再集計されません。閲覧は引き続き匿名で利用できます。</string>
+    <string name="training_consent_title">価格認識を改善する</string>
+    <string name="training_consent_body">明示的に許可した写真の処理済みコピーを使って、価格認識の改善にご協力ください。元の写真は審査の処理内にとどまり、同意するまで収集は無効です。</string>
+    <string name="training_consent_on">オン</string>
+    <string name="training_consent_off">オフ</string>
+    <string name="training_consent_terms">利用条件: %1$s</string>
+    <string name="training_consent_regrant">前回の確認後に利用条件が変更されました。もう一度確認し、同意してください。</string>
+    <string name="training_consent_pending">同意の撤回は送信待ちです。次回の接続時に送信されます。</string>
+    <string name="training_consent_delete_note">オフにすると、学習への利用停止とコピーの削除のリクエストが保存されます。サーバーの確認には接続が必要な場合があります。</string>
+    <string name="training_consent_rights">権利とお問い合わせ</string>
+    <string name="training_consent_rejected">記録されませんでした（%1$s）</string>
+    <string name="training_consent_offline">接続されていません。オンラインになってから再試行してください。</string>
+    <string name="training_photo_opt_in">この写真の学習用審査を許可する</string>
+    <string name="training_photo_opt_in_locked">先にプライバシー設定で学習への同意が必要です</string>
+
+    <string name="privacy_training_heading">プライバシー · 価格認識の改善</string>
+    <string name="privacy_training_unavailable">学習用画像の収集は停止中です。この選択は希望を記録するものです。収集の開始には新しい規約と再同意が必要です。</string>
+    <string name="privacy_training_optional">任意です。無料アカウント、価格検索、コミュニティへの参加に影響しません。</string>
+    <string name="privacy_terms_language">全文はブラジル・ポルトガル語です。オフラインでも読めます。</string>
+    <string name="privacy_read_terms">規約の全文を読む</string>
+    <string name="privacy_terms_unavailable">文書を読み込めません。同意はできませんが、撤回や権利の行使は可能です。</string>
+    <string name="privacy_sign_in">ログインして任意の設定を管理</string>
+    <string name="privacy_revocation_pending">この端末では無効です。撤回はサーバーの受信待ちです。</string>
+    <string name="privacy_offline">オフラインです。新しい同意は送信されていません。ここで設定を無効にできます。</string>
+    <string name="privacy_request_failed">サービスは決定を確認できませんでした。後で再試行してください。成功したとは見なしません。</string>
+    <string name="privacy_preference_received">同意の希望をサーバーが確認しました。収集は引き続き停止中です。</string>
+    <string name="privacy_preference_off">この表示では同意が確認されていません。</string>
+    <string name="privacy_consent_check">規約の全文を読み、記載された目的のために任意の希望を記録することを自由意思で許可します。</string>
+    <string name="privacy_confirm_preference">確認して希望を送信</string>
+    <string name="privacy_revoke_delete">無効化して画像を削除</string>
+    <string name="privacy_deletion_receipt_note">依頼の受信は削除の開始を意味し、すべてのコピーの物理的削除を保証するものではありません。</string>
+    <string name="privacy_digest">文書の SHA-256：%1$s</string>
+    <string name="privacy_finish_reading">読み終えました · 選択に戻る</string>
+    <string name="privacy_rights_heading">プライバシーに関する権利</string>
+    <string name="privacy_rights_body">学習への同意なしに、アクセス、訂正、撤回、削除を依頼できます。郵送先：ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil。宛名：Privacidade — Abastevo。パスワードや秘密鍵は含めないでください。</string>
 </resources>

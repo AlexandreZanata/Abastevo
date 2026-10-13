@@ -1,0 +1,28 @@
+ABASTEVO — CONSENTIMENTO OPCIONAL PARA MELHORAR O RECONHECIMENTO DE PREÇOS
+Versão: training-terms-v1 | Idioma: português do Brasil | 12 de outubro de 2026
+
+1. Responsável
+O Abastevo é operado por ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, com endereço na Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109. Solicitações de privacidade podem ser encaminhadas por correspondência a esse endereço, aos cuidados de “Privacidade — Abastevo”. Ao solicitar atendimento, informe somente os dados necessários para localizar sua conta; nunca envie senha, chave privada ou códigos de acesso.
+
+2. Sua escolha é livre
+Esta autorização é opcional e começa desativada. Não é necessária para criar uma conta gratuita, consultar preços ou participar da comunidade. Abrir ou percorrer este documento não significa consentir. Para registrar uma autorização, é preciso marcar a caixa específica e confirmar o envio, com a conta identificada. Você pode recusar ou revogar sem prejuízo dessas funcionalidades.
+
+3. Finalidade específica e situação atual
+A finalidade proposta é melhorar o reconhecimento automático de preços e nomes de combustíveis em fotografias de placas de postos, por meio de avaliação e treinamento de modelos de reconhecimento. A coleta de imagens para treinamento está DESATIVADA nesta versão. Registrar uma preferência não ativa a coleta nem autoriza reutilizar automaticamente fotografias anteriores. A ativação dependerá da validação do tratamento das imagens e da publicação de uma nova versão destes termos, que exigirá nova autorização explícita. Não se declara aqui que essa validação ou a exclusão de todas as cópias operacionais em até 24 horas já foi comprovada em produção.
+
+4. Limites do uso proposto
+A autorização para treinamento é separada do processamento necessário para receber e verificar uma contribuição de preço. O uso para treinamento deverá se limitar a uma cópia privada, minimizada e sem identificação direta do colaborador, com remoção de metadados de localização e revisão de conteúdo identificável. Cada imagem dependerá também de uma seleção específica; o consentimento geral, sozinho, não seleciona uma fotografia. Nesta versão, essa seleção e a coleta permanecem bloqueadas. Imagens não serão publicadas como conjunto de treinamento, vendidas ou utilizadas para publicidade por esta autorização. Qualquer finalidade adicional exige informação e fundamento próprios.
+
+5. Registro da decisão
+Ao confirmar uma decisão, o serviço registra seu vínculo de proprietário, a finalidade, a versão e o resumo criptográfico deste texto, o resultado, uma revisão de ordenação e a data do servidor. Esses registros permitem verificar a decisão e impedir que uma autorização antiga substitua uma revogação mais recente. A preferência e uma solicitação pendente são armazenadas no dispositivo separadamente por conta, chave e servidor. A conta de outra pessoa não pode herdar nem enviar sua decisão.
+
+6. Revogação e exclusão
+Você pode desativar a preferência nas configurações, sem aceitar estes termos novamente. A desativação é gravada localmente antes de tentar a comunicação com o serviço. Sem conexão, o app informa que a solicitação está pendente; o recebimento pelo servidor será confirmado somente após resposta válida. Quando recebida, a revogação bloqueia novas seleções e inicia a exclusão dos materiais de treinamento vinculados. O recibo de solicitação não comprova a conclusão da exclusão física. A revogação não desfaz operações anteriores que tenham fundamento válido nem, sozinha, apaga os preços publicados na comunidade. Para excluir a conta ou solicitar outros direitos, use os controles correspondentes ou o canal de privacidade indicado na seção 1.
+
+7. Direitos e transparência
+Você pode solicitar confirmação do tratamento, acesso, correção, informações sobre compartilhamento e critérios de conservação, revogação e eliminação quando aplicável, observadas as obrigações legais e a verificação proporcional de identidade. O atendimento não depende de consentir com treinamento. Nenhum prazo de conservação de imagens de treinamento começa nesta versão, pois sua coleta está desativada. Antes de eventual ativação, serão informados os operadores, condições de conservação, medidas de minimização e eventuais transferências internacionais pertinentes, com nova decisão explícita.
+
+8. Segurança e alterações
+Os controles buscam restringir acesso e evitar reutilização indevida, sem promessa de risco zero. Não fotografe pessoas, documentos ou outros dados pessoais desnecessários. Uma alteração na finalidade ou no texto invalida a autorização anterior para a nova versão. Falha de conexão, documento divergente ou ausência de decisão válida mantém o uso para treinamento bloqueado.
+
+Declaração opcional: “Li este documento e autorizo, de forma livre e específica, o registro da minha preferência para a finalidade descrita, ciente de que a coleta está desativada e de que sua futura ativação exigirá novos termos e nova autorização.”

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "com.anpfuel.application.portable.Sec07cRefreshSerializationTest",
+    "tests": "5",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.application.usecase.contribution.DispatchContributionUseCaseTest",
+    "tests": "7",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.data.repository.OutboxHistoryScaleTest",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.data.remote.CommunityHelpfulnessHttpClientTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.settings.TrainingConsentViewModelTest",
+    "tests": "8",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.settings.TrainingConsentA11yTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.community.CommunityHelpfulnessViewModelTest",
+    "tests": "6",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.settings.TrainingPhotoOptInA11yTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.community.CommunityHelpfulnessA11yTest",
+    "tests": "4",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  {
+    "name": "com.anpfuel.app.settings.TrainingPhotoOptInStateTest",
+    "tests": "6",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  }
+]

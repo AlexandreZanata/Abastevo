@@ -4,17 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
 // Sweep runs one revoked-copy purge pass (CS10C, AT05): revoked
-// derivatives past the 24-hour deadline lose their namespace bytes
+// derivatives lose their namespace bytes starting at revocation
 // while receipts stay for the restore filter. Failures report
-// through the returned report for operator review; the handler
-// itself succeeds whenever the pass completes, so the queue never
-// parks a finished sweep.
+// through the report and fail the handler for bounded queue retry. Partial
+// cleanup must never be acknowledged as a successful completed sweep.
 type Sweep struct {
 	Run func(ctx context.Context) (privacyapp.SweepReport, error)
 }
@@ -39,6 +39,18 @@ func (s Sweep) Handle(ctx context.Context, job jobs.Job) error {
 	if s.Run == nil {
 		return fmt.Errorf("sweep: no sweep configured")
 	}
-	_, err := s.Run(ctx)
-	return err
+	rep, err := s.Run(ctx)
+	args := []any{"checked", rep.Checked, "purged", rep.Purged, "missing_count", len(rep.Missing), "failure_count", len(rep.Failures)}
+	if err != nil || len(rep.Failures) > 0 {
+		slog.Warn("privacy.training.sweep.incomplete", args...)
+	} else {
+		slog.Info("privacy.training.sweep", args...)
+	}
+	if err != nil {
+		return err
+	}
+	if len(rep.Failures) > 0 {
+		return fmt.Errorf("training sweep: %d unresolved copies", len(rep.Failures))
+	}
+	return nil
 }

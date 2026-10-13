@@ -18,11 +18,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	legal "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/legalterms"
 )
 
 // Environment is the deployment mode. Production enables no permissive
 // default that development relies on.
 type Environment string
+
+var defaultTrainingTermsDigest = legal.Digest
 
 const (
 	EnvDevelopment Environment = "development"
@@ -64,6 +68,7 @@ const (
 	keyGlobalQuotaChallenge = "ANPFUEL_GLOBAL_QUOTA_CHALLENGE"
 	keyGlobalQuotaRegister  = "ANPFUEL_GLOBAL_QUOTA_REGISTER"
 	keyGlobalQuotaWrite     = "ANPFUEL_GLOBAL_QUOTA_WRITE"
+	keyEvidenceMaxPending   = "ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -77,12 +82,6 @@ const (
 	// metrics stay on the private listener and are never published by
 	// the staging/production topologies. Empty disables the listener.
 	defaultMetricsAddr = "127.0.0.1:9090"
-
-	// defaultTrainingTermsDigest binds training-terms-v1 until the
-	// verified terms text lands (CS11): sha256 of the literal
-	// "abastevo-training-terms-v1". It identifies the provisional
-	// version, never published legal text.
-	defaultTrainingTermsDigest = "741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48"
 
 	devDatabaseURL = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
 )
@@ -122,6 +121,8 @@ type Config struct {
 	GlobalQuotaChallenge int
 	GlobalQuotaRegister  int
 	GlobalQuotaWrite     int
+	// Zero keeps photo intake closed pending a measured resource budget.
+	EvidenceMaxPendingPhotos int
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -272,8 +273,8 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	if digest == "" {
 		digest = defaultTrainingTermsDigest
 	}
-	if !validTermsDigest(digest) {
-		return Config{}, fmt.Errorf("%s must be 1..128 lowercase hex characters", keyTrainingTermsDigest)
+	if !validTermsDigest(digest) || digest != legal.Digest {
+		return Config{}, fmt.Errorf("%s must match the SHA-256 of the bundled published training terms", keyTrainingTermsDigest)
 	}
 	cfg.TrainingTermsDigest = digest
 
@@ -324,6 +325,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.R2 = r2
+	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > 100 {
+			return Config{}, fmt.Errorf("%s must be 0..100 pending photos", keyEvidenceMaxPending)
+		}
+		cfg.EvidenceMaxPendingPhotos = n
+	}
 
 	if raw, present := getenv("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL"); present && raw != "" {
 		deadline, err := time.Parse(time.RFC3339, raw)

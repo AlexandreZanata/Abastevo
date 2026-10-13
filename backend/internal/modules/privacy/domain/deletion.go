@@ -94,7 +94,7 @@ func CompleteDeletion(r Request, at time.Time) (Request, PrivacyRequestCompleted
 	if r.Type != TypeDeletion {
 		return Request{}, PrivacyRequestCompleted{}, ErrInvalidRequest
 	}
-	if r.Status != StatusRequested {
+	if r.Status != StatusRequested && r.Status != StatusFailed {
 		return Request{}, PrivacyRequestCompleted{}, ErrBadState
 	}
 	if at.IsZero() {

@@ -20,8 +20,9 @@ import (
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	dbdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
-	dbplatform "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/platform"
 	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
+	accountjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/jobs"
+	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
@@ -37,6 +38,7 @@ import (
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
+	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
@@ -56,7 +58,6 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // inventoryFunc adapts a closure to the privacy inventory port.
@@ -81,16 +82,6 @@ type sanitizeFunc func(ctx context.Context, source []byte) ([]byte, privacydomai
 
 func (f sanitizeFunc) Sanitize(ctx context.Context, source []byte) ([]byte, privacydomain.SanitizeVerdict, error) {
 	return f(ctx, source)
-}
-
-// sweepJobPorts adapts the platform job lookup to the evidence sweep
-// port: only queued or leased verify jobs count as live leases.
-type sweepJobPorts struct {
-	hasLive func(ctx context.Context, sessionID string) (bool, error)
-}
-
-func (s sweepJobPorts) HasLiveJob(ctx context.Context, sessionID string) (bool, error) {
-	return s.hasLive(ctx, sessionID)
 }
 
 // sweepStoragePorts adapts presigned deletes to the sweep storage port,
@@ -314,15 +305,12 @@ func run() error {
 		if cfg.R2 == nil {
 			return errors.New("evidence: storage not configured")
 		}
-		pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
-			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-			Key: key, Namespace: namespace,
+		copyCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		return evidencestorage.DeleteConfirmed(copyCtx, httpClient, evidencestorage.PresignInput{
+			Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Key: key, Namespace: namespace,
 			TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
 		}, storageCreds())
-		if err != nil {
-			return err
-		}
-		return evidencestorage.Delete(ctx, httpClient, pre.URL)
 	}
 	privacyErasePorts := privacyapp.ErasePorts{
 		Clock: time.Now,
@@ -348,6 +336,21 @@ func run() error {
 		DeleteObject: erasureDelete,
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := jobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
+			return err
+		},
+	}
+	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	accountRecovery := accountapp.ErasureRecovery{
+		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
+		EraseFeedback: func(ctx context.Context, id string) error {
+			done, err := feedbackStore.EraseAccountBatch(ctx, id, time.Now().Unix())
+			if err == nil && !done {
+				return accountapp.ErrErasurePending
+			}
+			return err
+		},
+		EraseContributor: func(ctx context.Context, accountID, contributorID string) error {
+			_, err := privacyapp.Erase(ctx, privacyErasePorts, contributorID, privacyapp.EraseDTO{ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID, Reason: "account-deletion"})
 			return err
 		},
 	}
@@ -690,6 +693,13 @@ func run() error {
 			NewID: jobs.NewUUIDv4,
 			Verify: func(ctx context.Context, sess evidencedomain.Session) (evidenceapp.Outcome, error) {
 				return evidenceapp.Verify(ctx, evidenceapp.VerifyPorts{
+					BeforeUpload: func(ctx context.Context, key, sanitizedHash string) (evidenceapp.FinalWrite, error) {
+						nonce, err := jobs.NewUUIDv4()
+						if err != nil {
+							return evidenceapp.FinalWrite{}, err
+						}
+						return evidenceStore.BeginVerificationWrite(ctx, sess.ID, key, sanitizedHash, nonce)
+					},
 					Clock:    time.Now,
 					Download: downloadSnapshot,
 					Upload:   uploadFinal,
@@ -732,6 +742,7 @@ func run() error {
 		// Owner erasure (P07-T04): durable deletion requests revoke and
 		// purge scope by scope with ledger rows; terminal replays
 		// converge and scope failures park for audited retry.
+		"account-erasure-reconcile": accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
 				return privacyStore.Get(ctx, requestID)
@@ -747,22 +758,21 @@ func run() error {
 		// refuses explicitly instead of misbehaving. Namespace writes
 		// require configured storage, same as erasure deletes.
 		"privacy-training-promote": privacyjobs.Promote{
-			LoadSource: func(ctx context.Context, imageID string) ([]byte, error) {
-				return nil, errors.New("training promotion: quarantine source not configured")
-			},
+			LoadSource: privacyadapters.TrainingSourceUnavailable,
 			Propose: func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
 				return privacyapp.Propose(ctx, promotePorts, caller, dto)
 			},
-			WriteOutput: func(ctx context.Context, key string, minimized []byte) error {
-				if cfg.R2 == nil {
+			Publish: func(ctx context.Context, result privacyapp.PromotionResult, minimized []byte) error {
+				if trainingObjects == nil {
 					return errors.New("training promotion: storage not configured")
 				}
-				return trainingObjects.Put(ctx, key, minimized)
+				return privacyapp.Publish(ctx, privacyapp.PublishPorts{Store: promotionStore, Objects: trainingObjects, Terms: trainingTerms, NewNonce: jobs.NewUUIDv4, Clock: time.Now}, result, minimized)
 			},
 		},
-		// Training-copy purge (CS10C, AT05): revoked derivatives past
-		// the 24-hour deadline lose their namespace bytes daily while
-		// receipts stay for the restore filter.
+		// Training-copy purge: bounded every-minute disposal starts at
+		// revocation; expired output leases are reconciled too. Receipts
+		// stay for the restore filter, independently of collection being OFF.
+		"privacy-training-reconcile": privacyjobs.TrainingReconcile{Run: promotionStore.ReconcileRevocations},
 		"privacy-training-sweep": privacyjobs.Sweep{
 			Run: func(ctx context.Context) (privacyapp.SweepReport, error) {
 				return privacyapp.SweepRevoked(ctx, purgePorts)
@@ -770,7 +780,7 @@ func run() error {
 		},
 		// Retention sweep (P07-T05): every inventory category purges
 		// bounded oldest-first with per-category metrics; evidence
-		// media keeps its own hourly sweeper, and the 24-month
+		// media keeps its own every-minute sweeper, and the 24-month
 		// observation horizon reports metrics only.
 		"privacy-retention": privacyjobs.Retention{
 			Run: func(ctx context.Context) (privacyapp.RetentionReport, error) {
@@ -785,49 +795,21 @@ func run() error {
 			},
 		},
 		"evidence-sweep": evidencejobs.Sweep{
+			BeginObservation:  evidenceStore.BeginSweepObservation,
+			FinishObservation: evidenceStore.FinishSweepObservation,
 			Run: func(ctx context.Context) (evidenceapp.SweepReport, error) {
 				return evidenceapp.Sweep(ctx, evidenceapp.SweepDeps{
-					Clock: time.Now,
-					Batch: evidenceapp.DefaultSweepBatch,
-					Store: evidenceStore,
-					Jobs: sweepJobPorts{hasLive: func(ctx context.Context, sessionID string) (bool, error) {
-						id, err := dbplatform.New(raw).GetJobByDedupe(ctx, pgtype.Text{String: "verify:" + sessionID, Valid: true})
-						if err != nil {
-							if errors.Is(err, pgx.ErrNoRows) {
-								return false, nil
-							}
-							return false, err
-						}
-						row, err := dbplatform.New(raw).GetJob(ctx, id)
-						if err != nil {
-							if errors.Is(err, pgx.ErrNoRows) {
-								return false, nil
-							}
-							return false, err
-						}
-						return row.Status == "queued" || row.Status == "leased", nil
-					}},
-					Storage: sweepStoragePorts{deleteKey: func(ctx context.Context, key, namespace string) error {
-						if cfg.R2 == nil {
-							return errors.New("evidence: storage not configured")
-						}
-						pre, err := evidencestorage.PresignDELETE(evidencestorage.PresignInput{
-							Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket,
-							Key: key, Namespace: namespace,
-							TTL: 5 * time.Minute, Region: cfg.R2.Region, Now: time.Now(),
-						}, storageCreds())
-						if err != nil {
-							return err
-						}
-						return evidencestorage.Delete(ctx, httpClient, pre.URL)
-					}},
+					Clock:   time.Now,
+					Batch:   evidenceapp.DefaultSweepBatch,
+					Store:   evidenceStore,
+					Storage: sweepStoragePorts{deleteKey: erasureDelete},
 				})
 			},
 		},
 	}
-	dispatch := &jobs.Dispatcher{
-		Queue: queue, Handlers: handlers,
-		WorkerID: "worker-1", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute,
+	dispatchers, err := workerDispatchers(queue, handlers)
+	if err != nil {
+		return err
 	}
 	scheduler := jobs.NewScheduler(raw, []jobs.Schedule{
 		{
@@ -861,19 +843,17 @@ func run() error {
 				return map[string]any{"version": 1, "batch": 25}
 			},
 		},
-		{
-			Name: "evidence-sweep-hourly", Kind: "evidence-sweep", Version: 1,
-			Interval: time.Hour, Enabled: true,
-			Build: func(string) map[string]any { return map[string]any{"version": 1} },
-		},
+		evidenceSweepSchedule(),
+		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
 			Name: "privacy-retention-daily", Kind: "privacy-retention", Version: 1,
 			Interval: 24 * time.Hour, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
+		{Name: "privacy-training-reconcile-every-minute", Kind: "privacy-training-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{
-			Name: "privacy-training-sweep-daily", Kind: "privacy-training-sweep", Version: 1,
-			Interval: 24 * time.Hour, Enabled: true,
+			Name: "privacy-training-sweep-every-minute", Kind: "privacy-training-sweep", Version: 1,
+			Interval: time.Minute, Enabled: true,
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 	})
@@ -881,7 +861,7 @@ func run() error {
 	defer stop()
 	dispatchErr := make(chan error, 1)
 	go func() {
-		if err := dispatch.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		if err := runDispatchers(ctx, dispatchers); err != nil && !errors.Is(err, context.Canceled) {
 			dispatchErr <- err
 			return
 		}

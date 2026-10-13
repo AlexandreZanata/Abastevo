@@ -76,7 +76,7 @@ func (f *fakeEraseStore) PurgeOwnerArchives(_ context.Context, contributorID str
 
 func (f *fakeEraseStore) CompleteDeletionRequest(_ context.Context, id string, at time.Time) error {
 	r, ok := f.requests[id]
-	if !ok || r.Status != domain.StatusRequested || r.Type != domain.TypeDeletion {
+	if !ok || (r.Status != domain.StatusRequested && r.Status != domain.StatusFailed && r.Status != domain.StatusReady) || r.Type != domain.TypeDeletion {
 		return domain.ErrBadState
 	}
 	r.Status = domain.StatusReady
@@ -163,7 +163,7 @@ type fakeTraining struct {
 	fail    bool
 }
 
-func (f *fakeTraining) EraseContributor(_ context.Context, id string) (int, int, error) {
+func (f *fakeTraining) EraseContributor(_ context.Context, id, _ string) (int, int, error) {
 	if f.fail {
 		return 0, 0, errors.New("training down")
 	}
@@ -335,4 +335,33 @@ func TestReplayLedgerUnknownContributor(t *testing.T) {
 	if _, err := ReplayLedger(context.Background(), erasePorts(store), "ghost"); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("unknown replay = %v", err)
 	}
+}
+
+func TestEraseRetriesFailedScopes(t *testing.T) {
+	store := newFakeEraseStore()
+	p := erasePorts(store)
+	community := &fakeCommunity{fail: true}
+	p.Community = community
+	dto := EraseDTO{ClientSubmissionID: "retry-failed", Reason: "owner request"}
+	if _, err := Erase(context.Background(), p, "c1", dto); err == nil {
+		t.Fatal("expected failure")
+	}
+	community.fail = false
+	report, err := Erase(context.Background(), p, "c1", dto)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := store.Get(context.Background(), report.RequestID)
+	if err != nil || req.Status != domain.StatusReady || len(store.ledger) != 6 || len(community.unlinked) != 1 {
+		t.Fatalf("failed erasure was skipped: status=%s ledger=%d effects=%d err=%v", req.Status, len(store.ledger), len(community.unlinked), err)
+	}
+}
+
+func (f *fakeEraseStore) FindDeletion(_ context.Context, contributorID, submissionID string) (domain.Request, bool, error) {
+	for _, r := range f.requests {
+		if r.ContributorID == contributorID && r.ClientSubmissionID == submissionID {
+			return r, true, nil
+		}
+	}
+	return domain.Request{}, false, nil
 }

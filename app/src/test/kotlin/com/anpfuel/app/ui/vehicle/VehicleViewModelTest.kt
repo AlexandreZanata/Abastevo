@@ -14,7 +14,9 @@ import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +43,7 @@ class VehicleViewModelTest {
     private val getStationPricesUseCase = mockk<GetStationPricesUseCase>()
     private val configurePriceDropAlertUseCase = mockk<ConfigurePriceDropAlertUseCase>(relaxed = true)
     private val notificationPermissionHandler = mockk<NotificationPermissionHandler>()
+    private val vehiclePhotoStore = mockk<com.anpfuel.data.local.media.VehiclePhotoStore>(relaxed = true)
 
     private lateinit var viewModel: VehicleViewModel
 
@@ -55,7 +58,9 @@ class VehicleViewModelTest {
             getStationPricesUseCase = getStationPricesUseCase,
             configurePriceDropAlertUseCase = configurePriceDropAlertUseCase,
             notificationPermissionHandler = notificationPermissionHandler,
+            vehiclePhotoStore = vehiclePhotoStore,
         )
+        viewModel.photoIoDispatcher = dispatcher
     }
 
     @AfterEach
@@ -155,6 +160,56 @@ class VehicleViewModelTest {
     }
 
     @Test
+    fun saveVehiclePersistsPickedPhotoPath() = runTest(dispatcher) {
+        coEvery { listVehiclesUseCase.invoke() } returnsMany listOf(
+            emptyList(),
+            listOf(sampleVehicle("Gol")),
+        )
+        coEvery { saveVehicleUseCase.invoke(any()) } answers {
+            com.anpfuel.application.usecase.vehicle.SaveVehicleResult(
+                vehicle = firstArg(),
+                events = emptyList(),
+            )
+        }
+        every { vehiclePhotoStore.savePhoto(any(), any()) } returns "photo.jpg"
+
+        viewModel.load()
+        advanceUntilIdle()
+        viewModel.startAddVehicle()
+        viewModel.onDisplayNameChanged("Gol")
+        viewModel.onTankCapacityChanged("50")
+        viewModel.onPhotoPicked(byteArrayOf(1, 2, 3))
+        viewModel.saveVehicle(Locale.US)
+        advanceUntilIdle()
+
+        val saved = slotVehicle()
+        assertEquals("photo.jpg", saved.photoPath)
+        coVerify { vehiclePhotoStore.savePhoto(any(), byteArrayOf(1, 2, 3)) }
+    }
+
+    @Test
+    fun confirmDeleteVehicleRemovesPhotoFile() = runTest(dispatcher) {
+        val vehicle = sampleVehicle("Gol").withPhotoPath("photo.jpg")
+        coEvery { listVehiclesUseCase.invoke() } returnsMany listOf(
+            listOf(vehicle),
+            emptyList(),
+        )
+        coEvery { deleteVehicleUseCase.invoke(vehicle.id) } returns
+            com.anpfuel.application.usecase.vehicle.DeleteVehicleResult(
+                vehicleId = vehicle.id,
+                event = mockk(relaxed = true),
+            )
+
+        viewModel.load()
+        advanceUntilIdle()
+        viewModel.requestDeleteVehicle(vehicle.id)
+        viewModel.confirmDeleteVehicle()
+        advanceUntilIdle()
+
+        coVerify { vehiclePhotoStore.deletePhoto(vehicle.id) }
+    }
+
+    @Test
     fun saveVehicleSetsValidationErrorWhenNameBlank() = runTest(dispatcher) {
         coEvery { listVehiclesUseCase.invoke() } returns emptyList()
 
@@ -169,6 +224,12 @@ class VehicleViewModelTest {
             viewModel.uiState.value.form.validationErrorKey,
         )
         coVerify(exactly = 0) { saveVehicleUseCase.invoke(any()) }
+    }
+
+    private fun slotVehicle(): Vehicle {
+        val captured = slot<Vehicle>()
+        coVerify { saveVehicleUseCase.invoke(capture(captured)) }
+        return captured.captured
     }
 
     private fun sampleVehicle(name: String): Vehicle =

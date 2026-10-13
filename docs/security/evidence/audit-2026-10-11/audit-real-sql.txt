@@ -1,0 +1,5 @@
+=== RUN   TestAuditRealSQLConcurrentDailyBudget
+    audit_probe_integration_test.go:16: real PostGIS: 21 distinct durable reservations accepted; daily budget=10
+--- PASS: TestAuditRealSQLConcurrentDailyBudget (0.46s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters	1.471s

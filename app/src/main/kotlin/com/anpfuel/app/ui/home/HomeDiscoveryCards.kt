@@ -31,10 +31,19 @@ import com.anpfuel.app.ui.theme.FuelProductTint
 
 /** These are municipal ANP averages, never synthetic nearby station offers. */
 @Composable
-internal fun HomeReferencePriceCard(price: AveragePriceUiModel, darkTheme: Boolean, onClick: () -> Unit) {
+internal fun HomeReferencePriceCard(
+    price: AveragePriceUiModel,
+    darkTheme: Boolean,
+    onClick: () -> Unit,
+    priceSort: HomePriceSortOrder = HomePriceSortOrder.DEFAULT,
+) {
     val fuelLabel = stringResource(FuelProductI18n.toStringRes(price.fuelProduct))
-    val average = price.averageFormatted ?: stringResource(R.string.prices_not_available)
-    val description = stringResource(R.string.a11y_fuel_price_card, fuelLabel, average)
+    val featured = when (priceSort) {
+        HomePriceSortOrder.PRICE_ASC -> price.minimumFormatted
+        HomePriceSortOrder.PRICE_DESC -> price.maximumFormatted
+        HomePriceSortOrder.DEFAULT -> null
+    } ?: price.averageFormatted ?: stringResource(R.string.prices_not_available)
+    val description = stringResource(R.string.a11y_fuel_price_card, fuelLabel, featured)
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = description },
@@ -50,7 +59,7 @@ internal fun HomeReferencePriceCard(price: AveragePriceUiModel, darkTheme: Boole
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(fuelLabel, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    average,
+                    featured,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = FuelProductTint.colorFor(price.fuelProduct, darkTheme),

@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const hasPendingAccountErasure = `-- name: HasPendingAccountErasure :one
+SELECT EXISTS(SELECT 1 FROM feedback_ratings r WHERE r.account_id = $1 AND r.deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM feedback_comments c WHERE c.account_id = $1 AND c.deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM feedback_votes v WHERE v.account_id = $1 AND v.deleted_at IS NULL) AS pending
+`
+
+func (q *Queries) HasPendingAccountErasure(ctx context.Context, accountID pgtype.UUID) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingAccountErasure, accountID)
+	var pending pgtype.Bool
+	err := row.Scan(&pending)
+	return pending, err
+}
+
 const listCommentsByAccount = `-- name: ListCommentsByAccount :many
 SELECT id, account_id, station_id, product, parent_id, depth, text,
     revision, created_at, updated_at, deleted_at, visibility
@@ -134,6 +147,89 @@ func (q *Queries) ListVotesByAccount(ctx context.Context, accountID pgtype.UUID)
 			&i.CreatedAt,
 			&i.DeletedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingEraseComments = `-- name: PendingEraseComments :many
+SELECT id FROM feedback_comments WHERE account_id = $1 AND deleted_at IS NULL ORDER BY id LIMIT 32
+`
+
+func (q *Queries) PendingEraseComments(ctx context.Context, accountID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, pendingEraseComments, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingEraseRatings = `-- name: PendingEraseRatings :many
+SELECT station_id, product FROM feedback_ratings WHERE account_id = $1 AND deleted_at IS NULL ORDER BY station_id, product LIMIT 32
+`
+
+type PendingEraseRatingsRow struct {
+	StationID pgtype.UUID `json:"station_id"`
+	Product   string      `json:"product"`
+}
+
+// Bounded erasure reads live rows only; export keeps its separate full history.
+func (q *Queries) PendingEraseRatings(ctx context.Context, accountID pgtype.UUID) ([]PendingEraseRatingsRow, error) {
+	rows, err := q.db.Query(ctx, pendingEraseRatings, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingEraseRatingsRow
+	for rows.Next() {
+		var i PendingEraseRatingsRow
+		if err := rows.Scan(&i.StationID, &i.Product); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingEraseVotes = `-- name: PendingEraseVotes :many
+SELECT comment_id, comment_revision FROM feedback_votes WHERE account_id = $1 AND deleted_at IS NULL ORDER BY comment_id, comment_revision LIMIT 32
+`
+
+type PendingEraseVotesRow struct {
+	CommentID       pgtype.UUID `json:"comment_id"`
+	CommentRevision int32       `json:"comment_revision"`
+}
+
+func (q *Queries) PendingEraseVotes(ctx context.Context, accountID pgtype.UUID) ([]PendingEraseVotesRow, error) {
+	rows, err := q.db.Query(ctx, pendingEraseVotes, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingEraseVotesRow
+	for rows.Next() {
+		var i PendingEraseVotesRow
+		if err := rows.Scan(&i.CommentID, &i.CommentRevision); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

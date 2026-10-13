@@ -19,6 +19,7 @@ WHERE j.id = (
     WHERE (status = 'queued' OR (status = 'leased' AND lease_expires_at < now()))
         AND not_before <= now()
         AND (@kind = '' OR kind = @kind)
+        AND NOT (kind = ANY(@excluded_kinds::text[]))
     ORDER BY created_at ASC, id ASC
     FOR UPDATE SKIP LOCKED
     LIMIT 1

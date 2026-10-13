@@ -1,0 +1,62 @@
+{
+  "audited_commit": "603d5ba8acd32da6b5b0de72988ac614e8c18ee6",
+  "source": "immutable tracked snapshot; dirty/untracked planning read separately",
+  "backend_unit_tested_packages": 71,
+  "postgis_integration_tested_packages": 8,
+  "go_characterization_cases": 10,
+  "sql_characterization_cases": 3,
+  "android_selected_tests": 43,
+  "android_ui_auth_tests": 51,
+  "android_added_characterizations": 5,
+  "parser_child_heap_mib": 32,
+  "parser_synthetic_compressed_bytes": 172161,
+  "local_compose_project": "abastevo-review-final-20261011-kk55rep3",
+  "local_compose_cleaned": true,
+  "runtime_fixes_applied": false,
+  "vps_phone_publication": false,
+  "probes": [
+    {
+      "path": "backend/internal/modules/account/adapters/oidc/review_probe_test.go",
+      "sha256": "b91da770c24737ba47cb1ce8943d99e13346dead1dff0b3b2bf7f9c32f716cb0"
+    },
+    {
+      "path": "backend/internal/modules/account/adapters/review_probe_integration_test.go",
+      "sha256": "06d0ddd2fe693d0954572a8a34d81346a4d120a71725b615d87567b905f41513"
+    },
+    {
+      "path": "backend/internal/modules/account/application/review_probe_test.go",
+      "sha256": "98117bfc61994ba66f210088978054b94870539bde515b0d63446d5b7e9e0023"
+    },
+    {
+      "path": "backend/internal/modules/privacy/adapters/jobs/review_probe_test.go",
+      "sha256": "d00026d0bf9812cbcc9d05dfced732cb87429be07344c4b278ae93144bf1f9b6"
+    },
+    {
+      "path": "backend/internal/modules/privacy/adapters/review_probe_integration_test.go",
+      "sha256": "23ef53a168aa961a31f64bd5e0ae66af096b93fade52e30cabd06d486fd629e7"
+    },
+    {
+      "path": "backend/internal/modules/privacy/adapters/review_sanitizer_test.go",
+      "sha256": "be098bdf7ef5a9714b98bce82d482d10d40a61601ddba5c6b52b5124bb3eabd3"
+    },
+    {
+      "path": "backend/internal/modules/privacy/application/review_probe_test.go",
+      "sha256": "267f59c92ec0999031ade0c719574b3f447dbad7ea231e276a20762694839fda"
+    }
+  ],
+  "limits": [
+    "No production/staging/phone or existing-soak mutations",
+    "No real R2 or new wall-clock deletion proof",
+    "No new dependency/container vulnerability advisory scans",
+    "Passing characterization means defect reproduced, not safe behavior"
+  ],
+  "documentation_validation": {
+    "relative_links": "PASS",
+    "seven_probe_hashes": "PASS",
+    "finding_and_task_ids": "PASS",
+    "git_diff_check": "PASS",
+    "security_static_only": "PASS",
+    "tracked_secret_scan": "PASS",
+    "owned_document_evidence_secret_surface": "PASS"
+  }
+}

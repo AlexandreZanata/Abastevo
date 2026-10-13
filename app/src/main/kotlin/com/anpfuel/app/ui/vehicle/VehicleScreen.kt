@@ -1,14 +1,19 @@
 package com.anpfuel.app.ui.vehicle
 
 import android.Manifest
+import android.content.Context
+import android.net.Uri
 import android.os.Build
+import java.io.ByteArrayOutputStream
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -31,8 +36,14 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import com.anpfuel.data.local.media.VehiclePhotoStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -107,6 +118,9 @@ fun VehicleScreen(
         onPriceDropAlertChanged = viewModel::onPriceDropAlertChanged,
         onSaveVehicle = { viewModel.saveVehicle(locale) },
         onRetry = viewModel::load,
+        onPhotoPicked = viewModel::onPhotoPicked,
+        onPhotoPickFailed = viewModel::onPhotoPickFailed,
+        onRemovePhoto = viewModel::onPhotoRemoved,
         modifier = modifier,
     )
 }
@@ -131,8 +145,23 @@ internal fun VehicleContent(
     onPriceDropAlertChanged: (Boolean) -> Unit,
     onSaveVehicle: () -> Unit,
     onRetry: () -> Unit,
+    onPhotoPicked: (ByteArray) -> Unit,
+    onPhotoPickFailed: (Throwable) -> Unit,
+    onRemovePhoto: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val photoScope = rememberCoroutineScope()
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        photoScope.launch(Dispatchers.IO) {
+            runCatching { readCappedBytes(context, uri) }
+                .onSuccess(onPhotoPicked)
+                .onFailure { onPhotoPickFailed(it as? Exception ?: Exception(it)) }
+        }
+    }
     if (uiState.showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = onDismissDeleteConfirm,
@@ -210,12 +239,27 @@ internal fun VehicleContent(
                         isSaving = uiState.isSaving,
                         showNotificationPermissionHint = uiState.showNotificationPermissionHint,
                         locale = locale,
+                        existingPhotoPath = if (uiState.form.removeExistingPhoto) {
+                            null
+                        } else {
+                            uiState.vehicles
+                                .firstOrNull { it.id == uiState.editingVehicleId }
+                                ?.photoPath
+                        },
                         onDisplayNameChanged = onDisplayNameChanged,
                         onTankCapacityChanged = onTankCapacityChanged,
                         onFuelProductSelected = onFuelProductSelected,
                         onPriceSourceModeSelected = onPriceSourceModeSelected,
                         onStationSelected = onStationSelected,
                         onPriceDropAlertChanged = onPriceDropAlertChanged,
+                        onPickPhoto = {
+                            photoPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                ),
+                            )
+                        },
+                        onRemovePhoto = onRemovePhoto,
                         onSave = onSaveVehicle,
                         onCancel = onDismissForm,
                     )
@@ -264,6 +308,24 @@ private fun VehicleLoadingSkeleton() {
     }
 }
 
+private fun readCappedBytes(context: Context, uri: Uri): ByteArray {
+    context.contentResolver.openInputStream(uri)?.use { input ->
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > VehiclePhotoStore.MAX_INPUT_BYTES) {
+                error("vehicle-photo.input-size")
+            }
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
+    } ?: error("vehicle-photo.read")
+}
+
 @Composable
 private fun VehicleListItem(
     vehicle: Vehicle,
@@ -281,50 +343,64 @@ private fun VehicleListItem(
     val liters = vehicle.tankCapacity.liters.toInt()
 
     Card(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .defaultMinSize(minHeight = 112.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            VehiclePhotoThumbnail(
+                photoPath = vehicle.photoPath,
+                size = 88.dp,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = vehicle.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.vehicle_delete),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = vehicle.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.vehicle_delete),
+                        )
+                    }
                 }
+                Text(
+                    text = stringResource(
+                        R.string.home_tank_fill_cost_liters_format,
+                        fuelLabel,
+                        liters,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = priceSourceLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Text(
-                text = stringResource(
-                    R.string.home_tank_fill_cost_liters_format,
-                    fuelLabel,
-                    liters,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = priceSourceLabel,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -361,6 +437,9 @@ private fun VehicleListPreview() {
             onPriceDropAlertChanged = {},
             onSaveVehicle = {},
             onRetry = {},
+            onPhotoPicked = {},
+            onPhotoPickFailed = {},
+            onRemovePhoto = {},
         )
     }
 }
@@ -387,6 +466,9 @@ private fun VehicleEmptyPreview() {
             onPriceDropAlertChanged = {},
             onSaveVehicle = {},
             onRetry = {},
+            onPhotoPicked = {},
+            onPhotoPickFailed = {},
+            onRemovePhoto = {},
         )
     }
 }

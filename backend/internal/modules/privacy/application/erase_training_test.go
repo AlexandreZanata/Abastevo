@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -17,8 +18,10 @@ import (
 // receipt and audited retry.
 
 type fakeTrainingInventory struct {
-	mu   sync.Mutex
-	rows map[string]domain.Derivative
+	mu        sync.Mutex
+	rows      map[string]domain.Derivative
+	cursors   map[string]string
+	listCalls int
 }
 
 func trainingKey(image string, revision uint64) string {
@@ -26,13 +29,14 @@ func trainingKey(image string, revision uint64) string {
 }
 
 func newFakeTrainingInventory() *fakeTrainingInventory {
-	return &fakeTrainingInventory{rows: map[string]domain.Derivative{}}
+	return &fakeTrainingInventory{rows: map[string]domain.Derivative{}, cursors: map[string]string{}}
 }
 
 func (f *fakeTrainingInventory) Put(_ context.Context, d domain.Derivative) (bool, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	key := trainingKey(d.ImageID, d.ConsentRevision)
+	d.ObjectKey = TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
 	if _, ok := f.rows[key]; !ok {
 		f.rows[key] = d
 		return true, false, nil
@@ -82,6 +86,7 @@ func (f *fakeTrainingInventory) ListRevokedBefore(_ context.Context, before time
 
 func (f *fakeTrainingInventory) ListByOwner(_ context.Context, contributorID string) ([]domain.Derivative, error) {
 	f.mu.Lock()
+	f.listCalls++
 	defer f.mu.Unlock()
 	var out []domain.Derivative
 	for _, d := range f.rows {
@@ -245,5 +250,104 @@ func TestEraseTrainingFailsBytesForRetry(t *testing.T) {
 	}
 	if _, _, err := EraseTrainingContributor(ctx, trainingErasePorts(consents, inventory, objects), "c1"); err == nil {
 		t.Error("byte outage accepted")
+	}
+}
+
+func (f *fakeTrainingInventory) Get(_ context.Context, image string, revision uint64) (domain.Derivative, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.rows[trainingKey(image, revision)]
+	if !ok {
+		return domain.Derivative{}, domain.ErrNotFound
+	}
+	if d.ObjectKey == "" {
+		d.ObjectKey = TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+	}
+	return d, nil
+}
+
+func TestTrainingErasureBoundsEachAttemptAndSurvivesRestart(t *testing.T) {
+	consents := &fakeConsentStore{rows: map[string]domain.Consent{}}
+	inv := newFakeTrainingInventory()
+	objects := &fakeTrainingObjects{objects: map[string][]byte{}}
+	for i := 0; i < 65; i++ {
+		grantAndPromote(t, consents, inv, "c1", fmt.Sprintf("bounded-%03d", i))
+	}
+	for _, d := range inv.rows {
+		objects.objects[d.ObjectKey] = []byte("synthetic")
+	}
+	p := trainingErasePorts(consents, inv, objects)
+	revoked, purged, err := EraseTrainingContributor(context.Background(), p, "c1")
+	if err == nil || revoked != 32 || purged != 32 || inv.listCalls != 0 {
+		t.Fatalf("unbounded owner erasure: %d/%d %v", revoked, purged, err)
+	}
+}
+
+func (f *fakeTrainingInventory) ClaimOwnerPurge(_ context.Context, owner string, now time.Time) (PurgeClaim, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var selected string
+	for key, d := range f.rows {
+		if d.ContributorID == owner && key > f.cursors[owner] && (selected == "" || key < selected) {
+			selected = key
+		}
+	}
+	if selected == "" {
+		return PurgeClaim{}, false, nil
+	}
+	d := f.rows[selected]
+	if now.Before(d.OutputLeaseUntil) {
+		return PurgeClaim{}, false, nil
+	}
+	wasPurged := d.OutputState == domain.OutputPurged
+	d.State = domain.DerivativeRevoked
+	d.OutputState = domain.OutputPurging
+	d.OutputLeaseUntil = now.Add(time.Minute)
+	f.rows[selected] = d
+	return PurgeClaim{Derivative: d, Owner: owner, Token: selected, WasPurged: wasPurged}, true, nil
+}
+func (f *fakeTrainingInventory) CompletePurge(_ context.Context, c PurgeClaim, now time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := trainingKey(c.Derivative.ImageID, c.Derivative.ConsentRevision)
+	d, ok := f.rows[key]
+	if !ok || c.Token != key || c.Owner != d.ContributorID || !now.Before(d.OutputLeaseUntil) {
+		return domain.ErrBadState
+	}
+	d.OutputState = domain.OutputPurged
+	d.OutputLeaseUntil = time.Time{}
+	f.rows[key] = d
+	f.cursors[c.Owner] = key
+	return nil
+}
+func (f *fakeTrainingInventory) HasRemainingErasure(_ context.Context, owner string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for key, d := range f.rows {
+		if d.ContributorID == owner && key > f.cursors[owner] {
+			return true, nil
+		}
+	}
+	delete(f.cursors, owner)
+	return false, nil
+}
+
+func TestTrainingErasureRechecksRestoredBytesBesidePurgedReceipt(t *testing.T) {
+	consents := &fakeConsentStore{rows: map[string]domain.Consent{}}
+	inv := newFakeTrainingInventory()
+	objects := &fakeTrainingObjects{objects: map[string][]byte{}}
+	grantAndPromote(t, consents, inv, "c1", "restored-image")
+	var key string
+	for _, d := range inv.rows {
+		key = d.ObjectKey
+		objects.objects[key] = []byte("synthetic")
+	}
+	p := trainingErasePorts(consents, inv, objects)
+	if _, _, err := EraseTrainingContributor(context.Background(), p, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	objects.objects[key] = []byte("restored synthetic bytes")
+	if _, purged, err := EraseTrainingContributor(context.Background(), p, "c1"); err != nil || purged != 1 {
+		t.Fatal("restore escaped retained purge receipt", purged, err)
 	}
 }

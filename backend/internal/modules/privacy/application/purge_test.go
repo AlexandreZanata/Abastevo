@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -50,6 +51,7 @@ func (f *fakeObjectStore) Delete(_ context.Context, key string) error {
 func revokedDerivative(image string, revokedAt time.Time) domain.Derivative {
 	return domain.Derivative{
 		ImageID: image, ContributorID: "c1", ContributorRef: "tok-c1",
+		ObjectKey:    TrainingObjectKey(image, 1, revokedAt.Add(-48*time.Hour)),
 		SourceSHA256: "source", DerivativeSHA256: "derivative",
 		CapturedAt:   revokedAt.Add(-48 * time.Hour),
 		TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1",
@@ -75,7 +77,7 @@ func TestSweepPurgesDueObjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sweep = %v", err)
 	}
-	if report.Checked != 1 || report.Purged != 1 || len(report.Missing) != 0 || len(report.Failures) != 0 {
+	if report.Checked != 2 || report.Purged != 1 || len(report.Missing) != 1 || len(report.Failures) != 0 {
 		t.Errorf("report = %+v", report)
 	}
 	if _, ok := store.objects[key]; ok {
@@ -100,8 +102,8 @@ func TestSweepReportsMissingAndFailures(t *testing.T) {
 		Inventory: inv,
 		Objects:   store,
 	})
-	if err != nil {
-		t.Fatalf("sweep = %v", err)
+	if err == nil {
+		t.Fatal("partial cleanup was acknowledged")
 	}
 	if report.Checked != 2 || report.Purged != 0 {
 		t.Errorf("report = %+v", report)
@@ -149,7 +151,7 @@ func TestRestoreDrillKeepsRevokedExcluded(t *testing.T) {
 		ImageID: "img-active", ContributorID: "c1", ContributorRef: "tok-c1",
 		SourceSHA256: "s", DerivativeSHA256: "d", CapturedAt: grantedAt.Add(time.Hour),
 		TermsVersion: domain.TrainingTermsV1, TermsDigest: "digest-v1",
-		State: domain.DerivativeActive, ConsentRevision: 2, PromotedAt: grantedAt.Add(2 * time.Hour),
+		State: domain.DerivativeActive, OutputState: domain.OutputReady, ConsentRevision: 2, PromotedAt: grantedAt.Add(2 * time.Hour),
 	}
 	revoked := active
 	revoked.ImageID = "img-revoked"
@@ -162,4 +164,45 @@ func TestRestoreDrillKeepsRevokedExcluded(t *testing.T) {
 	if domain.SelectableForTraining(revoked, &consent, domain.TrainingTermsV1, "digest-v1") {
 		t.Error("restored revoked row resurrected")
 	}
+}
+
+func TestSweepStartsBeforeDeadlineAndBoundsWork(t *testing.T) {
+	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	for _, age := range []time.Duration{time.Minute, 25 * time.Hour} {
+		inv := &fakePurgeInventory{}
+		store := &fakeObjectStore{objects: map[string][]byte{}}
+		for i := 0; i < 65; i++ {
+			d := revokedDerivative(fmt.Sprintf("bounded-%d", i), now.Add(-age))
+			inv.rows = append(inv.rows, d)
+			store.objects[d.ObjectKey] = []byte("synthetic")
+		}
+		rep, err := SweepRevoked(context.Background(), PurgePorts{Clock: func() time.Time { return now }, Inventory: inv, Objects: store})
+		if err != nil || rep.Checked != 32 || rep.Purged != 32 {
+			t.Fatalf("age=%s: unbounded/late sweep %+v %v", age, rep, err)
+		}
+	}
+}
+
+func (f *fakePurgeInventory) ClaimPurge(_ context.Context, now time.Time) (PurgeClaim, bool, error) {
+	for i, d := range f.rows {
+		if d.State != domain.DerivativeRevoked || d.OutputState == domain.OutputPurged || now.Before(d.OutputLeaseUntil) {
+			continue
+		}
+		d.OutputState = domain.OutputPurging
+		d.OutputLeaseUntil = now.Add(time.Minute)
+		f.rows[i] = d
+		return PurgeClaim{Derivative: d, Token: d.ImageID}, true, nil
+	}
+	return PurgeClaim{}, false, nil
+}
+func (f *fakePurgeInventory) CompletePurge(_ context.Context, c PurgeClaim, now time.Time) error {
+	for i, d := range f.rows {
+		if d.ImageID == c.Derivative.ImageID && c.Token == d.ImageID && now.Before(d.OutputLeaseUntil) {
+			d.OutputState = domain.OutputPurged
+			d.OutputLeaseUntil = time.Time{}
+			f.rows[i] = d
+			return nil
+		}
+	}
+	return domain.ErrBadState
 }

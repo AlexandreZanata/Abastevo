@@ -11,6 +11,97 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const beginFinalOutputWrite = `-- name: BeginFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'WRITING', attempts = attempts + 1,
+ sanitized_sha256 = $1, lease_nonce = $2, lease_until = $3
+WHERE final_key = $4 AND session_id = $5
+ AND state = 'PENDING' AND attempts < 5 AND deadline_at > $3
+`
+
+type BeginFinalOutputWriteParams struct {
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	LeaseNonce      pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil      pgtype.Timestamptz `json:"lease_until"`
+	FinalKey        string             `json:"final_key"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+}
+
+func (q *Queries) BeginFinalOutputWrite(ctx context.Context, arg BeginFinalOutputWriteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, beginFinalOutputWrite,
+		arg.SanitizedSha256,
+		arg.LeaseNonce,
+		arg.LeaseUntil,
+		arg.FinalKey,
+		arg.SessionID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const beginSweepObservation = `-- name: BeginSweepObservation :one
+INSERT INTO evidence_sweep_observation(singleton,epoch,started_at)
+VALUES (true,1,now())
+ON CONFLICT(singleton) DO UPDATE
+SET epoch=evidence_sweep_observation.epoch+1,started_at=now(),finished_at=NULL,healthy=false
+RETURNING epoch
+`
+
+func (q *Queries) BeginSweepObservation(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, beginSweepObservation)
+	var epoch int64
+	err := row.Scan(&epoch)
+	return epoch, err
+}
+
+const canDeleteQuarantine = `-- name: CanDeleteQuarantine :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = $1
+ AND s.status IN ('READY','REJECTED','EXPIRED')
+ AND NOT EXISTS(SELECT 1 FROM evidence_upload_transfers t
+ WHERE t.session_id = s.id AND t.lease_until > $2)) AS allowed
+`
+
+type CanDeleteQuarantineParams struct {
+	ID pgtype.UUID        `json:"id"`
+	At pgtype.Timestamptz `json:"at"`
+}
+
+// Expiry must already have closed new admission. A separate fresh statement
+// observes any writer admitted before the terminal-state transition.
+func (q *Queries) CanDeleteQuarantine(ctx context.Context, arg CanDeleteQuarantineParams) (bool, error) {
+	row := q.db.QueryRow(ctx, canDeleteQuarantine, arg.ID, arg.At)
+	var allowed bool
+	err := row.Scan(&allowed)
+	return allowed, err
+}
+
+const claimFinalOutputCleanup = `-- name: ClaimFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state='PURGING',lease_nonce= $1,lease_until= $2
+WHERE final_key= $3 AND state != 'PURGED'
+ AND (lease_until IS NULL OR lease_until <= $4)
+`
+
+type ClaimFinalOutputCleanupParams struct {
+	LeaseNonce pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	FinalKey   string             `json:"final_key"`
+	At         pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) ClaimFinalOutputCleanup(ctx context.Context, arg ClaimFinalOutputCleanupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimFinalOutputCleanup,
+		arg.LeaseNonce,
+		arg.LeaseUntil,
+		arg.FinalKey,
+		arg.At,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimObjectBinding = `-- name: ClaimObjectBinding :execrows
 UPDATE evidence_objects
 SET bound_observation_id = $1
@@ -59,6 +150,39 @@ func (q *Queries) ClaimPhotoObjectBinding(ctx context.Context, arg ClaimPhotoObj
 	return result.RowsAffected(), nil
 }
 
+const claimUploadTransfer = `-- name: ClaimUploadTransfer :execrows
+INSERT INTO evidence_upload_transfers (session_id, lease_nonce, lease_until)
+SELECT id, $1, $2 FROM evidence_sessions
+WHERE id = $3 AND status = 'ISSUED' AND expires_at > $4
+ AND quarantine_deleted_at IS NULL
+ON CONFLICT (session_id) DO UPDATE
+SET attempts = evidence_upload_transfers.attempts + 1,
+ lease_nonce = EXCLUDED.lease_nonce, lease_until = EXCLUDED.lease_until
+WHERE evidence_upload_transfers.received_at IS NULL
+ AND evidence_upload_transfers.attempts < 5
+ AND (evidence_upload_transfers.lease_until IS NULL OR evidence_upload_transfers.lease_until <= $4)
+`
+
+type ClaimUploadTransferParams struct {
+	LeaseNonce string             `json:"lease_nonce"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	SessionID  pgtype.UUID        `json:"session_id"`
+	At         pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) ClaimUploadTransfer(ctx context.Context, arg ClaimUploadTransferParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimUploadTransfer,
+		arg.LeaseNonce,
+		arg.LeaseUntil,
+		arg.SessionID,
+		arg.At,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimVerifying = `-- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()
@@ -71,6 +195,31 @@ func (q *Queries) ClaimVerifying(ctx context.Context, id pgtype.UUID) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const countPendingPhotoSessions = `-- name: CountPendingPhotoSessions :one
+WITH originals AS MATERIALIZED (
+ SELECT id FROM evidence_sessions WHERE quarantine_deleted_at IS NULL
+ ORDER BY created_at,id LIMIT $1
+), finals AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_final_outputs WHERE state != 'PURGED'
+ ORDER BY session_id LIMIT $1
+), legacy AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_objects WHERE final_deleted_at IS NULL
+ ORDER BY session_id LIMIT $1
+)
+SELECT count(DISTINCT pending.id) FROM (
+ SELECT id FROM originals UNION ALL SELECT id FROM finals UNION ALL SELECT id FROM legacy
+) pending
+`
+
+// Each ordered distinct branch is capped before the cross-branch count;
+// duplicate keys/session never hide additional pending photo sessions.
+func (q *Queries) CountPendingPhotoSessions(ctx context.Context, scanLimit int32) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingPhotoSessions, scanLimit)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countSessionsSince = `-- name: CountSessionsSince :one
@@ -90,22 +239,34 @@ func (q *Queries) CountSessionsSince(ctx context.Context, arg CountSessionsSince
 	return count, err
 }
 
+const expireErasureSession = `-- name: ExpireErasureSession :exec
+UPDATE evidence_sessions SET status = 'EXPIRED', updated_at = now()
+WHERE id = $1 AND status != 'EXPIRED'
+`
+
+func (q *Queries) ExpireErasureSession(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, expireErasureSession, id)
+	return err
+}
+
 const expireIdleSessions = `-- name: ExpireIdleSessions :many
 
 UPDATE evidence_sessions AS s
 SET status = 'EXPIRED', updated_at = now()
 WHERE s.id IN (
     SELECT inner_s.id FROM evidence_sessions AS inner_s
-    WHERE inner_s.status = 'ISSUED' AND inner_s.expires_at <= $1
-    ORDER BY inner_s.expires_at ASC
-    LIMIT $2
+    WHERE inner_s.status = 'ISSUED'
+      AND (inner_s.expires_at <= $1 OR inner_s.created_at <= $2)
+    ORDER BY inner_s.created_at ASC, inner_s.id ASC
+    LIMIT $3
 )
 RETURNING s.id, s.quarantine_key
 `
 
 type ExpireIdleSessionsParams struct {
-	Now   pgtype.Timestamptz `json:"now"`
-	Batch int32              `json:"batch"`
+	Now           pgtype.Timestamptz `json:"now"`
+	CleanupCutoff pgtype.Timestamptz `json:"cleanup_cutoff"`
+	Batch         int32              `json:"batch"`
 }
 
 type ExpireIdleSessionsRow struct {
@@ -118,7 +279,7 @@ type ExpireIdleSessionsRow struct {
 // UPDATE takes no LIMIT, so batched transitions select their keys in a
 // subquery instead.
 func (q *Queries) ExpireIdleSessions(ctx context.Context, arg ExpireIdleSessionsParams) ([]ExpireIdleSessionsRow, error) {
-	rows, err := q.db.Query(ctx, expireIdleSessions, arg.Now, arg.Batch)
+	rows, err := q.db.Query(ctx, expireIdleSessions, arg.Now, arg.CleanupCutoff, arg.Batch)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +375,143 @@ func (q *Queries) FindByDHash(ctx context.Context, arg FindByDHashParams) ([]Fin
 		return nil, err
 	}
 	return items, nil
+}
+
+const finishFinalOutputCleanup = `-- name: FinishFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state= $1,
+ lease_nonce=NULL,lease_until=NULL,
+ purged_at=CASE WHEN $1::text='PURGED' THEN now() ELSE purged_at END
+WHERE final_key= $2 AND state='PURGING' AND lease_nonce= $3
+ AND lease_until > now()
+`
+
+type FinishFinalOutputCleanupParams struct {
+	NextState  string      `json:"next_state"`
+	FinalKey   string      `json:"final_key"`
+	LeaseNonce pgtype.UUID `json:"lease_nonce"`
+}
+
+func (q *Queries) FinishFinalOutputCleanup(ctx context.Context, arg FinishFinalOutputCleanupParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishFinalOutputCleanup, arg.NextState, arg.FinalKey, arg.LeaseNonce)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishFinalOutputWrite = `-- name: FinishFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'READY', lease_nonce = NULL, lease_until = NULL
+WHERE final_key = $1 AND session_id = $2 AND state = 'WRITING'
+ AND lease_nonce = $3 AND lease_until > now() AND deadline_at > now()
+`
+
+type FinishFinalOutputWriteParams struct {
+	FinalKey   string      `json:"final_key"`
+	SessionID  pgtype.UUID `json:"session_id"`
+	LeaseNonce pgtype.UUID `json:"lease_nonce"`
+}
+
+func (q *Queries) FinishFinalOutputWrite(ctx context.Context, arg FinishFinalOutputWriteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishFinalOutputWrite, arg.FinalKey, arg.SessionID, arg.LeaseNonce)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishSweepObservation = `-- name: FinishSweepObservation :execrows
+UPDATE evidence_sweep_observation
+SET finished_at=now(),healthy= $1,
+ last_success_at=CASE WHEN $1::boolean THEN now() ELSE last_success_at END
+WHERE singleton AND epoch= $2 AND finished_at IS NULL
+ AND (NOT $1::boolean OR started_at > now()-interval '1 minute')
+`
+
+type FinishSweepObservationParams struct {
+	Healthy bool  `json:"healthy"`
+	Epoch   int64 `json:"epoch"`
+}
+
+func (q *Queries) FinishSweepObservation(ctx context.Context, arg FinishSweepObservationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishSweepObservation, arg.Healthy, arg.Epoch)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishUploadTransfer = `-- name: FinishUploadTransfer :execrows
+UPDATE evidence_upload_transfers SET lease_until = NULL, lease_nonce = '',
+ received_at = CASE WHEN $1::boolean THEN now() ELSE received_at END,
+ actual_bytes = CASE WHEN $1::boolean THEN $2::bigint ELSE actual_bytes END
+WHERE session_id = $3 AND lease_nonce = $4
+ AND received_at IS NULL AND lease_until > now()
+`
+
+type FinishUploadTransferParams struct {
+	Completed   bool        `json:"completed"`
+	ActualBytes int64       `json:"actual_bytes"`
+	SessionID   pgtype.UUID `json:"session_id"`
+	LeaseNonce  string      `json:"lease_nonce"`
+}
+
+func (q *Queries) FinishUploadTransfer(ctx context.Context, arg FinishUploadTransferParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishUploadTransfer,
+		arg.Completed,
+		arg.ActualBytes,
+		arg.SessionID,
+		arg.LeaseNonce,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getFinalOutputForUpdate = `-- name: GetFinalOutputForUpdate :one
+SELECT final_key, session_id, sanitized_sha256, state, attempts, lease_nonce, lease_until, deadline_at, created_at, purged_at FROM evidence_final_outputs WHERE final_key = $1 FOR UPDATE
+`
+
+func (q *Queries) GetFinalOutputForUpdate(ctx context.Context, finalKey string) (EvidenceFinalOutput, error) {
+	row := q.db.QueryRow(ctx, getFinalOutputForUpdate, finalKey)
+	var i EvidenceFinalOutput
+	err := row.Scan(
+		&i.FinalKey,
+		&i.SessionID,
+		&i.SanitizedSha256,
+		&i.State,
+		&i.Attempts,
+		&i.LeaseNonce,
+		&i.LeaseUntil,
+		&i.DeadlineAt,
+		&i.CreatedAt,
+		&i.PurgedAt,
+	)
+	return i, err
+}
+
+const getLiveFinalObject = `-- name: GetLiveFinalObject :one
+SELECT id, session_id, source_sha256, sanitized_sha256 FROM evidence_objects
+WHERE final_key = $1 AND final_deleted_at IS NULL
+`
+
+type GetLiveFinalObjectRow struct {
+	ID              pgtype.UUID `json:"id"`
+	SessionID       pgtype.UUID `json:"session_id"`
+	SourceSha256    string      `json:"source_sha256"`
+	SanitizedSha256 string      `json:"sanitized_sha256"`
+}
+
+func (q *Queries) GetLiveFinalObject(ctx context.Context, finalKey string) (GetLiveFinalObjectRow, error) {
+	row := q.db.QueryRow(ctx, getLiveFinalObject, finalKey)
+	var i GetLiveFinalObjectRow
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.SourceSha256,
+		&i.SanitizedSha256,
+	)
+	return i, err
 }
 
 const getObject = `-- name: GetObject :one
@@ -459,6 +757,98 @@ func (q *Queries) GetSessionByNaturalKey(ctx context.Context, arg GetSessionByNa
 	return i, err
 }
 
+const getUploadSessionForUpdate = `-- name: GetUploadSessionForUpdate :one
+SELECT id, contributor_ref, client_session_id, mime, declared_bytes, claimed_sha256, quarantine_key, status, status_reason, created_at, expires_at, updated_at, policy_version, photo_capture_id, quarantine_deleted_at FROM evidence_sessions WHERE id = $1 FOR UPDATE
+`
+
+// Ingress serializes with expiry/erasure, never with network I/O.
+func (q *Queries) GetUploadSessionForUpdate(ctx context.Context, id pgtype.UUID) (EvidenceSession, error) {
+	row := q.db.QueryRow(ctx, getUploadSessionForUpdate, id)
+	var i EvidenceSession
+	err := row.Scan(
+		&i.ID,
+		&i.ContributorRef,
+		&i.ClientSessionID,
+		&i.Mime,
+		&i.DeclaredBytes,
+		&i.ClaimedSha256,
+		&i.QuarantineKey,
+		&i.Status,
+		&i.StatusReason,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.UpdatedAt,
+		&i.PolicyVersion,
+		&i.PhotoCaptureID,
+		&i.QuarantineDeletedAt,
+	)
+	return i, err
+}
+
+const getUploadTransfer = `-- name: GetUploadTransfer :one
+SELECT received_at FROM evidence_upload_transfers WHERE session_id = $1
+`
+
+func (q *Queries) GetUploadTransfer(ctx context.Context, sessionID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getUploadTransfer, sessionID)
+	var received_at pgtype.Timestamptz
+	err := row.Scan(&received_at)
+	return received_at, err
+}
+
+const hasPendingEvidenceErasure = `-- name: HasPendingEvidenceErasure :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = $1 AND s.quarantine_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = $1 AND o.final_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_final_outputs f JOIN evidence_sessions r ON r.id=f.session_id WHERE r.contributor_ref = $1 AND f.state != 'PURGED') AS pending
+`
+
+func (q *Queries) HasPendingEvidenceErasure(ctx context.Context, contributorRef string) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingEvidenceErasure, contributorRef)
+	var pending pgtype.Bool
+	err := row.Scan(&pending)
+	return pending, err
+}
+
+const insertGuardedObject = `-- name: InsertGuardedObject :execrows
+INSERT INTO evidence_objects
+ (id, session_id, final_key, source_sha256, sanitized_sha256, width, height, dhash, created_at, received_at)
+VALUES ($1, $2, $3, $4, $5,
+ $6, $7, $8, $9, $10)
+ON CONFLICT DO NOTHING
+`
+
+type InsertGuardedObjectParams struct {
+	ID              pgtype.UUID        `json:"id"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	FinalKey        string             `json:"final_key"`
+	SourceSha256    string             `json:"source_sha256"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	Width           int32              `json:"width"`
+	Height          int32              `json:"height"`
+	Dhash           int64              `json:"dhash"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt      pgtype.Timestamptz `json:"received_at"`
+}
+
+func (q *Queries) InsertGuardedObject(ctx context.Context, arg InsertGuardedObjectParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertGuardedObject,
+		arg.ID,
+		arg.SessionID,
+		arg.FinalKey,
+		arg.SourceSha256,
+		arg.SanitizedSha256,
+		arg.Width,
+		arg.Height,
+		arg.Dhash,
+		arg.CreatedAt,
+		arg.ReceivedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertObject = `-- name: InsertObject :one
 INSERT INTO evidence_objects
     (id, session_id, final_key, source_sha256, sanitized_sha256,
@@ -551,6 +941,67 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (p
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const intakeObservationHealthy = `-- name: IntakeObservationHealthy :one
+SELECT healthy AND finished_at IS NOT NULL AND finished_at >= started_at
+ AND last_success_at > now()-interval '3 minutes'
+ AND last_success_at <= now() AND started_at <= now()
+ AND started_at > now()-interval '3 minutes' AS healthy
+FROM evidence_sweep_observation WHERE singleton
+`
+
+// Running, failed and missing attempts stay closed until a fenced success.
+func (q *Queries) IntakeObservationHealthy(ctx context.Context) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, intakeObservationHealthy)
+	var healthy pgtype.Bool
+	err := row.Scan(&healthy)
+	return healthy, err
+}
+
+const inventoryExistingFinalOutput = `-- name: InventoryExistingFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at, purged_at)
+SELECT o.final_key, o.session_id, o.sanitized_sha256,
+ CASE WHEN o.final_deleted_at IS NULL THEN 'READY' ELSE 'PURGED' END,
+ LEAST(COALESCE(o.received_at, o.created_at), s.created_at) + interval '24 hours',
+ LEAST(o.created_at, s.created_at), o.final_deleted_at
+FROM evidence_objects o JOIN evidence_sessions s ON s.id = o.session_id
+WHERE o.final_key = $1
+ON CONFLICT (final_key) DO NOTHING
+`
+
+// Metadata compatibility also inventories rows created by old workers or
+// fixture helpers, without accepting a new untracked PUT from production.
+func (q *Queries) InventoryExistingFinalOutput(ctx context.Context, finalKey string) error {
+	_, err := q.db.Exec(ctx, inventoryExistingFinalOutput, finalKey)
+	return err
+}
+
+const inventoryFinalOutput = `-- name: InventoryFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at)
+VALUES ($1, $2, $3, 'PENDING', $4, $5)
+ON CONFLICT (final_key) DO NOTHING
+`
+
+type InventoryFinalOutputParams struct {
+	FinalKey        string             `json:"final_key"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	DeadlineAt      pgtype.Timestamptz `json:"deadline_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) InventoryFinalOutput(ctx context.Context, arg InventoryFinalOutputParams) error {
+	_, err := q.db.Exec(ctx, inventoryFinalOutput,
+		arg.FinalKey,
+		arg.SessionID,
+		arg.SanitizedSha256,
+		arg.DeadlineAt,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const listObjectsByContributor = `-- name: ListObjectsByContributor :many
@@ -724,6 +1175,24 @@ func (q *Queries) ListYoungVerifying(ctx context.Context, arg ListYoungVerifying
 	return items, nil
 }
 
+const lockFinalOutputKey = `-- name: LockFinalOutputKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 68001))
+`
+
+func (q *Queries) LockFinalOutputKey(ctx context.Context, finalKey string) error {
+	_, err := q.db.Exec(ctx, lockFinalOutputKey, finalKey)
+	return err
+}
+
+const lockIntakeAdmission = `-- name: LockIntakeAdmission :exec
+SELECT pg_advisory_xact_lock(73001)
+`
+
+func (q *Queries) LockIntakeAdmission(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockIntakeAdmission)
+	return err
+}
+
 const markFinalDeleted = `-- name: MarkFinalDeleted :execrows
 UPDATE evidence_objects
 SET final_deleted_at = now()
@@ -736,6 +1205,16 @@ func (q *Queries) MarkFinalDeleted(ctx context.Context, id pgtype.UUID) (int64, 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const markFinalKeyDeleted = `-- name: MarkFinalKeyDeleted :exec
+UPDATE evidence_objects SET final_deleted_at=now()
+WHERE final_key= $1 AND final_deleted_at IS NULL
+`
+
+func (q *Queries) MarkFinalKeyDeleted(ctx context.Context, finalKey string) error {
+	_, err := q.db.Exec(ctx, markFinalKeyDeleted, finalKey)
+	return err
 }
 
 const markQuarantineDeleted = `-- name: MarkQuarantineDeleted :execrows
@@ -799,6 +1278,48 @@ func (q *Queries) MarkSessionRejected(ctx context.Context, arg MarkSessionReject
 	return result.RowsAffected(), nil
 }
 
+const nextFinalOutputCleanup = `-- name: NextFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= $1)
+ AND (f.state IN ('WRITING','PURGING') OR f.attempts >= 5
+      OR f.deadline_at <= $2 OR s.status IN ('EXPIRED','REJECTED'))
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1
+`
+
+type NextFinalOutputCleanupParams struct {
+	At        pgtype.Timestamptz `json:"at"`
+	DueCutoff pgtype.Timestamptz `json:"due_cutoff"`
+}
+
+func (q *Queries) NextFinalOutputCleanup(ctx context.Context, arg NextFinalOutputCleanupParams) (string, error) {
+	row := q.db.QueryRow(ctx, nextFinalOutputCleanup, arg.At, arg.DueCutoff)
+	var final_key string
+	err := row.Scan(&final_key)
+	return final_key, err
+}
+
+const nextOwnerFinalOutputCleanup = `-- name: NextOwnerFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE s.contributor_ref = $1 AND f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= $2)
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1
+`
+
+type NextOwnerFinalOutputCleanupParams struct {
+	ContributorRef string             `json:"contributor_ref"`
+	At             pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) NextOwnerFinalOutputCleanup(ctx context.Context, arg NextOwnerFinalOutputCleanupParams) (string, error) {
+	row := q.db.QueryRow(ctx, nextOwnerFinalOutputCleanup, arg.ContributorRef, arg.At)
+	var final_key string
+	err := row.Scan(&final_key)
+	return final_key, err
+}
+
 const oldestIncompleteSession = `-- name: OldestIncompleteSession :one
 SELECT COALESCE(MIN(created_at), now())::timestamptz AS oldest FROM evidence_sessions
 WHERE status IN ('ISSUED', 'VERIFYING')
@@ -813,11 +1334,12 @@ func (q *Queries) OldestIncompleteSession(ctx context.Context) (pgtype.Timestamp
 
 const overdueFinals = `-- name: OverdueFinals :many
 
-SELECT id, final_key, created_at, received_at
-FROM evidence_objects
-WHERE final_deleted_at IS NULL
-    AND COALESCE(received_at, created_at) < $1
-ORDER BY COALESCE(received_at, created_at) ASC
+SELECT o.id, o.final_key, o.created_at,
+ LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_objects o LEFT JOIN evidence_final_outputs f ON f.final_key = o.final_key
+WHERE o.final_deleted_at IS NULL
+ AND LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours') <= $1
+ORDER BY LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours'),o.final_key
 LIMIT $2
 `
 
@@ -913,9 +1435,129 @@ func (q *Queries) OverdueOriginals(ctx context.Context, arg OverdueOriginalsPara
 	return items, nil
 }
 
+const overdueUnconfirmedFinalOutputs = `-- name: OverdueUnconfirmedFinalOutputs :many
+SELECT f.session_id AS id, f.final_key, f.created_at,
+       (f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_final_outputs f
+WHERE f.state != 'PURGED' AND f.deadline_at <= $1
+ AND NOT EXISTS(SELECT 1 FROM evidence_objects o
+                WHERE o.final_key = f.final_key AND o.final_deleted_at IS NULL)
+ORDER BY f.deadline_at,f.final_key LIMIT $2
+`
+
+type OverdueUnconfirmedFinalOutputsParams struct {
+	Deadline pgtype.Timestamptz `json:"deadline"`
+	Batch    int32              `json:"batch"`
+}
+
+type OverdueUnconfirmedFinalOutputsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	FinalKey   string             `json:"final_key"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+func (q *Queries) OverdueUnconfirmedFinalOutputs(ctx context.Context, arg OverdueUnconfirmedFinalOutputsParams) ([]OverdueUnconfirmedFinalOutputsRow, error) {
+	rows, err := q.db.Query(ctx, overdueUnconfirmedFinalOutputs, arg.Deadline, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OverdueUnconfirmedFinalOutputsRow
+	for rows.Next() {
+		var i OverdueUnconfirmedFinalOutputsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FinalKey,
+			&i.CreatedAt,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingErasureObjects = `-- name: PendingErasureObjects :many
+SELECT o.id, o.final_key FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = $1 AND o.final_deleted_at IS NULL
+ORDER BY o.created_at, o.id LIMIT 32
+`
+
+type PendingErasureObjectsRow struct {
+	ID       pgtype.UUID `json:"id"`
+	FinalKey string      `json:"final_key"`
+}
+
+func (q *Queries) PendingErasureObjects(ctx context.Context, contributorRef string) ([]PendingErasureObjectsRow, error) {
+	rows, err := q.db.Query(ctx, pendingErasureObjects, contributorRef)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingErasureObjectsRow
+	for rows.Next() {
+		var i PendingErasureObjectsRow
+		if err := rows.Scan(&i.ID, &i.FinalKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingErasureSessions = `-- name: PendingErasureSessions :many
+SELECT id, quarantine_key, quarantine_deleted_at FROM evidence_sessions
+WHERE contributor_ref = $1 AND (quarantine_deleted_at IS NULL
+ OR EXISTS(SELECT 1 FROM evidence_final_outputs f WHERE f.session_id = evidence_sessions.id AND f.state != 'PURGED'))
+ORDER BY created_at, id LIMIT 32
+`
+
+type PendingErasureSessionsRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	QuarantineKey       string             `json:"quarantine_key"`
+	QuarantineDeletedAt pgtype.Timestamptz `json:"quarantine_deleted_at"`
+}
+
+func (q *Queries) PendingErasureSessions(ctx context.Context, contributorRef string) ([]PendingErasureSessionsRow, error) {
+	rows, err := q.db.Query(ctx, pendingErasureSessions, contributorRef)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingErasureSessionsRow
+	for rows.Next() {
+		var i PendingErasureSessionsRow
+		if err := rows.Scan(&i.ID, &i.QuarantineKey, &i.QuarantineDeletedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const purgeObjectsBefore = `-- name: PurgeObjectsBefore :execrows
-DELETE FROM evidence_objects
-WHERE created_at < $1
+WITH confirmed AS (
+    SELECT o.id FROM evidence_objects o
+    JOIN evidence_final_outputs f ON f.final_key = o.final_key
+    WHERE o.created_at < $1 AND o.final_deleted_at IS NOT NULL
+      AND f.state = 'PURGED' AND f.purged_at IS NOT NULL
+    ORDER BY o.created_at, o.id
+    LIMIT 100
+    FOR UPDATE OF o SKIP LOCKED
+)
+DELETE FROM evidence_objects o USING confirmed c WHERE o.id = c.id
 `
 
 func (q *Queries) PurgeObjectsBefore(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
@@ -930,7 +1572,9 @@ const quarantineCandidates = `-- name: QuarantineCandidates :many
 SELECT id, quarantine_key, status, created_at FROM evidence_sessions
 WHERE quarantine_deleted_at IS NULL
     AND (status IN ('READY', 'REJECTED', 'EXPIRED') OR created_at <= $1)
-ORDER BY created_at ASC
+    AND NOT EXISTS (SELECT 1 FROM evidence_upload_transfers t
+                    WHERE t.session_id = evidence_sessions.id AND t.lease_until > now())
+ORDER BY created_at ASC, id ASC
 LIMIT $2
 `
 
@@ -969,6 +1613,24 @@ func (q *Queries) QuarantineCandidates(ctx context.Context, arg QuarantineCandid
 		return nil, err
 	}
 	return items, nil
+}
+
+const reopenRestoredFinalOutput = `-- name: ReopenRestoredFinalOutput :execrows
+UPDATE evidence_final_outputs f SET state='PENDING',purged_at=NULL
+WHERE f.final_key = $1 AND f.state='PURGED'
+ AND EXISTS(SELECT 1 FROM evidence_objects o
+            WHERE o.final_key=f.final_key AND o.final_deleted_at IS NULL)
+`
+
+// A closed-traffic database restore can bring a live object marker back
+// beside a newer terminal output receipt. Reopen only this contradictory
+// known object; never treat a retained PURGED receipt as authority to write.
+func (q *Queries) ReopenRestoredFinalOutput(ctx context.Context, finalKey string) (int64, error) {
+	result, err := q.db.Exec(ctx, reopenRestoredFinalOutput, finalKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const staleFinalCandidates = `-- name: StaleFinalCandidates :many
@@ -1095,4 +1757,15 @@ func (q *Queries) SumReservedSessions(ctx context.Context, now pgtype.Timestampt
 	var i SumReservedSessionsRow
 	err := row.Scan(&i.N, &i.Bytes)
 	return i, err
+}
+
+const tryLockFinalOutputKey = `-- name: TryLockFinalOutputKey :one
+SELECT pg_try_advisory_xact_lock(hashtextextended($1::text, 68001)) AS acquired
+`
+
+func (q *Queries) TryLockFinalOutputKey(ctx context.Context, finalKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockFinalOutputKey, finalKey)
+	var acquired bool
+	err := row.Scan(&acquired)
+	return acquired, err
 }

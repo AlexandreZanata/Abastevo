@@ -126,6 +126,9 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 	live.ClaimedSHA256 = sum
 	transfer := &fakeTransferT{payload: raw}
 	out, err := evidenceapp.VerifyForward(ctx, evidenceapp.VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (evidenceapp.FinalWrite, error) {
+			return evidenceapp.FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Clock:    func() time.Time { return firstReceipt.Add(5 * time.Minute) },
 		Download: transfer.download,
 		Upload:   transfer.upload,
@@ -174,8 +177,8 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 		}
 	}
 	rep, err := evidenceapp.Sweep(ctx, deps())
-	if err != nil {
-		t.Fatalf("outage sweep: %v", err)
+	if err == nil {
+		t.Fatal("storage outage must fail the pass for retry")
 	}
 	if rep.FinalsDeleted != 0 || rep.StorageErrors != 1 {
 		t.Fatalf("outage pass must count the failure without marking, got %+v", rep)
@@ -185,6 +188,14 @@ func TestForwardLifecycleEndToEnd(t *testing.T) {
 	}
 
 	storage.fail = map[string]bool{}
+	// Restoring the provider does not bypass a still-live ambiguous-delete lease.
+	rep, err = evidenceapp.Sweep(ctx, deps())
+	if err != nil || rep.FinalsDeleted != 0 || rep.SkippedActive != 1 {
+		t.Fatal("live cleanup lease bypassed", rep, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE evidence_final_outputs SET lease_until=now()-interval '1 second' WHERE final_key=$1 AND state='PURGING'`, out.FinalKey); err != nil {
+		t.Fatal(err)
+	}
 	rep, err = evidenceapp.Sweep(ctx, deps())
 	if err != nil {
 		t.Fatalf("catch-up sweep: %v", err)
@@ -240,6 +251,9 @@ func TestForwardRejectionsStayRedacted(t *testing.T) {
 	live.ClaimedSHA256 = sha256hex([]byte{0xFF, 0xD8, 0x00})
 	transfer := &fakeTransferT{payload: []byte{0xFF, 0xD8, 0x00}}
 	_, err = evidenceapp.VerifyForward(ctx, evidenceapp.VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (evidenceapp.FinalWrite, error) {
+			return evidenceapp.FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Download: transfer.download,
 		Upload:   transfer.upload,
 	}, live)

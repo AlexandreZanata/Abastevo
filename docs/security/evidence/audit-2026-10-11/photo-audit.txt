@@ -1,0 +1,2 @@
+PASS: sealed orphan .tmp survives sweep at capture+72h
+PASS: sealed photo readable when wall clock is before capture; no rollback rejection

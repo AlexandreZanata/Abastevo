@@ -22,3 +22,15 @@ SELECT id, account_id, comment_id, comment_revision, choice, created_at, deleted
 FROM feedback_votes
 WHERE account_id = @account_id
 ORDER BY comment_id, comment_revision, created_at, id;
+
+-- Bounded erasure reads live rows only; export keeps its separate full history.
+-- name: PendingEraseRatings :many
+SELECT station_id, product FROM feedback_ratings WHERE account_id = @account_id AND deleted_at IS NULL ORDER BY station_id, product LIMIT 32;
+-- name: PendingEraseComments :many
+SELECT id FROM feedback_comments WHERE account_id = @account_id AND deleted_at IS NULL ORDER BY id LIMIT 32;
+-- name: PendingEraseVotes :many
+SELECT comment_id, comment_revision FROM feedback_votes WHERE account_id = @account_id AND deleted_at IS NULL ORDER BY comment_id, comment_revision LIMIT 32;
+-- name: HasPendingAccountErasure :one
+SELECT EXISTS(SELECT 1 FROM feedback_ratings r WHERE r.account_id = @account_id AND r.deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM feedback_comments c WHERE c.account_id = @account_id AND c.deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM feedback_votes v WHERE v.account_id = @account_id AND v.deleted_at IS NULL) AS pending;

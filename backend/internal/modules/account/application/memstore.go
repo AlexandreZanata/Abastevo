@@ -27,11 +27,13 @@ type MemStore struct {
 	byContributor map[string]string
 	audit         map[string][]domain.BindingAudit
 	keyCreds      map[string]domain.KeyCredential
+	keyAdmissions []int64
 	keyByUsername map[string]string
 	keyByLookup   map[string]string
 	// intents holds durable account-erasure intents (SEC04-B):
 	// contributor IDs captured at deletion for scope cleanup.
-	intents map[erasureIntentKey]int64
+	intents         map[erasureIntentKey]int64
+	erasureRequests map[string]int64
 	// refreshHist holds bounded hashed rotation histories (SEC07-A):
 	// newest superseded verifiers first, at most
 	// domain.MaxRefreshHistory per family. Salted hashes only.
@@ -46,22 +48,23 @@ type erasureIntentKey struct {
 // NewMemStore returns an empty memory store.
 func NewMemStore() *MemStore {
 	return &MemStore{
-		byAddr:        map[string][]int{},
-		accounts:      map[string]domain.Account{},
-		accountIDs:    map[string]string{},
-		accountsByID:  map[string]domain.Account{},
-		families:      map[string]*domain.SessionFamily{},
-		links:         map[string]map[string]domain.ProviderLink{},
-		bySubject:     map[string]string{},
-		nonces:        map[string]bool{},
-		bindings:      map[string]map[string]domain.ContributorBinding{},
-		byContributor: map[string]string{},
-		audit:         map[string][]domain.BindingAudit{},
-		keyCreds:      map[string]domain.KeyCredential{},
-		keyByUsername: map[string]string{},
-		keyByLookup:   map[string]string{},
-		intents:       map[erasureIntentKey]int64{},
-		refreshHist:   map[string][]domain.RotatedVerifier{},
+		byAddr:          map[string][]int{},
+		accounts:        map[string]domain.Account{},
+		accountIDs:      map[string]string{},
+		accountsByID:    map[string]domain.Account{},
+		families:        map[string]*domain.SessionFamily{},
+		links:           map[string]map[string]domain.ProviderLink{},
+		bySubject:       map[string]string{},
+		nonces:          map[string]bool{},
+		bindings:        map[string]map[string]domain.ContributorBinding{},
+		byContributor:   map[string]string{},
+		audit:           map[string][]domain.BindingAudit{},
+		keyCreds:        map[string]domain.KeyCredential{},
+		keyByUsername:   map[string]string{},
+		keyByLookup:     map[string]string{},
+		intents:         map[erasureIntentKey]int64{},
+		erasureRequests: map[string]int64{},
+		refreshHist:     map[string][]domain.RotatedVerifier{},
 	}
 }
 
@@ -106,8 +109,8 @@ func (m *MemStore) CountKeyAccountsSince(_ context.Context, sinceUnix int64) (in
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	n := 0
-	for _, cred := range m.keyCreds {
-		if cred.CreatedAt >= sinceUnix {
+	for _, admittedAt := range m.keyAdmissions {
+		if admittedAt >= sinceUnix {
 			n++
 		}
 	}
@@ -223,11 +226,14 @@ func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cr
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	n := 0
-	for _, c := range m.keyCreds {
-		if c.CreatedAt >= nowUnix-3600 {
+	live := m.keyAdmissions[:0]
+	for _, admittedAt := range m.keyAdmissions {
+		if admittedAt >= nowUnix-3600 {
+			live = append(live, admittedAt)
 			n++
 		}
 	}
+	m.keyAdmissions = live
 	if n >= domain.MaxKeyAccountsPerHour {
 		return domain.ErrAggregateExhausted
 	}
@@ -237,6 +243,7 @@ func (m *MemStore) TryCreateKeyAccount(_ context.Context, acc domain.Account, cr
 	if owner, ok := m.keyByLookup[cred.KeyLookup]; ok && owner != acc.ID {
 		return domain.ErrKeyCollision
 	}
+	m.keyAdmissions = append(m.keyAdmissions, nowUnix)
 	m.accountsByID[acc.ID] = acc
 	m.keyCreds[acc.ID] = cred
 	m.keyByUsername[cred.UsernameHash] = acc.ID
@@ -621,6 +628,9 @@ func (m *MemStore) DeleteAccount(_ context.Context, accountID string, nowUnix in
 		return nil, err
 	}
 	m.revokeAccountLocked(accountID, nowUnix)
+	if _, ok := m.erasureRequests[accountID]; !ok {
+		m.erasureRequests[accountID] = nowUnix
+	}
 	var contributors []string
 	if set, ok := m.bindings[accountID]; ok {
 		for contributor := range set {
@@ -763,20 +773,8 @@ func (m *MemStore) ListBindingAudit(_ context.Context, accountID string) ([]doma
 // CreateKeyAccount stores the account and its key credential under one
 // lock. Username races refuse with ErrUsernameTaken, key races with
 // ErrKeyCollision so the caller mints a fresh key and retries.
-func (m *MemStore) CreateKeyAccount(_ context.Context, acc domain.Account, cred domain.KeyCredential) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if owner, ok := m.keyByUsername[cred.UsernameHash]; ok && owner != acc.ID {
-		return domain.ErrUsernameTaken
-	}
-	if owner, ok := m.keyByLookup[cred.KeyLookup]; ok && owner != acc.ID {
-		return domain.ErrKeyCollision
-	}
-	m.accountsByID[acc.ID] = acc
-	m.keyCreds[acc.ID] = cred
-	m.keyByUsername[cred.UsernameHash] = acc.ID
-	m.keyByLookup[cred.KeyLookup] = acc.ID
-	return nil
+func (m *MemStore) CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error {
+	return m.TryCreateKeyAccount(ctx, acc, cred, cred.CreatedAt)
 }
 
 // FindKeyCredentialByUsername returns the credential for a username hash,

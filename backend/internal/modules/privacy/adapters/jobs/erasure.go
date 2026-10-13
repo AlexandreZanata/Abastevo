@@ -12,8 +12,8 @@ import (
 )
 
 // Erasure handles one privacy-erasure job: exactly one owner's scope
-// removal, executed through the application Erase use-case. Terminal
-// (non-REQUESTED) requests replay as no-ops; failures retry with
+// removal, executed through the application Erase use-case. Completed
+// (READY) requests replay as no-ops; failures retry with
 // backoff until the cap, then park for audited replay. The payload
 // carries the request ID and the reviewed reason; owner identity
 // resolves server-side from the loaded request.
@@ -48,8 +48,14 @@ func (e Erasure) Handle(ctx context.Context, job jobs.Job) error {
 	if err != nil {
 		return err
 	}
-	if req.Status != privacydomain.StatusRequested {
+	if req.Type != privacydomain.TypeDeletion {
+		return privacydomain.ErrBadState
+	}
+	if req.Status == privacydomain.StatusReady {
 		return nil
+	}
+	if req.Type != privacydomain.TypeDeletion || (req.Status != privacydomain.StatusRequested && req.Status != privacydomain.StatusFailed) {
+		return privacydomain.ErrBadState
 	}
 	reason := strings.TrimSpace(payload.Reason)
 	if reason == "" {

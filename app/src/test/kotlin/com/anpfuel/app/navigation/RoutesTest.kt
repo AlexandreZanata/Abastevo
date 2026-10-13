@@ -33,6 +33,11 @@ class RoutesTest {
     }
 
     @Test
+    fun privacyRouteIsRegisteredConstant() {
+        assertEquals("privacy", Routes.PRIVACY)
+    }
+
+    @Test
     fun profileRouteIsRegisteredConstant() {
         assertEquals("profile", Routes.PROFILE)
     }

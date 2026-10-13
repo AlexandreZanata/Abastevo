@@ -1,0 +1,24 @@
+package storage
+
+import (
+	"testing"
+	"time"
+)
+
+func TestAuditMaxBytesNotBoundInPUTSignature(t *testing.T) {
+	in := PresignInput{Endpoint: "https://audit.example.invalid", Bucket: "audit-bucket", Key: "q/audit", Namespace: "q/", ContentType: "image/jpeg", MaxBytes: 1, Now: time.Unix(1800000000, 0)}
+	cred := Credentials{AccessKeyID: "synthetic", SecretAccessKey: "synthetic-audit-only"}
+	a, e := PresignPUT(in, cred)
+	if e != nil {
+		t.Fatal(e)
+	}
+	in.MaxBytes = 3 << 20
+	b, e := PresignPUT(in, cred)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if a.URL != b.URL {
+		t.Fatal("signature unexpectedly binds size")
+	}
+	t.Log("1 byte and 3 MiB authorization produce identical PUT URL; provider not contacted")
+}

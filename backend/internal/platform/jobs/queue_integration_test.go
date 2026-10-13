@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"sync"
@@ -36,6 +37,10 @@ func testDSN(t *testing.T) string {
 }
 
 func freshQueue(t *testing.T) (*Queue, *pgxpool.Pool) {
+	return freshQueueSchema(t, dbmigrations.Files)
+}
+
+func freshQueueSchema(t *testing.T, schema fs.FS) (*Queue, *pgxpool.Pool) {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -68,7 +73,7 @@ func freshQueue(t *testing.T) (*Queue, *pgxpool.Pool) {
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	if _, err := migrate.Apply(ctx, dsn, dbmigrations.Files); err != nil {
+	if _, err := migrate.Apply(ctx, dsn, schema); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	pool, err := pgxpool.New(ctx, dsn)

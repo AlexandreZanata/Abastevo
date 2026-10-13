@@ -96,7 +96,8 @@ func TestUnknownKidRefreshThenRemovalRefuses(t *testing.T) {
 	if got := src.count(); got != 2 {
 		t.Fatalf("unknown kid must trigger exactly one refresh, fetched %d, want 2", got)
 	}
-	// Upstream rotates: the same token verifies through the refresh.
+	// Upstream rotates: recovery resumes after the bounded refresh interval.
+	now = now.Add(ForcedRefreshInterval + time.Second)
 	inner.mu.Lock()
 	inner.sets["https://accounts.google.com"] = []JSONWebKey{second.PublicJWK()}
 	inner.mu.Unlock()

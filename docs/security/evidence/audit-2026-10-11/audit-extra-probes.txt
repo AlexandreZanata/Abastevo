@@ -1,0 +1,10 @@
+=== RUN   TestAuditFabricatedLocationMetadataPassesGeometryGate
+    audit_probe_test.go:9: self-declared source_info_present=true/simulated=false and station coordinates pass the 150m gate; geometry is not proof of physical presence
+--- PASS: TestAuditFabricatedLocationMetadataPassesGeometryGate (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application	1.008s
+=== RUN   TestAuditFailedOriginalDeletionIsAbsentFromOverdueAudit
+    audit_retention_probe_test.go:12: 48h quarantine remains after simulated delete failure; Sweep succeeds with StorageErrors=1, final-only overdue audit reports healthy zero
+--- PASS: TestAuditFailedOriginalDeletionIsAbsentFromOverdueAudit (0.00s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application	1.008s

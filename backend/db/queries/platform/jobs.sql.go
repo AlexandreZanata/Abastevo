@@ -23,6 +23,7 @@ WHERE j.id = (
     WHERE (status = 'queued' OR (status = 'leased' AND lease_expires_at < now()))
         AND not_before <= now()
         AND ($3 = '' OR kind = $3)
+        AND NOT (kind = ANY($4::text[]))
     ORDER BY created_at ASC, id ASC
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -32,13 +33,19 @@ RETURNING id, kind, payload, dedupe_key, status, attempts, max_attempts,
 `
 
 type ClaimJobParams struct {
-	LeaseTtl string      `json:"lease_ttl"`
-	WorkerID string      `json:"worker_id"`
-	Kind     interface{} `json:"kind"`
+	LeaseTtl      string      `json:"lease_ttl"`
+	WorkerID      string      `json:"worker_id"`
+	Kind          interface{} `json:"kind"`
+	ExcludedKinds []string    `json:"excluded_kinds"`
 }
 
 func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (JobQueue, error) {
-	row := q.db.QueryRow(ctx, claimJob, arg.LeaseTtl, arg.WorkerID, arg.Kind)
+	row := q.db.QueryRow(ctx, claimJob,
+		arg.LeaseTtl,
+		arg.WorkerID,
+		arg.Kind,
+		arg.ExcludedKinds,
+	)
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,

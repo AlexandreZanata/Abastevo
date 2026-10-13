@@ -129,6 +129,9 @@ func TestSEC03CVerifyLoopOnRealS3(t *testing.T) {
 	sess := verifyingSession(t, raw)
 	sess.QuarantineKey = qkey
 	ports := VerifyPorts{
+		BeforeUpload: func(context.Context, string, string) (FinalWrite, error) {
+			return FinalWrite{Nonce: "fixture-authority"}, nil
+		},
 		Download: func(ctx context.Context, key string, maxBytes int64) ([]byte, error) {
 			get := protoPresignGET(t, endpoint, key, "q/")
 			return storage.Get(ctx, nil, get.URL, maxBytes)

@@ -30,7 +30,7 @@
     <string name="community_screen_title">Comunidade</string>
     <string name="community_header_subtitle">Atividade local recente e verificação por consenso</string>
     <string name="community_empty_title">Nenhuma atualização recente</string>
-    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos anexadas são evidências temporárias de verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_action_contribute">Colaborar com preço</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
@@ -54,7 +54,7 @@
     <string name="profile_contributions_empty">Nenhuma contribuição neste dispositivo ainda.</string>
     <string name="profile_contributions_error">Não foi possível carregar suas contribuições.</string>
     <string name="profile_contributions_state_queued">Na fila para envio</string>
-    <string name="profile_contributions_state_retrying">Na fila — tentando de novo sozinho</string>
+    <string name="profile_contributions_state_retrying">Tentando enviar</string>
     <string name="profile_contributions_state_cancelled">Cancelada — nunca enviada</string>
     <string name="profile_contributions_revision_attempts">rev %1$d · %2$d tentativas</string>
     <string name="profile_contributions_cancel">Cancelar envio</string>
@@ -71,6 +71,11 @@
     <string name="profile_tool_settings_subtitle">Cache offline, sincronização Wi-Fi, notificações e tema</string>
     <string name="profile_tool_help_title">Ajuda e regras da comunidade</string>
     <string name="profile_tool_help_subtitle">Orientações de colaboração, denúncias, moderação e privacidade</string>
+    <string name="profile_tool_privacy_title">Privacidade</string>
+    <string name="profile_tool_privacy_subtitle">Consentimento de treinamento, direitos e expiração de fotos</string>
+    <string name="privacy_screen_title">Privacidade</string>
+    <string name="settings_privacy_title">Privacidade</string>
+    <string name="settings_privacy_subtitle">Consentimento de treinamento, direitos e expiração de fotos</string>
     <string name="profile_tool_contributions_title">Minhas contribuições</string>
     <string name="profile_tool_contributions_subtitle">Acompanhe envios, fila e cancelamentos</string>
     <string name="contributions_screen_subtitle">Somente neste aparelho — nada aqui é público.</string>
@@ -85,11 +90,11 @@
     <string name="help_report_title">Denúncia e recurso</string>
     <string name="help_report_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas; moderadores restritos revisam cada caso. Discorda? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado.</string>
     <string name="help_privacy_title">Privacidade</string>
-    <string name="help_privacy_body">A navegação anônima não precisa de conta e coordenadas não são guardadas. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="help_privacy_body">A navegação anônima não precisa de conta. GPS preciso não é publicado. Consulte o uso das fotos e seus direitos nas Configurações.</string>
     <string name="profile_tool_week_picker_title">Semana de pesquisa</string>
     <string name="profile_tool_week_picker_subtitle">Selecione semanas anteriores arquivadas da ANP</string>
     <string name="profile_privacy_section">Privacidade e participação</string>
-    <string name="profile_privacy_body">Nenhum GPS exato é compartilhado publicamente. Fotos de verificação expiram em todas as cópias em 24 horas. Recursos pagos nunca afetam ranking ou confiança.</string>
+    <string name="profile_privacy_body">GPS preciso não é publicado. Fotos são evidências temporárias de verificação. Consulte a privacidade nas Configurações. Recursos pagos nunca afetam ranking ou confiança.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
@@ -124,6 +129,11 @@
     <string name="vehicle_save">Salvar</string>
     <string name="vehicle_delete">Excluir</string>
     <string name="vehicle_delete_confirm">Remover este veículo?</string>
+    <string name="vehicle_photo_label">Foto do veículo</string>
+    <string name="vehicle_add_photo">Adicionar foto</string>
+    <string name="vehicle_change_photo">Trocar foto</string>
+    <string name="vehicle_remove_photo">Remover foto</string>
+    <string name="vehicle_photo_content">Foto do veículo</string>
     <string name="vehicle_empty_message">Nenhum veículo cadastrado</string>
     <string name="vehicle_empty_hint">Adicione até 3 veículos para acompanhar o custo do tanque.</string>
     <string name="vehicle_max_reached">Limite de 3 veículos atingido</string>
@@ -490,7 +500,7 @@
     <string name="community_vote_rejected">Não registrada (%1$s)</string>
 
     <!-- Privacidade da comunidade (P10-T08: o que sai do aparelho) -->
-    <string name="community_privacy_footnote">Anônimo: sem conta. Envia posto, preço e condição — e sua foto por 24h só quando você anexa uma.</string>
+    <string name="community_privacy_footnote">O envio inclui posto, preço e condições. A foto anexada é usada para verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_privacy_keys">Seu aparelho guarda a única chave. Perdê-la encerra esta identidade anônima.</string>
 
     <!-- Captura da comunidade (P10-T08 i18n: extraído do CaptureScreen) -->
@@ -547,7 +557,7 @@
     <string name="station_profile_claim">Representação e gestão</string>
     <string name="station_claim_title">Representação do posto</string>
     <string name="station_claim_explanation">Uma conta gratuita pode solicitar representação com escopo definido. A análise independente verifica a assinatura e os poderes empresariais. Enviar um documento não concede acesso.</string>
-    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Arquivos com digitalizações seguem o limite de retenção de 24 horas.</string>
+    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Consulte as condições de privacidade antes do envio.</string>
     <string name="station_claim_role">Função solicitada</string>
     <string name="station_claim_manager">Gestor</string>
     <string name="station_claim_administrator">Administrador</string>
@@ -614,8 +624,14 @@
     <string name="home_benefit_savings">Economize mais</string>
     <string name="home_benefit_community">Comunidade</string>
     <string name="home_benefit_trust">Origem clara</string>
+    <string name="home_benefits_dismiss">Ocultar benefícios</string>
     <string name="home_reference_prices_title">Preços na sua cidade</string>
     <string name="home_view_all">Ver todos</string>
+    <string name="home_filter_button">Filtros</string>
+    <string name="home_filter_title">Ordenar preços</string>
+    <string name="home_filter_default">Média de preço</string>
+    <string name="home_filter_lowest">Menor preço</string>
+    <string name="home_filter_highest">Maior preço</string>
     <string name="home_change_city">Minha cidade</string>
     <string name="home_reference_period">Referência ANP • %1$s</string>
     <string name="home_shortcut_stations">Ver postos</string>
@@ -730,4 +746,54 @@
     <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
     <string name="developer_capture_change_station">Trocar de posto</string>
     <string name="fuel_product_gasoline_premium_grade">Gasolina premium</string>
+
+    <!-- Community helpfulness and optional training consent -->
+    <string name="community_helpful_title">Esta contribuição foi útil?</string>
+    <string name="community_helpful_counts">%1$d útil · %2$d não útil</string>
+    <string name="community_helpful_choice">Sua escolha: %1$s</string>
+    <string name="community_helpful_helpful">Útil</string>
+    <string name="community_helpful_not_helpful">Não útil</string>
+    <string name="community_helpful_remove">Remover meu voto</string>
+    <string name="community_helpful_voted">Voto registrado. Obrigado pela avaliação.</string>
+    <string name="community_helpful_replayed">Já registrado — nenhum voto adicional foi contado.</string>
+    <string name="community_helpful_removed">Voto removido.</string>
+    <string name="community_helpful_rejected">Não registrado (%1$s)</string>
+    <string name="community_helpful_under_review">Contagens em análise pela comunidade</string>
+    <string name="community_helpful_report">Denunciar</string>
+    <string name="community_helpful_guest">Entre em uma conta gratuita para votar</string>
+    <string name="community_helpful_guest_body">É preciso ter uma conta gratuita para votar. Votos repetidos da sua identidade não são contados novamente. A consulta continua anônima.</string>
+    <string name="training_consent_title">Melhorar o reconhecimento de preços</string>
+    <string name="training_consent_body">Ajude a melhorar o reconhecimento de preços com cópias tratadas das fotos que você autorizar explicitamente. Os originais permanecem no fluxo de análise e a coleta fica desativada até sua autorização.</string>
+    <string name="training_consent_on">Ativado</string>
+    <string name="training_consent_off">Desativado</string>
+    <string name="training_consent_terms">Termos: %1$s</string>
+    <string name="training_consent_regrant">Os termos mudaram desde sua última análise — leia e confirme novamente.</string>
+    <string name="training_consent_pending">Revogação pendente — será enviada na próxima conexão.</string>
+    <string name="training_consent_delete_note">Ao desativar, seu pedido para interromper o uso no treinamento e excluir as cópias é salvo. A confirmação do servidor pode exigir conexão.</string>
+    <string name="training_consent_rights">Seus direitos e contato</string>
+    <string name="training_consent_rejected">Não registrado (%1$s)</string>
+    <string name="training_consent_offline">Sem conexão — tente novamente quando estiver online.</string>
+    <string name="training_photo_opt_in">Autorizar esta foto para análise de treinamento</string>
+    <string name="training_photo_opt_in_locked">É preciso autorizar o treinamento primeiro nas configurações de privacidade</string>
+
+    <string name="privacy_training_heading">Privacidade · Melhorar o reconhecimento de preços</string>
+    <string name="privacy_training_unavailable">A coleta de imagens para treinamento está desativada. Esta escolha registra uma preferência; ativar a coleta exigirá novos termos e nova autorização.</string>
+    <string name="privacy_training_optional">Opcional. Sua conta gratuita, as consultas de preços e a participação na comunidade não dependem desta escolha.</string>
+    <string name="privacy_terms_language">Documento integral em português do Brasil. Disponível offline.</string>
+    <string name="privacy_read_terms">Ler os termos na íntegra</string>
+    <string name="privacy_terms_unavailable">Não foi possível carregar o documento. A autorização está indisponível; você ainda pode revogar ou exercer seus direitos.</string>
+    <string name="privacy_sign_in">Entrar para gerenciar sua preferência opcional</string>
+    <string name="privacy_revocation_pending">Desativado neste aparelho. A revogação está pendente de recebimento pelo servidor.</string>
+    <string name="privacy_offline">Sem conexão. Nenhuma nova autorização foi enviada. Você pode desativar a preferência aqui.</string>
+    <string name="privacy_request_failed">O serviço não confirmou a decisão. Tente depois; não se presume sucesso.</string>
+    <string name="privacy_preference_received">Preferência autorizada e confirmada pelo servidor. A coleta continua desativada.</string>
+    <string name="privacy_preference_off">Nenhuma autorização confirmada nesta consulta.</string>
+    <string name="privacy_consent_check">Li os termos integrais e autorizo livremente o registro da minha preferência opcional para a finalidade descrita.</string>
+    <string name="privacy_confirm_preference">Confirmar e enviar preferência</string>
+    <string name="privacy_revoke_delete">Desativar e excluir imagens</string>
+    <string name="privacy_deletion_receipt_note">O recebimento da solicitação inicia a exclusão; não confirma a exclusão física de todas as cópias.</string>
+    <string name="privacy_digest">SHA-256 do documento: %1$s</string>
+    <string name="privacy_finish_reading">Concluí a leitura · voltar à escolha</string>
+    <string name="privacy_rights_heading">Seus direitos de privacidade</string>
+    <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
 </resources>

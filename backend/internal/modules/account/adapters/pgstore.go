@@ -264,6 +264,9 @@ func (s *PGStore) TryCreateKeyAccount(ctx context.Context, acc domain.Account, c
 		return err
 	}
 	q := account.New(tx)
+	if _, err := q.PruneKeyAccountAdmissions(ctx, nowUnix-3600); err != nil {
+		return err
+	}
 	if n, err := q.CountKeyAccountsSince(ctx, nowUnix-3600); err != nil {
 		return err
 	} else if int(n) >= domain.MaxKeyAccountsPerHour {
@@ -279,6 +282,9 @@ func (s *PGStore) TryCreateKeyAccount(ctx context.Context, acc domain.Account, c
 		KeySalt: cred.KeySalt, KeyHash: cred.KeyHash, CreatedAt: cred.CreatedAt,
 	}); err != nil {
 		return keyCredentialConflict(err)
+	}
+	if err := q.RecordKeyAccountAdmission(ctx, nowUnix); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }
@@ -951,6 +957,9 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 			return nil, err
 		}
 	}
+	if err := q.InsertAccountErasureRequest(ctx, account.InsertAccountErasureRequestParams{AccountID: id, At: stamp(nowUnix)}); err != nil {
+		return nil, err
+	}
 	if err := q.DeleteAccountAddresses(ctx, id); err != nil {
 		return nil, err
 	}
@@ -1210,40 +1219,10 @@ func toKeyCredential(row account.AccountKeyCredential) domain.KeyCredential {
 // A lost username race surfaces ErrUsernameTaken; a lost key race surfaces
 // ErrKeyCollision so the caller mints a fresh key and retries.
 func (s *PGStore) CreateKeyAccount(ctx context.Context, acc domain.Account, cred domain.KeyCredential) error {
-	id, err := mustUUID(acc.ID)
-	if err != nil {
-		return err
-	}
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := account.New(tx)
-	if err := q.InsertAccount(ctx, account.InsertAccountParams{
-		ID:        id,
-		Alias:     acc.Alias,
-		Status:    acc.Status,
-		CreatedAt: stamp(acc.CreatedAt),
-	}); err != nil {
-		return err
-	}
-	if err := q.InsertKeyCredential(ctx, account.InsertKeyCredentialParams{
-		AccountID:    id,
-		UsernameHash: cred.UsernameHash,
-		KeyLookup:    cred.KeyLookup,
-		KeySalt:      cred.KeySalt,
-		KeyHash:      cred.KeyHash,
-		CreatedAt:    cred.CreatedAt,
-	}); err != nil {
-		return keyCredentialConflict(err)
-	}
-	return tx.Commit(ctx)
+	return s.TryCreateKeyAccount(ctx, acc, cred, cred.CreatedAt)
 }
 
-// keyCredentialConflict maps key-credential unique races: username
-// collisions refuse the signup, key collisions ask the caller to mint a
-// fresh key and retry (158-bit entropy makes this near-impossible).
+// keyCredentialConflict preserves username/key race verdicts for admission.
 func keyCredentialConflict(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {

@@ -1,0 +1,3 @@
+package com.anpfuel.data.local.media
+import javax.crypto.SecretKey
+fun interface PhotoKeyProvider { fun getOrCreateKey(alias: String): SecretKey? }

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.SurveyWeekChip
+import com.anpfuel.app.ui.components.rememberRawSystemBottomPadding
 
 @Composable
 fun SurveyWeekChipAction(
@@ -81,6 +81,7 @@ fun WeekPickerBottomSheet(
     val locale = LocalConfiguration.current.locales[0]
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.92f
+    val bottomSafePadding = rememberRawSystemBottomPadding()
 
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect { destination ->
@@ -102,8 +103,7 @@ fun WeekPickerBottomSheet(
                     .fillMaxWidth()
                     .heightIn(max = maxSheetHeight)
                     .fillMaxHeight()
-                    .navigationBarsPadding()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 16.dp + bottomSafePadding),
             ) {
                 Text(
                     text = stringResource(R.string.week_picker_title),

@@ -45,8 +45,8 @@ RETURNING id;
 
 -- name: MarkDeletionReady :one
 UPDATE privacy_requests
-SET status = 'READY', ready_at = @ready_at, completed_at = @completed_at
-WHERE id = @id AND status = 'REQUESTED' AND type = 'DELETION'
+SET status = 'READY', ready_at = COALESCE(ready_at, @ready_at), completed_at = COALESCE(ready_at, @completed_at)
+WHERE id = @id AND status IN ('REQUESTED', 'FAILED', 'READY') AND type = 'DELETION'
 RETURNING id;
 
 -- Deletion replay ledger (P07-T04): insert-once per contributor and

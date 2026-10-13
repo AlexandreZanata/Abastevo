@@ -1,0 +1,2 @@
+security static review ok
+security review ok [mode=static-only]

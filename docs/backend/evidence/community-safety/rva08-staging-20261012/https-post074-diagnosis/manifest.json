@@ -1,0 +1,117 @@
+{
+  "format": "abastevo-https-pilot-v2",
+  "wall_end": "2026-10-12T22:44:07.248184+00:00",
+  "origin": "https://teste.abastevo.com.br",
+  "layer": "client HTTPS including TLS/edge/network",
+  "cache": "client asks no-cache; edge behavior unchanged",
+  "transport": "Python http.client, one reusable verified TLS/HTTP1.1 connection per worker; max8; no automatic retry",
+  "guard_sha256": "ae1066cbd9d0842b6f7e68942dc72cf50ca6e9ae194dcd6eac7d1211eb532633",
+  "driver_sha256": "46fd4ac1917a5b0494796205fb1aa0e89ef2e9c75b1461aef768317f422ee089",
+  "parameters": {
+    "routes": "routes.json",
+    "out": "https-post074-diagnosis",
+    "dataset_manifest": null,
+    "rate": 5.0,
+    "clients": 8,
+    "seconds": 120,
+    "warmup": 10,
+    "trials": 1,
+    "p95_ms": 500.0
+  },
+  "routes": [
+    {
+      "name": "city-directory",
+      "path": "/v1/stations?state=MT&municipality_code=5107925&limit=20",
+      "required": "items"
+    },
+    {
+      "name": "national-page",
+      "path": "/v1/stations?limit=20",
+      "required": "items"
+    }
+  ],
+  "hashes": {
+    "trial-1-warmup.csv": "e131708ba1be52b506db3724b89c4ae15101ec518064d30ec1c9d0e7924c176e",
+    "trial-1-steady.csv": "d5576a54b4eba9780d18d2e5db82a0baee7a01535b29b8a274afed407f8d92ff",
+    "guard.jsonl": "15a6f791c0ebe2b74e856b4b61a95d4361e1dc152f66212c3b8c77ef56387751"
+  },
+  "summaries": [
+    {
+      "trial": 1,
+      "phase": "warmup",
+      "requested_seconds": 10,
+      "observation_seconds": 10.000291725620627,
+      "offered": 50,
+      "completed": 50,
+      "success": 50,
+      "errors": 0,
+      "drops": 0,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.999854141444754,
+      "routes": {
+        "city-directory": {
+          "n": 25,
+          "p50_ms": 46.90348729491234,
+          "p95_ms": 93.58536079525948,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 25,
+          "p50_ms": 71.89331017434597,
+          "p95_ms": 111.2203449010849,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": false,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": true
+    },
+    {
+      "trial": 1,
+      "phase": "steady",
+      "requested_seconds": 120,
+      "observation_seconds": 33.47088864259422,
+      "offered": 155,
+      "completed": 154,
+      "success": 151,
+      "errors": 3,
+      "drops": 1,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.511383059242746,
+      "routes": {
+        "city-directory": {
+          "n": 77,
+          "p50_ms": 34.7274299710989,
+          "p95_ms": 665.6269449740648,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 74,
+          "p50_ms": 68.19426640868187,
+          "p95_ms": 465.38929268717766,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": false,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": false
+    }
+  ],
+  "dataset": null,
+  "stopped": true,
+  "reasons": [
+    "bounded client slots exhausted",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTPS p95 budget breached",
+    "arrival/error/reconciliation budget breached"
+  ],
+  "qualification": "bounded real HTTPS campaign; dataset coverage and 24/48h stability require independent evidence"
+}

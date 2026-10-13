@@ -13,6 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	legal "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/legalterms"
+
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
@@ -34,6 +36,10 @@ type Handler struct {
 // before touching the store (absent consent is the caller's own
 // default OFF, never another owner's state).
 func (h Handler) RegisterRoutes(r chi.Router) {
+	r.Get("/v1/privacy/training-terms", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := json.Marshal(map[string]any{"version": legal.Version, "digest": legal.Digest, "locale": "pt-BR", "text": legal.Text, "collection_available": false})
+		httpapi.WriteJSON(w, r, http.StatusOK, "no-store", body)
+	})
 	r.Post("/v1/privacy/training-consent/grant", h.grant)
 	r.Post("/v1/privacy/training-consent/revoke", h.revoke)
 	r.Get("/v1/privacy/training-consent", h.status)
@@ -59,9 +65,12 @@ func writeConsentError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusConflict, "privacy.stale-revision", "decision superseded; bind the current revision", nil)
 	case errors.Is(err, privacydomain.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "privacy.conflict", "same revision, different decision", nil)
-	default:
+	case errors.Is(err, privacydomain.ErrInvalidRequest):
 		httpapi.WriteError(w, r, http.StatusBadRequest, "privacy.invalid", "invalid consent request",
 			[]httpapi.Detail{{Field: "body", Code: "invalid"}})
+	default:
+		w.Header().Set("Retry-After", "5")
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "privacy.unavailable", "consent temporarily unavailable", nil)
 	}
 }
 

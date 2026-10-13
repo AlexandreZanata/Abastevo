@@ -50,6 +50,21 @@ type AccountErasureIntent struct {
 	AccountID     pgtype.UUID        `json:"account_id"`
 	ContributorID string             `json:"contributor_id"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	CompletedAt   pgtype.Timestamptz `json:"completed_at"`
+}
+
+type AccountErasureRequest struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	RequestedAt   pgtype.Timestamptz `json:"requested_at"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	LeaseNonce    pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil    pgtype.Timestamptz `json:"lease_until"`
+	CompletedAt   pgtype.Timestamptz `json:"completed_at"`
+}
+
+type AccountKeyAdmissionEvent struct {
+	ID         int64 `json:"id"`
+	AdmittedAt int64 `json:"admitted_at"`
 }
 
 type AccountKeyCredential struct {

@@ -4,6 +4,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -78,9 +79,9 @@ func seedErasureFixtures(t *testing.T, ctx context.Context, db pgx.Tx) {
 		VALUES ('` + eraseContributorID + `', '` + eraseToken + `', 'training-terms-v1', 'digest-v1', 'GRANTED', 1, now(), now())`)
 	exec(`INSERT INTO privacy_training_derivatives
 		(image_id, consent_revision, contributor_id, contributor_ref, source_sha256,
-		 derivative_sha256, captured_at, terms_version, terms_digest, state, promoted_at)
+		 derivative_sha256, captured_at, terms_version, terms_digest, state, promoted_at,object_key)
 		VALUES ('erase-derivative-1', 1, '` + eraseContributorID + `', '` + eraseToken + `', 'sh-erase',
-		 'dh-erase', now(), 'training-terms-v1', 'digest-v1', 'ACTIVE', now())`)
+		 'dh-erase', now(), 'training-terms-v1', 'digest-v1', 'ACTIVE', now(), 'training/v1/'||to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD')||'/erase-derivative-1-1.jpg')`)
 }
 
 type eraseTerms struct{}
@@ -484,4 +485,58 @@ func TestNoRestoredDataServedBeforeReplay(t *testing.T) {
 
 func isExpired(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "expired")
+}
+
+func TestFailedErasureResumesAllScopesOnSQL(t *testing.T) {
+	s, pool := freshStore(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedErasureFixtures(t, ctx, tx)
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	h := &eraseHarness{privacy: s, clockTime: time.Now().Add(time.Hour)}
+	p := erasePorts(t, h, s, pool)
+	deleteObject := p.DeleteObject
+	p.DeleteObject = func(context.Context, string, string) error { return errors.New("storage unavailable") }
+	dto := privacyapp.EraseDTO{ClientSubmissionID: "retry-storage", Reason: "owner request"}
+	if _, err := privacyapp.Erase(ctx, p, eraseContributorID, dto); err == nil {
+		t.Fatal("expected storage failure")
+	}
+	var status string
+	if err := pool.QueryRow(ctx, "SELECT status FROM privacy_requests WHERE client_submission_id=$1", dto.ClientSubmissionID).Scan(&status); err != nil || status != "FAILED" {
+		t.Fatal(status, err)
+	}
+	p.DeleteObject = deleteObject
+	// The production resolver must still work after identity revocation.
+	p.Attribution = identityadapters.NewRegistrar(pool).AttributionToken
+	report, err := privacyapp.Erase(ctx, p, eraseContributorID, dto)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := s.Get(ctx, report.RequestID)
+	if err != nil || req.Status != privacydomain.StatusReady {
+		t.Fatal(req, err)
+	}
+	rows, err := s.ListLedger(ctx, eraseContributorID)
+	if err != nil || len(rows) != 6 {
+		t.Fatal(len(rows), err)
+	}
+	if report.ObjectsPurged == 0 || report.TrainingRevoked == 0 {
+		t.Fatalf("retry skipped failed scopes: %+v", report)
+	}
+	var stillUnlinked bool
+	if err := pool.QueryRow(ctx, "SELECT attribution_token IS NULL FROM identity_contributors WHERE id=$1", eraseContributorID).Scan(&stillUnlinked); err != nil || !stillUnlinked {
+		t.Fatal("retry reminted an identity reference", stillUnlinked, err)
+	}
+	// Concurrent completion is convergent; a stale failure cannot downgrade it.
+	if err := s.CompleteDeletionRequest(ctx, report.RequestID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FailExport(ctx, report.RequestID, time.Now()); !errors.Is(err, privacydomain.ErrBadState) {
+		t.Fatal("ready downgraded", err)
+	}
 }

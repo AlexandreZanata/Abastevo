@@ -12,6 +12,7 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000007_jobs.sql
+      - db/migrations/000072_safety_job_claim_index.sql
     gen:
       go:
         package: platform
@@ -79,6 +80,12 @@ sql:
       - db/migrations/000047_shared_photo_evidence.sql
       - db/migrations/000011_evidence_retention.sql
       - db/migrations/000029_evidence_received_at.sql
+      - db/migrations/000061_evidence_ingress.sql
+      - db/migrations/000068_evidence_final_output.sql
+      - db/migrations/000069_evidence_final_cleanup_index.sql
+      - db/migrations/000070_evidence_confirmed_hash_purge.sql
+      - db/migrations/000071_evidence_original_cleanup_index.sql
+      - db/migrations/000073_evidence_intake_assurance.sql
     gen:
       go:
         package: evidence
@@ -120,6 +127,8 @@ sql:
       - db/migrations/000042_key_accounts.sql
       - db/migrations/000059_account_erasure_intents.sql
       - db/migrations/000060_account_refresh_history.sql
+      - db/migrations/000062_account_admission_events.sql
+      - db/migrations/000063_account_erasure_recovery.sql
     gen:
       go:
         package: account
@@ -172,6 +181,11 @@ sql:
       - db/migrations/000056_privacy_training_consent.sql
       - db/migrations/000057_privacy_training_derivatives.sql
       - db/migrations/000058_privacy_ledger_training_scope.sql
+      - db/migrations/000064_privacy_training_revocation_fence.sql
+      - db/migrations/000065_privacy_training_output.sql
+      - db/migrations/000066_privacy_training_cleanup.sql
+      - db/migrations/000067_privacy_training_erasure_cursor.sql
+      - db/migrations/000074_privacy_first_off.sql
     gen:
       go:
         package: privacy

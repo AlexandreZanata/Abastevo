@@ -104,6 +104,7 @@ func TestReserveMapsDomainErrors(t *testing.T) {
 		{"conflict", application.ErrConflict, http.StatusConflict},
 		{"quota", &application.QuotaDeniedError{RetryAfter: 30 * time.Second}, http.StatusTooManyRequests},
 		{"storage", application.ErrStorageUnavailable, http.StatusServiceUnavailable},
+		{"enforcement", application.ErrEnforcementUnhealthy, http.StatusServiceUnavailable},
 		{"invalid", domain.ErrUnsupportedMedia, http.StatusBadRequest},
 		{"auth", application.ErrUnauthorized, http.StatusUnauthorized},
 	}
@@ -117,6 +118,9 @@ func TestReserveMapsDomainErrors(t *testing.T) {
 			`{"client_submission_id":"u","content_type":"image/jpeg","size_bytes":10,"sha256":"`+sha+`"}`)
 		if w.Code != c.code {
 			t.Errorf("%s = %d, want %d", c.name, w.Code, c.code)
+		}
+		if c.name == "enforcement" && w.Header().Get("Retry-After") != "5" {
+			t.Error("unsafe intake lacks retry delay")
 		}
 		if c.name == "quota" && w.Header().Get("Retry-After") != "30" {
 			t.Errorf("quota misses Retry-After: %q", w.Header().Get("Retry-After"))

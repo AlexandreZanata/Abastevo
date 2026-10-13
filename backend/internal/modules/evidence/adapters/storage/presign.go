@@ -186,7 +186,7 @@ func presign(method string, in PresignInput, cred Credentials) (string, time.Tim
 	case httpMethodPut:
 		signedHeaders = "content-type;host"
 		canonicalHeaders = "content-type:" + strings.TrimSpace(in.ContentType) + "\n" + "host:" + endpoint.Host + "\n"
-	case httpMethodGet, httpMethodDelete:
+	case httpMethodGet, httpMethodDelete, "HEAD":
 		signedHeaders = "host"
 		canonicalHeaders = "host:" + endpoint.Host + "\n"
 	default:
@@ -315,4 +315,13 @@ func deriveSigningKey(secret, date, region string) []byte {
 
 func sign(key []byte, stringToSign string) []byte {
 	return hmacSHA256(key, stringToSign)
+}
+
+// PresignHEAD checks private-copy existence without downloading pixels.
+func PresignHEAD(in PresignInput, cred Credentials) (PresignedPUT, error) {
+	rawURL, expiresAt, err := presign("HEAD", in, cred)
+	if err != nil {
+		return PresignedPUT{}, err
+	}
+	return PresignedPUT{URL: rawURL, RequiredHeaders: map[string]string{}, ExpiresAt: expiresAt}, nil
 }

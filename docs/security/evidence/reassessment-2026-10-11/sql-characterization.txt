@@ -1,0 +1,13 @@
+=== RUN   TestReviewSQLRevocationLeavesActiveInventory
+    review_probe_integration_test.go:47: real SQL: consent REVOKED, derivative ACTIVE, purge returns no derivative even at +72h
+--- PASS: TestReviewSQLRevocationLeavesActiveInventory (0.44s)
+=== RUN   TestReviewSQLRevocationDuringSanitizationStillCommits
+    review_probe_integration_test.go:79: real SQL: revocation revision 2 committed before insertion; ACTIVE revision 1 inserted anyway
+--- PASS: TestReviewSQLRevocationDuringSanitizationStillCommits (0.40s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters	1.854s
+=== RUN   TestReviewSQLDeleteReleasesHourlySignupBudget
+    review_probe_integration_test.go:29: real SQL: 101 fixed-clock account creations bypass 100/hour cap; audit account rows retained; credential-based budget zero
+--- PASS: TestReviewSQLDeleteReleasesHourlySignupBudget (0.59s)
+PASS
+ok  	github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters	1.597s

@@ -579,6 +579,32 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/privacy/training-terms:
+    get:
+      summary: Read the complete current optional training terms anonymously.
+      operationId: getTrainingTerms
+      tags: [privacy]
+      security: []
+      responses:
+        '200':
+          description: Exact UTF-8 document; SHA-256 binds its text bytes. Collection remains disabled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [version, digest, locale, text, collection_available]
+                properties:
+                  version: {type: string, example: training-terms-v1}
+                  digest: {type: string, pattern: '^[a-f0-9]{64}$'}
+                  locale: {type: string, enum: [pt-BR]}
+                  text: {type: string, maxLength: 65536}
+                  collection_available: {type: boolean, enum: [false]}
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/privacy/training-consent/grant:
     post:
       summary: Grant training-image consent for future disclosed images (signed, idempotent).
@@ -594,7 +620,7 @@ paths:
               $ref: '#/components/schemas/TrainingConsentGrant'
             example:
               terms_version: training-terms-v1
-              terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+              terms_digest: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
               revision: 1
       responses:
         '200':
@@ -620,6 +646,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent/revoke:
     post:
       summary: Revoke training-image consent and request owned training-asset deletion (signed, idempotent).
@@ -660,6 +688,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent:
     get:
       summary: Own training-consent state (signed, owner only).
@@ -680,11 +710,13 @@ paths:
                 granted: true
                 state: GRANTED
                 terms_version: training-terms-v1
-                terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+                terms_digest: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
                 revision: 1
                 decided_at: '2026-10-11T00:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
@@ -763,6 +795,52 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/uploads/{upload_id}/bytes:
+    put:
+      summary: Transfer reserved bytes through bounded private ingress.
+      operationId: transferUploadBytes
+      description: Capability-authenticated transfer; actual bytes are checked before storage and accepted retries reuse the receipt.
+      tags: [evidence]
+      security: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          description: Server-issued reservation identity bound by the capability.
+          example: e0000000-0000-4000-8000-000000000001
+          schema: {type: string, format: uuid}
+        - in: query
+          name: expires
+          required: true
+          description: Server-issued capability expiry in Unix seconds.
+          example: 1791720300
+          schema: {type: integer, format: int64}
+        - in: query
+          name: token
+          required: true
+          description: Server-issued domain-separated HMAC capability; never logged.
+          example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          schema: {type: string, minLength: 64, maxLength: 64}
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: {type: string, format: binary, maxLength: 3145728}
+      responses:
+        '204':
+          description: Exact bound bytes stored, or existing receipt replayed; verification and publication remain pending.
+        '403':
+          description: Invalid or expired upload capability.
+        '413':
+          description: Body exceeds the reserved size.
+        '415':
+          description: Content type differs from the reservation.
+        '422':
+          description: Size or hash differs from the reservation.
+        '429':
+          description: Transfer admission exhausted or another claim is active.
+        '503':
+          description: Bounded ingress or storage unavailable; retry under the same reservation.
   /v1/uploads/{upload_id}:
     get:
       summary: Owner upload status (signed).
@@ -4777,7 +4855,7 @@ components:
           minLength: 1
           maxLength: 128
           description: Digest of the reviewed terms text; must equal the server current digest.
-          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+          example: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
         revision:
           type: integer
           minimum: 1
@@ -4837,7 +4915,7 @@ components:
           example: training-terms-v1
         terms_digest:
           type: string
-          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+          example: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
         revision:
           type: integer
           minimum: 0
@@ -4890,7 +4968,7 @@ components:
           description: Original camera capture time inside the receipt window, immutable on retries.
           example: '2026-10-07T12:00:00.123Z'
     UploadReservation:
-      description: Reserved session with a short direct PUT authorization.
+      description: Reserved session with a short bounded API PUT capability.
       type: object
       required: [upload_id, method, url, required_headers, expires_at, max_bytes]
       properties:
@@ -4905,8 +4983,8 @@ components:
         url:
           type: string
           format: uri
-          description: Short presigned PUT bound to one quarantine key; transport only, never a size bound.
-          example: https://xxx.r2.cloudflarestorage.com/anpfuel-quarantine/q/e0000000000000000000000000000001?X-Amz-Algorithm=AWS4-HMAC-SHA256
+          description: Short API capability bound to one reservation; exact declared size and SHA-256 are enforced before private storage.
+          example: https://api.example.invalid/v1/uploads/e0000000-0000-4000-8000-000000000001/bytes?expires=1791720300&token=synthetic
         required_headers:
           type: object
           required: [content-type]

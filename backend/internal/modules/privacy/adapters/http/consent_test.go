@@ -213,6 +213,7 @@ func TestConsentErrorMappings(t *testing.T) {
 		{"stale revision", privacydomain.ErrStaleConsent, http.StatusConflict, "privacy.stale-revision"},
 		{"divergent retry", privacydomain.ErrConflict, http.StatusConflict, "privacy.conflict"},
 		{"invalid", privacydomain.ErrInvalidRequest, http.StatusBadRequest, "privacy.invalid"},
+		{"storage failure", errors.New("synthetic-private-storage-failure"), http.StatusServiceUnavailable, "privacy.unavailable"},
 	} {
 		w := serveConsent(t, mk(tc.err, tc.err), http.MethodPost, "/v1/privacy/training-consent/grant",
 			`{"terms_version":"training-terms-v1","terms_digest":"d","revision":1}`, true)
@@ -228,6 +229,9 @@ func TestConsentErrorMappings(t *testing.T) {
 		}
 		w = serveConsent(t, mk(tc.err, tc.err), http.MethodPost, "/v1/privacy/training-consent/revoke",
 			`{"revision":1}`, true)
+		if tc.status == 503 && (w.Header().Get("Retry-After") != "5" || strings.Contains(w.Body.String(), "synthetic-private")) {
+			t.Error("unavailable response lacks retry or leaks store details")
+		}
 		if w.Code != tc.status {
 			t.Errorf("%s revoke = %d, want %d", tc.name, w.Code, tc.status)
 		}
@@ -240,7 +244,7 @@ func TestUnauthorizedMapsWithoutOracle(t *testing.T) {
 		return privacyapp.ConsentView{}, errors.New("boom")
 	}
 	w := serveConsent(t, h, http.MethodGet, "/v1/privacy/training-consent", "", true)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("unexpected failure = %d, want 400", w.Code)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("unexpected failure = %d, want 503", w.Code)
 	}
 }

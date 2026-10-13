@@ -32,6 +32,7 @@ type Sanitizer interface {
 // and every owned row for erasure.
 type PromotionInventory interface {
 	Put(ctx context.Context, d domain.Derivative) (stored bool, replayed bool, err error)
+	Get(ctx context.Context, imageID string, revision uint64) (domain.Derivative, error)
 	ListActiveByOwner(ctx context.Context, contributorID string) ([]domain.Derivative, error)
 	MarkRevoked(ctx context.Context, imageID string, revision uint64, at time.Time) error
 	ListRevokedBefore(ctx context.Context, before time.Time) ([]domain.Derivative, error)
@@ -51,6 +52,7 @@ type PromotePorts struct {
 // server-side from the caller; the source bytes arrive from the
 // evidence quarantine read, never from an owner-supplied store.
 type PromotionDTO struct {
+	ConsentRevision uint64
 	ImageID         string
 	CapturedAt      time.Time
 	PerImageAllowed bool
@@ -60,8 +62,11 @@ type PromotionDTO struct {
 // PromotionResult is the safe acknowledgment: the derivative identity
 // and whether the call converged on an existing row. PromotedAt is
 // set on fresh proposals (key derivation for the namespace write);
-// replays carry the zero instant because no write follows.
+// replays preserve the committed instant and key for output repair.
 type PromotionResult struct {
+	ContributorID    string
+	ObjectKey        string
+	OutputState      string
 	ImageID          string
 	DerivativeSHA256 string
 	ConsentRevision  uint64
@@ -76,7 +81,7 @@ type PromotionResult struct {
 // non-PASS verdicts refuse with no inventory write. On success it
 // also returns the minimized bytes just produced so the caller can
 // land them in the private namespace through the object port; the
-// bytes are nil on replay (nothing new to store) and must never be
+// replay bytes repair interrupted output under the same key and must never be
 // persisted anywhere else — the API layer never calls Propose.
 func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDTO) (PromotionResult, []byte, error) {
 	if strings.TrimSpace(caller.ContributorID) == "" {
@@ -100,6 +105,9 @@ func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDT
 		}
 		return PromotionResult{}, nil, err
 	}
+	if dto.ConsentRevision != 0 && dto.ConsentRevision != consent.Revision {
+		return PromotionResult{}, nil, domain.ErrConsentRequired
+	}
 	minimized, verdict, err := p.Sanitizer.Sanitize(ctx, dto.Source)
 	if err != nil {
 		return PromotionResult{}, nil, err
@@ -119,16 +127,14 @@ func Propose(ctx context.Context, p PromotePorts, caller Caller, dto PromotionDT
 		return PromotionResult{}, nil, err
 	}
 	_ = stored
-	if replayed {
-		return PromotionResult{
-			ImageID: derivative.ImageID, DerivativeSHA256: derivative.DerivativeSHA256,
-			ConsentRevision: derivative.ConsentRevision, Replayed: true,
-		}, nil, nil
+	committed, err := p.Inventory.Get(ctx, derivative.ImageID, derivative.ConsentRevision)
+	if err != nil {
+		return PromotionResult{}, nil, err
 	}
-	return PromotionResult{
-		ImageID: derivative.ImageID, DerivativeSHA256: derivative.DerivativeSHA256,
-		ConsentRevision: derivative.ConsentRevision, PromotedAt: now,
-	}, minimized, nil
+	if committed.ContributorID != caller.ContributorID || committed.SourceSHA256 != derivative.SourceSHA256 || committed.DerivativeSHA256 != derivative.DerivativeSHA256 || committed.State != domain.DerivativeActive {
+		return PromotionResult{}, nil, domain.ErrConsentRequired
+	}
+	return PromotionResult{ImageID: committed.ImageID, ContributorID: committed.ContributorID, DerivativeSHA256: committed.DerivativeSHA256, ConsentRevision: committed.ConsentRevision, PromotedAt: committed.PromotedAt, ObjectKey: committed.ObjectKey, OutputState: committed.OutputState, Replayed: replayed}, minimized, nil
 }
 
 // RevokeOwner excludes one owner's active derivatives from selection

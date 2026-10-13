@@ -266,8 +266,18 @@ WHERE issued_at >= @since;
 
 -- name: CountKeyAccountsSince :one
 SELECT count(*)::bigint
-FROM account_key_credentials
-WHERE created_at >= @since_unix;
+FROM account_key_admission_events
+WHERE admitted_at >= @since_unix;
+
+-- name: RecordKeyAccountAdmission :exec
+INSERT INTO account_key_admission_events(admitted_at) VALUES (@admitted_at);
+
+-- name: PruneKeyAccountAdmissions :execrows
+WITH expired AS (
+ SELECT adm.id FROM account_key_admission_events adm WHERE adm.admitted_at < @before_unix
+ ORDER BY adm.admitted_at, adm.id LIMIT 1000 FOR UPDATE SKIP LOCKED
+)
+DELETE FROM account_key_admission_events e USING expired WHERE e.id = expired.id;
 
 -- name: CountLiveFamiliesByAccount :one
 SELECT count(*)::bigint

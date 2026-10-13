@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,12 +30,20 @@ var (
 
 // Store persists sessions and verified objects.
 type Store struct {
-	pool *pgxpool.Pool
+	pool             *pgxpool.Pool
+	intakeConfigured bool
+	maxPendingPhotos int
 }
 
 // NewStore wires the owned generated queries to a pool.
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
+}
+
+// NewIntakeStore is mandatory for production admission. Zero keeps photos
+// closed until the deployment supplies a measured pending-photo budget.
+func NewIntakeStore(pool *pgxpool.Pool, maxPendingPhotos int) *Store {
+	return &Store{pool: pool, intakeConfigured: true, maxPendingPhotos: maxPendingPhotos}
 }
 
 // ObjectData carries one verified snapshot for atomic persistence.
@@ -99,7 +108,17 @@ func pgTime(t time.Time) pgtype.Timestamptz {
 // fresh rows refuse with domain.ErrQuotaDenied. It returns the
 // stored row — the winner on convergence — so callers presign from
 // persisted facts, never from loser intent.
-func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget domain.ReserveBudget) (domain.Session, bool, error) {
+func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget domain.ReserveBudget) (stored domain.Session, replayed bool, err error) {
+	if s.intakeConfigured {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+	}
+	defer func() {
+		if s.intakeConfigured && err != nil && !errors.Is(err, domain.ErrConflict) && !errors.Is(err, domain.ErrQuotaDenied) {
+			err = errors.Join(application.ErrEnforcementUnhealthy, err)
+		}
+	}()
 	uid, err := mustUUID(sess.ID)
 	if err != nil {
 		return domain.Session{}, false, err
@@ -148,6 +167,14 @@ func (s *Store) ReserveSession(ctx context.Context, sess domain.Session, budget 
 	}
 	if int(dayCount) >= budget.MaxCount || liveBytes+sess.DeclaredBytes > budget.MaxBytes {
 		return domain.Session{}, false, domain.ErrQuotaDenied
+	}
+	if s.intakeConfigured {
+		if err := tq.LockIntakeAdmission(ctx); err != nil {
+			return domain.Session{}, false, err
+		}
+		if err := s.requireIntake(ctx, tq, 1); err != nil {
+			return domain.Session{}, false, err
+		}
 	}
 	inserted, err := tq.InsertSession(ctx, evidence.InsertSessionParams{
 		ID: uid, ContributorRef: sess.ContributorRef,
@@ -250,8 +277,9 @@ func (s *Store) convergeComplete(ctx context.Context, uid pgtype.UUID, sessionID
 // the DB points at the final object only together with the READY state.
 // It returns the object id (fresh or converged): a concurrent terminal
 // converges when it already holds this outcome; the uploaded final bytes
-// stay referenced exactly once, and a commit failure leaves them
-// unreferenced for the orphan sweeper.
+// stay referenced exactly once. This internal metadata compatibility method
+// grants no byte-write authority; production jobs use RecordVerifiedGuarded
+// and inventory the output before invoking private storage.
 func (s *Store) RecordVerified(ctx context.Context, sessionID string, obj ObjectData) (string, error) {
 	sessionUUID, err := mustUUID(sessionID)
 	if err != nil {
@@ -444,15 +472,15 @@ func checkBatch(batch int) (int32, error) {
 	return int32(batch), nil
 }
 
-// ExpireIdleSessions flips past-deadline ISSUED sessions to EXPIRED,
-// returning their quarantine keys for object cleanup.
+// ExpireIdleSessions closes ISSUED admission at expiry or the earlier cleanup
+// boundary. Actual writer leases remain protected by the disposal check.
 func (s *Store) ExpireIdleSessions(ctx context.Context, now time.Time, batch int) ([]domain.SessionRef, error) {
 	n, err := checkBatch(batch)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := evidence.New(s.pool).ExpireIdleSessions(ctx, evidence.ExpireIdleSessionsParams{
-		Now: pgTime(now), Batch: n,
+		Now: pgTime(now), CleanupCutoff: pgTime(now.Add(-application.CopyRetention + application.CleanupMargin)), Batch: n,
 	})
 	if err != nil {
 		return nil, err
@@ -511,8 +539,9 @@ func (s *Store) ListYoungVerifying(ctx context.Context, cutoff time.Time, batch 
 	return out, nil
 }
 
-// ExpireStuckSession flips one stuck VERIFYING session to EXPIRED after
-// the sweeper confirmed no live job holds it. The age cutoff rides in
+// ExpireStuckSession closes a stuck VERIFYING session at the cleanup boundary.
+// A queued job cannot extend retention; actual writer leases guard disposal.
+// The age cutoff rides in
 // the guarded statement itself, so a young session can never expire
 // through this path even if a caller skips the list step.
 func (s *Store) ExpireStuckSession(ctx context.Context, id string, cutoff time.Time) error {
@@ -573,7 +602,7 @@ func (s *Store) QuarantineCandidates(ctx context.Context, oldCutoff time.Time, b
 // StaleFinalCandidates lists sanitized objects past the copy deadline
 // cutoff for policy evaluation in Go. The SQL preselects on first
 // receipt (received_at, falling back to created_at); the caller
-// passes now minus 24 h.
+// passes the predeadline cleanup cutoff.
 func (s *Store) StaleFinalCandidates(ctx context.Context, youngCutoff time.Time, batch int) ([]domain.ObjectRef, error) {
 	n, err := checkBatch(batch)
 	if err != nil {
@@ -624,6 +653,23 @@ func (s *Store) OverdueFinals(ctx context.Context, cutoff time.Time, batch int) 
 			ReceivedAt: row.ReceivedAt.Time,
 		})
 	}
+	pending, err := evidence.New(s.pool).OverdueUnconfirmedFinalOutputs(ctx, evidence.OverdueUnconfirmedFinalOutputsParams{Deadline: pgTime(cutoff.Add(application.CopyRetention)), Batch: n})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range pending {
+		out = append(out, domain.ObjectRef{ID: uuidString(row.ID), FinalKey: row.FinalKey, CreatedAt: row.CreatedAt.Time, ReceivedAt: row.ReceivedAt.Time})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i].ReceivedOrCreated(), out[j].ReceivedOrCreated()
+		if a.Equal(b) {
+			return out[i].FinalKey < out[j].FinalKey
+		}
+		return a.Before(b)
+	})
+	if len(out) > int(n) {
+		out = out[:int(n)]
+	}
 	return out, nil
 }
 
@@ -664,8 +710,8 @@ func (s *Store) MarkFinalDeleted(ctx context.Context, id string) error {
 	return nil
 }
 
-// PurgeObjectsBefore deletes object rows past the hash-retention bound,
-// returning the purged count for the observable sweep report.
+// PurgeObjectsBefore deletes at most 100 old hash rows with both confirmed
+// byte-deletion receipts. Uncertain destinations retain recovery inventory.
 func (s *Store) PurgeObjectsBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	return evidence.New(s.pool).PurgeObjectsBefore(ctx, pgTime(cutoff))
 }

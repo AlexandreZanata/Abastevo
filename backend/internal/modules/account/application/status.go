@@ -51,9 +51,8 @@ func (s *Service) ReactivateAccount(ctx context.Context, accountID string) error
 // without reputation carryover. A nil RequestErasure refuses closed:
 // deletion without the erasure linkage would repeat AUD-05.
 //
-// Crash window: intents are durable before enqueue, so a failure
-// after revocation replays from ListErasureIntents on retry
-// (convergent scope cleanup, SEC04-D). The receipt names the
+// Intents are durable before dispatch. A recurring worker resumes them
+// without requiring another owner-authenticated request. The receipt names the
 // recorded intent — acknowledgement is never completion (SEC04-A).
 func (s *Service) DeleteAccount(ctx context.Context, accountID string) (DeletionReceipt, error) {
 	accountID = strings.TrimSpace(accountID)
@@ -70,13 +69,12 @@ func (s *Service) DeleteAccount(ctx context.Context, accountID string) (Deletion
 	if len(contributors) == 0 {
 		// Retry after a crash between revocation and enqueue, or a
 		// binding-free account: replay durable intents.
-		contributors, err = s.Store.ListErasureIntents(ctx, accountID)
-		if err != nil {
-			return DeletionReceipt{}, err
+		if replay, lookupErr := s.Store.ListErasureIntents(ctx, accountID); lookupErr == nil {
+			contributors = replay
 		}
 	}
-	if err := s.RequestErasure(ctx, accountID, contributors); err != nil {
-		return DeletionReceipt{}, err
-	}
+	// The persisted account-wide intent is authoritative. Dispatch is a hint;
+	// the recurring reconciler survives lost hints and revoked sessions.
+	_ = s.RequestErasure(ctx, accountID, contributors)
 	return DeletionReceipt{AccountID: accountID, ContributorIDs: contributors, ErasureRequested: true}, nil
 }

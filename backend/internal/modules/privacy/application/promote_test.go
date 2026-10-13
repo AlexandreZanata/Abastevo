@@ -145,7 +145,7 @@ func TestProposeHappyPath(t *testing.T) {
 		ImageID: "img-1", CapturedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC),
 		PerImageAllowed: true, Source: []byte("raw-bytes"),
 	})
-	if err != nil || !second.Replayed || second.DerivativeSHA256 != res.DerivativeSHA256 || secondBytes != nil {
+	if err != nil || !second.Replayed || second.DerivativeSHA256 != res.DerivativeSHA256 || len(secondBytes) == 0 || second.ObjectKey != res.ObjectKey || !second.PromotedAt.Equal(res.PromotedAt) {
 		t.Fatalf("re-propose = %+v, %v", second, err)
 	}
 }
@@ -271,4 +271,17 @@ func TestConcurrentProposesAgreeUnderRace(t *testing.T) {
 	if len(store.rows) != 1 {
 		t.Fatalf("rows = %d, want exactly the converged singleton", len(store.rows))
 	}
+}
+
+func (f *fakePromoteStore) Get(_ context.Context, image string, revision uint64) (domain.Derivative, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.rows[promoteKey(image, revision)]
+	if !ok {
+		return domain.Derivative{}, domain.ErrNotFound
+	}
+	if d.ObjectKey == "" {
+		d.ObjectKey = TrainingObjectKey(d.ImageID, d.ConsentRevision, d.PromotedAt)
+	}
+	return d, nil
 }

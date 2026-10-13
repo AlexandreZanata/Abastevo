@@ -1,5 +1,9 @@
 package com.anpfuel.data.local.auth
 
+import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.data.remote.ApiEnvironment
+import javax.inject.Named
+import java.security.MessageDigest
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
@@ -29,7 +33,10 @@ import javax.inject.Singleton
  * `connectedDebugAndroidTest`/phase exit, never claimed from unit runs.
  */
 @Singleton
-class AndroidAnonymousDeviceKeys @Inject constructor() : AnonymousDeviceKeyPort {
+class AndroidAnonymousDeviceKeys @Inject constructor(
+    private val auth:AuthFlow,
+    @Named("apiOrigin") private val environment:ApiEnvironment,
+) : AnonymousDeviceKeyPort {
 
     override fun fingerprint(): String? {
         val jwk = publicJwk() ?: return null
@@ -74,12 +81,14 @@ class AndroidAnonymousDeviceKeys @Inject constructor() : AnonymousDeviceKeyPort 
 
     override fun hasKey(): Boolean = publicJwk() != null
 
+    @Synchronized
     override fun forgetKey() {
         try {
             val store = KeyStore.getInstance(ANDROID_KEYSTORE)
             store.load(null)
-            if (store.containsAlias(alias())) {
-                store.deleteEntry(alias())
+            val selectedAlias=alias()
+            if (store.containsAlias(selectedAlias)) {
+                store.deleteEntry(selectedAlias)
             }
         } catch (_: Exception) {
             // Fails closed: the reference is gone from the caller's view.
@@ -91,18 +100,21 @@ class AndroidAnonymousDeviceKeys @Inject constructor() : AnonymousDeviceKeyPort 
      * exists afterwards. Called lazily so browsing never pays the
      * Keystore cost until contribution is enabled.
      */
+    @Synchronized
     fun ensureKey(): Boolean {
         return try {
             val store = KeyStore.getInstance(ANDROID_KEYSTORE)
             store.load(null)
-            if (store.containsAlias(alias())) return true
+            val selectedAlias=alias()
+            if (store.containsAlias(selectedAlias)) return true
+            if(selectedAlias.startsWith(ACCOUNT_ALIAS_PREFIX) && store.aliases().toList().count {it.startsWith(ACCOUNT_ALIAS_PREFIX)}>=32) return false
             val generator = KeyPairGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_EC,
                 ANDROID_KEYSTORE,
             )
             generator.initialize(
                 KeyGenParameterSpec.Builder(
-                    alias(),
+                    selectedAlias,
                     KeyProperties.PURPOSE_SIGN,
                 )
                     .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
@@ -117,7 +129,8 @@ class AndroidAnonymousDeviceKeys @Inject constructor() : AnonymousDeviceKeyPort 
         }
     }
 
-    private fun alias(): String = DEFAULT_ALIAS
+    private fun alias(): String = aliasFor(auth.rehydrate(),environment.origin)
+
 
     private fun fixed32(bytes: ByteArray): ByteArray {
         if (bytes.size == 32) return bytes
@@ -130,5 +143,18 @@ class AndroidAnonymousDeviceKeys @Inject constructor() : AnonymousDeviceKeyPort 
     companion object {
         const val ANDROID_KEYSTORE: String = "AndroidKeyStore"
         const val DEFAULT_ALIAS: String = "anpfuel_anon_p256_v1"
+        internal const val ACCOUNT_ALIAS_PREFIX="anpfuel_account_p256_v2_"
+        internal fun aliasFor(state:AuthFlow.AuthState,origin:String):String {
+            val account=when(state) {
+                is AuthFlow.AuthState.Active -> state.session.accountId
+                is AuthFlow.AuthState.NeedsRefresh -> state.session.accountId
+                AuthFlow.AuthState.LoggedOut -> null
+                is AuthFlow.AuthState.PendingKeyAccount -> throw IllegalStateException("identity recovery pending")
+            }
+            if(account==null && origin==ApiEnvironment.STAGING.origin) return DEFAULT_ALIAS
+            val hash=MessageDigest.getInstance("SHA-256").digest((origin+"\n"+(account ?: "anonymous")).toByteArray(Charsets.UTF_8))
+                .joinToString("") {"%02x".format(it)}
+            return (if(account==null) "anpfuel_anon_p256_v2_" else ACCOUNT_ALIAS_PREFIX)+hash
+        }
     }
 }

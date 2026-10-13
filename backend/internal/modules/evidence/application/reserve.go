@@ -64,6 +64,7 @@ type Ports struct {
 	NewKey               func() (string, error)
 	CheckQuota           func(ctx context.Context, subject, operation string) (time.Duration, error)
 	Presign              func(ctx context.Context, key, mime string, maxBytes int64, deadline time.Time) (url string, headers map[string]string, expires time.Time, err error)
+	AuthorizeUpload      func(context.Context, domain.Session) (string, map[string]string, time.Time, error)
 	Store                Store
 	Enforcement          func(ctx context.Context) error
 	ValidatePhotoCapture func(context.Context, Caller, Intent) (time.Time, error)
@@ -194,7 +195,18 @@ func Reserve(ctx context.Context, p Ports, caller Caller, in Intent) (Result, er
 			return Result{}, err
 		}
 	}
-	bundleURL, headers, urlExpires, err := p.Presign(ctx, stored.QuarantineKey, stored.MIME, stored.MaxBytes, stored.ExpiresAt)
+	var bundleURL string
+	var headers map[string]string
+	var urlExpires time.Time
+	if p.AuthorizeUpload != nil {
+		bundleURL, headers, urlExpires, err = p.AuthorizeUpload(ctx, stored)
+	} else if p.Presign != nil {
+		// Compatibility for internal test compositions; production exclusively
+		// supplies the bounded API ingress capability.
+		bundleURL, headers, urlExpires, err = p.Presign(ctx, stored.QuarantineKey, stored.MIME, stored.MaxBytes, stored.ExpiresAt)
+	} else {
+		return Result{}, ErrStorageUnavailable
+	}
 	if err != nil {
 		return Result{}, err
 	}

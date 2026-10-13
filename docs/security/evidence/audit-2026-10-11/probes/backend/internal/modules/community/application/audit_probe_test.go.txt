@@ -1,0 +1,21 @@
+package application
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+func TestAuditFabricatedLocationMetadataPassesGeometryGate(t *testing.T) {
+	now := time.Unix(1800000000, 0)
+	p := locationPorts()
+	p.Locate = func(context.Context, string, float64, float64) (float64, StationSite, error) {
+		return 0, SitePrecise, nil
+	}
+	// Entirely fabricated by this test, without Android or OS location evidence.
+	loc := locationDTO(FixVerified, acc(10), &now, acc(-23.5), acc(-46.6))
+	if e := CheckPhotoCaptureLocation(context.Background(), p, testDTO().StationID, loc, now); e != nil {
+		t.Fatal(e)
+	}
+	t.Log("self-declared source_info_present=true/simulated=false and station coordinates pass the 150m gate; geometry is not proof of physical presence")
+}

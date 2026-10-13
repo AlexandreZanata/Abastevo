@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	feedback "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/feedback"
@@ -78,4 +79,44 @@ func (s *PGStore) ListVotesByAccount(ctx context.Context, accountID string) ([]d
 		out = append(out, toVote(row))
 	}
 	return out, nil
+}
+
+// EraseAccountBatch removes at most 96 live rows. Rating/vote removals
+// update their aggregates in the same transaction, so crashes cannot
+// leave a removed row counted. Export history is never loaded here.
+func (s *PGStore) EraseAccountBatch(ctx context.Context, accountID string, now int64) (bool, error) {
+	id, err := mustUUID(accountID)
+	if err != nil {
+		return false, err
+	}
+	q := feedback.New(s.pool)
+	ratings, err := q.PendingEraseRatings(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range ratings {
+		if _, err := s.DeleteRating(ctx, accountID, uuidString(r.StationID), r.Product, now); err != nil {
+			return false, err
+		}
+	}
+	comments, err := q.PendingEraseComments(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	for _, c := range comments {
+		if err := s.DeleteComment(ctx, uuidString(c), accountID, now); err != nil && !errors.Is(err, domain.ErrCommentNotFound) {
+			return false, err
+		}
+	}
+	votes, err := q.PendingEraseVotes(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	for _, v := range votes {
+		if _, err := s.RemoveVote(ctx, accountID, uuidString(v.CommentID), int(v.CommentRevision), now); err != nil {
+			return false, err
+		}
+	}
+	pending, err := q.HasPendingAccountErasure(ctx, id)
+	return pending.Valid && !pending.Bool, err
 }

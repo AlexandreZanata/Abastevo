@@ -145,16 +145,24 @@ func Enqueue(ctx context.Context, db platform.DBTX, kind string, payload []byte,
 // Claim takes the oldest claimable job of a kind ("" for any), fencing it
 // with a fresh lease token. Expired leases re-enter the pool automatically.
 func (q *Queue) Claim(ctx context.Context, kind, workerID string, leaseTTL time.Duration) (Job, error) {
+	return q.claim(ctx, kind, workerID, leaseTTL, nil)
+}
+
+func (q *Queue) claim(ctx context.Context, kind, workerID string, leaseTTL time.Duration, excludedKinds []string) (Job, error) {
 	if workerID == "" {
 		return Job{}, errors.New("jobs: worker id required")
 	}
 	if leaseTTL <= 0 {
 		return Job{}, errors.New("jobs: positive lease TTL required")
 	}
+	if excludedKinds == nil {
+		excludedKinds = []string{}
+	}
 	row, err := platform.New(q.pool).ClaimJob(ctx, platform.ClaimJobParams{
-		Kind:     kind,
-		WorkerID: workerID,
-		LeaseTtl: fmt.Sprintf("%d microseconds", leaseTTL.Microseconds()),
+		Kind:          kind,
+		WorkerID:      workerID,
+		LeaseTtl:      fmt.Sprintf("%d microseconds", leaseTTL.Microseconds()),
+		ExcludedKinds: excludedKinds,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

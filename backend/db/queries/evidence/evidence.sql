@@ -30,6 +30,28 @@ SELECT id, contributor_ref, client_session_id, mime, declared_bytes,
 FROM evidence_sessions
 WHERE id = @id;
 
+-- name: GetUploadTransfer :one
+SELECT received_at FROM evidence_upload_transfers WHERE session_id = @session_id;
+
+-- name: ClaimUploadTransfer :execrows
+INSERT INTO evidence_upload_transfers (session_id, lease_nonce, lease_until)
+SELECT id, @lease_nonce, @lease_until FROM evidence_sessions
+WHERE id = @session_id AND status = 'ISSUED' AND expires_at > @at
+ AND quarantine_deleted_at IS NULL
+ON CONFLICT (session_id) DO UPDATE
+SET attempts = evidence_upload_transfers.attempts + 1,
+ lease_nonce = EXCLUDED.lease_nonce, lease_until = EXCLUDED.lease_until
+WHERE evidence_upload_transfers.received_at IS NULL
+ AND evidence_upload_transfers.attempts < 5
+ AND (evidence_upload_transfers.lease_until IS NULL OR evidence_upload_transfers.lease_until <= @at);
+
+-- name: FinishUploadTransfer :execrows
+UPDATE evidence_upload_transfers SET lease_until = NULL, lease_nonce = '',
+ received_at = CASE WHEN @completed::boolean THEN now() ELSE received_at END,
+ actual_bytes = CASE WHEN @completed::boolean THEN @actual_bytes::bigint ELSE actual_bytes END
+WHERE session_id = @session_id AND lease_nonce = @lease_nonce
+ AND received_at IS NULL AND lease_until > now();
+
 -- name: ClaimVerifying :execrows
 UPDATE evidence_sessions
 SET status = 'VERIFYING', updated_at = now()
@@ -77,8 +99,9 @@ UPDATE evidence_sessions AS s
 SET status = 'EXPIRED', updated_at = now()
 WHERE s.id IN (
     SELECT inner_s.id FROM evidence_sessions AS inner_s
-    WHERE inner_s.status = 'ISSUED' AND inner_s.expires_at <= @now
-    ORDER BY inner_s.expires_at ASC
+    WHERE inner_s.status = 'ISSUED'
+      AND (inner_s.expires_at <= @now OR inner_s.created_at <= @cleanup_cutoff)
+    ORDER BY inner_s.created_at ASC, inner_s.id ASC
     LIMIT @batch
 )
 RETURNING s.id, s.quarantine_key;
@@ -104,7 +127,9 @@ WHERE id = @id AND quarantine_deleted_at IS NULL;
 SELECT id, quarantine_key, status, created_at FROM evidence_sessions
 WHERE quarantine_deleted_at IS NULL
     AND (status IN ('READY', 'REJECTED', 'EXPIRED') OR created_at <= @old_cutoff)
-ORDER BY created_at ASC
+    AND NOT EXISTS (SELECT 1 FROM evidence_upload_transfers t
+                    WHERE t.session_id = evidence_sessions.id AND t.lease_until > now())
+ORDER BY created_at ASC, id ASC
 LIMIT @batch;
 
 -- name: StaleFinalCandidates :many
@@ -121,11 +146,12 @@ LIMIT @batch;
 -- deadline first is unnecessary; oldest first surfaces the worst lag.
 
 -- name: OverdueFinals :many
-SELECT id, final_key, created_at, received_at
-FROM evidence_objects
-WHERE final_deleted_at IS NULL
-    AND COALESCE(received_at, created_at) < @cutoff
-ORDER BY COALESCE(received_at, created_at) ASC
+SELECT o.id, o.final_key, o.created_at,
+ LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_objects o LEFT JOIN evidence_final_outputs f ON f.final_key = o.final_key
+WHERE o.final_deleted_at IS NULL
+ AND LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours') <= @cutoff
+ORDER BY LEAST(COALESCE(o.received_at,o.created_at),f.deadline_at - interval '24 hours'),o.final_key
 LIMIT @batch;
 
 -- SEC05-A overdue originals: quarantine originals past their 24 h
@@ -147,8 +173,16 @@ SET final_deleted_at = now()
 WHERE id = @id AND final_deleted_at IS NULL;
 
 -- name: PurgeObjectsBefore :execrows
-DELETE FROM evidence_objects
-WHERE created_at < @cutoff;
+WITH confirmed AS (
+    SELECT o.id FROM evidence_objects o
+    JOIN evidence_final_outputs f ON f.final_key = o.final_key
+    WHERE o.created_at < @cutoff AND o.final_deleted_at IS NOT NULL
+      AND f.state = 'PURGED' AND f.purged_at IS NOT NULL
+    ORDER BY o.created_at, o.id
+    LIMIT 100
+    FOR UPDATE OF o SKIP LOCKED
+)
+DELETE FROM evidence_objects o USING confirmed c WHERE o.id = c.id;
 
 -- SEC03-D intake-health accounting (bounded aggregates only: counts,
 -- declared-byte sums and one timestamp — never keys, hashes or
@@ -244,3 +278,178 @@ WHERE o.id = @id AND s.id = o.session_id AND s.contributor_ref = @contributor_re
 AND s.photo_capture_id = @capture_id AND s.status = 'READY' AND s.expires_at > @now_at
 AND o.final_deleted_at IS NULL AND o.bound_observation_id IS NULL
 AND (o.bound_capture_id IS NULL OR o.bound_capture_id = @capture_id);
+
+-- name: PendingErasureSessions :many
+SELECT id, quarantine_key, quarantine_deleted_at FROM evidence_sessions
+WHERE contributor_ref = @contributor_ref AND (quarantine_deleted_at IS NULL
+ OR EXISTS(SELECT 1 FROM evidence_final_outputs f WHERE f.session_id = evidence_sessions.id AND f.state != 'PURGED'))
+ORDER BY created_at, id LIMIT 32;
+
+-- name: PendingErasureObjects :many
+SELECT o.id, o.final_key FROM evidence_objects o
+JOIN evidence_sessions s ON s.id = o.session_id
+WHERE s.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL
+ORDER BY o.created_at, o.id LIMIT 32;
+
+-- name: ExpireErasureSession :exec
+UPDATE evidence_sessions SET status = 'EXPIRED', updated_at = now()
+WHERE id = @id AND status != 'EXPIRED';
+
+-- name: HasPendingEvidenceErasure :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.contributor_ref = @contributor_ref AND s.quarantine_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_objects o JOIN evidence_sessions r ON r.id=o.session_id WHERE r.contributor_ref = @contributor_ref AND o.final_deleted_at IS NULL)
+OR EXISTS(SELECT 1 FROM evidence_final_outputs f JOIN evidence_sessions r ON r.id=f.session_id WHERE r.contributor_ref = @contributor_ref AND f.state != 'PURGED') AS pending;
+
+-- Ingress serializes with expiry/erasure, never with network I/O.
+-- name: GetUploadSessionForUpdate :one
+SELECT * FROM evidence_sessions WHERE id = @id FOR UPDATE;
+
+-- Expiry must already have closed new admission. A separate fresh statement
+-- observes any writer admitted before the terminal-state transition.
+-- name: CanDeleteQuarantine :one
+SELECT EXISTS(SELECT 1 FROM evidence_sessions s WHERE s.id = @id
+ AND s.status IN ('READY','REJECTED','EXPIRED')
+ AND NOT EXISTS(SELECT 1 FROM evidence_upload_transfers t
+ WHERE t.session_id = s.id AND t.lease_until > @at)) AS allowed;
+
+-- name: LockFinalOutputKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended(@final_key::text, 68001));
+
+-- name: InventoryFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at)
+VALUES (@final_key, @session_id, @sanitized_sha256, 'PENDING', @deadline_at, @created_at)
+ON CONFLICT (final_key) DO NOTHING;
+
+-- name: GetFinalOutputForUpdate :one
+SELECT * FROM evidence_final_outputs WHERE final_key = @final_key FOR UPDATE;
+
+-- name: BeginFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'WRITING', attempts = attempts + 1,
+ sanitized_sha256 = @sanitized_sha256, lease_nonce = @lease_nonce, lease_until = @lease_until
+WHERE final_key = @final_key AND session_id = @session_id
+ AND state = 'PENDING' AND attempts < 5 AND deadline_at > @lease_until;
+
+-- name: FinishFinalOutputWrite :execrows
+UPDATE evidence_final_outputs SET state = 'READY', lease_nonce = NULL, lease_until = NULL
+WHERE final_key = @final_key AND session_id = @session_id AND state = 'WRITING'
+ AND lease_nonce = @lease_nonce AND lease_until > now() AND deadline_at > now();
+
+-- name: InsertGuardedObject :execrows
+INSERT INTO evidence_objects
+ (id, session_id, final_key, source_sha256, sanitized_sha256, width, height, dhash, created_at, received_at)
+VALUES (@id, @session_id, @final_key, @source_sha256, @sanitized_sha256,
+ @width, @height, @dhash, @created_at, @received_at)
+ON CONFLICT DO NOTHING;
+
+-- name: GetLiveFinalObject :one
+SELECT id, session_id, source_sha256, sanitized_sha256 FROM evidence_objects
+WHERE final_key = @final_key AND final_deleted_at IS NULL;
+
+-- Metadata compatibility also inventories rows created by old workers or
+-- fixture helpers, without accepting a new untracked PUT from production.
+-- name: InventoryExistingFinalOutput :exec
+INSERT INTO evidence_final_outputs
+ (final_key, session_id, sanitized_sha256, state, deadline_at, created_at, purged_at)
+SELECT o.final_key, o.session_id, o.sanitized_sha256,
+ CASE WHEN o.final_deleted_at IS NULL THEN 'READY' ELSE 'PURGED' END,
+ LEAST(COALESCE(o.received_at, o.created_at), s.created_at) + interval '24 hours',
+ LEAST(o.created_at, s.created_at), o.final_deleted_at
+FROM evidence_objects o JOIN evidence_sessions s ON s.id = o.session_id
+WHERE o.final_key = @final_key
+ON CONFLICT (final_key) DO NOTHING;
+
+-- name: NextFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= @at)
+ AND (f.state IN ('WRITING','PURGING') OR f.attempts >= 5
+      OR f.deadline_at <= @due_cutoff OR s.status IN ('EXPIRED','REJECTED'))
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1;
+
+-- name: NextOwnerFinalOutputCleanup :one
+SELECT f.final_key FROM evidence_final_outputs f
+JOIN evidence_sessions s ON s.id = f.session_id
+WHERE s.contributor_ref = @contributor_ref AND f.state != 'PURGED'
+ AND (f.lease_until IS NULL OR f.lease_until <= @at)
+ORDER BY COALESCE(f.lease_until,f.deadline_at),f.final_key LIMIT 1;
+
+-- name: ClaimFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state='PURGING',lease_nonce= @lease_nonce,lease_until= @lease_until
+WHERE final_key= @final_key AND state != 'PURGED'
+ AND (lease_until IS NULL OR lease_until <= @at);
+
+-- name: FinishFinalOutputCleanup :execrows
+UPDATE evidence_final_outputs SET state= @next_state,
+ lease_nonce=NULL,lease_until=NULL,
+ purged_at=CASE WHEN @next_state::text='PURGED' THEN now() ELSE purged_at END
+WHERE final_key= @final_key AND state='PURGING' AND lease_nonce= @lease_nonce
+ AND lease_until > now();
+
+-- name: MarkFinalKeyDeleted :exec
+UPDATE evidence_objects SET final_deleted_at=now()
+WHERE final_key= @final_key AND final_deleted_at IS NULL;
+
+-- name: TryLockFinalOutputKey :one
+SELECT pg_try_advisory_xact_lock(hashtextextended(@final_key::text, 68001)) AS acquired;
+
+-- name: OverdueUnconfirmedFinalOutputs :many
+SELECT f.session_id AS id, f.final_key, f.created_at,
+       (f.deadline_at - interval '24 hours')::timestamptz AS received_at
+FROM evidence_final_outputs f
+WHERE f.state != 'PURGED' AND f.deadline_at <= @deadline
+ AND NOT EXISTS(SELECT 1 FROM evidence_objects o
+                WHERE o.final_key = f.final_key AND o.final_deleted_at IS NULL)
+ORDER BY f.deadline_at,f.final_key LIMIT @batch;
+
+-- A closed-traffic database restore can bring a live object marker back
+-- beside a newer terminal output receipt. Reopen only this contradictory
+-- known object; never treat a retained PURGED receipt as authority to write.
+-- name: ReopenRestoredFinalOutput :execrows
+UPDATE evidence_final_outputs f SET state='PENDING',purged_at=NULL
+WHERE f.final_key = @final_key AND f.state='PURGED'
+ AND EXISTS(SELECT 1 FROM evidence_objects o
+            WHERE o.final_key=f.final_key AND o.final_deleted_at IS NULL);
+
+-- name: LockIntakeAdmission :exec
+SELECT pg_advisory_xact_lock(73001);
+
+-- name: BeginSweepObservation :one
+INSERT INTO evidence_sweep_observation(singleton,epoch,started_at)
+VALUES (true,1,now())
+ON CONFLICT(singleton) DO UPDATE
+SET epoch=evidence_sweep_observation.epoch+1,started_at=now(),finished_at=NULL,healthy=false
+RETURNING epoch;
+
+-- name: FinishSweepObservation :execrows
+UPDATE evidence_sweep_observation
+SET finished_at=now(),healthy= @healthy,
+ last_success_at=CASE WHEN @healthy::boolean THEN now() ELSE last_success_at END
+WHERE singleton AND epoch= @epoch AND finished_at IS NULL
+ AND (NOT @healthy::boolean OR started_at > now()-interval '1 minute');
+
+-- Running, failed and missing attempts stay closed until a fenced success.
+-- name: IntakeObservationHealthy :one
+SELECT healthy AND finished_at IS NOT NULL AND finished_at >= started_at
+ AND last_success_at > now()-interval '3 minutes'
+ AND last_success_at <= now() AND started_at <= now()
+ AND started_at > now()-interval '3 minutes' AS healthy
+FROM evidence_sweep_observation WHERE singleton;
+
+-- Each ordered distinct branch is capped before the cross-branch count;
+-- duplicate keys/session never hide additional pending photo sessions.
+-- name: CountPendingPhotoSessions :one
+WITH originals AS MATERIALIZED (
+ SELECT id FROM evidence_sessions WHERE quarantine_deleted_at IS NULL
+ ORDER BY created_at,id LIMIT @scan_limit
+), finals AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_final_outputs WHERE state != 'PURGED'
+ ORDER BY session_id LIMIT @scan_limit
+), legacy AS MATERIALIZED (
+ SELECT DISTINCT session_id AS id FROM evidence_objects WHERE final_deleted_at IS NULL
+ ORDER BY session_id LIMIT @scan_limit
+)
+SELECT count(DISTINCT pending.id) FROM (
+ SELECT id FROM originals UNION ALL SELECT id FROM finals UNION ALL SELECT id FROM legacy
+) pending;

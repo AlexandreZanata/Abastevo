@@ -1,0 +1,1 @@
+REPRODUCED: 172161 compressed bytes; 4096 valid-length strings exhaust 32 MiB child heap despite current entry/count/text caps

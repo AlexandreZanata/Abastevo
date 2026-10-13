@@ -19,11 +19,11 @@ import (
 // substituted object under the same image reference refuses instead
 // of promoting. Replays converge without a duplicate namespace
 // write; refusals and outages error for retry/park per the queue
-// convention. Minimized bytes land only through WriteOutput.
+// convention. Minimized bytes land only through the nonce-fenced publisher.
 type Promote struct {
-	LoadSource  func(ctx context.Context, imageID string) ([]byte, error)
-	Propose     func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error)
-	WriteOutput func(ctx context.Context, key string, minimized []byte) error
+	LoadSource func(ctx context.Context, imageID string) ([]byte, error)
+	Propose    func(ctx context.Context, caller privacyapp.Caller, dto privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error)
+	Publish    func(ctx context.Context, result privacyapp.PromotionResult, minimized []byte) error
 }
 
 // Kind implements jobs.Handler.
@@ -57,7 +57,7 @@ func (h Promote) Handle(ctx context.Context, job jobs.Job) error {
 	if err != nil {
 		return fmt.Errorf("promote: bad payload: %w", err)
 	}
-	if h.LoadSource == nil || h.Propose == nil || h.WriteOutput == nil {
+	if h.LoadSource == nil || h.Propose == nil || h.Publish == nil {
 		return fmt.Errorf("promote: promotion pipeline not configured")
 	}
 	source, err := h.LoadSource(ctx, strings.TrimSpace(payload.ImageID))
@@ -71,20 +71,16 @@ func (h Promote) Handle(ctx context.Context, job jobs.Job) error {
 	result, minimized, err := h.Propose(ctx,
 		privacyapp.Caller{ContributorID: strings.TrimSpace(payload.ContributorID)},
 		privacyapp.PromotionDTO{
-			ImageID: strings.TrimSpace(payload.ImageID), CapturedAt: captured,
+			ImageID: strings.TrimSpace(payload.ImageID), CapturedAt: captured, ConsentRevision: payload.ConsentRevision,
 			PerImageAllowed: payload.PerImageAllowed, Source: source,
 		})
 	if err != nil {
 		return err
 	}
-	if result.Replayed {
-		return nil
+	// Queue revision cannot silently adopt a later grant. Identity/key come
+	// exclusively from the committed inventory, including on replay.
+	if result.ConsentRevision != payload.ConsentRevision || result.ContributorID != strings.TrimSpace(payload.ContributorID) || result.ImageID != strings.TrimSpace(payload.ImageID) || result.ObjectKey != privacyapp.TrainingObjectKey(result.ImageID, result.ConsentRevision, result.PromotedAt) {
+		return fmt.Errorf("promote: output identity mismatch")
 	}
-	// The output key derives from the inventoried promotion instant,
-	// so the sweeper addresses exactly the bytes this commit stored.
-	key := privacyapp.TrainingObjectKey(strings.TrimSpace(payload.ImageID), payload.ConsentRevision, result.PromotedAt)
-	if key == "" {
-		return fmt.Errorf("promote: bad output key")
-	}
-	return h.WriteOutput(ctx, key, minimized)
+	return h.Publish(ctx, result, minimized)
 }

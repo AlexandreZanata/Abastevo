@@ -41,7 +41,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         ServerStationCacheEntity::class,
         ServerCatalogMetaEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

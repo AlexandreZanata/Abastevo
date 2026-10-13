@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -43,6 +44,10 @@ func testDSN(t *testing.T) string {
 }
 
 func freshStore(t *testing.T) (*Store, *pgxpool.Pool) {
+	return freshStoreSchema(t, dbmigrations.Files)
+}
+
+func freshStoreSchema(t *testing.T, schema fs.FS) (*Store, *pgxpool.Pool) {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -75,7 +80,7 @@ func freshStore(t *testing.T) (*Store, *pgxpool.Pool) {
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	if _, err := migrate.Apply(ctx, dsn, dbmigrations.Files); err != nil {
+	if _, err := migrate.Apply(ctx, dsn, schema); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	pool, err := pgxpool.New(ctx, dsn)
@@ -386,10 +391,11 @@ func TestNoDestructivePaths(t *testing.T) {
 	if strings.Contains(upper, "DELETE FROM EVIDENCE_SESSIONS") {
 		t.Error("destructive statement present: session deletes")
 	}
-	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 3 {
-		t.Errorf("objects updates = %d, want exactly the two exclusive bind claims plus final-deleted marker", n)
+	if n := strings.Count(upper, "UPDATE EVIDENCE_OBJECTS"); n != 4 {
+		t.Errorf("objects updates = %d, want two exclusive bind claims and deletion markers by ID/key", n)
 	}
 	for _, guard := range []string{
+		"UPDATE EVIDENCE_OBJECTS SET FINAL_DELETED_AT=NOW()\nWHERE FINAL_KEY= @FINAL_KEY AND FINAL_DELETED_AT IS NULL;",
 		"BOUND_CAPTURE_ID IS NULL AND (BOUND_OBSERVATION_ID IS NULL",
 		"S.PHOTO_CAPTURE_ID = @CAPTURE_ID AND S.STATUS = 'READY' AND S.EXPIRES_AT > @NOW_AT",
 		"O.FINAL_DELETED_AT IS NULL AND O.BOUND_OBSERVATION_ID IS NULL",
@@ -401,6 +407,11 @@ func TestNoDestructivePaths(t *testing.T) {
 	}
 	if n := strings.Count(upper, "DELETE FROM EVIDENCE_OBJECTS"); n != 1 {
 		t.Errorf("objects deletes = %d, want exactly the 90-day purge", n)
+	}
+	for _, guard := range []string{"O.FINAL_DELETED_AT IS NOT NULL", "F.STATE = 'PURGED' AND F.PURGED_AT IS NOT NULL", "LIMIT 100\n    FOR UPDATE OF O SKIP LOCKED"} {
+		if !strings.Contains(upper, guard) {
+			t.Errorf("missing confirmed bounded hash purge guard: %s", guard)
+		}
 	}
 }
 
@@ -563,8 +574,15 @@ func TestStaleFinalsPurgeAndDHashSignals(t *testing.T) {
 		t.Fatalf("dhash matches = %d, %v (want all three)", len(matches), err)
 	}
 	n, err := s.PurgeObjectsBefore(ctx, now.Add(-90*24*time.Hour))
+	if err != nil || n != 0 {
+		t.Fatalf("purged unconfirmed ancient copy = %d, %v", n, err)
+	}
+	if deleted, err := s.DeleteFinalCopy(ctx, ancientObj.ID, ancientObj.FinalKey, now, func(context.Context, string) error { return nil }); err != nil || !deleted {
+		t.Fatal("confirm synthetic absence", deleted, err)
+	}
+	n, err = s.PurgeObjectsBefore(ctx, now.Add(-90*24*time.Hour))
 	if err != nil || n != 1 {
-		t.Fatalf("purged = %d, %v (want the ancient row)", n, err)
+		t.Fatalf("confirmed purge = %d, %v (want the ancient row)", n, err)
 	}
 	matches, err = s.FindByDHash(ctx, 123, now.Add(-100*24*time.Hour))
 	if err != nil || len(matches) != 2 {

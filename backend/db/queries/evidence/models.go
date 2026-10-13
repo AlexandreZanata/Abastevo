@@ -8,6 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EvidenceFinalOutput struct {
+	FinalKey        string             `json:"final_key"`
+	SessionID       pgtype.UUID        `json:"session_id"`
+	SanitizedSha256 string             `json:"sanitized_sha256"`
+	State           string             `json:"state"`
+	Attempts        int32              `json:"attempts"`
+	LeaseNonce      pgtype.UUID        `json:"lease_nonce"`
+	LeaseUntil      pgtype.Timestamptz `json:"lease_until"`
+	DeadlineAt      pgtype.Timestamptz `json:"deadline_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	PurgedAt        pgtype.Timestamptz `json:"purged_at"`
+}
+
 type EvidenceObject struct {
 	ID                      pgtype.UUID        `json:"id"`
 	SessionID               pgtype.UUID        `json:"session_id"`
@@ -42,4 +55,22 @@ type EvidenceSession struct {
 	PolicyVersion       string             `json:"policy_version"`
 	PhotoCaptureID      pgtype.UUID        `json:"photo_capture_id"`
 	QuarantineDeletedAt pgtype.Timestamptz `json:"quarantine_deleted_at"`
+}
+
+type EvidenceSweepObservation struct {
+	Singleton     bool               `json:"singleton"`
+	Epoch         int64              `json:"epoch"`
+	StartedAt     pgtype.Timestamptz `json:"started_at"`
+	FinishedAt    pgtype.Timestamptz `json:"finished_at"`
+	Healthy       bool               `json:"healthy"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+}
+
+type EvidenceUploadTransfer struct {
+	SessionID   pgtype.UUID        `json:"session_id"`
+	Attempts    int32              `json:"attempts"`
+	LeaseNonce  string             `json:"lease_nonce"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+	ReceivedAt  pgtype.Timestamptz `json:"received_at"`
+	ActualBytes int64              `json:"actual_bytes"`
 }

@@ -12,73 +12,124 @@ import (
 	"time"
 )
 
-// CachedKeys fronts any KeySource with the frozen JWKS TTL (P13-T01):
-// provider keys are fetched once per TTL per process, so verification
-// stays local and fast while rotation still propagates within the hour.
-// SEC07-AUD-09: expiry is per issuer — one provider's refresh never
-// prolongs another provider's TTL.
+// ForcedRefreshInterval bounds unknown-kid recovery and provider failures.
+const ForcedRefreshInterval = 30 * time.Second
+
+// CachedKeys keeps independent, bounded issuer entries. The global mutex protects
+// only the map; network I/O uses a cancellable single-flight gate per issuer.
 type CachedKeys struct {
-	Source KeySource
-	TTL    time.Duration
-	Now    func() time.Time
-	mu     sync.Mutex
-	at     map[string]time.Time
-	sets   map[string][]JSONWebKey
+	Source  KeySource
+	TTL     time.Duration
+	Now     func() time.Time
+	mu      sync.Mutex
+	entries map[string]*issuerKeys
 }
 
-// Fetch serves the cached set while fresh, refetching past the TTL.
-// A failed refetch fails closed (no stale serve); the previous stamp is
-// kept so the next call retries instead of serving expired keys.
-func (c *CachedKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, error) {
+type issuerKeys struct {
+	gate        chan struct{}
+	set         []JSONWebKey
+	hasSet      bool
+	at          time.Time
+	lastAttempt time.Time
+	loadErr     error
+	forced      bool
+	forceAt     time.Time
+	forceErr    error
+}
+
+func (c *CachedKeys) entry(issuer string) (*issuerKeys, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	now := c.Now()
-	if set, ok := c.sets[issuer]; ok {
-		if at, stamped := c.at[issuer]; stamped && now.Sub(at) < c.TTL {
-			return set, nil
-		}
+	if entry := c.entries[issuer]; entry != nil {
+		return entry, nil
 	}
-	set, err := c.Source.Fetch(ctx, issuer)
+	// Issuers originate in the configured verifier allowlist, not JWT claims.
+	// A cap also prevents misuse of this port from growing arbitrary maps.
+	if len(c.entries) >= 16 {
+		return nil, errors.New("oidc: issuer capacity exhausted")
+	}
+	if c.entries == nil {
+		c.entries = map[string]*issuerKeys{}
+	}
+	entry := &issuerKeys{gate: make(chan struct{}, 1)}
+	c.entries[issuer] = entry
+	return entry, nil
+}
+
+func (c *CachedKeys) currentTime() time.Time {
+	if c.Now != nil {
+		return c.Now()
+	}
+	return time.Now()
+}
+
+func (c *CachedKeys) load(ctx context.Context, issuer string, force bool) ([]JSONWebKey, error) {
+	entry, err := c.entry(issuer)
 	if err != nil {
 		return nil, err
 	}
-	if c.sets == nil {
-		c.sets = map[string][]JSONWebKey{}
+	select {
+	case entry.gate <- struct{}{}:
+		defer func() { <-entry.gate }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
-	if c.at == nil {
-		c.at = map[string]time.Time{}
+	now := c.currentTime()
+	ttl := c.TTL
+	if ttl <= 0 {
+		ttl = time.Hour
 	}
-	c.sets[issuer] = set
-	c.at[issuer] = now
-	return set, nil
+	if force {
+		if entry.forced && now.Sub(entry.forceAt) < ForcedRefreshInterval {
+			if entry.forceErr != nil {
+				return nil, entry.forceErr
+			}
+			return append([]JSONWebKey(nil), entry.set...), nil
+		}
+		entry.forced = true
+		entry.forceAt = now
+	} else {
+		if entry.hasSet && now.Sub(entry.at) < ttl {
+			return append([]JSONWebKey(nil), entry.set...), nil
+		}
+		if entry.loadErr != nil && now.Sub(entry.lastAttempt) < ForcedRefreshInterval {
+			return nil, entry.loadErr
+		}
+	}
+	entry.lastAttempt = now
+	if c.Source == nil {
+		return nil, errors.New("oidc: key source unavailable")
+	}
+	set, err := c.Source.Fetch(ctx, issuer)
+	entry.loadErr = err
+	if force {
+		entry.forceErr = err
+	}
+	if err != nil {
+		return nil, err
+	}
+	entry.set = append([]JSONWebKey(nil), set...)
+	entry.hasSet = true
+	entry.at = now
+	return append([]JSONWebKey(nil), entry.set...), nil
 }
 
-// RefreshingKeySource is a KeySource that can bypass its TTL once.
-// The verifier uses it for a single bounded retry when the cached set
-// lacks the token's kid (rotation or removal upstream).
+// Fetch never serves expired keys after a failed fetch.
+func (c *CachedKeys) Fetch(ctx context.Context, issuer string) ([]JSONWebKey, error) {
+	return c.load(ctx, issuer, false)
+}
+
+// RefreshingKeySource supports admitted recovery when a cached kid is unknown.
 type RefreshingKeySource interface {
 	KeySource
 	Refresh(ctx context.Context, issuer string) ([]JSONWebKey, error)
 }
 
-// Refresh refetches the issuer set unconditionally (one bounded fetch),
-// restamping only that issuer's expiry.
+// Refresh bypasses TTL at most once per issuer per ForcedRefreshInterval.
+// No per-kid negative map exists: the admitted recovered set is the bounded
+// negative cache for all unknown kids during the interval.
 func (c *CachedKeys) Refresh(ctx context.Context, issuer string) ([]JSONWebKey, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	set, err := c.Source.Fetch(ctx, issuer)
-	if err != nil {
-		return nil, err
-	}
-	if c.sets == nil {
-		c.sets = map[string][]JSONWebKey{}
-	}
-	if c.at == nil {
-		c.at = map[string]time.Time{}
-	}
-	c.sets[issuer] = set
-	c.at[issuer] = c.Now()
-	return set, nil
+	return c.load(ctx, issuer, true)
 }
 
 // HTTPKeys fetches issuer JWKS documents over HTTPS for production wiring.

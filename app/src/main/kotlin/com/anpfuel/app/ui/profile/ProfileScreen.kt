@@ -74,7 +74,7 @@ import com.anpfuel.app.ui.components.SkeletonLine
  *   - Surveyed stations -> Routes.STATIONS
  *   - Survey week picker -> Routes.WEEK_PICKER
  *   - App settings & offline cache -> Routes.SETTINGS
- * - Rights & privacy guarantees (no public precise GPS, 24h photo expiry, no paid ranking)
+ * - Rights & privacy information (no public precise GPS, temporary evidence, no paid ranking)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -253,13 +253,6 @@ fun ProfileScreen(
                 ),
             ) {
                 Column {
-                    ProfileToolItem(
-                        icon = Icons.Default.AssignmentTurnedIn,
-                        title = stringResource(R.string.profile_tool_contributions_title),
-                        subtitle = stringResource(R.string.profile_tool_contributions_subtitle),
-                        onClick = { onNavigate(Routes.CONTRIBUTIONS) },
-                    )
-                    HorizontalDivider()
                     AnimatedVisibility(
                         visible = signedIn,
                         enter = fadeIn() + expandVertically(),
@@ -280,6 +273,20 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_vehicles_title),
                         subtitle = stringResource(R.string.profile_tool_vehicles_subtitle),
                         onClick = { onNavigate(Routes.VEHICLES) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Settings,
+                        title = stringResource(R.string.profile_tool_settings_title),
+                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
+                        onClick = { onNavigate(Routes.SETTINGS) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.AssignmentTurnedIn,
+                        title = stringResource(R.string.profile_tool_contributions_title),
+                        subtitle = stringResource(R.string.profile_tool_contributions_subtitle),
+                        onClick = { onNavigate(Routes.CONTRIBUTIONS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -311,51 +318,17 @@ fun ProfileScreen(
                     )
                     HorizontalDivider()
                     ProfileToolItem(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.profile_tool_settings_title),
-                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
-                        onClick = { onNavigate(Routes.SETTINGS) },
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
                         icon = Icons.Default.HelpOutline,
                         title = stringResource(R.string.profile_tool_help_title),
                         subtitle = stringResource(R.string.profile_tool_help_subtitle),
                         onClick = { onNavigate(Routes.HELP) },
                     )
-                }
-            }
-
-            // Rights and privacy section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = stringResource(R.string.profile_privacy_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.semantics { heading() },
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.profile_privacy_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Lock,
+                        title = stringResource(R.string.profile_tool_privacy_title),
+                        subtitle = stringResource(R.string.profile_tool_privacy_subtitle),
+                        onClick = { onNavigate(Routes.PRIVACY) },
                     )
                 }
             }

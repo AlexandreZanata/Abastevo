@@ -98,3 +98,25 @@ func TestPutSendsExactContentType(t *testing.T) {
 		t.Errorf("sent %q %d", gotType, gotLength)
 	}
 }
+
+func TestDeleteConfirmedRequiresPrivateAbsence(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusOK, http.StatusForbidden, http.StatusInternalServerError, http.StatusTemporaryRedirect} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			methods := []string{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				methods = append(methods, r.Method)
+				if r.Method == http.MethodDelete {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+				w.WriteHeader(status)
+			}))
+			defer server.Close()
+			in := PresignInput{Endpoint: server.URL, Bucket: "synthetic-private", Key: "f/test", Namespace: "f/", TTL: DefaultURLTTL}
+			err := DeleteConfirmed(context.Background(), server.Client(), in, Credentials{AccessKeyID: "fixture", SecretAccessKey: "synthetic-only"})
+			if (err == nil) != (status == http.StatusNotFound) || len(methods) != 2 || methods[0] != http.MethodDelete || methods[1] != http.MethodHead {
+				t.Fatal(methods, err)
+			}
+		})
+	}
+}

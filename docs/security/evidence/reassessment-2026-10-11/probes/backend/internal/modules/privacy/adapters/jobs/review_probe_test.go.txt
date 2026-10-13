@@ -1,0 +1,86 @@
+package jobs
+
+import (
+	"context"
+	"errors"
+	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
+	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"strings"
+	"testing"
+	"time"
+)
+
+// Characterization: PASS documents the defect, not a safety property.
+func TestReviewFailedObjectWriteBecomesSuccessfulReplay(t *testing.T) {
+	attempts := 0
+	writes := 0
+	h := Promote{
+		LoadSource: func(context.Context, string) ([]byte, error) { return []byte("test"), nil },
+		Propose: func(context.Context, privacyapp.Caller, privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
+			attempts++
+			return privacyapp.PromotionResult{ImageID: "img-1", ConsentRevision: 1, PromotedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC), Replayed: attempts > 1}, []byte("synthetic-minimized"), nil
+		},
+		WriteOutput: func(context.Context, string, []byte) error { writes++; return errors.New("synthetic storage outage") },
+	}
+	job := promoteJob(t, validPromotePayload())
+	if err := h.Handle(context.Background(), job); err == nil {
+		t.Fatal("first write should fail")
+	}
+	if err := h.Handle(context.Background(), job); err != nil {
+		t.Fatal(err)
+	}
+	if writes != 1 {
+		t.Fatalf("writes=%d", writes)
+	}
+	t.Log("first write failed, second execution returned success without retrying object write")
+}
+
+func TestReviewOutputUsesPayloadRevisionNotCommittedRevision(t *testing.T) {
+	var key string
+	h := Promote{
+		LoadSource: func(context.Context, string) ([]byte, error) { return []byte("test"), nil },
+		Propose: func(context.Context, privacyapp.Caller, privacyapp.PromotionDTO) (privacyapp.PromotionResult, []byte, error) {
+			return privacyapp.PromotionResult{ImageID: "img-1", ConsentRevision: 3, PromotedAt: time.Date(2026, 10, 11, 13, 0, 0, 0, time.UTC)}, []byte("synthetic"), nil
+		},
+		WriteOutput: func(_ context.Context, k string, _ []byte) error { key = k; return nil },
+	}
+	if err := h.Handle(context.Background(), promoteJob(t, validPromotePayload())); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(key, "-1.jpg") {
+		t.Fatalf("key=%s", key)
+	}
+	t.Log("inventory consent revision 3, bytes stored under payload revision 1")
+}
+
+func TestReviewPurgeFailuresAreDiscardedByJob(t *testing.T) {
+	h := Sweep{Run: func(context.Context) (privacyapp.SweepReport, error) {
+		return privacyapp.SweepReport{Checked: 1, Failures: []string{"training/v1/synthetic"}}, nil
+	}}
+	err := h.Handle(context.Background(), platformjobs.Job{Payload: []byte(`{"version":1}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("copy deletion failed; job returned success and discarded failure report")
+}
+
+func TestReviewFailedErasureIsSkippedOnQueueRetry(t *testing.T) {
+	called := false
+	h := Erasure{
+		Load: func(context.Context, string) (privacydomain.Request, error) {
+			return privacydomain.Request{Status: privacydomain.StatusFailed}, nil
+		},
+		Erase: func(context.Context, string, privacyapp.EraseDTO) (privacyapp.ErasureReport, error) {
+			called = true
+			return privacyapp.ErasureReport{}, nil
+		},
+	}
+	if err := h.Handle(context.Background(), platformjobs.Job{Payload: []byte(`{"version":1,"request_id":"synthetic-failed"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	if called {
+		t.Fatal("failed erasure was unexpectedly retried")
+	}
+	t.Log("request FAILED after scope failure; queue retry returns success without resuming cleanup")
+}

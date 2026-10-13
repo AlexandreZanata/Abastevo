@@ -34,6 +34,11 @@ import (
 func promotionPG(t *testing.T) *PromotionStore {
 	t.Helper()
 	_, pool := freshStore(t)
+	for _, owner := range []string{"c1", "c2"} {
+		if _, _, err := NewConsentStore(pool).Put(context.Background(), mustConsent(t, owner, 1, time.Now().Add(-time.Hour))); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return NewPromotionStore(pool)
 }
 
@@ -68,6 +73,14 @@ func TestDerivativePutPersistsAndReadsBack(t *testing.T) {
 	if err != nil || !stored || replayed {
 		t.Fatalf("put = %v %v %v", stored, replayed, err)
 	}
+	pending, err := s.Get(ctx, "img-1", 1)
+	if err != nil || pending.OutputState != domain.OutputPending {
+		t.Fatal("insert pretended bytes were ready", pending, err)
+	}
+	if selected, err := s.ListActiveByOwner(ctx, "c1"); err != nil || len(selected) != 0 {
+		t.Fatal("pending output selected", selected, err)
+	}
+	readyInventoryFixture(t, s, "img-1")
 	active, err := s.ListActiveByOwner(ctx, "c1")
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +126,7 @@ func TestDerivativeConcurrentPutsAgree(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	active, err := s.ListActiveByOwner(ctx, "c1")
+	active, err := s.ListByOwner(ctx, "c1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,6 +145,8 @@ func TestDerivativeRevokeFlow(t *testing.T) {
 	if _, _, err := s.Put(ctx, mustDerivative(t, "img-2", "c1", 1, base)); err != nil {
 		t.Fatal(err)
 	}
+	readyInventoryFixture(t, s, "img-1")
+	readyInventoryFixture(t, s, "img-2")
 	if err := s.MarkRevoked(ctx, "img-1", 1, base.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
@@ -155,20 +170,23 @@ func TestDerivativeUpgradeAppliesOnly000057(t *testing.T) {
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	previous := fstest.MapFS{}
+	previous, target := fstest.MapFS{}, fstest.MapFS{}
 	files, err := fs.Glob(dbmigrations.Files, "*.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range files {
-		if name == "000057_privacy_training_derivatives.sql" {
+		if name > "000057_privacy_training_derivatives.sql" {
 			continue
 		}
 		data, err := fs.ReadFile(dbmigrations.Files, name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		previous[name] = &fstest.MapFile{Data: data}
+		target[name] = &fstest.MapFile{Data: data}
+		if name < "000057_privacy_training_derivatives.sql" {
+			previous[name] = &fstest.MapFile{Data: data}
+		}
 	}
 	dsn := freshPre057DB(t, adminDSN)
 	if _, err := migrate.Apply(ctx, dsn, previous); err != nil {
@@ -182,7 +200,7 @@ func TestDerivativeUpgradeAppliesOnly000057(t *testing.T) {
 	if _, err := conn.Exec(ctx, `INSERT INTO privacy_training_consents(contributor_id,contributor_ref,terms_version,terms_digest,state,revision,decided_at) VALUES ('c1','tok-c1','training-terms-v1','digest-v1','GRANTED',1,now())`); err != nil {
 		t.Fatal(err)
 	}
-	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	applied, err := migrate.Apply(ctx, dsn, target)
 	if err != nil || len(applied) != 1 || applied[0] != "000057" {
 		t.Fatalf("upgrade %v %v", applied, err)
 	}
@@ -194,7 +212,7 @@ func TestDerivativeUpgradeAppliesOnly000057(t *testing.T) {
 	if err := conn.QueryRow(ctx, `SELECT count(*) FROM privacy_training_consents WHERE contributor_id='c1'`).Scan(&kept); err != nil || kept != 1 {
 		t.Fatalf("consent rows %d %v", kept, err)
 	}
-	again, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	again, err := migrate.Apply(ctx, dsn, target)
 	if err != nil || len(again) != 0 {
 		t.Fatalf("replay %v %v", again, err)
 	}
@@ -258,12 +276,24 @@ func TestDerivativeQueriesStayNonDestructive(t *testing.T) {
 			t.Errorf("derivatives.sql destroys or migrates: %s", verb)
 		}
 	}
-	for _, other := range []string{"PRIVACY_REQUESTS", "PRIVACY_DELETION_LEDGER", "PRIVACY_TRAINING_CONSENTS"} {
+	for _, other := range []string{"PRIVACY_REQUESTS", "PRIVACY_DELETION_LEDGER"} {
 		if strings.Contains(upper, other) {
 			t.Errorf("derivatives.sql crosses into %s", other)
 		}
 	}
-	if !strings.Contains(upper, "STATE = 'ACTIVE'") {
+	if !strings.Contains(upper, "PRIVACY_TRAINING_CONSENTS") || !strings.Contains(upper, "PRIVACY_TRAINING_REVOCATIONS") {
+		t.Error("selection lost consent/restore fence")
+	}
+	if !strings.Contains(upper, "STATE = 'ACTIVE'") && !strings.Contains(upper, "D.STATE = 'ACTIVE'") {
 		t.Error("revoke mark lost its state guard")
+	}
+}
+
+// SQL-only selection fixture: byte verification is separately exercised by
+// TestTrainingOutputRecoveryOnPrivateS3. A raw insert is never READY.
+func readyInventoryFixture(t *testing.T, s *PromotionStore, image string) {
+	t.Helper()
+	if _, err := s.pool.Exec(context.Background(), "UPDATE privacy_training_derivatives SET output_state='READY',output_ready_at=now() WHERE image_id=$1", image); err != nil {
+		t.Fatal(err)
 	}
 }
