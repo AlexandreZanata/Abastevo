@@ -111,7 +111,7 @@ class TrainingConsentDeviceTest {
         compose.runOnIdle {assertEquals(0,decisions);host.value=host.value.copy(caller=null)}
         compose.onNodeWithText(text(R.string.privacy_read_terms)).performScrollTo().performClick()
         compose.onNodeWithText(bundled.text).assertExists()
-        compose.onNodeWithText(text(R.string.action_back)).performClick()
+        compose.onNodeWithContentDescription(text(R.string.action_back)).performClick()
         compose.onNodeWithText(text(R.string.privacy_rights_heading)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(text(R.string.privacy_confirm_preference)).assertDoesNotExist()
         compose.runOnIdle {assertEquals(0,decisions)}

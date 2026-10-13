@@ -24,6 +24,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.domain.repository.TrainingConsentReview
 
 @Composable
@@ -41,6 +42,7 @@ fun TrainingConsentSettings(onSignIn:()->Unit,host:TrainingConsentHostViewModel=
     TrainingConsentContent(state,consent,vm::setEnabled,vm::retry,onSignIn)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TrainingConsentContent(
     state:ConsentHostState,
@@ -110,10 +112,12 @@ internal fun TrainingConsentContent(
             val window=(LocalView.current.parent as DialogWindowProvider).window
             LaunchedEffect(window) {window.setLayout(MATCH_PARENT,MATCH_PARENT)}
             Surface(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp)) {
-                    Text(stringResource(R.string.privacy_read_terms),style=MaterialTheme.typography.titleLarge)
-                    TextButton(onClick={reader=false}) {Text(stringResource(R.string.action_back))}
-                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    AnpTopAppBar(
+                        title = { Text(stringResource(R.string.privacy_read_terms)) },
+                        onNavigateUp = { reader = false },
+                    )
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                         SelectionContainer {Text(document.text)}
                         Text(stringResource(R.string.privacy_digest,document.digest),style=MaterialTheme.typography.bodySmall)
                         Button(onClick={review=review.finishReading();reader=false},modifier=Modifier.fillMaxWidth()) {
