@@ -556,7 +556,7 @@
     <string name="home_view_all">Ver todos</string>
     <string name="home_filter_button">Filtros</string>
     <string name="home_filter_title">Ordenar precios</string>
-    <string name="home_filter_default">Orden predeterminado</string>
+    <string name="home_filter_default">Precio medio</string>
     <string name="home_filter_lowest">Menor precio</string>
     <string name="home_filter_highest">Mayor precio</string>
     <string name="home_change_city">Mi ciudad</string>

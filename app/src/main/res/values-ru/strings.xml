@@ -556,7 +556,7 @@
     <string name="home_view_all">Все цены</string>
     <string name="home_filter_button">Фильтры</string>
     <string name="home_filter_title">Сортировать цены</string>
-    <string name="home_filter_default">Порядок по умолчанию</string>
+    <string name="home_filter_default">Средняя цена</string>
     <string name="home_filter_lowest">Самая низкая цена</string>
     <string name="home_filter_highest">Самая высокая цена</string>
     <string name="home_change_city">Мой город</string>

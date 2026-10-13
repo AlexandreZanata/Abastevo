@@ -658,7 +658,7 @@
     <string name="home_view_all">View all</string>
     <string name="home_filter_button">Filters</string>
     <string name="home_filter_title">Sort prices</string>
-    <string name="home_filter_default">Default order</string>
+    <string name="home_filter_default">Average price</string>
     <string name="home_filter_lowest">Lowest price</string>
     <string name="home_filter_highest">Highest price</string>
     <string name="home_change_city">My city</string>

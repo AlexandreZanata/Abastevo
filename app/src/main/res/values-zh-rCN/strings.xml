@@ -556,7 +556,7 @@
     <string name="home_view_all">查看全部</string>
     <string name="home_filter_button">筛选</string>
     <string name="home_filter_title">价格排序</string>
-    <string name="home_filter_default">默认顺序</string>
+    <string name="home_filter_default">平均价格</string>
     <string name="home_filter_lowest">最低价格</string>
     <string name="home_filter_highest">最高价格</string>
     <string name="home_change_city">我的城市</string>

@@ -556,7 +556,7 @@
     <string name="home_view_all">Alle ansehen</string>
     <string name="home_filter_button">Filter</string>
     <string name="home_filter_title">Preise sortieren</string>
-    <string name="home_filter_default">Standardreihenfolge</string>
+    <string name="home_filter_default">Durchschnittspreis</string>
     <string name="home_filter_lowest">Niedrigster Preis</string>
     <string name="home_filter_highest">Höchster Preis</string>
     <string name="home_change_city">Meine Stadt</string>

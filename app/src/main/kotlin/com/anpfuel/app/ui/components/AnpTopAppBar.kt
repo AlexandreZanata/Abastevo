@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.chromeContainer
 
 /**
  * Top app bar that respects the status bar inset under edge-to-edge.
@@ -41,8 +42,8 @@ fun AnpTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     applyStatusBarInsets: Boolean = true,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer.chromeContainer(),
+        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.chromeContainer(),
     ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
