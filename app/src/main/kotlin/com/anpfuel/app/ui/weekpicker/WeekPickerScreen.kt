@@ -83,6 +83,7 @@ fun WeekPickerRoute(
         onRetryCatalog = viewModel::loadCatalog,
         onUseLatestWeek = viewModel::useLatestWeek,
         onSelectWeek = viewModel::onWeekRowTapped,
+        onDownloadWeek = viewModel::downloadWeek,
         onRetrySync = viewModel::retrySync,
         onCancelSync = viewModel::cancelSync,
         onNavigateBack = onNavigateBack,
@@ -98,6 +99,7 @@ fun WeekPickerScreen(
     onNavigateBack: (() -> Unit)? = null,
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
+    onDownloadWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
     onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
@@ -117,6 +119,7 @@ fun WeekPickerScreen(
             onRetryCatalog = onRetryCatalog,
             onUseLatestWeek = onUseLatestWeek,
             onSelectWeek = onSelectWeek,
+            onDownloadWeek = onDownloadWeek,
             onRetrySync = onRetrySync,
             onCancelSync = onCancelSync,
             onSkip = onSkip,
@@ -133,6 +136,7 @@ fun WeekPickerContent(
     onRetryCatalog: () -> Unit,
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
+    onDownloadWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
     onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
@@ -211,6 +215,7 @@ fun WeekPickerContent(
                                 isDownloaded = entry.surveyWeek in uiState.downloadedWeeks,
                                 locale = locale,
                                 onClick = onSelectWeek?.let { callback -> { callback(entry) } },
+                                onDownload = onDownloadWeek?.let { callback -> { callback(entry) } },
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -388,6 +393,7 @@ fun WeekPickerRow(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     isDownloaded: Boolean = false,
+    onDownload: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Column(
@@ -448,7 +454,7 @@ fun WeekPickerRow(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             border = null,
-                            onClick = onClick,
+                            onClick = onDownload ?: onClick,
                         )
                     }
                 }

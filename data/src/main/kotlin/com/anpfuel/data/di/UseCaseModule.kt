@@ -65,6 +65,7 @@ import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCas
 import com.anpfuel.application.usecase.sync.AutoDownloadLatestWeekUseCase
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogUseCase
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
+import com.anpfuel.application.usecase.sync.DownloadSurveyWeekUseCase
 import com.anpfuel.application.usecase.sync.GetDownloadedSurveyWeeksUseCase
 import com.anpfuel.application.usecase.sync.SelectSurveyWeekUseCase
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
@@ -141,6 +142,14 @@ object UseCaseModule {
         priceTableRepository: PriceTableRepository,
     ): GetDownloadedSurveyWeeksUseCase = GetDownloadedSurveyWeeksUseCase(
         priceTableRepository = priceTableRepository,
+    )
+
+    @Provides
+    @Singleton
+    fun provideDownloadSurveyWeekUseCase(
+        syncPriceTablesUseCase: SyncPriceTablesUseCase,
+    ): DownloadSurveyWeekUseCase = DownloadSurveyWeekUseCase(
+        syncPriceTablesUseCase = syncPriceTablesUseCase,
     )
 
     @Provides

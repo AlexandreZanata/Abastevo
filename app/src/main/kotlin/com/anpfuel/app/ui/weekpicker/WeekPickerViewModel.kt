@@ -2,8 +2,11 @@ package com.anpfuel.app.ui.weekpicker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.application.error.AppError
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogOutcome
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogUseCase
+import com.anpfuel.application.usecase.sync.DownloadSurveyWeekResult
+import com.anpfuel.application.usecase.sync.DownloadSurveyWeekUseCase
 import com.anpfuel.application.usecase.sync.GetDownloadedSurveyWeeksUseCase
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncResult
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
@@ -29,6 +32,7 @@ sealed interface WeekPickerNavigation {
 class WeekPickerViewModel @Inject constructor(
     private val discoverSurveyWeekCatalogUseCase: DiscoverSurveyWeekCatalogUseCase,
     private val selectWeekAndSyncUseCase: SelectWeekAndSyncUseCase,
+    private val downloadSurveyWeekUseCase: DownloadSurveyWeekUseCase,
     private val getDownloadedSurveyWeeksUseCase: GetDownloadedSurveyWeeksUseCase,
 ) : ViewModel() {
 
@@ -104,13 +108,43 @@ class WeekPickerViewModel @Inject constructor(
 
     fun retrySync() {
         val entry = _uiState.value.pendingWeekSelection ?: return
+        if (_uiState.value.pendingDownloadOnly) {
+            downloadWeek(entry)
+            return
+        }
         val mode = _uiState.value.pendingSelectionMode ?: SurveyWeekSelectionMode.LATEST
         selectWeek(entry, mode)
+    }
+
+    /**
+     * Downloads a week in place without changing the active survey week, so
+     * several weeks can be downloaded in a row from the same list.
+     */
+    fun downloadWeek(entry: SurveyWeekCatalogEntry) {
+        if (_uiState.value.isSyncing) {
+            return
+        }
+
+        val catalog = _uiState.value.catalog
+        val mode = if (WeekPickerSelectionPolicy.isLatestCatalogEntry(catalog, entry)) {
+            SurveyWeekSelectionMode.LATEST
+        } else {
+            SurveyWeekSelectionMode.SPECIFIC
+        }
+        launchSync(entry = entry, selectionMode = mode, persistSelection = false)
     }
 
     private fun selectWeek(
         entry: SurveyWeekCatalogEntry,
         selectionMode: SurveyWeekSelectionMode,
+    ) {
+        launchSync(entry = entry, selectionMode = selectionMode, persistSelection = true)
+    }
+
+    private fun launchSync(
+        entry: SurveyWeekCatalogEntry,
+        selectionMode: SurveyWeekSelectionMode,
+        persistSelection: Boolean,
     ) {
         if (_uiState.value.isSyncing) {
             return
@@ -124,47 +158,28 @@ class WeekPickerViewModel @Inject constructor(
                     syncError = null,
                     pendingWeekSelection = entry,
                     pendingSelectionMode = selectionMode,
+                    pendingDownloadOnly = !persistSelection,
                 )
             }
 
             try {
-                when (
-                    val result = selectWeekAndSyncUseCase(
-                        catalogEntry = entry,
-                        selectionMode = selectionMode,
-                    )
-                ) {
-                    is SelectWeekAndSyncResult.Failed -> {
-                        if (cancelledByUser) {
-                            _uiState.update {
-                                it.copy(
-                                    isSyncing = false,
-                                    syncError = null,
-                                    pendingWeekSelection = null,
-                                    pendingSelectionMode = null,
-                                )
-                            }
-                        } else {
-                            _uiState.update {
-                                it.copy(
-                                    isSyncing = false,
-                                    syncError = result.error,
-                                )
-                            }
+                if (persistSelection) {
+                    when (
+                        val result = selectWeekAndSyncUseCase(
+                            catalogEntry = entry,
+                            selectionMode = selectionMode,
+                        )
+                    ) {
+                        is SelectWeekAndSyncResult.Failed -> handleSyncFailed(result.error)
+                        is SelectWeekAndSyncResult.Success -> {
+                            refreshDownloadedWeeks()
+                            _navigation.emit(WeekPickerNavigation.Completed)
                         }
                     }
-
-                    is SelectWeekAndSyncResult.Success -> {
-                        val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
-                            .getOrDefault(_uiState.value.downloadedWeeks)
-                        _uiState.update {
-                            it.copy(
-                                isSyncing = false,
-                                syncError = null,
-                                downloadedWeeks = downloadedWeeks,
-                            )
-                        }
-                        _navigation.emit(WeekPickerNavigation.Completed)
+                } else {
+                    when (val result = downloadSurveyWeekUseCase(catalogEntry = entry)) {
+                        is DownloadSurveyWeekResult.Failed -> handleSyncFailed(result.error)
+                        is DownloadSurveyWeekResult.Success -> refreshDownloadedWeeks()
                     }
                 }
             } finally {
@@ -177,12 +192,46 @@ class WeekPickerViewModel @Inject constructor(
                             syncError = null,
                             pendingWeekSelection = null,
                             pendingSelectionMode = null,
+                            pendingDownloadOnly = false,
                         )
                     } else {
                         it
                     }
                 }
             }
+        }
+    }
+
+    private fun handleSyncFailed(error: AppError) {
+        if (cancelledByUser) {
+            _uiState.update {
+                it.copy(
+                                    isSyncing = false,
+                                    syncError = null,
+                                    pendingWeekSelection = null,
+                                    pendingSelectionMode = null,
+                                    pendingDownloadOnly = false,
+                                )
+                            }
+                        } else {
+            _uiState.update {
+                it.copy(
+                    isSyncing = false,
+                    syncError = error,
+                )
+            }
+        }
+    }
+
+    private suspend fun refreshDownloadedWeeks() {
+        val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
+            .getOrDefault(_uiState.value.downloadedWeeks)
+        _uiState.update {
+            it.copy(
+                isSyncing = false,
+                syncError = null,
+                downloadedWeeks = downloadedWeeks,
+            )
         }
     }
 }

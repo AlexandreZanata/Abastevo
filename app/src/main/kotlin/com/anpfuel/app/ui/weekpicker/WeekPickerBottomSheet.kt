@@ -117,6 +117,7 @@ fun WeekPickerBottomSheet(
                     onRetryCatalog = viewModel::loadCatalog,
                     onUseLatestWeek = viewModel::useLatestWeek,
                     onSelectWeek = viewModel::onWeekRowTapped,
+                    onDownloadWeek = viewModel::downloadWeek,
                     onRetrySync = viewModel::retrySync,
                     onCancelSync = viewModel::cancelSync,
                     modifier = Modifier
