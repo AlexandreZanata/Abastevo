@@ -69,8 +69,10 @@ class CommunityFeedScreenTest {
         var fuel: FuelProduct? = null
         var route: String? = null
         render(CommunityFeedUiState(city = city, loading = false), font = 2f, sort = { selected = it }, fuel = { fuel = it }, navigate = { route = it })
+        compose.onNodeWithText(context.getString(R.string.feed_recent)).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(R.string.feed_cheapest)).performScrollTo().performClick()
         assertEquals(FeedSort.CHEAPEST, selected)
+        compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.GASOLINE_REGULAR))).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))).performScrollTo().performClick()
         assertEquals(FuelProduct.ETHANOL, fuel)
         compose.onNodeWithText(context.getString(R.string.feed_change_city)).performScrollTo().performClick()
