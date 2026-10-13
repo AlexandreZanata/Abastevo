@@ -54,7 +54,7 @@
     <string name="profile_contributions_empty">No contributions on this device yet.</string>
     <string name="profile_contributions_error">Could not load your contributions.</string>
     <string name="profile_contributions_state_queued">Queued for upload</string>
-    <string name="profile_contributions_state_retrying">Queued — retrying automatically</string>
+    <string name="profile_contributions_state_retrying">Retrying send</string>
     <string name="profile_contributions_state_cancelled">Cancelled — never sent</string>
     <string name="profile_contributions_revision_attempts">rev %1$d · %2$d attempts</string>
     <string name="profile_contributions_cancel">Cancel upload</string>

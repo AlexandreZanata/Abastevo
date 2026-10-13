@@ -4,6 +4,7 @@ import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.ContributionDraft
 import java.io.IOException
 import com.anpfuel.domain.model.ContributionScope
+import com.anpfuel.domain.valueobject.FuelProduct
 
 /**
  * SEC06-D rate-limit refusal with the server's retry hint in seconds.
@@ -148,6 +149,8 @@ data class OwnedContribution(
     val scope: ContributionScope? = null,
     val remoteStatus: ContributionRemoteStatus? = null,
     val reason: String? = null,
+    /** Display-only fuel parsed from the stored payload; null when absent. */
+    val fuelProduct: FuelProduct? = null,
 ) {
     companion object {
         fun phaseOf(stored: String): OwnedContributionPhase = when (stored) {

@@ -54,7 +54,7 @@
     <string name="profile_contributions_empty">Nenhuma contribuição neste dispositivo ainda.</string>
     <string name="profile_contributions_error">Não foi possível carregar suas contribuições.</string>
     <string name="profile_contributions_state_queued">Na fila para envio</string>
-    <string name="profile_contributions_state_retrying">Na fila — tentando de novo sozinho</string>
+    <string name="profile_contributions_state_retrying">Tentando enviar</string>
     <string name="profile_contributions_state_cancelled">Cancelada — nunca enviada</string>
     <string name="profile_contributions_revision_attempts">rev %1$d · %2$d tentativas</string>
     <string name="profile_contributions_cancel">Cancelar envio</string>

@@ -9,6 +9,7 @@ import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.repository.ContributionOutboxRepository
 import com.anpfuel.domain.repository.OwnedContributionPhase
 import com.anpfuel.domain.repository.OutboxBudgets
+import com.anpfuel.domain.valueobject.FuelProduct
 
 /**
  * P21-T03 — Private owner status (BUC-003, B-BR-003/005).
@@ -24,6 +25,7 @@ data class OwnedContributionStatus(
     val attempts: Int,
     val state: ContributionState?,
     val reason: String? = null,
+    val fuelProduct: FuelProduct? = null,
 )
 
 class GetOwnedContributionsUseCase(
@@ -51,6 +53,7 @@ class GetOwnedContributionsUseCase(
                 attempts = owned.attempts,
                 state = ContributionStateRule.resolve(local, owned.remoteStatus, ContributionReview.NONE),
                 reason = owned.reason,
+                fuelProduct = owned.fuelProduct,
             )
         }
     }

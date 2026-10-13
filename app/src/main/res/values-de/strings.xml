@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">Noch keine Beiträge auf diesem Gerät.</string>
     <string name="profile_contributions_error">Beiträge konnten nicht geladen werden.</string>
     <string name="profile_contributions_state_queued">Zum Hochladen vorgemerkt</string>
-    <string name="profile_contributions_state_retrying">In Warteschlange · automatischer Wiederholungsversuch</string>
+    <string name="profile_contributions_state_retrying">Erneuter Sendeversuch</string>
     <string name="profile_contributions_state_cancelled">Abgebrochen · nie gesendet</string>
     <string name="profile_contributions_revision_attempts">Rev. %1$d · %2$d Versuche</string>
     <string name="profile_contributions_cancel">Upload abbrechen</string>

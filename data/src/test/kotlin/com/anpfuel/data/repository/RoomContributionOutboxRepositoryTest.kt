@@ -183,6 +183,23 @@ class RoomContributionOutboxRepositoryTest {
     }
 
     @Test
+    fun `owner listing carries display fuel from payload`() = runTest {
+        val dao = FakeDao()
+        val repo = RoomContributionOutboxRepository(dao)
+
+        repo.enqueue(draft("cmd-1"), "{\"fuel_product\":\"DIESEL_S10\"}")
+        repo.enqueue(draft("cmd-2"), "{\"freshness\":\"fresh\"}")
+
+        val owned = repo.listOwnedPage(100, 0).sortedBy { it.commandId }
+        assertEquals(2, owned.size)
+        assertEquals(
+            com.anpfuel.domain.valueobject.FuelProduct.DIESEL_S10,
+            owned[0].fuelProduct,
+        )
+        assertEquals(null, owned[1].fuelProduct)
+    }
+
+    @Test
     fun `owner listing fails closed on corrupt state`() = runTest {
         val dao = FakeDao()
         dao.upsert(

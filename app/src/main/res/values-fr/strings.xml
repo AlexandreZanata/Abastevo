@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">Aucune contribution sur cet appareil.</string>
     <string name="profile_contributions_error">Impossible de charger vos contributions.</string>
     <string name="profile_contributions_state_queued">En attente de téléversement</string>
-    <string name="profile_contributions_state_retrying">En attente · nouvel essai automatique</string>
+    <string name="profile_contributions_state_retrying">Nouvel essai d’envoi</string>
     <string name="profile_contributions_state_cancelled">Annulé · jamais envoyé</string>
     <string name="profile_contributions_revision_attempts">rév. %1$d · %2$d tentatives</string>
     <string name="profile_contributions_cancel">Annuler le téléversement</string>

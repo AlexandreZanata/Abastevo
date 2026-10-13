@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">此设备尚无贡献。</string>
     <string name="profile_contributions_error">无法加载您的贡献。</string>
     <string name="profile_contributions_state_queued">等待上传</string>
-    <string name="profile_contributions_state_retrying">排队中 · 自动重试</string>
+    <string name="profile_contributions_state_retrying">重试发送中</string>
     <string name="profile_contributions_state_cancelled">已取消 · 从未发送</string>
     <string name="profile_contributions_revision_attempts">版本%1$d · 尝试%2$d次</string>
     <string name="profile_contributions_cancel">取消上传</string>

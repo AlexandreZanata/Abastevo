@@ -39,8 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.application.usecase.contribution.OwnedContributionStatus
@@ -185,10 +187,25 @@ private fun ContributionLedgerRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val fuel = item.fuelProduct
+                if (fuel != null) {
+                    FuelProductIcon(
+                        product = fuel,
+                        size = 40.dp,
+                        contentDescription = null,
+                    )
+                }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(shortCommandId(item.commandId), style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold)
+                    Text(
+                        if (fuel != null) {
+                            stringResource(FuelProductI18n.toStringRes(fuel))
+                        } else {
+                            shortCommandId(item.commandId)
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Text(stringResource(R.string.profile_contributions_revision_attempts, item.revision, item.attempts),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

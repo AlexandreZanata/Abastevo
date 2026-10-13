@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">На этом устройстве пока нет сообщений.</string>
     <string name="profile_contributions_error">Не удалось загрузить сообщения.</string>
     <string name="profile_contributions_state_queued">В очереди на отправку</string>
-    <string name="profile_contributions_state_retrying">В очереди · автоматическая повторная попытка</string>
+    <string name="profile_contributions_state_retrying">Повторная отправка</string>
     <string name="profile_contributions_state_cancelled">Отменено · не отправлено</string>
     <string name="profile_contributions_revision_attempts">рев. %1$d · попыток: %2$d</string>
     <string name="profile_contributions_cancel">Отменить отправку</string>

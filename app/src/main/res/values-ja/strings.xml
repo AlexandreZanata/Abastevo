@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">この端末にはまだ投稿がありません。</string>
     <string name="profile_contributions_error">投稿を読み込めませんでした。</string>
     <string name="profile_contributions_state_queued">アップロード待ち</string>
-    <string name="profile_contributions_state_retrying">待機中・自動再試行</string>
+    <string name="profile_contributions_state_retrying">再送中</string>
     <string name="profile_contributions_state_cancelled">キャンセル済み・未送信</string>
     <string name="profile_contributions_revision_attempts">版%1$d・%2$d回試行</string>
     <string name="profile_contributions_cancel">アップロードを取消</string>

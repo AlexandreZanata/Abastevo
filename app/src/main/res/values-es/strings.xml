@@ -358,7 +358,7 @@
     <string name="profile_contributions_empty">Aún no hay aportes en este dispositivo.</string>
     <string name="profile_contributions_error">No se pudieron cargar tus aportes.</string>
     <string name="profile_contributions_state_queued">En cola de subida</string>
-    <string name="profile_contributions_state_retrying">En cola · reintento automático</string>
+    <string name="profile_contributions_state_retrying">Reintentando envío</string>
     <string name="profile_contributions_state_cancelled">Cancelado · nunca enviado</string>
     <string name="profile_contributions_revision_attempts">rev. %1$d · %2$d intentos</string>
     <string name="profile_contributions_cancel">Cancelar subida</string>

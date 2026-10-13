@@ -15,6 +15,7 @@ import com.anpfuel.domain.repository.ContributionReceipt
 import com.anpfuel.domain.repository.ContributionRemoteStatus
 import com.anpfuel.domain.repository.OutboxBudgets
 import com.anpfuel.domain.model.ContributionScope
+import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.exception.DomainException
 import org.json.JSONObject
 import com.anpfuel.data.worker.ContributionWorkScheduler
@@ -181,6 +182,15 @@ class RoomContributionOutboxRepository @Inject constructor(
             OutboxBudgets.HISTORY_PURGE_BATCH,
         )
 
+    /**
+     * Display-only fuel parsed from the already-loaded payload JSON.
+     * Unknown or absent values stay null; the row never fails for it.
+     */
+    private fun fuelProductOf(payload: String): FuelProduct? =
+        runCatching {
+            FuelProduct.valueOf(JSONObject(payload).optString("fuel_product"))
+        }.getOrNull()
+
     private fun toOwned(entity: ContributionOutboxEntity): OwnedContribution {
         if (entity.state == "ACKED" && entity.remoteStatus == null) throw DomainException("acknowledged command lacks receipt")
         return OwnedContribution(
@@ -191,6 +201,7 @@ class RoomContributionOutboxRepository @Inject constructor(
             scope = scopeOf(entity),
             remoteStatus = entity.remoteStatus?.let { ContributionRemoteStatus.valueOf(it) },
             reason = entity.failureReason,
+            fuelProduct = fuelProductOf(entity.payload),
         )
     }
 
