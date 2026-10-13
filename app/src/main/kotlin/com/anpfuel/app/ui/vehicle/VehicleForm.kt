@@ -45,6 +45,7 @@ import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -131,6 +132,13 @@ fun VehicleForm(
                     selected = form.fuelProduct == product,
                     onClick = { onFuelProductSelected(product) },
                     label = { Text(text = stringResource(FuelProductI18n.toStringRes(product))) },
+                    leadingIcon = {
+                        FuelProductIcon(
+                            product = product,
+                            size = 18.dp,
+                            contentDescription = null,
+                        )
+                    },
                 )
             }
         }

@@ -93,6 +93,10 @@ fun AnpNavGraph(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    } else {
+                        // Re-tapping the active tab returns to its base
+                        // page instead of stranding nested screens.
+                        navController.popBackStack(targetRoute, inclusive = false)
                     }
                 },
             )
