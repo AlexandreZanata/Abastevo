@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -583,13 +584,16 @@ private fun SettingsToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var lineCount by remember { mutableIntStateOf(1) }
     var switchShiftPx by remember { mutableFloatStateOf(0f) }
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         androidx.compose.foundation.layout.Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = if (lineCount > 1) 8.dp else 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -600,6 +604,7 @@ private fun SettingsToggleRow(
                     .weight(1f)
                     .padding(end = 12.dp),
                 onTextLayout = {
+                    lineCount = it.lineCount
                     switchShiftPx = it.getLineBottom(0) / 2f - it.size.height / 2f
                 },
             )
