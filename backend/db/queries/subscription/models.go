@@ -99,6 +99,14 @@ type SubscriptionOperation struct {
 	CompletedAt pgtype.Timestamptz `json:"completed_at"`
 }
 
+type SubscriptionProviderNotification struct {
+	Environment string             `json:"environment"`
+	MessageID   string             `json:"message_id"`
+	PayloadHash string             `json:"payload_hash"`
+	TokenDigest string             `json:"token_digest"`
+	ReceivedAt  pgtype.Timestamptz `json:"received_at"`
+}
+
 type SubscriptionPurchase struct {
 	TokenDigest     string             `json:"token_digest"`
 	AccountID       pgtype.UUID        `json:"account_id"`

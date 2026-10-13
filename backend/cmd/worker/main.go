@@ -48,6 +48,9 @@ import (
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
+	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
+	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -473,7 +476,10 @@ func run() error {
 			return false, nil
 		},
 	}
+	// Payment ports remain deliberately nil until the future payment module is configured.
+	premiumService := &subscriptionapp.Service{Store: subscriptionadapters.NewStore(raw), Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
 	handlers := map[string]jobs.Handler{
+		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",

@@ -72,3 +72,14 @@ Restricted Developer API adapter uses fixed HTTPS authority, injected OAuth cred
 Local TLS fake-provider tests cover wrong owner/product/base/environment, unknown/pending state, bad expiry/ack, 404/429/5xx, malformed/oversize response, canceled request and refused redirect. Real PostGIS application tests prove provider HTTP holds no session locks, revocation during lookup prevents a grant, exact replay performs one provider call and denied proofs discard token bytes. Disabled-provider tests prove no persistence/grant and free data access metadata.
 
 Commands: go test -race -count=1 ./internal/modules/subscription/...; disposable real SQL go test -race -count=1 -tags=integration ./internal/modules/subscription/adapters -run '^TestAdmission'; affected go vet/staticcheck. Passed. No new dependency, live provider call or payment activation. Next PRM01-T04.
+
+## PRM01-T04 — Durable acknowledgement and authenticated provider inbox
+
+Status: LOCAL_DONE / INTEGRATION_PENDING (source only)
+Validation: PASS; real provider sandbox deferred by user
+
+Append-only 000076 records bounded immutable notification receipts. RSA-2048/RS256 verification checks trusted key ID, Google issuer, exact audience/service-account/email proof and token times; provider handler authenticates before persistence, checks package/subscription/envelope bounds, drops expired candidates and stores no raw purchase token. Duplicate receipts converge; changed payload conflicts. Authenticated notices invalidate cached proof/generation and atomically enqueue canonical refresh rather than granting from notification type. Existing worker registers digest-only acknowledgement; payment ports remain nil.
+
+Tests: actual generated RSA signatures/tamper/issuer/audience/service identity/expiry; private HTTP missing/forged/duplicate auth, wrong subscription, stale/oversize/duplicate JSON; local TLS canonical acknowledgement; actual PostGIS 12-way duplicate receipt produces one refresh job and immediately fences stale rights; real dispatcher lost acknowledgement reply recovers by canonical acknowledged lookup with one external acknowledge effect. Migration upgrade/replay remains explicit through 000076.
+
+Commands: affected subscription unit/race and SQL integration suites, go vet/staticcheck, sqlc vet/diff and worker build to /tmp. Passed. Private provider sandbox is not claimed. Next PRM01-T05; no OneSignal implementation (that remains planning only).

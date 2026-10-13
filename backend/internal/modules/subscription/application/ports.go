@@ -53,3 +53,19 @@ type Service struct {
 	Environment, PackageName string
 	AccountBinding           func(string) string
 }
+
+type StoredToken struct {
+	AccountID, Environment, PackageName, Digest string
+	CipherToken                                 []byte
+	Snapshot                                    domain.Snapshot
+	Revision                                    int64
+}
+type JobStore interface {
+	ForJob(context.Context, string) (StoredToken, error)
+	MarkAcknowledged(context.Context, string, int64) error
+	ReceiveNotification(context.Context, Notification) (bool, error)
+}
+type Notification struct{ Environment, PackageName, MessageID, Digest, PayloadHash string }
+type Acknowledger interface {
+	Acknowledge(context.Context, ProviderRequest, string) error
+}

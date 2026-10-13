@@ -86,3 +86,23 @@ verified_at DESC,token_digest LIMIT 1;
 
 -- name: LockToken :exec
 SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(token_digest)::text,0));
+
+-- name: GetProviderReceipt :one
+SELECT payload_hash FROM subscription_provider_notifications WHERE environment=sqlc.arg(environment) AND message_id=sqlc.arg(message_id);
+
+-- name: NotificationAdmissions :one
+SELECT count(*) FROM subscription_provider_notifications WHERE received_at>clock_timestamp()-interval '1 minute';
+
+-- name: InsertProviderReceipt :exec
+INSERT INTO subscription_provider_notifications(environment,message_id,payload_hash,token_digest)
+VALUES(sqlc.arg(environment),sqlc.arg(message_id),sqlc.arg(payload_hash),sqlc.arg(token_digest));
+
+-- name: InvalidatePurchase :exec
+UPDATE subscription_purchases SET refresh_required=true,revision=revision+1 WHERE token_digest=$1 AND NOT retired;
+
+-- name: InvalidateSlot :exec
+UPDATE subscription_verification_slots SET generation=generation+1,lease_until=clock_timestamp() WHERE token_digest=$1;
+
+-- name: MarkAcknowledged :execrows
+UPDATE subscription_purchases SET acknowledged=true WHERE token_digest=sqlc.arg(token_digest)
+AND revision=sqlc.arg(revision) AND NOT retired AND state<>'REVOKED' AND NOT refresh_required;

@@ -89,6 +89,22 @@ func (q *Queries) GetOperation(ctx context.Context, arg GetOperationParams) (Sub
 	return i, err
 }
 
+const getProviderReceipt = `-- name: GetProviderReceipt :one
+SELECT payload_hash FROM subscription_provider_notifications WHERE environment=$1 AND message_id=$2
+`
+
+type GetProviderReceiptParams struct {
+	Environment string `json:"environment"`
+	MessageID   string `json:"message_id"`
+}
+
+func (q *Queries) GetProviderReceipt(ctx context.Context, arg GetProviderReceiptParams) (string, error) {
+	row := q.db.QueryRow(ctx, getProviderReceipt, arg.Environment, arg.MessageID)
+	var payload_hash string
+	err := row.Scan(&payload_hash)
+	return payload_hash, err
+}
+
 const getPurchase = `-- name: GetPurchase :one
 SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest FROM subscription_purchases WHERE token_digest=$1
 `
@@ -165,6 +181,46 @@ func (q *Queries) HourlyAdmissions(ctx context.Context, accountID pgtype.UUID) (
 	return count, err
 }
 
+const insertProviderReceipt = `-- name: InsertProviderReceipt :exec
+INSERT INTO subscription_provider_notifications(environment,message_id,payload_hash,token_digest)
+VALUES($1,$2,$3,$4)
+`
+
+type InsertProviderReceiptParams struct {
+	Environment string `json:"environment"`
+	MessageID   string `json:"message_id"`
+	PayloadHash string `json:"payload_hash"`
+	TokenDigest string `json:"token_digest"`
+}
+
+func (q *Queries) InsertProviderReceipt(ctx context.Context, arg InsertProviderReceiptParams) error {
+	_, err := q.db.Exec(ctx, insertProviderReceipt,
+		arg.Environment,
+		arg.MessageID,
+		arg.PayloadHash,
+		arg.TokenDigest,
+	)
+	return err
+}
+
+const invalidatePurchase = `-- name: InvalidatePurchase :exec
+UPDATE subscription_purchases SET refresh_required=true,revision=revision+1 WHERE token_digest=$1 AND NOT retired
+`
+
+func (q *Queries) InvalidatePurchase(ctx context.Context, tokenDigest string) error {
+	_, err := q.db.Exec(ctx, invalidatePurchase, tokenDigest)
+	return err
+}
+
+const invalidateSlot = `-- name: InvalidateSlot :exec
+UPDATE subscription_verification_slots SET generation=generation+1,lease_until=clock_timestamp() WHERE token_digest=$1
+`
+
+func (q *Queries) InvalidateSlot(ctx context.Context, tokenDigest string) error {
+	_, err := q.db.Exec(ctx, invalidateSlot, tokenDigest)
+	return err
+}
+
 const lockBinding = `-- name: LockBinding :one
 SELECT contributor_id FROM account_contributor_bindings
 WHERE account_id=$1::uuid AND contributor_id=$2::text FOR SHARE
@@ -237,6 +293,35 @@ SELECT pg_advisory_xact_lock(hashtextextended($1::text,0))
 func (q *Queries) LockToken(ctx context.Context, tokenDigest string) error {
 	_, err := q.db.Exec(ctx, lockToken, tokenDigest)
 	return err
+}
+
+const markAcknowledged = `-- name: MarkAcknowledged :execrows
+UPDATE subscription_purchases SET acknowledged=true WHERE token_digest=$1
+AND revision=$2 AND NOT retired AND state<>'REVOKED' AND NOT refresh_required
+`
+
+type MarkAcknowledgedParams struct {
+	TokenDigest string `json:"token_digest"`
+	Revision    int64  `json:"revision"`
+}
+
+func (q *Queries) MarkAcknowledged(ctx context.Context, arg MarkAcknowledgedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markAcknowledged, arg.TokenDigest, arg.Revision)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const notificationAdmissions = `-- name: NotificationAdmissions :one
+SELECT count(*) FROM subscription_provider_notifications WHERE received_at>clock_timestamp()-interval '1 minute'
+`
+
+func (q *Queries) NotificationAdmissions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, notificationAdmissions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const pendingAdmissions = `-- name: PendingAdmissions :one

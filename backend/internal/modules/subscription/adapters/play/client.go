@@ -165,3 +165,12 @@ func (c *Client) Verify(ctx context.Context, r app.ProviderRequest) (app.Provide
 	}
 	return app.ProviderPurchase{Snapshot: domain.Snapshot{State: state, VerifiedAt: c.Now().UTC(), ValidUntil: until, ProductID: item.Product, BasePlanID: item.Offer.BasePlan, Acknowledged: p.Ack == "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED"}, LinkedToken: p.Linked}, nil
 }
+
+func (c *Client) Acknowledge(ctx context.Context, r app.ProviderRequest, product string) error {
+	if c == nil || r.PackageName != c.config.PackageName || r.Environment != c.config.Environment || !domain.ValidToken(r.Token) || len(c.config.Plans[product]) == 0 {
+		return domain.ErrDenied
+	}
+	path := "/androidpublisher/v3/applications/" + url.PathEscape(c.config.PackageName) + "/purchases/subscriptions/" + url.PathEscape(product) + "/tokens/" + url.PathEscape(r.Token) + ":acknowledge"
+	_, err := c.request(ctx, http.MethodPost, path, strings.NewReader("{}"))
+	return err
+}

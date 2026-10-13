@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	subjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -311,7 +312,7 @@ func TestSubscriptionUpgradeReplayAndIndexedStatus(t *testing.T) {
 	p := seedOwner(t, pool)
 	dsn := pool.Config().ConnString()
 	got, err := migrate.Apply(context.Background(), dsn, migrations.Files)
-	if err != nil || len(got) != 1 || got[0] != "000075" {
+	if err != nil || len(got) != 2 || got[0] != "000075" || got[1] != "000076" {
 		t.Fatal("upgrade", got, err)
 	}
 	if got, err = migrate.Apply(context.Background(), dsn, migrations.Files); err != nil || len(got) != 0 {
@@ -440,5 +441,95 @@ func TestAdmissionExactReplayAndDeniedProofRecovery(t *testing.T) {
 	var clear int
 	if err = pool.QueryRow(context.Background(), "SELECT count(*) FROM subscription_operations WHERE status='denied' AND token_cipher IS NOT NULL").Scan(&clear); err != nil || clear != 0 {
 		t.Fatal("denied proof retained secret")
+	}
+}
+
+type ackProvider struct {
+	acked bool
+	calls int
+}
+
+func (p *ackProvider) Verify(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+	v := verified().Snapshot
+	v.Acknowledged = p.acked
+	return app.ProviderPurchase{Snapshot: v}, nil
+}
+func (p *ackProvider) Acknowledge(context.Context, app.ProviderRequest, string) error {
+	p.acked = true
+	p.calls++
+	return domain.ErrUnavailable
+}
+func TestAcknowledgementLostResponseRecoversDurableJob(t *testing.T) {
+	pool := freshDB(t)
+	owner := seedOwner(t, pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	provider := &ackProvider{}
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Provider: provider, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	_, err := svc.Admit(context.Background(), owner, app.Command{OperationID: newid(t), Token: "synthetic-ack", Kind: "verify"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatcher := jobs.Dispatcher{Queue: jobs.NewQueue(pool), WorkerID: "premium-test", Handlers: map[string]jobs.Handler{"subscription-acknowledge": subjobs.Handler{Name: "subscription-acknowledge", Run: svc.Acknowledge}}}
+	if found, err := dispatcher.RunOnce(context.Background()); err != nil || !found {
+		t.Fatal("first lost reply", err)
+	}
+	if _, err = pool.Exec(context.Background(), "UPDATE job_queue SET not_before=clock_timestamp() WHERE kind='subscription-acknowledge'"); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := dispatcher.RunOnce(context.Background()); err != nil || !found {
+		t.Fatal("restart recovery", err)
+	}
+	var acknowledged bool
+	var status string
+	if err = pool.QueryRow(context.Background(), "SELECT acknowledged FROM subscription_purchases").Scan(&acknowledged); err != nil || !acknowledged || provider.calls != 1 {
+		t.Fatal("ack replay duplicated or lost")
+	}
+	if err = pool.QueryRow(context.Background(), "SELECT status FROM job_queue WHERE kind='subscription-acknowledge'").Scan(&status); err != nil || status != "done" {
+		t.Fatal("durable acknowledgement incomplete")
+	}
+}
+func TestProviderReceiptDeduplicationAndRefreshFence(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	p := seedOwner(t, pool)
+	ctx := context.Background()
+	a := attempt(t, p, "notification-token")
+	a, err := store.Begin(ctx, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := verified()
+	v.Snapshot.Acknowledged = true
+	if err = store.Commit(ctx, a, v); err != nil {
+		t.Fatal(err)
+	}
+	n := app.Notification{Environment: "test", PackageName: "com.anpfuel", MessageID: "synthetic-message", Digest: a.Digest, PayloadHash: strings.Repeat("a", 64)}
+	var wg sync.WaitGroup
+	errs := make([]error, 12)
+	for i := range 12 {
+		wg.Add(1)
+		go func(i int) { defer wg.Done(); _, errs[i] = store.ReceiveNotification(ctx, n) }(i)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	var count int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM subscription_provider_notifications").Scan(&count); err != nil || count != 1 {
+		t.Fatal("duplicate receipt")
+	}
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE kind='subscription-refresh'").Scan(&count); err != nil || count != 1 {
+		t.Fatal("duplicate refresh job")
+	}
+	snapshot, err := store.Status(ctx, p)
+	if err != nil || len(domain.Evaluate(snapshot, time.Now(), true).Capabilities) != 0 {
+		t.Fatal("notification did not fence stale rights")
+	}
+	n.PayloadHash = strings.Repeat("b", 64)
+	if _, err = store.ReceiveNotification(ctx, n); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("changed-payload message replay accepted", err)
 	}
 }

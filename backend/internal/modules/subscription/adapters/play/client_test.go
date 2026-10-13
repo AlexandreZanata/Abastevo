@@ -146,3 +146,20 @@ func TestPlayFaultsRedactionAndCancellation(t *testing.T) {
 		})
 	}
 }
+
+func TestPlayAcknowledgementIsCanonicalAndBounded(t *testing.T) {
+	called := false
+	c := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.Method != "POST" || r.URL.Path != "/androidpublisher/v3/applications/com.anpfuel/purchases/subscriptions/synthetic.premium/tokens/synthetic-token:acknowledge" {
+			t.Error("wrong acknowledgement")
+		}
+		w.WriteHeader(204)
+	})
+	if err := c.Acknowledge(context.Background(), request(), "synthetic.premium"); err != nil || !called {
+		t.Fatal(err)
+	}
+	if err := c.Acknowledge(context.Background(), request(), "foreign"); err == nil {
+		t.Fatal("foreign product acknowledged")
+	}
+}
