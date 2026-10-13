@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const advanceFloor = `-- name: AdvanceFloor :one
+UPDATE cloud_state SET compacted_through=GREATEST(compacted_through,$1::bigint) WHERE account_id=$2::uuid RETURNING compacted_through
+`
+
+type AdvanceFloorParams struct {
+	Floor     int64       `json:"floor"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) AdvanceFloor(ctx context.Context, arg AdvanceFloorParams) (int64, error) {
+	row := q.db.QueryRow(ctx, advanceFloor, arg.Floor, arg.AccountID)
+	var compacted_through int64
+	err := row.Scan(&compacted_through)
+	return compacted_through, err
+}
+
 const clearChangePayloads = `-- name: ClearChangePayloads :exec
 UPDATE cloud_changes SET payload=NULL,deleted=true WHERE account_id=$1 AND dataset=$2 AND id=$3
 `
@@ -41,6 +57,22 @@ func (q *Queries) CloudAdmission(ctx context.Context, accountID pgtype.UUID) (Cl
 	var i CloudAdmissionRow
 	err := row.Scan(&i.Total, &i.Hourly)
 	return i, err
+}
+
+const compactFloor = `-- name: CompactFloor :one
+SELECT COALESCE(MAX(sequence),0)::bigint FROM cloud_changes WHERE account_id=$1 AND created_at<$2
+`
+
+type CompactFloorParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CompactFloor(ctx context.Context, arg CompactFloorParams) (int64, error) {
+	row := q.db.QueryRow(ctx, compactFloor, arg.AccountID, arg.CreatedAt)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const countDataset = `-- name: CountDataset :one
@@ -79,6 +111,41 @@ func (q *Queries) CountVehicles(ctx context.Context, accountID pgtype.UUID) (int
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deleteOldChanges = `-- name: DeleteOldChanges :execrows
+DELETE FROM cloud_changes c WHERE c.ctid IN (SELECT c2.ctid FROM cloud_changes c2 WHERE c2.account_id=$1 AND c2.sequence<=$2 AND c2.created_at<$3 LIMIT 500)
+`
+
+type DeleteOldChangesParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Sequence  int64              `json:"sequence"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) DeleteOldChanges(ctx context.Context, arg DeleteOldChangesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldChanges, arg.AccountID, arg.Sequence, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteOldReceipts = `-- name: DeleteOldReceipts :execrows
+DELETE FROM cloud_operations o WHERE o.ctid IN (SELECT o2.ctid FROM cloud_operations o2 WHERE o2.account_id=$1 AND o2.created_at<$2 LIMIT 500)
+`
+
+type DeleteOldReceiptsParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) DeleteOldReceipts(ctx context.Context, arg DeleteOldReceiptsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOldReceipts, arg.AccountID, arg.CreatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteRecord = `-- name: DeleteRecord :one

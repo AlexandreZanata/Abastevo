@@ -223,6 +223,7 @@ sql:
       - db/migrations/000079_cloud_portable.sql
       - db/migrations/000080_cloud_devices.sql
       - db/migrations/000081_cloud_commands.sql
+      - db/migrations/000082_cloud_compaction.sql
     gen:
       go:
         package: cloudsync

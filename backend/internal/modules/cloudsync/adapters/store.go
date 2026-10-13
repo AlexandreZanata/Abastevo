@@ -110,6 +110,13 @@ func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id strin
 		return app.Record{}, err
 	}
 	defer rollback(tx)
+	erased, err := q.ErasedID(ctx, qcloud.ErasedIDParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(id)})
+	if err != nil {
+		return app.Record{}, domain.ErrUnavailable
+	}
+	if erased {
+		return app.Record{}, domain.ErrConflict
+	}
 	if dataset == "favorites" {
 		if s.Station == nil {
 			return app.Record{}, domain.ErrUnavailable

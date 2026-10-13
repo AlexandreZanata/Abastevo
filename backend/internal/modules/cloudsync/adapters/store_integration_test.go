@@ -1015,6 +1015,157 @@ func counts(t *testing.T, pool *pgxpool.Pool) string {
 	return fmt.Sprintf("%d/%d/%d", records, changes, receipts)
 }
 
+func TestCompactionOfflineEditAndAntiResurrection(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	other := secondDevice(t, pool, store, p)
+	ctx := context.Background()
+	store.Station = dirread.NewReader(pool).ActiveReference
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	station := newid(t)
+	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic station')", station); err != nil {
+		t.Fatal(err)
+	}
+	rawFav, _ := json.Marshal(domain.Favorite{StationID: station})
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 0, Payload: rawFav}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 1, Delete: true}}}); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-31 * 24 * time.Hour)
+	if _, err := pool.Exec(ctx, "UPDATE cloud_changes SET created_at=$1 WHERE account_id=$2", old, p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE cloud_operations SET created_at=$1 WHERE account_id=$2", old, p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	floor, err := store.Compact(ctx, p.AccountID, time.Now())
+	if err != nil || floor == 0 {
+		t.Fatalf("compact floor %d %v", floor, err)
+	}
+	var changes, receipts, fences int
+	if err = pool.QueryRow(ctx, "SELECT (SELECT count(*) FROM cloud_changes WHERE account_id=$1),(SELECT count(*) FROM cloud_operations WHERE account_id=$1),(SELECT count(*) FROM cloud_erased_ids WHERE account_id=$1)", p.AccountID).Scan(&changes, &receipts, &fences); err != nil {
+		t.Fatal(err)
+	}
+	if changes != 0 || receipts != 0 || fences == 0 {
+		t.Fatalf("retention cleanup changes=%d receipts=%d fences=%d", changes, receipts, fences)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("compacted cursor silently advanced")
+	}
+	recreate := app.Command{OperationID: newid(t), Dataset: "favorites", ID: station, ExpectedRevision: 0, Payload: rawFav}
+	if _, err = store.Apply(ctx, other, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{recreate}}); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("erased UUID resurrected via push")
+	}
+	if _, err = store.PutFavorite(ctx, other, station, 0); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("erased UUID resurrected via foundation")
+	}
+	rows, err := store.List(ctx, p, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 || rows[0].ID != v.ID {
+		t.Fatal("compaction cleared live vehicle", err)
+	}
+}
+
+func TestCompactionRecreateParallelCrashAndPlans(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-31 * 24 * time.Hour)
+	if _, err := pool.Exec(ctx, "UPDATE cloud_changes SET created_at=$1 WHERE account_id=$2", old, p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE cloud_operations SET created_at=$1 WHERE account_id=$2", old, p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `CREATE FUNCTION reject_compact_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic'; END $$; CREATE TRIGGER reject_compact_delete BEFORE DELETE ON cloud_changes FOR EACH ROW EXECUTE FUNCTION reject_compact_delete()`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Compact(ctx, p.AccountID, time.Now()); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatal("crash reported success", err)
+	}
+	var floor int64
+	if err := pool.QueryRow(ctx, "SELECT compacted_through FROM cloud_state WHERE account_id=$1", p.AccountID).Scan(&floor); err != nil || floor != 0 {
+		t.Fatalf("crash advanced floor %d %v", floor, err)
+	}
+	if _, err := pool.Exec(ctx, "DROP TRIGGER reject_compact_delete ON cloud_changes"); err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan int64, 2)
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f, e := store.Compact(ctx, p.AccountID, time.Now())
+			results <- f
+			errs <- e
+		}()
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+	for e := range errs {
+		if e != nil {
+			t.Fatal(e)
+		}
+	}
+	floors := []int64{}
+	for f := range results {
+		floors = append(floors, f)
+	}
+	if len(floors) != 2 || floors[0] != floors[1] || floors[0] == 0 {
+		t.Fatalf("parallel workers diverged %v", floors)
+	}
+	if _, err := store.Erase(ctx, p, "all", ""); err != nil {
+		t.Fatal(err)
+	}
+	fresh := secondDevice(t, pool, store, p)
+	if _, err := store.Pull(ctx, fresh, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatalf("recreated account cursor advanced %v", err)
+	}
+	if _, err := store.PutVehicle(ctx, fresh, v, 1); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("erased vehicle resurrected via foundation")
+	}
+	granted, err := store.SetConsent(ctx, fresh, []string{"vehicles", "favorites", "preferences"}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archived := v
+	archived.Archived = true
+	if _, err := store.Apply(ctx, fresh, app.Batch{Epoch: granted.Epoch, ConsentRevision: granted.ConsentRevision, Commands: []app.Command{vehicleCommand(t, archived, 1)}}); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("erased vehicle updated %v", err)
+	}
+	plan, err := pool.Query(ctx, "EXPLAIN SELECT COALESCE(MAX(sequence),0) FROM cloud_changes WHERE account_id=$1 AND created_at<$2", p.AccountID, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := ""
+	for plan.Next() {
+		var line string
+		if err = plan.Scan(&line); err != nil {
+			t.Fatal(err)
+		}
+		text += line
+	}
+	plan.Close()
+	if !strings.Contains(text, "Index") {
+		t.Fatal("compaction floor did not use index", text)
+	}
+}
+
 func TestImportPreviewPreservesUUIDsAndCounts(t *testing.T) {
 	pool := freshDB(t)
 	p := seedOwner(t, pool)

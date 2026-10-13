@@ -142,3 +142,15 @@ UPDATE cloud_state SET
  consent_mask=CASE WHEN sqlc.arg(enabled)::boolean THEN consent_mask | sqlc.arg(mask)::integer ELSE consent_mask & (~sqlc.arg(mask)::integer) END,
  consent_revision=consent_revision+1, revision=revision+1
 WHERE account_id=sqlc.arg(account_id)::uuid RETURNING epoch,revision,consent_mask,consent_revision;
+
+-- name: CompactFloor :one
+SELECT COALESCE(MAX(sequence),0)::bigint FROM cloud_changes WHERE account_id=$1 AND created_at<$2;
+
+-- name: DeleteOldChanges :execrows
+DELETE FROM cloud_changes c WHERE c.ctid IN (SELECT c2.ctid FROM cloud_changes c2 WHERE c2.account_id=$1 AND c2.sequence<=$2 AND c2.created_at<$3 LIMIT 500);
+
+-- name: DeleteOldReceipts :execrows
+DELETE FROM cloud_operations o WHERE o.ctid IN (SELECT o2.ctid FROM cloud_operations o2 WHERE o2.account_id=$1 AND o2.created_at<$2 LIMIT 500);
+
+-- name: AdvanceFloor :one
+UPDATE cloud_state SET compacted_through=GREATEST(compacted_through,sqlc.arg(floor)::bigint) WHERE account_id=sqlc.arg(account_id)::uuid RETURNING compacted_through;

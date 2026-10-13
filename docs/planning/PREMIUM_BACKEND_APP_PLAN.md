@@ -246,6 +246,8 @@ Entry: PRM02. Exit: two-device convergence/conflicts/deletion recovery, without 
 
 ### PRM03-T04 — Tombstone compaction and anti-resurrection recovery
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR09/12.
 - **Outcome/areas:** retention-bounded change/tombstone cleanup with deletion-epoch ledger and expired-client resnapshot protocol; register restore replay obligation.
 - **Tests first:** offline edit after tombstone compaction, old snapshot restoration, account recreation, cleanup crash/parallel workers and vehicle dependencies.
