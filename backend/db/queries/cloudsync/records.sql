@@ -95,3 +95,40 @@ UPDATE cloud_changes SET payload=NULL,deleted=true WHERE account_id=$1 AND datas
 
 -- name: SaveChange :exec
 INSERT INTO cloud_changes(account_id,sequence,epoch,dataset,id,record_revision,deleted,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8);
+
+-- name: ListRecords :many
+SELECT dataset,id,revision,deleted,payload FROM cloud_records
+WHERE account_id=$1 AND dataset=$2 AND NOT deleted AND id>$3 ORDER BY id LIMIT $4;
+
+-- name: ListDevices :many
+SELECT id,origin,created_at,last_success_at,revoked_at FROM cloud_devices
+WHERE account_id=$1 AND origin=$2 AND id>$3 ORDER BY id LIMIT $4;
+
+
+-- name: NeedsErasure :one
+SELECT EXISTS(SELECT 1 FROM cloud_records c WHERE c.account_id=sqlc.arg(account_id)::uuid AND NOT c.deleted
+AND (sqlc.arg(dataset)::text='all' OR c.dataset=sqlc.arg(dataset)) AND (sqlc.narg(record_id)::uuid IS NULL OR c.id=sqlc.narg(record_id)))
+OR (sqlc.arg(dataset)::text='all' AND EXISTS(SELECT 1 FROM cloud_devices d WHERE d.account_id=sqlc.arg(account_id) AND d.revoked_at IS NULL));
+
+-- name: EraseSelectedIDs :exec
+INSERT INTO cloud_erased_ids(account_id,dataset,id)
+SELECT c.account_id,c.dataset,c.id FROM cloud_records c WHERE c.account_id=sqlc.arg(account_id)::uuid
+AND (sqlc.arg(dataset)::text='all' OR c.dataset=sqlc.arg(dataset)) AND (sqlc.narg(record_id)::uuid IS NULL OR c.id=sqlc.narg(record_id))
+ON CONFLICT DO NOTHING;
+
+-- name: EraseSelectedRecords :exec
+UPDATE cloud_records c SET deleted=true,payload=NULL,revision=revision+1,updated_at=clock_timestamp()
+WHERE c.account_id=sqlc.arg(account_id)::uuid AND NOT c.deleted
+AND (sqlc.arg(dataset)::text='all' OR c.dataset=sqlc.arg(dataset)) AND (sqlc.narg(record_id)::uuid IS NULL OR c.id=sqlc.narg(record_id));
+
+-- name: EraseSelectedChanges :exec
+UPDATE cloud_changes c SET deleted=true,payload=NULL WHERE c.account_id=sqlc.arg(account_id)::uuid
+AND (sqlc.arg(dataset)::text='all' OR c.dataset=sqlc.arg(dataset)) AND (sqlc.narg(record_id)::uuid IS NULL OR c.id=sqlc.narg(record_id));
+
+-- name: ErasureEpoch :one
+UPDATE cloud_state SET epoch=epoch+1,revision=revision+1,consent_mask=consent_mask & (~sqlc.arg(mask)::integer),
+consent_revision=consent_revision+1 WHERE account_id=sqlc.arg(account_id)::uuid RETURNING epoch;
+
+-- name: RevokeAllCloudDevices :exec
+WITH revoked AS(UPDATE cloud_devices d SET revoked_at=COALESCE(d.revoked_at,clock_timestamp()) WHERE d.account_id=$1 RETURNING d.id,d.account_id)
+INSERT INTO cloud_device_revocations(device_id,account_id) SELECT id,account_id FROM revoked ON CONFLICT DO NOTHING;

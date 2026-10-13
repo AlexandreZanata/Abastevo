@@ -32,6 +32,9 @@ import (
 	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
+	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
+	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -580,7 +583,7 @@ func run() error {
 	// nil by owner direction. Free status/export use existing owner sessions.
 	premiumStore := subscriptionadapters.NewStore(pool.Underlying())
 	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
-	subscriptionhttp.Handler{
+	premiumHTTP := subscriptionhttp.Handler{
 		Service: premiumService, CursorSecret: cfg.CursorSecret,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {
 			id, err := accountService.ValidateAccess(ctx, family, access)
@@ -607,6 +610,39 @@ func run() error {
 				return "", "", subscriptiondomain.ErrUnauthorized
 			}
 			return id.ContributorID, id.KeyID, nil
+		},
+	}
+	premiumHTTP.RegisterRoutes(router)
+	cloudStore := cloudadapters.NewStore(pool.Underlying())
+	cloudStore.Origin = cfg.CanonicalHost
+	cloudStore.Station = stations.ActiveReference
+	mapCloudError := func(err error) error {
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+			return clouddomain.ErrUnauthorized
+		}
+		if errors.Is(err, subscriptiondomain.ErrDenied) {
+			return clouddomain.ErrDenied
+		}
+		return clouddomain.ErrUnavailable
+	}
+	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return clouddomain.ErrDenied
+		}
+		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
+	}
+	cloudhttp.Handler{
+		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			return owner, mapCloudError(err)
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			return contributor, key, mapCloudError(err)
 		},
 	}.RegisterRoutes(router)
 	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)

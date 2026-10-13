@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -567,5 +568,120 @@ func TestCloudConsentLimitsAndDeletedEpoch(t *testing.T) {
 	batch.Commands = make([]app.Command, 51)
 	if _, err := normalizeBatch(batch); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatal("unbounded batch", err)
+	}
+}
+
+func TestCloudFreeReadExportErasureInventoryAndForeignSession(t *testing.T) {
+	pool := freshDB(t)
+	owner := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, owner)
+	p := readyDevice(t, store, owner)
+	ctx := context.Background()
+	v := vehicle(t)
+	batch := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}
+	if _, err := store.Apply(ctx, p, batch); err != nil {
+		t.Fatal(err)
+	}
+	store.Paid = nil
+	rows, err := store.List(ctx, owner, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 || rows[0].ID != v.ID {
+		t.Fatal("free export", err)
+	}
+	rows, err = store.List(ctx, foreign, "vehicles", 100, "")
+	if err != nil || len(rows) != 0 {
+		t.Fatal("IDOR export", err)
+	}
+	wrong := owner
+	wrong.FamilyID = foreign.FamilyID
+	if _, err = store.List(ctx, wrong, "vehicles", 100, ""); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("foreign session export", err)
+	}
+	if _, err = store.List(ctx, owner, "professional", 100, ""); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unknown inventory reported complete", err)
+	}
+	devices, err := store.Devices(ctx, owner, 100, "")
+	if err != nil || len(devices) != 1 {
+		t.Fatal("owner device inventory", err)
+	}
+	epoch, err := store.Erase(ctx, owner, "all", "")
+	if err != nil || epoch != 2 {
+		t.Fatal("free erasure", err)
+	}
+	if again, err := store.Erase(ctx, owner, "all", ""); err != nil || again != epoch {
+		t.Fatal("erasure retry bumped epoch", err)
+	}
+	var content int
+	if err = pool.QueryRow(ctx, "SELECT (SELECT count(*) FROM cloud_records WHERE payload IS NOT NULL)+(SELECT count(*) FROM cloud_changes WHERE payload IS NOT NULL)").Scan(&content); err != nil || content != 0 {
+		t.Fatal("erased copies retained", err)
+	}
+	if err = store.CheckDevice(ctx, p); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("erased device access", err)
+	}
+	state, err := store.Status(ctx, owner)
+	if err != nil || state.Epoch != 2 || len(state.EnabledDatasets) != 0 {
+		t.Fatal("erasure consent/status", err)
+	}
+}
+
+func TestCloudFreeErasureRollbackAndIndexedReads(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `CREATE FUNCTION reject_cloud_epoch() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic'; END $$; CREATE TRIGGER reject_cloud_epoch BEFORE UPDATE ON cloud_state FOR EACH ROW EXECUTE FUNCTION reject_cloud_epoch()`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Erase(ctx, p, "all", ""); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatal("privacy failure reported success", err)
+	}
+	rows, err := store.List(ctx, p, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 {
+		t.Fatal("failed erasure lost data", err)
+	}
+	if err = store.CheckDevice(ctx, p); err != nil {
+		t.Fatal("failed erasure revoked authority", err)
+	}
+	if _, err = pool.Exec(ctx, "DROP TRIGGER reject_cloud_epoch ON cloud_state"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO cloud_records(account_id,dataset,id,payload) SELECT $1,'vehicles',md5(i::text)::uuid,'{}' FROM generate_series(1,10000)i`, foreign.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "ANALYZE cloud_records"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := pool.Query(ctx, "EXPLAIN SELECT dataset,id,revision,deleted,payload FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND NOT deleted AND id>$2 ORDER BY id LIMIT 100", p.AccountID, zeroID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := ""
+	for plan.Next() {
+		var line string
+		if err = plan.Scan(&line); err != nil {
+			t.Fatal(err)
+		}
+		text += line
+	}
+	plan.Close()
+	if !strings.Contains(text, "Index") || (!strings.Contains(text, "cloud_records_live_idx") && !strings.Contains(text, "cloud_records_pkey")) {
+		t.Fatal("owner page did not use index", text)
+	}
+	before, _ := store.Status(ctx, p)
+	if _, err = store.Erase(ctx, p, "vehicles", newid(t)); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := store.Status(ctx, p)
+	if before.Epoch != after.Epoch || len(before.EnabledDatasets) != len(after.EnabledDatasets) {
+		t.Fatal("unknown resource changed consent")
+	}
+	if _, err = store.Erase(ctx, p, "all", ""); err != nil {
+		t.Fatal("retry erasure", err)
 	}
 }

@@ -541,8 +541,38 @@ func (h apiHarness) premiumSourceChecks(conn *pgx.Conn) {
 		h.call(replay, 401)
 	}
 	h.call(h.req("POST", "/v1/premium/provider-notifications", []byte("{}")), 503)
+	h.cloudSourceChecks(conn, owner, body, foreignBody, a, b)
 	// Existing free deletion remains independent of an expired subscription.
 	h.call(h.req("POST", "/v1/accounts/deletion", body), 200)
 	h.call(h.req("POST", "/v1/premium/status", body), 401)
 	h.call(h.req("POST", "/v1/premium/export", body), 401)
+}
+
+func (h apiHarness) cloudSourceChecks(conn *pgx.Conn, owner string, body, foreignBody []byte, a, b apiKey) {
+	h.t.Helper()
+	for _, path := range []string{"/v1/cloud/status", "/v1/cloud/inventory", "/v1/cloud/devices/list"} {
+		h.call(h.req("POST", path, body), 200)
+	}
+	recordID := "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+	if _, err := conn.Exec(context.Background(), `INSERT INTO cloud_records(account_id,dataset,id,payload) VALUES($1,'vehicles',$2,'{"id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","display_name":"Synthetic private vehicle","capacity_milli":50000,"fuel_product":"ETHANOL","unit":"L","price_source":"CHEAPEST_STATION","price_drop_alert_enabled":false,"sort_order":0,"archived":false}')`, owner, recordID); err != nil {
+		h.t.Fatal(err)
+	}
+	export := append(append([]byte{}, body[:len(body)-1]...), []byte(`,"dataset":"vehicles"}`)...)
+	got := h.call(h.req("POST", "/v1/cloud/export", export), 200)
+	if len(got["items"].([]any)) != 1 {
+		h.t.Fatal("free cloud export missing")
+	}
+	foreignExport := append(append([]byte{}, foreignBody[:len(foreignBody)-1]...), []byte(`,"dataset":"vehicles"}`)...)
+	if got = h.call(h.req("POST", "/v1/cloud/export", foreignExport), 200); len(got["items"].([]any)) != 0 {
+		h.t.Fatal("cloud IDOR")
+	}
+	h.call(h.req("POST", "/v1/cloud/devices", body), 401)
+	h.call(h.signed(b, "POST", "/v1/cloud/devices", body), 401)
+	h.call(h.signed(a, "POST", "/v1/cloud/devices", body), 403)
+	erase := append(append([]byte{}, body[:len(body)-1]...), []byte(`,"dataset":"all"}`)...)
+	h.call(h.req("POST", "/v1/cloud/erase", erase), 401)
+	h.call(h.signed(a, "POST", "/v1/cloud/erase", erase), 200)
+	if got = h.call(h.req("POST", "/v1/cloud/export", export), 200); len(got["items"].([]any)) != 0 {
+		h.t.Fatal("erasure left private content")
+	}
 }

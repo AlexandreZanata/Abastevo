@@ -21,7 +21,7 @@ var (
 )
 
 func ValidID(s string) bool {
-	if len(s) != 36 || s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' || strings.ToLower(s) != s {
+	if s == "00000000-0000-0000-0000-000000000000" || len(s) != 36 || s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' || strings.ToLower(s) != s {
 		return false
 	}
 	_, e := hex.DecodeString(strings.ReplaceAll(s, "-", ""))

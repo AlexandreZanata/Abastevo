@@ -38,3 +38,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested candidate on d69a177. Append-only 000081 adds owner epochs, consent-OFF state, monotonic change sequence, immutable bounded command receipts and erased-ID fences. Typed batch validation limits 50 operations/64 KiB/8 KiB records; 600 commands/hour and 10000 receipts. Real SQL/race PASS (2.525s): exact/divergent replay, 12-way one-effect race, full batch/receipt rollback, no false last-success, revoked device replay, disabled consent, deleted account epoch, malformed bounds. Unit/race, vet/staticcheck, sqlc vet/diff and secret/diff checks PASS. Vehicle hard-delete refuses until dependency preview exists; archive remains available. Consent activation is still PRM03-T03, paid ports remain nil.
 Next PRM02-T05. Real payments OFF; no merge/deploy/mobile edit.
+
+## PRM02-T05 — Private read APIs and free cloud privacy exits
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested candidate on 9054478. Mounted actual session-derived status/inventory, bounded records/devices/export pages, signed device/command/free-erasure routes; production paid gate remains disabled. Free erasure transaction clears record/change bytes, disables consent, fences epoch/devices and retains minimal anti-replay metadata. Real API subprocess/account-login/signature/PostGIS proofs PASS (4.372s), free export/IDOR/unknown inventory/erasure/retry and injected rollback tests PASS, actual EXPLAIN uses owner index with 10000 foreign rows. HTTP/race tests cover no-store/no ETag, exact signed body, duplicate/unknown JSON and owner/origin/epoch cursor isolation. OpenAPI/goldens PASS (zero errors; warnings retained); affected vet/staticcheck and sqlc checks PASS; secret/diff review PASS. Existing contributor export remains explicitly scoped; cloud account export registers its separate typed inventory.
+Next PRM03-T01. Real payments OFF; no merge/deploy/mobile edit.

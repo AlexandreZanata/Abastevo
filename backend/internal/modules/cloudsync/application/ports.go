@@ -66,3 +66,16 @@ type BatchResult struct {
 type BatchStore interface {
 	Apply(context.Context, Principal, Batch) (BatchResult, error)
 }
+
+type Status struct {
+	Epoch           int64    `json:"epoch"`
+	Revision        int64    `json:"revision"`
+	ConsentRevision int64    `json:"consent_revision"`
+	EnabledDatasets []string `json:"enabled_datasets"`
+}
+type ReadStore interface {
+	Status(context.Context, Principal) (Status, error)
+	List(context.Context, Principal, string, int, string) ([]Record, error)
+	Devices(context.Context, Principal, int, string) ([]Device, error)
+	Erase(context.Context, Principal, string, string) (int64, error)
+}

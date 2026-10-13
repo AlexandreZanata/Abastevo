@@ -141,6 +141,57 @@ func (q *Queries) EraseID(ctx context.Context, arg EraseIDParams) error {
 	return err
 }
 
+const eraseSelectedChanges = `-- name: EraseSelectedChanges :exec
+UPDATE cloud_changes c SET deleted=true,payload=NULL WHERE c.account_id=$1::uuid
+AND ($2::text='all' OR c.dataset=$2) AND ($3::uuid IS NULL OR c.id=$3)
+`
+
+type EraseSelectedChangesParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	RecordID  pgtype.UUID `json:"record_id"`
+}
+
+func (q *Queries) EraseSelectedChanges(ctx context.Context, arg EraseSelectedChangesParams) error {
+	_, err := q.db.Exec(ctx, eraseSelectedChanges, arg.AccountID, arg.Dataset, arg.RecordID)
+	return err
+}
+
+const eraseSelectedIDs = `-- name: EraseSelectedIDs :exec
+INSERT INTO cloud_erased_ids(account_id,dataset,id)
+SELECT c.account_id,c.dataset,c.id FROM cloud_records c WHERE c.account_id=$1::uuid
+AND ($2::text='all' OR c.dataset=$2) AND ($3::uuid IS NULL OR c.id=$3)
+ON CONFLICT DO NOTHING
+`
+
+type EraseSelectedIDsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	RecordID  pgtype.UUID `json:"record_id"`
+}
+
+func (q *Queries) EraseSelectedIDs(ctx context.Context, arg EraseSelectedIDsParams) error {
+	_, err := q.db.Exec(ctx, eraseSelectedIDs, arg.AccountID, arg.Dataset, arg.RecordID)
+	return err
+}
+
+const eraseSelectedRecords = `-- name: EraseSelectedRecords :exec
+UPDATE cloud_records c SET deleted=true,payload=NULL,revision=revision+1,updated_at=clock_timestamp()
+WHERE c.account_id=$1::uuid AND NOT c.deleted
+AND ($2::text='all' OR c.dataset=$2) AND ($3::uuid IS NULL OR c.id=$3)
+`
+
+type EraseSelectedRecordsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	RecordID  pgtype.UUID `json:"record_id"`
+}
+
+func (q *Queries) EraseSelectedRecords(ctx context.Context, arg EraseSelectedRecordsParams) error {
+	_, err := q.db.Exec(ctx, eraseSelectedRecords, arg.AccountID, arg.Dataset, arg.RecordID)
+	return err
+}
+
 const erasedID = `-- name: ErasedID :one
 SELECT EXISTS(SELECT 1 FROM cloud_erased_ids WHERE account_id=$1 AND dataset=$2 AND id=$3)
 `
@@ -156,6 +207,23 @@ func (q *Queries) ErasedID(ctx context.Context, arg ErasedIDParams) (bool, error
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const erasureEpoch = `-- name: ErasureEpoch :one
+UPDATE cloud_state SET epoch=epoch+1,revision=revision+1,consent_mask=consent_mask & (~$1::integer),
+consent_revision=consent_revision+1 WHERE account_id=$2::uuid RETURNING epoch
+`
+
+type ErasureEpochParams struct {
+	Mask      int32       `json:"mask"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) ErasureEpoch(ctx context.Context, arg ErasureEpochParams) (int64, error) {
+	row := q.db.QueryRow(ctx, erasureEpoch, arg.Mask, arg.AccountID)
+	var epoch int64
+	err := row.Scan(&epoch)
+	return epoch, err
 }
 
 const existingDevice = `-- name: ExistingDevice :one
@@ -277,6 +345,108 @@ func (q *Queries) GetState(ctx context.Context, accountID pgtype.UUID) (CloudSta
 	return i, err
 }
 
+const listDevices = `-- name: ListDevices :many
+SELECT id,origin,created_at,last_success_at,revoked_at FROM cloud_devices
+WHERE account_id=$1 AND origin=$2 AND id>$3 ORDER BY id LIMIT $4
+`
+
+type ListDevicesParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Origin    string      `json:"origin"`
+	ID        pgtype.UUID `json:"id"`
+	Limit     int32       `json:"limit"`
+}
+
+type ListDevicesRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	Origin        string             `json:"origin"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+}
+
+func (q *Queries) ListDevices(ctx context.Context, arg ListDevicesParams) ([]ListDevicesRow, error) {
+	rows, err := q.db.Query(ctx, listDevices,
+		arg.AccountID,
+		arg.Origin,
+		arg.ID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDevicesRow
+	for rows.Next() {
+		var i ListDevicesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Origin,
+			&i.CreatedAt,
+			&i.LastSuccessAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecords = `-- name: ListRecords :many
+SELECT dataset,id,revision,deleted,payload FROM cloud_records
+WHERE account_id=$1 AND dataset=$2 AND NOT deleted AND id>$3 ORDER BY id LIMIT $4
+`
+
+type ListRecordsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	ID        pgtype.UUID `json:"id"`
+	Limit     int32       `json:"limit"`
+}
+
+type ListRecordsRow struct {
+	Dataset  string      `json:"dataset"`
+	ID       pgtype.UUID `json:"id"`
+	Revision int64       `json:"revision"`
+	Deleted  bool        `json:"deleted"`
+	Payload  []byte      `json:"payload"`
+}
+
+func (q *Queries) ListRecords(ctx context.Context, arg ListRecordsParams) ([]ListRecordsRow, error) {
+	rows, err := q.db.Query(ctx, listRecords,
+		arg.AccountID,
+		arg.Dataset,
+		arg.ID,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRecordsRow
+	for rows.Next() {
+		var i ListRecordsRow
+		if err := rows.Scan(
+			&i.Dataset,
+			&i.ID,
+			&i.Revision,
+			&i.Deleted,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBinding = `-- name: LockBinding :one
 SELECT contributor_id FROM account_contributor_bindings
 WHERE account_id=$1::uuid AND contributor_id=$2::text FOR SHARE
@@ -369,6 +539,25 @@ func (q *Queries) LockSigningKey(ctx context.Context, arg LockSigningKeyParams) 
 	return id, err
 }
 
+const needsErasure = `-- name: NeedsErasure :one
+SELECT EXISTS(SELECT 1 FROM cloud_records c WHERE c.account_id=$1::uuid AND NOT c.deleted
+AND ($2::text='all' OR c.dataset=$2) AND ($3::uuid IS NULL OR c.id=$3))
+OR ($2::text='all' AND EXISTS(SELECT 1 FROM cloud_devices d WHERE d.account_id=$1 AND d.revoked_at IS NULL))
+`
+
+type NeedsErasureParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+	RecordID  pgtype.UUID `json:"record_id"`
+}
+
+func (q *Queries) NeedsErasure(ctx context.Context, arg NeedsErasureParams) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, needsErasure, arg.AccountID, arg.Dataset, arg.RecordID)
+	var column_1 pgtype.Bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const nextRevision = `-- name: NextRevision :one
 UPDATE cloud_state SET revision=revision+1 WHERE account_id=$1 RETURNING revision
 `
@@ -436,6 +625,16 @@ func (q *Queries) RegisterDevice(ctx context.Context, arg RegisterDeviceParams) 
 		&i.Origin,
 	)
 	return i, err
+}
+
+const revokeAllCloudDevices = `-- name: RevokeAllCloudDevices :exec
+WITH revoked AS(UPDATE cloud_devices d SET revoked_at=COALESCE(d.revoked_at,clock_timestamp()) WHERE d.account_id=$1 RETURNING d.id,d.account_id)
+INSERT INTO cloud_device_revocations(device_id,account_id) SELECT id,account_id FROM revoked ON CONFLICT DO NOTHING
+`
+
+func (q *Queries) RevokeAllCloudDevices(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, revokeAllCloudDevices, accountID)
+	return err
 }
 
 const revokeDevice = `-- name: RevokeDevice :execrows

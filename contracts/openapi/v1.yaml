@@ -3445,8 +3445,773 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/cloud/status:
+    post:
+      tags:
+      - premium
+      summary: Read private cloud status
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudStatus
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/inventory:
+    post:
+      tags:
+      - premium
+      summary: Read cloud privacy inventory
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudInventory
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/records:
+    post:
+      tags:
+      - premium
+      summary: Read owned cloud records
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudRecords
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudPageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRecordPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/export:
+    post:
+      tags:
+      - premium
+      summary: Export held cloud records free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudExport
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudPageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRecordPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices:
+    post:
+      tags:
+      - premium
+      summary: Register signed device reference
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevices
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudDevice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices/list:
+    post:
+      tags:
+      - premium
+      summary: List owned device references
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevicesList
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudDevicePageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudDevicePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices/revoke:
+    post:
+      tags:
+      - premium
+      summary: Revoke device reference free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevicesRevoke
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudRevokeRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRevokeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply signed bounded cloud commands
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudCommands
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase owned cloud content free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
+    CloudVehicle:
+      type: object
+      additionalProperties: false
+      properties:
+        id: &id001
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        capacity_milli:
+          type: integer
+          minimum: 10
+          maximum: 200000
+          multipleOf: 10
+        fuel_product:
+          $ref: '#/components/schemas/FuelProduct'
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+        price_source:
+          type: string
+          enum:
+          - CHEAPEST_STATION
+          - SPECIFIC_STATION
+        specific_station_cnpj:
+          type: string
+          maxLength: 14
+        price_drop_alert_enabled:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        archived:
+          type: boolean
+      required:
+      - id
+      - display_name
+      - capacity_milli
+      - fuel_product
+      - unit
+      - price_source
+    CloudFavorite:
+      type: object
+      additionalProperties: false
+      properties:
+        station_id: *id001
+      required:
+      - station_id
+    CloudPreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        preferred_state:
+          type: string
+          pattern: ^[A-Z]{2}$
+        preferred_municipality:
+          type: string
+          pattern: ^[0-9]{7}$
+        preferred_fuel_product:
+          $ref: '#/components/schemas/FuelProduct'
+        locale_tag:
+          type: string
+          enum:
+          - ''
+          - pt-BR
+          - en
+          - es
+          - fr
+          - zh-CN
+          - ru
+          - de
+          - ja
+        locale_user_selected:
+          type: boolean
+        show_price_history:
+          type: boolean
+        nearest_station_radius_km:
+          type: integer
+          minimum: 1
+          maximum: 100
+      required:
+      - version
+      - locale_tag
+      - nearest_station_radius_km
+    CloudStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        consent_revision:
+          type: integer
+          minimum: 0
+        enabled_datasets:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: &id002
+            - vehicles
+            - favorites
+            - preferences
+      required:
+      - epoch
+      - revision
+      - consent_revision
+      - enabled_datasets
+    CloudRecord:
+      type: object
+      additionalProperties: false
+      properties:
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        deleted:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - dataset
+      - id
+      - revision
+      - deleted
+      - payload
+    CloudDevice:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+        last_success_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        revoked:
+          type: boolean
+      required:
+      - id
+      - origin
+      - created_at
+      - last_success_at
+      - revoked
+    CloudPageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: &id003
+          type: string
+          minLength: 1
+          maxLength: 512
+        dataset:
+          type: string
+          enum: *id002
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - dataset
+    CloudDevicePageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+    CloudRecordPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudRecord'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    CloudDevicePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudDevice'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    CloudRevokeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudRevokeResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - revoked
+      required:
+      - status
+    CloudEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        dataset:
+          type: string
+          enum:
+          - vehicles
+          - favorites
+          - preferences
+          - all
+        id: *id001
+      required:
+      - family_id
+      - access_token
+      - dataset
+    CloudEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+        epoch:
+          type: integer
+          minimum: 1
+      required:
+      - status
+      - epoch
+    CloudInventory:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        scope:
+          type: string
+          enum:
+          - cloud
+        datasets:
+          type: array
+          items:
+            type: string
+            enum:
+            - vehicles
+            - favorites
+            - preferences
+            - devices
+          uniqueItems: true
+      required:
+      - version
+      - scope
+      - datasets
+    CloudCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        delete:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - operation_id
+      - dataset
+      - id
+    CloudBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        commands:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudCommand'
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - epoch
+      - consent_revision
+      - commands
+    CloudCommandResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - accepted
+        replayed:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - revision
+      - status
+      - replayed
+    CloudBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudCommandResult'
+      required:
+      - epoch
+      - revision
+      - results
     PremiumExportRequest:
       type: object
       additionalProperties: false

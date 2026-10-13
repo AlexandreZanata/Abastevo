@@ -206,6 +206,8 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 
 ### PRM02-T05 — Owner read APIs and privacy integration
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; PR06/12.
 - **Outcome/areas:** paginated private datasets/status, registered privacy export/deletion inventory and no-store/error redaction.
 - **Tests first:** IDOR across every dataset, unauthenticated/revoked reads, malformed cursor, export with expired subscription, deleted-device cache and unknown inventory errors.
