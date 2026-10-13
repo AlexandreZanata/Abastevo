@@ -134,7 +134,7 @@ class HomeViewModel @Inject constructor(
                         municipality = pricesResult.municipality,
                         state = pricesResult.state,
                         surveyWeek = pricesResult.surveyWeek,
-                        prices = it.priceSort.sort(uiPrices),
+                        prices = uiPrices,
                         tankFillCostEstimates = uiTankFillEstimates,
                         isEmptyMunicipality = pricesResult.isEmpty,
                         dataAvailability = pricesResult.dataAvailability,
@@ -157,7 +157,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onPriceSortChanged(order: HomePriceSortOrder) {
-        _uiState.update { it.copy(priceSort = order, prices = order.sort(it.prices)) }
+        _uiState.update { it.copy(priceSort = order) }
     }
 
     fun refresh(locale: Locale) {

@@ -136,13 +136,12 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun priceSortAscendingOrdersByAverageWithMissingLast() = runTest(dispatcher) {
+    fun priceFilterKeepsFuelOrderAndStateWithoutReloading() = runTest(dispatcher) {
         stubReadyHome(
             vehicles = emptyList(),
             tankItems = emptyList(),
             prices = listOf(
                 sampleAveragePrice(FuelProduct.GASOLINE_REGULAR, "6.83"),
-                sampleAveragePrice(FuelProduct.DIESEL_S500, null),
                 sampleAveragePrice(FuelProduct.ETHANOL, "3.96"),
             ),
         )
@@ -152,32 +151,12 @@ class HomeViewModelTest {
 
         viewModel.onPriceSortChanged(HomePriceSortOrder.PRICE_ASC)
         advanceUntilIdle()
-
-        assertEquals(
-            listOf(FuelProduct.ETHANOL, FuelProduct.GASOLINE_REGULAR, FuelProduct.DIESEL_S500),
-            viewModel.uiState.value.prices.map { it.fuelProduct },
-        )
-    }
-
-    @Test
-    fun priceSortDescendingPutsMissingLastWithoutReloading() = runTest(dispatcher) {
-        stubReadyHome(
-            vehicles = emptyList(),
-            tankItems = emptyList(),
-            prices = listOf(
-                sampleAveragePrice(FuelProduct.ETHANOL, "3.96"),
-                sampleAveragePrice(FuelProduct.DIESEL_S500, null),
-                sampleAveragePrice(FuelProduct.GASOLINE_REGULAR, "6.83"),
-            ),
-        )
-
-        viewModel.load(Locale.US)
-        advanceUntilIdle()
         viewModel.onPriceSortChanged(HomePriceSortOrder.PRICE_DESC)
         advanceUntilIdle()
 
+        assertEquals(HomePriceSortOrder.PRICE_DESC, viewModel.uiState.value.priceSort)
         assertEquals(
-            listOf(FuelProduct.GASOLINE_REGULAR, FuelProduct.ETHANOL, FuelProduct.DIESEL_S500),
+            listOf(FuelProduct.ETHANOL, FuelProduct.GASOLINE_REGULAR),
             viewModel.uiState.value.prices.map { it.fuelProduct },
         )
         coVerify(exactly = 1) { getMunicipalityPricesUseCase.invoke() }

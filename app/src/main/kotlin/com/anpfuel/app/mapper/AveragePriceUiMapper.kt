@@ -22,7 +22,6 @@ object AveragePriceUiMapper {
             minimumFormatted = PriceFormatter.formatAmount(price.minimum, locale),
             maximumFormatted = PriceFormatter.formatAmount(price.maximum, locale),
             stationCount = price.stationCount,
-            averageValue = price.average?.value,
         )
 
     fun orderedProductsWithData(prices: List<AveragePriceUiModel>): List<AveragePriceUiModel> =

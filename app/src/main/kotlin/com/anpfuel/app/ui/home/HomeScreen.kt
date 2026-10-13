@@ -217,7 +217,14 @@ internal fun HomeContent(
             if (uiState.hasLocation) {
                 LocationHeader(uiState = uiState, onNavigate = onNavigate)
             }
-            HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
+            if (uiState.tankFillCostEstimates.isNotEmpty()) {
+                VehicleCarousel(
+                    estimates = uiState.tankFillCostEstimates,
+                    onNavigate = onNavigate,
+                )
+            } else {
+                HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
+            }
             HomeBenefits()
 
             when {
@@ -283,6 +290,7 @@ internal fun HomeContent(
                             price = price,
                             darkTheme = darkTheme,
                             onClick = { onNavigate(Routes.stations(price.fuelProduct)) },
+                            priceSort = uiState.priceSort,
                         )
                     }
                     TextButton(
@@ -290,12 +298,6 @@ internal fun HomeContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = stringResource(R.string.home_view_price_details))
-                    }
-                    if (uiState.tankFillCostEstimates.isNotEmpty()) {
-                        VehicleCarousel(
-                            estimates = uiState.tankFillCostEstimates,
-                            onNavigate = onNavigate,
-                        )
                     }
                     RowActions(onNavigate = onNavigate)
                 }
