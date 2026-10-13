@@ -166,6 +166,20 @@ func (q *Queries) DeleteRecord(ctx context.Context, arg DeleteRecordParams) (int
 	return revision, err
 }
 
+const deleteSnapshot = `-- name: DeleteSnapshot :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='READY'
+`
+
+type DeleteSnapshotParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	SnapshotID pgtype.UUID `json:"snapshot_id"`
+}
+
+func (q *Queries) DeleteSnapshot(ctx context.Context, arg DeleteSnapshotParams) error {
+	_, err := q.db.Exec(ctx, deleteSnapshot, arg.AccountID, arg.SnapshotID)
+	return err
+}
+
 const deleteSnapshotObject = `-- name: DeleteSnapshotObject :exec
 DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='FAILED'
 `
@@ -196,6 +210,35 @@ func (q *Queries) DeviceSuccess(ctx context.Context, arg DeviceSuccessParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const dueSnapshotAccounts = `-- name: DueSnapshotAccounts :many
+SELECT s.account_id FROM cloud_state s WHERE s.consent_mask!=0 AND ((SELECT COUNT(*) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')=0 OR (SELECT MAX(c.revision) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')<s.revision OR (SELECT MAX(c.created_at) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')<$1) ORDER BY s.account_id LIMIT $2
+`
+
+type DueSnapshotAccountsParams struct {
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Limit     int32              `json:"limit"`
+}
+
+func (q *Queries) DueSnapshotAccounts(ctx context.Context, arg DueSnapshotAccountsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, dueSnapshotAccounts, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var account_id pgtype.UUID
+		if err := rows.Scan(&account_id); err != nil {
+			return nil, err
+		}
+		items = append(items, account_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ensureState = `-- name: EnsureState :exec

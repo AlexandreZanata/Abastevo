@@ -286,6 +286,8 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T03 — Automatic schedule, quotas and retention jobs
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; PR04/10/12; existing jobs/scheduler.
 - **Outcome/areas:** explicit opt-in periodic snapshot jobs, per-account cadence/storage count/byte budgets, incremental checkpoints and retention deletion.
 - **Tests first:** concurrent scheduler restart, offline unsynced data, no consent/lapsed entitlement, storage failure/backlog, quota races and cancellation during upload.

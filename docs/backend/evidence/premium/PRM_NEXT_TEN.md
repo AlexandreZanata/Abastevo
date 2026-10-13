@@ -94,3 +94,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 3f8c955. Append-only 000083 adds cloud_snapshots with PENDING, READY and FAILED states plus ready and retention indexes; sqlc Insert, Get, ListReady, MarkReady, MarkFailed and DeleteFailed vet/diff clean. Metadata-first StoreSnapshot with immutable snapshots/ keys, 10 MiB JSON bounds, SHA256 integrity readback before READY, duplicate convergence, late-writer immutability and owner-scoped inventory. Only READY is selectable. Real PostGIS PASS (snapshot storage suites): missing objects fail closed with no metadata, corrupt bytes stay FAILED with no listing or download, lost PUT retries converge, duplicate jobs converge, late writers coexist, cross-owner reads stay empty, and crash-trigger retry repairs. Unit/race PASS cloudsync/http/apicontract/cmd/api. No HTTP or OpenAPI surface; staging provider proof remains owed. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM04-T03. Real payments OFF.
+
+## PRM04-T03 — Automatic schedule, quotas and retention jobs
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 6525f85. TickSnapshots with 24-hour cadence, 25-account bound, seven-snapshot retention and ten-megabyte bounds; consent opt-in gates ticks, lapsed or missing capability skips with no cost, owner locks serialize restarts and quota races, failures leave tracked orphans, and SnapshotStatus exposes last READY revision, unprotected changes, ready count and opt-in flag. New snapshots wait while cleanup holds the lock. Real PostGIS PASS (schedule suites): concurrent restart convergence, offline empty snapshot, no-consent and lapsed skips, storage-failure backlog with retry, seven-count retention trim, and cancelled or unbounded tick refusal. Unit/race PASS cloudsync/http/apicontract/cmd/api. No HTTP or OpenAPI surface; no migration. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM04-T04. Real payments OFF.

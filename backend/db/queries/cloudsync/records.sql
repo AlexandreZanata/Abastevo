@@ -174,3 +174,9 @@ UPDATE cloud_snapshots SET status='FAILED' WHERE account_id=$1 AND snapshot_id=$
 
 -- name: DeleteSnapshotObject :exec
 DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='FAILED';
+
+-- name: DueSnapshotAccounts :many
+SELECT s.account_id FROM cloud_state s WHERE s.consent_mask!=0 AND ((SELECT COUNT(*) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')=0 OR (SELECT MAX(c.revision) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')<s.revision OR (SELECT MAX(c.created_at) FROM cloud_snapshots c WHERE c.account_id=s.account_id AND c.status='READY')<$1) ORDER BY s.account_id LIMIT $2;
+
+-- name: DeleteSnapshot :exec
+DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='READY';
