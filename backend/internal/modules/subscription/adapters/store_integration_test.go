@@ -377,3 +377,68 @@ func TestConcurrentDistinctAdmissionsStayBounded(t *testing.T) {
 		t.Fatalf("atomic pending cap want 2, got %d", wins)
 	}
 }
+
+type verifyFunc func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error)
+
+func (f verifyFunc) Verify(ctx context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
+	return f(ctx, r)
+}
+func TestAdmissionRechecksRevocationAfterProviderHTTP(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	called := false
+	svc.Provider = verifyFunc(func(ctx context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
+		called = true
+		if r.ExpectedAccount != binding(p.AccountID) {
+			t.Error("unbound provider lookup")
+		}
+		// If admission held owner/session SQL locks across HTTP this would timeout.
+		if _, err := pool.Exec(ctx, "UPDATE account_session_families SET revoked_at=clock_timestamp() WHERE id=$1", p.FamilyID); err != nil {
+			t.Fatal("network work held SQL locks", err)
+		}
+		return app.ProviderPurchase{Snapshot: verified().Snapshot}, nil
+	})
+	_, err := svc.Admit(context.Background(), p, app.Command{OperationID: newid(t), Token: "synthetic-admission", Kind: "verify"})
+	if !called || !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("late session revocation accepted", err)
+	}
+	var count int
+	if err = pool.QueryRow(context.Background(), "SELECT count(*) FROM subscription_purchases").Scan(&count); err != nil || count != 0 {
+		t.Fatal("revoked grant persisted")
+	}
+}
+func TestAdmissionExactReplayAndDeniedProofRecovery(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	count := 0
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc.Provider = verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+		count++
+		return app.ProviderPurchase{Snapshot: verified().Snapshot}, nil
+	})
+	cmd := app.Command{OperationID: newid(t), Token: "synthetic-proof", Kind: "verify"}
+	got, err := svc.Admit(context.Background(), p, cmd)
+	if err != nil || len(got.Status.Capabilities) != 6 || got.Replayed {
+		t.Fatal("verified admission", err)
+	}
+	got, err = svc.Admit(context.Background(), p, cmd)
+	if err != nil || !got.Replayed || count != 1 {
+		t.Fatal("provider replay not deduplicated", err)
+	}
+	svc.Provider = verifyFunc(func(context.Context, app.ProviderRequest) (app.ProviderPurchase, error) {
+		return app.ProviderPurchase{}, domain.ErrDenied
+	})
+	denied := app.Command{OperationID: newid(t), Token: "synthetic-denied", Kind: "verify"}
+	if _, err = svc.Admit(context.Background(), p, denied); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal(err)
+	}
+	var clear int
+	if err = pool.QueryRow(context.Background(), "SELECT count(*) FROM subscription_operations WHERE status='denied' AND token_cipher IS NOT NULL").Scan(&clear); err != nil || clear != 0 {
+		t.Fatal("denied proof retained secret")
+	}
+}

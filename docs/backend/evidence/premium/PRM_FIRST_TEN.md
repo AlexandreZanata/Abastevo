@@ -61,3 +61,14 @@ RED: actual PostGIS had no subscription persistence. GREEN: append-only 000075 a
 Real PostGIS race suite passed: same-token 12-way single winner, distinct-token 12-way exactly-two pending ceiling, exact/divergent replay, foreign owner/session, revoked key/session/deleted owner during commit, stale generation refusal, injected job-insert rollback, deleted-token purge, empty/previous-schema upgrade/replay, and actual owner status EXPLAIN over 10k foreign purchases uses subscription_purchases_owner_idx. Standard AES-GCM tests cover random nonce/AAD/tamper/weak-key refusal.
 
 Commands: ANPFUEL_TEST_DATABASE_URL=(exclusive loopback disposable DSN) go test -race -count=1 -tags=integration ./internal/modules/subscription/adapters; affected go vet/staticcheck; sqlc vet/diff; scoped secret/diff check. Passed. No shared DB/VPS/mobile mutation. Next PRM01-T03.
+
+## PRM01-T03 — Prepared canonical verification and admission
+
+Status: LOCAL_DONE / INTEGRATION_PENDING (source only)
+Validation: PASS; real provider/catalog wiring PROOF_OWED by user direction
+
+Restricted Developer API adapter uses fixed HTTPS authority, injected OAuth credential port, copied supported product/base-plan allowlist, exact obfuscated account/environment/package binding, bounded body/time/no redirects, canonical provider states and redacted errors. HMAC account binding is separate from provider token encryption. Application admission validates signed principal, immutable operation kind/payload, fresh authoritative proof and atomic owner commit; no fake provider/credential/catalog is configured in production.
+
+Local TLS fake-provider tests cover wrong owner/product/base/environment, unknown/pending state, bad expiry/ack, 404/429/5xx, malformed/oversize response, canceled request and refused redirect. Real PostGIS application tests prove provider HTTP holds no session locks, revocation during lookup prevents a grant, exact replay performs one provider call and denied proofs discard token bytes. Disabled-provider tests prove no persistence/grant and free data access metadata.
+
+Commands: go test -race -count=1 ./internal/modules/subscription/...; disposable real SQL go test -race -count=1 -tags=integration ./internal/modules/subscription/adapters -run '^TestAdmission'; affected go vet/staticcheck. Passed. No new dependency, live provider call or payment activation. Next PRM01-T04.
