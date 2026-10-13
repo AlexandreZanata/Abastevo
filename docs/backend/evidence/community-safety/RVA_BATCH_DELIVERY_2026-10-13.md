@@ -46,3 +46,11 @@ backup proof and remaining RVA08 helpfulness/RVA10–14/CS15–25 are still owed
 No release/capacity/complete-offline claim or administrative closure of these
 obligations is authorized by a successful source merge. No VPS/phone mutation
 is part of this GitHub delivery task. Wiki mirrors only the actual merged SHA.
+
+## Wiki publication prerequisite repair
+
+The existing export refused three RST chart embeds outside docs/assets. Mirror
+only those three already-public SVG bytes into the allowed assets path and
+rewrite their embeds; preserve all original evidence files/hashes. No exporter
+allowlist or security guard is relaxed. Validate byte equivalence, focused wiki
+harness and complete dry-run before publication from the eventual merged SHA.
