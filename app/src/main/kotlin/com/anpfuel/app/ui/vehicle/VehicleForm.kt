@@ -15,10 +15,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -34,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -207,49 +216,60 @@ fun VehicleForm(
             }
         }
 
-        Column(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = stringResource(R.string.vehicle_price_drop_alert_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.vehicle_price_drop_alert_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Switch(
-                checked = form.priceDropAlertEnabled,
-                onCheckedChange = onPriceDropAlertChanged,
-                modifier = Modifier.align(Alignment.End),
-            )
-            if (showNotificationPermissionHint) {
-                Text(
-                    text = stringResource(R.string.notification_permission_denied_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.vehicle_price_drop_alert_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.vehicle_price_drop_alert_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = form.priceDropAlertEnabled,
+                    onCheckedChange = onPriceDropAlertChanged,
                 )
             }
         }
+        if (showNotificationPermissionHint) {
+            Text(
+                text = stringResource(R.string.notification_permission_denied_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
 
-        Button(
+        VehicleActionButton(
+            label = stringResource(R.string.vehicle_save),
+            icon = Icons.Default.Check,
             onClick = onSave,
+            style = VehicleActionStyle.Primary,
             enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = stringResource(R.string.vehicle_save))
-        }
+        )
 
-        Button(
+        VehicleActionButton(
+            label = stringResource(R.string.action_cancel),
+            icon = Icons.Default.Close,
             onClick = onCancel,
+            style = VehicleActionStyle.Outlined,
             enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = stringResource(R.string.action_cancel))
-        }
+        )
     }
 }
 
@@ -343,6 +363,75 @@ private fun VehiclePendingPhotoPreview(
             modifier = modifier,
         )
     }
+}
+
+/**
+ * Action button following the settings screen standardization: full-width
+ * card with leading icon, label and trailing chevron.
+ */
+@Composable
+private fun VehicleActionButton(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: VehicleActionStyle = VehicleActionStyle.Outlined,
+    enabled: Boolean = true,
+) {
+    val containerColor = when (style) {
+        VehicleActionStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
+        VehicleActionStyle.Outlined -> Color.Transparent
+    }
+    val contentColor = when (style) {
+        VehicleActionStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
+        VehicleActionStyle.Outlined -> MaterialTheme.colorScheme.onSurface
+    }
+    val border = when (style) {
+        VehicleActionStyle.Primary -> null
+        VehicleActionStyle.Outlined ->
+            BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outline,
+            )
+    }
+    Card(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+        border = border,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+            )
+        }
+    }
+}
+
+private enum class VehicleActionStyle {
+    Primary,
+    Outlined,
 }
 
 @Composable
