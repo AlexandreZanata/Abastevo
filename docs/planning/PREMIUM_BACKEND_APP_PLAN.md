@@ -372,6 +372,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T06 — Real ledger HTTP/SQL recovery and adversarial acceptance
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T05; PR13–PR15; BUC-PR04/07.
 - **Outcome/areas:** actual API persistence/edit/delete/offline-command replay scenarios and operator-safe recovery evidence.
 - **Tests first:** concurrent create/correct/delete, process/DB outage, account erasure, subscription revoke during commit and large bounded month/vehicle scans.

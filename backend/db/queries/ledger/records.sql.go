@@ -355,6 +355,15 @@ func (q *Queries) OpenSegment(ctx context.Context, arg OpenSegmentParams) (int64
 	return segment_no, err
 }
 
+const purgeLedgerOperations = `-- name: PurgeLedgerOperations :exec
+DELETE FROM ledger_operations WHERE account_id=$1
+`
+
+func (q *Queries) PurgeLedgerOperations(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, purgeLedgerOperations, accountID)
+	return err
+}
+
 const saveLedgerOperation = `-- name: SaveLedgerOperation :exec
 INSERT INTO ledger_operations(account_id,operation_id,payload_hash,receipt) VALUES($1,$2,$3,$4)
 `

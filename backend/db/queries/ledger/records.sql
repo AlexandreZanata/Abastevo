@@ -46,6 +46,9 @@ SELECT COALESCE(MAX((payload->>'odometer_metres')::bigint),-1)::bigint FROM ledg
 -- name: DeclareGap :one
 INSERT INTO ledger_gaps(account_id,gap_id,vehicle_id,after_id,before_id,note) VALUES($1,$2,$3,$4,$5,$6) RETURNING gap_id;
 
+-- name: PurgeLedgerOperations :exec
+DELETE FROM ledger_operations WHERE account_id=$1;
+
 -- name: EnsureLedgerConsent :exec
 INSERT INTO ledger_consent(account_id) VALUES($1) ON CONFLICT DO NOTHING;
 

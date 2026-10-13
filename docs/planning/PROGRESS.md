@@ -1,6 +1,6 @@
 # Current execution state
 
-- Premium ledger-five 2026-10-13: IN_PROGRESS on isolated codex/premium-backend / PR131 (draft during construction), batch parent 8553b7a; authorized PRM05-T01..T05, one commit each. Completed sequentially through PRM05-T05, tested working tree atop 45654c8; task unit, race and static checks PASS. [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md). Next PRM05-T06. Payments/real Play sandbox deferred, dev/mobile preserved; no merge/deploy.
+- Premium ledger-five 2026-10-13: IN_PROGRESS on isolated codex/premium-backend / PR131 (draft during construction), batch parent 8553b7a; authorized PRM05-T06 + PRM06-T01..T04, one commit each. Completed sequentially through PRM05-T06, tested working tree atop c146899; task unit, race and static checks PASS. [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md). Next PRM06-T01. Payments/real Play sandbox deferred, dev/mobile preserved; no merge/deploy.
 
 - OneSignal notification planning 2026-10-13: CONTENT/PLAN LOCAL_DONE; PRM11–PRM14 implementation PLANNED. [Bodies/cost/identity contract](../product/NOTIFICATION_CONTENT_CONTRACT.md), [extended Premium plan](PREMIUM_BACKEND_APP_PLAN.md). Added 17 microtasks without renumbering the original 62; source order integrates OneSignal backend before G-PR-BACKEND and app/provider acceptance before commercialization. No SDK/credential/send/deploy/mobile edit. First-ten backend batch source complete on PR131; real payments deferred.
 

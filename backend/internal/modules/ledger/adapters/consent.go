@@ -80,6 +80,9 @@ func (s *Store) EraseAll(ctx context.Context, accountID string) error {
 	if err = query.ClearLedgerSegments(ctx, uid(accountID)); err != nil {
 		return errUnavailable()
 	}
+	if err = query.PurgeLedgerOperations(ctx, uid(accountID)); err != nil {
+		return errUnavailable()
+	}
 	if _, err = query.SetLedgerConsent(ctx, q.SetLedgerConsentParams{AccountID: uid(accountID), Enabled: false, Mask: 3}); err != nil {
 		return errUnavailable()
 	}

@@ -157,3 +157,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 45654c8. Separate POST /v1/ledger/consent for refuel and expense uploads with server-computed mask; revoking stops uploads while cloud and held data stay intact and deletes stay free. Bulk POST /v1/ledger/erase tombstones records and clears segments and gaps with consent revoked. Deltas reuse time-bounded List, snapshots reuse verified storage, and restores reuse conditional Apply with tombstone blocking. Append-only 000087 adds ledger_consent with Ensure, Get and Set queries; sqlc vet/diff clean. Real PostGIS PASS (sync privacy suites): separate opt-in and revoke with held-data reads, two-device conflict with delete versus update fencing and replay, stale deleted restore refusal, archive preservation, lapsed paid denial with free reads, foreign reference refusal, and bulk erasure inventory. Unit/race PASS ledger domain, http, apicontract and cmd/api; HTTP consent and erase validation PASS. OpenAPI consent and erase schemas plus three goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No photo or credential inclusion. No merge/deploy/mobile edit.
 Next PRM05-T06. Real payments OFF.
+
+## PRM05-T06 — Real ledger HTTP SQL recovery and adversarial acceptance
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop c146899. Real HTTP handlers with real Store and disposable PostGIS using synthetic session maps. Concurrent create and correct converge with single winner and no lost correction; identical retries return replayed receipts. Trigger-injected outages return 503 with unchanged counts and succeed after retry with new handler and store instances. Erasure empties lists, purges operations so old retries cannot falsely restore, and stays idempotent. Revoked capability denies writes while reads stay free. Month and vehicle scans page bounded with cursors and no duplicates. Unit/race PASS ledger domain, http, apicontract and cmd/api. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM06-T01. Real payments OFF.
