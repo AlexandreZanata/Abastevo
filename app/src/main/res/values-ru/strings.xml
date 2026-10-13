@@ -766,7 +766,7 @@
     <string name="privacy_preference_off">В этом представлении нет подтверждённого согласия.</string>
     <string name="privacy_consent_check">Я прочитал полные условия и добровольно разрешаю запись необязательного предпочтения для указанной цели.</string>
     <string name="privacy_confirm_preference">Подтвердить и отправить предпочтение</string>
-    <string name="privacy_revoke_delete">Отключить и запросить удаление обучающих изображений</string>
+    <string name="privacy_revoke_delete">Отключить и удалить изображения</string>
     <string name="privacy_deletion_receipt_note">Получение запускает удаление; оно не подтверждает физическое удаление всех копий.</string>
     <string name="privacy_digest">SHA-256 документа: %1$s</string>
     <string name="privacy_finish_reading">Чтение завершено · вернуться к выбору</string>

@@ -766,7 +766,7 @@
     <string name="privacy_preference_off">この表示では同意が確認されていません。</string>
     <string name="privacy_consent_check">規約の全文を読み、記載された目的のために任意の希望を記録することを自由意思で許可します。</string>
     <string name="privacy_confirm_preference">確認して希望を送信</string>
-    <string name="privacy_revoke_delete">無効にして学習用画像の削除を依頼</string>
+    <string name="privacy_revoke_delete">無効化して画像を削除</string>
     <string name="privacy_deletion_receipt_note">依頼の受信は削除の開始を意味し、すべてのコピーの物理的削除を保証するものではありません。</string>
     <string name="privacy_digest">文書の SHA-256：%1$s</string>
     <string name="privacy_finish_reading">読み終えました · 選択に戻る</string>

@@ -3,12 +3,14 @@ package com.anpfuel.app.settings
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalView
@@ -66,7 +68,7 @@ internal fun TrainingConsentContent(
             Text(stringResource(R.string.privacy_training_optional))
             if(document!=null) {
                 Text(stringResource(R.string.privacy_terms_language))
-                TextButton(onClick={reader=true}) {Text(stringResource(R.string.privacy_read_terms))}
+                OutlinedButton(onClick={reader=true},shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()) {Text(stringResource(R.string.privacy_read_terms))}
                 Text(document.version,style=MaterialTheme.typography.bodySmall)
             } else if(state.loaded) Text(stringResource(R.string.privacy_terms_unavailable))
             if(!state.loaded) CircularProgressIndicator()
@@ -82,16 +84,20 @@ internal fun TrainingConsentContent(
                 }))
                 if(content?.needsRegrant==true) Text(stringResource(R.string.training_consent_regrant))
                 if(document!=null && content?.granted!=true) {
-                    Row(Modifier.fillMaxWidth().toggleable(value=review.checked,enabled=review.read && !busy,role=Role.Checkbox,onValueChange={review=review.check(it)})) {
-                        Checkbox(checked=review.checked,onCheckedChange=null,enabled=review.read && !busy)
-                        Text(stringResource(R.string.privacy_consent_check),Modifier.weight(1f).padding(top=12.dp))
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(value=review.checked,enabled=review.read && !busy,role=Role.Checkbox,onValueChange={review=review.check(it)}),
+                        verticalAlignment=Alignment.Top,
+                        horizontalArrangement=Arrangement.spacedBy(12.dp),
+                    ) {
+                        Checkbox(checked=review.checked,onCheckedChange=null,enabled=review.read && !busy,modifier=Modifier.padding(top=2.dp))
+                        Text(stringResource(R.string.privacy_consent_check),style=MaterialTheme.typography.bodyMedium,modifier=Modifier.weight(1f))
                     }
-                    Button(onClick={ if(review.canConfirm) { onDecision(true,review.version,review.digest);review=review.copy(checked=false) } },enabled=review.canConfirm && !busy,modifier=Modifier.fillMaxWidth()) {
+                    Button(onClick={ if(review.canConfirm) { onDecision(true,review.version,review.digest);review=review.copy(checked=false) } },enabled=review.canConfirm && !busy,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.privacy_confirm_preference))
                     }
                 }
                 // OFF remains available without review, connectivity, terms, or a completed ON request.
-                OutlinedButton(onClick={review=review.copy(checked=false);onDecision(false,"","")},modifier=Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick={review=review.copy(checked=false);onDecision(false,"","")},shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.privacy_revoke_delete))
                 }
                 Text(stringResource(R.string.privacy_deletion_receipt_note),style=MaterialTheme.typography.bodySmall)

@@ -766,7 +766,7 @@
     <string name="privacy_preference_off">Aucune autorisation confirmée dans cette consultation.</string>
     <string name="privacy_consent_check">Je confirme avoir lu les conditions intégrales et autorise librement l’enregistrement de ma préférence facultative pour la finalité décrite.</string>
     <string name="privacy_confirm_preference">Confirmer et envoyer la préférence</string>
-    <string name="privacy_revoke_delete">Désactiver et demander la suppression des images d’entraînement</string>
+    <string name="privacy_revoke_delete">Désactiver et supprimer les images</string>
     <string name="privacy_deletion_receipt_note">La réception déclenche la suppression ; elle ne confirme pas la suppression physique de toutes les copies.</string>
     <string name="privacy_digest">SHA-256 du document : %1$s</string>
     <string name="privacy_finish_reading">Lecture terminée · revenir au choix</string>

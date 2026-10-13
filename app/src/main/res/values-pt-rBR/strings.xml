@@ -779,7 +779,7 @@
     <string name="privacy_preference_off">Nenhuma autorização confirmada nesta consulta.</string>
     <string name="privacy_consent_check">Li os termos integrais e autorizo livremente o registro da minha preferência opcional para a finalidade descrita.</string>
     <string name="privacy_confirm_preference">Confirmar e enviar preferência</string>
-    <string name="privacy_revoke_delete">Desativar e solicitar exclusão das imagens de treinamento</string>
+    <string name="privacy_revoke_delete">Desativar e excluir imagens</string>
     <string name="privacy_deletion_receipt_note">O recebimento da solicitação inicia a exclusão; não confirma a exclusão física de todas as cópias.</string>
     <string name="privacy_digest">SHA-256 do documento: %1$s</string>
     <string name="privacy_finish_reading">Concluí a leitura · voltar à escolha</string>

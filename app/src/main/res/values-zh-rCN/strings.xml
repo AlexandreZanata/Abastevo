@@ -766,7 +766,7 @@
     <string name="privacy_preference_off">此视图中没有已确认的授权。</string>
     <string name="privacy_consent_check">我已阅读完整条款，自愿授权记录所述目的的可选偏好。</string>
     <string name="privacy_confirm_preference">确认并发送偏好</string>
-    <string name="privacy_revoke_delete">停用并请求删除训练图片</string>
+    <string name="privacy_revoke_delete">停用并删除图片</string>
     <string name="privacy_deletion_receipt_note">收到请求将启动删除；这不表示所有副本已被物理删除。</string>
     <string name="privacy_digest">文件 SHA-256：%1$s</string>
     <string name="privacy_finish_reading">已完成阅读 · 返回选择</string>

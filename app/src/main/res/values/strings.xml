@@ -785,7 +785,7 @@
     <string name="privacy_preference_off">No authorization confirmed in this view.</string>
     <string name="privacy_consent_check">I have read the full terms and freely authorize the recording of my optional preference for the stated purpose.</string>
     <string name="privacy_confirm_preference">Confirm and send preference</string>
-    <string name="privacy_revoke_delete">Disable and request deletion of training images</string>
+    <string name="privacy_revoke_delete">Disable and delete images</string>
     <string name="privacy_deletion_receipt_note">A received request starts deletion; it does not confirm physical deletion of all copies.</string>
     <string name="privacy_digest">Document SHA-256: %1$s</string>
     <string name="privacy_finish_reading">I have finished reading · return to the choice</string>
