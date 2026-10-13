@@ -1,5 +1,7 @@
 # Product contract: backend first
 
+The 2026-10-13 [Premium contract](PREMIUM_PRODUCT_CONTRACT.md) specifies optional new cloud/professional benefits while preserving current free features. Only its first ten backend microtasks are authorized on an isolated branch; Android UI and real payments remain later.
+
 Status: product direction revised 2026-10-01; existing local modules are integrated, but new commercial UX remains PLANNED. See current PROGRESS for runtime evidence. Project name **abastevo** was selected by the maintainer on 2026-10-01; [brand identity](../brand/IDENTITY.md) owns the logo and README artwork status.
 
 ## Objective and release order

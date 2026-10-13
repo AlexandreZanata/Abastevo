@@ -1548,6 +1548,8 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 
 ## P11 — Optional hosted commercial services
 
+2026-10-13 Premium scope: [product contract](docs/product/PREMIUM_PRODUCT_CONTRACT.md), [62-microtask backend-first plan](docs/planning/PREMIUM_BACKEND_APP_PLAN.md) and [first-ten execution evidence](docs/backend/evidence/premium/PRM_FIRST_TEN.md). The user authorized PRM00-T01–T04 and PRM01-T01–T06 on an isolated codex/premium-backend branch targeting main, preserving dev/mobile refinement. P11-T01 owns PRM00 packaging/policy; P11-T03 owns PRM01 subscription infrastructure; free P13 account linking remains separate. Real payment activation is deferred until the future payment module/catalog exists. Other Premium features and commercial release remain planned; parent IDs are not duplicate implementations.
+
 Priority: **LATER**. Entry: Completed P10 pilot and explicit validated product scope.
 
 Exit gate: **G11: optional paid benefit/billing/sync specifications and implementations pass provider/ownership/conflict tests; no effect on free trust or existing local data. Each task is independently respecified before execution.**
