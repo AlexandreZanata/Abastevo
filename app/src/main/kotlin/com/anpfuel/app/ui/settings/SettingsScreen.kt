@@ -3,6 +3,7 @@ package com.anpfuel.app.ui.settings
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -12,12 +13,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PersonOutline
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,7 +34,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,6 +44,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -227,12 +237,11 @@ private fun SettingsContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            OutlinedButton(
+                            SettingsActionButton(
+                                label = stringResource(R.string.settings_open_notification_settings),
+                                icon = Icons.Default.Notifications,
                                 onClick = onOpenNotificationSettings,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(text = stringResource(R.string.settings_open_notification_settings))
-                            }
+                            )
                         }
                     }
 
@@ -305,33 +314,24 @@ private fun SettingsContent(
                     }
 
                     SettingsSection(title = stringResource(R.string.settings_sync_section)) {
-                        Button(
+                        SettingsActionButton(
+                            label = stringResource(
+                                if (uiState.isSyncing) {
+                                    R.string.banner_syncing
+                                } else {
+                                    R.string.onboarding_action_sync_now
+                                },
+                            ),
+                            icon = Icons.Default.Sync,
                             onClick = onSyncNow,
+                            style = SettingsActionStyle.Primary,
                             enabled = !uiState.isSyncing,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    if (uiState.isSyncing) {
-                                        R.string.banner_syncing
-                                    } else {
-                                        R.string.onboarding_action_sync_now
-                                    },
-                                ),
-                            )
-                        }
-                        OutlinedButton(
+                        )
+                        SettingsActionButton(
+                            label = stringResource(R.string.settings_change_survey_week),
+                            icon = Icons.Default.CalendarMonth,
                             onClick = onNavigateToWeekPicker,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.settings_change_survey_week))
-                        }
-                        OutlinedButton(
-                            onClick = onNavigateToAuth,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.auth_account_row))
-                        }
+                        )
                         uiState.syncMessage?.let { messageKey ->
                             if (messageKey == SettingsViewModel.SYNC_COMPLETED_MESSAGE) {
                                 Text(
@@ -343,8 +343,18 @@ private fun SettingsContent(
                         }
                     }
 
+                    SettingsSection(title = stringResource(R.string.auth_account_row)) {
+                        SettingsActionButton(
+                            label = stringResource(R.string.auth_account_row),
+                            icon = Icons.Default.PersonOutline,
+                            onClick = onNavigateToAuth,
+                        )
+                    }
+
                     SettingsSection(title = stringResource(R.string.settings_share_section)) {
-                        OutlinedButton(
+                        SettingsActionButton(
+                            label = stringResource(R.string.settings_share_app),
+                            icon = Icons.Default.Share,
                             onClick = {
                                 val sendIntent = Intent().apply {
                                     action = Intent.ACTION_SEND
@@ -360,27 +370,23 @@ private fun SettingsContent(
                                 val shareIntent = Intent.createChooser(sendIntent, null)
                                 context.startActivity(shareIntent)
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.settings_share_app))
-                        }
+                        )
                     }
 
                     SettingsSection(title = stringResource(R.string.settings_clear_cache)) {
-                        OutlinedButton(
+                        SettingsActionButton(
+                            label = stringResource(R.string.settings_clear_station_cache),
+                            icon = Icons.Default.Storage,
                             onClick = onClearStationCache,
                             enabled = !uiState.isClearingCache,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.settings_clear_station_cache))
-                        }
-                        OutlinedButton(
+                        )
+                        SettingsActionButton(
+                            label = stringResource(R.string.settings_clear_all_cache),
+                            icon = Icons.Default.DeleteOutline,
                             onClick = onRequestClearAllCache,
+                            style = SettingsActionStyle.Destructive,
                             enabled = !uiState.isClearingCache,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.settings_clear_all_cache))
-                        }
+                        )
                     }
 
                     SettingsSection(
@@ -392,7 +398,9 @@ private fun SettingsContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        TextButton(
+                        SettingsActionButton(
+                            label = stringResource(R.string.settings_anp_attribution_link),
+                            icon = Icons.Default.OpenInNew,
                             onClick = {
                                 val intent = Intent(
                                     Intent.ACTION_VIEW,
@@ -400,10 +408,7 @@ private fun SettingsContent(
                                 )
                                 context.startActivity(intent)
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.settings_anp_attribution_link))
-                        }
+                        )
                     }
 
                     uiState.error?.let { error ->
@@ -467,6 +472,79 @@ private fun PrivacyRedirectCard(
 }
 
 @Composable
+private fun SettingsActionButton(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: SettingsActionStyle = SettingsActionStyle.Outlined,
+    enabled: Boolean = true,
+) {
+    val containerColor = when (style) {
+        SettingsActionStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
+        SettingsActionStyle.Outlined -> Color.Transparent
+        SettingsActionStyle.Destructive -> Color.Transparent
+    }
+    val contentColor = when (style) {
+        SettingsActionStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
+        SettingsActionStyle.Outlined -> MaterialTheme.colorScheme.onSurface
+        SettingsActionStyle.Destructive -> MaterialTheme.colorScheme.error
+    }
+    val border = when (style) {
+        SettingsActionStyle.Primary -> null
+        SettingsActionStyle.Outlined ->
+            BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outline,
+            )
+        SettingsActionStyle.Destructive ->
+            BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.error,
+            )
+    }
+    Card(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+        border = border,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+            )
+        }
+    }
+}
+
+private enum class SettingsActionStyle {
+    Primary,
+    Outlined,
+    Destructive,
+}
+
+@Composable
 private fun SettingsSection(
     title: String,
     modifier: Modifier = Modifier,
@@ -479,8 +557,8 @@ private fun SettingsSection(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         content()
         if (showBottomDivider) {
