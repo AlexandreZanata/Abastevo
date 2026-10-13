@@ -119,6 +119,7 @@ fun HomeScreen(
         onRetry = { viewModel.load(locale, showLoadingIndicator = true) },
         onWeekChanged = { viewModel.load(locale, showLoadingIndicator = true) },
         onPriceSortChanged = viewModel::onPriceSortChanged,
+        onDismissBenefits = viewModel::dismissBenefits,
         modifier = modifier,
     )
 }
@@ -136,6 +137,7 @@ internal fun HomeContent(
     modifier: Modifier = Modifier,
     includeSurveyWeekChip: Boolean = true,
     onPriceSortChanged: (HomePriceSortOrder) -> Unit = {},
+    onDismissBenefits: () -> Unit = {},
 ) {
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
@@ -230,7 +232,9 @@ internal fun HomeContent(
             } else {
                 HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
             }
-            HomeBenefits()
+            if (uiState.showBenefits) {
+                HomeBenefits(onDismiss = onDismissBenefits)
+            }
 
             when {
                 uiState.isLoading -> HomeLoadingSkeleton()

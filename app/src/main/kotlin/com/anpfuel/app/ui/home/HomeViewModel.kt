@@ -11,6 +11,7 @@ import com.anpfuel.application.usecase.readiness.GetDataReadinessUseCase
 import com.anpfuel.application.usecase.sync.SyncPriceTablesUseCase
 import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
+import com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore
 import com.anpfuel.data.local.preferences.HomeVehiclePresenceStore
 import com.anpfuel.app.mapper.TankFillCostUiMapper
 import com.anpfuel.app.ui.model.AveragePriceUiModel
@@ -42,6 +43,7 @@ data class HomeUiState(
     val tankFillCostEstimates: List<TankFillCostEstimateUiModel> = emptyList(),
     val priceSort: HomePriceSortOrder = HomePriceSortOrder.DEFAULT,
     val hasVehicle: Boolean = false,
+    val showBenefits: Boolean = true,
     val hasLocation: Boolean = false,
     val hasCachedData: Boolean = false,
     val isEmptyMunicipality: Boolean = false,
@@ -60,11 +62,15 @@ class HomeViewModel @Inject constructor(
     private val listVehiclesUseCase: ListVehiclesUseCase,
     private val getTankFillCostEstimatesUseCase: GetTankFillCostEstimatesUseCase,
     private val homeVehiclePresenceStore: HomeVehiclePresenceStore,
+    private val homeBenefitsVisibilityStore: HomeBenefitsVisibilityStore,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        HomeUiState(hasVehicle = homeVehiclePresenceStore.hasVehicle()),
+        HomeUiState(
+            hasVehicle = homeVehiclePresenceStore.hasVehicle(),
+            showBenefits = homeBenefitsVisibilityStore.isVisible(),
+        ),
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -167,6 +173,11 @@ class HomeViewModel @Inject constructor(
 
     fun onPriceSortChanged(order: HomePriceSortOrder) {
         _uiState.update { it.copy(priceSort = order) }
+    }
+
+    fun dismissBenefits() {
+        homeBenefitsVisibilityStore.setVisible(false)
+        _uiState.update { it.copy(showBenefits = false) }
     }
 
     fun refresh(locale: Locale) {
