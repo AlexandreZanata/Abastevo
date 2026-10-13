@@ -1,10 +1,13 @@
 package com.anpfuel.app.ui.weekpicker
 
+import android.view.View
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -15,11 +18,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
@@ -79,6 +87,7 @@ fun WeekPickerBottomSheet(
     val locale = LocalConfiguration.current.locales[0]
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.92f
+    val bottomSafePadding = rememberRawSystemBottomPadding()
 
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect { destination ->
@@ -93,13 +102,14 @@ fun WeekPickerBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
             modifier = modifier,
+            contentWindowInsets = { WindowInsets(0) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = maxSheetHeight)
                     .fillMaxHeight()
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = 16.dp + bottomSafePadding),
             ) {
                 Text(
                     text = stringResource(R.string.week_picker_title),
@@ -131,4 +141,30 @@ fun WeekPickerBottomSheet(
             onDismiss = viewModel::dismissPendingConfirmation,
         )
     }
+}
+
+/**
+ * Bottom system padding read from the raw platform insets.
+ *
+ * The nav shell and every screen scaffold consume the system insets for
+ * layout, so Compose inset reads below them resolve to zero and a modal
+ * sheet would slide under the navigation bar. The platform root insets
+ * are unaffected by Compose consumption; this sheet (no text input, so
+ * IME is irrelevant) reserves exactly that height plus its spacing.
+ */
+@Composable
+private fun rememberRawSystemBottomPadding(): Dp {
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    return remember(view, density, configuration) {
+        with(density) { rawSystemBottom(view).toDp() }
+    }
+}
+
+private fun rawSystemBottom(view: View): Int {
+    val root = ViewCompat.getRootWindowInsets(view) ?: return 0
+    val bars = root.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+    val cutout = root.getInsets(WindowInsetsCompat.Type.displayCutout()).bottom
+    return maxOf(bars, cutout)
 }
