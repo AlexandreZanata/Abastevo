@@ -28,37 +28,37 @@ const (
 )
 
 type Predicate struct {
-	Kind           PredicateKind
-	Fuel           kernel.Product
-	Unit           kernel.Unit
-	Condition      kernel.ConditionKind
-	Source         Source
-	ThresholdMilli int64
-	DropMilli      int64
-	DropPercentBP  int64
-	BaselineHours  int64
+	Kind           PredicateKind        `json:"kind"`
+	Fuel           kernel.Product       `json:"fuel"`
+	Unit           kernel.Unit          `json:"unit"`
+	Condition      kernel.ConditionKind `json:"condition"`
+	Source         Source               `json:"source"`
+	ThresholdMilli int64                `json:"threshold_milli"`
+	DropMilli      int64                `json:"drop_milli,omitempty"`
+	DropPercentBP  int64                `json:"drop_percent_bp,omitempty"`
+	BaselineHours  int64                `json:"baseline_hours,omitempty"`
 }
 
 type Target struct {
-	StationIDs []string
-	City       string
+	StationIDs []string `json:"station_ids,omitempty"`
+	City       string   `json:"city,omitempty"`
 }
 
 type Schedule struct {
-	Days          []int
-	WindowStart   string
-	WindowEnd     string
-	Timezone      string
-	QuietStart    string
-	QuietEnd      string
-	CooldownHours int64
+	Days          []int  `json:"days"`
+	WindowStart   string `json:"window_start"`
+	WindowEnd     string `json:"window_end"`
+	Timezone      string `json:"timezone"`
+	QuietStart    string `json:"quiet_start"`
+	QuietEnd      string `json:"quiet_end"`
+	CooldownHours int64  `json:"cooldown_hours"`
 }
 
 type Rule struct {
-	Predicates []Predicate
-	Operator   string
-	Target     Target
-	Schedule   Schedule
+	Predicates []Predicate `json:"predicates"`
+	Operator   string      `json:"operator"`
+	Target     Target      `json:"target"`
+	Schedule   Schedule    `json:"schedule"`
 }
 
 var (

@@ -70,6 +70,35 @@ type AlertRule struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type CommunityObservation struct {
+	ID                 pgtype.UUID        `json:"id"`
+	ContributorRef     string             `json:"contributor_ref"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	FuelProduct        string             `json:"fuel_product"`
+	Unit               string             `json:"unit"`
+	AmountMilliBrl     int64              `json:"amount_milli_brl"`
+	RawPriceText       string             `json:"raw_price_text"`
+	ConditionKind      string             `json:"condition_kind"`
+	QualifierKey       string             `json:"qualifier_key"`
+	EvidenceID         pgtype.UUID        `json:"evidence_id"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	ClaimedCapturedAt  pgtype.Timestamptz `json:"claimed_captured_at"`
+	SupersedesID       pgtype.UUID        `json:"supersedes_id"`
+	PolicyVersion      string             `json:"policy_version"`
+}
+
+type CommunityObservationDecision struct {
+	ID            pgtype.UUID        `json:"id"`
+	ObservationID pgtype.UUID        `json:"observation_id"`
+	Sequence      int64              `json:"sequence"`
+	ToState       string             `json:"to_state"`
+	ReasonCodes   []string           `json:"reason_codes"`
+	PolicyVersion string             `json:"policy_version"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+	ActorRef      string             `json:"actor_ref"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`
@@ -102,4 +131,61 @@ type DirectoryStation struct {
 	CurrentQuality    pgtype.Text        `json:"current_quality"`
 	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type OfficialCurrentRevision struct {
+	SurveyStart pgtype.Date        `json:"survey_start"`
+	SurveyEnd   pgtype.Date        `json:"survey_end"`
+	RevisionID  pgtype.UUID        `json:"revision_id"`
+	SwitchedAt  pgtype.Timestamptz `json:"switched_at"`
+}
+
+type OfficialImportRun struct {
+	ID             pgtype.UUID        `json:"id"`
+	SourceUrl      string             `json:"source_url"`
+	SourceChecksum string             `json:"source_checksum"`
+	ParserVersion  string             `json:"parser_version"`
+	DiscoveredAt   pgtype.Timestamptz `json:"discovered_at"`
+	Status         string             `json:"status"`
+	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	FinishedAt     pgtype.Timestamptz `json:"finished_at"`
+	RowCounts      []byte             `json:"row_counts"`
+	ErrorSummary   []byte             `json:"error_summary"`
+}
+
+type OfficialRevision struct {
+	ID                   pgtype.UUID        `json:"id"`
+	ImportRunID          pgtype.UUID        `json:"import_run_id"`
+	SurveyStart          pgtype.Date        `json:"survey_start"`
+	SurveyEnd            pgtype.Date        `json:"survey_end"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	Status               string             `json:"status"`
+}
+
+type OfficialStationPrice struct {
+	ID             pgtype.UUID `json:"id"`
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	RawPriceText   string      `json:"raw_price_text"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+	SourceRow      int32       `json:"source_row"`
+}
+
+type OfficialSummaryPrice struct {
+	ID           pgtype.UUID    `json:"id"`
+	RevisionID   pgtype.UUID    `json:"revision_id"`
+	Scope        string         `json:"scope"`
+	LocationCode string         `json:"location_code"`
+	FuelProduct  string         `json:"fuel_product"`
+	Unit         string         `json:"unit"`
+	Mean         pgtype.Numeric `json:"mean"`
+	MinAmount    pgtype.Numeric `json:"min_amount"`
+	MaxAmount    pgtype.Numeric `json:"max_amount"`
+	StdDev       pgtype.Numeric `json:"std_dev"`
+	StationCount pgtype.Int4    `json:"station_count"`
+	RawFields    []byte         `json:"raw_fields"`
 }

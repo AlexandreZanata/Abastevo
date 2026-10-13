@@ -11,6 +11,122 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const communityBaseline = `-- name: CommunityBaseline :many
+SELECT DISTINCT ON (o.station_id) o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
+WHERE o.station_id=ANY($1::uuid[]) AND o.fuel_product=$2 AND o.unit=$3 AND o.received_at<=$4
+AND (SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1)='VALIDATED'
+ORDER BY o.station_id,o.received_at DESC
+`
+
+type CommunityBaselineParams struct {
+	Column1     []pgtype.UUID      `json:"column_1"`
+	FuelProduct string             `json:"fuel_product"`
+	Unit        string             `json:"unit"`
+	ReceivedAt  pgtype.Timestamptz `json:"received_at"`
+}
+
+type CommunityBaselineRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	StationID      pgtype.UUID        `json:"station_id"`
+	FuelProduct    string             `json:"fuel_product"`
+	Unit           string             `json:"unit"`
+	AmountMilliBrl int64              `json:"amount_milli_brl"`
+	ConditionKind  string             `json:"condition_kind"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+}
+
+func (q *Queries) CommunityBaseline(ctx context.Context, arg CommunityBaselineParams) ([]CommunityBaselineRow, error) {
+	rows, err := q.db.Query(ctx, communityBaseline,
+		arg.Column1,
+		arg.FuelProduct,
+		arg.Unit,
+		arg.ReceivedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CommunityBaselineRow
+	for rows.Next() {
+		var i CommunityBaselineRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.ConditionKind,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const communityPrices = `-- name: CommunityPrices :many
+SELECT o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
+WHERE o.station_id=ANY($1::uuid[]) AND o.fuel_product=$2 AND o.unit=$3 AND o.received_at>$4
+AND (SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1)='VALIDATED'
+ORDER BY o.station_id,o.received_at DESC LIMIT $5
+`
+
+type CommunityPricesParams struct {
+	Column1     []pgtype.UUID      `json:"column_1"`
+	FuelProduct string             `json:"fuel_product"`
+	Unit        string             `json:"unit"`
+	ReceivedAt  pgtype.Timestamptz `json:"received_at"`
+	Limit       int32              `json:"limit"`
+}
+
+type CommunityPricesRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	StationID      pgtype.UUID        `json:"station_id"`
+	FuelProduct    string             `json:"fuel_product"`
+	Unit           string             `json:"unit"`
+	AmountMilliBrl int64              `json:"amount_milli_brl"`
+	ConditionKind  string             `json:"condition_kind"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+}
+
+func (q *Queries) CommunityPrices(ctx context.Context, arg CommunityPricesParams) ([]CommunityPricesRow, error) {
+	rows, err := q.db.Query(ctx, communityPrices,
+		arg.Column1,
+		arg.FuelProduct,
+		arg.Unit,
+		arg.ReceivedAt,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CommunityPricesRow
+	for rows.Next() {
+		var i CommunityPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.ConditionKind,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countRules = `-- name: CountRules :one
 SELECT count(*) FROM alert_rules WHERE account_id=$1 AND NOT deleted
 `
@@ -106,6 +222,30 @@ func (q *Queries) GetRule(ctx context.Context, arg GetRuleParams) (GetRuleRow, e
 	return i, err
 }
 
+const insertInboxCandidate = `-- name: InsertInboxCandidate :execrows
+INSERT INTO alert_inbox(account_id,inbox_id,rule_id,payload,status) VALUES($1,$2,$3,$4,'evaluated') ON CONFLICT DO NOTHING
+`
+
+type InsertInboxCandidateParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	InboxID   pgtype.UUID `json:"inbox_id"`
+	RuleID    pgtype.UUID `json:"rule_id"`
+	Payload   []byte      `json:"payload"`
+}
+
+func (q *Queries) InsertInboxCandidate(ctx context.Context, arg InsertInboxCandidateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertInboxCandidate,
+		arg.AccountID,
+		arg.InboxID,
+		arg.RuleID,
+		arg.Payload,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listInbox = `-- name: ListInbox :many
 SELECT inbox_id,rule_id,payload,status FROM alert_inbox WHERE account_id=$1 ORDER BY created_at,inbox_id LIMIT $2
 `
@@ -172,6 +312,114 @@ func (q *Queries) ListRules(ctx context.Context, accountID pgtype.UUID) ([]ListR
 			&i.Revision,
 			&i.Enabled,
 			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const officialBaseline = `-- name: OfficialBaseline :many
+SELECT DISTINCT ON (p.station_id) p.id,p.station_id,p.fuel_product,p.unit,p.amount_milli_brl,p.collected_on FROM official_station_prices p
+WHERE p.station_id=ANY($1::uuid[]) AND p.fuel_product=$2 AND p.unit=$3 AND p.collected_on<=$4 ORDER BY p.station_id,p.collected_on DESC
+`
+
+type OfficialBaselineParams struct {
+	Column1     []pgtype.UUID `json:"column_1"`
+	FuelProduct string        `json:"fuel_product"`
+	Unit        string        `json:"unit"`
+	CollectedOn pgtype.Date   `json:"collected_on"`
+}
+
+type OfficialBaselineRow struct {
+	ID             pgtype.UUID `json:"id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+}
+
+func (q *Queries) OfficialBaseline(ctx context.Context, arg OfficialBaselineParams) ([]OfficialBaselineRow, error) {
+	rows, err := q.db.Query(ctx, officialBaseline,
+		arg.Column1,
+		arg.FuelProduct,
+		arg.Unit,
+		arg.CollectedOn,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OfficialBaselineRow
+	for rows.Next() {
+		var i OfficialBaselineRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.CollectedOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const officialPrices = `-- name: OfficialPrices :many
+SELECT p.id,p.station_id,p.fuel_product,p.unit,p.amount_milli_brl,p.collected_on FROM official_station_prices p
+WHERE p.station_id=ANY($1::uuid[]) AND p.fuel_product=$2 AND p.unit=$3 AND p.collected_on>$4 ORDER BY p.station_id,p.collected_on DESC LIMIT $5
+`
+
+type OfficialPricesParams struct {
+	Column1     []pgtype.UUID `json:"column_1"`
+	FuelProduct string        `json:"fuel_product"`
+	Unit        string        `json:"unit"`
+	CollectedOn pgtype.Date   `json:"collected_on"`
+	Limit       int32         `json:"limit"`
+}
+
+type OfficialPricesRow struct {
+	ID             pgtype.UUID `json:"id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+}
+
+func (q *Queries) OfficialPrices(ctx context.Context, arg OfficialPricesParams) ([]OfficialPricesRow, error) {
+	rows, err := q.db.Query(ctx, officialPrices,
+		arg.Column1,
+		arg.FuelProduct,
+		arg.Unit,
+		arg.CollectedOn,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OfficialPricesRow
+	for rows.Next() {
+		var i OfficialPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.CollectedOn,
 		); err != nil {
 			return nil, err
 		}

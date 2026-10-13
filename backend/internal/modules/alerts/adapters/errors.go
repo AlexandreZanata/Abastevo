@@ -3,6 +3,7 @@ package adapters
 import (
 	"encoding/hex"
 	"errors"
+	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,12 +14,22 @@ var (
 	errConflictValue  = errors.New("alerts: revision conflict")
 	errQuotaValue     = errors.New("alerts: quota exceeded")
 	errUnavailableVal = errors.New("alerts: service unavailable")
+	errNotFoundValue  = errors.New("alerts: record unavailable")
 )
 
 func errInvalid() error     { return errInvalidValue }
 func errConflict() error    { return errConflictValue }
 func errQuota() error       { return errQuotaValue }
 func errUnavailable() error { return errUnavailableVal }
+func errNotFound() error    { return errNotFoundValue }
+
+func pgTimestamptz(t time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: t, Valid: true}
+}
+
+func pgDate(t time.Time) pgtype.Date {
+	return pgtype.Date{Time: time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC), Valid: true}
+}
 
 func kernelProduct(s string) kernel.Product { return kernel.Product(s) }
 

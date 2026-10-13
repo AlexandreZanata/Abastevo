@@ -36,6 +36,29 @@ SELECT inbox_id,rule_id,payload,status FROM alert_inbox WHERE account_id=$1 ORDE
 -- name: ListRules :many
 SELECT rule_id,revision,enabled,payload FROM alert_rules WHERE account_id=$1 AND NOT deleted ORDER BY rule_id;
 
+-- name: CommunityPrices :many
+SELECT o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
+WHERE o.station_id=ANY($1::uuid[]) AND o.fuel_product=$2 AND o.unit=$3 AND o.received_at>$4
+AND (SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1)='VALIDATED'
+ORDER BY o.station_id,o.received_at DESC LIMIT $5;
+
+-- name: OfficialPrices :many
+SELECT p.id,p.station_id,p.fuel_product,p.unit,p.amount_milli_brl,p.collected_on FROM official_station_prices p
+WHERE p.station_id=ANY($1::uuid[]) AND p.fuel_product=$2 AND p.unit=$3 AND p.collected_on>$4 ORDER BY p.station_id,p.collected_on DESC LIMIT $5;
+
+-- name: InsertInboxCandidate :execrows
+INSERT INTO alert_inbox(account_id,inbox_id,rule_id,payload,status) VALUES($1,$2,$3,$4,'evaluated') ON CONFLICT DO NOTHING;
+
+-- name: CommunityBaseline :many
+SELECT DISTINCT ON (o.station_id) o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
+WHERE o.station_id=ANY($1::uuid[]) AND o.fuel_product=$2 AND o.unit=$3 AND o.received_at<=$4
+AND (SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1)='VALIDATED'
+ORDER BY o.station_id,o.received_at DESC;
+
+-- name: OfficialBaseline :many
+SELECT DISTINCT ON (p.station_id) p.id,p.station_id,p.fuel_product,p.unit,p.amount_milli_brl,p.collected_on FROM official_station_prices p
+WHERE p.station_id=ANY($1::uuid[]) AND p.fuel_product=$2 AND p.unit=$3 AND p.collected_on<=$4 ORDER BY p.station_id,p.collected_on DESC;
+
 -- name: EraseAlertRules :exec
 UPDATE alert_rules SET payload='{}',deleted=true,revision=revision+1,updated_at=clock_timestamp() WHERE account_id=$1 AND NOT deleted;
 

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 type Command struct {
@@ -49,4 +50,13 @@ type RuleStore interface {
 	ListRules(ctx context.Context, accountID string) ([]RuleRecord, error)
 	ListInbox(ctx context.Context, accountID string, limit int) ([]InboxItem, error)
 	EraseAll(ctx context.Context, accountID string) error
+}
+
+type EvaluateResult struct {
+	Candidates int    `json:"candidates"`
+	NextCursor string `json:"next_cursor"`
+}
+
+type EvaluateStore interface {
+	Evaluate(ctx context.Context, accountID, ruleID, afterStationID string, limit int, now time.Time) (EvaluateResult, error)
 }

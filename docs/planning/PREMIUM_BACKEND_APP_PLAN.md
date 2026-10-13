@@ -452,6 +452,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T03 — Indexed source evaluation and transactional candidates
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; existing directory/official/community application read ports; PR21–PR23.
 - **Outcome/areas:** bounded fanout/evaluation cursors, fresh source snapshot, deterministic match and atomic candidate/inbox/job insertion using current jobs.
 - **Tests first:** expired/disputed/unknown price, conditional versus standard, no supported coverage, large target fanout/query plans, parallel evaluators and transaction rollback.

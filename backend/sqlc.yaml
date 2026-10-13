@@ -256,6 +256,8 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
+      - db/migrations/000003_official.sql
+      - db/migrations/000008_community.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000089_alert_rules.sql
     gen:
