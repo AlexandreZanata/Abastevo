@@ -295,6 +295,8 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T04 — Snapshot list, compatibility and restore preview
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR11/12.
 - **Outcome/areas:** owner-only snapshot listing and staged validation/preview of datasets, account epoch, schema, current conflicts and excluded records; enforce bounded decoding/decompression.
 - **Tests first:** foreign/expired/corrupt/oversize snapshot, old schema, deleted records, malicious archive, duplicate IDs and preview stale after intervening edits.

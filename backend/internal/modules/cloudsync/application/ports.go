@@ -200,3 +200,20 @@ type SnapshotStorageStore interface {
 	ReadSnapshot(ctx context.Context, p Principal, snapshotID string) ([]byte, error)
 	ListSnapshots(ctx context.Context, p Principal, limit int) ([]StoredSnapshot, error)
 }
+
+type RestorePreview struct {
+	SnapshotID       string   `json:"snapshot_id"`
+	SnapshotRevision int64    `json:"snapshot_revision"`
+	CurrentRevision  int64    `json:"current_revision"`
+	Epoch            int64    `json:"epoch"`
+	ConsentRevision  int64    `json:"consent_revision"`
+	Compatible       bool     `json:"compatible"`
+	Issues           []string `json:"issues"`
+	RecordCount      int64    `json:"record_count"`
+	ConflictCount    int64    `json:"conflict_count"`
+	ExcludedCount    int64    `json:"excluded_count"`
+	ExpiresAt        int64    `json:"expires_at"`
+}
+type RestoreStore interface {
+	PreviewRestore(ctx context.Context, p Principal, snapshotID string) (RestorePreview, error)
+}

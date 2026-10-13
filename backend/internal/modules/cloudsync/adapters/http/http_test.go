@@ -95,6 +95,18 @@ func (p *probe) Manifest(context.Context, app.Principal) (app.BackupManifest, er
 	}
 	return app.BackupManifest{Version: 1, Revision: 3, Epoch: 1, ConsentRevision: 1, VehicleCount: 1, Datasets: []string{"vehicles"}, Excluded: []string{"credentials"}}, nil
 }
+func (p *probe) ListSnapshots(context.Context, app.Principal, int) ([]app.StoredSnapshot, error) {
+	return nil, p.err
+}
+func (p *probe) PreviewRestore(context.Context, app.Principal, string) (app.RestorePreview, error) {
+	return app.RestorePreview{}, p.err
+}
+func (p *probe) StoreSnapshot(context.Context, app.Principal, string, int64, int64, int64, []byte) (app.StoredSnapshot, error) {
+	return app.StoredSnapshot{}, p.err
+}
+func (p *probe) ReadSnapshot(context.Context, app.Principal, string) ([]byte, error) {
+	return nil, p.err
+}
 func call(h Handler, path, body string) *httptest.ResponseRecorder {
 	router := chi.NewRouter()
 	h.RegisterRoutes(router)
@@ -563,6 +575,64 @@ func TestBackupManifestSuccessAndValidation(t *testing.T) {
 	p.err = domain.ErrUnauthorized
 	if w = call(h, "/v1/cloud/snapshots/manifest", base); w.Code != 401 {
 		t.Fatal("revoked manifest hidden")
+	}
+	p.err = nil
+}
+
+func TestSnapshotsListSuccessAndValidation(t *testing.T) {
+	p := &probe{}
+	h := consentHandler(p)
+	device := "55555555-5555-4555-8555-555555555555"
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","limit":20}`
+	w := call(h, "/v1/cloud/snapshots/list", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("list %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/snapshots/list", base); w.Code != 401 {
+		t.Fatal("unsigned list admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"device_id"`, `"account_id"`, 1),
+		strings.Replace(base, `"limit":20`, `"limit":0`, 1),
+		strings.Replace(base, `"limit":20`, `"limit":101`, 1),
+	} {
+		if w = call(h, "/v1/cloud/snapshots/list", bad); w.Code != 400 {
+			t.Fatalf("bad list admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrNotFound
+	if w = call(h, "/v1/cloud/snapshots/list", base); w.Code != 404 {
+		t.Fatal("missing list hidden")
+	}
+	p.err = nil
+}
+
+func TestRestorePreviewSuccessAndValidation(t *testing.T) {
+	p := &probe{}
+	h := consentHandler(p)
+	device := "55555555-5555-4555-8555-555555555555"
+	snapshot := "66666666-6666-4666-8666-666666666666"
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","snapshot_id":"` + snapshot + `"}`
+	w := call(h, "/v1/cloud/restore/preview", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("preview %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/restore/preview", base); w.Code != 401 {
+		t.Fatal("unsigned preview admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"snapshot_id"`, `"account_id"`, 1),
+		strings.Replace(base, snapshot, "not-a-uuid", 1),
+	} {
+		if w = call(h, "/v1/cloud/restore/preview", bad); w.Code != 400 {
+			t.Fatalf("bad preview admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrNotFound
+	if w = call(h, "/v1/cloud/restore/preview", base); w.Code != 404 {
+		t.Fatal("foreign preview leaked")
 	}
 	p.err = nil
 }

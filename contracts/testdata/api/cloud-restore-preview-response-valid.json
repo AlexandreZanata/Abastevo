@@ -1,0 +1,18 @@
+{
+  "id": "cloud-restore-preview-response-valid",
+  "schema": "CloudRestorePreviewResponse",
+  "valid": true,
+  "value": {
+    "snapshot_id": "66666666-6666-4666-8666-666666666666",
+    "snapshot_revision": 2,
+    "current_revision": 3,
+    "epoch": 1,
+    "consent_revision": 1,
+    "compatible": true,
+    "issues": [],
+    "record_count": 1,
+    "conflict_count": 1,
+    "excluded_count": 0,
+    "expires_at": 1791913947
+  }
+}
