@@ -3272,7 +3272,7 @@ paths:
         on purchase commands. Provider route uses independent authenticated push proof.
         All responses are private/no-store. Production payment ports remain disabled.
       operationId: premiumStatus
-      x-implementation-status: source-in-progress
+      x-implementation-status: source-local-done-payments-disabled
       requestBody:
         required: true
         content:
@@ -3309,7 +3309,7 @@ paths:
         on purchase commands. Provider route uses independent authenticated push proof.
         All responses are private/no-store. Production payment ports remain disabled.
       operationId: premiumPurchasesVerify
-      x-implementation-status: source-in-progress
+      x-implementation-status: source-local-done-payments-disabled
       requestBody:
         required: true
         content:
@@ -3346,7 +3346,7 @@ paths:
         on purchase commands. Provider route uses independent authenticated push proof.
         All responses are private/no-store. Production payment ports remain disabled.
       operationId: premiumPurchasesRestore
-      x-implementation-status: source-in-progress
+      x-implementation-status: source-local-done-payments-disabled
       requestBody:
         required: true
         content:
@@ -3383,7 +3383,7 @@ paths:
         on purchase commands. Provider route uses independent authenticated push proof.
         All responses are private/no-store. Production payment ports remain disabled.
       operationId: premiumProvider-Notifications
-      x-implementation-status: source-in-progress
+      x-implementation-status: source-local-done-payments-disabled
       requestBody:
         required: true
         content:
@@ -3407,8 +3407,124 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/premium/export:
+    post:
+      tags:
+      - premium
+      summary: Export owned subscription metadata
+      description: Free owner-session export of retained subscription metadata, including
+        after expiry. Bounded keyset pages, owner-bound expiring cursor, private no-store
+        and no ETag. No provider token bytes, raw token hashes, session/key recovery
+        or unimplemented cloud/professional records.
+      operationId: premiumExport
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumExportRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumExportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
+    PremiumExportRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      properties:
+        family_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+    PremiumExportItem:
+      type: object
+      additionalProperties: false
+      required:
+      - product_id
+      - base_plan_id
+      - state
+      - valid_until
+      - verified_at
+      - retired
+      - acknowledged
+      properties:
+        product_id:
+          type: string
+        base_plan_id:
+          type: string
+        state:
+          type: string
+          enum:
+          - NONE
+          - PENDING
+          - ACTIVE
+          - CANCELED
+          - GRACE
+          - HOLD
+          - PAUSED
+          - EXPIRED
+          - REVOKED
+          - UNKNOWN
+        valid_until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        verified_at:
+          type: string
+          format: date-time
+        retired:
+          type: boolean
+        acknowledged:
+          type: boolean
+    PremiumExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PremiumExportItem'
+        next_cursor:
+          type: string
+          maxLength: 2048
     PremiumStatusRequest:
       type: object
       additionalProperties: false
@@ -3460,6 +3576,10 @@ components:
       - retained_data_access
       - payments_configured
       properties:
+        management_url:
+          type: string
+          enum:
+          - https://play.google.com/store/account/subscriptions
         policy_version:
           type: integer
           enum:

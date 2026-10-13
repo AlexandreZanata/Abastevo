@@ -33,6 +33,67 @@ func (q *Queries) ClaimSlot(ctx context.Context, arg ClaimSlotParams) (int64, er
 	return generation, err
 }
 
+const exportPurchases = `-- name: ExportPurchases :many
+SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
+FROM subscription_purchases WHERE account_id=$1::uuid
+AND (NOT $2::boolean OR (verified_at,token_digest)<($3::timestamptz,$4::text))
+ORDER BY verified_at DESC,token_digest DESC LIMIT $5::int
+`
+
+type ExportPurchasesParams struct {
+	AccountID   pgtype.UUID        `json:"account_id"`
+	HasCursor   bool               `json:"has_cursor"`
+	AfterTime   pgtype.Timestamptz `json:"after_time"`
+	AfterDigest string             `json:"after_digest"`
+	LimitCount  int32              `json:"limit_count"`
+}
+
+type ExportPurchasesRow struct {
+	TokenDigest  string             `json:"token_digest"`
+	ProductID    string             `json:"product_id"`
+	BasePlanID   string             `json:"base_plan_id"`
+	State        string             `json:"state"`
+	ValidUntil   pgtype.Timestamptz `json:"valid_until"`
+	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+	Retired      bool               `json:"retired"`
+	Acknowledged bool               `json:"acknowledged"`
+}
+
+func (q *Queries) ExportPurchases(ctx context.Context, arg ExportPurchasesParams) ([]ExportPurchasesRow, error) {
+	rows, err := q.db.Query(ctx, exportPurchases,
+		arg.AccountID,
+		arg.HasCursor,
+		arg.AfterTime,
+		arg.AfterDigest,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportPurchasesRow
+	for rows.Next() {
+		var i ExportPurchasesRow
+		if err := rows.Scan(
+			&i.TokenDigest,
+			&i.ProductID,
+			&i.BasePlanID,
+			&i.State,
+			&i.ValidUntil,
+			&i.VerifiedAt,
+			&i.Retired,
+			&i.Acknowledged,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const finishOperation = `-- name: FinishOperation :execrows
 UPDATE subscription_operations SET status=$1,completed_at=clock_timestamp(),token_cipher=NULL
 WHERE account_id=$2::uuid AND operation_id=$3::uuid

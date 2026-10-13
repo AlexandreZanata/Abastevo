@@ -94,3 +94,28 @@ RED: a pending replacement prematurely retired its paid predecessor. GREEN: only
 Real PostGIS/dispatcher proofs: pending→active replacement, old-token restore denial, notification→actual refresh handler, revocation after a renewal lookup invalidates the late generation, later stale/active response cannot reinstate a revoked chain, provider outage cannot refresh rights, and retained-data access remains independent of subscription. Strict digest-only job payloads reject unknown/raw-token fields. Existing worker registers both acknowledgement and refresh with provider ports still nil.
 
 Commands: affected integration/race suite (6.024s), all subscription unit/race tests, go vet/staticcheck, sqlc vet/diff and worker build to /tmp. Passed. Recurring reconciliation/operator runbook and real provider proof remain PRM01-T07, outside this batch and user-deferred. Next PRM01-T06.
+
+## PRM01-T06 — Private status, purchase restore and free exit API
+
+Status: LOCAL_DONE / INTEGRATION_PENDING (source only)
+Validation: PASS
+PR: https://github.com/AlexandreZanata/Abastevo/pull/131
+
+Owner status resolves the account from the existing live session and includes a fixed official Play management destination. Verify/restore require the existing exact-body P256 request signature and the same account's contributor binding; the store rechecks account/session/key state atomically. Restore never transfers purchase ownership or recovers session/key authority. Free export pages owned retained subscription metadata after expiry without a provider, token key or paid capability. Default 20 / maximum 100, owner-bound HMAC cursor (15 minutes), strict JSON/body bounds, no token bytes/digests in export items and no-store/no ETag. Existing free deletion synchronously destroys provider token bytes and fences access.
+
+RED/GREEN: a private status response initially inherited an unnecessary ETag from the shared public writer; the subscription writer now emits private JSON without an ETag. Real SQL/application proofs cover same-owner restore, exact/divergent-kind replay, foreign restore refusal before provider lookup, revoked-session refusal, expired export pagination/ownership and immediate provider-byte deletion. Actual API subprocess proofs use real account-key login, signed contributor requests, SQL stores and HTTP: payments-disabled status, no-store/no ETag, expired/foreign export, unsigned/cross-account/replayed-nonce restore refusal, disabled provider refusal and free deletion. No S3/provider/Android runtime certification is inferred from this bounded matrix.
+
+Final commands (exclusive disposable loopback PostGIS; no shared/staging database):
+- go test -race -count=1 ./internal/modules/subscription/... — PASS.
+- go test -race -count=1 ./internal/platform/apicontract ./internal/modules/subscription/adapters/http — PASS.
+- ANPFUEL_TEST_DATABASE_URL=(disposable DSN) go test -race -count=1 -p=1 -tags=integration ./internal/modules/subscription/adapters ./internal/modules/account/adapters ./internal/platform/migrate ./cmd/api — PASS (32.494s / 44.266s / 8.743s / 8.845s).
+- make quick-verify — PASS, full selection, 43s: all backend build/unit/vet/staticcheck, sqlc vet/drift, OpenAPI (zero errors; 97 warnings / 51 informs retained), secret surfaces and govulncheck (no vulnerabilities).
+- git diff --check and final staged secret-surface review — PASS.
+
+Tested source anchor: candidate on parent 44653cd; SHA-256 over sorted backend/contracts paths and file SHA-256 bytes: be28a3899c16c2fca32f42582ea0393d4c05d8b7adc010d245eed15725dabca2. Only acceptance documentation changed after these final checks. The PRM01-T06 commit carrying this evidence contains that tested source.
+
+## First-ten batch checkpoint
+
+PRM00-T01..T04 and PRM01-T01..T06 are source LOCAL_DONE: ten task commits, plus one separately authorized notification-planning commit. PR131 targets main from codex/premium-backend; primary dev/mobile work was not edited or imported. This is INTEGRATION_PENDING until protected review/CI/merge; no merge/deploy/wiki publication was requested.
+
+Real payments, provider authentication/catalog/OAuth/key lifecycle wiring, real Play sandbox and recurring reconciliation/operator runbook remain PROOF_OWED / PRM01-T07 by explicit owner deferral. Sales stay OFF; no runtime fake or manual entitlement grant exists. Cloud records/sync/backup/professional ledger/reports/advanced alerts/minimal Android remain their later planned tasks. OneSignal is content/phase planning only (PRM11–PRM14), with no SDK, credentials or sends. G-PR-BACKEND, commercial readiness and production certification remain INCOMPLETE.

@@ -106,3 +106,9 @@ UPDATE subscription_verification_slots SET generation=generation+1,lease_until=c
 -- name: MarkAcknowledged :execrows
 UPDATE subscription_purchases SET acknowledged=true WHERE token_digest=sqlc.arg(token_digest)
 AND revision=sqlc.arg(revision) AND NOT retired AND state<>'REVOKED' AND NOT refresh_required;
+
+-- name: ExportPurchases :many
+SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
+FROM subscription_purchases WHERE account_id=sqlc.arg(account_id)::uuid
+AND (NOT sqlc.arg(has_cursor)::boolean OR (verified_at,token_digest)<(sqlc.arg(after_time)::timestamptz,sqlc.arg(after_digest)::text))
+ORDER BY verified_at DESC,token_digest DESC LIMIT sqlc.arg(limit_count)::int;

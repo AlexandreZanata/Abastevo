@@ -86,3 +86,15 @@ func (s *Service) Admit(ctx context.Context, p Principal, c Command) (Receipt, e
 	status, err := s.Status(ctx, p)
 	return Receipt{OperationID: c.OperationID, Status: status}, err
 }
+
+func (s *Service) Export(ctx context.Context, p Principal, limit int, after time.Time, key string) ([]ExportRow, error) {
+	if s == nil || s.Store == nil {
+		return nil, domain.ErrUnavailable
+	}
+	store, ok := s.Store.(ExportStore)
+	if !ok {
+		return nil, domain.ErrUnavailable
+	}
+	// Deliberately independent of Provider/Tokens/AccountBinding and paid state.
+	return store.ExportRows(ctx, p, limit, after, key)
+}

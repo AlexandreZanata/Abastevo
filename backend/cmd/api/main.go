@@ -67,6 +67,10 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
+	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
+	subscriptionhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/http"
+	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
+	subscriptiondomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -572,6 +576,41 @@ func run() error {
 	}.RegisterRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
+	// Premium source is prepared; real payment/catalog/credential ports remain
+	// nil by owner direction. Free status/export use existing owner sessions.
+	premiumStore := subscriptionadapters.NewStore(pool.Underlying())
+	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	subscriptionhttp.Handler{
+		Service: premiumService, CursorSecret: cfg.CursorSecret,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, family, access)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "invalid-value", "oidc-unavailable", "key-unavailable":
+					return "", subscriptiondomain.ErrUnavailable
+				default:
+					return "", subscriptiondomain.ErrUnauthorized
+				}
+			}
+			return id, nil
+		},
+		SignedOwner: func(r *http.Request, accountID string) (string, string, error) {
+			id, err := authVerifier.Verify(r.Context(), r)
+			if err != nil {
+				return "", "", subscriptiondomain.ErrUnauthorized
+			}
+			owner, found, err := accountStore.FindBindingOwner(r.Context(), id.ContributorID)
+			if err != nil {
+				return "", "", subscriptiondomain.ErrUnavailable
+			}
+			if !found || owner != accountID {
+				return "", "", subscriptiondomain.ErrUnauthorized
+			}
+			return id.ContributorID, id.KeyID, nil
+		},
+	}.RegisterRoutes(router)
+	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)
+
 	// checkAccountGate refuses social writes from contributors bound
 	// to a suspended or deleted FREE account (P13-T04D). Unbound
 	// contributors keep the anonymous baseline; store failures

@@ -1,6 +1,6 @@
 # Premium delivery plan — complete backend, minimal Android UI
 
-State: **FIRST TEN MICROTASKS AUTHORIZED**, 2026-10-13. Current acceptance: [execution evidence](../backend/evidence/premium/PRM_FIRST_TEN.md). Original planning provenance is retained below. Requested scope: optional cloud services plus individual professional tools in one Premium offering. The original scope defines 62 microtasks in 11 phases; the 2026-10-13 OneSignal planning amendment adds 17 microtasks in PRM11–PRM14 (79 total, 15 phases). The [product contract](../product/PREMIUM_PRODUCT_CONTRACT.md) owns proposed B-BR-PR01–PR25, BUC-PR01–PR07 and D-PR01–D-PR05. Existing [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) is the commercial parent; these IDs refine it rather than create competing implementations.
+State: **FIRST TEN MICROTASKS AUTHORIZED**, 2026-10-13. Current acceptance: **first ten source microtasks LOCAL_DONE / INTEGRATION_PENDING**, [PR #131](https://github.com/AlexandreZanata/Abastevo/pull/131), [execution evidence](../backend/evidence/premium/PRM_FIRST_TEN.md). Original planning provenance is retained below. Requested scope: optional cloud services plus individual professional tools in one Premium offering. The original scope defines 62 microtasks in 11 phases; the 2026-10-13 OneSignal planning amendment adds 17 microtasks in PRM11–PRM14 (79 total, 15 phases). The [product contract](../product/PREMIUM_PRODUCT_CONTRACT.md) owns proposed B-BR-PR01–PR25, BUC-PR01–PR07 and D-PR01–D-PR05. Existing [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) is the commercial parent; these IDs refine it rather than create competing implementations.
 
 ## Authorization, ordering and readiness
 
@@ -12,7 +12,7 @@ The maintainer confirmed that no Play subscription/payment module exists yet: pr
 
 ### Original planning authorization (historical)
 
-The current request authorizes **local planning only**. Do not implement code, open every future issue, charge customers, change providers, deploy, push, create PRs or mirror the wiki as a consequence of this plan. All tasks below are PLANNED / NOT STARTED; local documentation validation is not feature acceptance.
+At the original planning checkpoint, the request authorized **local planning only**. Do not implement code, open every future issue, charge customers, change providers, deploy, push, create PRs or mirror the wiki as a consequence of this plan. At that checkpoint all tasks were PLANNED / NOT STARTED; local documentation validation was not feature acceptance. The newer construction authorization and per-task statuses below govern the first ten.
 
 Current priority remains active security corrections and ADR-019 Android/VPS P34–P38, then the already selected catalog/profile construction. Premium source construction starts on a later explicit continuation/prioritization request, after required free account/session/ownership/privacy contracts and reusable client paths are accepted. Reconcile current PROGRESS and actual commits at opening; unresolved security/deletion dependencies cannot be bypassed. The maintainer may explicitly change priority, but this plan does not change it itself.
 
@@ -59,12 +59,16 @@ Entry: explicit future construction request and accepted source prerequisites. E
 
 ### PRM00-T01 — Reconcile baseline and freeze the free/Premium boundary
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
+
 - **Dependencies/rules:** P11-T01; accepted account/privacy/free-app baseline; PR01–PR05/PR24; BUC-PR01/07.
 - **Outcome/areas:** record exact source/runtime inventory, owned modules, existing free vehicles/history/alerts and the one-Premium bundle in product/planning docs. Record source order, deferred external gates and D-PR01 decisions.
 - **Tests first:** inspect real source/tests, compare every proposed paywall against the existing free inventory; detect any overlap with P13 account linking or basic following alerts.
 - **Acceptance/recovery:** no existing free feature moves behind payment; all requested features have one owner/task. Retain the free baseline if a proposed boundary fails review.
 
 ### PRM00-T02 — Freeze lifecycle, consent, retention and capacity policy
+
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
 
 - **Dependencies/rules:** T01; PR02–PR12/PR23; D-PR02/03/05.
 - **Outcome/areas:** publish capability/state matrix, finite stale/offline lease, opt-ins, exit/export path, snapshot/delete deadlines, cursor/device/rule/object/queue limits, backup cadence and key recovery. Review measured cost/headroom and purpose-based data inventory.
@@ -73,12 +77,16 @@ Entry: explicit future construction request and accepted source prerequisites. E
 
 ### PRM00-T03 — Freeze ledger mathematics and shared golden examples
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
+
 - **Dependencies/rules:** T01; PR13–PR20; D-PR04; BUC-PR04/05.
 - **Outcome/areas:** synthetic versioned vectors for actual totals, milli-quantity/metre precision, rounding, full/partial/gap sequences, odometer segments, mixed fuels/GNV, period bounds and weighted comparisons in `contracts/testdata/` after ownership review.
 - **Tests first:** manually derive worked full→partial→full case excluding the initial fill, zero/overflow/discount discrepancy, missing-fill/odometer, backdated correction, unequal vehicle distances and incomplete month denominators.
 - **Acceptance/recovery:** every computable value and UNKNOWN reason has a reviewed expected result; no ratio of incompatible windows or claimed realized savings. Correct vectors before implementing formulas.
 
 ### PRM00-T04 — Freeze additive APIs, dataset ownership and verification selectors
+
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
 
 - **Dependencies/rules:** T02/T03; PR06–PR12/PR20–PR25.
 - **Outcome/areas:** proposed OpenAPI request/response/error/revision/pagination contracts, module read/write ports, schema ownership and exact future verification package/fixture manifest. Define owner/session proof for every route and background action; freeze alert predicate and delivery policy.
@@ -91,12 +99,16 @@ Entry: PRM00. Exit: provider-verified capabilities and lifecycle/recovery tested
 
 ### PRM01-T01 — Pure subscription state and capability policy
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
+
 - **Dependencies/rules:** PRM00; PR01–PR05.
 - **Outcome/areas:** separate purchase lifecycle, paid-through/access windows, capability projection and free exit policy in domain/application ports; injected clock and versioned decisions.
 - **Tests first:** every provider state, canceled-but-still-paid, exact expiry boundary, unknown state, stale proof, revoked account and independent free community rights.
 - **Acceptance/recovery:** deterministic capabilities cannot grant from pending/unknown proofs or affect trust; disable paid grants while free rights stay intact.
 
 ### PRM01-T02 — Owner-bound purchase persistence and replay protection
+
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
 
 - **Dependencies/rules:** T01; PR02/03/08.
 - **Outcome/areas:** unique provider/environment/token binding, minimal protected provider references, current lifecycle revision and atomic grant/job intent in SQL/sqlc.
@@ -105,12 +117,16 @@ Entry: PRM00. Exit: provider-verified capabilities and lifecycle/recovery tested
 
 ### PRM01-T03 — Secure Play verification adapter and purchase admission
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
+
 - **Dependencies/rules:** T02; frozen current provider/package/product/account binding; PR02/03.
 - **Outcome/areas:** server-side Developer API verification, supported plan mapping, restricted credentials, timeout/rate budgets, signed owner admission and acknowledgement intent. Record dependency/license/security review before any SDK addition.
 - **Tests first:** forged/unpurchased/wrong-product/package/environment/account proof, pending purchase, timeout/5xx/redirect, response redaction and late verification after logout/deletion.
 - **Acceptance/recovery:** only verified purchases commit rights; network calls hold no DB locks. Reconciliation recovers outage/lost responses with no manual premium Boolean.
 
 ### PRM01-T04 — Acknowledgement and authenticated notification inbox
+
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
 
 - **Dependencies/rules:** T03; PR03/08; existing fenced jobs.
 - **Outcome/areas:** durable acknowledgement retries and authenticated bounded provider notification intake; deduplicated inbox requests canonical provider refresh rather than trusting event payload state.
@@ -119,12 +135,16 @@ Entry: PRM00. Exit: provider-verified capabilities and lifecycle/recovery tested
 
 ### PRM01-T05 — Renewals, replacement tokens, cancellation and revocation
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
+
 - **Dependencies/rules:** T04; PR03/04.
 - **Outcome/areas:** reconcile renewals, linked replacement purchases, refund/revocation, hold/grace/pause/expiry and fresh capability checks at paid command/job boundaries.
 - **Tests first:** old token after replacement, out-of-order events, renew versus revoke race, expiry during transaction/dispatch, account deletion and restored stale subscription rows.
 - **Acceptance/recovery:** older events cannot reinstate revoked rights; cancellation respects paid-through mapping; existing local data/free exits survive. Re-query authoritative provider state to repair disagreement.
 
 ### PRM01-T06 — Account status, restore-purchase and free exit API
+
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); live payment proof remains explicitly deferred.
 
 - **Dependencies/rules:** T05; free account proof; PR02/04/24.
 - **Outcome/areas:** owner-only capability/status API, validated purchase reattachment for the same proven account, management destination and readable outage/expiry reasons; no purchase details leak.

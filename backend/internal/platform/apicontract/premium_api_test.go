@@ -10,7 +10,7 @@ import (
 
 func TestPremiumCurrentAndPlannedContracts(t *testing.T) {
 	doc := loadSpec(t)
-	for _, path := range []string{"/v1/premium/status", "/v1/premium/purchases/verify", "/v1/premium/purchases/restore", "/v1/premium/provider-notifications"} {
+	for _, path := range []string{"/v1/premium/status", "/v1/premium/export", "/v1/premium/purchases/verify", "/v1/premium/purchases/restore", "/v1/premium/provider-notifications"} {
 		if doc.Paths.Find(path) == nil {
 			t.Fatalf("missing frozen route %s", path)
 		}

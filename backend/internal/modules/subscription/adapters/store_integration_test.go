@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
@@ -674,5 +675,111 @@ func TestProviderRefreshOutageCannotRefreshRights(t *testing.T) {
 	got, err := svc.Status(ctx, owner)
 	if err != nil || len(got.Capabilities) != 0 {
 		t.Fatal("outage granted fresh rights")
+	}
+}
+
+func TestFreeExpiredExportIsOwnedPagedAndDeletionDoesNotNeedProvider(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	for i := 0; i < 3; i++ {
+		a, err := store.Begin(ctx, attempt(t, p, fmt.Sprintf("synthetic-export-%d", i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		v := verified()
+		v.Snapshot.State = domain.Expired
+		v.Snapshot.ValidUntil = time.Now().Add(-time.Hour)
+		if err = store.Commit(ctx, a, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc := &app.Service{Store: store} // No provider, token key or paid capability needed.
+	rows, err := svc.Export(ctx, p, 2, time.Time{}, "")
+	if err != nil || len(rows) != 2 {
+		t.Fatal("free expired export refused", err)
+	}
+	second, err := svc.Export(ctx, p, 2, rows[1].VerifiedAt, rows[1].Digest)
+	if err != nil || len(second) != 1 || second[0].Digest == rows[1].Digest || second[0].Digest == rows[0].Digest {
+		t.Fatal("keyset pagination lost/repeated row", err)
+	}
+	raw, err := json.Marshal(rows)
+	if err != nil || strings.Contains(string(raw), "synthetic-export-") || strings.Contains(string(raw), rows[0].Digest) || strings.Contains(string(raw), "cipher") {
+		t.Fatal("token material leaked", err)
+	}
+	own, err := svc.Export(ctx, foreign, 100, time.Time{}, "")
+	if err != nil || len(own) != 0 {
+		t.Fatal("foreign export leak", err)
+	}
+	wrong := p
+	wrong.FamilyID = foreign.FamilyID
+	if _, err = svc.Export(ctx, wrong, 2, time.Time{}, ""); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("foreign session accepted", err)
+	}
+	status, err := svc.Status(ctx, p)
+	if err != nil || status.PaymentsConfigured || len(status.Capabilities) != 0 || !status.RetainedDataAccess {
+		t.Fatal("disabled/free exit state", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	var bytesRemain bool
+	if err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM subscription_purchases WHERE account_id=$1 AND token_cipher IS NOT NULL)", p.AccountID).Scan(&bytesRemain); err != nil || bytesRemain {
+		t.Fatal("deletion required provider", err)
+	}
+	if _, err = svc.Export(ctx, p, 2, time.Time{}, ""); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("deleted owner export accepted", err)
+	}
+}
+
+func TestRestorePurchaseSameOwnerNeverTransfersOrRecoversSession(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	codec, _ := NewTokenCodec(bytes.Repeat([]byte{4}, 32))
+	binding, _ := NewAccountBinding(bytes.Repeat([]byte{5}, 32), "test", "com.anpfuel")
+	lookups := 0
+	svc := &app.Service{Store: NewStore(pool), Tokens: codec, Environment: "test", PackageName: "com.anpfuel", AccountBinding: binding}
+	svc.Provider = verifyFunc(func(_ context.Context, r app.ProviderRequest) (app.ProviderPurchase, error) {
+		lookups++
+		if r.ExpectedAccount != binding(p.AccountID) {
+			t.Fatal("restore not bound to established owner")
+		}
+		return app.ProviderPurchase{Snapshot: verified().Snapshot}, nil
+	})
+	ctx := context.Background()
+	verify := app.Command{OperationID: newid(t), Token: "synthetic-restore-purchase", Kind: "verify"}
+	if _, err := svc.Admit(ctx, p, verify); err != nil {
+		t.Fatal(err)
+	}
+	restore := verify
+	restore.OperationID = newid(t)
+	restore.Kind = "restore"
+	got, err := svc.Admit(ctx, p, restore)
+	if err != nil || got.Replayed || len(got.Status.Capabilities) != 6 || lookups != 2 {
+		t.Fatal("same owner restore failed", err)
+	}
+	got, err = svc.Admit(ctx, p, restore)
+	if err != nil || !got.Replayed || lookups != 2 {
+		t.Fatal("restore replay called provider", err)
+	}
+	changed := restore
+	changed.Kind = "verify"
+	if _, err = svc.Admit(ctx, p, changed); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("operation kind changed", err)
+	}
+	stolen := restore
+	stolen.OperationID = newid(t)
+	if _, err = svc.Admit(ctx, foreign, stolen); !errors.Is(err, domain.ErrDenied) || lookups != 2 {
+		t.Fatal("purchase transferred across accounts", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE account_session_families SET revoked_at=clock_timestamp() WHERE id=$1", p.FamilyID); err != nil {
+		t.Fatal(err)
+	}
+	restore.OperationID = newid(t)
+	if _, err = svc.Admit(ctx, p, restore); !errors.Is(err, domain.ErrUnauthorized) || lookups != 2 {
+		t.Fatal("restore recovered revoked session", err)
 	}
 }

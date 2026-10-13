@@ -73,3 +73,17 @@ type Acknowledger interface {
 type RefreshStore interface {
 	BeginRefresh(context.Context, StoredToken, string) (Attempt, error)
 }
+
+type ExportRow struct {
+	ProductID    string       `json:"product_id"`
+	BasePlanID   string       `json:"base_plan_id"`
+	State        domain.State `json:"state"`
+	ValidUntil   *time.Time   `json:"valid_until"`
+	VerifiedAt   time.Time    `json:"verified_at"`
+	Retired      bool         `json:"retired"`
+	Acknowledged bool         `json:"acknowledged"`
+	Digest       string       `json:"-"`
+}
+type ExportStore interface {
+	ExportRows(context.Context, Principal, int, time.Time, string) ([]ExportRow, error)
+}
