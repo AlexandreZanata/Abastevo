@@ -43,3 +43,7 @@ LOCAL_DONE / INTEGRATION_PENDING: extended real prepared publication→anonymous
 ## PRM18-T01
 
 LOCAL_DONE / INTEGRATION_PENDING: RED no-GPS regression failed with capture-ineligible before change. GREEN normal capture issues photo-capture-community-v2 from mandatory active canonical-station port, without geometry; optional claims still verified against forgery. HTTP accepts absent location, rejects malformed UUID/body; append-only 000091 admits v2 while retaining v1/debug. Camera/24h deadlines unchanged. Application/HTTP race suites PASS (1.031s/1.030s); capture real-PostGIS ownership/replay/concurrency/address-only/legacy/unknown-policy/inactive-station/migration-replay campaign PASS (4.233s). Fixture follow-up correctly restored hidden owner/key fields when seeding legacy receipts; no production rule weakened.
+
+## PRM18-T02
+
+LOCAL_DONE / INTEGRATION_PENDING: legacy/v2 receipt-use matrix checks wrong owner/key/station/policy/session, immutable capture instant, expiry and future timestamps for both policies. Added forged optional claim and missing station-port refusal; absent location remains valid. Application/evidence application race suites PASS (1.053s/1.078s), preserving reservation/body/owner/media-capacity gates and all existing binding/replay behavior. Downstream geometric trust is replaced in PRM20 before Android consumption.
