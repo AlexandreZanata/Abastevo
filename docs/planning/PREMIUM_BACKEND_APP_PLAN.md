@@ -434,6 +434,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T01 — Pure rule model and schedule semantics
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM00; PR21/22.
 - **Outcome/areas:** bounded predicates/AND/OR, target station/city/fuel/unit/condition, source-aware threshold/change baseline, days/window/timezone/quiet hours/cooldown.
 - **Tests first:** invalid/nested predicates, incompatible sources/conditions, midnight windows, DST folds/gaps, missing comparison baseline and timezone change.

@@ -199,3 +199,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop f17b873. Owner-only POST /v1/ledger/reports/build with paid analysis generation, free POST /v1/ledger/reports/get for retained reads, and paid POST /v1/ledger/reports/csv with bounded formula-safe streaming and no stored artifacts. Free raw export stays on the records route. Real HTTP totals match SQL ledger aggregates via shared BuildReport. Unit/race PASS ledger http with paid build, free get, expired build and CSV denial, unsigned refusal, bad-request validation, CSV exclusion and escaper vectors. OpenAPI report request and report schemas plus two goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration. No merge/deploy/mobile edit.
 Next PRM07-T01. Real payments OFF.
+
+## PRM07-T01 — Pure rule model and schedule semantics
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop e89ab020. Frozen alerts domain with bounded threshold and change predicates, explicit AND/OR over one to three predicates, station or city targets, source-aware baselines and deterministic reason codes. Schedules enforce delivery days, wrapping midnight windows, IANA timezones, quiet hours and cooldowns with DST-safe local evaluation and no exact-clock promise. Unit/race PASS alerts domain with predicate bounds, nesting refusal, midnight windows, DST folds and gaps, source and condition isolation, missing baselines, cooldowns, quiet hours and timezone changes. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
+Next PRM07-T02. Real payments OFF.
