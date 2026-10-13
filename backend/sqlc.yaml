@@ -241,6 +241,7 @@ sql:
       - db/migrations/000078_cloud_records.sql
       - db/migrations/000079_cloud_portable.sql
       - db/migrations/000085_ledger_records.sql
+      - db/migrations/000086_ledger_odometer.sql
     gen:
       go:
         package: ledger

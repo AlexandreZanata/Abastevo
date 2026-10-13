@@ -60,30 +60,30 @@ const (
 )
 
 type Refuel struct {
-	ID             string
-	VehicleID      string
-	OccurredAt     time.Time
-	Timezone       string
-	Fuel           kernel.Product
-	Unit           kernel.Unit
-	QuantityMilli  int64
-	TotalCentavos  int64
-	UnitPriceMilli int64
-	OdometerMetres *int64
-	Fill           Fill
-	StationID      string
-	Note           string
+	ID             string         `json:"id"`
+	VehicleID      string         `json:"vehicle_id"`
+	OccurredAt     time.Time      `json:"occurred_at"`
+	Timezone       string         `json:"timezone"`
+	Fuel           kernel.Product `json:"fuel"`
+	Unit           kernel.Unit    `json:"unit"`
+	QuantityMilli  int64          `json:"quantity_milli"`
+	TotalCentavos  int64          `json:"total_centavos"`
+	UnitPriceMilli int64          `json:"unit_price_milli,omitempty"`
+	OdometerMetres *int64         `json:"odometer_metres"`
+	Fill           Fill           `json:"fill"`
+	StationID      string         `json:"station_id,omitempty"`
+	Note           string         `json:"note,omitempty"`
 }
 
 type Expense struct {
-	ID             string
-	VehicleID      string
-	OccurredAt     time.Time
-	Timezone       string
-	AmountCentavos int64
-	Category       Category
-	OdometerMetres *int64
-	Note           string
+	ID             string   `json:"id"`
+	VehicleID      string   `json:"vehicle_id"`
+	OccurredAt     time.Time `json:"occurred_at"`
+	Timezone       string   `json:"timezone"`
+	AmountCentavos int64    `json:"amount_centavos"`
+	Category       Category `json:"category"`
+	OdometerMetres *int64   `json:"odometer_metres"`
+	Note           string   `json:"note,omitempty"`
 }
 
 func validID(s string) bool {

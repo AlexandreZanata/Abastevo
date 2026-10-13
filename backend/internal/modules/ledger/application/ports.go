@@ -35,3 +35,8 @@ type BatchResult struct {
 type LedgerStore interface {
 	Apply(ctx context.Context, accountID string, batch Batch) (BatchResult, error)
 }
+
+type OdometerStore interface {
+	OpenSegment(ctx context.Context, accountID, vehicleID, reason string) (int64, error)
+	DeclareGap(ctx context.Context, accountID, vehicleID, gapID, afterID, beforeID, note string) (string, error)
+}

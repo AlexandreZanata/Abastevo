@@ -27,10 +27,10 @@ func uid(s string) pgtype.UUID { var id pgtype.UUID; _ = id.Scan(s); return id }
 
 func rollback(tx pgx.Tx) { _ = tx.Rollback(context.Background()) }
 
-func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurredAt time.Time, canonical []byte, err error) {
+func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurredAt time.Time, odometer *int64, canonical []byte, err error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
-		return "", time.Time{}, nil, errInvalid()
+		return "", time.Time{}, nil, nil, errInvalid()
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -51,22 +51,22 @@ func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurr
 			Note           string `json:"note"`
 		}
 		if err := dec.Decode(&wire); err != nil {
-			return "", time.Time{}, nil, errInvalid()
+			return "", time.Time{}, nil, nil, errInvalid()
 		}
 		if _, err := dec.Token(); err == nil {
-			return "", time.Time{}, nil, errInvalid()
+			return "", time.Time{}, nil, nil, errInvalid()
 		}
 		at, err := time.Parse(time.RFC3339, wire.OccurredAt)
 		if err != nil {
-			return "", time.Time{}, nil, errInvalid()
+			return "", time.Time{}, nil, nil, errInvalid()
 		}
 		r := ledgerdomain.Refuel{ID: wire.ID, VehicleID: wire.VehicleID, OccurredAt: at, Timezone: wire.Timezone, Fuel: kernelProduct(wire.Fuel), Unit: kernelUnit(wire.Unit), QuantityMilli: wire.QuantityMilli, TotalCentavos: wire.TotalCentavos, UnitPriceMilli: wire.UnitPriceMilli, OdometerMetres: wire.OdometerMetres, Fill: ledgerdomain.Fill(wire.Fill), StationID: wire.StationID, Note: wire.Note}
 		normalized, err := ledgerdomain.NormalizeRefuel(r)
 		if err != nil {
-			return "", time.Time{}, nil, err
+			return "", time.Time{}, nil, nil, err
 		}
 		canonical, _ = json.Marshal(normalized)
-		return normalized.VehicleID, normalized.OccurredAt, canonical, nil
+		return normalized.VehicleID, normalized.OccurredAt, normalized.OdometerMetres, canonical, nil
 	}
 	var wire struct {
 		ID             string `json:"id"`
@@ -79,22 +79,22 @@ func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurr
 		Note           string `json:"note"`
 	}
 	if err := dec.Decode(&wire); err != nil {
-		return "", time.Time{}, nil, errInvalid()
+		return "", time.Time{}, nil, nil, errInvalid()
 	}
 	if _, err := dec.Token(); err == nil {
-		return "", time.Time{}, nil, errInvalid()
+		return "", time.Time{}, nil, nil, errInvalid()
 	}
 	at, err := time.Parse(time.RFC3339, wire.OccurredAt)
 	if err != nil {
-		return "", time.Time{}, nil, errInvalid()
+		return "", time.Time{}, nil, nil, errInvalid()
 	}
 	e := ledgerdomain.Expense{ID: wire.ID, VehicleID: wire.VehicleID, OccurredAt: at, Timezone: wire.Timezone, AmountCentavos: wire.AmountCentavos, Category: ledgerdomain.Category(wire.Category), OdometerMetres: wire.OdometerMetres, Note: wire.Note}
 	normalized, err := ledgerdomain.NormalizeExpense(e)
 	if err != nil {
-		return "", time.Time{}, nil, err
+		return "", time.Time{}, nil, nil, err
 	}
 	canonical, _ = json.Marshal(normalized)
-	return normalized.VehicleID, normalized.OccurredAt, canonical, nil
+	return normalized.VehicleID, normalized.OccurredAt, normalized.OdometerMetres, canonical, nil
 }
 
 func (s *Store) Apply(ctx context.Context, accountID string, batch application.Batch) (application.BatchResult, error) {
@@ -172,10 +172,11 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 func (s *Store) applyOne(ctx context.Context, query *q.Queries, accountID string, c application.Command) (int64, error) {
 	var vehicleID string
 	var occurredAt time.Time
+	var odometer *int64
 	var canonical []byte
 	if !c.Delete && !c.Void {
 		var err error
-		vehicleID, occurredAt, canonical, err = parsePayload(c.Dataset, c.Payload)
+		vehicleID, occurredAt, odometer, canonical, err = parsePayload(c.Dataset, c.Payload)
 		if err != nil {
 			if errors.Is(err, errInvalidSentinel()) {
 				return 0, errInvalid()
@@ -211,7 +212,16 @@ func (s *Store) applyOne(ctx context.Context, query *q.Queries, accountID string
 			}
 			return revision, nil
 		}
-		row, err := query.SaveLedgerRecord(ctx, q.SaveLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID), VehicleID: uid(vehicleID), OccurredAt: pgTimestamptz(occurredAt), Payload: canonical})
+		if odometer != nil {
+			floor, err := query.MaxSegmentOdometerExcluding(ctx, q.MaxSegmentOdometerExcludingParams{AccountID: uid(accountID), VehicleID: uid(vehicleID), SegmentNo: old.SegmentNo, ID: uid(c.ID)})
+			if err != nil {
+				return 0, errUnavailable()
+			}
+			if *odometer < floor {
+				return 0, errInvalid()
+			}
+		}
+		row, err := query.SaveLedgerRecord(ctx, q.SaveLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID), VehicleID: uid(vehicleID), OccurredAt: pgTimestamptz(occurredAt), Payload: canonical, SegmentNo: old.SegmentNo})
 		if err != nil {
 			return 0, errUnavailable()
 		}
@@ -220,7 +230,20 @@ func (s *Store) applyOne(ctx context.Context, query *q.Queries, accountID string
 		if c.ExpectedRevision != 0 || c.Delete || c.Void {
 			return 0, errConflict()
 		}
-		row, err := query.SaveLedgerRecord(ctx, q.SaveLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID), VehicleID: uid(vehicleID), OccurredAt: pgTimestamptz(occurredAt), Payload: canonical})
+		segment, err := query.MaxSegmentNo(ctx, q.MaxSegmentNoParams{AccountID: uid(accountID), VehicleID: uid(vehicleID)})
+		if err != nil {
+			return 0, errUnavailable()
+		}
+		if odometer != nil {
+			floor, err := query.MaxSegmentOdometer(ctx, q.MaxSegmentOdometerParams{AccountID: uid(accountID), VehicleID: uid(vehicleID), SegmentNo: segment})
+			if err != nil {
+				return 0, errUnavailable()
+			}
+			if *odometer < floor {
+				return 0, errInvalid()
+			}
+		}
+		row, err := query.SaveLedgerRecord(ctx, q.SaveLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID), VehicleID: uid(vehicleID), OccurredAt: pgTimestamptz(occurredAt), Payload: canonical, SegmentNo: segment})
 		if err != nil {
 			return 0, errUnavailable()
 		}

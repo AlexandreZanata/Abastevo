@@ -136,3 +136,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 0a2449f. Append-only 000085 adds ledger_records with period, vehicle-period and live indexes plus ledger_operations receipts; sqlc ledger package vet/diff clean. Conditional Apply with 1..50 operation and 64 KiB batch bounds, operation-ID replay, revision guards and void and delete intents; archived vehicles stay writable, foreign vehicles refused, and no fact reaches public community tables. Real PostGIS PASS (ledger suites): foreign and archived handling with replay and divergent conflict, simultaneous-edit single winner, backdated acceptance, full-batch rollback, max-value bounds, indexed period EXPLAIN and community-table isolation. Unit/race PASS ledger domain. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Auth rides PRM05-T04. No merge/deploy/mobile edit.
 Next PRM05-T03. Real payments OFF.
+
+## PRM05-T03 — Odometer segments, gaps and vehicle lifecycle
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop c24af7d. Append-only 000086 adds ledger_segments and ledger_gaps plus segment_no on ledger_records with per-segment odometer indexes; sqlc MaxSegmentNo, OpenSegment, MaxSegmentOdometer, DeclareGap vet/diff clean. Segment-scoped monotonic odometers allow identical readings, refuse regressions and cross-segment edits, and reopen UNKNOWN boundaries on reset or replacement. Gaps declare informational incompleteness without blocking inserts. Histories survive vehicle archive with no cascade delete; cascades ride PRM05-T05 preview and erasure. Real PostGIS PASS (odometer suites): regression refusal with identical acceptance, reset with new-segment monotonicity, cross-segment edit refusal, gap declaration with correction, archive preservation with continued writes, concurrent odometer single winner, and foreign or dangling reference refusal. Unit/race PASS ledger domain. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM05-T04. Real payments OFF.

@@ -345,6 +345,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T03 — Odometer segments, gaps and vehicle lifecycle
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; PR09/15/16.
 - **Outcome/areas:** explicit odometer reset/replacement segments, missing-fill declarations and archive/cascade policy for vehicle removal.
 - **Tests first:** regression/identical odometers, reset between fills, edit crossing segments, missing fill later corrected, vehicle deletion with history and concurrent edits.

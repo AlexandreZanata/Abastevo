@@ -54,6 +54,16 @@ type CloudRecord struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type LedgerGap struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	GapID     pgtype.UUID        `json:"gap_id"`
+	VehicleID pgtype.UUID        `json:"vehicle_id"`
+	AfterID   pgtype.UUID        `json:"after_id"`
+	BeforeID  pgtype.UUID        `json:"before_id"`
+	Note      string             `json:"note"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type LedgerOperation struct {
 	AccountID   pgtype.UUID        `json:"account_id"`
 	OperationID pgtype.UUID        `json:"operation_id"`
@@ -73,4 +83,13 @@ type LedgerRecord struct {
 	Voided     bool               `json:"voided"`
 	Deleted    bool               `json:"deleted"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	SegmentNo  int64              `json:"segment_no"`
+}
+
+type LedgerSegment struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	VehicleID pgtype.UUID        `json:"vehicle_id"`
+	SegmentNo int64              `json:"segment_no"`
+	Reason    string             `json:"reason"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }

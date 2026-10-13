@@ -27,6 +27,33 @@ func (q *Queries) CountLedgerDataset(ctx context.Context, arg CountLedgerDataset
 	return count, err
 }
 
+const declareGap = `-- name: DeclareGap :one
+INSERT INTO ledger_gaps(account_id,gap_id,vehicle_id,after_id,before_id,note) VALUES($1,$2,$3,$4,$5,$6) RETURNING gap_id
+`
+
+type DeclareGapParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	GapID     pgtype.UUID `json:"gap_id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+	AfterID   pgtype.UUID `json:"after_id"`
+	BeforeID  pgtype.UUID `json:"before_id"`
+	Note      string      `json:"note"`
+}
+
+func (q *Queries) DeclareGap(ctx context.Context, arg DeclareGapParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, declareGap,
+		arg.AccountID,
+		arg.GapID,
+		arg.VehicleID,
+		arg.AfterID,
+		arg.BeforeID,
+		arg.Note,
+	)
+	var gap_id pgtype.UUID
+	err := row.Scan(&gap_id)
+	return gap_id, err
+}
+
 const deleteLedgerRecord = `-- name: DeleteLedgerRecord :one
 UPDATE ledger_records SET payload='{}',deleted=true,revision=revision+1,updated_at=clock_timestamp()
 WHERE account_id=$1 AND dataset=$2 AND id=$3 AND NOT deleted RETURNING revision
@@ -67,7 +94,7 @@ func (q *Queries) GetLedgerOperation(ctx context.Context, arg GetLedgerOperation
 }
 
 const getLedgerRecord = `-- name: GetLedgerRecord :one
-SELECT dataset,id,vehicle_id,occurred_at,revision,voided,deleted,payload FROM ledger_records
+SELECT dataset,id,vehicle_id,occurred_at,revision,voided,deleted,payload,segment_no FROM ledger_records
 WHERE account_id=$1 AND dataset=$2 AND id=$3 FOR UPDATE
 `
 
@@ -86,6 +113,7 @@ type GetLedgerRecordRow struct {
 	Voided     bool               `json:"voided"`
 	Deleted    bool               `json:"deleted"`
 	Payload    []byte             `json:"payload"`
+	SegmentNo  int64              `json:"segment_no"`
 }
 
 func (q *Queries) GetLedgerRecord(ctx context.Context, arg GetLedgerRecordParams) (GetLedgerRecordRow, error) {
@@ -100,6 +128,7 @@ func (q *Queries) GetLedgerRecord(ctx context.Context, arg GetLedgerRecordParams
 		&i.Voided,
 		&i.Deleted,
 		&i.Payload,
+		&i.SegmentNo,
 	)
 	return i, err
 }
@@ -120,6 +149,85 @@ func (q *Queries) LedgerVehicle(ctx context.Context, arg LedgerVehicleParams) (p
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const maxSegmentNo = `-- name: MaxSegmentNo :one
+SELECT COALESCE(MAX(segment_no),1)::bigint FROM ledger_segments WHERE account_id=$1 AND vehicle_id=$2
+`
+
+type MaxSegmentNoParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+}
+
+func (q *Queries) MaxSegmentNo(ctx context.Context, arg MaxSegmentNoParams) (int64, error) {
+	row := q.db.QueryRow(ctx, maxSegmentNo, arg.AccountID, arg.VehicleID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const maxSegmentOdometer = `-- name: MaxSegmentOdometer :one
+SELECT COALESCE(MAX((payload->>'odometer_metres')::bigint),-1)::bigint FROM ledger_records WHERE account_id=$1 AND vehicle_id=$2 AND segment_no=$3 AND NOT deleted AND payload->>'odometer_metres' IS NOT NULL
+`
+
+type MaxSegmentOdometerParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+	SegmentNo int64       `json:"segment_no"`
+}
+
+func (q *Queries) MaxSegmentOdometer(ctx context.Context, arg MaxSegmentOdometerParams) (int64, error) {
+	row := q.db.QueryRow(ctx, maxSegmentOdometer, arg.AccountID, arg.VehicleID, arg.SegmentNo)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const maxSegmentOdometerExcluding = `-- name: MaxSegmentOdometerExcluding :one
+SELECT COALESCE(MAX((payload->>'odometer_metres')::bigint),-1)::bigint FROM ledger_records WHERE account_id=$1 AND vehicle_id=$2 AND segment_no=$3 AND id!=$4 AND NOT deleted AND payload->>'odometer_metres' IS NOT NULL
+`
+
+type MaxSegmentOdometerExcludingParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+	SegmentNo int64       `json:"segment_no"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) MaxSegmentOdometerExcluding(ctx context.Context, arg MaxSegmentOdometerExcludingParams) (int64, error) {
+	row := q.db.QueryRow(ctx, maxSegmentOdometerExcluding,
+		arg.AccountID,
+		arg.VehicleID,
+		arg.SegmentNo,
+		arg.ID,
+	)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const openSegment = `-- name: OpenSegment :one
+INSERT INTO ledger_segments(account_id,vehicle_id,segment_no,reason) VALUES($1,$2,$3,$4) RETURNING segment_no
+`
+
+type OpenSegmentParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+	SegmentNo int64       `json:"segment_no"`
+	Reason    string      `json:"reason"`
+}
+
+func (q *Queries) OpenSegment(ctx context.Context, arg OpenSegmentParams) (int64, error) {
+	row := q.db.QueryRow(ctx, openSegment,
+		arg.AccountID,
+		arg.VehicleID,
+		arg.SegmentNo,
+		arg.Reason,
+	)
+	var segment_no int64
+	err := row.Scan(&segment_no)
+	return segment_no, err
 }
 
 const saveLedgerOperation = `-- name: SaveLedgerOperation :exec
@@ -144,8 +252,8 @@ func (q *Queries) SaveLedgerOperation(ctx context.Context, arg SaveLedgerOperati
 }
 
 const saveLedgerRecord = `-- name: SaveLedgerRecord :one
-INSERT INTO ledger_records(account_id,dataset,id,vehicle_id,occurred_at,payload)
-VALUES($1,$2,$3,$4,$5,$6)
+INSERT INTO ledger_records(account_id,dataset,id,vehicle_id,occurred_at,payload,segment_no)
+VALUES($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(account_id,dataset,id) DO UPDATE SET vehicle_id=EXCLUDED.vehicle_id,occurred_at=EXCLUDED.occurred_at,payload=EXCLUDED.payload,revision=ledger_records.revision+1,updated_at=clock_timestamp()
 WHERE NOT ledger_records.deleted
 RETURNING dataset,id,revision,voided,deleted,payload
@@ -158,6 +266,7 @@ type SaveLedgerRecordParams struct {
 	VehicleID  pgtype.UUID        `json:"vehicle_id"`
 	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
 	Payload    []byte             `json:"payload"`
+	SegmentNo  int64              `json:"segment_no"`
 }
 
 type SaveLedgerRecordRow struct {
@@ -177,6 +286,7 @@ func (q *Queries) SaveLedgerRecord(ctx context.Context, arg SaveLedgerRecordPara
 		arg.VehicleID,
 		arg.OccurredAt,
 		arg.Payload,
+		arg.SegmentNo,
 	)
 	var i SaveLedgerRecordRow
 	err := row.Scan(
