@@ -2,6 +2,8 @@ package com.anpfuel.app.ui.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -126,6 +128,7 @@ fun MyContributionsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ContributionsHero(
     state: ContributionStatusUiState,
@@ -154,15 +157,30 @@ private fun ContributionsHero(
             if (state is ContributionStatusUiState.Content) {
                 val queued = state.items.count { it.state is ContributionState.Queued }
                 val cancelled = state.items.count { it.state == null }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     AssistChip(onClick = {}, label = {
-                        Text(stringResource(R.string.contributions_summary_total, state.items.size))
+                        Text(
+                            stringResource(R.string.contributions_summary_total, state.items.size),
+                            maxLines = 1,
+                            softWrap = false,
+                        )
                     }, leadingIcon = { Icon(Icons.Default.History, null, Modifier.size(16.dp)) })
                     AssistChip(onClick = {}, label = {
-                        Text(stringResource(R.string.contributions_summary_queued, queued))
+                        Text(
+                            stringResource(R.string.contributions_summary_queued, queued),
+                            maxLines = 1,
+                            softWrap = false,
+                        )
                     }, leadingIcon = { Icon(Icons.Default.CloudUpload, null, Modifier.size(16.dp)) })
                     if (cancelled > 0) AssistChip(onClick = {}, label = {
-                        Text(stringResource(R.string.contributions_summary_cancelled, cancelled))
+                        Text(
+                            stringResource(R.string.contributions_summary_cancelled, cancelled),
+                            maxLines = 1,
+                            softWrap = false,
+                        )
                     })
                 }
             }
