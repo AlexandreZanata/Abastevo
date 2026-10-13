@@ -38,6 +38,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -582,6 +583,22 @@ class CaptureOcrViewModelTest {
         assertTrue(vm.fuelAmounts.value.isEmpty())
         assertTrue(vm.state.value is CaptureOcrUiState.Cancelled)
         io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
+
+    @Test fun `normal nominal lookup selects an address-only station without developer mode`() = runTest(dispatcher) {
+        val vm=viewModel(true,true)
+        assertFalse(vm.previewEnabled.value)
+        vm.loadStationSearch()
+        advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } } }
+        vm.pickPreviewStation("123e4567-e89b-12d3-a456-426614174000")
+        assertEquals("123e4567-e89b-12d3-a456-426614174000",vm.pickedStationId.value)
+        assertNull(vm.selectedNominalStation.value!!.latitude)
+        assertFalse(vm.previewEnabled.value)
+        vm.searchPreviewStation("x")
+        advanceUntilIdle()
+        assertNull(vm.pickedStationId.value)
+        assertTrue(vm.previewStations.value.isEmpty())
     }
 
 }

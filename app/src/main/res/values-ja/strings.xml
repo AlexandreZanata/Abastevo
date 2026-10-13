@@ -789,4 +789,9 @@
     <string name="privacy_rights_body">学習への同意なしに、アクセス、訂正、撤回、削除を依頼できます。郵送先：ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil。宛名：Privacidade — Abastevo。パスワードや秘密鍵は含めないでください。</string>
     <string name="stations_list_summary">一覧の概要</string>
     <string name="stations_summary_order">並び順: %1$s</string>
+    <string name="capture_choose_city">都市を選択</string>
+    <string name="capture_change_station">給油所を変更</string>
+    <string name="capture_station_name">給油所名</string>
+    <string name="capture_search_failed">検索できませんでした。接続を確認して再試行してください。</string>
+    <string name="capture_search_empty">給油所が見つかりません。</string>
 </resources>

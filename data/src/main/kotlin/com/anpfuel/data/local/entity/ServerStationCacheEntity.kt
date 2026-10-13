@@ -26,6 +26,7 @@ data class ServerStationCacheEntity(
     @ColumnInfo(name = "current_revision_id") val currentRevisionId: String?,
     @ColumnInfo(name = "position") val position: Int,
     @ColumnInfo(name = "saved_at_millis") val savedAtMillis: Long,
+    @ColumnInfo(name = "address_json", defaultValue = "'{}'") val addressJson: String = "{}",
 )
 
 /**

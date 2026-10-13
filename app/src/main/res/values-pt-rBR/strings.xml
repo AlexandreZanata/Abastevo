@@ -802,4 +802,9 @@
     <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
     <string name="stations_list_summary">Resumo da lista</string>
     <string name="stations_summary_order">Ordenação: %1$s</string>
+    <string name="capture_choose_city">Escolher cidade</string>
+    <string name="capture_change_station">Trocar posto</string>
+    <string name="capture_station_name">Nome do posto</string>
+    <string name="capture_search_failed">Não foi possível buscar os postos. Verifique a conexão e tente novamente.</string>
+    <string name="capture_search_empty">Nenhum posto encontrado.</string>
 </resources>

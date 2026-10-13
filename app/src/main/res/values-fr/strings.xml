@@ -789,4 +789,9 @@
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">Résumé de la liste</string>
     <string name="stations_summary_order">Tri : %1$s</string>
+    <string name="capture_choose_city">Choisir une ville</string>
+    <string name="capture_change_station">Changer de station</string>
+    <string name="capture_station_name">Nom de la station</string>
+    <string name="capture_search_failed">Recherche impossible. Vérifiez la connexion et réessayez.</string>
+    <string name="capture_search_empty">Aucune station trouvée.</string>
 </resources>

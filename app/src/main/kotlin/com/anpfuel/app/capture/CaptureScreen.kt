@@ -84,7 +84,7 @@ import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
 
 /**
- * Photo-contribution screen: camera opens only inside the station area,
+ * Photo-contribution screen: explicit nominal station selection,
  * then the contributor reviews a large zoomable photo, crops to the
  * price board, and fills one row per fuel (blanks are not sent, crossed
  * rows are hidden). Payment conditions are intentionally not collected:
@@ -99,6 +99,7 @@ fun CaptureScreen(
     stationId: String? = null,
     fuelProductWire: String? = null,
     onReturnCommunity: () -> Unit = onNavigateBack,
+    onChooseCity: () -> Unit = onNavigateBack,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previewEnabled by viewModel.previewEnabled.collectAsStateWithLifecycle()
@@ -183,7 +184,7 @@ fun CaptureScreen(
         if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
             viewModel.rememberReviewUri(null)
         }
-        if (!previewEnabled && reviewPhotoUri == null && viewModel.pendingUri() == null) locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+        if (!previewEnabled && reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
     }
     AnpScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -252,21 +253,8 @@ fun CaptureScreen(
                                 modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
                             if (gateBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                             photoRefused?.let { Text(stringResource(R.string.capture_recognition_unavailable)) }
-                        } else StationGateContent(
-                            targetStationId = target?.stationId,
-                            nearby = nearby,
-                            nearbyLoading = nearbyLoading,
-                            nearbyFailed = nearbyFailed,
-                            locationDenied = locationDenied,
-                            pickedStationId = pickedStationId,
-                            distanceMeters = distance,
-                            insideArea = inside,
-                            photoRefused = photoRefused,
-                            gateBusy = gateBusy,
-                            gateFailure = gateFailure,
-                            onPickStation = viewModel::pickStation,
-                            onTakePhoto = requestCamera,
-                        )
+                        } else NominalStationPicker(viewModel, requestCamera, onChooseCity)
+
                     } else {
                         PhotoReviewContent(
                             photoUri = photoUri,
@@ -819,5 +807,48 @@ private fun cropToFrame(
         out.toByteArray()
     } catch (_: Exception) {
         null
+    }
+}
+
+/** Canonical nominal selection; station geometry is optional enrichment. */
+@Composable
+private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () -> Unit, onChooseCity: () -> Unit) {
+    val city by viewModel.previewCity.collectAsStateWithLifecycle()
+    val query by viewModel.previewQuery.collectAsStateWithLifecycle()
+    val stations by viewModel.previewStations.collectAsStateWithLifecycle()
+    val selected by viewModel.selectedNominalStation.collectAsStateWithLifecycle()
+    val loading by viewModel.previewSearchBusy.collectAsStateWithLifecycle()
+    val failed by viewModel.previewSearchFailed.collectAsStateWithLifecycle()
+    val busy by viewModel.gateBusy.collectAsStateWithLifecycle()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleMedium)
+        city?.let { Text("${it.name} · ${it.state.abbreviation}") }
+        TextButton(onClick = onChooseCity, enabled = !busy) { Text(stringResource(R.string.capture_choose_city)) }
+        if (selected != null) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(selected!!.displayName, style = MaterialTheme.typography.titleMedium)
+                    Text(selected!!.addressLabel.ifBlank { selected!!.cnpjNormalized.orEmpty() })
+                    TextButton(onClick = viewModel::changeNominalStation, enabled = !busy) { Text(stringResource(R.string.capture_change_station)) }
+                }
+            }
+            Button(onClick = onCamera, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
+        } else {
+            OutlinedTextField(value = query, onValueChange = viewModel::searchPreviewStation,
+                label = { Text(stringResource(R.string.capture_station_name)) }, singleLine = true,
+                enabled = city != null && !busy, modifier = Modifier.fillMaxWidth())
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (failed) Text(stringResource(R.string.capture_search_failed), color = MaterialTheme.colorScheme.error)
+            if (city != null && !loading && !failed && stations.isEmpty() && query.trim().length != 1) Text(stringResource(R.string.capture_search_empty))
+            stations.forEach { station ->
+                OutlinedButton(onClick = { viewModel.pickPreviewStation(station.stationId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(station.displayName)
+                        Text(station.addressLabel.ifBlank { station.cnpjNormalized.orEmpty() }, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     }
 }

@@ -29,6 +29,7 @@ class DirectoryStationRoomCacheTest {
         municipalityCode = "3550308",
         state = "SP",
         currentRevisionId = null,
+        address = mapOf("street" to "Synthetic Street"),
     )
 
     private fun entity() = ServerStationCacheEntity(
@@ -43,6 +44,7 @@ class DirectoryStationRoomCacheTest {
         currentRevisionId = null,
         position = 0,
         savedAtMillis = 1_000_000L,
+        addressJson = "{\"street\":\"Synthetic Street\"}",
     )
 
     @Test
@@ -57,6 +59,7 @@ class DirectoryStationRoomCacheTest {
         assertEquals(1, saved.captured.size)
         assertEquals(0, saved.captured.first().position)
         assertEquals(-23.55, saved.captured.first().latitude)
+        assertEquals("Synthetic Street",org.json.JSONObject(saved.captured.first().addressJson).getString("street"))
     }
 
     @Test

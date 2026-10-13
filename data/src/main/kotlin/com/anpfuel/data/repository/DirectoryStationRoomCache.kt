@@ -79,6 +79,7 @@ class DirectoryStationRoomCache @Inject constructor(
         currentRevisionId = currentRevisionId,
         position = position,
         savedAtMillis = System.currentTimeMillis(),
+        addressJson = org.json.JSONObject(address).toString(),
     )
 
     private fun ServerStationCacheEntity.toDomain() = ServerStation.create(
@@ -91,5 +92,6 @@ class DirectoryStationRoomCache @Inject constructor(
         municipalityCode = municipalityCode,
         state = state,
         currentRevisionId = currentRevisionId,
+        address = org.json.JSONObject(addressJson).let { doc -> doc.keys().asSequence().associateWith { doc.getString(it) } },
     )
 }
