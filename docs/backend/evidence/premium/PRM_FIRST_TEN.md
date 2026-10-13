@@ -50,3 +50,14 @@ Validation: PASS
 RED: ACTIVE/CANCELED/GRACE could not grant the requested six capabilities. GREEN: deterministic provider state mapping, paid-through/grace, exclusive expiry/900s freshness, future/unverified proof refusal, inactive owner/retired chain denial, free held-data access and independent result slices. Typed application principal/provider/store/token-codec ports contain no client premium Boolean or community dependency. No runtime provider is wired.
 
 Commands: go test -race -count=1 ./internal/modules/subscription/domain; go vet and GOTOOLCHAIN=go1.27.1 staticcheck on that package. Passed. Application ports compile in the next owning persistence task; no application behavior is claimed here. Signed/owner persistence follows in PRM01-T02. PR131 is draft; original dev untouched.
+
+## PRM01-T02 — Owned durable purchase persistence
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+
+RED: actual PostGIS had no subscription persistence. GREEN: append-only 000075 above known dev reservations; sqlc owner/session/key joins, per-account serialization, token verification generations, bounded pending/hourly admissions, immutable operation payloads, unique purchase ownership, encrypted provider token envelopes and atomic digest-only acknowledgement intent. Account deletion atomically destroys pending/purchased token bytes and retires grants, even without worker execution. No provider/key is configured in production.
+
+Real PostGIS race suite passed: same-token 12-way single winner, distinct-token 12-way exactly-two pending ceiling, exact/divergent replay, foreign owner/session, revoked key/session/deleted owner during commit, stale generation refusal, injected job-insert rollback, deleted-token purge, empty/previous-schema upgrade/replay, and actual owner status EXPLAIN over 10k foreign purchases uses subscription_purchases_owner_idx. Standard AES-GCM tests cover random nonce/AAD/tamper/weak-key refusal.
+
+Commands: ANPFUEL_TEST_DATABASE_URL=(exclusive loopback disposable DSN) go test -race -count=1 -tags=integration ./internal/modules/subscription/adapters; affected go vet/staticcheck; sqlc vet/diff; scoped secret/diff check. Passed. No shared DB/VPS/mobile mutation. Next PRM01-T03.

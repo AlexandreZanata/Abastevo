@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Principal struct{ AccountID, FamilyID, ContributorID string }
+type Principal struct{ AccountID, FamilyID, ContributorID, KeyID string }
 type Command struct{ OperationID, Token, Kind string }
 type Receipt struct {
 	OperationID string        `json:"operation_id"`
@@ -20,7 +20,7 @@ type Attempt struct {
 	Generation                                                 int64
 	CipherToken                                                []byte
 	Replay                                                     bool
-	Result                                                     string
+	Result, Kind                                               string
 	Background                                                 bool
 }
 type VerifiedPurchase struct {
