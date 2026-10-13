@@ -79,3 +79,29 @@ type ReadStore interface {
 	Devices(context.Context, Principal, int, string) ([]Device, error)
 	Erase(context.Context, Principal, string, string) (int64, error)
 }
+
+type Position struct {
+	Version         int64 `json:"version"`
+	Epoch           int64 `json:"epoch"`
+	ConsentRevision int64 `json:"consent_revision"`
+	After           int64 `json:"after"`
+	Through         int64 `json:"through"`
+}
+type Change struct {
+	Sequence int64           `json:"sequence"`
+	Epoch    int64           `json:"epoch"`
+	Dataset  string          `json:"dataset"`
+	ID       string          `json:"id"`
+	Revision int64           `json:"revision"`
+	Deleted  bool            `json:"deleted"`
+	Payload  json.RawMessage `json:"payload"`
+}
+type Feed struct {
+	Changes         []Change `json:"changes"`
+	Through         int64    `json:"through"`
+	Epoch           int64    `json:"epoch"`
+	ConsentRevision int64    `json:"consent_revision"`
+}
+type PullStore interface {
+	Pull(context.Context, Principal, Position, int) (Feed, error)
+}

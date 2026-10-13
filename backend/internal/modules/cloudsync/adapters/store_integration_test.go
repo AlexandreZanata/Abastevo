@@ -685,3 +685,172 @@ func TestCloudFreeErasureRollbackAndIndexedReads(t *testing.T) {
 		t.Fatal("retry erasure", err)
 	}
 }
+
+func TestIncrementalFeedFixedWatermarkAndEpoch(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Pull(ctx, p, app.Position{Version: 1}, 1)
+	if err != nil || len(first.Changes) != 1 || first.Through != 1 {
+		t.Fatal("initial feed", err)
+	}
+	v.Name = "Second revision"
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 1)}}); err != nil {
+		t.Fatal(err)
+	}
+	bounded, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1, Through: 1}, 100)
+	if err != nil || len(bounded.Changes) != 0 || bounded.Through != 1 {
+		t.Fatal("interleaving changed watermark", err)
+	}
+	next, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1}, 100)
+	if err != nil || len(next.Changes) != 1 || next.Changes[0].Sequence != 2 {
+		t.Fatal("new cycle lost change", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE cloud_state SET compacted_through=2 WHERE account_id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1}, 100); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("compacted cursor silently skipped", err)
+	}
+}
+
+func TestPullPaginatedInterleavedAndSameInstant(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	for i, name := range []string{"Second revision", "Third revision"} {
+		v.Name = name
+		if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, int64(i+1))}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first, err := store.Pull(ctx, p, app.Position{Version: 1}, 1)
+	if err != nil || len(first.Changes) != 1 || first.Changes[0].Sequence != 1 || first.Through != 3 {
+		t.Fatalf("first page watermark %v %v", first, err)
+	}
+	v.Name = "Fourth revision"
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 3)}}); err != nil {
+		t.Fatal(err)
+	}
+	pinned, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1, Through: 3}, 10)
+	if err != nil || len(pinned.Changes) != 2 || pinned.Changes[0].Sequence != 2 || pinned.Changes[1].Sequence != 3 || pinned.Through != 3 {
+		t.Fatalf("pinned page leaked interleaving %v %v", pinned, err)
+	}
+	fresh, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1}, 10)
+	if err != nil || len(fresh.Changes) != 3 || fresh.Changes[2].Sequence != 4 {
+		t.Fatalf("new cycle lost interleaving %v %v", fresh, err)
+	}
+	stamp := time.Now().UTC().Truncate(time.Microsecond)
+	if _, err = pool.Exec(ctx, "UPDATE cloud_changes SET created_at=$1 WHERE account_id=$2", stamp, p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	ordered, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1, Through: 3}, 10)
+	if err != nil || len(ordered.Changes) != 2 || ordered.Changes[0].Sequence != 2 || ordered.Changes[1].Sequence != 3 {
+		t.Fatalf("same-instant order lost %v %v", ordered, err)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 2, Epoch: 1, ConsentRevision: 1, After: 1, Through: 3}, 10); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("foreign version accepted")
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 1, Through: 99}, 10); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("future watermark accepted")
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 3, Through: 1}, 10); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("reversed cursor accepted")
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 0); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unbounded page accepted")
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 101); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("oversize page accepted")
+	}
+}
+
+func TestPullIsolationRevocationConsentAndPlans(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	paidStore(t, pool, foreign)
+	p = readyDevice(t, store, p)
+	foreign = readyDevice(t, store, foreign)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	isolated, err := store.Pull(ctx, foreign, app.Position{Version: 1}, 100)
+	if err != nil || len(isolated.Changes) != 0 {
+		t.Fatalf("cross-owner feed leaked %v %v", isolated, err)
+	}
+	forged := p
+	forged.DeviceID = newid(t)
+	if _, err = store.Pull(ctx, forged, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("foreign device pull admitted")
+	}
+	store.Origin = "two.example.test"
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("origin crossover pull admitted")
+	}
+	store.Origin = "one.example.test"
+	if err = store.RevokeDevice(ctx, p, p.DeviceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("revoked device pull admitted")
+	}
+	p = readyDevice(t, store, p)
+	if _, err = pool.Exec(ctx, "UPDATE cloud_state SET epoch=2, revision=revision+1 WHERE account_id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("stale epoch silently advanced")
+	}
+	if _, err = pool.Exec(ctx, "UPDATE cloud_state SET epoch=1, consent_mask=0, consent_revision=2 WHERE account_id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 1, After: 0}, 10); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("stale consent silently advanced")
+	}
+	filtered, err := store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 2, After: 0}, 100)
+	if err != nil || len(filtered.Changes) != 0 || filtered.Through != 2 {
+		t.Fatalf("revoked consent leaked %v %v", filtered, err)
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO cloud_changes(account_id,sequence,epoch,dataset,id,record_revision,deleted,payload) SELECT $1, generate_series(100,10100),1,'vehicles',md5(g::text)::uuid,1,false,'{}' FROM generate_series(1,1)g`, foreign.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "ANALYZE cloud_changes"); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := pool.Query(ctx, "EXPLAIN SELECT sequence,epoch,dataset,id,record_revision,deleted,payload FROM cloud_changes WHERE account_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence LIMIT 100", p.AccountID, 0, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := ""
+	for plan.Next() {
+		var line string
+		if err = plan.Scan(&line); err != nil {
+			t.Fatal(err)
+		}
+		text += line
+	}
+	plan.Close()
+	if !strings.Contains(text, "Index") || (!strings.Contains(text, "cloud_changes_pkey") && !strings.Contains(text, "cloud_changes")) {
+		t.Fatal("delta page did not use owner sequence index", text)
+	}
+	store.Paid = nil
+	if _, err = store.Pull(ctx, p, app.Position{Version: 1, Epoch: 1, ConsentRevision: 2, After: 0}, 10); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("unpaid pull admitted")
+	}
+}

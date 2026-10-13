@@ -1,0 +1,22 @@
+{
+  "id": "cloud-sync-pull-response-valid",
+  "schema": "CloudSyncPullResponse",
+  "valid": true,
+  "value": {
+    "changes": [
+      {
+        "sequence": 1,
+        "epoch": 1,
+        "dataset": "vehicles",
+        "id": "66666666-6666-4666-8666-666666666666",
+        "revision": 1,
+        "deleted": false,
+        "payload": null
+      }
+    ],
+    "through": 1,
+    "epoch": 1,
+    "consent_revision": 1,
+    "next_cursor": "synthetic"
+  }
+}

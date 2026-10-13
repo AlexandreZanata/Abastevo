@@ -132,3 +132,7 @@ consent_revision=consent_revision+1 WHERE account_id=sqlc.arg(account_id)::uuid 
 -- name: RevokeAllCloudDevices :exec
 WITH revoked AS(UPDATE cloud_devices d SET revoked_at=COALESCE(d.revoked_at,clock_timestamp()) WHERE d.account_id=$1 RETURNING d.id,d.account_id)
 INSERT INTO cloud_device_revocations(device_id,account_id) SELECT id,account_id FROM revoked ON CONFLICT DO NOTHING;
+
+-- name: ListChanges :many
+SELECT sequence,epoch,dataset,id,record_revision,deleted,payload FROM cloud_changes
+WHERE account_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence LIMIT $4;

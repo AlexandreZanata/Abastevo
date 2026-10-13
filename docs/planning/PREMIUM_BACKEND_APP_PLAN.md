@@ -219,6 +219,8 @@ Entry: PRM02. Exit: two-device convergence/conflicts/deletion recovery, without 
 
 ### PRM03-T01 — Incremental change feed and safe cursor lifecycle
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM02; PR08/09.
 - **Outcome/areas:** monotonic private dataset revisions, indexed paginated delta/tombstone feed and owner/device/epoch/version-bound cursor.
 - **Tests first:** interleaved writes/page boundaries, same-timestamp rows, foreign/forged/old cursor, bounded history scans and cursor expiry after compaction.

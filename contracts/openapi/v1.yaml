@@ -3796,6 +3796,49 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/pull:
+    post:
+      tags:
+      - premium
+      summary: Pull owned incremental cloud changes
+      description: Owner derives from live account session plus the existing exact-body
+        signed contributor key bound to that account. Device reference, paid capability,
+        epoch and consent revision are revalidated inside the same transaction. First
+        page captures a fixed high-water revision; later pages retain it so interleaved
+        writes appear in the next cycle without gaps. Cursors are signed 15-minute
+        owner/origin/device/schema-bound tokens carrying epoch/consent revision/last
+        sequence/high-water. Expired/compacted/stale cursors return resnapshot-required
+        without discarding pending local changes. All responses are no-store without
+        ETags. Paid production ports remain disabled.
+      operationId: cloudSyncPull
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudSyncPullRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncPullResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -4092,6 +4135,85 @@ components:
       required:
       - status
       - epoch
+    CloudSyncPullRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudChange:
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        epoch:
+          type: integer
+          minimum: 1
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        deleted:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - sequence
+      - epoch
+      - dataset
+      - id
+      - revision
+      - deleted
+      - payload
+    CloudSyncPullResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        changes:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudChange'
+        through:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - changes
+      - through
+      - epoch
+      - consent_revision
+      - next_cursor
     CloudInventory:
       type: object
       additionalProperties: false

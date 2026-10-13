@@ -345,6 +345,61 @@ func (q *Queries) GetState(ctx context.Context, accountID pgtype.UUID) (CloudSta
 	return i, err
 }
 
+const listChanges = `-- name: ListChanges :many
+SELECT sequence,epoch,dataset,id,record_revision,deleted,payload FROM cloud_changes
+WHERE account_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence LIMIT $4
+`
+
+type ListChangesParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	Sequence   int64       `json:"sequence"`
+	Sequence_2 int64       `json:"sequence_2"`
+	Limit      int32       `json:"limit"`
+}
+
+type ListChangesRow struct {
+	Sequence       int64       `json:"sequence"`
+	Epoch          int64       `json:"epoch"`
+	Dataset        string      `json:"dataset"`
+	ID             pgtype.UUID `json:"id"`
+	RecordRevision int64       `json:"record_revision"`
+	Deleted        bool        `json:"deleted"`
+	Payload        []byte      `json:"payload"`
+}
+
+func (q *Queries) ListChanges(ctx context.Context, arg ListChangesParams) ([]ListChangesRow, error) {
+	rows, err := q.db.Query(ctx, listChanges,
+		arg.AccountID,
+		arg.Sequence,
+		arg.Sequence_2,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListChangesRow
+	for rows.Next() {
+		var i ListChangesRow
+		if err := rows.Scan(
+			&i.Sequence,
+			&i.Epoch,
+			&i.Dataset,
+			&i.ID,
+			&i.RecordRevision,
+			&i.Deleted,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDevices = `-- name: ListDevices :many
 SELECT id,origin,created_at,last_success_at,revoked_at FROM cloud_devices
 WHERE account_id=$1 AND origin=$2 AND id>$3 ORDER BY id LIMIT $4
