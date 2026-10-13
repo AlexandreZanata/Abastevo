@@ -275,3 +275,35 @@ func TestWinnerIDsFeedRestrictedAudit(t *testing.T) {
 		t.Errorf("confirmations = %v", got.WinnerConfirmationIDs)
 	}
 }
+
+func TestCommunityFirstConsensusIndependentPhotosWithoutProximity(t *testing.T) {
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "GASOLINE_REGULAR", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	var votes []Vote
+	for _, id := range []string{"a", "b", "c"} {
+		votes = append(votes, Vote{VoterRef: id, ObservationID: id, EventID: "obs:" + id, AuthorRef: id, AmountMilli: 5999, ReceivedAt: now, AnchorReceivedAt: now, TrustTier: "ESTABLISHED", PhotoValidated: true, PhotoProximityOK: false, MediaKey: "photo:" + id, StationID: key.StationID, Product: key.Product, Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier})
+	}
+	current, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || current.Confidence != ConfHigh {
+		t.Fatalf("independent community confidence %+v %v", current, err)
+	}
+	for i := range votes {
+		votes[i].PhotoProximityOK = true
+	}
+	near, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || !reflect.DeepEqual(current, near) {
+		t.Fatal("proximity changed initial confidence", err)
+	}
+	for i := range votes {
+		votes[i].PhotoProximityOK = false
+	}
+	old, err := Compute(key, votes, now, Options{Version: ConsensusV1})
+	if err != nil || old.Confidence != ConfLow {
+		t.Fatal("legacy replay reinterpreted", err)
+	}
+	votes = votes[:1]
+	alone, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || alone.Confidence != ConfLow {
+		t.Fatal("one contributor granted confidence", err)
+	}
+}

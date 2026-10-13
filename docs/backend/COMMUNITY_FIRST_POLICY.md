@@ -18,7 +18,7 @@ The new consensus version is `consensus-community-v2`. Retain v1 replay determin
 
 Runtime signal derivation uses `signals-community-v2`: proximity stays UNKNOWN and missing/poor/distant GPS, unreviewed station geometry or station-hopping do not create contribution eligibility or review penalties. Retain media absence/duplicate, historical capture and regional-deviation review signals. Optional provided claims are still recomputed for forgery; geometric diagnostic/legacy functions remain separately tested.
 
-Existing projections require idempotent re-derivation/recomputation from authoritative retained inputs under v2, with an append-only queued migration. Old audit inputs/results stay unchanged. Deleted/expired media cannot be recreated or counted just because policy changed.
+Existing projections require idempotent re-derivation/recomputation from authoritative retained inputs under v2, with an append-only migration that removes only geometric signal penalties and marks old price keys due for the existing bounded consensus sweeper, without inserting unbounded jobs. Old audit inputs/results stay unchanged. Deleted/expired media cannot be recreated or counted just because policy changed.
 
 Moderation keeps existing authenticated operator authority/actions and exact tally/reversal, independent confirmation/dispute and report budgets; no new majority-removal rule or service. Unconfirmed contributions may display honestly with LOW confidence; validation and visibility remain distinct.
 

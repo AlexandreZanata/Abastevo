@@ -455,21 +455,11 @@ func run() error {
 			if err != nil || !resolved.present {
 				return communityapp.PhotoInfo{}, err
 			}
-			// Proximity comes from the anchor's own derived signals;
-			// missing bands fail closed to no proximity, never to
-			// verified.
-			proximity := false
-			signals, err := communityStore.LoadSignals(ctx, anchor.ID)
-			if err != nil {
-				if !errors.Is(err, communityadapters.ErrNoSignals) {
-					return communityapp.PhotoInfo{}, err
-				}
-			} else if signals.Proximity == communityapp.ProximityNear {
-				proximity = true
-			}
+			// Independently verified bytes count under v2; location is not a trust input.
+
 			return communityapp.PhotoInfo{
 				Found: true, Validated: true,
-				ProximityOK: proximity, MediaKey: fmt.Sprintf("%016x", resolved.dhash),
+				ProximityOK: false, MediaKey: fmt.Sprintf("%016x", resolved.dhash),
 			}, nil
 		},
 		// Regional deviation already routes through the
@@ -560,7 +550,7 @@ func run() error {
 			// upsert converges, so derivation failures safely retry
 			// the whole job without forking history.
 			Derive: func(ctx context.Context, observationID string) error {
-				_, err := communityapp.DeriveSignals(ctx, communityapp.SignalPorts{
+				_, err := communityapp.DeriveCommunitySignals(ctx, communityapp.SignalPorts{
 					Clock: time.Now,
 					Store: communityadapters.NewStore(raw),
 					Station: func(ctx context.Context, stationID string) (communityapp.StationSite, error) {
