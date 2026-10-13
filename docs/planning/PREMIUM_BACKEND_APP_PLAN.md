@@ -479,6 +479,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T06 — Real scheduler/provider and free-alert regression evidence
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T05; PR01/21–PR23; BUC-PR06.
 - **Outcome/areas:** actual worker/API/SQL rule→candidate→window→inbox/provider pipeline plus duplicate/drop/revocation metrics and recovery runbook.
 - **Tests first:** combined-rule windows, outages/restart, credential rotation, timezone edits, mass bounded fanout and expiry while worker is paused; existing basic weekly alert behavior.
