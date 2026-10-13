@@ -1,11 +1,9 @@
 package com.anpfuel.app.ui.weekpicker
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,14 +93,12 @@ fun WeekPickerBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
             modifier = modifier,
-            contentWindowInsets = { WindowInsets(0) },
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = maxSheetHeight)
                     .fillMaxHeight()
-                    .navigationBarsPadding()
                     .padding(bottom = 16.dp),
             ) {
                 Text(
