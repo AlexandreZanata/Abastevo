@@ -32,6 +32,16 @@ import (
 	accountoidc "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters/oidc"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
+	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
+	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
+	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
+	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
+	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
+	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
+	metricsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters"
+	metricsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/application"
+	metricshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters/http"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -68,6 +78,10 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
+	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
+	subscriptionhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/http"
+	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
+	subscriptiondomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
@@ -105,6 +119,20 @@ func newUUID() (string, error) {
 	hexed := hex.EncodeToString(b[:])
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32], nil
+}
+
+type metricsLedgerReader struct{ store *ledgeradapters.Store }
+
+func (m metricsLedgerReader) ListRecords(ctx context.Context, accountID, dataset, vehicleID, from, to string, limit int) ([]metricsapp.LedgerRecord, error) {
+	rows, err := m.store.List(ctx, accountID, dataset, vehicleID, "", from, to, "", "", limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]metricsapp.LedgerRecord, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, metricsapp.LedgerRecord{Dataset: row.Dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload})
+	}
+	return out, nil
 }
 
 func main() {
@@ -548,6 +576,170 @@ func run() error {
 	}.RegisterRoutes(privateProfiles)
 	logger.Info(context.Background(), "api.mail-sink", "sink", "memory-preview")
 	authVerifier := &identityauth.Verifier{Pool: pool.Underlying(), Authority: cfg.CanonicalHost}
+	// Premium source is prepared; real payment/catalog/credential ports remain
+	// nil by owner direction. Free status/export use existing owner sessions.
+	premiumStore := subscriptionadapters.NewStore(pool.Underlying())
+	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	premiumHTTP := subscriptionhttp.Handler{
+		Service: premiumService, CursorSecret: cfg.CursorSecret,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, family, access)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "invalid-value", "oidc-unavailable", "key-unavailable":
+					return "", subscriptiondomain.ErrUnavailable
+				default:
+					return "", subscriptiondomain.ErrUnauthorized
+				}
+			}
+			return id, nil
+		},
+		SignedOwner: func(r *http.Request, accountID string) (string, string, error) {
+			id, err := authVerifier.Verify(r.Context(), r)
+			if err != nil {
+				return "", "", subscriptiondomain.ErrUnauthorized
+			}
+			owner, found, err := accountStore.FindBindingOwner(r.Context(), id.ContributorID)
+			if err != nil {
+				return "", "", subscriptiondomain.ErrUnavailable
+			}
+			if !found || owner != accountID {
+				return "", "", subscriptiondomain.ErrUnauthorized
+			}
+			return id.ContributorID, id.KeyID, nil
+		},
+	}
+	premiumHTTP.RegisterRoutes(router)
+	cloudStore := cloudadapters.NewStore(pool.Underlying())
+	cloudStore.Origin = cfg.CanonicalHost
+	cloudStore.Station = stations.ActiveReference
+	mapCloudError := func(err error) error {
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+			return clouddomain.ErrUnauthorized
+		}
+		if errors.Is(err, subscriptiondomain.ErrDenied) {
+			return clouddomain.ErrDenied
+		}
+		return clouddomain.ErrUnavailable
+	}
+	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return clouddomain.ErrDenied
+		}
+		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
+	}
+	cloudhttp.Handler{
+		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			return owner, mapCloudError(err)
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			return contributor, key, mapCloudError(err)
+		},
+	}.RegisterRoutes(router)
+	ledgerStore := ledgeradapters.NewStore(pool.Underlying())
+	ledgerStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return errors.New("ledger: capability required")
+		}
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+				return errors.New("ledger: authentication required")
+			}
+			if errors.Is(err, subscriptiondomain.ErrDenied) {
+				return errors.New("ledger: capability required")
+			}
+			return errors.New("ledger: service unavailable")
+		}
+		return nil
+	}
+	ledgerhttp.Handler{
+		Service: ledgerStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", errors.New("ledger: authentication required")
+				}
+				return "", errors.New("ledger: service unavailable")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", "", errors.New("ledger: authentication required")
+				}
+				return "", "", errors.New("ledger: service unavailable")
+			}
+			return contributor, key, nil
+		},
+	}.RegisterRoutes(router)
+	alertsStore := alertsadapters.NewStore(pool.Underlying())
+	alertsStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return errors.New("alerts: capability required")
+		}
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+				return errors.New("alerts: authentication required")
+			}
+			if errors.Is(err, subscriptiondomain.ErrDenied) {
+				return errors.New("alerts: capability required")
+			}
+			return errors.New("alerts: service unavailable")
+		}
+		return nil
+	}
+	alertshttp.Handler{
+		Service: alertsStore,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", errors.New("alerts: authentication required")
+				}
+				return "", errors.New("alerts: service unavailable")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", "", errors.New("alerts: authentication required")
+				}
+				return "", "", errors.New("alerts: service unavailable")
+			}
+			return contributor, key, nil
+		},
+	}.RegisterRoutes(router)
+	metricsReader := metricsLedgerReader{store: ledgerStore}
+	metricshttp.Handler{
+		Service: metricsadapters.NewStore(metricsReader),
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				return "", errors.New("metrics: invalid input")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				return "", "", errors.New("metrics: invalid input")
+			}
+			return contributor, key, nil
+		},
+	}.RegisterRoutes(router)
+	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)
+
 	// checkAccountGate refuses social writes from contributors bound
 	// to a suspended or deleted FREE account (P13-T04D). Unbound
 	// contributors keep the anonymous baseline; store failures

@@ -32,6 +32,8 @@ func run(args []string, getenv func(string) string) error {
 		return errors.New(usage)
 	}
 	switch args[0] {
+	case "subscription":
+		return runSubscription(args[1:], getenv)
 	case "feedback":
 		return runFeedback(args[1:], getenv)
 	case "moderation":
@@ -50,6 +52,7 @@ func run(args []string, getenv func(string) string) error {
 }
 
 const usage = `usage:
+  ops subscription stats|replay [--job <uuid> --reason provider-fixed|db-fixed|key-rotated] [--operator <id>]
   ops feedback hide|show --comment <id> --case <id> [--operator <id>]
   ops feedback export --account <id> [--operator <id>]
   ops feedback erase --account <id> --reason <text> [--operator <id>]

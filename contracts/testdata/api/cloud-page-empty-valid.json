@@ -1,0 +1,9 @@
+{
+  "id": "cloud-page-empty-valid",
+  "schema": "CloudRecordPage",
+  "valid": true,
+  "value": {
+    "items": [],
+    "next_cursor": ""
+  }
+}

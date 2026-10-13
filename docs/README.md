@@ -1,5 +1,9 @@
 # abastevo documentation
 
+[Notification content/OneSignal plan](product/NOTIFICATION_CONTENT_CONTRACT.md) defines proposed bodies and PRM11–PRM14; implementation and live sends remain deferred.
+
+[Premium execution plan](planning/PREMIUM_BACKEND_APP_PLAN.md), [product contract](product/PREMIUM_PRODUCT_CONTRACT.md) and [first-ten evidence](backend/evidence/premium/PRM_FIRST_TEN.md) track the isolated backend batch and deferred real payments.
+
 Current commercial direction: [community delivery plan](planning/COMMERCIAL_COMMUNITY_PLAN.md), [experience contract](product/COMMUNITY_EXPERIENCE.md), [Android/iOS scope ADR](adr/016-android-commercial-community-ios-deferred.md), [parked iOS backlog](planning/archive/IOS_DEFERRED.md) and [native icon guide](brand/APP_ICONS.md).
 
 This repository contains the preserved Android app, integrated backend phase history and the next functional multiplatform plan. Current status is in [PROGRESS](planning/PROGRESS.md); prior command outcomes are preserved as evidence, not rerun claims. Next implementation: [P12-T01](../ROADMAP.md#p12-t01) after G09-LOCAL correction integration; real-production G09 waits until G18.

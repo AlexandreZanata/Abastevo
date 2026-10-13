@@ -253,6 +253,7 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 	}
 	a := h.enroll(newAPIKey(t))
 	b := h.enroll(newAPIKey(t))
+	h.premiumSourceChecks(conn)
 	again := h.enroll(a)
 	if again.contributor != a.contributor {
 		t.Fatal("duplicate registration changed identity")
@@ -506,4 +507,106 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 		h.call(h.signed(a, "GET", "/v1/contributors/me/observations", nil), 401)
 		h.call(h.signed(fresh, "GET", "/v1/contributors/me/observations", nil), 200)
 	})
+}
+
+// Exercise the actual production router/session/key/store composition with
+// payments absent. Test-only setup binds enrolled public identities through SQL.
+func (h apiHarness) premiumSourceChecks(conn *pgx.Conn) {
+	a := h.enroll(newAPIKey(h.t))
+	b := h.enroll(newAPIKey(h.t))
+	h.t.Helper()
+	ctx := context.Background()
+	login := func(username string) (string, []byte) {
+		raw, _ := json.Marshal(map[string]string{"username": username})
+		created := h.call(h.req("POST", "/v1/accounts/keys", raw), 201)
+		raw, _ = json.Marshal(map[string]string{"account_key": created["account_key"].(string)})
+		logged := h.call(h.req("POST", "/v1/accounts/keys/login", raw), 200)
+		session := logged["session"].(map[string]any)
+		raw, _ = json.Marshal(map[string]any{"family_id": session["family_id"], "access_token": session["access_token"]})
+		return logged["account"].(map[string]any)["account_id"].(string), raw
+	}
+	owner, body := login("premiumowner")
+	foreign, foreignBody := login("premiumforeign")
+	for _, binding := range []struct {
+		account string
+		key     apiKey
+	}{{owner, a}, {foreign, b}} {
+		if _, err := conn.Exec(ctx, "INSERT INTO account_contributor_bindings(account_id,contributor_id,key_fingerprint) VALUES($1,$2,$3)", binding.account, binding.key.contributor, binding.key.fp); err != nil {
+			h.t.Fatal(err)
+		}
+	}
+	status := h.call(h.req("POST", "/v1/premium/status", body), 200)
+	if status["payments_configured"] != false || status["retained_data_access"] != true || len(status["capabilities"].([]any)) != 0 || status["reason"] != "payments-disabled" {
+		h.t.Fatal("production payment ports enabled")
+	}
+	h.call(h.req("POST", "/v1/premium/status", bytes.Replace(body, []byte("access_token"), []byte("account_id"), 1)), 400)
+	// Export exposes only owned expired metadata. No provider token is created.
+	if _, err := conn.Exec(ctx, "INSERT INTO subscription_purchases(token_digest,account_id,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at,acknowledged) VALUES($1,$2,'test','com.anpfuel','synthetic.premium','synthetic.monthly','EXPIRED',clock_timestamp()-interval '1 day',clock_timestamp(),true)", strings.Repeat("d", 64), owner); err != nil {
+		h.t.Fatal(err)
+	}
+	req := h.req("POST", "/v1/premium/export", body)
+	req.Header.Set("If-None-Match", "*")
+	resp, err := h.client.Do(req)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	raw, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil || resp.StatusCode != 200 || resp.Header.Get("Cache-Control") != "no-store" || resp.Header.Get("ETag") != "" || strings.Contains(string(raw), strings.Repeat("d", 64)) {
+		h.t.Fatal("private/free response cached or token disclosed", err)
+	}
+	var exported struct {
+		Items []map[string]any `json:"items"`
+	}
+	if json.Unmarshal(raw, &exported) != nil || len(exported.Items) != 1 || exported.Items[0]["state"] != "EXPIRED" {
+		h.t.Fatal("expired data not exported")
+	}
+	if out := h.call(h.req("POST", "/v1/premium/export", foreignBody), 200); len(out["items"].([]any)) != 0 {
+		h.t.Fatal("IDOR export")
+	}
+	purchase := append(append([]byte{}, body[:len(body)-1]...), []byte(`,"operation_id":"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee","purchase_token":"synthetic-test-purchase"}`)...)
+	for _, path := range []string{"/v1/premium/purchases/verify", "/v1/premium/purchases/restore"} {
+		h.call(h.req("POST", path, purchase), 401)
+		h.call(h.signed(b, "POST", path, purchase), 401)
+		signed := h.signed(a, "POST", path, purchase)
+		h.call(signed, 503)
+		replay := h.req("POST", path, purchase)
+		replay.Header = signed.Header.Clone()
+		h.call(replay, 401)
+	}
+	h.call(h.req("POST", "/v1/premium/provider-notifications", []byte("{}")), 503)
+	h.cloudSourceChecks(conn, owner, body, foreignBody, a, b)
+	// Existing free deletion remains independent of an expired subscription.
+	h.call(h.req("POST", "/v1/accounts/deletion", body), 200)
+	h.call(h.req("POST", "/v1/premium/status", body), 401)
+	h.call(h.req("POST", "/v1/premium/export", body), 401)
+}
+
+func (h apiHarness) cloudSourceChecks(conn *pgx.Conn, owner string, body, foreignBody []byte, a, b apiKey) {
+	h.t.Helper()
+	for _, path := range []string{"/v1/cloud/status", "/v1/cloud/inventory", "/v1/cloud/devices/list"} {
+		h.call(h.req("POST", path, body), 200)
+	}
+	recordID := "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+	if _, err := conn.Exec(context.Background(), `INSERT INTO cloud_records(account_id,dataset,id,payload) VALUES($1,'vehicles',$2,'{"id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","display_name":"Synthetic private vehicle","capacity_milli":50000,"fuel_product":"ETHANOL","unit":"L","price_source":"CHEAPEST_STATION","price_drop_alert_enabled":false,"sort_order":0,"archived":false}')`, owner, recordID); err != nil {
+		h.t.Fatal(err)
+	}
+	export := append(append([]byte{}, body[:len(body)-1]...), []byte(`,"dataset":"vehicles"}`)...)
+	got := h.call(h.req("POST", "/v1/cloud/export", export), 200)
+	if len(got["items"].([]any)) != 1 {
+		h.t.Fatal("free cloud export missing")
+	}
+	foreignExport := append(append([]byte{}, foreignBody[:len(foreignBody)-1]...), []byte(`,"dataset":"vehicles"}`)...)
+	if got = h.call(h.req("POST", "/v1/cloud/export", foreignExport), 200); len(got["items"].([]any)) != 0 {
+		h.t.Fatal("cloud IDOR")
+	}
+	h.call(h.req("POST", "/v1/cloud/devices", body), 401)
+	h.call(h.signed(b, "POST", "/v1/cloud/devices", body), 401)
+	h.call(h.signed(a, "POST", "/v1/cloud/devices", body), 403)
+	erase := append(append([]byte{}, body[:len(body)-1]...), []byte(`,"dataset":"all"}`)...)
+	h.call(h.req("POST", "/v1/cloud/erase", erase), 401)
+	h.call(h.signed(a, "POST", "/v1/cloud/erase", erase), 200)
+	if got = h.call(h.req("POST", "/v1/cloud/export", export), 200); len(got["items"].([]any)) != 0 {
+		h.t.Fatal("erasure left private content")
+	}
 }

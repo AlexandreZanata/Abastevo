@@ -207,3 +207,77 @@ sql:
         out: db/queries/stationprofile
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/subscription
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000004_identity.sql
+      - db/migrations/000007_jobs.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000022_account_bindings.sql
+      - db/migrations/000075_subscription_ownership.sql
+      - db/migrations/000076_subscription_notifications.sql
+      - db/migrations/000077_subscription_reconcile.sql
+    gen:
+      go:
+        package: subscription
+        out: db/queries/subscription
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/cloudsync
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000022_account_bindings.sql
+      - db/migrations/000078_cloud_records.sql
+      - db/migrations/000079_cloud_portable.sql
+      - db/migrations/000080_cloud_devices.sql
+      - db/migrations/000081_cloud_commands.sql
+      - db/migrations/000082_cloud_compaction.sql
+      - db/migrations/000083_cloud_snapshots.sql
+      - db/migrations/000084_cloud_restores.sql
+    gen:
+      go:
+        package: cloudsync
+        out: db/queries/cloudsync
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/ledger
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000078_cloud_records.sql
+      - db/migrations/000079_cloud_portable.sql
+      - db/migrations/000085_ledger_records.sql
+      - db/migrations/000086_ledger_odometer.sql
+      - db/migrations/000087_ledger_consent.sql
+      - db/migrations/000088_ledger_reports.sql
+    gen:
+      go:
+        package: ledger
+        out: db/queries/ledger
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/alerts
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000003_official.sql
+      - db/migrations/000008_community.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000089_alert_rules.sql
+      - db/migrations/000090_alert_push_tokens.sql
+    gen:
+      go:
+        package: alerts
+        out: db/queries/alerts
+        sql_package: pgx/v5
+        emit_json_tags: true

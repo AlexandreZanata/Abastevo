@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activeReference = `-- name: ActiveReference :one
+SELECT EXISTS(SELECT 1 FROM directory_stations WHERE id=$1 AND status='active')
+`
+
+func (q *Queries) ActiveReference(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, activeReference, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const countActiveIdentifiers = `-- name: CountActiveIdentifiers :one
 SELECT count(*) FROM directory_identifiers WHERE valid_to IS NULL
 `

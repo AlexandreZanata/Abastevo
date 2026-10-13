@@ -50,6 +50,9 @@ import (
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
+	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
+	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
@@ -476,7 +479,12 @@ func run() error {
 			return false, nil
 		},
 	}
+	// Payment ports remain deliberately nil until the future payment module is configured.
+	premiumStore := subscriptionadapters.NewStore(raw)
+	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
 	handlers := map[string]jobs.Handler{
+		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
+		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
@@ -870,6 +878,14 @@ func run() error {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
+		if premiumService.Configured() {
+			if _, err := premiumService.Reconcile(ctx); err != nil {
+				logger.Warn(ctx, "subscription.reconcile-unavailable", "bounded reconciliation unavailable")
+			}
+		}
+		if err := premiumStore.CleanupReceipts(ctx); err != nil {
+			logger.Warn(ctx, "subscription.cleanup-unavailable", "bounded cleanup unavailable")
+		}
 		if _, err := scheduler.Tick(ctx); err != nil {
 			return err
 		}

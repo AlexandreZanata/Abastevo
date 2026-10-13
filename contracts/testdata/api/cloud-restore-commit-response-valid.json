@@ -1,0 +1,13 @@
+{
+  "id": "cloud-restore-commit-response-valid",
+  "schema": "CloudRestoreCommitResponse",
+  "valid": true,
+  "value": {
+    "restore_id": "77777777-7777-4777-8777-777777777777",
+    "snapshot_id": "66666666-6666-4666-8666-666666666666",
+    "pre_revision": 2,
+    "post_revision": 3,
+    "results": [],
+    "replayed": false
+  }
+}

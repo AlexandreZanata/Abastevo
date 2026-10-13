@@ -1,0 +1,1021 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "abastevo planned Premium datasets",
+    "version": "1.0.0-planned",
+    "description": "Planned PRM02\u2013PRM09 contracts, not live endpoints; PRM00 ownership/precision envelope.",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/license/mit"
+    }
+  },
+  "tags": [
+    {
+      "name": "premium",
+      "description": "Private proposed Premium datasets."
+    }
+  ],
+  "x-implementation-status": "planned",
+  "paths": {
+    "/v1/cloud/devices": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/devices",
+        "operationId": "plannedCloudDevices",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/sync/pull": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/sync/pull",
+        "operationId": "plannedCloudSyncPull",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPull"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/sync/push": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/sync/push",
+        "operationId": "plannedCloudSyncPush",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPush"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/import/preview": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/import/preview",
+        "operationId": "plannedCloudImportPreview",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPush"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/consent": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/consent",
+        "operationId": "plannedCloudConsent",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetConsent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/snapshots": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/snapshots",
+        "operationId": "plannedCloudSnapshots",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/restore/preview": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/restore/preview",
+        "operationId": "plannedCloudRestorePreview",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnedCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cloud/restore/commit": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned cloud/restore/commit",
+        "operationId": "plannedCloudRestoreCommit",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnedCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/professional/refuels": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned professional/refuels",
+        "operationId": "plannedProfessionalRefuels",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Refuel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/professional/expenses": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned professional/expenses",
+        "operationId": "plannedProfessionalExpenses",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Expense"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/professional/reports/monthly": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned professional/reports/monthly",
+        "operationId": "plannedProfessionalReportsMonthly",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/professional/comparisons": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned professional/comparisons",
+        "operationId": "plannedProfessionalComparisons",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/professional/export": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned professional/export",
+        "operationId": "plannedProfessionalExport",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/premium/alerts/rules": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned premium/alerts/rules",
+        "operationId": "plannedPremiumAlertsRules",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnedCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/premium/alerts/inbox": {
+      "post": {
+        "tags": [
+          "premium"
+        ],
+        "summary": "Planned premium/alerts/inbox",
+        "operationId": "plannedPremiumAlertsInbox",
+        "description": "Owner-only frozen data envelope. Authentication uses current account proof outside raw domain DTOs; exact domain CRUD actions remain the owning phase's additive contract refinement.",
+        "x-implementation-status": "planned",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPull"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versioned bounded owner result; implementation remains planned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PremiumStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      },
+      "PremiumPurchaseRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token",
+          "operation_id",
+          "purchase_token"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purchase_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        }
+      },
+      "PremiumCapability": {
+        "type": "string",
+        "enum": [
+          "cloud.sync",
+          "cloud.backup",
+          "cloud.restore",
+          "alerts.advanced",
+          "professional.write",
+          "professional.report"
+        ]
+      },
+      "PremiumStatusResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "policy_version",
+          "state",
+          "reason",
+          "capabilities",
+          "valid_until",
+          "retained_data_access",
+          "payments_configured"
+        ],
+        "properties": {
+          "policy_version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "ACTIVE",
+              "CANCELED",
+              "GRACE",
+              "HOLD",
+              "PAUSED",
+              "EXPIRED",
+              "REVOKED",
+              "UNKNOWN"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PremiumCapability"
+            },
+            "uniqueItems": true
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "retained_data_access": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "payments_configured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PremiumPurchaseReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "status",
+          "replayed"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PremiumStatusResponse"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PremiumProviderEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "message",
+          "subscription"
+        ],
+        "properties": {
+          "message": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "messageId",
+              "data",
+              "publishTime"
+            ],
+            "properties": {
+              "messageId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "data": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12288
+              },
+              "publishTime": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "subscription": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      },
+      "OwnedCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "resource_id",
+          "expected_revision",
+          "account_epoch"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resource_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "account_epoch": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "SyncPull": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2048
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "SyncPush": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token",
+          "operations"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/OwnedCommand"
+            }
+          }
+        }
+      },
+      "Refuel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "vehicle_id",
+          "occurred_at",
+          "timezone",
+          "fuel",
+          "unit",
+          "quantity_milli",
+          "total_centavos",
+          "fill"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "fuel": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "L",
+              "M3"
+            ]
+          },
+          "quantity_milli": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "total_centavos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "odometer_metres": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "fill": {
+            "type": "string",
+            "enum": [
+              "full",
+              "partial",
+              "unknown"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 280
+          }
+        }
+      },
+      "Expense": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "vehicle_id",
+          "occurred_at",
+          "timezone",
+          "amount_centavos",
+          "category"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "amount_centavos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "maintenance",
+              "insurance",
+              "taxes",
+              "parking",
+              "tolls",
+              "cleaning",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 280
+          }
+        }
+      },
+      "DatasetConsent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token",
+          "datasets",
+          "enabled"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "datasets": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "vehicles",
+                "favorites",
+                "preferences",
+                "professional",
+                "advanced_rules"
+              ]
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReportQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "family_id",
+          "access_token",
+          "vehicle_ids",
+          "month",
+          "timezone"
+        ],
+        "properties": {
+          "family_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "vehicle_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "month": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "RevisionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "status"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "pending",
+              "conflict",
+              "refused",
+              "unknown"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  }
+}
