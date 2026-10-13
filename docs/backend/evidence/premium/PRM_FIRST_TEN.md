@@ -23,3 +23,12 @@ Validation: PASS (source-policy scenario review)
 Frozen PREMIUM_SOURCE_POLICY and policy-v1.json with exact source ceilings, state/access mapping, 900s fresh proof, bounded offline lease, expiry/export/deletion policy, snapshot/queue/device/request limits and token key ownership. Reviewed cancel-paid-through, pending/unknown/outage, revoke during work, stale device, owner switch and old-backup resurrection scenarios. Admission remains zero; limits are conservative local source bounds, explicitly not measured VPS/paid capacity. Prices/catalog/credentials/provider proofs remain deferred by user.
 
 Checks: JSON parse, positive bounds, zero admission/sales flags, no raised free vehicle allowance, staged diff/secret review. No retention/job/provider behavior is claimed implemented by this policy task. Next PRM00-T03.
+
+## PRM00-T03 — Financial method and golden vectors
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+
+RED: TestPremiumFinancialGoldenContract failed with missing golden file. GREEN: 15 synthetic reviewed cases; exact rational consumption/cost, partial-fill baseline exclusion, actual discount totals, weighted vehicles and explicit unsupported/gap/reset/month-window/overflow reasons. Money is centavos, quantity milli-units, distance metres; display half-up only. Financial engine remains a later owning task.
+
+Commands: go test -race -count=1 ./internal/platform/apicontract -run '^TestPremiumFinancialGoldenContract$'; go vet ./internal/platform/apicontract; GOTOOLCHAIN=go1.27.1 staticcheck ./internal/platform/apicontract. Passed. Scoped whitespace/secret review. Next PRM00-T04.
