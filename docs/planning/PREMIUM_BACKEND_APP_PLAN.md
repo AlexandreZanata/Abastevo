@@ -501,6 +501,8 @@ Entry: PRM01–PRM07 locally complete; no Android feature UI yet (a test-only pu
 
 ### PRM08-T02 — Resource, quota, query-plan and failure budgets
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; D-PR03; existing infrastructure limits.
 - **Outcome/areas:** freeze actual workload/hardware/data profile, p95/error/CPU/RAM/DB/storage/cost/job budgets; measure ledger/report/sync/snapshot/alert workloads together without starving free traffic/safety loops.
 - **Tests first:** abusive pages/periods/batches, many devices/rules, large histories, queue flood, full storage, DB/S3/provider outage and recovery.

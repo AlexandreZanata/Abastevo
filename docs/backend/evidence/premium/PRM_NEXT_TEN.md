@@ -248,3 +248,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 1482ba59. Account-wide campaign over existing privacy commands with no new production surface. Inventory before and after covers subscription purchases (retained, separate scope), revoked devices with revocation fences, live cloud records, ledger records, alert rules, inbox rows and snapshots plus physical snapshot bytes. Delete-during-activity runs reads in flight beside the cloud, ledger and alerts erasure trio with no deadlock and no falsely completed request. Restore replays stay fenced: erased snapshots preview as NotFound and revoked devices stay Unauthorized. Outages fail closed with metadata and unconfirmed bytes preserved for retry. Parallel duplicate erasures converge idempotently. Deletion deadlines hold synchronously with zeroed metadata and empty object stores. Necessary retained metadata is purchase rows under subscription ownership. Real PostGIS PASS (campaign suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM08-T02. Real payments OFF.
+
+## PRM08-T02 — Resource, quota, query-plan and failure budgets
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Frozen profile measured on disposable localhost PostGIS under the race detector in a single run; ceilings alone are not deployment capacity proof. Ledger, report, sync, snapshot and alert workloads ran together with free traffic unstarved: abusive pages, periods and batches refused in about 8ms with no 500s; device caps held at 3 with 2 late registrations admitted and rule caps at 20 of 22 attempts; 10k-row histories paged 100 rows in about 2ms via indexes; 200-job floods enqueued in about 38ms and drained fully; 50 paid writes beside 10 free reads completed with zero errors; 50 invalid requests all failed closed. Full object storage bound at 10 MiB enforced at the store. Real PostGIS PASS (budget suites). Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Failed budgets would retune within scope; none failed. No merge/deploy/mobile edit.
+Next PRM08-T03. Real payments OFF.
