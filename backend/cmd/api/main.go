@@ -37,6 +37,8 @@ import (
 	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
 	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
 	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
+	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
+	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
 	metricsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters"
 	metricsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/application"
 	metricshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters/http"
@@ -699,6 +701,45 @@ func run() error {
 					return "", "", errors.New("ledger: authentication required")
 				}
 				return "", "", errors.New("ledger: service unavailable")
+			}
+			return contributor, key, nil
+		},
+	}.RegisterRoutes(router)
+	alertsStore := alertsadapters.NewStore(pool.Underlying())
+	alertsStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return errors.New("alerts: capability required")
+		}
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+				return errors.New("alerts: authentication required")
+			}
+			if errors.Is(err, subscriptiondomain.ErrDenied) {
+				return errors.New("alerts: capability required")
+			}
+			return errors.New("alerts: service unavailable")
+		}
+		return nil
+	}
+	alertshttp.Handler{
+		Service: alertsStore,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", errors.New("alerts: authentication required")
+				}
+				return "", errors.New("alerts: service unavailable")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", "", errors.New("alerts: authentication required")
+				}
+				return "", "", errors.New("alerts: service unavailable")
 			}
 			return contributor, key, nil
 		},

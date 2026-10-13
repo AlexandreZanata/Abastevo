@@ -250,3 +250,17 @@ sql:
         out: db/queries/ledger
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/alerts
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000089_alert_rules.sql
+    gen:
+      go:
+        package: alerts
+        out: db/queries/alerts
+        sql_package: pgx/v5
+        emit_json_tags: true

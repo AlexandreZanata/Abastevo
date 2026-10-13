@@ -4366,6 +4366,146 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/alerts/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply private alert commands
+      description: Owner derives from live account session plus exact-body signed key. New writes require paid capability with full-batch rollback. All responses are no-store without ETags.
+      operationId: alertsCommands
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/rules:
+    post:
+      tags:
+      - premium
+      summary: List private alert rules
+      description: Owner derives from live account session. Free reads remain available after lapse. All responses are no-store without ETags.
+      operationId: alertsRules
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsRulesRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsRulesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/inbox:
+    post:
+      tags:
+      - premium
+      summary: List private alert inbox
+      description: Owner derives from live account session. Free reads remain available after lapse. All responses are no-store without ETags.
+      operationId: alertsInbox
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsInboxRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsInboxResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase private alert data free of charge
+      description: Owner tombstones rules and clears inbox with receipts purged. Basic free notifications stay independent. All responses are no-store without ETags.
+      operationId: alertsErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/ledger/reports/build:
     post:
       tags:
@@ -5854,6 +5994,204 @@ components:
       - baseline
       - current
       - change_percent
+    AlertsPredicate:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - threshold
+          - change
+        fuel:
+          type: string
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+          - KG_13
+        condition:
+          type: string
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        threshold_milli:
+          type: integer
+          minimum: 1
+        drop_milli:
+          type: integer
+          minimum: 0
+        drop_percent_bp:
+          type: integer
+          minimum: 0
+        baseline_hours:
+          type: integer
+          minimum: 0
+      required:
+      - kind
+      - fuel
+      - unit
+      - condition
+      - source
+    AlertsRule:
+      type: object
+      additionalProperties: false
+      properties:
+        predicates:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/AlertsPredicate'
+        operator:
+          type: string
+          enum:
+          - AND
+          - OR
+        target:
+          type: object
+        schedule:
+          type: object
+      required:
+      - predicates
+      - operator
+      - target
+      - schedule
+    AlertsCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        rule_id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        delete:
+          type: boolean
+        enabled:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/AlertsRule'
+          - type: 'null'
+      required:
+      - operation_id
+      - rule_id
+    AlertsCommandResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        rule_id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - accepted
+        replayed:
+          type: boolean
+      required:
+      - operation_id
+      - rule_id
+      - revision
+      - status
+      - replayed
+    AlertsBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        commands:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AlertsCommand'
+      required:
+      - family_id
+      - access_token
+      - commands
+    AlertsBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AlertsCommandResult'
+      required:
+      - results
+    AlertsRulesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    AlertsRulesResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        rules:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+      required:
+      - rules
+    AlertsInboxRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      required:
+      - family_id
+      - access_token
+    AlertsInboxResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+      required:
+      - items
+    AlertsEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    AlertsEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+      required:
+      - status
     PremiumExportRequest:
       type: object
       additionalProperties: false

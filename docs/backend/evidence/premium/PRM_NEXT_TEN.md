@@ -206,3 +206,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop e89ab020. Frozen alerts domain with bounded threshold and change predicates, explicit AND/OR over one to three predicates, station or city targets, source-aware baselines and deterministic reason codes. Schedules enforce delivery days, wrapping midnight windows, IANA timezones, quiet hours and cooldowns with DST-safe local evaluation and no exact-clock promise. Unit/race PASS alerts domain with predicate bounds, nesting refusal, midnight windows, DST folds and gaps, source and condition isolation, missing baselines, cooldowns, quiet hours and timezone changes. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
 Next PRM07-T02. Real payments OFF.
+
+## PRM07-T02 — Owned rule device inbox schema and APIs
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 82574179. Append-only 000089 adds alert_rules with live index, alert_operations receipts and alert_inbox with rule index; sqlc vet/diff clean. Conditional Apply with 1..50 operation and 64 KiB bounds, operation-ID replay, revision guards, 20-rule caps, station existence checks and unconditional free deletes; paid writes via professional capability with pre-commit recheck. Owner-only POST /v1/alerts/commands with paid writes, free POST /v1/alerts/rules and POST /v1/alerts/inbox reads, and free POST /v1/alerts/erase with tombstones, inbox clearing and receipt purges; all no-store without ETags. Switch-offs preserve basic free flags. Real PostGIS PASS (alert suites): foreign isolation with empty lists, unknown stations, expiry with free reads, replay and divergent conflicts, concurrent enable single winner, tombstone exclusion, cap races and erasure inventories. Unit/race PASS alerts domain, http, cloudsync regression and cmd/api. OpenAPI alerts schemas plus three goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM07-T03. Real payments OFF.

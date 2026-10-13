@@ -443,6 +443,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T02 — Owned rule/device inbox schema and APIs
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PRM02/03; PR07/08/21/23.
 - **Outcome/areas:** private rule CRUD, revisions, enable/disable, rate limits, inbox/candidate records, sync/snapshot/privacy registration and device preferences.
 - **Tests first:** wrong owner/station, expired subscription, concurrent enable/delete, duplicate operation, rule/device cap races and existing free following/basic-alert regression.
