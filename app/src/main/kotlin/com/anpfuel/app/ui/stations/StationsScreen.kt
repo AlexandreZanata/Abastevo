@@ -42,6 +42,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.navigation.MapAppChooser
@@ -51,7 +54,6 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.StationsNavigateHintBanner
-import com.anpfuel.app.ui.components.FuelProductLabel
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -133,8 +135,11 @@ fun StationsScreen(
         viewModel.load(locale)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.loadServerStations()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(viewModel, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.syncServerStationsWhileVisible()
+        }
     }
 
     StationsContent(
@@ -255,6 +260,14 @@ private fun StationsContent(
                 )
             }
 
+            if (uiState.municipality != null && uiState.state != null) {
+                StationsListSummary(
+                    municipality = uiState.municipality,
+                    state = uiState.state,
+                    fuelProduct = uiState.selectedFuelProduct,
+                )
+            }
+
             when {
                 // P20-T02: a failed refresh keeps cached stations, so loading
                 // and error replace the list only when there is nothing cached.
@@ -287,17 +300,6 @@ private fun StationsContent(
                 }
 
                 uiState.showDownloadPrompt -> {
-                    if (uiState.municipality != null && uiState.state != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_location_format,
-                                uiState.municipality,
-                                uiState.state.abbreviation,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
                     EmptyState(
                         message = stringResource(R.string.stations_download_prompt),
                         modifier = Modifier.fillMaxWidth(),
@@ -342,26 +344,6 @@ private fun StationsContent(
                             onRetry = onRetry,
                         )
                     }
-                    if (uiState.municipality != null && uiState.state != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_location_format,
-                                uiState.municipality,
-                                uiState.state.abbreviation,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    FuelProductLabel(
-                        product = uiState.selectedFuelProduct,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.stations_sort_by_price),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     NearestStationButton(
                         isFindingNearest = uiState.isFindingNearest,
                         onClick = onFindNearestStation,

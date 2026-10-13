@@ -2,6 +2,10 @@ package com.anpfuel.data.local.auth
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertTrue
+import com.anpfuel.application.portable.*
+import com.anpfuel.data.remote.ApiEnvironment
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -18,7 +22,12 @@ class AnonymousDeviceKeysDeviceTest {
 
     @Test
     fun keystoreKeySignsFrozenProfile() {
-        val keys = AndroidAnonymousDeviceKeys()
+        val store = mockk<AuthSessionStore>()
+        val backup = mockk<AuthKeyStore>()
+        every { store.load() } returns null
+        every { backup.loadKey() } returns null
+        val auth = AuthFlow(AuthPorts(store, backup, AuthWallClock { 0L }, PortableNonceSource { "unused" }, mockk()))
+        val keys = AndroidAnonymousDeviceKeys(auth, ApiEnvironment.PREVIEW)
         assertTrue(keys.ensureKey())
         assertTrue(keys.hasKey())
         val jwk = keys.publicJwk()

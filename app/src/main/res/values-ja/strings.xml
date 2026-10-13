@@ -787,4 +787,6 @@
     <string name="privacy_finish_reading">読み終えました · 選択に戻る</string>
     <string name="privacy_rights_heading">プライバシーに関する権利</string>
     <string name="privacy_rights_body">学習への同意なしに、アクセス、訂正、撤回、削除を依頼できます。郵送先：ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil。宛名：Privacidade — Abastevo。パスワードや秘密鍵は含めないでください。</string>
+    <string name="stations_list_summary">一覧の概要</string>
+    <string name="stations_summary_order">並び順: %1$s</string>
 </resources>

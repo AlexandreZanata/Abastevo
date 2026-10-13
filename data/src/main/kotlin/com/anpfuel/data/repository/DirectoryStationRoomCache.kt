@@ -24,24 +24,33 @@ class DirectoryStationRoomCache @Inject constructor(
     private val dao: ServerStationCacheDao,
 ) : ServerStationCache {
 
-    override suspend fun savePage(page: ServerStationPage) {
-        dao.clearStations()
-        dao.upsertAll(page.items.mapIndexed { index, station -> station.toEntity(index) })
-        dao.upsertMeta(
+    override suspend fun savePage(page: ServerStationPage) = savePage(page, ServerCatalogMetaEntity.PAGE_KEY)
+
+    override suspend fun saveScopedPage(municipalityCode: String, page: ServerStationPage) =
+        savePage(page, "city:$municipalityCode")
+
+    private suspend fun savePage(page: ServerStationPage, key: String) {
+        dao.replacePage(
+            page.items.mapIndexed { index, station -> station.toEntity(index) },
             ServerCatalogMetaEntity(
-                key = ServerCatalogMetaEntity.PAGE_KEY,
+                key = key,
                 nextCursor = page.nextCursor,
                 savedAtMillis = System.currentTimeMillis(),
             ),
         )
     }
 
-    override suspend fun loadPage(): ServerStationPage? {
-        val entities = dao.loadPage()
-        if (entities.isEmpty()) return null
+    override suspend fun loadPage(): ServerStationPage? = loadPage(ServerCatalogMetaEntity.PAGE_KEY)
+
+    override suspend fun loadScopedPage(municipalityCode: String): ServerStationPage? =
+        loadPage("city:$municipalityCode")?.takeIf { page -> page.items.all { it.municipalityCode == municipalityCode } }
+
+    private suspend fun loadPage(key: String): ServerStationPage? {
+        val (entities, meta) = dao.pageSnapshot(key)
+        if (meta == null) return null
         return ServerStationPage(
-            items = entities.map { it.toDomain() },
-            nextCursor = dao.findMeta(ServerCatalogMetaEntity.PAGE_KEY)?.nextCursor,
+            items = entities.filter { it.position != Int.MAX_VALUE }.map { it.toDomain() },
+            nextCursor = meta.nextCursor,
         )
     }
 

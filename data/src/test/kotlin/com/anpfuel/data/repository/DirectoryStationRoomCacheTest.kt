@@ -49,12 +49,11 @@ class DirectoryStationRoomCacheTest {
     fun `save replaces page set and load replays in order`() = runTest {
         val repo = DirectoryStationRoomCache(dao)
         val saved = slot<List<ServerStationCacheEntity>>()
-        coEvery { dao.upsertAll(capture(saved)) } returns Unit
+        coEvery { dao.replacePage(capture(saved), any()) } returns Unit
 
         repo.savePage(ServerStationPage(listOf(station()), "cursor-1"))
 
-        coVerify { dao.clearStations() }
-        coVerify { dao.upsertMeta(any()) }
+        coVerify { dao.replacePage(any(), any()) }
         assertEquals(1, saved.captured.size)
         assertEquals(0, saved.captured.first().position)
         assertEquals(-23.55, saved.captured.first().latitude)
@@ -62,9 +61,8 @@ class DirectoryStationRoomCacheTest {
 
     @Test
     fun `load replays cached page without network after restart`() = runTest {
-        coEvery { dao.loadPage() } returns listOf(entity())
-        coEvery { dao.findMeta(ServerCatalogMetaEntity.PAGE_KEY) } returns
-            ServerCatalogMetaEntity(ServerCatalogMetaEntity.PAGE_KEY, "cursor-1", 2_000_000L)
+        coEvery { dao.pageSnapshot() } returns (listOf(entity()) to
+            ServerCatalogMetaEntity(ServerCatalogMetaEntity.PAGE_KEY, "cursor-1", 2_000_000L))
 
         // A fresh instance over the same DAO (simulated restart) replays
         // the last good page: offline compatibility without network.
@@ -80,7 +78,7 @@ class DirectoryStationRoomCacheTest {
 
     @Test
     fun `empty cache loads null and unknown locations stay honest`() = runTest {
-        coEvery { dao.loadPage() } returns emptyList()
+        coEvery { dao.pageSnapshot() } returns (emptyList<ServerStationCacheEntity>() to null)
 
         assertNull(DirectoryStationRoomCache(dao).loadPage())
 
@@ -103,6 +101,20 @@ class DirectoryStationRoomCacheTest {
 
         assertNull(saved.captured.latitude)
         assertNull(saved.captured.longitude)
+    }
+
+    @Test
+    fun `successful empty response is a valid offline snapshot`() = runTest {
+        coEvery { dao.pageSnapshot() } returns (emptyList<ServerStationCacheEntity>() to
+            ServerCatalogMetaEntity(ServerCatalogMetaEntity.PAGE_KEY, null, 2_000_000L))
+        assertEquals(emptyList<ServerStation>(), DirectoryStationRoomCache(dao).loadPage()?.items)
+    }
+
+    @Test
+    fun `detail fetched outside page never leaks into list`() = runTest {
+        coEvery { dao.pageSnapshot() } returns (listOf(entity().copy(position = Int.MAX_VALUE)) to
+            ServerCatalogMetaEntity(ServerCatalogMetaEntity.PAGE_KEY, null, 2_000_000L))
+        assertEquals(emptyList<ServerStation>(), DirectoryStationRoomCache(dao).loadPage()?.items)
     }
 
     @Test
