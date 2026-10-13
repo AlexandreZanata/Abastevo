@@ -385,6 +385,8 @@ Entry: PRM05. Exit: exact explainable metrics and private bounded reports/export
 
 ### PRM06-T01 — Full-to-full consumption and coverage engine
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM00-T03/PRM05; PR14–PR16.
 - **Outcome/areas:** pure calculation version, eligible anchor intervals, partial-fill accumulation, mixed-fuel/segment/gap exclusion and explanation codes.
 - **Tests first:** all reviewed vectors, initial-fill exclusion, multiple partials, edit/delete invalidation, unsupported gas/mixed method and incomplete intervals.

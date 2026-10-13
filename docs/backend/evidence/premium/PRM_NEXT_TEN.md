@@ -164,3 +164,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop c146899. Real HTTP handlers with real Store and disposable PostGIS using synthetic session maps. Concurrent create and correct converge with single winner and no lost correction; identical retries return replayed receipts. Trigger-injected outages return 503 with unchanged counts and succeed after retry with new handler and store instances. Erasure empties lists, purges operations so old retries cannot falsely restore, and stays idempotent. Revoked capability denies writes while reads stay free. Month and vehicle scans page bounded with cursors and no duplicates. Unit/race PASS ledger domain, http, apicontract and cmd/api. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM06-T01. Real payments OFF.
+
+## PRM06-T01 — Full-to-full consumption and coverage engine
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop bd6ad1c. Pure metrics engine with exact integer and reduced rational math, starting-fill exclusion, partial accumulation, mixed-fuel, segment and gap exclusion and frozen UNKNOWN reasons. Executes 13 of 15 frozen vectors with exact eligible sums and rational strings; month and comparison vectors ride PRM06-T03 and T04. Recomputes from raw inputs after repair with no stored state. Unit/race PASS metrics frozen vectors. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
+Next PRM06-T02. Real payments OFF.
