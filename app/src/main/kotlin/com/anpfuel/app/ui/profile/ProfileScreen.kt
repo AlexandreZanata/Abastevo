@@ -253,13 +253,6 @@ fun ProfileScreen(
                 ),
             ) {
                 Column {
-                    ProfileToolItem(
-                        icon = Icons.Default.AssignmentTurnedIn,
-                        title = stringResource(R.string.profile_tool_contributions_title),
-                        subtitle = stringResource(R.string.profile_tool_contributions_subtitle),
-                        onClick = { onNavigate(Routes.CONTRIBUTIONS) },
-                    )
-                    HorizontalDivider()
                     AnimatedVisibility(
                         visible = signedIn,
                         enter = fadeIn() + expandVertically(),
@@ -280,6 +273,20 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_vehicles_title),
                         subtitle = stringResource(R.string.profile_tool_vehicles_subtitle),
                         onClick = { onNavigate(Routes.VEHICLES) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Settings,
+                        title = stringResource(R.string.profile_tool_settings_title),
+                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
+                        onClick = { onNavigate(Routes.SETTINGS) },
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.AssignmentTurnedIn,
+                        title = stringResource(R.string.profile_tool_contributions_title),
+                        subtitle = stringResource(R.string.profile_tool_contributions_subtitle),
+                        onClick = { onNavigate(Routes.CONTRIBUTIONS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
@@ -308,13 +315,6 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_week_picker_title),
                         subtitle = stringResource(R.string.profile_tool_week_picker_subtitle),
                         onClick = { onNavigate(Routes.WEEK_PICKER) },
-                    )
-                    HorizontalDivider()
-                    ProfileToolItem(
-                        icon = Icons.Default.Settings,
-                        title = stringResource(R.string.profile_tool_settings_title),
-                        subtitle = stringResource(R.string.profile_tool_settings_subtitle),
-                        onClick = { onNavigate(Routes.SETTINGS) },
                     )
                     HorizontalDivider()
                     ProfileToolItem(
