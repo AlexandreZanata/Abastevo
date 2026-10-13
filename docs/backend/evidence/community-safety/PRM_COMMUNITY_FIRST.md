@@ -23,3 +23,7 @@ LOCAL_DONE / INTEGRATION_PENDING: new registry wire regression proves eight vali
 ## PRM16-T02
 
 LOCAL_DONE / INTEGRATION_PENDING: rejected optional PMQC coordinates cannot remove registry identity/address or manufacture points; explicit join regression preserves all eight serialized registry facts. Existing quarantine and deterministic join contract retained. Rust join suite 8/8 PASS; locked prepare_registry build PASS.
+
+## PRM16-T03
+
+LOCAL_DONE / INTEGRATION_PENDING: actual Rust prepare_registry→Go loader/reconciliation/HTTP publication, replay, refresh and overlap cases passed in directory/adapters real disposable-PostGIS suite (25.095s). Prepared refresh preserves UUIDs and reviewed points, absent points stay unknown; no consumer schema/parser change required. `CARGO_TARGET_DIR=/tmp/prm-community-rust bash scripts/check-rust-fast.sh`: fmt/clippy/locked tests PASS. Broader Directory subpackage campaign recorded below.
