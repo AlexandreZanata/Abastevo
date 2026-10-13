@@ -199,10 +199,3 @@ func TestLegacyNormalizedRecordCannotClaimOfficialLocationReview(t *testing.T) {
 		t.Fatal("legacy invented wire must not be an official record")
 	}
 }
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
-}

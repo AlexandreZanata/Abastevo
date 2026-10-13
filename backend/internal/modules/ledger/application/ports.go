@@ -67,11 +67,11 @@ type ConsentStore interface {
 }
 
 type ReportTotals struct {
-	PurchaseCentavos int64            `json:"purchase_centavos"`
-	ExpenseCentavos  int64            `json:"expense_centavos"`
-	ByVehicle        map[string]int64 `json:"by_vehicle"`
-	ByCategory       map[string]int64 `json:"by_category"`
-	RecordCount      int64            `json:"record_count"`
+	PurchaseCentavos int64             `json:"purchase_centavos"`
+	ExpenseCentavos  int64             `json:"expense_centavos"`
+	ByVehicle        map[string]int64  `json:"by_vehicle"`
+	ByCategory       map[string]int64  `json:"by_category"`
+	RecordCount      int64             `json:"record_count"`
 	Coverage         map[string]string `json:"coverage"`
 }
 
