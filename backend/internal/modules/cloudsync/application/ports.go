@@ -162,3 +162,19 @@ type SnapshotResult struct {
 type SnapshotStore interface {
 	Snapshot(context.Context, Principal, SnapshotQuery, int) (SnapshotResult, error)
 }
+
+type BackupManifest struct {
+	Version         int64    `json:"version"`
+	Revision        int64    `json:"revision"`
+	Epoch           int64    `json:"epoch"`
+	ConsentRevision int64    `json:"consent_revision"`
+	VehicleCount    int64    `json:"vehicle_count"`
+	FavoriteCount   int64    `json:"favorite_count"`
+	PreferenceCount int64    `json:"preference_count"`
+	Checksum        string   `json:"checksum"`
+	Datasets        []string `json:"datasets"`
+	Excluded        []string `json:"excluded"`
+}
+type BackupStore interface {
+	Manifest(context.Context, Principal) (BackupManifest, error)
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cloud-backup-manifest-response-valid",
+  "schema": "CloudBackupManifestResponse",
+  "valid": true,
+  "value": {
+    "version": 1,
+    "revision": 3,
+    "epoch": 1,
+    "consent_revision": 1,
+    "vehicle_count": 1,
+    "favorite_count": 1,
+    "preference_count": 1,
+    "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+    "datasets": ["vehicles"],
+    "excluded": ["credentials"]
+  }
+}

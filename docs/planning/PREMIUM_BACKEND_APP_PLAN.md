@@ -268,6 +268,8 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T01 — Snapshot manifest and consistent dataset read
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM03; PR06/10.
 - **Outcome/areas:** versioned manifest and consistent acknowledged data snapshot with revision/count/checksum/exclusion list; dataset export ports allow later professional/rule registration.
 - **Tests first:** writes during snapshot, pending client changes, inconsistent dataset revisions, oversize/unknown schema and forbidden credential/photo/cache fields.

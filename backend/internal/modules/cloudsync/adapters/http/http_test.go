@@ -26,6 +26,7 @@ type probe struct {
 	lastPos                       app.Position
 	lastLimit                     int
 	consents, previews, snapshots int
+	manifests                     int
 	previewResult                 app.PreviewResult
 	snapshotResult                app.SnapshotResult
 	consentStatus                 app.Status
@@ -86,6 +87,13 @@ func (p *probe) Snapshot(_ context.Context, principal app.Principal, pos app.Sna
 		return app.SnapshotResult{}, p.err
 	}
 	return p.snapshotResult, nil
+}
+func (p *probe) Manifest(context.Context, app.Principal) (app.BackupManifest, error) {
+	p.manifests++
+	if p.err != nil {
+		return app.BackupManifest{}, p.err
+	}
+	return app.BackupManifest{Version: 1, Revision: 3, Epoch: 1, ConsentRevision: 1, VehicleCount: 1, Datasets: []string{"vehicles"}, Excluded: []string{"credentials"}}, nil
 }
 func call(h Handler, path, body string) *httptest.ResponseRecorder {
 	router := chi.NewRouter()
@@ -517,6 +525,44 @@ func TestSnapshotConsistentPagesAndIsolation(t *testing.T) {
 	p.err = domain.ErrResnapshot
 	if w = call(h, "/v1/cloud/sync/snapshot", nextBody); w.Code != 409 {
 		t.Fatal("stale snapshot hidden")
+	}
+	p.err = nil
+}
+
+func TestBackupManifestSuccessAndValidation(t *testing.T) {
+	p := &probe{}
+	h := consentHandler(p)
+	device := "55555555-5555-4555-8555-555555555555"
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `"}`
+	w := call(h, "/v1/cloud/snapshots/manifest", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("manifest %d", w.Code)
+	}
+	var body app.BackupManifest
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Version != 1 || body.Revision != 3 {
+		t.Fatalf("manifest body %v", err)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/snapshots/manifest", base); w.Code != 401 || p.manifests != 1 {
+		t.Fatal("unsigned manifest admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"device_id"`, `"account_id"`, 1),
+		strings.Replace(base, `"device_id":"`+device+`"`, `"device_id":"not-a-uuid"`, 1),
+		strings.Replace(base, `"device_id":"`+device+`"`, `"device_id":"`+device+`","device_id":"`+device+`"`, 1),
+	} {
+		before := p.manifests
+		if w = call(h, "/v1/cloud/snapshots/manifest", bad); w.Code != 400 || p.manifests != before {
+			t.Fatalf("bad manifest admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrDenied
+	if w = call(h, "/v1/cloud/snapshots/manifest", base); w.Code != 403 {
+		t.Fatal("lapsed manifest hidden")
+	}
+	p.err = domain.ErrUnauthorized
+	if w = call(h, "/v1/cloud/snapshots/manifest", base); w.Code != 401 {
+		t.Fatal("revoked manifest hidden")
 	}
 	p.err = nil
 }

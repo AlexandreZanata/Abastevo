@@ -4001,6 +4001,44 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/cloud/snapshots/manifest:
+    post:
+      tags:
+      - premium
+      summary: Read consistent backup manifest
+      description: Versioned manifest for the acknowledged cloud revision with per-dataset
+        counts, integrity checksum and exclusion list. Failure never reports local pending
+        data as protected. No database dump. Future professional and rule datasets register
+        their own export ports before inclusion. All responses are no-store without ETags.
+      operationId: cloudSnapshotsManifest
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBackupManifestRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBackupManifestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -4689,6 +4727,68 @@ components:
       - epoch
       - consent_revision
       - next_cursor
+    CloudBackupManifestRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudBackupManifestResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        revision:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        vehicle_count:
+          type: integer
+          minimum: 0
+        favorite_count:
+          type: integer
+          minimum: 0
+        preference_count:
+          type: integer
+          minimum: 0
+        checksum:
+          type: string
+          minLength: 64
+          maxLength: 64
+        datasets:
+          type: array
+          items:
+            type: string
+            enum: *id002
+          uniqueItems: true
+        excluded:
+          type: array
+          items:
+            type: string
+      required:
+      - version
+      - revision
+      - epoch
+      - consent_revision
+      - vehicle_count
+      - favorite_count
+      - preference_count
+      - checksum
+      - datasets
+      - excluded
     PremiumExportRequest:
       type: object
       additionalProperties: false

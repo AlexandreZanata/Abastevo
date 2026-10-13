@@ -23,6 +23,7 @@ type Service interface {
 	app.PullStore
 	app.ImportStore
 	app.SnapshotStore
+	app.BackupStore
 }
 type Handler struct {
 	Service      Service
@@ -123,6 +124,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/cloud/consent", h.consent)
 	r.Post("/v1/cloud/import/preview", h.importPreview)
 	r.Post("/v1/cloud/sync/snapshot", h.syncSnapshot)
+	r.Post("/v1/cloud/snapshots/manifest", h.backupManifest)
 }
 func (h Handler) status(w http.ResponseWriter, r *http.Request) {
 	var dto session
