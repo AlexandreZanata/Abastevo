@@ -41,3 +41,12 @@ Validation: PASS
 RED: TestPremiumCurrentAndPlannedContracts failed for absent /v1/premium/status. GREEN: four additive subscription paths in v1, strict no-client-account/no-premium-flag golden requests, 15 explicitly planned future dataset routes and typed schemas. Premium financial units preserve existing L/M3 vocabulary and existing unit-price bound. Owner session plus bound signed proof, private no-store/errors, generations/receipts, module/schema/job ownership and actual verification selectors are frozen in PREMIUM_API_CONTRACT.
 
 Commands: go test -race -count=1 ./internal/platform/apicontract (11.515s); go vet ./internal/platform/apicontract; GOTOOLCHAIN=go1.27.1 staticcheck ./internal/platform/apicontract; vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check. Passed, OpenAPI zero errors (existing/new informational warnings retained). Scoped secret/whitespace checks. G-PR-CONTRACT is source-only; production capacity/catalog/provider proofs remain deferred. Next PRM01-T01.
+
+## PRM01-T01 — Pure lifecycle and capabilities
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+
+RED: ACTIVE/CANCELED/GRACE could not grant the requested six capabilities. GREEN: deterministic provider state mapping, paid-through/grace, exclusive expiry/900s freshness, future/unverified proof refusal, inactive owner/retired chain denial, free held-data access and independent result slices. Typed application principal/provider/store/token-codec ports contain no client premium Boolean or community dependency. No runtime provider is wired.
+
+Commands: go test -race -count=1 ./internal/modules/subscription/domain; go vet and GOTOOLCHAIN=go1.27.1 staticcheck on that package. Passed. Application ports compile in the next owning persistence task; no application behavior is claimed here. Signed/owner persistence follows in PRM01-T02. PR131 is draft; original dev untouched.
