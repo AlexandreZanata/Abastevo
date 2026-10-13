@@ -197,7 +197,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
   /v1/photo-captures:
     post:
-      summary: Authorize camera capture inside the reviewed station area.
+      summary: Authorize community photo capture for an active canonical station.
       operationId: authorizePhotoCapture
       tags: [community]
       security: []
@@ -210,7 +210,7 @@ paths:
           schema: {type: string, minLength: 1, maxLength: 128}
       requestBody:
         required: true
-        description: Canonical station and transient fresh location claim.
+        description: Canonical station; location is optional and never required for admission.
         content:
           application/json:
             schema:
@@ -218,8 +218,7 @@ paths:
               additionalProperties: false
               required: [client_capture_id, station_id]
               oneOf:
-                - required: [location]
-                  properties:
+                - properties:
                     development_preview: {const: false}
                 - required: [development_preview]
                   properties:
@@ -251,13 +250,13 @@ paths:
                   issued_at: {type: string, format: date-time}
                   camera_expires_at: {type: string, format: date-time}
                   expires_at: {type: string, format: date-time}
-                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1]}
+                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1, photo-capture-community-v2]}
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Location or account does not permit capture.
+          description: Station or account does not permit capture.
         '409':
           $ref: '#/components/responses/Conflict'
         '429':

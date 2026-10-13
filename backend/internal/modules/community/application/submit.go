@@ -68,8 +68,10 @@ type Ports struct {
 	// contributors keep the anonymous baseline. Nil skips the check
 	// (pre-account behavior); the composition root injects the
 	// account-owned gate and maps refusals onto ErrAccountBlocked.
-	CheckAccount                 func(ctx context.Context, contributorID string) error
-	CheckPhotoCapture            func(context.Context, Caller, SubmitDTO) error
+	CheckAccount      func(ctx context.Context, contributorID string) error
+	CheckPhotoCapture func(context.Context, Caller, SubmitDTO) error
+	// CheckCaptureStation proves active canonical identity without geometry. Required for new normal receipts.
+	CheckCaptureStation          func(context.Context, string) error
 	DevelopmentPhotoPreviewUntil time.Time
 	CheckDevelopmentStation      func(context.Context, string) error
 	Idempotent                   func(ctx context.Context, key IdempotencyKey, body []byte, run func(ctx context.Context) (Outcome, error)) (Outcome, error)

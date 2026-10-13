@@ -39,3 +39,7 @@ LOCAL_DONE / INTEGRATION_PENDING: existing bounded parametrized/literal-escaped 
 ## PRM17-T03
 
 LOCAL_DONE / INTEGRATION_PENDING: extended real prepared publication→anonymous HTTP name search→profile verifies nominal address and explicit null coordinates; actual canonical IDs preserved. Targeted TestPreparedPublicationThroughHTTPAndProfiles race/PostGIS PASS (2.042s). Broader Directory nine-package race/PostGIS campaign PASS. Ready for normal capture consumer; no live deployment claimed.
+
+## PRM18-T01
+
+LOCAL_DONE / INTEGRATION_PENDING: RED no-GPS regression failed with capture-ineligible before change. GREEN normal capture issues photo-capture-community-v2 from mandatory active canonical-station port, without geometry; optional claims still verified against forgery. HTTP accepts absent location, rejects malformed UUID/body; append-only 000091 admits v2 while retaining v1/debug. Camera/24h deadlines unchanged. Application/HTTP race suites PASS (1.031s/1.030s); capture real-PostGIS ownership/replay/concurrency/address-only/legacy/unknown-policy/inactive-station/migration-replay campaign PASS (4.233s). Fixture follow-up correctly restored hidden owner/key fields when seeding legacy receipts; no production rule weakened.

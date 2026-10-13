@@ -191,11 +191,12 @@ func TestDevelopmentPhotoPreviewRequiresOptInDeadlineCanonicalStationAndProof(t 
 		t.Fatal("expired opt-in allowed")
 	}
 	p.Clock = func() time.Time { return now }
+	previewReceipt := store.receipt
 	in.DevelopmentPreview = false
-	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
-		t.Fatal("normal flow bypassed location")
+	if normal, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); err != nil || normal.PolicyVersion != CommunityPhotoCapturePolicy {
+		t.Fatal("normal flow must use distinct community policy", err)
 	}
-	receipt := store.receipt
+	receipt := previewReceipt
 	receipt.ContributorRef = testCaller().Token
 	receipt.KeyID = testCaller().KeyID
 	use := PhotoCaptureUse{CaptureID: receipt.ID, StationID: receipt.StationID, CapturedAt: now.Add(time.Second)}
@@ -204,5 +205,33 @@ func TestDevelopmentPhotoPreviewRequiresOptInDeadlineCanonicalStationAndProof(t 
 	}
 	if _, err = ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, testCaller(), use, now.Add(time.Second), p.DevelopmentPhotoPreviewUntil); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCommunityFirstCaptureNeedsStationProofNotLocation(t *testing.T) {
+	for _, distance := range []float64{0, 149.9, 150, 150.1, 100000} {
+		p := testPorts()
+		p.CheckCaptureStation = func(context.Context, string) error { return nil }
+		p.Locate = func(context.Context, string, float64, float64) (float64, StationSite, error) {
+			t.Fatal("normal capture queried location")
+			return distance, SiteUnknown, nil
+		}
+		store := &previewCaptureStore{}
+		in := PhotoCaptureIntent{ClientCaptureID: "community", StationID: testDTO().StationID}
+		if distance > 0 {
+			now := p.Clock()
+			in.Location = locationDTO(FixVerified, acc(10), &now, acc(-23.5+distance/111000), acc(-46.6))
+		}
+		got, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "community", nil, in)
+		if err != nil || got.PolicyVersion != "photo-capture-community-v2" {
+			t.Fatalf("no-GPS capture %v %+v", err, got)
+		}
+		if got.CameraExpiresAt.Sub(got.IssuedAt) != 2*time.Minute || got.ExpiresAt.Sub(got.IssuedAt) != 24*time.Hour {
+			t.Fatal("changed deadlines")
+		}
+		p.CheckCaptureStation = func(context.Context, string) error { return ErrPhotoCaptureIneligible }
+		if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), "community", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+			t.Fatal("unknown/inactive station admitted", err)
+		}
 	}
 }

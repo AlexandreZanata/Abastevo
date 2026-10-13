@@ -4,6 +4,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -71,6 +72,14 @@ func pairDistanceViaPostGIS(pool *pgxpool.Pool) func(context.Context, string, st
 
 func e2eSubmitPorts(s *Store, pool *pgxpool.Pool, now time.Time) communityapp.Ports {
 	return communityapp.Ports{
+		CheckCaptureStation: func(ctx context.Context, id string) error {
+			var active bool
+			err := pool.QueryRow(ctx, `SELECT status='active' FROM directory_stations WHERE id=$1`, id).Scan(&active)
+			if errors.Is(err, pgx.ErrNoRows) || (err == nil && !active) {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			return err
+		},
 		Clock: func() time.Time { return now },
 		NewID: newUUIDv4,
 		Attribution: func(_ context.Context, id string) (string, error) {

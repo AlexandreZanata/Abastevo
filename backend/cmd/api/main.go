@@ -761,6 +761,19 @@ func run() error {
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
 	evidenceStore := evidenceadapters.NewIntakeStore(pool.Underlying(), cfg.EvidenceMaxPendingPhotos)
 	communityPorts := communityapp.Ports{
+		CheckCaptureStation: func(ctx context.Context, id string) error {
+			station, err := directoryRepo.Station(ctx, id)
+			if errors.Is(err, directorydomain.ErrUnknownStation) {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			if err != nil {
+				return err
+			}
+			if station.Status != "active" {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			return nil
+		},
 		DevelopmentPhotoPreviewUntil: cfg.DevelopmentPhotoPreviewUntil,
 		CheckDevelopmentStation: func(ctx context.Context, id string) error {
 			if _, err := directoryRepo.Station(ctx, id); err != nil {

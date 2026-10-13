@@ -11,8 +11,9 @@ import (
 
 func testPorts() Ports {
 	return Ports{
-		Clock: func() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC) },
-		NewID: func() (string, error) { return "d6c74c23-63db-4c24-a2e5-408cb23bad27", nil },
+		CheckCaptureStation: func(context.Context, string) error { return nil },
+		Clock:               func() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC) },
+		NewID:               func() (string, error) { return "d6c74c23-63db-4c24-a2e5-408cb23bad27", nil },
 		Attribution: func(_ context.Context, id string) (string, error) {
 			return "tok-" + id[:8], nil
 		},
