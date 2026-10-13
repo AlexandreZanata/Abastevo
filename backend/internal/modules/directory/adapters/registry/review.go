@@ -132,6 +132,14 @@ func ReviewCandidate(ctx context.Context, store Store, tx Transformer, candidate
 	if candidate.SourceKey != corroborator.SourceKey {
 		return fail("review evidence spans two establishments")
 	}
+	// A fresh run/UUID is not fresh independent geographic evidence.
+	if candidate.Checksum == corroborator.Checksum ||
+		(candidate.Source == corroborator.Source && candidate.CRS == corroborator.CRS &&
+			candidate.Latitude == corroborator.Latitude && candidate.Longitude == corroborator.Longitude &&
+			candidate.EffectiveDate.Valid && corroborator.EffectiveDate.Valid &&
+			candidate.EffectiveDate.Time.Equal(corroborator.EffectiveDate.Time)) {
+		return fail("review needs independent observations, not replayed evidence")
+	}
 	latA, lonA, err := tx.Transform(ctx, candidate.Latitude, candidate.Longitude, candidate.CRS)
 	if err != nil {
 		return fail("review transform: %v", err)

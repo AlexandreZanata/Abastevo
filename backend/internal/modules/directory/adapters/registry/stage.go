@@ -123,9 +123,13 @@ func (s *PGStore) CreateRun(ctx context.Context, id, source, snapshot, checksum 
 	if err != nil {
 		return "", false, err
 	}
+	parserVersion := ParserVersion
+	if source == SourceAPI {
+		parserVersion = APIParserVersion
+	}
 	row, err := s.Q.CreateRegistryRun(ctx, directory.CreateRegistryRunParams{
 		ID: uid, Source: source, SnapshotIdentity: snapshot,
-		Checksum: checksum, ParserVersion: ParserVersion,
+		Checksum: checksum, ParserVersion: parserVersion,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

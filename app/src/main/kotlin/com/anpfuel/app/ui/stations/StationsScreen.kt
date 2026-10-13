@@ -387,10 +387,9 @@ private fun StationsContent(
                 }
             }
 
-            // P35-T02 — canonical server directory (flag-gated, additive).
-            // Legacy ANP rows above are never replaced; an empty server list
-            // renders nothing, never an error.
-            if (uiState.serverStations.isNotEmpty()) {
+            // Supplement the visible weekly price rows using full CNPJ identity.
+            // Keep the complete cached directory in state; filtering is presentation only.
+            if (uiState.directoryOnlyStations.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.server_stations_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -403,7 +402,7 @@ private fun StationsContent(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                uiState.serverStations.forEach { station ->
+                uiState.directoryOnlyStations.forEach { station ->
                     ServerStationRow(
                         station = station,
                         onSelect = onServerStationSelected,

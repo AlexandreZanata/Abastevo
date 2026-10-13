@@ -121,7 +121,8 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
         .filter(|name| !PMQC_HEADER.contains(&name.as_str()))
         .cloned()
         .collect();
-    if !missing.is_empty() || !unknown.is_empty() {
+    let unique_names: HashSet<&str> = names.iter().map(String::as_str).collect();
+    if !missing.is_empty() || !unknown.is_empty() || unique_names.len() != names.len() {
         return Ok(PmqcBatch {
             state: RunState::Quarantined,
             error_code: "header_mismatch".to_string(),
@@ -170,6 +171,20 @@ pub fn parse_pmqc(file: &str, raw: Vec<u8>, limits: &Limits) -> Result<PmqcBatch
         }
         counts.input += 1;
         let record = next.map_err(|err| PmqcError::Truncated(err.to_string()))?;
+        if record.len() != header.len() {
+            counts.quarantined += 1;
+            quarantine.push(quarantine_row(
+                logical_row,
+                reason::INVALID_FIELD,
+                format!(
+                    "expected {} fields, received {}",
+                    header.len(),
+                    record.len()
+                ),
+                None,
+            ));
+            continue;
+        }
         if record
             .iter()
             .any(|field| field.len() > limits.max_field_bytes)
