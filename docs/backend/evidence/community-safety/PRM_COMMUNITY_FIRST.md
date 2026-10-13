@@ -11,3 +11,7 @@ LOCAL_DONE / INTEGRATION_PENDING: ADR-021 and active contract supersession befor
 ## PRM15-T02
 
 LOCAL_DONE / INTEGRATION_PENDING: COMMUNITY_FIRST_POLICY freezes v2/legacy/debug/unknown receipt behavior, server-first rollout, incompatible-client recovery and rollback. Original deadlines and owner/key/station/origin/evidence bindings retained. Documentation diff check PASS; implementation tests belong to PRM18/PRM19.
+
+## PRM15-T03
+
+LOCAL_DONE / INTEGRATION_PENDING: existing consensus thresholds retained under a new version without proximity prerequisite; existing helpfulness/moderator authority/budgets retained. Frozen reviewed-coverage denominator/numerator, strict >90% and owner-reviewed product evidence; PRM22 DEFERRED. No new numeric vote/adoption threshold invented. Scoped document/diff review PASS.
