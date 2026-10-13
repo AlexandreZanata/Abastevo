@@ -191,6 +191,20 @@ func (q *Queries) DueInbox(ctx context.Context, limit int32) ([]DueInboxRow, err
 	return items, nil
 }
 
+const enrollPushToken = `-- name: EnrollPushToken :exec
+INSERT INTO alert_push_tokens(account_id,token,revoked_at) VALUES($1,$2,NULL) ON CONFLICT(account_id,token) DO UPDATE SET revoked_at=NULL
+`
+
+type EnrollPushTokenParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Token     string      `json:"token"`
+}
+
+func (q *Queries) EnrollPushToken(ctx context.Context, arg EnrollPushTokenParams) error {
+	_, err := q.db.Exec(ctx, enrollPushToken, arg.AccountID, arg.Token)
+	return err
+}
+
 const eraseAlertInbox = `-- name: EraseAlertInbox :exec
 DELETE FROM alert_inbox WHERE account_id=$1
 `
@@ -228,6 +242,44 @@ func (q *Queries) GetAlertOperation(ctx context.Context, arg GetAlertOperationPa
 	var i GetAlertOperationRow
 	err := row.Scan(&i.PayloadHash, &i.Receipt)
 	return i, err
+}
+
+const getInboxRow = `-- name: GetInboxRow :one
+SELECT rule_id,payload,status FROM alert_inbox WHERE account_id=$1 AND inbox_id=$2 FOR UPDATE
+`
+
+type GetInboxRowParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	InboxID   pgtype.UUID `json:"inbox_id"`
+}
+
+type GetInboxRowRow struct {
+	RuleID  pgtype.UUID `json:"rule_id"`
+	Payload []byte      `json:"payload"`
+	Status  string      `json:"status"`
+}
+
+func (q *Queries) GetInboxRow(ctx context.Context, arg GetInboxRowParams) (GetInboxRowRow, error) {
+	row := q.db.QueryRow(ctx, getInboxRow, arg.AccountID, arg.InboxID)
+	var i GetInboxRowRow
+	err := row.Scan(&i.RuleID, &i.Payload, &i.Status)
+	return i, err
+}
+
+const getPushToken = `-- name: GetPushToken :one
+SELECT revoked_at FROM alert_push_tokens WHERE account_id=$1 AND token=$2
+`
+
+type GetPushTokenParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Token     string      `json:"token"`
+}
+
+func (q *Queries) GetPushToken(ctx context.Context, arg GetPushTokenParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getPushToken, arg.AccountID, arg.Token)
+	var revoked_at pgtype.Timestamptz
+	err := row.Scan(&revoked_at)
+	return revoked_at, err
 }
 
 const getRule = `-- name: GetRule :one
@@ -399,6 +451,24 @@ func (q *Queries) MarkInbox(ctx context.Context, arg MarkInboxParams) (int64, er
 	return result.RowsAffected(), nil
 }
 
+const markInboxSent = `-- name: MarkInboxSent :execrows
+UPDATE alert_inbox SET status='sent',payload=$3 WHERE account_id=$1 AND inbox_id=$2 AND status='dispatched'
+`
+
+type MarkInboxSentParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	InboxID   pgtype.UUID `json:"inbox_id"`
+	Payload   []byte      `json:"payload"`
+}
+
+func (q *Queries) MarkInboxSent(ctx context.Context, arg MarkInboxSentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markInboxSent, arg.AccountID, arg.InboxID, arg.Payload)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const officialBaseline = `-- name: OfficialBaseline :many
 SELECT DISTINCT ON (p.station_id) p.id,p.station_id,p.fuel_product,p.unit,p.amount_milli_brl,p.collected_on FROM official_station_prices p
 WHERE p.station_id=ANY($1::uuid[]) AND p.fuel_product=$2 AND p.unit=$3 AND p.collected_on<=$4 ORDER BY p.station_id,p.collected_on DESC
@@ -514,6 +584,23 @@ DELETE FROM alert_operations WHERE account_id=$1
 func (q *Queries) PurgeAlertOperations(ctx context.Context, accountID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, purgeAlertOperations, accountID)
 	return err
+}
+
+const revokePushToken = `-- name: RevokePushToken :execrows
+UPDATE alert_push_tokens SET revoked_at=clock_timestamp() WHERE account_id=$1 AND token=$2 AND revoked_at IS NULL
+`
+
+type RevokePushTokenParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Token     string      `json:"token"`
+}
+
+func (q *Queries) RevokePushToken(ctx context.Context, arg RevokePushTokenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePushToken, arg.AccountID, arg.Token)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const ruleStation = `-- name: RuleStation :one

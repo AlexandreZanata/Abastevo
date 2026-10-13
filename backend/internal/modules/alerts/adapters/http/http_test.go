@@ -47,6 +47,10 @@ func (p *probe) ListInbox(_ context.Context, _ string, _ int) ([]application.Inb
 
 func (p *probe) EraseAll(_ context.Context, _ string) error { return p.err }
 
+func (p *probe) EnrollToken(_ context.Context, _ string, _ string) error { return p.err }
+
+func (p *probe) RevokeToken(_ context.Context, _ string, _ string) error { return p.err }
+
 type probeError struct{ msg string }
 
 func (e *probeError) Error() string { return e.msg }
@@ -116,6 +120,31 @@ func TestAlertsAuthExpiryValidation(t *testing.T) {
 		}
 		if w := call(h, path, bad); w.Code != 400 {
 			t.Fatalf("bad admitted %d %s", w.Code, bad[:60])
+		}
+	}
+}
+
+func TestPushEnrollRevokeValidation(t *testing.T) {
+	who := owner
+	p := &probe{}
+	h := testHandler(p, &who)
+	enroll := `{"family_id":"` + family + `","access_token":"synthetic","token":"opaque-player-id-1"}`
+	if w := call(h, "/v1/alerts/push/enroll", enroll); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("enroll %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Sessions: testHandler(p, &who).Sessions}
+	if w := call(unsigned, "/v1/alerts/push/enroll", enroll); w.Code != 401 {
+		t.Fatal("unsigned enroll admitted")
+	}
+	if w := call(h, "/v1/alerts/push/revoke", enroll); w.Code != 200 {
+		t.Fatalf("revoke %d", w.Code)
+	}
+	for _, bad := range []string{
+		strings.Replace(enroll, `"token"`, `"player"`, 1),
+		`{"family_id":"` + family + `","access_token":"synthetic","token":""}`,
+	} {
+		if w := call(h, "/v1/alerts/push/enroll", bad); w.Code != 400 {
+			t.Fatalf("bad token admitted %d", w.Code)
 		}
 	}
 }

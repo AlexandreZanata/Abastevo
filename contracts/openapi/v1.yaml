@@ -4506,6 +4506,76 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/alerts/push/enroll:
+    post:
+      tags:
+      - premium
+      summary: Enroll opaque push token
+      description: Account-scoped opaque token enrollment with revocation. Tokens stay out of logs and payloads. Inbox remains the fallback. Real provider sends stay proof owed.
+      operationId: alertsPushEnroll
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsPushTokenRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsPushEnrollResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/push/revoke:
+    post:
+      tags:
+      - premium
+      summary: Revoke push token
+      description: Account-scoped revocation that blocks later sends without leaking other accounts. All responses are no-store without ETags.
+      operationId: alertsPushRevoke
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsPushTokenRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsPushRevokeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/ledger/reports/build:
     post:
       tags:
@@ -6190,6 +6260,40 @@ components:
           type: string
           enum:
           - erased
+      required:
+      - status
+    AlertsPushTokenRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        token:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required:
+      - family_id
+      - access_token
+      - token
+    AlertsPushEnrollResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - enrolled
+      required:
+      - status
+    AlertsPushRevokeResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - revoked
       required:
       - status
     PremiumExportRequest:

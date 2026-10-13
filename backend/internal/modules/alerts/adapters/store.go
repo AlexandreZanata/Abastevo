@@ -21,8 +21,9 @@ import (
 const maxRules = 20
 
 type Store struct {
-	Pool *pgxpool.Pool
-	Paid func(context.Context, pgx.Tx, string) error
+	Pool   *pgxpool.Pool
+	Paid   func(context.Context, pgx.Tx, string) error
+	Sender application.PushProvider
 }
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }

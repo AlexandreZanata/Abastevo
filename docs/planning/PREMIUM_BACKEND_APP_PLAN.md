@@ -470,6 +470,8 @@ Entry: PRM00 rule policy, PRM01/02/03 and current price read ports. Exit: config
 
 ### PRM07-T05 — Push adapter and account-scoped delivery registration
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; frozen provider/D-PR03/05; PR07/23.
 - **Outcome/areas:** selected provider adapter behind a port, restricted credentials, opaque token enrollment/revoke, account-safe generic payload and documented per-device delivery policy; retain inbox fallback.
 - **Tests first:** invalid token, provider 429/5xx/timeout/lost response, cross-account token reuse, switch/revoke before send, stale deep link and private data/log leakage.

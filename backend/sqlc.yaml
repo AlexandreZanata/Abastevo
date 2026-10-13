@@ -260,6 +260,7 @@ sql:
       - db/migrations/000008_community.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000089_alert_rules.sql
+      - db/migrations/000090_alert_push_tokens.sql
     gen:
       go:
         package: alerts

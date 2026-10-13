@@ -60,6 +60,13 @@ type AlertOperation struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type AlertPushToken struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Token     string             `json:"token"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type AlertRule struct {
 	AccountID pgtype.UUID        `json:"account_id"`
 	RuleID    pgtype.UUID        `json:"rule_id"`

@@ -19,6 +19,8 @@ type Service interface {
 	ListRules(ctx context.Context, accountID string) ([]application.RuleRecord, error)
 	ListInbox(ctx context.Context, accountID string, limit int) ([]application.InboxItem, error)
 	EraseAll(ctx context.Context, accountID string) error
+	EnrollToken(ctx context.Context, accountID, token string) error
+	RevokeToken(ctx context.Context, accountID, token string) error
 }
 
 type Handler struct {
@@ -124,6 +126,8 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/alerts/rules", h.rules)
 	r.Post("/v1/alerts/inbox", h.inbox)
 	r.Post("/v1/alerts/erase", h.erase)
+	r.Post("/v1/alerts/push/enroll", h.pushEnroll)
+	r.Post("/v1/alerts/push/revoke", h.pushRevoke)
 }
 
 func (h Handler) commands(w http.ResponseWriter, r *http.Request) {
@@ -225,4 +229,58 @@ func (h Handler) erase(w http.ResponseWriter, r *http.Request) {
 	write(w, r, struct {
 		Status string `json:"status"`
 	}{"erased"})
+}
+
+func (h Handler) pushEnroll(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		session
+		Token string `json:"token"`
+	}
+	if err := read(r, &dto); err != nil {
+		fail(w, r, err)
+		return
+	}
+	if len(dto.Token) < 1 || len(dto.Token) > 256 {
+		fail(w, r, errors.New("alerts: invalid input"))
+		return
+	}
+	owner, err := h.principal(r, dto.session, true)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if err = h.Service.EnrollToken(r.Context(), owner, dto.Token); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, struct {
+		Status string `json:"status"`
+	}{"enrolled"})
+}
+
+func (h Handler) pushRevoke(w http.ResponseWriter, r *http.Request) {
+	var dto struct {
+		session
+		Token string `json:"token"`
+	}
+	if err := read(r, &dto); err != nil {
+		fail(w, r, err)
+		return
+	}
+	if len(dto.Token) < 1 || len(dto.Token) > 256 {
+		fail(w, r, errors.New("alerts: invalid input"))
+		return
+	}
+	owner, err := h.principal(r, dto.session, true)
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if err = h.Service.RevokeToken(r.Context(), owner, dto.Token); err != nil {
+		fail(w, r, err)
+		return
+	}
+	write(w, r, struct {
+		Status string `json:"status"`
+	}{"revoked"})
 }

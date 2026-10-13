@@ -70,3 +70,20 @@ type DispatchResult struct {
 type DispatchStore interface {
 	Dispatch(ctx context.Context, now time.Time, limit int) (DispatchResult, error)
 }
+
+type PushPayload struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	Rule  string `json:"rule_id"`
+	Inbox string `json:"inbox_id"`
+}
+
+type PushProvider interface {
+	Send(ctx context.Context, token string, payload PushPayload) (string, error)
+}
+
+type DeliveryStore interface {
+	EnrollToken(ctx context.Context, accountID, token string) error
+	RevokeToken(ctx context.Context, accountID, token string) error
+	SendInbox(ctx context.Context, accountID, inboxID, token string) (string, error)
+}

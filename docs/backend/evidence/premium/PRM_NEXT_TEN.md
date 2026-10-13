@@ -227,3 +227,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop d3349042. Due-window Dispatch over evaluated inbox rows with SKIP LOCKED, rule liveness and revision rechecks, paid skip, quiet and cooldown holds, price freshness rechecks and honest dispatched, dropped, unknown and skipped outcomes with reasons recorded. Retries never duplicate meaning and deletion stays paid-independent. Real PostGIS PASS (dispatch suites): restart convergence, expired-price drops, changed, lapsed, deleted and revision-mismatched drops with skips, quiet holds with delayed backlogs, and reclaimed stale job leases. Unit/race PASS alerts domain. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. Provider sending rides PRM07-T05. No merge/deploy/mobile edit.
 Next PRM07-T05. Real payments OFF.
+
+## PRM07-T05 — Push adapter and account-scoped delivery registration
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 91a1c7a1. Provider port with fake fault injection behind Store.Sender, opaque token enrollment and revocation bound to accounts, generic frozen-template payloads without session or key material, and idempotent sent marking with provider IDs. Inbox stays the fallback on provider faults. Append-only 000090 adds alert_push_tokens with enroll, revoke and lookup queries; sqlc vet/diff clean. Real PostGIS PASS (sender suites): invalid tokens with no provider calls, 429, 5xx, timeout and network faults with fallback, cross-account reuse refusal, switch and revoke blocking, stale-link refusal after erasure, payload leakage scans and success idempotence. Unit/race PASS alerts domain, http, apicontract and cmd/api; HTTP enroll and revoke validation PASS. OpenAPI push token schemas plus two goldens PASS. Real provider sends stay PROOF_OWED with per-device policy documented. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
+Next PRM07-T06. Real payments OFF.

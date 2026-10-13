@@ -42,8 +42,23 @@ SELECT account_id,inbox_id,rule_id,payload FROM alert_inbox WHERE status='evalua
 -- name: MarkInbox :execrows
 UPDATE alert_inbox SET status=$3,payload=$4 WHERE account_id=$1 AND inbox_id=$2 AND status='evaluated';
 
+-- name: MarkInboxSent :execrows
+UPDATE alert_inbox SET status='sent',payload=$3 WHERE account_id=$1 AND inbox_id=$2 AND status='dispatched';
+
 -- name: LastDispatch :one
 SELECT MAX(created_at)::timestamptz FROM alert_inbox WHERE account_id=$1 AND rule_id=$2 AND status='dispatched';
+
+-- name: EnrollPushToken :exec
+INSERT INTO alert_push_tokens(account_id,token,revoked_at) VALUES($1,$2,NULL) ON CONFLICT(account_id,token) DO UPDATE SET revoked_at=NULL;
+
+-- name: RevokePushToken :execrows
+UPDATE alert_push_tokens SET revoked_at=clock_timestamp() WHERE account_id=$1 AND token=$2 AND revoked_at IS NULL;
+
+-- name: GetPushToken :one
+SELECT revoked_at FROM alert_push_tokens WHERE account_id=$1 AND token=$2;
+
+-- name: GetInboxRow :one
+SELECT rule_id,payload,status FROM alert_inbox WHERE account_id=$1 AND inbox_id=$2 FOR UPDATE;
 
 -- name: CommunityPrices :many
 SELECT o.id,o.station_id,o.fuel_product,o.unit,o.amount_milli_brl,o.condition_kind,o.received_at FROM community_observations o
