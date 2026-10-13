@@ -110,6 +110,10 @@
     <string name="week_picker_operational_note_collapse">Contraer nota operativa</string>
     <string name="week_picker_operational_note_title">Aviso operativo</string>
     <string name="week_picker_download_week">Descargar esta semana</string>
+    <string name="week_picker_downloading_title">Descargando semana</string>
+    <string name="week_picker_downloading_message">Descargando e importando datos de la ANP para %1$s. Puedes cancelar en cualquier momento.</string>
+    <string name="week_picker_downloaded_tag">Descargada</string>
+    <string name="week_picker_download_tag">Descargar</string>
     <string name="week_picker_confirm_title">¿Descargar semana histórica?</string>
     <string name="week_picker_confirm_message">¿Descargar e importar datos de la ANP para %1$s? Esto puede tardar unos minutos.</string>
     <string name="active_week_label">Más reciente</string>
@@ -783,4 +787,6 @@
     <string name="privacy_finish_reading">He terminado de leer · volver a la elección</string>
     <string name="privacy_rights_heading">Sus derechos de privacidad</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
+    <string name="stations_list_summary">Resumen de la lista</string>
+    <string name="stations_summary_order">Orden: %1$s</string>
 </resources>

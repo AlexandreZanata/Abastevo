@@ -1,0 +1,9 @@
+{
+  "id": "premium-export-empty-valid",
+  "schema": "PremiumExportResponse",
+  "valid": true,
+  "value": {
+    "items": [],
+    "next_cursor": ""
+  }
+}

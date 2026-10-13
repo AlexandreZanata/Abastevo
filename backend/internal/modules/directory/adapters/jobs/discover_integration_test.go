@@ -101,7 +101,7 @@ func discoverLoopback(t *testing.T, hits *int, status int, body string) *httptes
 	}))
 }
 
-const discoverItemPage = `{"items": [{"cnpj": "04218406000104", "razaoSocial": "[RST08-TEST] POSTO KILO LTDA", "nomeFantasia": "Kilo", "endereco": {"municipio": "SAO PAULO", "uf": "SP", "codigoIbge": "3550308"}, "situacao": "ATIVA", "location_quality": "unknown", "coordenadas": null}], "page": 1, "pageSize": 100, "nextCursor": null}`
+const discoverItemPage = `{"status":200,"succeeded":true,"data":[{"cnpj":"04218406000104","razaoSocial":"[RST08-TEST] POSTO JOTA LTDA","endereco":"TEST STREET, 10","municipio":"SAO PAULO","uf":"SP"}],"searchPageFilter":{"numeroPagina":1,"tamanhoPagina":5000,"totalRegistro":1,"totalPagina":1}}`
 
 func discoverHandler(store *registry.PGStore, server *httptest.Server) Discover {
 	return Discover{Store: store, Config: registry.APIConfig{
@@ -137,7 +137,10 @@ func TestDiscoverDispatchedCycleCompletes(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("runonce = %v, %v", found, err)
 	}
-	report, err := store.GetRun(ctx, registry.SourceAPI, "api:e2e-1")
+	// The scope key is frozen with the parser version prefix
+	// (registry.Discover records APIParserVersion:snapshot); look the
+	// run up under the same immutable key.
+	report, err := store.GetRun(ctx, registry.SourceAPI, registry.APIParserVersion+":api:e2e-1")
 	if err != nil || report.State != "complete" {
 		t.Fatalf("run = %+v, err = %v", report, err)
 	}
@@ -219,7 +222,7 @@ func TestDiscoverOutageDeadLetters(t *testing.T) {
 	if queued != 0 || dead != 1 {
 		t.Fatalf("backlog = %d queued/%d dead, want 0/1 (single-attempt circuit)", queued, dead)
 	}
-	report, err := store.GetRun(ctx, registry.SourceAPI, "api:outage-1")
+	report, err := store.GetRun(ctx, registry.SourceAPI, registry.APIParserVersion+":api:outage-1")
 	if err != nil || report.State != "failed" {
 		t.Fatalf("run = %+v, err = %v (failed runs never complete)", report, err)
 	}

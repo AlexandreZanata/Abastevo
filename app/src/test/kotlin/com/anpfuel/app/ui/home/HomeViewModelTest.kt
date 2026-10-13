@@ -28,6 +28,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,6 +56,7 @@ class HomeViewModelTest {
     private val listVehiclesUseCase = mockk<ListVehiclesUseCase>()
     private val getTankFillCostEstimatesUseCase = mockk<GetTankFillCostEstimatesUseCase>()
     private val homeVehiclePresenceStore = mockk<com.anpfuel.data.local.preferences.HomeVehiclePresenceStore>()
+    private val homeBenefitsVisibilityStore = mockk<com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore>()
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
 
     private lateinit var viewModel: HomeViewModel
@@ -69,6 +71,8 @@ class HomeViewModelTest {
         every { observeNetworkConnectivityUseCase.invoke() } returns flowOf(true)
         every { homeVehiclePresenceStore.hasVehicle() } returns false
         every { homeVehiclePresenceStore.setHasVehicle(any()) } returns Unit
+        every { homeBenefitsVisibilityStore.isVisible() } returns true
+        every { homeBenefitsVisibilityStore.setVisible(any()) } returns Unit
         viewModel = HomeViewModel(
             getDataReadinessUseCase = getDataReadinessUseCase,
             getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
@@ -77,6 +81,7 @@ class HomeViewModelTest {
             listVehiclesUseCase = listVehiclesUseCase,
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
+            homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
         )
     }
@@ -204,10 +209,39 @@ class HomeViewModelTest {
             listVehiclesUseCase = listVehiclesUseCase,
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
+            homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
         )
 
         assertTrue(viewModel.uiState.value.hasVehicle)
+    }
+
+    @Test
+    fun cachedBenefitsVisibilityShowsBeforeFirstLoad() {
+        every { homeBenefitsVisibilityStore.isVisible() } returns false
+        viewModel = HomeViewModel(
+            getDataReadinessUseCase = getDataReadinessUseCase,
+            getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
+            selectLocationUseCase = selectLocationUseCase,
+            syncPriceTablesUseCase = syncPriceTablesUseCase,
+            listVehiclesUseCase = listVehiclesUseCase,
+            getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
+            homeVehiclePresenceStore = homeVehiclePresenceStore,
+            homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+        )
+
+        assertEquals(false, viewModel.uiState.value.showBenefits)
+    }
+
+    @Test
+    fun dismissBenefitsPersistsAndHides() {
+        assertEquals(true, viewModel.uiState.value.showBenefits)
+
+        viewModel.dismissBenefits()
+
+        assertEquals(false, viewModel.uiState.value.showBenefits)
+        verify { homeBenefitsVisibilityStore.setVisible(false) }
     }
 
     @Test

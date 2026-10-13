@@ -1,0 +1,252 @@
+{
+  "generator": "built-in image_gen",
+  "generatedDate": "2026-10-12",
+  "role": "Full-bleed editorial landscape, six unique-color action/persona scenes and four reusable flat-style decorations; illustrative only",
+  "screen": "Unmodified authentic explore-light derivatives; app provenance retained",
+  "optimization": "ImageMagick resize and WebP method 6 only; action scenes quality 82, hero/reusable assets quality 80; original alpha retained. 4K export is a Lanczos resize, not native generation.",
+  "sources": [
+    {
+      "name": "consult",
+      "master": "docs/assets/landing/illustrated-20261012/masters/consult.png",
+      "sha256": "0a418cb62c486478d60c2b85f3a35f8c0d810f5f737ece5c2bb3e32cbc64df42",
+      "accent": "#1478DD"
+    },
+    {
+      "name": "check",
+      "master": "docs/assets/landing/illustrated-20261012/masters/check.png",
+      "sha256": "d2c6a0988a6151642ad85f97efbf7e56318a448b1d058bf649c6594e1d2d7be4",
+      "accent": "#18834A"
+    },
+    {
+      "name": "contribute",
+      "master": "docs/assets/landing/illustrated-20261012/masters/contribute.png",
+      "sha256": "b4a88109e4fea6eeaddf866bd54cbb91a497836b2c7a9ed17da75323eed2e93a",
+      "accent": "#F57C00"
+    },
+    {
+      "name": "driver",
+      "master": "docs/assets/landing/illustrated-20261012/masters/driver.png",
+      "sha256": "d23def8706f091af37e2e3d568542b96ea3e552a1fd1442448473abb04a8eb7f",
+      "accent": "#7954C7"
+    },
+    {
+      "name": "ride-driver",
+      "master": "docs/assets/landing/illustrated-20261012/masters/ride-driver.png",
+      "sha256": "ff86a9f3e3d47f2969912bb56aa507d370ebce62ba467700f3520a293363eb06",
+      "accent": "#008B95"
+    },
+    {
+      "name": "fleet",
+      "master": "docs/assets/landing/illustrated-20261012/masters/fleet.png",
+      "sha256": "941ba862c7b16836ebf34a8e76af222fdad992fc5612e8186477e3b19ba7b0b5",
+      "accent": "#C34579"
+    },
+    {
+      "name": "hero-background",
+      "master": "docs/assets/landing/illustrated-20261012/masters/hero-background-native.png",
+      "nativeDimensions": "1672x941",
+      "sha256": "aa2019f32273a9d0f235e621705a52d178be410bcd90ee35cb5d8b742294a408"
+    },
+    {
+      "name": "trees",
+      "master": "docs/assets/landing/illustrated-20261012/masters/trees-native.png",
+      "nativeDimensions": "1536x1024",
+      "sha256": "40c3d9bd0388d71a7ff96f72bda022e3b0e4824650a86cf0051966162e30c973"
+    },
+    {
+      "name": "skyline",
+      "master": "docs/assets/landing/illustrated-20261012/masters/skyline-native.png",
+      "nativeDimensions": "1783x882",
+      "sha256": "532f1afefa5a9fb8bb7ff2daf65cb7ed3d6c0cf193fa0d8264c804446398ae95"
+    },
+    {
+      "name": "road",
+      "master": "docs/assets/landing/illustrated-20261012/masters/road-native.png",
+      "nativeDimensions": "1672x941",
+      "sha256": "8bfc25c2cdc95f19a53eb95ad070cf7887bdc75bebfd096e6c6851eda915a102"
+    },
+    {
+      "name": "car",
+      "master": "docs/assets/landing/illustrated-20261012/masters/car-native.png",
+      "nativeDimensions": "1536x1024",
+      "sha256": "06c0780347c457cfe87f6f743a8ae4c9dfe24d5b3984a9a299e968ca1545b16f"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "consult-scene-320w.b69b6813.webp",
+      "sha256": "b69b68135d94163e9a420ba87b50c9e0212802c98ca5b167216eab859c88ff69",
+      "bytes": 13662,
+      "width": 320,
+      "role": "consult"
+    },
+    {
+      "file": "consult-scene-640w.84bfa461.webp",
+      "sha256": "84bfa4616991390cb5b9dead3c161e357fc9be3c7ab5a78d6cf43382a71e57a2",
+      "bytes": 33844,
+      "width": 640,
+      "role": "consult"
+    },
+    {
+      "file": "check-scene-320w.6e3aa11c.webp",
+      "sha256": "6e3aa11c151c9127a8cc1edbdb9388dd99249455c623fe625d77530d1de6988f",
+      "bytes": 12264,
+      "width": 320,
+      "role": "check"
+    },
+    {
+      "file": "check-scene-640w.4b352fbf.webp",
+      "sha256": "4b352fbfd0d393fcf186f275d2f0583e37a7dad614d390a4027db5d920c54df7",
+      "bytes": 30112,
+      "width": 640,
+      "role": "check"
+    },
+    {
+      "file": "contribute-scene-320w.0515e1a1.webp",
+      "sha256": "0515e1a163523cc104edc4740aa01d28099a81b2a636fbddc4b4b9ecdbdcebfb",
+      "bytes": 11664,
+      "width": 320,
+      "role": "contribute"
+    },
+    {
+      "file": "contribute-scene-640w.186ea741.webp",
+      "sha256": "186ea7411bb769fe2637f397e9bf1c65562bc93c25ea52849cc65b353b0a27f8",
+      "bytes": 28166,
+      "width": 640,
+      "role": "contribute"
+    },
+    {
+      "file": "driver-scene-320w.4e37f3bb.webp",
+      "sha256": "4e37f3bba5991d78711bc9261f124865740dd18bdc2eb21f6e603655d222d244",
+      "bytes": 11190,
+      "width": 320,
+      "role": "driver"
+    },
+    {
+      "file": "driver-scene-640w.f2c0ed08.webp",
+      "sha256": "f2c0ed08f1175f8627876621d68651adb25bc4c376cd4e5f3e63b0c05c95dc7b",
+      "bytes": 28958,
+      "width": 640,
+      "role": "driver"
+    },
+    {
+      "file": "ride-driver-scene-320w.bc8d7dd5.webp",
+      "sha256": "bc8d7dd5c6768c5dbeac5ee4526b0e7efc06568d12b21a6218aa79e16b337c02",
+      "bytes": 13726,
+      "width": 320,
+      "role": "ride-driver"
+    },
+    {
+      "file": "ride-driver-scene-640w.08091f7f.webp",
+      "sha256": "08091f7f4fd54ac56764d991269416de85db5bf1abb58e7b0e9de1114f05cead",
+      "bytes": 34394,
+      "width": 640,
+      "role": "ride-driver"
+    },
+    {
+      "file": "fleet-scene-320w.f251db59.webp",
+      "sha256": "f251db59f0f661a7dc0b04e82b3c2ebc5b70bad24a0b494246da831b01a1e583",
+      "bytes": 7802,
+      "width": 320,
+      "role": "fleet"
+    },
+    {
+      "file": "fleet-scene-640w.03ea2fe6.webp",
+      "sha256": "03ea2fe6efad09d2258d884104e3ef854e603ce30034aac48ee0b615c23a2003",
+      "bytes": 20408,
+      "width": 640,
+      "role": "fleet"
+    },
+    {
+      "file": "hero-background-640w.35f9fc83.webp",
+      "sha256": "35f9fc83a5770484ffc8c59d22153fb967d82521054c3fdf9bce033ebbc9d70e",
+      "bytes": 18168,
+      "width": 640,
+      "role": "hero-background"
+    },
+    {
+      "file": "hero-background-1280w.cc7354bd.webp",
+      "sha256": "cc7354bddc034d8802d0323cca53621bcd0bafc8aab7ad057bba28b6456785bf",
+      "bytes": 44266,
+      "width": 1280,
+      "role": "hero-background"
+    },
+    {
+      "file": "hero-background-1920w.4cb89b80.webp",
+      "sha256": "4cb89b8026434ab1ac32918129d0220521c59f5ad5270e60a68e2c60c44a1fe4",
+      "bytes": 69720,
+      "width": 1920,
+      "role": "hero-background"
+    },
+    {
+      "file": "hero-background-2560w.9b32e13a.webp",
+      "sha256": "9b32e13a4dc71bab433fbc8ba5c9e674babd89cedac963d7ae7bce3da5e5cb23",
+      "bytes": 95000,
+      "width": 2560,
+      "role": "hero-background"
+    },
+    {
+      "file": "trees-320w.75aff4bf.webp",
+      "sha256": "75aff4bf87ccb70fecb8a80e6ce49ea21c7223954d2ee5249f7c42cd14e33fc3",
+      "bytes": 13404,
+      "width": 320,
+      "role": "trees"
+    },
+    {
+      "file": "trees-640w.b64ef065.webp",
+      "sha256": "b64ef065f84d7a82454012dded6e7ee1e4439e004fe0a909bcd7fa5a0d38d636",
+      "bytes": 32678,
+      "width": 640,
+      "role": "trees"
+    },
+    {
+      "file": "skyline-320w.ba6f7123.webp",
+      "sha256": "ba6f7123d8347d547ff0c34ca72274ee72290b67624a6a871fde515c93bfc64f",
+      "bytes": 8944,
+      "width": 320,
+      "role": "skyline"
+    },
+    {
+      "file": "skyline-640w.04de795c.webp",
+      "sha256": "04de795cccba50b9bf67a366f143bfdde3cb2da0882faec4eb2a3bd321bb3949",
+      "bytes": 23648,
+      "width": 640,
+      "role": "skyline"
+    },
+    {
+      "file": "road-320w.f47c2eef.webp",
+      "sha256": "f47c2eefe198187501613240a720c999c502bbeae366f806040c75f752dc254b",
+      "bytes": 8086,
+      "width": 320,
+      "role": "road"
+    },
+    {
+      "file": "road-640w.4e9989cc.webp",
+      "sha256": "4e9989cc40c4d0d0bb5cc1f3a09e0d05a87ceb0991fd850740d0d31707dcc6e9",
+      "bytes": 19842,
+      "width": 640,
+      "role": "road"
+    },
+    {
+      "file": "car-320w.e1ca00a4.webp",
+      "sha256": "e1ca00a458809ac910a08e47de5af3f0eb3bbbe27283835bfe9f6564e12ee392",
+      "bytes": 8582,
+      "width": 320,
+      "role": "car"
+    },
+    {
+      "file": "car-640w.97ea8555.webp",
+      "sha256": "97ea8555647cbbdf1b1cc44ba97cead391067690b8cdc65466dc878b5d889995",
+      "bytes": 20184,
+      "width": 640,
+      "role": "car"
+    }
+  ],
+  "export4k": {
+    "master": "docs/assets/landing/illustrated-20261012/masters/hero-background-4k.png",
+    "dimensions": "3840x2160",
+    "nativeDimensions": "1672x941",
+    "method": "Lanczos resize from generator-native output; not native 4K generation",
+    "sha256": "76a76f327ddba1cb08b6110d016afaab00587af83e9a8b8a0a5ea8b7cfc90e65"
+  }
+}

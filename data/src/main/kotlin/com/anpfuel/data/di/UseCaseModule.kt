@@ -5,6 +5,7 @@ import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
 import com.anpfuel.application.port.CommunityHelpfulnessFlagProvider
 import com.anpfuel.application.port.CommunityReadsFlagProvider
+import com.anpfuel.application.port.StationDirectoryScopeProvider
 import com.anpfuel.application.port.CommunityVoteFlagProvider
 import com.anpfuel.application.port.TrainingConsentLocalStore
 import com.anpfuel.application.port.ContributionOutboxFlagProvider
@@ -65,6 +66,8 @@ import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCas
 import com.anpfuel.application.usecase.sync.AutoDownloadLatestWeekUseCase
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogUseCase
 import com.anpfuel.application.usecase.sync.DownloadStationDetailUseCase
+import com.anpfuel.application.usecase.sync.DownloadSurveyWeekUseCase
+import com.anpfuel.application.usecase.sync.GetDownloadedSurveyWeeksUseCase
 import com.anpfuel.application.usecase.sync.SelectSurveyWeekUseCase
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
 import com.anpfuel.application.sync.SyncExecutionLock
@@ -132,6 +135,22 @@ object UseCaseModule {
         priceTableSyncGateway: PriceTableSyncGateway,
     ): DiscoverSurveyWeekCatalogUseCase = DiscoverSurveyWeekCatalogUseCase(
         priceTableSyncGateway = priceTableSyncGateway,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetDownloadedSurveyWeeksUseCase(
+        priceTableRepository: PriceTableRepository,
+    ): GetDownloadedSurveyWeeksUseCase = GetDownloadedSurveyWeeksUseCase(
+        priceTableRepository = priceTableRepository,
+    )
+
+    @Provides
+    @Singleton
+    fun provideDownloadSurveyWeekUseCase(
+        syncPriceTablesUseCase: SyncPriceTablesUseCase,
+    ): DownloadSurveyWeekUseCase = DownloadSurveyWeekUseCase(
+        syncPriceTablesUseCase = syncPriceTablesUseCase,
     )
 
     @Provides
@@ -492,14 +511,29 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideStationDirectoryScopeProvider(
+        preferences: UserPreferencesRepository,
+        municipalities: MunicipalityCatalogRepository,
+    ): StationDirectoryScopeProvider = StationDirectoryScopeProvider {
+        val selected = preferences.getPreferences()
+        val state = selected.preferredState
+        val city = selected.preferredMunicipality
+        if (state == null || city == null) null
+        else municipalities.findCatalogEntry(state, city)?.ibgeCode
+    }
+
+    @Provides
+    @Singleton
     fun provideGetServerStationsUseCase(
         flagProvider: CommunityReadsFlagProvider,
         gateway: ServerStationGateway,
         cache: ServerStationCache,
+        scopeProvider: StationDirectoryScopeProvider,
     ): GetServerStationsUseCase = GetServerStationsUseCase(
         flagProvider = flagProvider,
         gateway = gateway,
         cache = cache,
+        scopeProvider = scopeProvider,
     )
 
     @Provides

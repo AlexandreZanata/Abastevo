@@ -47,8 +47,8 @@ class PhotoReviewOutboxDeviceTest {
                 (1..8).map { index -> async { repo.claimDispatch("one", 1, "attempt-$index", 2_000_000L) } }.awaitAll()
             }
             assertEquals(1, claims.count { it })
-            assertFalse(repo.listDispatchable(2_000_001L).any { it.commandId == "one" })
-            assertTrue(repo.listDispatchable(2_360_000L).any { it.commandId == "one" })
+            assertNull(repo.findDispatchable("one", 2_000_001L))
+            assertNotNull(repo.findDispatchable("one", 2_360_000L))
         } finally { db.close() }
     }
 
@@ -73,8 +73,8 @@ class PhotoReviewOutboxDeviceTest {
             assertEquals(ContributionRemoteStatus.RECEIVED, repo.receipt("one")!!.status)
             assertEquals("e0000000-0000-4000-8000-000000000002",db.photoUploadSessionDao().find(session.captureId)!!.evidenceId)
             assertEquals(0,db.photoUploadSessionDao().ready(session.captureId,session.sessionId,"e0000000-0000-4000-8000-000000000003"))
-            assertEquals(2, repo.listOwned().size)
-            assertFalse(repo.listDispatchable(2_000_001L).any { it.commandId == "two" })
+            assertEquals(2, repo.listOwnedPage(20, 0).size)
+            assertNull(repo.findDispatchable("two", 2_000_001L))
             assertEquals("one", repo.loadPayload("one")?.let { org.json.JSONObject(it).getString("client_submission_id") })
         } finally { db.close(); context.deleteDatabase(name) }
     }

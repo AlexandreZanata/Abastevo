@@ -1,0 +1,22 @@
+{
+  "id": "cloud-import-preview-valid",
+  "schema": "CloudImportPreviewResponse",
+  "valid": true,
+  "value": {
+    "epoch": 1,
+    "revision": 1,
+    "consent_revision": 1,
+    "items": [
+      {
+        "operation_id": "66666666-6666-4666-8666-666666666666",
+        "dataset": "vehicles",
+        "id": "77777777-7777-4777-8777-777777777777",
+        "action": "create",
+        "expected_revision": 0,
+        "current_revision": 0,
+        "current_deleted": false,
+        "erased": false
+      }
+    ]
+  }
+}

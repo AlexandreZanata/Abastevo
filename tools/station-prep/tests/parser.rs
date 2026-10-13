@@ -408,3 +408,57 @@ fn invalid_calendar_dates_quarantine_without_panicking() {
         assert_eq!(batch.quarantine[0].reason, "invalid_field");
     }
 }
+
+#[test]
+fn ambiguous_duplicate_headers_never_choose_one_cnpj_column() {
+    let raw = text("registry-13col-sample.csv");
+    let mut lines = raw.lines();
+    let header = format!("{};CNPJ\n", lines.next().unwrap());
+    let rows = lines
+        .map(|line| format!("{line};04218406000104\n"))
+        .collect::<String>();
+    let batch = parse_registry(
+        "ambiguous.csv",
+        (header + &rows).into_bytes(),
+        &Limits::default(),
+        &aliases(),
+    )
+    .unwrap();
+    assert_eq!(batch.state, RunState::Quarantined);
+    assert!(batch.accepted.is_empty());
+}
+
+#[test]
+fn surplus_registry_fields_are_quarantined_instead_of_discarded() {
+    let raw = text("registry-13col-sample.csv");
+    let mut lines = raw.lines();
+    let header = format!("{}\n", lines.next().unwrap());
+    let rows = lines
+        .map(|line| format!("{line};UNDECLARED\n"))
+        .collect::<String>();
+    let batch = parse_registry(
+        "surplus.csv",
+        (header + &rows).into_bytes(),
+        &Limits::default(),
+        &aliases(),
+    )
+    .unwrap();
+    assert_eq!(batch.counts.accepted, 0);
+    assert_eq!(batch.counts.quarantined, batch.counts.input);
+}
+
+#[test]
+fn pmqc_surplus_fields_and_repeated_identity_headers_are_refused() {
+    let raw = "AMOSTRAID;CNPJPOSTO;DATACOLETA;LATITUDE;LONGITUDE\nS-1;04218406000104;2024-04-01;-23.5;-46.6;unexpected\n";
+    let batch = parse_pmqc("surplus.csv", raw.as_bytes().to_vec(), &Limits::default()).unwrap();
+    assert_eq!(batch.counts.quarantined, 1);
+    assert!(batch.candidates.is_empty());
+    let raw = "AMOSTRAID;CNPJPOSTO;DATACOLETA;LATITUDE;LONGITUDE;CNPJPOSTO\n";
+    let batch = parse_pmqc(
+        "duplicate-header.csv",
+        raw.as_bytes().to_vec(),
+        &Limits::default(),
+    )
+    .unwrap();
+    assert_eq!(batch.state, RunState::Quarantined);
+}

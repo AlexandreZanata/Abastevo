@@ -119,6 +119,7 @@ fun HomeScreen(
         onRetry = { viewModel.load(locale, showLoadingIndicator = true) },
         onWeekChanged = { viewModel.load(locale, showLoadingIndicator = true) },
         onPriceSortChanged = viewModel::onPriceSortChanged,
+        onDismissBenefits = viewModel::dismissBenefits,
         modifier = modifier,
     )
 }
@@ -136,6 +137,7 @@ internal fun HomeContent(
     modifier: Modifier = Modifier,
     includeSurveyWeekChip: Boolean = true,
     onPriceSortChanged: (HomePriceSortOrder) -> Unit = {},
+    onDismissBenefits: () -> Unit = {},
 ) {
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
@@ -230,7 +232,9 @@ internal fun HomeContent(
             } else {
                 HomeCommunityHero(onContribute = { onNavigate(Routes.CAPTURE) })
             }
-            HomeBenefits()
+            if (uiState.showBenefits) {
+                HomeBenefits(onDismiss = onDismissBenefits)
+            }
 
             when {
                 uiState.isLoading -> HomeLoadingSkeleton()
@@ -270,21 +274,12 @@ internal fun HomeContent(
                 }
 
                 else -> {
-                    Row(
+                    Text(
+                        stringResource(R.string.home_reference_prices_title),
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            stringResource(R.string.home_reference_prices_title),
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        TextButton(onClick = { onNavigate(Routes.PRICES) }) {
-                            Text(stringResource(R.string.home_view_all))
-                        }
-                    }
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
                     PriceMetadata(uiState = uiState)
                     HomePriceFilterButton(
                         current = uiState.priceSort,
@@ -297,12 +292,6 @@ internal fun HomeContent(
                             onClick = { onNavigate(Routes.stations(price.fuelProduct)) },
                             priceSort = uiState.priceSort,
                         )
-                    }
-                    TextButton(
-                        onClick = { onNavigate(Routes.PRICES) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = stringResource(R.string.home_view_price_details))
                     }
                     RowActions(onNavigate = onNavigate)
                 }
@@ -532,10 +521,6 @@ private fun RowActions(onNavigate: (String) -> Unit) {
         AssistChip(
             onClick = { onNavigate(Routes.LOCATION) },
             label = { Text(text = stringResource(R.string.nav_location)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.SEARCH) },
-            label = { Text(text = stringResource(R.string.nav_search)) },
         )
         AssistChip(
             onClick = { onNavigate(Routes.HISTORY) },

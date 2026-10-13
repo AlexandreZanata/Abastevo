@@ -1,0 +1,4 @@
+{"at":"2026-10-13T18:43:21.193044203Z","child_cpu_seconds":1.536354,"child_max_rss_kib":115660,"counts":{"accepted":45641,"duplicates":0,"input":45762,"quarantined":121},"event":"stage_complete","ok":true,"seconds":6.125683818,"stage":"prepare"}
+{"at":"2026-10-13T18:45:58.95965363Z","child_cpu_seconds":37.572677,"child_max_rss_kib":14208,"counts":{"accepted":45641,"duplicates":0,"preserved_curated":10,"registry_assertions":45641,"rejected":121},"event":"stage_complete","ok":true,"seconds":157.760660306,"stage":"load_publish"}
+{"at":"2026-10-13T18:45:58.968019438Z","event":"publication_complete"}
+{"at":"2026-10-13T18:45:58.968188383Z","container_memory_peak_bytes":197660672,"event":"refresh_complete","seconds":168.694855792}

@@ -1,0 +1,13 @@
+# Premium financial method v1
+
+State: frozen source examples for PRM00-T03; the professional engine is not implemented in this batch. [Golden vectors](../../contracts/testdata/premium/financial-v1.json) are synthetic and shared by later Go/Kotlin consumers.
+
+Actual BRL total is authoritative integer centavos. Quantity is integer milli-litres or milli-cubic-metres; odometer is integer metres. Optional advertised unit price uses existing milli-BRL vocabulary. Discounts/rounding may make the advertised product differ from actual paid total; preserve and flag, never rewrite actual amount. Parse Brazilian decimal text exactly; checked intermediates/rational arithmetic, half-up only at display boundary. Input ceilings: total 1e12 centavos, quantity 1e9 milli-units, odometer 1e12 metres, unit price 1e6 milli-BRL (existing wire bound); reject negative/overflow/noncanonical precision.
+
+Full-to-full: starting full fill is the baseline, excluded from subsequent quantity/cost sums. From 1000 to 1400km, a 20L/120 BRL partial plus a 20L/124 BRL final full gives 400km/40L = 10km/L; 244 BRL/400km = 0.61 BRL/km purchase-based estimate. The initial 50L/300 BRL fill is excluded. A discounted actual 230 BRL gives 0.575 BRL/km, displayed 0.58 with half-up, without changing raw 23000 centavos.
+
+Weighted vehicles: 100km/10L plus 900km/60L gives 1000/70 = 100/7 km/L, not the arithmetic mean of their efficiencies. Total 420 BRL gives 0.42 BRL/km. Gas and liquid quantities cannot be combined. This initial calculation method supports homogeneous liquid-fuel full anchors only; mixed gasoline/ethanol and pressure-dependent GNV efficiency return an explicit unsupported-method reason, while their raw expense/refuel entries remain valid.
+
+Missing fills/odometers, partial-only sequences, zero distance, odometer reset boundaries and unavailable month endpoints yield UNKNOWN. Open a new odometer segment on replacement/reset. Correcting old data invalidates derived revisions. Never divide full-month costs by a partial-month distance; label a separate matched observed window instead. Monthly BRL totals use event time in a selected IANA timezone and half-open calendar-month bounds. Comparison needs matching metric/unit/version and nonzero baseline. No estimated route/tank fill or price lookup establishes measured travel, consumption, profit or realized savings.
+
+Reviewed cases include partial/full baseline exclusion, discount, fractional odometer/quantity, unequal vehicle weights, gaps/reset/missing inputs, mixed units/fuels/GNV, partial-period denominators, zero baseline and bounds. Future consumers must execute these same vectors before claiming financial behavior.

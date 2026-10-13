@@ -1,0 +1,12 @@
+{
+  "id": "metrics-compare-response-valid",
+  "schema": "MetricsCompareResponse",
+  "valid": true,
+  "value": {
+    "compatible": true,
+    "issue": "",
+    "baseline": "10",
+    "current": "100/7",
+    "change_percent": "300/7"
+  }
+}

@@ -48,6 +48,7 @@ class AnpFuelApplication : Application(), Configuration.Provider {
             AppLocaleHolder.localeTag = resolvedTag
         }
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
+        com.anpfuel.data.worker.DirectorySyncWorker.schedule(this)
         applicationScope.launch {
             syncWorkScheduler.schedulePeriodicSync()
         }

@@ -38,7 +38,7 @@ class BottomTabNavigationDeviceTest {
                     NavHost(controller, startDestination, Modifier.weight(1f)) {
                         listOf(
                             Routes.HOME, Routes.COMMUNITY, Routes.PROFILE,
-                            Routes.SEARCH, Routes.LOCATION, Routes.CONTRIBUTIONS,
+                            Routes.LOCATION, Routes.CONTRIBUTIONS,
                             Routes.SETTINGS, Routes.HELP, Routes.ONBOARDING,
                         ).forEach { route ->
                             composable(route) { Text(route) }
@@ -65,11 +65,11 @@ class BottomTabNavigationDeviceTest {
     }
 
     @Test
-    fun exploreReturnsHomeFromLocationAndDeeperSearch() {
+    fun exploreReturnsHomeFromLocationAndDeeperSettings() {
         launch()
         open(Routes.LOCATION)
         tap(NavigationTab.EXPLORE)
-        open(Routes.SEARCH)
+        open(Routes.CONTRIBUTIONS)
         open(Routes.LOCATION)
         tap(NavigationTab.EXPLORE)
         compose.runOnIdle { assertFalse(controller.popBackStack()) }

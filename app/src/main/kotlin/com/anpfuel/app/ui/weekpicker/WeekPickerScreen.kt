@@ -8,14 +8,22 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -26,18 +34,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.accessibility.accessibilityDescription
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -56,7 +69,6 @@ fun WeekPickerRoute(
     viewModel: WeekPickerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val locale = LocalConfiguration.current.locales[0]
 
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect { destination ->
@@ -71,19 +83,12 @@ fun WeekPickerRoute(
         onRetryCatalog = viewModel::loadCatalog,
         onUseLatestWeek = viewModel::useLatestWeek,
         onSelectWeek = viewModel::onWeekRowTapped,
+        onDownloadWeek = viewModel::downloadWeek,
         onRetrySync = viewModel::retrySync,
+        onCancelSync = viewModel::cancelSync,
         onNavigateBack = onNavigateBack,
         modifier = modifier,
     )
-
-    uiState.pendingConfirmation?.let { entry ->
-        WeekPickerConfirmDialog(
-            entry = entry,
-            locale = locale,
-            onConfirm = viewModel::confirmPendingWeek,
-            onDismiss = viewModel::dismissPendingConfirmation,
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,7 +99,9 @@ fun WeekPickerScreen(
     onNavigateBack: (() -> Unit)? = null,
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
+    onDownloadWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
+    onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -112,7 +119,9 @@ fun WeekPickerScreen(
             onRetryCatalog = onRetryCatalog,
             onUseLatestWeek = onUseLatestWeek,
             onSelectWeek = onSelectWeek,
+            onDownloadWeek = onDownloadWeek,
             onRetrySync = onRetrySync,
+            onCancelSync = onCancelSync,
             onSkip = onSkip,
             modifier = Modifier
                 .fillMaxSize()
@@ -127,7 +136,9 @@ fun WeekPickerContent(
     onRetryCatalog: () -> Unit,
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
+    onDownloadWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
+    onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -142,13 +153,6 @@ fun WeekPickerContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when {
-            uiState.isSyncing -> {
-                LoadingState(
-                    message = stringResource(R.string.sync_progress_discovering),
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
             uiState.isLoadingCatalog -> {
                 WeekPickerLoadingSkeleton()
             }
@@ -208,8 +212,10 @@ fun WeekPickerContent(
                             WeekPickerRow(
                                 entry = entry,
                                 isLatest = entry.surveyWeek == latestWeek,
+                                isDownloaded = entry.surveyWeek in uiState.downloadedWeeks,
                                 locale = locale,
                                 onClick = onSelectWeek?.let { callback -> { callback(entry) } },
+                                onDownload = onDownloadWeek?.let { callback -> { callback(entry) } },
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -226,6 +232,15 @@ fun WeekPickerContent(
                 }
             }
         }
+
+        if (uiState.isSyncing && onCancelSync != null) {
+            uiState.pendingWeekSelection?.surveyWeek?.let { downloadingWeek ->
+                WeekDownloadingDialog(
+                    weekLabel = SurveyWeekFormatter.formatRange(downloadingWeek, locale),
+                    onCancel = onCancelSync,
+                )
+            }
+        }
     }
 }
 
@@ -240,6 +255,113 @@ private fun WeekPickerLoadingSkeleton() {
                 SkeletonLine(width = 140.dp, height = 14.dp)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+/**
+ * Compact tag sharing one standard across Atual/Baixada/Baixar: tight lateral
+ * padding, small icon close to the label.
+ */
+@Composable
+private fun WeekTag(
+    label: String,
+    icon: ImageVector?,
+    containerColor: Color,
+    contentColor: Color,
+    border: BorderStroke?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor,
+        contentColor = contentColor,
+        border = border,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            icon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+    }
+}
+
+@Composable
+fun WeekDownloadingDialog(
+    weekLabel: String,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(32.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .size(32.dp),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.week_picker_downloading_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(R.string.week_picker_downloading_message, weekLabel),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .accessibilityDescription(stringResource(R.string.a11y_loading)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+                TextButton(onClick = onCancel) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            }
         }
     }
 }
@@ -284,6 +406,8 @@ fun WeekPickerRow(
     locale: Locale,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    isDownloaded: Boolean = false,
+    onDownload: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Column(
@@ -311,18 +435,42 @@ fun WeekPickerRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (isLatest) {
-                    AssistChip(
-                        onClick = onClick ?: {},
-                        enabled = onClick != null,
-                        label = {
-                            Text(
-                                text = stringResource(R.string.active_week_label),
-                                maxLines = 1,
-                                softWrap = false,
-                            )
-                        },
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (isLatest) {
+                        WeekTag(
+                            label = stringResource(R.string.active_week_label),
+                            icon = null,
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                            ),
+                            onClick = onClick,
+                        )
+                    }
+                    if (isDownloaded) {
+                        WeekTag(
+                            label = stringResource(R.string.week_picker_downloaded_tag),
+                            icon = Icons.Default.TaskAlt,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            border = null,
+                            onClick = onClick,
+                        )
+                    } else {
+                        WeekTag(
+                            label = stringResource(R.string.week_picker_download_tag),
+                            icon = Icons.Default.Download,
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            border = null,
+                            onClick = onDownload ?: onClick,
+                        )
+                    }
                 }
             }
 

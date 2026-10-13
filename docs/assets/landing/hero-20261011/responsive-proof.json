@@ -1,0 +1,47 @@
+[
+  {
+    "artHeight": 265,
+    "badgesOverlap": false,
+    "contained": true,
+    "copyHeight": 364.890625,
+    "overflow": -15,
+    "visibleThemeIcons": 1,
+    "width": 320
+  },
+  {
+    "artHeight": 335,
+    "badgesOverlap": false,
+    "contained": true,
+    "copyHeight": 312.03125,
+    "overflow": -15,
+    "visibleThemeIcons": 1,
+    "width": 390
+  },
+  {
+    "artHeight": 576,
+    "badgesOverlap": false,
+    "contained": true,
+    "copyHeight": 228.234375,
+    "overflow": -15,
+    "visibleThemeIcons": 1,
+    "width": 768
+  },
+  {
+    "artHeight": 386.0625,
+    "badgesOverlap": false,
+    "contained": true,
+    "copyHeight": 386.0625,
+    "overflow": -15,
+    "visibleThemeIcons": 1,
+    "width": 1024
+  },
+  {
+    "artHeight": 323.34375,
+    "badgesOverlap": false,
+    "contained": true,
+    "copyHeight": 323.34375,
+    "overflow": -15,
+    "visibleThemeIcons": 1,
+    "width": 1440
+  }
+]

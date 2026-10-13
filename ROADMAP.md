@@ -1548,6 +1548,10 @@ Exit gate: **G10-LOCAL: cross-language contracts, local migration, identity, con
 
 ## P11 — Optional hosted commercial services
 
+OneSignal planning amendment 2026-10-13: [notification bodies and provider/cost contract](docs/product/NOTIFICATION_CONTENT_CONTRACT.md), PRM11–PRM14 in the Premium plan; 17 additional planned microtasks (79 total). New-price/promotion/Premium-filter content only now; live backend/Android integration later. Basic free alerts remain free; real sends and paid upgrades are not authorized.
+
+2026-10-13 Premium scope: [product contract](docs/product/PREMIUM_PRODUCT_CONTRACT.md), [62-microtask backend-first plan](docs/planning/PREMIUM_BACKEND_APP_PLAN.md) and [first-ten execution evidence](docs/backend/evidence/premium/PRM_FIRST_TEN.md). The user authorized PRM00-T01–T04 and PRM01-T01–T06 on an isolated codex/premium-backend branch targeting main, preserving dev/mobile refinement. P11-T01 owns PRM00 packaging/policy; P11-T03 owns PRM01 subscription infrastructure; free P13 account linking remains separate. Real payment activation is deferred until the future payment module/catalog exists. Other Premium features and commercial release remain planned; parent IDs are not duplicate implementations.
+
 Priority: **LATER**. Entry: Completed P10 pilot and explicit validated product scope.
 
 Exit gate: **G11: optional paid benefit/billing/sync specifications and implementations pass provider/ownership/conflict tests; no effect on free trust or existing local data. Each task is independently respecified before execution.**
@@ -3596,3 +3600,10 @@ Branch: `codex/phase-26-landing-guides`; T01–T05 run sequentially under milest
 - **Files / risk:** `docs/release-evidence/p26-landing-guides.md`, `PROGRESS.md`, `ROADMAP.md`, `landing/README.md`.
 - **Acceptance criteria:** Evidence recorded; quick verification passed; PR review satisfied; guarded merge preserving commits to `main`; wiki synced.
 - **Validation commands:** `bash scripts/quick-verify.sh`, `scripts/git-flow.sh finish --required "Quick verification" --pr <number>`.
+
+## Optional Games mobile MVP — GME
+
+User-selected 2026-10-11: isolated `games` branch, offline Android only.
+See [original plan](docs/planning/GAMES_OFFLINE_PLAN.md) and
+[mobile implementation contract](docs/mobile/games-mvp.md). Backend GME-03 and
+ranked consumer GME-05 remain deferred; no leaderboard or backend change.

@@ -6,7 +6,11 @@
   "derivation": {
     "favicon.ico": {
       "source": "docs/assets/brand/abastevo-app-icon-1024.png",
-      "resolutions": [16, 32, 48],
+      "resolutions": [
+        16,
+        32,
+        48
+      ],
       "format": "image/x-icon",
       "purpose": "Legacy browser favicon compatibility and root /favicon.ico fallback"
     },
@@ -39,6 +43,20 @@
       "format": "image/png",
       "budget_kib": 300,
       "purpose": "Versioned social link preview image (Open Graph & Twitter Summary Large Image)"
+    },
+    "github-mark.svg": {
+      "source": "https://cdn.simpleicons.org/github (Simple Icons, CC0 1.0 Universal)",
+      "retrieved": "2026-10-11",
+      "format": "image/svg+xml",
+      "modification": "fill set to currentColor for context tinting; paths unmodified",
+      "purpose": "GitHub buttons in header and hero"
+    },
+    "googleplay-mark.svg": {
+      "source": "https://cdn.simpleicons.org/googleplay (Simple Icons, CC0 1.0 Universal)",
+      "retrieved": "2026-10-11",
+      "format": "image/svg+xml",
+      "modification": "fill set to currentColor for context tinting; paths unmodified",
+      "purpose": "Google Play buttons in header and hero"
     }
   }
 }

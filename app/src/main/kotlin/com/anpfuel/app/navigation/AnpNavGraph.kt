@@ -27,10 +27,8 @@ import com.anpfuel.app.ui.help.HelpScreen
 import com.anpfuel.app.ui.home.HomeScreen
 import com.anpfuel.app.ui.location.LocationPickerScreen
 import com.anpfuel.app.ui.onboarding.OnboardingScreen
-import com.anpfuel.app.ui.prices.PricesScreen
 import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
-import com.anpfuel.app.ui.search.SearchScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
 import com.anpfuel.app.ui.stations.StationsScreen
 import com.anpfuel.app.ui.vehicle.VehicleScreen
@@ -130,19 +128,8 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
-        composable(Routes.SEARCH) {
-            SearchScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.HOME) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-                onNavigateToLocationPicker = {
-                    navController.navigate(Routes.LOCATION)
-                },
-            )
+        composable(Routes.GAMES) {
+            com.anpfuel.app.games.GamesScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Routes.LOCATION) {
             LocationPickerScreen(
@@ -153,12 +140,6 @@ fun AnpNavGraph(
                         launchSingleTop = true
                     }
                 },
-            )
-        }
-        composable(Routes.PRICES) {
-            PricesScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigate = navController::navigate
             )
         }
         composable(Routes.HISTORY) {

@@ -28,10 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -122,9 +118,7 @@ internal fun HomeCommunityHero(onContribute: () -> Unit) {
 private data class HomeBenefit(val icon: Int, val title: Int, val tint: Color)
 
 @Composable
-internal fun HomeBenefits() {
-    var visible by rememberSaveable { mutableStateOf(true) }
-    if (!visible) return
+internal fun HomeBenefits(onDismiss: () -> Unit) {
     val benefits = listOf(
         HomeBenefit(R.drawable.ic_home_savings, R.string.home_benefit_savings, Color(0xFF209437)),
         HomeBenefit(R.drawable.ic_home_community, R.string.home_benefit_community, Color(0xFF1478DD)),
@@ -161,7 +155,7 @@ internal fun HomeBenefits() {
             }
         }
         IconButton(
-            onClick = { visible = false },
+            onClick = onDismiss,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 4.dp, end = 4.dp)

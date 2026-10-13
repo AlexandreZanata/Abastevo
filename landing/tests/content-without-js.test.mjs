@@ -17,26 +17,24 @@ test('essential content and links are present in static HTML without JS', () => 
     const indexHtml = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
 
     // 1. Heading and primary identity
-    assert.match(indexHtml, /<h1[^>]*>Preços de combustíveis\. Fonte e data à vista\.<\/h1>/);
-    assert.match(indexHtml, /Um projeto de código aberto para consultar preços de combustíveis em postos brasileiros/);
+    assert.match(indexHtml, /<h1[^>]*>Mais informação<br>para quem vive<br><span>na estrada\.<\/span><\/h1>/);
+    assert.match(indexHtml, /Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas\./);
 
     // 2. Status line
     assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);
 
-    // 3. CTA hierarchy: primary to the app gallery, secondary to GitHub
-    assert.match(indexHtml, /href="#aplicativo"[^>]*>Conheça o aplicativo<\/a>/);
-    assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*>Ver no GitHub<\/a>/);
+    // LH04 synchronizes truthful copy and branded two-line actions from 8099.
+    assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
+    assert.match(indexHtml, /Projeto open source/);
+    assert.match(indexHtml, /Em breve no Google Play/);
+    assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|tempo real|milhares de usuários/i);
 
-    // 3b. Opening hero carries no phone mockup or app screenshot
+    // LH01 user-approved replacement: original home, source/date context without JS.
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
-    assert.doesNotMatch(heroSection, /<img/);
-    assert.doesNotMatch(heroSection, /assets\/app\//);
-
-    // 4. Comparison card pair
-    assert.match(indexHtml, /Comunidade e ANP, lado a lado/);
-    assert.match(indexHtml, /Exemplo ilustrativo · dados fictícios/);
-    assert.match(indexHtml, /Observação enviada por pessoa · há algumas horas/);
-    assert.match(indexHtml, /Levantamento publicado pela ANP · semana da pesquisa/);
+    assert.match(heroSection, /assets\/app\/explore-light-720w\.webp/);
+    assert.doesNotMatch(heroSection, /Captura real do app em desenvolvimento/);
+    assert.match(heroSection, /semana de 4 a 10 de outubro de 2026/);
+    assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
 
     // 5. Legal and help links reachable from footer
     assert.match(indexHtml, /href="\/privacidade\/"[^>]*>Privacidade<\/a>/);

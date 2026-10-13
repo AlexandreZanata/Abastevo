@@ -6,8 +6,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anpfuel.app.ui.home.HomeContent
 import com.anpfuel.app.ui.home.HomeUiState
-import com.anpfuel.app.ui.search.SearchContent
-import com.anpfuel.app.ui.search.SearchUiState
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.app.ui.weekpicker.WeekPickerScreen
 import com.anpfuel.app.ui.weekpicker.WeekPickerUiState
@@ -51,25 +49,6 @@ class SafeAreaScreenshotMatrixTest {
                     onRetry = {},
                     onWeekChanged = {},
                     includeSurveyWeekChip = false,
-                )
-            }
-        }
-
-        composeTestRule.onRoot().captureToImage().apply {
-            assertTrue(width > 0)
-            assertTrue(height > 0)
-        }
-    }
-
-    @Test
-    fun searchScreen_safeAreaLayoutCapture() {
-        composeTestRule.setContent {
-            AnpFuelTheme(dynamicColor = false) {
-                SearchContent(
-                    uiState = SearchUiState(query = ""),
-                    onQueryChange = {},
-                    onResultSelected = {},
-                    onBrowseByState = {},
                 )
             }
         }

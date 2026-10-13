@@ -89,7 +89,7 @@ func discoverJob(snapshot string) jobs.Job {
 	return jobs.Job{Payload: payload}
 }
 
-const discoverPage = `{"items": [{"cnpj": "04218406000104", "razaoSocial": "[RST08-TEST] POSTO JOTA LTDA", "nomeFantasia": "Jota", "endereco": {"municipio": "SAO PAULO", "uf": "SP", "codigoIbge": "3550308"}, "situacao": "ATIVA", "location_quality": "unknown", "coordenadas": null}], "page": 1, "pageSize": 100, "nextCursor": null}`
+const discoverPage = `{"status":200,"succeeded":true,"data":[{"cnpj":"04218406000104","razaoSocial":"[RST08-TEST] POSTO JOTA LTDA","endereco":"TEST STREET, 10","municipio":"SAO PAULO","uf":"SP"}],"searchPageFilter":{"numeroPagina":1,"tamanhoPagina":5000,"totalRegistro":1,"totalPagina":1}}`
 
 func TestDiscoverJobCompletesBoundedSnapshot(t *testing.T) {
 	calls := 0
@@ -105,8 +105,8 @@ func TestDiscoverJobCompletesBoundedSnapshot(t *testing.T) {
 	if err := handler.Handle(context.Background(), discoverJob("api:test-1")); err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	if store.runs["api:test-1"].State != "complete" {
-		t.Fatalf("run = %+v", store.runs["api:test-1"])
+	if store.runs[registry.APIParserVersion+":api:test-1"].State != "complete" {
+		t.Fatalf("run = %+v", store.runs[registry.APIParserVersion+":api:test-1"])
 	}
 	if store.assertions != 1 {
 		t.Fatalf("assertions = %d, want 1", store.assertions)
@@ -139,8 +139,8 @@ func TestDiscoverJobBoundsProviderRetries(t *testing.T) {
 			if calls != 3 {
 				t.Fatalf("requests = %d, want exactly the 3-attempt retry budget", calls)
 			}
-			if store.runs["api:test-retry"].State != "failed" {
-				t.Fatalf("run = %+v, want failed", store.runs["api:test-retry"])
+			if store.runs[registry.APIParserVersion+":api:test-retry"].State != "failed" {
+				t.Fatalf("run = %+v, want failed", store.runs[registry.APIParserVersion+":api:test-retry"])
 			}
 		})
 	}
@@ -148,12 +148,12 @@ func TestDiscoverJobBoundsProviderRetries(t *testing.T) {
 
 func TestDiscoverJobQuarantineIsTerminal(t *testing.T) {
 	pages := []string{
-		`{"items": [], "nextCursor": "p2"}`,
-		`{"items": [], "nextCursor": null}`,
+		`{"status":200,"succeeded":true,"data":[{"cnpj":"04218406000104","razaoSocial":"[RST08-TEST] POSTO","endereco":"TEST STREET, 10","municipio":"SAO PAULO","uf":"SP"}],"searchPageFilter":{"numeroPagina":1,"tamanhoPagina":1,"totalRegistro":2,"totalPagina":2}}`,
+		`{"status":200,"succeeded":true,"data":[],"searchPageFilter":{"numeroPagina":2,"tamanhoPagina":1,"totalRegistro":2,"totalPagina":2}}`,
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Query().Get("cursor") == "" {
+		if r.URL.Query().Get("numeropagina") == "1" {
 			_, _ = w.Write([]byte(pages[0]))
 			return
 		}
@@ -168,8 +168,8 @@ func TestDiscoverJobQuarantineIsTerminal(t *testing.T) {
 	if err := handler.Handle(context.Background(), discoverJob("api:test-quota")); err != nil {
 		t.Fatalf("quota handle: %v", err)
 	}
-	if store.runs["api:test-quota"].State != "quarantined" {
-		t.Fatalf("run = %+v, want quarantined terminal state", store.runs["api:test-quota"])
+	if store.runs[registry.APIParserVersion+":api:test-quota"].State != "quarantined" {
+		t.Fatalf("run = %+v, want quarantined terminal state", store.runs[registry.APIParserVersion+":api:test-quota"])
 	}
 }
 
@@ -204,7 +204,7 @@ func TestDiscoverJobRequiresStoreAndTarget(t *testing.T) {
 	handler.Config = registry.APIConfig{BaseURL: "https://example.com", AllowedHost: "example.com"}
 	if err := handler.Handle(context.Background(), discoverJob("api:test-badtarget")); err == nil {
 		t.Fatal("unreachable target succeeded, want transport failure")
-	} else if handler.Store.(*discoverFakeStore).runs["api:test-badtarget"].State != "failed" {
+	} else if handler.Store.(*discoverFakeStore).runs[registry.APIParserVersion+":api:test-badtarget"].State != "failed" {
 		t.Fatal("transport failure must finish the run as failed, never complete")
 	}
 }

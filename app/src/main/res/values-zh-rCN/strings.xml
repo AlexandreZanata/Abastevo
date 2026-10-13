@@ -110,6 +110,10 @@
     <string name="week_picker_operational_note_collapse">收起运营备注</string>
     <string name="week_picker_operational_note_title">运营通知</string>
     <string name="week_picker_download_week">下载本周数据</string>
+    <string name="week_picker_downloading_title">正在下载周数据</string>
+    <string name="week_picker_downloading_message">正在下载并导入%1$s的ANP数据。您可以随时取消。</string>
+    <string name="week_picker_downloaded_tag">已下载</string>
+    <string name="week_picker_download_tag">下载</string>
     <string name="week_picker_confirm_title">下载历史周数据？</string>
     <string name="week_picker_confirm_message">下载并导入 %1$s 的 ANP 数据？这可能需要几分钟。</string>
     <string name="active_week_label">最新</string>
@@ -783,4 +787,6 @@
     <string name="privacy_finish_reading">已完成阅读 · 返回选择</string>
     <string name="privacy_rights_heading">您的隐私权利</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
+    <string name="stations_list_summary">列表摘要</string>
+    <string name="stations_summary_order">排序：%1$s</string>
 </resources>

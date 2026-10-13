@@ -121,3 +121,6 @@ WHERE s.current_point IS NULL
     )
 ORDER BY s.created_at ASC, s.id ASC
 LIMIT @limit_n;
+
+-- name: ActiveReference :one
+SELECT EXISTS(SELECT 1 FROM directory_stations WHERE id=$1 AND status='active');

@@ -1,6 +1,10 @@
 package com.anpfuel.data.local
 
 import com.anpfuel.data.local.dao.PhotoUploadSessionDao
+import com.anpfuel.data.local.dao.PremiumCursorDao
+import com.anpfuel.data.local.dao.PremiumOutboxDao
+import com.anpfuel.data.local.entity.PremiumCursorEntity
+import com.anpfuel.data.local.entity.PremiumOutboxEntity
 import com.anpfuel.data.local.entity.PhotoUploadSessionEntity
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -40,8 +44,10 @@ import com.anpfuel.data.local.entity.VehicleEntity
         PhotoUploadSessionEntity::class,
         ServerStationCacheEntity::class,
         ServerCatalogMetaEntity::class,
+        PremiumOutboxEntity::class,
+        PremiumCursorEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -67,4 +73,8 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun photoUploadSessionDao(): PhotoUploadSessionDao
 
     abstract fun serverStationCacheDao(): ServerStationCacheDao
+
+    abstract fun premiumOutboxDao(): PremiumOutboxDao
+
+    abstract fun premiumCursorDao(): PremiumCursorDao
 }

@@ -6,8 +6,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +20,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -32,6 +29,9 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,16 +42,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
-import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.StationsNavigateHintBanner
-import com.anpfuel.app.ui.components.FuelProductLabel
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -133,8 +135,11 @@ fun StationsScreen(
         viewModel.load(locale)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.loadServerStations()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(viewModel, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.syncServerStationsWhileVisible()
+        }
     }
 
     StationsContent(
@@ -162,7 +167,7 @@ fun StationsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StationsContent(
     uiState: StationsUiState,
@@ -216,32 +221,27 @@ private fun StationsContent(
                 OfflineBanner()
             }
 
+            var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
             Text(
                 text = stringResource(R.string.history_fuel_product_label),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                for (product in FuelProduct.entries) {
-                    FilterChip(
-                        selected = uiState.selectedFuelProduct == product,
-                        onClick = { onFuelProductSelected(product) },
-                        label = {
-                            Text(text = stringResource(FuelProductI18n.toStringRes(product)))
-                        },
-                        leadingIcon = {
-                            FuelProductIcon(
-                                product = product,
-                                size = 18.dp,
-                                contentDescription = null,
-                            )
-                        },
-                        enabled = !uiState.isDownloading,
-                    )
-                }
+            FuelProductSelectorButton(
+                selected = uiState.selectedFuelProduct,
+                onClick = { fuelPickerOpen = true },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isDownloading,
+            )
+            if (fuelPickerOpen) {
+                FuelProductSelectorDialog(
+                    selected = uiState.selectedFuelProduct,
+                    onSelect = { product ->
+                        fuelPickerOpen = false
+                        onFuelProductSelected(product)
+                    },
+                    onDismiss = { fuelPickerOpen = false },
+                )
             }
 
             if (!uiState.showNoLocation && !uiState.showDownloadPrompt) {
@@ -257,6 +257,14 @@ private fun StationsContent(
                         )
                     },
                     singleLine = true,
+                )
+            }
+
+            if (uiState.municipality != null && uiState.state != null) {
+                StationsListSummary(
+                    municipality = uiState.municipality,
+                    state = uiState.state,
+                    fuelProduct = uiState.selectedFuelProduct,
                 )
             }
 
@@ -292,17 +300,6 @@ private fun StationsContent(
                 }
 
                 uiState.showDownloadPrompt -> {
-                    if (uiState.municipality != null && uiState.state != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_location_format,
-                                uiState.municipality,
-                                uiState.state.abbreviation,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
                     EmptyState(
                         message = stringResource(R.string.stations_download_prompt),
                         modifier = Modifier.fillMaxWidth(),
@@ -347,26 +344,6 @@ private fun StationsContent(
                             onRetry = onRetry,
                         )
                     }
-                    if (uiState.municipality != null && uiState.state != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_location_format,
-                                uiState.municipality,
-                                uiState.state.abbreviation,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    FuelProductLabel(
-                        product = uiState.selectedFuelProduct,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.stations_sort_by_price),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     NearestStationButton(
                         isFindingNearest = uiState.isFindingNearest,
                         onClick = onFindNearestStation,
@@ -392,10 +369,9 @@ private fun StationsContent(
                 }
             }
 
-            // P35-T02 — canonical server directory (flag-gated, additive).
-            // Legacy ANP rows above are never replaced; an empty server list
-            // renders nothing, never an error.
-            if (uiState.serverStations.isNotEmpty()) {
+            // Supplement the visible weekly price rows using full CNPJ identity.
+            // Keep the complete cached directory in state; filtering is presentation only.
+            if (uiState.directoryOnlyStations.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.server_stations_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -408,7 +384,7 @@ private fun StationsContent(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                uiState.serverStations.forEach { station ->
+                uiState.directoryOnlyStations.forEach { station ->
                     ServerStationRow(
                         station = station,
                         onSelect = onServerStationSelected,

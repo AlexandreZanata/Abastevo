@@ -239,7 +239,8 @@ pub fn parse_registry(
         .filter(|name| !RAW_HEADER.contains(&name.as_str()))
         .cloned()
         .collect();
-    if !missing.is_empty() || !unknown.is_empty() {
+    let unique_names: HashSet<&str> = names.iter().map(String::as_str).collect();
+    if !missing.is_empty() || !unknown.is_empty() || unique_names.len() != names.len() {
         return Ok(RegistryBatch {
             state: RunState::Quarantined,
             error_code: "header_mismatch".to_string(),
@@ -277,6 +278,21 @@ pub fn parse_registry(
         }
         counts.input += 1;
         let record = next.map_err(|err| RegistryError::Truncated(err.to_string()))?;
+        if record.len() != header.len() {
+            counts.quarantined += 1;
+            quarantine.push(quarantine_row(
+                file,
+                logical_row,
+                reason::INVALID_FIELD,
+                format!(
+                    "expected {} fields, received {}",
+                    header.len(),
+                    record.len()
+                ),
+                None,
+            ));
+            continue;
+        }
         let fields: Vec<String> = RAW_HEADER
             .iter()
             .map(|wanted| at(&record, wanted))

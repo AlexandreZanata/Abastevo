@@ -38,6 +38,8 @@ tags:
     description: FREE email-code signup/login plus session rotation.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
+  - name: premium
+    description: Private optional Premium subscription infrastructure; real payments OFF.
 paths:
   /health/live:
     get:
@@ -3339,8 +3341,3251 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/premium/status:
+    post:
+      tags:
+      - premium
+      summary: Premium status
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumStatus
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/purchases/verify:
+    post:
+      tags:
+      - premium
+      summary: Premium purchases verify
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumPurchasesVerify
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumPurchaseRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumPurchaseReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/purchases/restore:
+    post:
+      tags:
+      - premium
+      summary: Premium purchases restore
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumPurchasesRestore
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumPurchaseRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumPurchaseReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/provider-notifications:
+    post:
+      tags:
+      - premium
+      summary: Premium provider-notifications
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumProvider-Notifications
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumProviderEnvelope'
+      responses:
+        '204':
+          description: Authenticated bounded notification durably received or duplicate.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/export:
+    post:
+      tags:
+      - premium
+      summary: Export owned subscription metadata
+      description: Free owner-session export of retained subscription metadata, including
+        after expiry. Bounded keyset pages, owner-bound expiring cursor, private no-store
+        and no ETag. No provider token bytes, raw token hashes, session/key recovery
+        or unimplemented cloud/professional records.
+      operationId: premiumExport
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumExportRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumExportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/status:
+    post:
+      tags:
+      - premium
+      summary: Read private cloud status
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudStatus
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/inventory:
+    post:
+      tags:
+      - premium
+      summary: Read cloud privacy inventory
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudInventory
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudInventory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/records:
+    post:
+      tags:
+      - premium
+      summary: Read owned cloud records
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudRecords
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudPageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRecordPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/export:
+    post:
+      tags:
+      - premium
+      summary: Export held cloud records free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudExport
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudPageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRecordPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices:
+    post:
+      tags:
+      - premium
+      summary: Register signed device reference
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevices
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudDevice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices/list:
+    post:
+      tags:
+      - premium
+      summary: List owned device references
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevicesList
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudDevicePageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudDevicePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/devices/revoke:
+    post:
+      tags:
+      - premium
+      summary: Revoke device reference free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudDevicesRevoke
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudRevokeRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRevokeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply signed bounded cloud commands
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudCommands
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase owned cloud content free of charge
+      description: Owner derives from live account session. Device registration/revocation,
+        commands and erasure also require the existing exact-body signed contributor
+        key bound to that account. No account ID, origin, epoch override or paid flag
+        grants authority. All responses are no-store without ETags. Paid production
+        ports remain disabled; free status/export/erasure remain available.
+      operationId: cloudErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/pull:
+    post:
+      tags:
+      - premium
+      summary: Pull owned incremental cloud changes
+      description: Owner derives from live account session plus the existing exact-body
+        signed contributor key bound to that account. Device reference, paid capability,
+        epoch and consent revision are revalidated inside the same transaction. First
+        page captures a fixed high-water revision; later pages retain it so interleaved
+        writes appear in the next cycle without gaps. Cursors are signed 15-minute
+        owner/origin/device/schema-bound tokens carrying epoch/consent revision/last
+        sequence/high-water. Expired/compacted/stale cursors return resnapshot-required
+        without discarding pending local changes. All responses are no-store without
+        ETags. Paid production ports remain disabled.
+      operationId: cloudSyncPull
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudSyncPullRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncPullResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/push:
+    post:
+      tags:
+      - premium
+      summary: Push owned cloud commands with recoverable conflicts
+      description: Reuses the atomic bounded Apply with receipts. No silent last-arrival
+        overwrite. Stale expected revisions return base/current/proposed conflict data
+        and roll back the full batch. Resolution is a new command at the current revision
+        with a fresh operation ID; only independent documented operations merge in one
+        batch. Conflict receipts never persist deleted private content. All responses
+        are no-store without ETags. Paid production ports remain disabled.
+      operationId: cloudSyncPush
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict with base/current/proposed data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncPushConflictResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/consent:
+    post:
+      tags:
+      - premium
+      summary: Set explicit dataset consent for sync
+      description: Explicit per-dataset opt-in or revoke. No automatic guest upload.
+        The server computes the consent mask and bumps the consent revision. The client
+        never sets the mask or epoch directly. Revocation stops future commands and
+        dispatch while preserving local and held cloud records. All responses are
+        no-store without ETags. Paid production ports remain disabled.
+      operationId: cloudConsent
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudConsentRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/import/preview:
+    post:
+      tags:
+      - premium
+      summary: Preview guest import without uploading
+      description: Dry-run merge for vehicles, favorites and preferences. Preserves
+        local UUIDs and the three-vehicle ceiling. Binds owner, device, epoch, consent
+        revision and server revision and refuses obsolete versions. Cancellation discards
+        staged work with no writes. Confirmation is an explicit Apply with fresh proof
+        and versions. All responses are no-store without ETags.
+      operationId: cloudImportPreview
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudImportPreviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/snapshot:
+    post:
+      tags:
+      - premium
+      summary: Read consistent snapshot page for resync
+      description: Revision-consistent full-record pages for one dataset. The first
+        page captures the current revision. Later pages require the same revision
+        and return resnapshot-required on intervening writes for explicit restart.
+        The cursor binds owner, origin, device, dataset, revision, epoch and consent.
+        New devices after compaction obtain this snapshot before deltas. All responses
+        are no-store without ETags.
+      operationId: cloudSyncSnapshot
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudSnapshotRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSnapshotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/snapshots/manifest:
+    post:
+      tags:
+      - premium
+      summary: Read consistent backup manifest
+      description: Versioned manifest for the acknowledged cloud revision with per-dataset
+        counts, integrity checksum and exclusion list. Failure never reports local pending
+        data as protected. No database dump. Future professional and rule datasets register
+        their own export ports before inclusion. All responses are no-store without ETags.
+      operationId: cloudSnapshotsManifest
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBackupManifestRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudBackupManifestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/snapshots/list:
+    post:
+      tags:
+      - premium
+      summary: List verified backup snapshots
+      description: Owner-only listing of READY snapshots. Unverified or foreign snapshots
+        are never selectable. All responses are no-store without ETags.
+      operationId: cloudSnapshotsList
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudSnapshotListRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSnapshotListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/restore/preview:
+    post:
+      tags:
+      - premium
+      summary: Preview snapshot restore without committing
+      description: Staged validation of datasets, epoch, schema, conflicts and exclusions
+        with bounded decoding. Incompatible snapshots cannot reach commit. Previews carry
+        expiry and revision binding. Cancellation discards staged work. All responses are
+        no-store without ETags.
+      operationId: cloudRestorePreview
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudRestorePreviewRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRestorePreviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/restore/commit:
+    post:
+      tags:
+      - premium
+      summary: Commit snapshot restore idempotently
+      description: Atomic restore with live owner, epoch and entitlement checks plus explicit
+        merge policy and recoverable pre-restore revision. No security material import.
+        Double confirmation converges. Stale previews and revoked or expired authority fail
+        closed. Conflict resolution never resurrects erased data. All responses are no-store
+        without ETags.
+      operationId: cloudRestoreCommit
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudRestoreCommitRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudRestoreCommitResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Restore conflict with base/current/proposed data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSyncPushConflictResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply private ledger commands
+      description: Owner derives from live account session plus exact-body signed key. New writes require paid professional capability. Failed batches roll back fully for retryable local work. All responses are no-store without ETags.
+      operationId: ledgerCommands
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/records:
+    post:
+      tags:
+      - premium
+      summary: List private ledger records
+      description: Owner derives from live account session. Free reads remain available after lapse. Private prices never create public observations. All responses are no-store without ETags.
+      operationId: ledgerRecords
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerPageRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/delete:
+    post:
+      tags:
+      - premium
+      summary: Delete private ledger record free of charge
+      description: Owner derives from live account session plus exact-body signed key. Free deletes remain available after lapse. All responses are no-store without ETags.
+      operationId: ledgerDelete
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerDeleteRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerDeleteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/consent:
+    post:
+      tags:
+      - premium
+      summary: Set explicit professional consent
+      description: Separate opt-in for private financial uploads. Disabling stops new uploads without affecting cloud or free data. Deletes stay free. All responses are no-store without ETags.
+      operationId: ledgerConsent
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerConsentRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerConsentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase private ledger data free of charge
+      description: Owner tombstones records and clears segments and gaps with consent revoked. Snapshots holding erased facts stay unrestorable via fences. All responses are no-store without ETags.
+      operationId: ledgerErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/metrics/compare:
+    post:
+      tags:
+      - premium
+      summary: Compare vehicle periods factually
+      description: Same metric, unit, version and timezone sides with eligible coverage and weighted ratios. Incompatible or incomplete comparisons explain why with no fabricated winner. All responses are no-store without ETags.
+      operationId: metricsCompare
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsCompareRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsCompareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply private alert commands
+      description: Owner derives from live account session plus exact-body signed key. New writes require paid capability with full-batch rollback. All responses are no-store without ETags.
+      operationId: alertsCommands
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsBatchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/rules:
+    post:
+      tags:
+      - premium
+      summary: List private alert rules
+      description: Owner derives from live account session. Free reads remain available after lapse. All responses are no-store without ETags.
+      operationId: alertsRules
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsRulesRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsRulesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/inbox:
+    post:
+      tags:
+      - premium
+      summary: List private alert inbox
+      description: Owner derives from live account session. Free reads remain available after lapse. All responses are no-store without ETags.
+      operationId: alertsInbox
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsInboxRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsInboxResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/erase:
+    post:
+      tags:
+      - premium
+      summary: Erase private alert data free of charge
+      description: Owner tombstones rules and clears inbox with receipts purged. Basic free notifications stay independent. All responses are no-store without ETags.
+      operationId: alertsErase
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsEraseRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsEraseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/push/enroll:
+    post:
+      tags:
+      - premium
+      summary: Enroll opaque push token
+      description: Account-scoped opaque token enrollment with revocation. Tokens stay out of logs and payloads. Inbox remains the fallback. Real provider sends stay proof owed.
+      operationId: alertsPushEnroll
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsPushTokenRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsPushEnrollResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/alerts/push/revoke:
+    post:
+      tags:
+      - premium
+      summary: Revoke push token
+      description: Account-scoped revocation that blocks later sends without leaking other accounts. All responses are no-store without ETags.
+      operationId: alertsPushRevoke
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertsPushTokenRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsPushRevokeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/build:
+    post:
+      tags:
+      - premium
+      summary: Build monthly ledger report
+      description: Paid analysis generation with signed sessions. Free raw export stays on the records route. All responses are no-store without ETags.
+      operationId: ledgerReportsBuild
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/get:
+    post:
+      tags:
+      - premium
+      summary: Read monthly ledger report
+      description: Free retained reads remain available after lapse. All responses are no-store without ETags.
+      operationId: ledgerReportsGet
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/csv:
+    post:
+      tags:
+      - premium
+      summary: Stream monthly report CSV
+      description: Paid bounded streaming with formula-safe quoting. No stored artifacts. All responses are no-store without ETags.
+      operationId: ledgerReportsCsv
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private CSV download.
+          content:
+            text/csv:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
+    CloudVehicle:
+      type: object
+      additionalProperties: false
+      properties:
+        id: &id001
+          type: string
+          format: uuid
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        capacity_milli:
+          type: integer
+          minimum: 10
+          maximum: 200000
+          multipleOf: 10
+        fuel_product:
+          $ref: '#/components/schemas/FuelProduct'
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+        price_source:
+          type: string
+          enum:
+          - CHEAPEST_STATION
+          - SPECIFIC_STATION
+        specific_station_cnpj:
+          type: string
+          maxLength: 14
+        price_drop_alert_enabled:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        archived:
+          type: boolean
+      required:
+      - id
+      - display_name
+      - capacity_milli
+      - fuel_product
+      - unit
+      - price_source
+    CloudFavorite:
+      type: object
+      additionalProperties: false
+      properties:
+        station_id: *id001
+      required:
+      - station_id
+    CloudPreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        preferred_state:
+          type: string
+          pattern: ^[A-Z]{2}$
+        preferred_municipality:
+          type: string
+          pattern: ^[0-9]{7}$
+        preferred_fuel_product:
+          $ref: '#/components/schemas/FuelProduct'
+        locale_tag:
+          type: string
+          enum:
+          - ''
+          - pt-BR
+          - en
+          - es
+          - fr
+          - zh-CN
+          - ru
+          - de
+          - ja
+        locale_user_selected:
+          type: boolean
+        show_price_history:
+          type: boolean
+        nearest_station_radius_km:
+          type: integer
+          minimum: 1
+          maximum: 100
+      required:
+      - version
+      - locale_tag
+      - nearest_station_radius_km
+    CloudStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        consent_revision:
+          type: integer
+          minimum: 0
+        enabled_datasets:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: &id002
+            - vehicles
+            - favorites
+            - preferences
+      required:
+      - epoch
+      - revision
+      - consent_revision
+      - enabled_datasets
+    CloudRecord:
+      type: object
+      additionalProperties: false
+      properties:
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        deleted:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - dataset
+      - id
+      - revision
+      - deleted
+      - payload
+    CloudDevice:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+        last_success_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        revoked:
+          type: boolean
+      required:
+      - id
+      - origin
+      - created_at
+      - last_success_at
+      - revoked
+    CloudPageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: &id003
+          type: string
+          minLength: 1
+          maxLength: 512
+        dataset:
+          type: string
+          enum: *id002
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - dataset
+    CloudDevicePageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+    CloudRecordPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudRecord'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    CloudDevicePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudDevice'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    CloudRevokeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudRevokeResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - revoked
+      required:
+      - status
+    CloudEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        dataset:
+          type: string
+          enum:
+          - vehicles
+          - favorites
+          - preferences
+          - all
+        id: *id001
+      required:
+      - family_id
+      - access_token
+      - dataset
+    CloudEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+        epoch:
+          type: integer
+          minimum: 1
+      required:
+      - status
+      - epoch
+    CloudSyncPullRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudChange:
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        epoch:
+          type: integer
+          minimum: 1
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        deleted:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - sequence
+      - epoch
+      - dataset
+      - id
+      - revision
+      - deleted
+      - payload
+    CloudSyncPullResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        changes:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudChange'
+        through:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - changes
+      - through
+      - epoch
+      - consent_revision
+      - next_cursor
+    CloudInventory:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        scope:
+          type: string
+          enum:
+          - cloud
+        datasets:
+          type: array
+          items:
+            type: string
+            enum:
+            - vehicles
+            - favorites
+            - preferences
+            - devices
+          uniqueItems: true
+      required:
+      - version
+      - scope
+      - datasets
+    CloudCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        delete:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+      required:
+      - operation_id
+      - dataset
+      - id
+    CloudBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        commands:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudCommand'
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - epoch
+      - consent_revision
+      - commands
+    CloudCommandResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - accepted
+        replayed:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - revision
+      - status
+      - replayed
+    CloudBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudCommandResult'
+      required:
+      - epoch
+      - revision
+      - results
+    CloudConflict:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        current_revision:
+          type: integer
+          minimum: 0
+        current_deleted:
+          type: boolean
+        current_payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+        proposed_payload:
+          oneOf:
+          - $ref: '#/components/schemas/CloudVehicle'
+          - $ref: '#/components/schemas/CloudFavorite'
+          - $ref: '#/components/schemas/CloudPreferences'
+          - type: 'null'
+        erased:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - expected_revision
+      - current_revision
+      - current_deleted
+      - erased
+    CloudSyncPushConflictResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        conflicts:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudConflict'
+      required:
+      - epoch
+      - revision
+      - conflicts
+    CloudConsentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        datasets:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum: *id002
+        enabled:
+          type: boolean
+      required:
+      - family_id
+      - access_token
+      - datasets
+      - enabled
+    CloudPreviewItem:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        action:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - converge
+          - conflict
+          - quota
+          - invalid
+          - erased
+        expected_revision:
+          type: integer
+          minimum: 0
+        current_revision:
+          type: integer
+          minimum: 0
+        current_deleted:
+          type: boolean
+        erased:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - action
+      - expected_revision
+      - current_revision
+      - current_deleted
+      - erased
+    CloudImportPreviewResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        consent_revision:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudPreviewItem'
+      required:
+      - epoch
+      - revision
+      - consent_revision
+      - items
+    CloudSnapshotRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - dataset
+    CloudSnapshotResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        records:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudRecord'
+        through:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - records
+      - through
+      - epoch
+      - consent_revision
+      - next_cursor
+    CloudBackupManifestRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudBackupManifestResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          enum:
+          - 1
+        revision:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        vehicle_count:
+          type: integer
+          minimum: 0
+        favorite_count:
+          type: integer
+          minimum: 0
+        preference_count:
+          type: integer
+          minimum: 0
+        checksum:
+          type: string
+          minLength: 64
+          maxLength: 64
+        datasets:
+          type: array
+          items:
+            type: string
+            enum: *id002
+          uniqueItems: true
+        excluded:
+          type: array
+          items:
+            type: string
+      required:
+      - version
+      - revision
+      - epoch
+      - consent_revision
+      - vehicle_count
+      - favorite_count
+      - preference_count
+      - checksum
+      - datasets
+      - excluded
+    CloudStoredSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        snapshot_id: *id001
+        revision:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        byte_size:
+          type: integer
+          minimum: 1
+        checksum:
+          type: string
+          minLength: 64
+          maxLength: 64
+        status:
+          type: string
+          enum:
+          - READY
+      required:
+      - snapshot_id
+      - revision
+      - epoch
+      - consent_revision
+      - byte_size
+      - checksum
+      - status
+    CloudSnapshotListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      required:
+      - family_id
+      - access_token
+      - device_id
+    CloudSnapshotListResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        snapshots:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudStoredSnapshot'
+      required:
+      - snapshots
+    CloudRestorePreviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        snapshot_id: *id001
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - snapshot_id
+    CloudRestorePreviewResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        snapshot_id: *id001
+        snapshot_revision:
+          type: integer
+          minimum: 0
+        current_revision:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        compatible:
+          type: boolean
+        issues:
+          type: array
+          items:
+            type: string
+        record_count:
+          type: integer
+          minimum: 0
+        conflict_count:
+          type: integer
+          minimum: 0
+        excluded_count:
+          type: integer
+          minimum: 0
+        expires_at:
+          type: integer
+          minimum: 1
+      required:
+      - snapshot_id
+      - snapshot_revision
+      - current_revision
+      - epoch
+      - consent_revision
+      - compatible
+      - issues
+      - record_count
+      - conflict_count
+      - excluded_count
+      - expires_at
+    CloudRestoreCommitRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        snapshot_id: *id001
+        restore_id: *id001
+        preview_revision:
+          type: integer
+          minimum: 0
+        preview_expires_at:
+          type: integer
+          minimum: 1
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - snapshot_id
+      - restore_id
+      - preview_revision
+      - preview_expires_at
+    CloudRestoreCommitResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        restore_id: *id001
+        snapshot_id: *id001
+        pre_revision:
+          type: integer
+          minimum: 0
+        post_revision:
+          type: integer
+          minimum: 0
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudCommandResult'
+        replayed:
+          type: boolean
+      required:
+      - restore_id
+      - snapshot_id
+      - pre_revision
+      - post_revision
+      - results
+      - replayed
+    LedgerRefuel:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        vehicle_id: *id001
+        occurred_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        fuel:
+          type: string
+          enum:
+          - ETHANOL
+          - GASOLINE_REGULAR
+          - GASOLINE_ADDITIVED
+          - GASOLINE_PREMIUM_GRADE
+          - DIESEL_S500
+          - DIESEL_S10
+          - CNG
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+        quantity_milli:
+          type: integer
+          minimum: 1
+          maximum: 1000000000
+        total_centavos:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        unit_price_milli:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        odometer_metres:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        fill:
+          type: string
+          enum:
+          - full
+          - partial
+          - unknown
+        station_id: *id001
+        note:
+          type: string
+          maxLength: 280
+      required:
+      - id
+      - vehicle_id
+      - occurred_at
+      - timezone
+      - fuel
+      - unit
+      - quantity_milli
+      - total_centavos
+      - fill
+    LedgerExpense:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        vehicle_id: *id001
+        occurred_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        amount_centavos:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        category:
+          type: string
+          enum:
+          - maintenance
+          - insurance
+          - taxes
+          - parking
+          - tolls
+          - cleaning
+          - other
+        odometer_metres:
+          type: integer
+          minimum: 0
+          maximum: 1000000000000
+        note:
+          type: string
+          maxLength: 280
+      required:
+      - id
+      - vehicle_id
+      - occurred_at
+      - timezone
+      - amount_centavos
+      - category
+    LedgerCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum:
+          - refuel
+          - expense
+        id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        delete:
+          type: boolean
+        void:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/LedgerRefuel'
+          - $ref: '#/components/schemas/LedgerExpense'
+          - type: 'null'
+      required:
+      - operation_id
+      - dataset
+      - id
+    LedgerCommandResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum:
+          - refuel
+          - expense
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - accepted
+        replayed:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - revision
+      - status
+      - replayed
+    LedgerBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        commands:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/LedgerCommand'
+      required:
+      - family_id
+      - access_token
+      - commands
+    LedgerBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/LedgerCommandResult'
+      required:
+      - results
+    LedgerRecord:
+      type: object
+      additionalProperties: false
+      properties:
+        dataset:
+          type: string
+          enum:
+          - refuel
+          - expense
+        id: *id001
+        vehicle_id: *id001
+        occurred_at:
+          type: string
+          format: date-time
+        revision:
+          type: integer
+          minimum: 1
+        voided:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/LedgerRefuel'
+          - $ref: '#/components/schemas/LedgerExpense'
+      required:
+      - dataset
+      - id
+      - vehicle_id
+      - occurred_at
+      - revision
+      - voided
+      - payload
+    LedgerPageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        dataset:
+          type: string
+          enum:
+          - refuel
+          - expense
+        vehicle_id: *id001
+        category:
+          type: string
+          enum:
+          - maintenance
+          - insurance
+          - taxes
+          - parking
+          - tolls
+          - cleaning
+          - other
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - dataset
+    LedgerPageResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/LedgerRecord'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+    LedgerDeleteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        dataset:
+          type: string
+          enum:
+          - refuel
+          - expense
+        id: *id001
+      required:
+      - family_id
+      - access_token
+      - dataset
+      - id
+    LedgerDeleteResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+      required:
+      - revision
+    LedgerConsentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        datasets:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - refuel
+            - expense
+        enabled:
+          type: boolean
+      required:
+      - family_id
+      - access_token
+      - datasets
+      - enabled
+    LedgerConsentResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        datasets:
+          type: array
+          items:
+            type: string
+            enum:
+            - refuel
+            - expense
+          uniqueItems: true
+      required:
+      - revision
+      - datasets
+    LedgerEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    LedgerEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+      required:
+      - status
+    LedgerReportRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        timezone:
+          type: string
+          maxLength: 64
+      required:
+      - family_id
+      - access_token
+      - year
+      - month
+      - timezone
+    LedgerReport:
+      type: object
+      additionalProperties: false
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+        timezone:
+          type: string
+        totals:
+          type: object
+        revision:
+          type: integer
+          minimum: 1
+        generated_at:
+          type: string
+          format: date-time
+      required:
+      - year
+      - month
+      - timezone
+      - totals
+      - revision
+      - generated_at
+    MetricsCompareSide:
+      type: object
+      additionalProperties: false
+      properties:
+        vehicle_id: *id001
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        method:
+          type: string
+          enum:
+          - fuel-purchase-interval
+          - matched-window
+      required:
+      - vehicle_id
+      - from
+      - to
+      - timezone
+      - method
+    MetricsCompareRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        baseline:
+          $ref: '#/components/schemas/MetricsCompareSide'
+        current:
+          $ref: '#/components/schemas/MetricsCompareSide'
+      required:
+      - family_id
+      - access_token
+      - baseline
+      - current
+    MetricsCompareResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        compatible:
+          type: boolean
+        issue:
+          type: string
+        baseline:
+          type: string
+        current:
+          type: string
+        change_percent:
+          type: string
+      required:
+      - compatible
+      - issue
+      - baseline
+      - current
+      - change_percent
+    AlertsPredicate:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - threshold
+          - change
+        fuel:
+          type: string
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+          - KG_13
+        condition:
+          type: string
+        source:
+          type: string
+          enum:
+          - official
+          - community
+        threshold_milli:
+          type: integer
+          minimum: 1
+        drop_milli:
+          type: integer
+          minimum: 0
+        drop_percent_bp:
+          type: integer
+          minimum: 0
+        baseline_hours:
+          type: integer
+          minimum: 0
+      required:
+      - kind
+      - fuel
+      - unit
+      - condition
+      - source
+    AlertsRule:
+      type: object
+      additionalProperties: false
+      properties:
+        predicates:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/AlertsPredicate'
+        operator:
+          type: string
+          enum:
+          - AND
+          - OR
+        target:
+          type: object
+        schedule:
+          type: object
+      required:
+      - predicates
+      - operator
+      - target
+      - schedule
+    AlertsCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        rule_id: *id001
+        expected_revision:
+          type: integer
+          minimum: 0
+        delete:
+          type: boolean
+        enabled:
+          type: boolean
+        payload:
+          oneOf:
+          - $ref: '#/components/schemas/AlertsRule'
+          - type: 'null'
+      required:
+      - operation_id
+      - rule_id
+    AlertsCommandResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        rule_id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - accepted
+        replayed:
+          type: boolean
+      required:
+      - operation_id
+      - rule_id
+      - revision
+      - status
+      - replayed
+    AlertsBatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        commands:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AlertsCommand'
+      required:
+      - family_id
+      - access_token
+      - commands
+    AlertsBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/AlertsCommandResult'
+      required:
+      - results
+    AlertsRulesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    AlertsRulesResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        rules:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+      required:
+      - rules
+    AlertsInboxRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      required:
+      - family_id
+      - access_token
+    AlertsInboxResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+      required:
+      - items
+    AlertsEraseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+      required:
+      - family_id
+      - access_token
+    AlertsEraseResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - erased
+      required:
+      - status
+    AlertsPushTokenRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        token:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required:
+      - family_id
+      - access_token
+      - token
+    AlertsPushEnrollResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - enrolled
+      required:
+      - status
+    AlertsPushRevokeResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - revoked
+      required:
+      - status
+    PremiumExportRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      properties:
+        family_id:
+          type: string
+          format: uuid
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+    PremiumExportItem:
+      type: object
+      additionalProperties: false
+      required:
+      - product_id
+      - base_plan_id
+      - state
+      - valid_until
+      - verified_at
+      - retired
+      - acknowledged
+      properties:
+        product_id:
+          type: string
+        base_plan_id:
+          type: string
+        state:
+          type: string
+          enum:
+          - NONE
+          - PENDING
+          - ACTIVE
+          - CANCELED
+          - GRACE
+          - HOLD
+          - PAUSED
+          - EXPIRED
+          - REVOKED
+          - UNKNOWN
+        valid_until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        verified_at:
+          type: string
+          format: date-time
+        retired:
+          type: boolean
+        acknowledged:
+          type: boolean
+    PremiumExportResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PremiumExportItem'
+        next_cursor:
+          type: string
+          maxLength: 2048
+    PremiumStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      properties:
+        family_id: &id001
+          type: string
+          format: uuid
+        access_token: &id002
+          type: string
+          minLength: 1
+          maxLength: 512
+    PremiumPurchaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      - operation_id
+      - purchase_token
+      properties:
+        family_id: *id001
+        access_token: *id002
+        operation_id: *id001
+        purchase_token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+    PremiumCapability:
+      type: string
+      enum:
+      - cloud.sync
+      - cloud.backup
+      - cloud.restore
+      - alerts.advanced
+      - professional.write
+      - professional.report
+    PremiumStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - policy_version
+      - state
+      - reason
+      - capabilities
+      - valid_until
+      - retained_data_access
+      - payments_configured
+      properties:
+        management_url:
+          type: string
+          enum:
+          - https://play.google.com/store/account/subscriptions
+        policy_version:
+          type: integer
+          enum:
+          - 1
+        state:
+          type: string
+          enum:
+          - NONE
+          - PENDING
+          - ACTIVE
+          - CANCELED
+          - GRACE
+          - HOLD
+          - PAUSED
+          - EXPIRED
+          - REVOKED
+          - UNKNOWN
+        reason:
+          type: string
+          maxLength: 64
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/PremiumCapability'
+          uniqueItems: true
+        valid_until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        retained_data_access:
+          type: boolean
+          enum:
+          - true
+        payments_configured:
+          type: boolean
+    PremiumPurchaseReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - status
+      - replayed
+      properties:
+        operation_id: *id001
+        status:
+          $ref: '#/components/schemas/PremiumStatusResponse'
+        replayed:
+          type: boolean
+    PremiumProviderEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - message
+      - subscription
+      properties:
+        message:
+          type: object
+          additionalProperties: false
+          required:
+          - messageId
+          - data
+          - publishTime
+          properties:
+            messageId:
+              type: string
+              minLength: 1
+              maxLength: 128
+            data:
+              type: string
+              minLength: 1
+              maxLength: 12288
+            publishTime:
+              type: string
+              format: date-time
+        subscription:
+          type: string
+          minLength: 1
+          maxLength: 256
     CommunityFeedPage:
       type: object
       description: A public allowlisted city feed, not raw observation history.

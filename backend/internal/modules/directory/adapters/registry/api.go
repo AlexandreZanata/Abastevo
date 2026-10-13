@@ -2,29 +2,24 @@ package registry
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // SourceAPI is the frozen source key for ANP registry API discovery.
 const SourceAPI = "registry-api"
 
 // APIParserVersion freezes the discovery parser identity on every run.
-const APIParserVersion = "registry-api-v1"
+const APIParserVersion = "registry-api-v2"
 
 // ProductionAPIHost is the only host P25-T03 may fetch in production.
 const ProductionAPIHost = "revendedoresapi.anp.gov.br"
@@ -38,7 +33,7 @@ type APIConfig struct {
 	CNPJ          string
 	UF            string
 	Municipality  string
-	PageSize      int
+	PageSize      int // Retained config field; ANP controls actual page size.
 	MaxPages      int
 	MaxRequests   int
 	MaxBytes      int64
@@ -54,7 +49,7 @@ func ProductionAPIConfig() APIConfig {
 		PageSize:    100,
 		MaxPages:    50,
 		MaxRequests: 1000,
-		MaxBytes:    1 << 20,
+		MaxBytes:    16 << 20,
 		Timeout:     30 * time.Second,
 		Sleep:       func() { time.Sleep(200 * time.Millisecond) },
 	}
@@ -131,10 +126,7 @@ func apiClient(cfg APIConfig) (*http.Client, error) {
 			if len(via) >= 3 {
 				return errors.New("registry: too many redirects")
 			}
-			if req.URL.Hostname() != cfg.AllowedHost {
-				return errors.New("registry: redirect target rejected")
-			}
-			return nil
+			return errors.New("registry: redirects are not an official API contract")
 		},
 	}, nil
 }
@@ -149,121 +141,12 @@ func apiIPAllowed(addr netip.Addr, allowLoopback bool) bool {
 	return addr.IsGlobalUnicast() && !addr.IsPrivate()
 }
 
-// apiRecord is one decoded API item before policy validation.
-type apiRecord struct {
-	CNPJ         string `json:"cnpj"`
-	RazaoSocial  string `json:"razaoSocial"`
-	NomeFantasia string `json:"nomeFantasia"`
-	Situacao     string `json:"situacao"`
-	LocationWire string `json:"location_quality"`
-	Autorizacao  *struct {
-		Ato         string `json:"ato"`
-		PublicadoEm string `json:"publicadoEm"`
-	} `json:"autorizacao"`
-	Endereco *struct {
-		Municipio  string `json:"municipio"`
-		UF         string `json:"uf"`
-		CodigoIbge string `json:"codigoIbge"`
-	} `json:"endereco"`
-	Coordenadas *struct {
-		Lat float64 `json:"lat"`
-		Lon float64 `json:"lon"`
-		CRS string  `json:"crs"`
-	} `json:"coordenadas"`
-}
-
 type apiPage struct {
-	Items      []json.RawMessage `json:"items"`
-	NextCursor *string           `json:"nextCursor"`
-}
-
-// parseAPIRecord validates one API item with the frozen T01 policy.
-// Unknown statuses stay honest (pending); malformed identity,
-// out-of-range coordinates and unsupported CRS reject the row.
-func parseAPIRecord(raw json.RawMessage) (Assertion, bool) {
-	var rec apiRecord
-	if err := json.Unmarshal(raw, &rec); err != nil {
-		return Assertion{}, false
-	}
-	cnpj, err := ValidCNPJText(rec.CNPJ)
-	if err != nil {
-		return Assertion{}, false
-	}
-	name := strings.TrimSpace(rec.RazaoSocial)
-	if name == "" {
-		name = strings.TrimSpace(rec.NomeFantasia)
-	}
-	if name == "" {
-		return Assertion{}, false
-	}
-	ibge, uf := "", ""
-	if rec.Endereco != nil {
-		ibge = strings.TrimSpace(rec.Endereco.CodigoIbge)
-		uf = strings.ToUpper(strings.TrimSpace(rec.Endereco.UF))
-	}
-	if ibge == "" || len(uf) != 2 {
-		return Assertion{}, false
-	}
-	auth := MapStatus(rec.Situacao)
-	eligibility := DecideEligibility(Record{
-		IdentityOK: true, AddressOK: true,
-		Authorized: auth == AuthorizationAuthorized,
-	})
-	quality := "unknown"
-	if rec.LocationWire == "reviewed" || rec.LocationWire == "city-centroid" {
-		quality = rec.LocationWire
-	}
-	var lat, lon float64
-	var hasCoords bool
-	var crs string
-	if rec.Coordenadas != nil {
-		coords := rec.Coordenadas
-		if math.IsNaN(coords.Lat) || math.IsNaN(coords.Lon) ||
-			math.IsInf(coords.Lat, 0) || math.IsInf(coords.Lon, 0) ||
-			coords.Lat < -90 || coords.Lat > 90 ||
-			coords.Lon < -180 || coords.Lon > 180 {
-			return Assertion{}, false
-		}
-		crs = strings.ToUpper(strings.TrimSpace(coords.CRS))
-		if crs != "WGS84" && crs != "SIRGAS2000" {
-			return Assertion{}, false
-		}
-		lat, lon, hasCoords = coords.Lat, coords.Lon, true
-	} else if quality != "unknown" {
-		// A reviewed claim without coordinates is honest unknown, never
-		// an inferred point.
-		quality = "unknown"
-	}
-	// Coordinates never upgrade an unknown wire: review owns upgrades.
-	sum := sha256.Sum256(raw)
-	ato := ""
-	var effective pgtype.Date
-	if rec.Autorizacao != nil {
-		ato = strings.TrimSpace(rec.Autorizacao.Ato)
-		if rec.Autorizacao.PublicadoEm != "" {
-			if parsed, err := time.Parse("2006-01-02", rec.Autorizacao.PublicadoEm); err == nil {
-				effective = pgtype.Date{Time: parsed, Valid: true}
-			}
-		}
-	}
-	return Assertion{
-		Source:           SourceAPI,
-		SourceKey:        cnpj,
-		Checksum:         hex.EncodeToString(sum[:]),
-		DisplayName:      name,
-		Address:          map[string]string{"municipio_ibge": ibge, "uf": uf},
-		MunicipalityCode: ibge,
-		State:            uf,
-		AuthState:        string(auth),
-		Eligibility:      string(eligibility),
-		LocationQuality:  quality,
-		SourceReference:  ato,
-		EffectiveDate:    effective,
-		Latitude:         lat,
-		Longitude:        lon,
-		HasCoords:        hasCoords,
-		CRS:              crs,
-	}, true
+	Items      []json.RawMessage
+	NextCursor *string
+	Official   bool
+	Total      int
+	Pages      int
 }
 
 // Discover runs one bounded API discovery into staging: targeted CNPJ
@@ -273,10 +156,15 @@ func parseAPIRecord(raw json.RawMessage) (Assertion, bool) {
 // identifiers fail before any network call.
 func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) (Report, error) {
 	cfg = cfg.withDefaults()
+	// The earlier synthetic contract could persist a false empty completion.
+	// Version the immutable scope key so that evidence cannot replay under v2.
+	snapshot = APIParserVersion + ":" + snapshot
 	if cfg.CNPJ != "" {
-		if _, err := ValidCNPJText(cfg.CNPJ); err != nil {
+		normalized, err := ValidCNPJText(cfg.CNPJ)
+		if err != nil {
 			return Report{}, fmt.Errorf("registry: unsupported CNPJ: %w", err)
 		}
+		cfg.CNPJ = normalized
 	}
 	client, err := apiClient(cfg)
 	if err != nil {
@@ -302,10 +190,13 @@ func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) 
 		if requests >= cfg.MaxRequests {
 			return nil, 0, errQuota
 		}
-		requests++
 		var body []byte
 		var status int
 		for attempt := 0; attempt < 3; attempt++ {
+			if requests >= cfg.MaxRequests {
+				return nil, 0, errQuota
+			}
+			requests++
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 			if err != nil {
 				return nil, 0, err
@@ -320,6 +211,9 @@ func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) 
 			if err != nil {
 				return nil, 0, err
 			}
+			if int64(len(body)) > cfg.MaxBytes {
+				return nil, 0, errors.New("registry: response body exceeds cap")
+			}
 			status = resp.StatusCode
 			if status == http.StatusTooManyRequests || (status >= 500 && status < 600) {
 				cfg.Sleep()
@@ -331,6 +225,7 @@ func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) 
 	}
 	cursor := ""
 	pages := 0
+	seenRows, expectedTotal, expectedPages := 0, -1, -1
 	for {
 		if pages >= cfg.MaxPages {
 			return finish("quarantined", "page_quota")
@@ -349,21 +244,42 @@ func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) 
 			}
 			return finish("failed", "transport")
 		}
-		if status == http.StatusNotFound && cfg.CNPJ != "" {
-			return finish("complete", "")
-		}
 		if status != http.StatusOK {
 			return finish("failed", "provider_error")
 		}
-		var page apiPage
-		if err := json.Unmarshal(body, &page); err != nil {
-			return finish("failed", "provider_error")
+		page, err := decodeAPIPage(body, pages+1)
+		if err != nil {
+			return finish("failed", "provider_schema")
+		}
+		if page.Official {
+			if expectedTotal < 0 {
+				expectedTotal, expectedPages = page.Total, page.Pages
+			}
+			if page.Total != expectedTotal || page.Pages != expectedPages {
+				return finish("quarantined", "snapshot_changed")
+			}
+			seenRows += len(page.Items)
+			if seenRows > expectedTotal {
+				return finish("quarantined", "row_count")
+			}
 		}
 		for _, item := range page.Items {
-			assertion, ok := parseAPIRecord(item)
+			assertion, ok := parseOfficialAPIRecord(item)
 			if !ok {
 				report.Rejected++
 				continue
+			}
+			if cfg.CNPJ != "" {
+				wanted, _ := ValidCNPJText(cfg.CNPJ)
+				if assertion.SourceKey != wanted {
+					return finish("quarantined", "scope_mismatch")
+				}
+			}
+			if cfg.UF != "" && assertion.State != strings.ToUpper(cfg.UF) {
+				return finish("quarantined", "scope_mismatch")
+			}
+			if cfg.Municipality != "" && !strings.EqualFold(strings.TrimSpace(assertion.Address["municipio"]), strings.TrimSpace(cfg.Municipality)) {
+				return finish("quarantined", "scope_mismatch")
 			}
 			assertion.runID = runID
 			accepted, err := store.StageAssertion(ctx, assertion)
@@ -377,7 +293,10 @@ func Discover(ctx context.Context, store Store, snapshot string, cfg APIConfig) 
 			}
 		}
 		pages++
-		if cfg.CNPJ != "" || page.NextCursor == nil || *page.NextCursor == "" {
+		if page.NextCursor == nil || *page.NextCursor == "" {
+			if page.Official && seenRows != expectedTotal {
+				return finish("quarantined", "row_count")
+			}
 			break
 		}
 		cursor = *page.NextCursor
@@ -407,11 +326,14 @@ func pageURL(cfg APIConfig, cursor string) (string, error) {
 		if cfg.Municipality != "" {
 			q.Set("municipio", cfg.Municipality)
 		}
-		q.Set("pageSize", fmt.Sprintf("%d", cfg.PageSize))
-		if cursor != "" {
-			q.Set("cursor", cursor)
-		}
 	}
+	// The official API exposes a fixed route and numbered pages.
+	base.Path = strings.TrimRight(base.Path, "/") + "/v1/combustivel"
+	page := cursor
+	if page == "" {
+		page = "1"
+	}
+	q.Set("numeropagina", page)
 	base.RawQuery = q.Encode()
 	return base.String(), nil
 }

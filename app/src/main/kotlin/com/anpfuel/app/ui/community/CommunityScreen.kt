@@ -1,11 +1,10 @@
 package com.anpfuel.app.ui.community
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,16 +12,21 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -35,6 +39,8 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.BouncyToggleIcon
 import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.FuelProductTint
@@ -120,28 +126,16 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             item {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                ) {
-                    CommunityFilterChip(selected = state.sort == FeedSort.RECENT, onClick = { onSort(FeedSort.RECENT) },
-                        label = { Text(stringResource(R.string.feed_recent)) }, leadingIcon = { Icon(Icons.Default.Schedule, null, Modifier.size(18.dp)) })
-                    CommunityFilterChip(selected = state.sort == FeedSort.CHEAPEST, onClick = { onSort(FeedSort.CHEAPEST) },
-                        label = { Text(stringResource(R.string.feed_cheapest)) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingDown, null, Modifier.size(18.dp)) })
-                    CommunityFilterChip(selected = state.sort == FeedSort.BEST, onClick = { onSort(FeedSort.BEST) },
-                        label = { Text(stringResource(R.string.feed_best)) }, leadingIcon = { Icon(Icons.Default.Star, null, Modifier.size(18.dp)) })
-                    CommunityFilterChip(selected = state.sort == FeedSort.WORST, onClick = { onSort(FeedSort.WORST) },
-                        label = { Text(stringResource(R.string.feed_worst)) }, leadingIcon = { Icon(Icons.Default.StarOutline, null, Modifier.size(18.dp)) })
+                var sortOpen by rememberSaveable { mutableStateOf(false) }
+                var fuelOpen by rememberSaveable { mutableStateOf(false) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FeedSortSelectorButton(selected = state.sort, onClick = { sortOpen = true }, modifier = Modifier.fillMaxWidth())
+                    FuelProductSelectorButton(selected = state.fuel, onClick = { fuelOpen = true }, modifier = Modifier.fillMaxWidth())
                 }
-            }
-            item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(FuelProduct.entries, key = { it.name }) { fuel ->
-                        CommunityFilterChip(selected = state.fuel == fuel, onClick = { onFuel(fuel) },
-                            label = { Text(stringResource(FuelProductI18n.toStringRes(fuel))) },
-                            leadingIcon = { FuelProductIcon(fuel, size = 20.dp, contentDescription = null) })
-                    }
-                }
+                if (sortOpen) FeedSortSelectorDialog(selected = state.sort,
+                    onSelect = { sortOpen = false; onSort(it) }, onDismiss = { sortOpen = false })
+                if (fuelOpen) FuelProductSelectorDialog(selected = state.fuel,
+                    onSelect = { fuelOpen = false; onFuel(it) }, onDismiss = { fuelOpen = false })
             }
             if (state.items.size > 20 && !state.failed) item {
                 Text(stringResource(R.string.feed_cached_hint), style = MaterialTheme.typography.bodySmall,
@@ -192,30 +186,52 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
         } }, confirmButton = { TextButton(onClick = { showRules = false }) { Text(stringResource(R.string.feed_close)) } })
 }
 
-/**
- * Community filter with a distinct active treatment: elevated surface plus
- * the app primary container when selected, matching the rounded-card language
- * used across home and profile.
- */
+/** Full-width sort selector entry mirroring the fuel selector styling. */
 @Composable
-private fun CommunityFilterChip(
-    selected: Boolean,
-    onClick: () -> Unit,
-    label: @Composable () -> Unit,
-    leadingIcon: @Composable () -> Unit,
-) {
-    ElevatedFilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = label,
-        leadingIcon = leadingIcon,
-        colors = FilterChipDefaults.elevatedFilterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
-    )
+private fun FeedSortSelectorButton(selected: FeedSort, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedCard(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(feedSortIcon(selected), null, Modifier.size(20.dp))
+            Text(stringResource(feedSortLabel(selected)), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.outline)
+        }
+    }
+}
+
+@Composable
+private fun FeedSortSelectorDialog(selected: FeedSort, onSelect: (FeedSort) -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxWidth().padding(horizontal = 24.dp), shape = RoundedCornerShape(28.dp), tonalElevation = 6.dp) {
+            Column(Modifier.padding(horizontal = 8.dp, vertical = 16.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FeedSort.entries.forEach { sort ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .clickable(role = Role.RadioButton, onClick = { onSelect(sort) })
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RadioButton(selected = sort == selected, onClick = null)
+                        Icon(feedSortIcon(sort), null, Modifier.size(20.dp))
+                        Text(stringResource(feedSortLabel(sort)), style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun feedSortLabel(sort: FeedSort) = when (sort) {
+    FeedSort.RECENT -> R.string.feed_recent
+    FeedSort.CHEAPEST -> R.string.feed_cheapest
+    FeedSort.BEST -> R.string.feed_best
+    FeedSort.WORST -> R.string.feed_worst
+}
+
+private fun feedSortIcon(sort: FeedSort) = when (sort) {
+    FeedSort.RECENT -> Icons.Default.Schedule
+    FeedSort.CHEAPEST -> Icons.AutoMirrored.Filled.TrendingDown
+    FeedSort.BEST -> Icons.Default.Star
+    FeedSort.WORST -> Icons.Default.StarOutline
 }
 
 /**

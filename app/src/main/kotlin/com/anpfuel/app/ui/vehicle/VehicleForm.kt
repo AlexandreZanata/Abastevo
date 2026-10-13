@@ -15,10 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -29,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +48,10 @@ import com.anpfuel.app.R
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.anpfuel.app.mapper.FuelProductI18n
-import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.ActionCardButton
+import com.anpfuel.app.ui.components.ActionCardStyle
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -117,30 +123,26 @@ fun VehicleForm(
             onRemovePhoto = onRemovePhoto,
         )
 
+        var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
         Text(
             text = stringResource(R.string.vehicle_fuel_product_label),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        FlowRow(
+        FuelProductSelectorButton(
+            selected = form.fuelProduct,
+            onClick = { fuelPickerOpen = true },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FuelProduct.entries.forEach { product ->
-                FilterChip(
-                    selected = form.fuelProduct == product,
-                    onClick = { onFuelProductSelected(product) },
-                    label = { Text(text = stringResource(FuelProductI18n.toStringRes(product))) },
-                    leadingIcon = {
-                        FuelProductIcon(
-                            product = product,
-                            size = 18.dp,
-                            contentDescription = null,
-                        )
-                    },
-                )
-            }
+        )
+        if (fuelPickerOpen) {
+            FuelProductSelectorDialog(
+                selected = form.fuelProduct,
+                onSelect = { product ->
+                    fuelPickerOpen = false
+                    onFuelProductSelected(product)
+                },
+                onDismiss = { fuelPickerOpen = false },
+            )
         }
 
         Text(
@@ -210,49 +212,60 @@ fun VehicleForm(
             }
         }
 
-        Column(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = stringResource(R.string.vehicle_price_drop_alert_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.vehicle_price_drop_alert_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Switch(
-                checked = form.priceDropAlertEnabled,
-                onCheckedChange = onPriceDropAlertChanged,
-                modifier = Modifier.align(Alignment.End),
-            )
-            if (showNotificationPermissionHint) {
-                Text(
-                    text = stringResource(R.string.notification_permission_denied_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.vehicle_price_drop_alert_label),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(R.string.vehicle_price_drop_alert_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = form.priceDropAlertEnabled,
+                    onCheckedChange = onPriceDropAlertChanged,
                 )
             }
         }
+        if (showNotificationPermissionHint) {
+            Text(
+                text = stringResource(R.string.notification_permission_denied_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
 
-        Button(
+        ActionCardButton(
+            label = stringResource(R.string.vehicle_save),
+            icon = Icons.Default.Check,
             onClick = onSave,
+            style = ActionCardStyle.Primary,
             enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = stringResource(R.string.vehicle_save))
-        }
+        )
 
-        Button(
+        ActionCardButton(
+            label = stringResource(R.string.action_cancel),
+            icon = Icons.Default.Close,
             onClick = onCancel,
+            style = ActionCardStyle.Destructive,
             enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(text = stringResource(R.string.action_cancel))
-        }
+        )
     }
 }
 

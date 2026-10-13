@@ -15,6 +15,11 @@ import com.anpfuel.domain.discovery.ServerStationPage
  */
 interface ServerStationGateway {
     suspend fun list(limit: Int, cursor: String?): ServerStationPage
+    suspend fun listInMunicipality(municipalityCode: String, limit: Int, cursor: String?): ServerStationPage {
+        require(cursor == null) { "city pagination unavailable" }
+        return search(municipalityCode, "", limit)
+    }
+
     suspend fun search(municipalityCode: String, query: String, limit: Int = 20): ServerStationPage =
         throw UnsupportedOperationException("station search unavailable")
 
@@ -32,6 +37,12 @@ interface ServerStationGateway {
 }
 
 interface ServerStationCache {
+    suspend fun saveScopedPage(municipalityCode: String, page: ServerStationPage): Unit =
+        throw UnsupportedOperationException("scoped directory cache unavailable")
+
+    suspend fun loadScopedPage(municipalityCode: String): ServerStationPage? =
+        throw UnsupportedOperationException("scoped directory cache unavailable")
+
     suspend fun savePage(page: ServerStationPage)
 
     suspend fun loadPage(): ServerStationPage?

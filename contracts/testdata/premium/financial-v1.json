@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "currency": "BRL",
+  "money_unit": "centavo",
+  "quantity_unit": "milli-litre",
+  "distance_unit": "metre",
+  "rounding": "half-up at display boundary only",
+  "provenance": "synthetic manually derived PRM00-T03 examples",
+  "cases": [
+    {
+      "id": "full-partial-full",
+      "starting_fill_quantity_milli": 50000,
+      "starting_fill_cost_centavos": 30000,
+      "partial_fills": [
+        {
+          "quantity_milli": 20000,
+          "total_centavos": 12000
+        },
+        {
+          "quantity_milli": 20000,
+          "total_centavos": 12400,
+          "full": true
+        }
+      ],
+      "distance_metres": 400000,
+      "eligible_quantity_milli": 40000,
+      "eligible_cost_centavos": 24400,
+      "km_per_unit_rational": "10",
+      "centavos_per_km_rational": "61"
+    },
+    {
+      "id": "discount-actual-total",
+      "stated_unit_millibrl": 6000,
+      "distance_metres": 400000,
+      "eligible_quantity_milli": 40000,
+      "eligible_cost_centavos": 23000,
+      "km_per_unit_rational": "10",
+      "centavos_per_km_rational": "115/2"
+    },
+    {
+      "id": "weighted-vehicles",
+      "distance_metres": 1000000,
+      "eligible_quantity_milli": 70000,
+      "eligible_cost_centavos": 42000,
+      "km_per_unit_rational": "100/7",
+      "centavos_per_km_rational": "42"
+    },
+    {
+      "id": "noninteger-distance",
+      "distance_metres": 123450,
+      "eligible_quantity_milli": 12345,
+      "eligible_cost_centavos": 7406,
+      "km_per_unit_rational": "10",
+      "centavos_per_km_rational": "148120/2469"
+    },
+    {
+      "id": "partial-only",
+      "reason": "full-anchors-required"
+    },
+    {
+      "id": "missing-odometer",
+      "reason": "odometer-missing"
+    },
+    {
+      "id": "known-fill-gap",
+      "reason": "declared-fill-gap"
+    },
+    {
+      "id": "reset-segment",
+      "reason": "odometer-segment-boundary"
+    },
+    {
+      "id": "zero-distance",
+      "reason": "distance-nonpositive"
+    },
+    {
+      "id": "mixed-fuel",
+      "reason": "unsupported-mixed-method"
+    },
+    {
+      "id": "gnv-pressure",
+      "reason": "unsupported-gnv-method"
+    },
+    {
+      "id": "mixed-unit",
+      "reason": "incompatible-unit"
+    },
+    {
+      "id": "month-partial-distance",
+      "reason": "unmatched-period-window"
+    },
+    {
+      "id": "zero-baseline",
+      "reason": "comparison-baseline-zero"
+    },
+    {
+      "id": "overflow-input",
+      "reason": "input-out-of-bounds"
+    }
+  ]
+}

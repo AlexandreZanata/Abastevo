@@ -2,17 +2,17 @@ package com.anpfuel.app.ui.history
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -27,12 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
-import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.FuelProductLabel
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -70,7 +70,7 @@ fun HistoryScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryContent(
     uiState: HistoryUiState,
@@ -113,31 +113,26 @@ private fun HistoryContent(
                 OfflineBanner()
             }
 
+            var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
             Text(
                 text = stringResource(R.string.history_fuel_product_label),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                for (product in FuelProduct.entries) {
-                    FilterChip(
-                        selected = uiState.selectedFuelProduct == product,
-                        onClick = { onFuelProductSelected(product) },
-                        label = {
-                            Text(text = stringResource(FuelProductI18n.toStringRes(product)))
-                        },
-                        leadingIcon = {
-                            FuelProductIcon(
-                                product = product,
-                                size = 18.dp,
-                                contentDescription = null,
-                            )
-                        },
-                    )
-                }
+            FuelProductSelectorButton(
+                selected = uiState.selectedFuelProduct,
+                onClick = { fuelPickerOpen = true },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (fuelPickerOpen) {
+                FuelProductSelectorDialog(
+                    selected = uiState.selectedFuelProduct,
+                    onSelect = { product ->
+                        fuelPickerOpen = false
+                        onFuelProductSelected(product)
+                    },
+                    onDismiss = { fuelPickerOpen = false },
+                )
             }
 
             when {

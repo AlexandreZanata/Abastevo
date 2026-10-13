@@ -1,0 +1,11 @@
+{
+  "id": "cloud-sync-pull-limit-invalid",
+  "schema": "CloudSyncPullRequest",
+  "valid": false,
+  "value": {
+    "family_id": "11111111-1111-4111-8111-111111111111",
+    "access_token": "synthetic",
+    "device_id": "55555555-5555-4555-8555-555555555555",
+    "limit": 101
+  }
+}

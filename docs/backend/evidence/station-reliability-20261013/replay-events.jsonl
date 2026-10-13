@@ -1,0 +1,3 @@
+{"at":"2026-10-13T18:49:17.081506286Z","child_cpu_seconds":0.018167000000000003,"child_max_rss_kib":14060,"counts":{"preserved_curated":10,"registry_assertions":45641},"event":"stage_complete","ok":true,"seconds":2.309144179,"stage":"verify"}
+{"at":"2026-10-13T18:49:17.094760694Z","event":"unchanged_verified"}
+{"at":"2026-10-13T18:49:17.099935235Z","container_memory_peak_bytes":21880832,"event":"refresh_complete","seconds":7.110902046}

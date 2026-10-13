@@ -1,0 +1,11 @@
+{
+  "id": "cloud-preferences-token-invalid",
+  "schema": "CloudPreferences",
+  "valid": false,
+  "value": {
+    "version": 1,
+    "locale_tag": "pt-BR",
+    "nearest_station_radius_km": 3,
+    "access_token": "synthetic"
+  }
+}

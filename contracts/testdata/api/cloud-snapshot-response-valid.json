@@ -1,0 +1,12 @@
+{
+  "id": "cloud-snapshot-response-valid",
+  "schema": "CloudSnapshotResponse",
+  "valid": true,
+  "value": {
+    "records": [],
+    "through": 2,
+    "epoch": 1,
+    "consent_revision": 1,
+    "next_cursor": "synthetic"
+  }
+}

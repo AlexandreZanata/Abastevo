@@ -30,14 +30,12 @@ object DirectoryStationJsonCodec {
     fun decodeList(payload: String): ServerStationPage =
         try {
             val doc = JSONObject(payload)
-            val items = doc.optJSONArray("items")
+            val items = doc.getJSONArray("items")
             val out = mutableListOf<ServerStation>()
-            if (items != null) {
-                for (index in 0 until items.length()) {
-                    out += parseStation(items.getJSONObject(index))
-                }
+            for (index in 0 until items.length()) {
+                out += parseStation(items.getJSONObject(index))
             }
-            val cursor = doc.optString("next_cursor", "").takeIf { it.isNotEmpty() }
+            val cursor = optNullableString(doc, "next_cursor")
             ServerStationPage(items = out, nextCursor = cursor)
         } catch (error: DomainException) {
             throw error

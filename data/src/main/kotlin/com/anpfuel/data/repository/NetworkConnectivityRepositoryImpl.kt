@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import com.anpfuel.application.port.NetworkConnectivityGateway
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -24,19 +23,26 @@ class NetworkConnectivityRepositoryImpl @Inject constructor(
 
     override fun observeIsConnected(): Flow<Boolean> = callbackFlow {
         val callback = object : ConnectivityManager.NetworkCallback() {
+            private var defaultNetwork: Network? = null
+
             override fun onAvailable(network: Network) {
-                trySend(true)
+                defaultNetwork = network
+            }
+
+            override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                // Use the delivered snapshot; querying ConnectivityManager here races this update.
+                if (network == defaultNetwork) trySend(capabilities.hasValidatedInternet())
             }
 
             override fun onLost(network: Network) {
-                trySend(isCurrentlyConnected())
+                if (network == defaultNetwork) {
+                    defaultNetwork = null
+                    trySend(false)
+                }
             }
         }
 
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        connectivityManager.registerNetworkCallback(request, callback)
+        connectivityManager.registerDefaultNetworkCallback(callback)
         trySend(isCurrentlyConnected())
 
         awaitClose {
@@ -47,6 +53,10 @@ class NetworkConnectivityRepositoryImpl @Inject constructor(
     private fun isCurrentlyConnected(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return capabilities.hasValidatedInternet()
     }
 }
+
+private fun NetworkCapabilities.hasValidatedInternet(): Boolean =
+    hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
