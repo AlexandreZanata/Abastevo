@@ -451,6 +451,34 @@ func (q *Queries) GetRecord(ctx context.Context, arg GetRecordParams) (GetRecord
 	return i, err
 }
 
+const getRestore = `-- name: GetRestore :one
+SELECT snapshot_id,pre_revision,post_revision,receipt FROM cloud_restores WHERE account_id=$1 AND restore_id=$2
+`
+
+type GetRestoreParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	RestoreID pgtype.UUID `json:"restore_id"`
+}
+
+type GetRestoreRow struct {
+	SnapshotID   pgtype.UUID `json:"snapshot_id"`
+	PreRevision  int64       `json:"pre_revision"`
+	PostRevision int64       `json:"post_revision"`
+	Receipt      []byte      `json:"receipt"`
+}
+
+func (q *Queries) GetRestore(ctx context.Context, arg GetRestoreParams) (GetRestoreRow, error) {
+	row := q.db.QueryRow(ctx, getRestore, arg.AccountID, arg.RestoreID)
+	var i GetRestoreRow
+	err := row.Scan(
+		&i.SnapshotID,
+		&i.PreRevision,
+		&i.PostRevision,
+		&i.Receipt,
+	)
+	return i, err
+}
+
 const getSnapshot = `-- name: GetSnapshot :one
 SELECT snapshot_id,revision,epoch,consent_revision,byte_size,checksum,status,object_key,created_at,verified_at FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2
 `
@@ -1107,6 +1135,31 @@ func (q *Queries) SaveRecord(ctx context.Context, arg SaveRecordParams) (SaveRec
 		&i.Payload,
 	)
 	return i, err
+}
+
+const saveRestore = `-- name: SaveRestore :exec
+INSERT INTO cloud_restores(account_id,restore_id,snapshot_id,pre_revision,post_revision,receipt) VALUES($1,$2,$3,$4,$5,$6)
+`
+
+type SaveRestoreParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	RestoreID    pgtype.UUID `json:"restore_id"`
+	SnapshotID   pgtype.UUID `json:"snapshot_id"`
+	PreRevision  int64       `json:"pre_revision"`
+	PostRevision int64       `json:"post_revision"`
+	Receipt      []byte      `json:"receipt"`
+}
+
+func (q *Queries) SaveRestore(ctx context.Context, arg SaveRestoreParams) error {
+	_, err := q.db.Exec(ctx, saveRestore,
+		arg.AccountID,
+		arg.RestoreID,
+		arg.SnapshotID,
+		arg.PreRevision,
+		arg.PostRevision,
+		arg.Receipt,
+	)
+	return err
 }
 
 const setConsent = `-- name: SetConsent :one

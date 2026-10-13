@@ -180,3 +180,9 @@ SELECT s.account_id FROM cloud_state s WHERE s.consent_mask!=0 AND ((SELECT COUN
 
 -- name: DeleteSnapshot :exec
 DELETE FROM cloud_snapshots WHERE account_id=$1 AND snapshot_id=$2 AND status='READY';
+
+-- name: GetRestore :one
+SELECT snapshot_id,pre_revision,post_revision,receipt FROM cloud_restores WHERE account_id=$1 AND restore_id=$2;
+
+-- name: SaveRestore :exec
+INSERT INTO cloud_restores(account_id,restore_id,snapshot_id,pre_revision,post_revision,receipt) VALUES($1,$2,$3,$4,$5,$6);

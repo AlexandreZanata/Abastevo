@@ -304,6 +304,8 @@ Entry: PRM03. Exit: verified snapshots, preview/commit/recovery and expiry/erasu
 
 ### PRM04-T05 — Confirmed restore commit and interruption recovery
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; PR08/09/11.
 - **Outcome/areas:** idempotent restore command, live owner/epoch/entitlement checks, explicit merge policy and recoverable pre-restore revision; no security material import.
 - **Tests first:** double confirmation, crash before/after transaction commit, concurrent edit/delete, revocation/expiry during restore, stale preview and failed rollback preparation.

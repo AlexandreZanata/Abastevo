@@ -217,3 +217,15 @@ type RestorePreview struct {
 type RestoreStore interface {
 	PreviewRestore(ctx context.Context, p Principal, snapshotID string) (RestorePreview, error)
 }
+
+type RestoreResult struct {
+	RestoreID    string          `json:"restore_id"`
+	SnapshotID   string          `json:"snapshot_id"`
+	PreRevision  int64           `json:"pre_revision"`
+	PostRevision int64           `json:"post_revision"`
+	Results      []CommandResult `json:"results"`
+	Replayed     bool            `json:"replayed"`
+}
+type RestoreCommitStore interface {
+	RestoreCommit(ctx context.Context, p Principal, snapshotID, restoreID string, previewRevision, previewExpiresAt int64) (RestoreResult, error)
+}

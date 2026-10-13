@@ -26,6 +26,7 @@ type Service interface {
 	app.BackupStore
 	app.SnapshotStorageStore
 	app.RestoreStore
+	app.RestoreCommitStore
 }
 type Handler struct {
 	Service      Service
@@ -129,6 +130,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/cloud/snapshots/manifest", h.backupManifest)
 	r.Post("/v1/cloud/snapshots/list", h.snapshotsList)
 	r.Post("/v1/cloud/restore/preview", h.restorePreview)
+	r.Post("/v1/cloud/restore/commit", h.restoreCommit)
 }
 func (h Handler) status(w http.ResponseWriter, r *http.Request) {
 	var dto session

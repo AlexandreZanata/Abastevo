@@ -114,6 +114,16 @@ type CloudRecord struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
+type CloudRestore struct {
+	AccountID    pgtype.UUID        `json:"account_id"`
+	RestoreID    pgtype.UUID        `json:"restore_id"`
+	SnapshotID   pgtype.UUID        `json:"snapshot_id"`
+	PreRevision  int64              `json:"pre_revision"`
+	PostRevision int64              `json:"post_revision"`
+	Receipt      []byte             `json:"receipt"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type CloudSnapshot struct {
 	AccountID       pgtype.UUID        `json:"account_id"`
 	SnapshotID      pgtype.UUID        `json:"snapshot_id"`

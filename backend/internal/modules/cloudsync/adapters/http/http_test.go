@@ -107,6 +107,9 @@ func (p *probe) StoreSnapshot(context.Context, app.Principal, string, int64, int
 func (p *probe) ReadSnapshot(context.Context, app.Principal, string) ([]byte, error) {
 	return nil, p.err
 }
+func (p *probe) RestoreCommit(context.Context, app.Principal, string, string, int64, int64) (app.RestoreResult, error) {
+	return app.RestoreResult{}, p.err
+}
 func call(h Handler, path, body string) *httptest.ResponseRecorder {
 	router := chi.NewRouter()
 	h.RegisterRoutes(router)
@@ -633,6 +636,41 @@ func TestRestorePreviewSuccessAndValidation(t *testing.T) {
 	p.err = domain.ErrNotFound
 	if w = call(h, "/v1/cloud/restore/preview", base); w.Code != 404 {
 		t.Fatal("foreign preview leaked")
+	}
+	p.err = nil
+}
+
+func TestRestoreCommitSuccessAndValidation(t *testing.T) {
+	p := &probe{}
+	h := consentHandler(p)
+	device := "55555555-5555-4555-8555-555555555555"
+	snapshot := "66666666-6666-4666-8666-666666666666"
+	restore := "77777777-7777-4777-8777-777777777777"
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","snapshot_id":"` + snapshot + `","restore_id":"` + restore + `","preview_revision":2,"preview_expires_at":1791913947}`
+	w := call(h, "/v1/cloud/restore/commit", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("commit %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/restore/commit", base); w.Code != 401 {
+		t.Fatal("unsigned commit admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"snapshot_id"`, `"account_id"`, 1),
+		strings.Replace(base, snapshot, "not-a-uuid", 1),
+		strings.Replace(base, `"preview_revision":2`, `"preview_revision":-1`, 1),
+	} {
+		if w = call(h, "/v1/cloud/restore/commit", bad); w.Code != 400 {
+			t.Fatalf("bad commit admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrResnapshot
+	if w = call(h, "/v1/cloud/restore/commit", base); w.Code != 409 {
+		t.Fatal("stale commit hidden")
+	}
+	p.err = domain.ErrDenied
+	if w = call(h, "/v1/cloud/restore/commit", base); w.Code != 403 {
+		t.Fatal("expired commit hidden")
 	}
 	p.err = nil
 }
