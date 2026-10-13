@@ -29,3 +29,6 @@ INSERT INTO cloud_records(account_id,dataset,id,payload) VALUES($1,$2,$3,$4)
 ON CONFLICT(account_id,dataset,id) DO UPDATE SET payload=EXCLUDED.payload,revision=cloud_records.revision+1,updated_at=clock_timestamp()
 WHERE NOT cloud_records.deleted
 RETURNING dataset,id,revision,deleted,payload;
+
+-- name: CountDataset :one
+SELECT count(*) FROM cloud_records WHERE account_id=$1 AND dataset=$2 AND NOT deleted;

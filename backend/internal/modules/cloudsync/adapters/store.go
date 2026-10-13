@@ -16,8 +16,9 @@ import (
 )
 
 type Store struct {
-	Pool *pgxpool.Pool
-	Paid func(context.Context, pgx.Tx, string) error
+	Station func(context.Context, pgx.Tx, string) (bool, error)
+	Pool    *pgxpool.Pool
+	Paid    func(context.Context, pgx.Tx, string) error
 }
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }
@@ -95,6 +96,12 @@ func (s *Store) PutVehicle(ctx context.Context, p app.Principal, v domain.Vehicl
 		return app.Record{}, domain.ErrInvalid
 	}
 	body, _ := json.Marshal(v)
+	return s.putTyped(ctx, p, "vehicles", v.ID, body, expected)
+}
+func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id string, body []byte, expected int64) (app.Record, error) {
+	if expected < 0 {
+		return app.Record{}, domain.ErrInvalid
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	tx, q, err := s.writeTx(ctx, p)
@@ -102,14 +109,24 @@ func (s *Store) PutVehicle(ctx context.Context, p app.Principal, v domain.Vehicl
 		return app.Record{}, err
 	}
 	defer rollback(tx)
-	old, err := q.GetRecord(ctx, qcloud.GetRecordParams{AccountID: uid(p.AccountID), Dataset: "vehicles", ID: uid(v.ID)})
+	if dataset == "favorites" {
+		if s.Station == nil {
+			return app.Record{}, domain.ErrUnavailable
+		}
+		available, e := s.Station(ctx, tx, id)
+		if e != nil {
+			return app.Record{}, domain.ErrUnavailable
+		}
+		if !available {
+			return app.Record{}, domain.ErrInvalid
+		}
+	}
+	old, err := q.GetRecord(ctx, qcloud.GetRecordParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(id)})
 	if err == nil {
 		// JSONB reorders fields; compare typed canonical bytes.
-		var prior domain.Vehicle
-		_ = json.Unmarshal(old.Payload, &prior)
-		priorBody, _ := json.Marshal(prior)
+		priorBody, _ := NormalizePayload(dataset, id, old.Payload)
 		if !old.Deleted && expected == 0 && bytes.Equal(priorBody, body) {
-			return app.Record{Dataset: "vehicles", ID: v.ID, Revision: old.Revision, Payload: body}, nil
+			return app.Record{Dataset: dataset, ID: id, Revision: old.Revision, Payload: body}, nil
 		}
 		if old.Deleted || expected != old.Revision {
 			return app.Record{}, domain.ErrConflict
@@ -120,15 +137,22 @@ func (s *Store) PutVehicle(ctx context.Context, p app.Principal, v domain.Vehicl
 		if expected != 0 {
 			return app.Record{}, domain.ErrConflict
 		}
-		n, e := q.CountVehicles(ctx, uid(p.AccountID))
+		n, e := q.CountDataset(ctx, qcloud.CountDatasetParams{AccountID: uid(p.AccountID), Dataset: dataset})
 		if e != nil {
 			return app.Record{}, domain.ErrUnavailable
 		}
-		if n >= 3 {
+		maxCount := int64(1000)
+		if dataset == "vehicles" {
+			maxCount = 3
+		}
+		if dataset == "preferences" {
+			maxCount = 1
+		}
+		if n >= maxCount {
 			return app.Record{}, domain.ErrQuota
 		}
 	}
-	row, err := q.SaveRecord(ctx, qcloud.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: "vehicles", ID: uid(v.ID), Payload: body})
+	row, err := q.SaveRecord(ctx, qcloud.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(id), Payload: body})
 	if err != nil {
 		return app.Record{}, domain.ErrUnavailable
 	}
@@ -155,4 +179,20 @@ func (s *Store) checkPaid(ctx context.Context, tx pgx.Tx, owner string) error {
 		return err
 	}
 	return domain.ErrUnavailable
+}
+
+func (s *Store) PutPreferences(ctx context.Context, p app.Principal, prefs domain.Preferences, expected int64) (app.Record, error) {
+	prefs, err := domain.NormalizePreferences(prefs)
+	if err != nil {
+		return app.Record{}, err
+	}
+	body, _ := json.Marshal(prefs)
+	return s.putTyped(ctx, p, "preferences", domain.PreferencesID, body, expected)
+}
+func (s *Store) PutFavorite(ctx context.Context, p app.Principal, id string, expected int64) (app.Record, error) {
+	if !domain.ValidID(id) {
+		return app.Record{}, domain.ErrInvalid
+	}
+	body, _ := json.Marshal(domain.Favorite{StationID: id})
+	return s.putTyped(ctx, p, "favorites", id, body, expected)
 }

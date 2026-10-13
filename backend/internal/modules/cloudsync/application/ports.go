@@ -17,3 +17,8 @@ type Record struct {
 type VehicleStore interface {
 	PutVehicle(context.Context, Principal, domain.Vehicle, int64) (Record, error)
 }
+
+type PortableStore interface {
+	PutFavorite(context.Context, Principal, string, int64) (Record, error)
+	PutPreferences(context.Context, Principal, domain.Preferences, int64) (Record, error)
+}

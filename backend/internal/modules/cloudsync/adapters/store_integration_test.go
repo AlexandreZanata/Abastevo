@@ -10,6 +10,7 @@ import (
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
+	dirread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	sub "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -246,5 +247,60 @@ func TestVehicleGateExpiryBeforeCommitRollsBack(t *testing.T) {
 	store.Paid = func(context.Context, pgx.Tx, string) error { return domain.ErrUnavailable }
 	if _, err := store.PutVehicle(context.Background(), p, vehicle(t), 0); !errors.Is(err, domain.ErrUnavailable) {
 		t.Fatal("outage disguised as payment refusal", err)
+	}
+}
+
+func TestFavoriteCanonicalReferencesAndOwnedPreferences(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	paidStore(t, pool, foreign)
+	ctx := context.Background()
+	store.Station = dirread.NewReader(pool).ActiveReference
+	station := newid(t)
+	if _, err := store.PutFavorite(ctx, p, station, 0); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unknown station recreated", err)
+	}
+	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic station')", station); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.PutFavorite(ctx, p, station, 0)
+	if err != nil || got.ID != station {
+		t.Fatal("canonical favorite", err)
+	}
+	again, err := store.PutFavorite(ctx, p, station, 0)
+	if err != nil || again.Revision != got.Revision {
+		t.Fatal("repeat favorite", err)
+	}
+	if _, err = store.PutFavorite(ctx, foreign, station, 0); err != nil {
+		t.Fatal("owned set isolation", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE directory_stations SET status='retired' WHERE id=$1", station); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.PutFavorite(ctx, p, station, 1); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("retired station selected", err)
+	}
+	prefs := domain.Preferences{Version: 1, State: "MT", Municipality: "5103403", Locale: "pt-BR", RadiusKm: 3, ShowPriceHistory: true}
+	got, err = store.PutPreferences(ctx, p, prefs, 0)
+	if err != nil || got.ID != domain.PreferencesID {
+		t.Fatal("preference singleton", err)
+	}
+	prefs.Locale = "en"
+	if _, err = store.PutPreferences(ctx, p, prefs, 0); !errors.Is(err, domain.ErrConflict) {
+		t.Fatal("preference overwrite", err)
+	}
+	if _, err = store.PutPreferences(ctx, p, prefs, got.Revision); err != nil {
+		t.Fatal("preference conditional update", err)
+	}
+	wrong := p
+	wrong.FamilyID = foreign.FamilyID
+	if _, err = store.PutPreferences(ctx, wrong, prefs, 2); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("IDOR preference", err)
+	}
+	var directoryCount int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM directory_stations").Scan(&directoryCount); err != nil || directoryCount != 1 {
+		t.Fatal("private selection created public facts", err)
 	}
 }

@@ -179,6 +179,8 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 
 ### PRM02-T02 — Favorites and portable preference allowlist
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PR06/07/21; audited existing follows.
 - **Outcome/areas:** canonical favorite station references and versioned portable fields using existing follow ports where present; keep OS permissions, auth state and device-only settings out.
 - **Tests first:** unknown/retired station, wrong-owner favorite, unknown preference/version, existing free follow subscription, excluded key/permission/token injection.

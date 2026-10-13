@@ -31,5 +31,8 @@
   "initial_global_paid_admission_budget": 0,
   "per_account_verification_limit_per_hour": 20,
   "max_unfinished_verifications_per_account": 2,
-  "notification_admission_per_minute": 60
+  "notification_admission_per_minute": 60,
+  "max_favorites_per_account": 1000,
+  "portable_preferences_schema": 1,
+  "cloud_record_max_bytes": 8192
 }

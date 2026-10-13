@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countDataset = `-- name: CountDataset :one
+SELECT count(*) FROM cloud_records WHERE account_id=$1 AND dataset=$2 AND NOT deleted
+`
+
+type CountDatasetParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Dataset   string      `json:"dataset"`
+}
+
+func (q *Queries) CountDataset(ctx context.Context, arg CountDatasetParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countDataset, arg.AccountID, arg.Dataset)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countVehicles = `-- name: CountVehicles :one
 SELECT count(*) FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND NOT deleted
 `
