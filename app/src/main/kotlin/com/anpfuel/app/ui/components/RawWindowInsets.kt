@@ -2,13 +2,26 @@ package com.anpfuel.app.ui.components
 
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+
+/**
+ * Bottom system padding captured where Compose inset reads are still
+ * intact (above the consuming scaffolds) and shared down the tree.
+ *
+ * Dialog windows on some devices report zero bottom insets while the
+ * main window reports the real navigation height; surfaces anchored to
+ * the screen bottom inside dialogs back the framework value with this
+ * one instead of guessing.
+ */
+val LocalBottomSafePadding = compositionLocalOf { 0.dp }
 
 /**
  * Raw platform system paddings, unaffected by Compose inset consumption.

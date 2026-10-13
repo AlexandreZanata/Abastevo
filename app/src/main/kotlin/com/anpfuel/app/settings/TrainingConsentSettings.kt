@@ -11,8 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -26,7 +24,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpTopAppBar
-import com.anpfuel.app.ui.components.rawSystemBottom
+import com.anpfuel.app.ui.components.LocalBottomSafePadding
 import com.anpfuel.domain.repository.TrainingConsentReview
 
 @Composable
@@ -106,27 +104,29 @@ internal fun TrainingConsentContent(
         }
     }
     if(reader && document!=null) {
+        // Letterboxed dialog frame: the window manager keeps the frame
+        // outside the status and navigation bars, so the footer can never
+        // slide under them. Framework insets apply when a device
+        // dispatches them; otherwise they read zero and add nothing.
         Dialog(
             onDismissRequest = { reader = false },
-            properties = DialogProperties(
-                decorFitsSystemWindows = false,
-                usePlatformDefaultWidth = false,
-            ),
+            properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             Surface(Modifier.fillMaxSize()) {
-                // The dialog window has no consuming scaffolds above it, but
-                // raw platform insets back the framework value: whichever is
-                // larger keeps the footer clear of the navigation bar.
-                val frameworkBottom =
-                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                val rawBottom = with(LocalDensity.current) {
-                    rawSystemBottom(LocalView.current).toDp()
-                }
+                // Back the framework bottom value with the shell-provided
+                // safe padding: dialog windows on some devices report a
+                // partial bottom inset while the main window reports the
+                // full navigation height. maxOf keeps a single pass on
+                // devices where both agree.
+                val frameworkBottom = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding()
+                val shellBottom = LocalBottomSafePadding.current
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .systemBarsPadding()
-                        .padding(bottom = 16.dp + maxOf(frameworkBottom, rawBottom)),
+                        .statusBarsPadding()
+                        .padding(bottom = 16.dp + maxOf(frameworkBottom, shellBottom)),
                 ) {
                     AnpTopAppBar(
                         title = { Text(stringResource(R.string.privacy_read_terms)) },
