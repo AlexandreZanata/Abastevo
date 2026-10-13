@@ -421,6 +421,8 @@ Entry: PRM05. Exit: exact explainable metrics and private bounded reports/export
 
 ### PRM06-T05 — Report API, safe CSV and held-data export
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; PR04/12/20.
 - **Outcome/areas:** owner-only paginated reports and bounded CSV download/stream; free raw personal export separated from paid new analysis generation. Include locale/timezone/schema/method/coverage metadata.
 - **Tests first:** CSV formulas/newlines/quotes, oversized requests, interrupted downloads, expired subscription, revoked account/download access and exclusion of private unrelated datasets.

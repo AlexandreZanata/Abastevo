@@ -38,6 +38,11 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 		return application.Report{}, errUnavailable()
 	}
 	defer rollback(tx)
+	if s.Paid != nil {
+		if err = s.Paid(ctx, tx, accountID); err != nil {
+			return application.Report{}, err
+		}
+	}
 	query := q.New(tx)
 	lockKey := fmt.Sprintf("%s|%d|%d|%s", accountID, year, month, timezone)
 	if _, err = query.LockReport(ctx, lockKey); err != nil {
@@ -141,6 +146,11 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 	upserted, err := query.UpsertReport(ctx, q.UpsertReportParams{AccountID: uid(accountID), Year: int32(year), Month: int32(month), Timezone: timezone, Totals: rawTotals, BaseUpdatedAt: base})
 	if err != nil {
 		return application.Report{}, errUnavailable()
+	}
+	if s.Paid != nil {
+		if err = s.Paid(ctx, tx, accountID); err != nil {
+			return application.Report{}, err
+		}
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return application.Report{}, errUnavailable()

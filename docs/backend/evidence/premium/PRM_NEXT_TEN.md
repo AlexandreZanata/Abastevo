@@ -192,3 +192,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 94996fc. Pure comparison over explicit vehicle periods with same metric, unit, version and timezone gates, eligible coverage via the T01 engine, weighted ratios and rational percentage change; incompatible or incomplete inputs explain why with no fabricated winner. Owner-only POST /v1/metrics/compare with signed sessions and no-store responses, wired to ledger reads in cmd/api. Real PostGIS reads reuse proven ledger period indexes with no new migration. Unit/race PASS metrics adapters with missing and zero baselines, unequal coverage, unit, timezone and method mismatches, foreign IDs, reversed and oversize ranges, plus HTTP no-winner and incomplete cases. OpenAPI compare schemas plus three goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Paid analysis split rides PRM06-T05. No merge/deploy/mobile edit.
 Next PRM06-T05. Real payments OFF.
+
+## PRM06-T05 — Report API, safe CSV and held-data export
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop f17b873. Owner-only POST /v1/ledger/reports/build with paid analysis generation, free POST /v1/ledger/reports/get for retained reads, and paid POST /v1/ledger/reports/csv with bounded formula-safe streaming and no stored artifacts. Free raw export stays on the records route. Real HTTP totals match SQL ledger aggregates via shared BuildReport. Unit/race PASS ledger http with paid build, free get, expired build and CSV denial, unsigned refusal, bad-request validation, CSV exclusion and escaper vectors. OpenAPI report request and report schemas plus two goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration. No merge/deploy/mobile edit.
+Next PRM07-T01. Real payments OFF.

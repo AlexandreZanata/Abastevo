@@ -18,8 +18,11 @@ const owner = "22222222-2222-4222-8222-222222222222"
 type probe struct {
 	commands, lists, deletes int
 	denyWrites               bool
+	denyBuilds               bool
+	builds, gets             int
 	err                      error
 	records                  []application.Record
+	report                   application.Report
 }
 
 func (p *probe) Apply(_ context.Context, _ string, _ application.Batch) (application.BatchResult, error) {
@@ -57,6 +60,25 @@ func (p *probe) SetConsent(_ context.Context, _ string, _ []string, _ bool) (app
 }
 
 func (p *probe) EraseAll(_ context.Context, _ string) error { return p.err }
+
+func (p *probe) BuildReport(_ context.Context, _ string, _ int, _ int, _ string) (application.Report, error) {
+	p.builds++
+	if p.denyBuilds {
+		return application.Report{}, deniedError()
+	}
+	if p.err != nil {
+		return application.Report{}, p.err
+	}
+	return p.report, nil
+}
+
+func (p *probe) GetReport(_ context.Context, _ string, _ int, _ int, _ string) (application.Report, error) {
+	p.gets++
+	if p.err != nil {
+		return application.Report{}, p.err
+	}
+	return p.report, nil
+}
 
 func deniedError() error { return errDenied() }
 
@@ -194,5 +216,70 @@ func TestLedgerConsentEraseValidation(t *testing.T) {
 	}
 	if w := call(unsigned, "/v1/ledger/erase", erase); w.Code != 401 {
 		t.Fatal("unsigned erase admitted")
+	}
+}
+
+func TestReportBuildGetCSVPaidFree(t *testing.T) {
+	who := owner
+	p := &probe{report: application.Report{Year: 2026, Month: 3, Timezone: "America/Sao_Paulo", Revision: 2, Totals: application.ReportTotals{PurchaseCentavos: 24400, ExpenseCentavos: 12000}}}
+	h := testHandler(p, &who)
+	build := `{"family_id":"` + family + `","access_token":"synthetic","year":2026,"month":3,"timezone":"America/Sao_Paulo"}`
+	if w := call(h, "/v1/ledger/reports/build", build); w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("build %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w := call(unsigned, "/v1/ledger/reports/build", build); w.Code != 401 || p.builds != 1 {
+		t.Fatal("unsigned build admitted")
+	}
+	get := build
+	free := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w := call(free, "/v1/ledger/reports/get", get); w.Code != 200 {
+		t.Fatalf("free get %d", w.Code)
+	}
+	p.denyBuilds = true
+	if w := call(h, "/v1/ledger/reports/build", build); w.Code != 403 {
+		t.Fatal("expired build admitted")
+	}
+	if w := call(h, "/v1/ledger/reports/csv", build); w.Code != 403 {
+		t.Fatal("expired csv admitted")
+	}
+	if w := call(h, "/v1/ledger/reports/get", get); w.Code != 200 {
+		t.Fatalf("expired get refused %d", w.Code)
+	}
+	p.denyBuilds = false
+	for _, bad := range []string{
+		strings.Replace(build, `"month":3`, `"month":13`, 1),
+		strings.Replace(build, `"timezone"`, `"locale"`, 1),
+	} {
+		if w := call(h, "/v1/ledger/reports/build", bad); w.Code != 400 {
+			t.Fatalf("bad build admitted %d", w.Code)
+		}
+	}
+	w := call(h, "/v1/ledger/reports/csv", build)
+	if w.Code != 200 || !strings.Contains(w.Header().Get("Content-Type"), "text/csv") {
+		t.Fatalf("csv %d %s", w.Code, w.Header().Get("Content-Type"))
+	}
+	for _, leaked := range []string{"access_token", "family_id", "contributor", "refresh"} {
+		if strings.Contains(w.Body.String(), leaked) {
+			t.Fatalf("csv leaked %s", leaked)
+		}
+	}
+	if !strings.Contains(w.Body.String(), "24400") || !strings.Contains(w.Body.String(), "purchase_centavos") {
+		t.Fatal("csv totals mismatch")
+	}
+}
+
+func TestCSVEscapeFormulas(t *testing.T) {
+	for field, wantPrefix := range map[string]string{"=1+1": "\"'=", "+2": "\"'+", "-3": "\"'-", "@x": "\"'@"} {
+		got := csvEscape(field)
+		if len(got) < len(wantPrefix) || got[:len(wantPrefix)] != wantPrefix {
+			t.Fatalf("formula %q -> %q", field, got)
+		}
+	}
+	if got := csvEscape("a\"b\nc"); got != "\"a\"\"b\nc\"" {
+		t.Fatalf("quotes %q", got)
+	}
+	if got := csvEscape("plain"); got != "plain" {
+		t.Fatalf("plain %q", got)
 	}
 }

@@ -21,6 +21,8 @@ type Service interface {
 	Delete(ctx context.Context, accountID, dataset, id string) (int64, error)
 	SetConsent(ctx context.Context, accountID string, datasets []string, enabled bool) (application.ConsentStatus, error)
 	EraseAll(ctx context.Context, accountID string) error
+	BuildReport(ctx context.Context, accountID string, year, month int, timezone string) (application.Report, error)
+	GetReport(ctx context.Context, accountID string, year, month int, timezone string) (application.Report, error)
 }
 
 type Handler struct {
@@ -138,6 +140,9 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/ledger/delete", h.delete)
 	r.Post("/v1/ledger/consent", h.consent)
 	r.Post("/v1/ledger/erase", h.erase)
+	r.Post("/v1/ledger/reports/build", h.reportBuild)
+	r.Post("/v1/ledger/reports/get", h.reportGet)
+	r.Post("/v1/ledger/reports/csv", h.reportCSV)
 }
 
 func (h Handler) commands(w http.ResponseWriter, r *http.Request) {

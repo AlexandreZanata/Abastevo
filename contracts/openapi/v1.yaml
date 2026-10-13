@@ -4366,6 +4366,111 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/build:
+    post:
+      tags:
+      - premium
+      summary: Build monthly ledger report
+      description: Paid analysis generation with signed sessions. Free raw export stays on the records route. All responses are no-store without ETags.
+      operationId: ledgerReportsBuild
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/get:
+    post:
+      tags:
+      - premium
+      summary: Read monthly ledger report
+      description: Free retained reads remain available after lapse. All responses are no-store without ETags.
+      operationId: ledgerReportsGet
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/ledger/reports/csv:
+    post:
+      tags:
+      - premium
+      summary: Stream monthly report CSV
+      description: Paid bounded streaming with formula-safe quoting. No stored artifacts. All responses are no-store without ETags.
+      operationId: ledgerReportsCsv
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LedgerReportRequest'
+      responses:
+        '200':
+          description: Private CSV download.
+          content:
+            text/csv:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -5641,6 +5746,54 @@ components:
           - erased
       required:
       - status
+    LedgerReportRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        timezone:
+          type: string
+          maxLength: 64
+      required:
+      - family_id
+      - access_token
+      - year
+      - month
+      - timezone
+    LedgerReport:
+      type: object
+      additionalProperties: false
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+        timezone:
+          type: string
+        totals:
+          type: object
+        revision:
+          type: integer
+          minimum: 1
+        generated_at:
+          type: string
+          format: date-time
+      required:
+      - year
+      - month
+      - timezone
+      - totals
+      - revision
+      - generated_at
     MetricsCompareSide:
       type: object
       additionalProperties: false
