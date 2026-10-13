@@ -2,10 +2,12 @@ package com.anpfuel.app.ui.weekpicker
 
 import com.anpfuel.application.error.AppError
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
+import com.anpfuel.domain.valueobject.SurveyWeek
 import com.anpfuel.domain.valueobject.SurveyWeekSelectionMode
 
 data class WeekPickerUiState(
     val catalog: List<SurveyWeekCatalogEntry> = emptyList(),
+    val downloadedWeeks: Set<SurveyWeek> = emptySet(),
     val isLoadingCatalog: Boolean = false,
     val isSyncing: Boolean = false,
     val catalogError: AppError? = null,

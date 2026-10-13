@@ -10,11 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -208,6 +213,7 @@ fun WeekPickerContent(
                             WeekPickerRow(
                                 entry = entry,
                                 isLatest = entry.surveyWeek == latestWeek,
+                                isDownloaded = entry.surveyWeek in uiState.downloadedWeeks,
                                 locale = locale,
                                 onClick = onSelectWeek?.let { callback -> { callback(entry) } },
                             )
@@ -284,6 +290,7 @@ fun WeekPickerRow(
     locale: Locale,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    isDownloaded: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Column(
@@ -311,18 +318,70 @@ fun WeekPickerRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (isLatest) {
-                    AssistChip(
-                        onClick = onClick ?: {},
-                        enabled = onClick != null,
-                        label = {
-                            Text(
-                                text = stringResource(R.string.active_week_label),
-                                maxLines = 1,
-                                softWrap = false,
-                            )
-                        },
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (isLatest) {
+                        AssistChip(
+                            onClick = onClick ?: {},
+                            enabled = onClick != null,
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.active_week_label),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            },
+                        )
+                    }
+                    if (isDownloaded) {
+                        AssistChip(
+                            onClick = onClick ?: {},
+                            enabled = onClick != null,
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.week_picker_downloaded_tag),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
+                        )
+                    } else {
+                        AssistChip(
+                            onClick = onClick ?: {},
+                            enabled = onClick != null,
+                            label = {
+                                Text(
+                                    text = stringResource(R.string.week_picker_download_tag),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = null,
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                        )
+                    }
                 }
             }
 

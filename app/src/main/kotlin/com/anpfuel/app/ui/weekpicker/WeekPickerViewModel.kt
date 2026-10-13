@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogOutcome
 import com.anpfuel.application.usecase.sync.DiscoverSurveyWeekCatalogUseCase
+import com.anpfuel.application.usecase.sync.GetDownloadedSurveyWeeksUseCase
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncResult
 import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
@@ -27,6 +28,7 @@ sealed interface WeekPickerNavigation {
 class WeekPickerViewModel @Inject constructor(
     private val discoverSurveyWeekCatalogUseCase: DiscoverSurveyWeekCatalogUseCase,
     private val selectWeekAndSyncUseCase: SelectWeekAndSyncUseCase,
+    private val getDownloadedSurveyWeeksUseCase: GetDownloadedSurveyWeeksUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WeekPickerUiState(isLoadingCatalog = true))
@@ -46,11 +48,14 @@ class WeekPickerViewModel @Inject constructor(
 
         _uiState.update { it.copy(isLoadingCatalog = true, catalogError = null) }
         viewModelScope.launch {
+            val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
+                .getOrDefault(_uiState.value.downloadedWeeks)
             when (val outcome = discoverSurveyWeekCatalogUseCase()) {
                 is DiscoverSurveyWeekCatalogOutcome.Success -> {
                     _uiState.update {
                         it.copy(
                             catalog = outcome.catalog,
+                            downloadedWeeks = downloadedWeeks,
                             isLoadingCatalog = false,
                             catalogError = null,
                         )
@@ -144,7 +149,15 @@ class WeekPickerViewModel @Inject constructor(
                 }
 
                 is SelectWeekAndSyncResult.Success -> {
-                    _uiState.update { it.copy(isSyncing = false, syncError = null) }
+                    val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
+                        .getOrDefault(_uiState.value.downloadedWeeks)
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            syncError = null,
+                            downloadedWeeks = downloadedWeeks,
+                        )
+                    }
                     _navigation.emit(WeekPickerNavigation.Completed)
                 }
             }

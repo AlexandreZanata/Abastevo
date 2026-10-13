@@ -196,6 +196,8 @@
     <string name="week_picker_operational_note_expand">Expandir nota operacional</string>
     <string name="week_picker_operational_note_collapse">Recolher nota operacional</string>
     <string name="week_picker_download_week">Baixar esta semana</string>
+    <string name="week_picker_downloaded_tag">Baixada</string>
+    <string name="week_picker_download_tag">Baixar</string>
     <string name="week_picker_confirm_title">Baixar semana histórica?</string>
     <string name="week_picker_confirm_message">Baixar e importar dados da ANP para %1$s? Isso pode levar alguns minutos.</string>
     <string name="active_week_label">Atual</string>

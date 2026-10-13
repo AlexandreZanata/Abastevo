@@ -110,6 +110,8 @@
     <string name="week_picker_operational_note_collapse">收起运营备注</string>
     <string name="week_picker_operational_note_title">运营通知</string>
     <string name="week_picker_download_week">下载本周数据</string>
+    <string name="week_picker_downloaded_tag">已下载</string>
+    <string name="week_picker_download_tag">下载</string>
     <string name="week_picker_confirm_title">下载历史周数据？</string>
     <string name="week_picker_confirm_message">下载并导入 %1$s 的 ANP 数据？这可能需要几分钟。</string>
     <string name="active_week_label">最新</string>

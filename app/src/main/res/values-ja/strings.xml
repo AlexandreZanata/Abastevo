@@ -110,6 +110,8 @@
     <string name="week_picker_operational_note_collapse">運用上の注記を折りたたむ</string>
     <string name="week_picker_operational_note_title">運用上のお知らせ</string>
     <string name="week_picker_download_week">この週をダウンロード</string>
+    <string name="week_picker_downloaded_tag">ダウンロード済み</string>
+    <string name="week_picker_download_tag">ダウンロード</string>
     <string name="week_picker_confirm_title">過去の週をダウンロードしますか？</string>
     <string name="week_picker_confirm_message">%1$sのANPデータをダウンロードしてインポートしますか？数分かかる場合があります。</string>
     <string name="active_week_label">最新</string>

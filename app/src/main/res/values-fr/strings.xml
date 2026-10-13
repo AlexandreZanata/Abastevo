@@ -110,6 +110,8 @@
     <string name="week_picker_operational_note_collapse">Réduire la note opérationnelle</string>
     <string name="week_picker_operational_note_title">Avis opérationnel</string>
     <string name="week_picker_download_week">Télécharger cette semaine</string>
+    <string name="week_picker_downloaded_tag">Téléchargée</string>
+    <string name="week_picker_download_tag">Télécharger</string>
     <string name="week_picker_confirm_title">Télécharger une semaine historique ?</string>
     <string name="week_picker_confirm_message">Télécharger et importer les données ANP pour %1$s ? Cela peut prendre quelques minutes.</string>
     <string name="active_week_label">Plus récente</string>

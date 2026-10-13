@@ -110,6 +110,8 @@
     <string name="week_picker_operational_note_collapse">Свернуть операционное примечание</string>
     <string name="week_picker_operational_note_title">Операционное уведомление</string>
     <string name="week_picker_download_week">Загрузить эту неделю</string>
+    <string name="week_picker_downloaded_tag">Загружена</string>
+    <string name="week_picker_download_tag">Загрузить</string>
     <string name="week_picker_confirm_title">Загрузить историческую неделю?</string>
     <string name="week_picker_confirm_message">Загрузить и импортировать данные ANP за %1$s? Это может занять несколько минут.</string>
     <string name="active_week_label">Последняя</string>
