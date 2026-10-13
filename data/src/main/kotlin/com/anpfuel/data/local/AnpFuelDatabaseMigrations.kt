@@ -342,4 +342,52 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // PRM09-T01: additive premium outbox + cursor. No existing
+            // table is touched; free vehicles and outbox rows survive.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `premium_outbox` (
+                    `command_id` TEXT NOT NULL,
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `record_id` TEXT NOT NULL,
+                    `expected_revision` INTEGER NOT NULL,
+                    `payload_json` TEXT NOT NULL,
+                    `delete_flag` INTEGER NOT NULL,
+                    `void_flag` INTEGER NOT NULL,
+                    `state` TEXT NOT NULL,
+                    `attempts` INTEGER NOT NULL,
+                    `next_eligible_tick` INTEGER NOT NULL,
+                    `nonce` TEXT NOT NULL,
+                    PRIMARY KEY(`command_id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_premium_outbox_owner_account_state_next_eligible_tick` " +
+                    "ON `premium_outbox` (`owner_account`, `state`, `next_eligible_tick`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_premium_outbox_owner_account_origin_dataset` " +
+                    "ON `premium_outbox` (`owner_account`, `origin`, `dataset`)",
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `premium_cursor` (
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `cursor` TEXT NOT NULL,
+                    `epoch` INTEGER NOT NULL,
+                    `updated_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`owner_account`, `origin`, `dataset`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
 }

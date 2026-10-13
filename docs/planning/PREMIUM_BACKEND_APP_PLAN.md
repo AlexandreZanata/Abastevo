@@ -541,6 +541,8 @@ Entry: G-PR-BACKEND PASS and existing Android account/environment integration. E
 
 ### PRM09-T01 — Typed ports, exact values and owner-scoped Room state
 
+**Source checkpoint (2026-10-13): LOCAL_DONE / INTEGRATION_PENDING.** See [tested evidence](../backend/evidence/premium/PRM_NEXT_TEN.md#prm09-t01--typed-ports-exact-values-and-owner-scoped-room-state); G-PR-BACKEND remains pending (proceeding recorded without readiness claim), Play sandbox PROOF_OWED.
+
 - **Dependencies/rules:** PRM08; PR05–PR09/PR14/PR25.
 - **Outcome/areas:** Kotlin domain/application ports and DTOs, exact-value/golden parity, additive Room migrations, account/origin partitions and durable commands/cursors; HTTP adapter reuses proven session/signature transport.
 - **Tests first:** wire unknown/version compatibility, migration with existing free vehicles, owner/origin switch, process death, replay, corrupted cursor and Go/Kotlin calculation parity.

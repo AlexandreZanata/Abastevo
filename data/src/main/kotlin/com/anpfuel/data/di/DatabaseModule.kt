@@ -15,6 +15,8 @@ import com.anpfuel.data.local.dao.MunicipalityFtsDao
 import com.anpfuel.data.local.dao.ServerStationCacheDao
 import com.anpfuel.data.local.dao.StationPriceDao
 import com.anpfuel.data.local.dao.SurveyWeekDao
+import com.anpfuel.data.local.dao.PremiumCursorDao
+import com.anpfuel.data.local.dao.PremiumOutboxDao
 import com.anpfuel.data.local.dao.VehicleDao
 import dagger.Module
 import dagger.Provides
@@ -46,6 +48,7 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_7_8,
                 AnpFuelDatabaseMigrations.MIGRATION_8_9,
                 AnpFuelDatabaseMigrations.MIGRATION_9_10,
+                AnpFuelDatabaseMigrations.MIGRATION_10_11,
             )
             .build()
 
@@ -91,4 +94,12 @@ object DatabaseModule {
     @Provides
     fun provideServerStationCacheDao(database: AnpFuelDatabase): ServerStationCacheDao =
         database.serverStationCacheDao()
+
+    @Provides
+    fun providePremiumOutboxDao(database: AnpFuelDatabase): PremiumOutboxDao =
+        database.premiumOutboxDao()
+
+    @Provides
+    fun providePremiumCursorDao(database: AnpFuelDatabase): PremiumCursorDao =
+        database.premiumCursorDao()
 }
