@@ -1,32 +1,18 @@
 package com.anpfuel.app.ui.history
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -41,12 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
-import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.FuelProductLabel
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -133,13 +119,13 @@ private fun HistoryContent(
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            HistoryFuelSelectorButton(
+            FuelProductSelectorButton(
                 selected = uiState.selectedFuelProduct,
                 onClick = { fuelPickerOpen = true },
                 modifier = Modifier.fillMaxWidth(),
             )
             if (fuelPickerOpen) {
-                HistoryFuelSelectorDialog(
+                FuelProductSelectorDialog(
                     selected = uiState.selectedFuelProduct,
                     onSelect = { product ->
                         fuelPickerOpen = false
@@ -203,105 +189,6 @@ private fun HistoryContent(
                             ),
                             averageFormatted = entry.averageFormatted
                                 ?: stringResource(R.string.prices_not_available),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Full-width fuel selector entry: the current fuel stays visible, options
- * open in a single-choice dialog and apply through the same callback.
- */
-@Composable
-private fun HistoryFuelSelectorButton(
-    selected: FuelProduct,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            FuelProductIcon(
-                product = selected,
-                size = 20.dp,
-                contentDescription = null,
-            )
-            Text(
-                text = stringResource(FuelProductI18n.toStringRes(selected)),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistoryFuelSelectorDialog(
-    selected: FuelProduct,
-    onSelect: (FuelProduct) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.history_fuel_product_label),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                FuelProduct.entries.forEach { product ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable(
-                                role = Role.RadioButton,
-                                onClick = { onSelect(product) },
-                            )
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        RadioButton(
-                            selected = product == selected,
-                            onClick = null,
-                        )
-                        FuelProductIcon(
-                            product = product,
-                            size = 20.dp,
-                            contentDescription = null,
-                        )
-                        Text(
-                            text = stringResource(FuelProductI18n.toStringRes(product)),
-                            style = MaterialTheme.typography.bodyLarge,
                         )
                     }
                 }
