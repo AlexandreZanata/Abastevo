@@ -412,6 +412,8 @@ Entry: PRM05. Exit: exact explainable metrics and private bounded reports/export
 
 ### PRM06-T04 — Vehicle/period comparison API
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR19; BUC-PR05.
 - **Outcome/areas:** selected vehicle/period comparisons with same metric/unit/version, eligible coverage, weighted ratios and optional valid percentage change.
 - **Tests first:** missing/zero baseline, unequal coverage, different fuel units, mismatched timezone/method, foreign vehicle IDs and invalid/oversize period ranges.

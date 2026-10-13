@@ -185,3 +185,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 01db344. Timezone-aware BuildReport with half-open month bounds, revisioned summaries, advisory-lock serialization, base fencing against backdated edits and restart convergence without superseded publishes. Totals cover only frozen categories with voided and deleted exclusions and per-vehicle consumption coverage via the T01 engine. Append-only 000088 adds ledger_reports with report queries; sqlc vet/diff clean. Real PostGIS PASS (report suites): leap February, empty months, DST months, UTC events crossing local months, invalid month and timezone refusal, foreign empty months, indexed period plans, backdated invalidation with new revisions, concurrent restart convergence and coherent reads. Unit/race PASS metrics. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Privacy and retention registered; HTTP rides PRM06-T05. No merge/deploy/mobile edit.
 Next PRM06-T04. Real payments OFF.
+
+## PRM06-T04 — Vehicle period comparison API
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 94996fc. Pure comparison over explicit vehicle periods with same metric, unit, version and timezone gates, eligible coverage via the T01 engine, weighted ratios and rational percentage change; incompatible or incomplete inputs explain why with no fabricated winner. Owner-only POST /v1/metrics/compare with signed sessions and no-store responses, wired to ledger reads in cmd/api. Real PostGIS reads reuse proven ledger period indexes with no new migration. Unit/race PASS metrics adapters with missing and zero baselines, unequal coverage, unit, timezone and method mismatches, foreign IDs, reversed and oversize ranges, plus HTTP no-winner and incomplete cases. OpenAPI compare schemas plus three goldens PASS. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Paid analysis split rides PRM06-T05. No merge/deploy/mobile edit.
+Next PRM06-T05. Real payments OFF.

@@ -37,6 +37,9 @@ import (
 	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
 	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
 	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
+	metricsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters"
+	metricsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/application"
+	metricshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters/http"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -113,6 +116,20 @@ func newUUID() (string, error) {
 	hexed := hex.EncodeToString(b[:])
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32], nil
+}
+
+type metricsLedgerReader struct{ store *ledgeradapters.Store }
+
+func (m metricsLedgerReader) ListRecords(ctx context.Context, accountID, dataset, vehicleID, from, to string, limit int) ([]metricsapp.LedgerRecord, error) {
+	rows, err := m.store.List(ctx, accountID, dataset, vehicleID, "", from, to, "", "", limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]metricsapp.LedgerRecord, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, metricsapp.LedgerRecord{Dataset: row.Dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload})
+	}
+	return out, nil
 }
 
 func main() {
@@ -682,6 +699,24 @@ func run() error {
 					return "", "", errors.New("ledger: authentication required")
 				}
 				return "", "", errors.New("ledger: service unavailable")
+			}
+			return contributor, key, nil
+		},
+	}.RegisterRoutes(router)
+	metricsReader := metricsLedgerReader{store: ledgerStore}
+	metricshttp.Handler{
+		Service: metricsadapters.NewStore(metricsReader),
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				return "", errors.New("metrics: invalid input")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				return "", "", errors.New("metrics: invalid input")
 			}
 			return contributor, key, nil
 		},

@@ -4331,6 +4331,41 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/metrics/compare:
+    post:
+      tags:
+      - premium
+      summary: Compare vehicle periods factually
+      description: Same metric, unit, version and timezone sides with eligible coverage and weighted ratios. Incompatible or incomplete comparisons explain why with no fabricated winner. All responses are no-store without ETags.
+      operationId: metricsCompare
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetricsCompareRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsCompareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -5606,6 +5641,66 @@ components:
           - erased
       required:
       - status
+    MetricsCompareSide:
+      type: object
+      additionalProperties: false
+      properties:
+        vehicle_id: *id001
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        method:
+          type: string
+          enum:
+          - fuel-purchase-interval
+          - matched-window
+      required:
+      - vehicle_id
+      - from
+      - to
+      - timezone
+      - method
+    MetricsCompareRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        baseline:
+          $ref: '#/components/schemas/MetricsCompareSide'
+        current:
+          $ref: '#/components/schemas/MetricsCompareSide'
+      required:
+      - family_id
+      - access_token
+      - baseline
+      - current
+    MetricsCompareResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        compatible:
+          type: boolean
+        issue:
+          type: string
+        baseline:
+          type: string
+        current:
+          type: string
+        change_percent:
+          type: string
+      required:
+      - compatible
+      - issue
+      - baseline
+      - current
+      - change_percent
     PremiumExportRequest:
       type: object
       additionalProperties: false
