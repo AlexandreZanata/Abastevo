@@ -14,8 +14,6 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.home.HomeContent
 import com.anpfuel.app.ui.home.HomeUiState
-import com.anpfuel.app.ui.search.SearchContent
-import com.anpfuel.app.ui.search.SearchUiState
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.state.DataReadinessState
 import org.junit.Rule
@@ -86,26 +84,5 @@ class AccessibilityUiTest {
 
         composeTestRule.onNodeWithText("ANP").assertIsDisplayed()
         composeTestRule.onNodeWithText("No fuel price data synced yet.").assertIsDisplayed()
-    }
-
-    @Test
-    fun searchScreenSupportsDoubleFontScaleWithoutClippingHint() {
-        composeTestRule.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
-                AnpFuelTheme(dynamicColor = false) {
-                    SearchContent(
-                        uiState = SearchUiState(
-                            query = "CU",
-                            showMinCharsHint = true,
-                        ),
-                        onQueryChange = {},
-                        onResultSelected = {},
-                        onBrowseByState = {},
-                    )
-                }
-            }
-        }
-
-        composeTestRule.onNodeWithText("Type at least 2 characters to search.").assertIsDisplayed()
     }
 }

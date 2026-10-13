@@ -43,11 +43,14 @@ class AppendixA2PostSyncTest {
   private lateinit var weekPickerTitle: String
   private lateinit var useLatestWeekLabel: String
   private lateinit var homeTitle: String
-  private lateinit var searchNavLabel: String
-  private lateinit var searchHintLabel: String
+  private lateinit var locationNavLabel: String
+  private lateinit var stateSearchHintLabel: String
+  private lateinit var municipalitySearchHintLabel: String
+  private lateinit var stateParanaName: String
+  private lateinit var stateBahiaName: String
   private lateinit var settingsNavLabel: String
   private lateinit var changeSurveyWeekLabel: String
-  private lateinit var noDataThisWeekLabel: String
+  private lateinit var locationNoDataLabel: String
   private lateinit var br010EmptyLabel: String
   private lateinit var operationalNoteBannerLabel: String
   private lateinit var downloadWeekLabel: String
@@ -63,11 +66,14 @@ class AppendixA2PostSyncTest {
     weekPickerTitle = context.getString(R.string.week_picker_title)
     useLatestWeekLabel = context.getString(R.string.week_picker_latest)
     homeTitle = context.getString(R.string.home_title)
-    searchNavLabel = context.getString(R.string.nav_search)
-    searchHintLabel = context.getString(R.string.search_municipality_hint)
+    locationNavLabel = context.getString(R.string.nav_location)
+    stateSearchHintLabel = context.getString(R.string.location_search_state_hint)
+    municipalitySearchHintLabel = context.getString(R.string.location_search_municipality_hint)
+    stateParanaName = context.getString(R.string.state_name_parana)
+    stateBahiaName = context.getString(R.string.state_name_bahia)
     settingsNavLabel = context.getString(R.string.nav_settings)
     changeSurveyWeekLabel = context.getString(R.string.settings_change_survey_week)
-    noDataThisWeekLabel = context.getString(R.string.search_no_data_this_week)
+    locationNoDataLabel = context.getString(R.string.location_no_data_this_week)
     br010EmptyLabel = context.getString(R.string.prices_empty_no_data_this_week)
     operationalNoteBannerLabel = context.getString(R.string.week_picker_operational_note_banner)
     downloadWeekLabel = context.getString(R.string.week_picker_download_week)
@@ -87,26 +93,26 @@ class AppendixA2PostSyncTest {
       hasContentDescription("Active survey week", substring = true),
     ).assertIsDisplayed()
 
-    // R3.1.3
-    composeRule.searchAndPickCity("curitiba", "CURITIBA", "PR")
+    // R3.1.3 — location picker is the single municipality journey
+    composeRule.pickCityViaLocation(stateParanaName, "curitiba", "CURITIBA")
     composeRule.waitForText(homeTitle, timeoutMillis = 60_000L)
 
-    // R3.1.4
-    composeRule.openSearchFromHome(searchNavLabel, searchHintLabel)
+    // R3.1.4 — Bahia holds the historical no-data city; filtering lists it
+    composeRule.openLocationAndSelectState(stateBahiaName)
     composeRule.onNode(hasSetTextAction()).performClick()
     composeRule.onNode(hasSetTextAction()).performTextReplacement("Bom Jesus")
-    composeRule.waitForText("Bom Jesus", substring = true, timeoutMillis = 120_000L)
+    composeRule.waitForText("BOM JESUS DA LAPA", substring = true, timeoutMillis = 120_000L)
     val bomJesusCount =
-      composeRule.onAllNodesWithText("Bom Jesus", substring = true).fetchSemanticsNodes().size
-    assertTrue("Expected Bom Jesus search results (UC-004)", bomJesusCount >= 1)
+      composeRule.onAllNodesWithText("BOM JESUS", substring = true).fetchSemanticsNodes().size
+    assertTrue("Expected Bom Jesus location results", bomJesusCount >= 1)
 
     // R3.1.5
-    selectFirstSearchResultWithNoData()
+    selectFirstLocationResultWithNoData()
     composeRule.waitForText(br010EmptyLabel, timeoutMillis = 90_000L)
 
     // R3.1.5b — picking the no-data city moved home to it (empty by
     // design). Restore a with-data home city for the remaining steps.
-    composeRule.searchAndPickCity("curitiba", "CURITIBA", "PR")
+    composeRule.pickCityViaLocation(stateParanaName, "curitiba", "CURITIBA")
     composeRule.waitForText(homeTitle, timeoutMillis = 60_000L)
 
     // R3.1.6
@@ -151,37 +157,31 @@ class AppendixA2PostSyncTest {
     }
   }
 
-  private fun ensureSearchScreen() {
-    if (runCatching { composeRule.onNodeWithText(searchHintLabel).assertExists() }.isFailure) {
-      composeRule.openSearchFromHome(searchNavLabel, searchHintLabel)
-    }
-  }
-
-  private fun selectFirstSearchResultWithNoData() {
-    ensureSearchScreen()
-    // Replace (never append to) the query: a clean search also
-    // re-triggers after slow first-time catalog seeding on low-end
-    // devices. Generous timeout covers seeding + FTS + ranking.
+  private fun selectFirstLocationResultWithNoData() {
+    // Continues from the Bahia municipality list filtered in R3.1.4.
+    // Re-apply the filter so slow first-time catalog seeding on low-end
+    // devices still converges deterministically.
     composeRule.onNode(hasSetTextAction()).performClick()
     composeRule.onNode(hasSetTextAction()).performTextReplacement("Bom Jesus")
-    composeRule.waitForText(noDataThisWeekLabel, substring = true, timeoutMillis = 150_000L)
-    composeRule.onNodeWithText(noDataThisWeekLabel, substring = true).performClick()
+    composeRule.waitForText("BOM JESUS DA LAPA", substring = true, timeoutMillis = 150_000L)
+    composeRule.waitForText(locationNoDataLabel, substring = true, timeoutMillis = 150_000L)
+    composeRule.onNodeWithText("BOM JESUS DA LAPA", substring = true).performScrollTo()
+    composeRule.onNodeWithText("BOM JESUS DA LAPA", substring = true).performClick()
   }
 
-  private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.searchAndPickCity(
-    query: String,
-    rowTokenA: String,
-    rowTokenB: String,
+  private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.pickCityViaLocation(
+    stateName: String,
+    municipalityQuery: String,
+    rowToken: String,
   ) {
-    openSearchFromHome(searchNavLabel, searchHintLabel)
+    openLocationAndSelectState(stateName)
     onNode(hasSetTextAction()).performClick()
-    onNode(hasSetTextAction()).performTextReplacement(query)
-    // Wait for the uppercase result row itself: the footer also
-    // carries an em dash, and the field echo is lowercase, so a
-    // bare dash or lowercase wait would match the wrong node.
-    waitForText(rowTokenA, substring = true, timeoutMillis = 120_000L)
-    onNode(hasText(rowTokenA, substring = true) and hasText(rowTokenB, substring = true))
-      .performClick()
+    onNode(hasSetTextAction()).performTextReplacement(municipalityQuery)
+    // Municipality rows are uppercase in the catalog; the field echo is
+    // lowercase, so wait for the uppercase row itself.
+    waitForText(rowToken, substring = true, timeoutMillis = 120_000L)
+    onNodeWithText(rowToken, substring = true).performScrollTo()
+    onNodeWithText(rowToken, substring = true).performClick()
   }
 
   private fun selectHistoricalWeekIfPresent() {
@@ -320,14 +320,20 @@ private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivi
   onNodeWithText(text, substring = substring).performClick()
 }
 
-private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.openSearchFromHome(
-  searchNavLabel: String,
-  searchHintLabel: String,
+private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.openLocationAndSelectState(
+  stateName: String,
 ) {
-  waitForText(searchNavLabel)
-  onNodeWithText(searchNavLabel).performScrollTo()
-  onNodeWithText(searchNavLabel).performClick()
-  waitForText(searchHintLabel)
+  val locationLabel = activity.getString(com.anpfuel.app.R.string.nav_location)
+  val stateHint = activity.getString(com.anpfuel.app.R.string.location_search_state_hint)
+  val municipalityHint = activity.getString(com.anpfuel.app.R.string.location_search_municipality_hint)
+  waitForText(locationLabel)
+  onNodeWithText(locationLabel).performScrollTo()
+  onNodeWithText(locationLabel).performClick()
+  waitForText(stateHint)
+  waitForText(stateName, substring = true, timeoutMillis = 120_000L)
+  onNodeWithText(stateName).performScrollTo()
+  onNodeWithText(stateName).performClick()
+  waitForText(municipalityHint, timeoutMillis = 120_000L)
 }
 
 private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, MainActivity>.openSettingsFromHome(

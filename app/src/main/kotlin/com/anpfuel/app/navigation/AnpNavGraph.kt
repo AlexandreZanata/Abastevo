@@ -30,7 +30,6 @@ import com.anpfuel.app.ui.onboarding.OnboardingScreen
 import com.anpfuel.app.ui.prices.PricesScreen
 import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
-import com.anpfuel.app.ui.search.SearchScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
 import com.anpfuel.app.ui.stations.StationsScreen
 import com.anpfuel.app.ui.vehicle.VehicleScreen
@@ -128,20 +127,6 @@ fun AnpNavGraph(
                 darkTheme = darkTheme,
                 onToggleTheme = onToggleTheme,
                 onNavigate = navController::navigate,
-            )
-        }
-        composable(Routes.SEARCH) {
-            SearchScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToHome = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.HOME) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-                onNavigateToLocationPicker = {
-                    navController.navigate(Routes.LOCATION)
-                },
             )
         }
         composable(Routes.LOCATION) {

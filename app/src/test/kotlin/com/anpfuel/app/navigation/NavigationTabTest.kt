@@ -50,7 +50,6 @@ class NavigationTabTest {
 
     @Test
     fun fromRouteReturnsNullForNonTopLevelRoutes() {
-        assertNull(NavigationTab.fromRoute(Routes.SEARCH))
         assertNull(NavigationTab.fromRoute(Routes.LOCATION))
         assertNull(NavigationTab.fromRoute(Routes.PRICES))
         assertNull(NavigationTab.fromRoute(Routes.HISTORY))
