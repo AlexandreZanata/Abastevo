@@ -35,6 +35,8 @@ import (
 	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
 	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
 	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
+	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
+	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
 	communityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/http"
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
@@ -643,6 +645,45 @@ func run() error {
 		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
 			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
 			return contributor, key, mapCloudError(err)
+		},
+	}.RegisterRoutes(router)
+	ledgerStore := ledgeradapters.NewStore(pool.Underlying())
+	ledgerStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return errors.New("ledger: capability required")
+		}
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+				return errors.New("ledger: authentication required")
+			}
+			if errors.Is(err, subscriptiondomain.ErrDenied) {
+				return errors.New("ledger: capability required")
+			}
+			return errors.New("ledger: service unavailable")
+		}
+		return nil
+	}
+	ledgerhttp.Handler{
+		Service: ledgerStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := premiumHTTP.Sessions(ctx, family, access)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", errors.New("ledger: authentication required")
+				}
+				return "", errors.New("ledger: service unavailable")
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
+					return "", "", errors.New("ledger: authentication required")
+				}
+				return "", "", errors.New("ledger: service unavailable")
+			}
+			return contributor, key, nil
 		},
 	}.RegisterRoutes(router)
 	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)

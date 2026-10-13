@@ -143,3 +143,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop c24af7d. Append-only 000086 adds ledger_segments and ledger_gaps plus segment_no on ledger_records with per-segment odometer indexes; sqlc MaxSegmentNo, OpenSegment, MaxSegmentOdometer, DeclareGap vet/diff clean. Segment-scoped monotonic odometers allow identical readings, refuse regressions and cross-segment edits, and reopen UNKNOWN boundaries on reset or replacement. Gaps declare informational incompleteness without blocking inserts. Histories survive vehicle archive with no cascade delete; cascades ride PRM05-T05 preview and erasure. Real PostGIS PASS (odometer suites): regression refusal with identical acceptance, reset with new-segment monotonicity, cross-segment edit refusal, gap declaration with correction, archive preservation with continued writes, concurrent odometer single winner, and foreign or dangling reference refusal. Unit/race PASS ledger domain. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM05-T04. Real payments OFF.
+
+## PRM05-T04 — Private CRUD list filter API and authorization
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 2b13093. Owner-only POST /v1/ledger/commands with batch atomicity and paid writes, POST /v1/ledger/records with HMAC cursors and vehicle, time and category filters, and free POST /v1/ledger/delete; all no-store without ETags. Free reads and deletes stay available after lapse while new writes refuse. Real PostGIS PASS (ledger suites): vehicle, time and category filters with time-ordered pagination, tombstone exclusion, unknown dataset and category refusal, plus idempotent unconditional deletes. Unit/race PASS ledger domain, http, apicontract and cmd/api. OpenAPI ledger commands, records and delete schemas plus four goldens PASS. Wired professional.write capability in cmd/api. Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. Private prices never reach public tables. No merge/deploy/mobile edit.
+Next PRM05-T05. Real payments OFF.

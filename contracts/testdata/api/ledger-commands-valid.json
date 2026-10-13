@@ -1,0 +1,17 @@
+{
+  "id": "ledger-commands-valid",
+  "schema": "LedgerBatchRequest",
+  "valid": true,
+  "value": {
+    "family_id": "11111111-1111-4111-8111-111111111111",
+    "access_token": "synthetic",
+    "commands": [
+      {
+        "operation_id": "66666666-6666-4666-8666-666666666666",
+        "dataset": "refuel",
+        "id": "77777777-7777-4777-8777-777777777777",
+        "expected_revision": 0
+      }
+    ]
+  }
+}

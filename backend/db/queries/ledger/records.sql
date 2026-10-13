@@ -45,3 +45,13 @@ SELECT COALESCE(MAX((payload->>'odometer_metres')::bigint),-1)::bigint FROM ledg
 
 -- name: DeclareGap :one
 INSERT INTO ledger_gaps(account_id,gap_id,vehicle_id,after_id,before_id,note) VALUES($1,$2,$3,$4,$5,$6) RETURNING gap_id;
+
+-- name: ListLedger :many
+SELECT dataset,id,vehicle_id,occurred_at,revision,voided,deleted,payload FROM ledger_records
+WHERE account_id=$1 AND dataset=$2 AND NOT deleted
+AND (sqlc.narg(vehicle_id)::uuid IS NULL OR vehicle_id=sqlc.narg(vehicle_id)::uuid)
+AND (sqlc.narg(category)::text IS NULL OR payload->>'category'=sqlc.narg(category)::text)
+AND (sqlc.narg(from_time)::timestamptz IS NULL OR occurred_at>=sqlc.narg(from_time)::timestamptz)
+AND (sqlc.narg(to_time)::timestamptz IS NULL OR occurred_at<sqlc.narg(to_time)::timestamptz)
+AND (sqlc.narg(after_time)::timestamptz IS NULL OR occurred_at>sqlc.narg(after_time)::timestamptz OR (occurred_at=sqlc.narg(after_time)::timestamptz AND id>sqlc.narg(after_id)::uuid))
+ORDER BY occurred_at,id LIMIT $3;

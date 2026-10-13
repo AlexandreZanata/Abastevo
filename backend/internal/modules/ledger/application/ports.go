@@ -36,6 +36,21 @@ type LedgerStore interface {
 	Apply(ctx context.Context, accountID string, batch Batch) (BatchResult, error)
 }
 
+type Record struct {
+	Dataset   string          `json:"dataset"`
+	ID        string          `json:"id"`
+	VehicleID string          `json:"vehicle_id"`
+	Occurred  string          `json:"occurred_at"`
+	Revision  int64           `json:"revision"`
+	Voided    bool            `json:"voided"`
+	Payload   json.RawMessage `json:"payload"`
+}
+
+type ListStore interface {
+	List(ctx context.Context, accountID, dataset, vehicleID, category, from, to, afterTime, afterID string, limit int) ([]Record, error)
+	Delete(ctx context.Context, accountID, dataset, id string) (int64, error)
+}
+
 type OdometerStore interface {
 	OpenSegment(ctx context.Context, accountID, vehicleID, reason string) (int64, error)
 	DeclareGap(ctx context.Context, accountID, vehicleID, gapID, afterID, beforeID, note string) (string, error)

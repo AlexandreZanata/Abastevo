@@ -354,6 +354,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T04 — Private CRUD/list/filter API and authorization
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T03; PR02/04/13/20.
 - **Outcome/areas:** exact owner-only create/read/correct/delete and paginated vehicle/time/category queries with actual lifecycle and no-store controls.
 - **Tests first:** unsigned/expired/cross-account requests, free read/export/delete after lapse, new write refused on expiry, bounded notes/filter/page/bytes and safe errors.

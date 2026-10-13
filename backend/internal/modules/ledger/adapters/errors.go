@@ -7,8 +7,11 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+func newLedgerOperationID() (string, error) { return jobs.NewUUIDv4() }
 
 var (
 	errInvalidValue   = errors.New("ledger: invalid input")

@@ -76,14 +76,14 @@ type Refuel struct {
 }
 
 type Expense struct {
-	ID             string   `json:"id"`
-	VehicleID      string   `json:"vehicle_id"`
+	ID             string    `json:"id"`
+	VehicleID      string    `json:"vehicle_id"`
 	OccurredAt     time.Time `json:"occurred_at"`
-	Timezone       string   `json:"timezone"`
-	AmountCentavos int64    `json:"amount_centavos"`
-	Category       Category `json:"category"`
-	OdometerMetres *int64   `json:"odometer_metres"`
-	Note           string   `json:"note,omitempty"`
+	Timezone       string    `json:"timezone"`
+	AmountCentavos int64     `json:"amount_centavos"`
+	Category       Category  `json:"category"`
+	OdometerMetres *int64    `json:"odometer_metres"`
+	Note           string    `json:"note,omitempty"`
 }
 
 func validID(s string) bool {

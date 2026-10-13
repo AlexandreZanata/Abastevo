@@ -151,6 +151,79 @@ func (q *Queries) LedgerVehicle(ctx context.Context, arg LedgerVehicleParams) (p
 	return id, err
 }
 
+const listLedger = `-- name: ListLedger :many
+SELECT dataset,id,vehicle_id,occurred_at,revision,voided,deleted,payload FROM ledger_records
+WHERE account_id=$1 AND dataset=$2 AND NOT deleted
+AND ($4::uuid IS NULL OR vehicle_id=$4::uuid)
+AND ($5::text IS NULL OR payload->>'category'=$5::text)
+AND ($6::timestamptz IS NULL OR occurred_at>=$6::timestamptz)
+AND ($7::timestamptz IS NULL OR occurred_at<$7::timestamptz)
+AND ($8::timestamptz IS NULL OR occurred_at>$8::timestamptz OR (occurred_at=$8::timestamptz AND id>$9::uuid))
+ORDER BY occurred_at,id LIMIT $3
+`
+
+type ListLedgerParams struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	Dataset   string             `json:"dataset"`
+	Limit     int32              `json:"limit"`
+	VehicleID pgtype.UUID        `json:"vehicle_id"`
+	Category  pgtype.Text        `json:"category"`
+	FromTime  pgtype.Timestamptz `json:"from_time"`
+	ToTime    pgtype.Timestamptz `json:"to_time"`
+	AfterTime pgtype.Timestamptz `json:"after_time"`
+	AfterID   pgtype.UUID        `json:"after_id"`
+}
+
+type ListLedgerRow struct {
+	Dataset    string             `json:"dataset"`
+	ID         pgtype.UUID        `json:"id"`
+	VehicleID  pgtype.UUID        `json:"vehicle_id"`
+	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
+	Revision   int64              `json:"revision"`
+	Voided     bool               `json:"voided"`
+	Deleted    bool               `json:"deleted"`
+	Payload    []byte             `json:"payload"`
+}
+
+func (q *Queries) ListLedger(ctx context.Context, arg ListLedgerParams) ([]ListLedgerRow, error) {
+	rows, err := q.db.Query(ctx, listLedger,
+		arg.AccountID,
+		arg.Dataset,
+		arg.Limit,
+		arg.VehicleID,
+		arg.Category,
+		arg.FromTime,
+		arg.ToTime,
+		arg.AfterTime,
+		arg.AfterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLedgerRow
+	for rows.Next() {
+		var i ListLedgerRow
+		if err := rows.Scan(
+			&i.Dataset,
+			&i.ID,
+			&i.VehicleID,
+			&i.OccurredAt,
+			&i.Revision,
+			&i.Voided,
+			&i.Deleted,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const maxSegmentNo = `-- name: MaxSegmentNo :one
 SELECT COALESCE(MAX(segment_no),1)::bigint FROM ledger_segments WHERE account_id=$1 AND vehicle_id=$2
 `

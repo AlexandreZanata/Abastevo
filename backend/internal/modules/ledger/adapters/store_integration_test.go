@@ -240,3 +240,61 @@ func TestLedgerSimultaneousBackdatedRollbackMaxAndPlans(t *testing.T) {
 	}
 	_ = errors.Is
 }
+
+func TestLedgerListFiltersPaginationAndDelete(t *testing.T) {
+	pool := freshDB(t)
+	owner := newAccount(t, pool)
+	vehicle := newVehicle(t, pool, owner)
+	otherVehicle := newVehicle(t, pool, owner)
+	store := NewStore(pool)
+	ctx := context.Background()
+	first := newid(t)
+	second := newid(t)
+	third := newid(t)
+	payload := func(id, vehicleID, occurred, category string) application.Command {
+		t.Helper()
+		raw, _ := json.Marshal(map[string]any{"id": id, "vehicle_id": vehicleID, "occurred_at": occurred, "timezone": "America/Sao_Paulo", "amount_centavos": 1000, "category": category})
+		return application.Command{OperationID: newid(t), Dataset: "expense", ID: id, Payload: raw}
+	}
+	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{
+		payload(first, vehicle, "2026-01-10T10:00:00-03:00", "tolls"),
+		payload(second, vehicle, "2026-02-10T10:00:00-03:00", "parking"),
+		payload(third, otherVehicle, "2026-01-20T10:00:00-03:00", "tolls"),
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	byVehicle, err := store.List(ctx, owner, "expense", vehicle, "", "", "", "", "", 100)
+	if err != nil || len(byVehicle) != 2 || byVehicle[0].ID != first {
+		t.Fatalf("vehicle filter %+v %v", byVehicle, err)
+	}
+	byCategory, err := store.List(ctx, owner, "expense", "", "tolls", "", "", "", "", 100)
+	if err != nil || len(byCategory) != 2 {
+		t.Fatalf("category filter %+v %v", byCategory, err)
+	}
+	byTime, err := store.List(ctx, owner, "expense", "", "", "2026-02-01T00:00:00-03:00", "2026-03-01T00:00:00-03:00", "", "", 100)
+	if err != nil || len(byTime) != 1 || byTime[0].ID != second {
+		t.Fatalf("time filter %+v %v", byTime, err)
+	}
+	firstPage, err := store.List(ctx, owner, "expense", "", "", "", "", "", "", 2)
+	if err != nil || len(firstPage) != 2 {
+		t.Fatalf("first page %+v %v", firstPage, err)
+	}
+	secondPage, err := store.List(ctx, owner, "expense", "", "", "", "", firstPage[1].Occurred, firstPage[1].ID, 100)
+	if err != nil || len(secondPage) != 1 || secondPage[0].ID != second {
+		t.Fatalf("second page %+v %v", secondPage, err)
+	}
+	revision, err := store.Delete(ctx, owner, "expense", first)
+	if err != nil || revision == 0 {
+		t.Fatal("delete", err)
+	}
+	afterDelete, err := store.List(ctx, owner, "expense", vehicle, "", "", "", "", "", 100)
+	if err != nil || len(afterDelete) != 1 || afterDelete[0].ID != second {
+		t.Fatalf("tombstone listed %+v %v", afterDelete, err)
+	}
+	if _, err = store.List(ctx, owner, "fuel", "", "", "", "", "", "", 10); err == nil {
+		t.Fatal("unknown dataset listed")
+	}
+	if _, err = store.List(ctx, owner, "expense", "", "fuel", "", "", "", "", 10); err == nil {
+		t.Fatal("refuel category listed")
+	}
+}

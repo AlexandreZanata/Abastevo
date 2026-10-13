@@ -19,6 +19,7 @@ import (
 
 type Store struct {
 	Pool *pgxpool.Pool
+	Paid func(context.Context, pgx.Tx, string) error
 }
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }
@@ -127,6 +128,17 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		return application.BatchResult{}, errUnavailable()
 	}
 	defer rollback(tx)
+	needsPaid := false
+	for _, c := range batch.Commands {
+		if !c.Delete {
+			needsPaid = true
+		}
+	}
+	if needsPaid && s.Paid != nil {
+		if err = s.Paid(ctx, tx, accountID); err != nil {
+			return application.BatchResult{}, err
+		}
+	}
 	query := q.New(tx)
 	result := application.BatchResult{Results: []application.CommandResult{}}
 	for _, c := range batch.Commands {
@@ -163,10 +175,97 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		}
 		result.Results = append(result.Results, receipt)
 	}
+	if needsPaid && s.Paid != nil {
+		if err = s.Paid(ctx, tx, accountID); err != nil {
+			return application.BatchResult{}, err
+		}
+	}
 	if err = tx.Commit(ctx); err != nil {
 		return application.BatchResult{}, errUnavailable()
 	}
 	return result, nil
+}
+
+func (s *Store) List(ctx context.Context, accountID, dataset, vehicleID, category, from, to, afterTime, afterID string, limit int) ([]application.Record, error) {
+	if (dataset != "refuel" && dataset != "expense") || limit < 1 || limit > 101 {
+		return nil, errInvalid()
+	}
+	params := q.ListLedgerParams{AccountID: uid(accountID), Dataset: dataset, Limit: int32(limit)}
+	if vehicleID != "" {
+		if !validLedgerID(vehicleID) {
+			return nil, errInvalid()
+		}
+		params.VehicleID = uid(vehicleID)
+	}
+	if category != "" {
+		if dataset != "expense" {
+			return nil, errInvalid()
+		}
+		switch category {
+		case "maintenance", "insurance", "taxes", "parking", "tolls", "cleaning", "other":
+		default:
+			return nil, errInvalid()
+		}
+		params.Category = pgtype.Text{String: category, Valid: true}
+	}
+	for _, bound := range []struct {
+		raw string
+		dst *pgtype.Timestamptz
+	}{
+		{from, &params.FromTime}, {to, &params.ToTime}, {afterTime, &params.AfterTime},
+	} {
+		if bound.raw == "" {
+			continue
+		}
+		parsed, err := time.Parse(time.RFC3339, bound.raw)
+		if err != nil {
+			return nil, errInvalid()
+		}
+		*bound.dst = pgtype.Timestamptz{Time: parsed, Valid: true}
+	}
+	if afterID != "" {
+		if !validLedgerID(afterID) {
+			return nil, errInvalid()
+		}
+		params.AfterID = uid(afterID)
+	}
+	if afterTime == "" && afterID != "" {
+		return nil, errInvalid()
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return nil, errUnavailable()
+	}
+	defer rollback(tx)
+	rows, err := q.New(tx).ListLedger(ctx, params)
+	if err != nil {
+		return nil, errUnavailable()
+	}
+	result := make([]application.Record, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, application.Record{Dataset: row.Dataset, ID: ledgerIDString(row.ID), VehicleID: ledgerIDString(row.VehicleID), Occurred: row.OccurredAt.Time.Format(time.RFC3339), Revision: row.Revision, Voided: row.Voided, Payload: row.Payload})
+	}
+	return result, nil
+}
+
+func (s *Store) Delete(ctx context.Context, accountID, dataset, id string) (int64, error) {
+	if (dataset != "refuel" && dataset != "expense") || !validLedgerID(id) {
+		return 0, errInvalid()
+	}
+	operationID, err := newLedgerOperationID()
+	if err != nil {
+		return 0, errUnavailable()
+	}
+	res, err := s.Apply(ctx, accountID, application.Batch{Commands: []application.Command{{OperationID: operationID, Dataset: dataset, ID: id, Delete: true}}})
+	if err != nil {
+		return 0, err
+	}
+	if len(res.Results) != 1 {
+		return 0, errUnavailable()
+	}
+	return res.Results[0].Revision, nil
 }
 
 func (s *Store) applyOne(ctx context.Context, query *q.Queries, accountID string, c application.Command) (int64, error) {
@@ -192,15 +291,18 @@ func (s *Store) applyOne(ctx context.Context, query *q.Queries, accountID string
 	}
 	old, err := query.GetLedgerRecord(ctx, q.GetLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID)})
 	if err == nil {
-		if old.Deleted || old.Revision != c.ExpectedRevision {
-			return 0, errConflict()
-		}
 		if c.Delete {
+			if old.Deleted {
+				return old.Revision, nil
+			}
 			revision, err := query.DeleteLedgerRecord(ctx, q.DeleteLedgerRecordParams{AccountID: uid(accountID), Dataset: c.Dataset, ID: uid(c.ID)})
 			if err != nil {
 				return 0, errUnavailable()
 			}
 			return revision, nil
+		}
+		if old.Deleted || old.Revision != c.ExpectedRevision {
+			return 0, errConflict()
 		}
 		if c.Void {
 			if old.Voided {
