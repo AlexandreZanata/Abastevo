@@ -1,5 +1,15 @@
 # Community terms and optional image-training notice — Portuguese draft
 
+
+Runtime consent amendment, 2026-10-12: the app bundles the complete, scoped
+[optional consent text](../../backend/internal/platform/legalterms/text/training-consent-pt-BR.txt).
+`GET /v1/privacy/training-terms` publishes those exact bytes with their SHA-256;
+configuration refuses a different digest. The runtime text uses the supplied
+company identity and postal address, does not assert a verified digital contact,
+and explicitly keeps collection OFF and future activation subject to new terms
+and explicit consent. The broader community/offline draft below is still NOT_ACTIVE
+and must not be copied into the app as an achieved retention/processor promise.
+
 Date: 2026-10-11. Draft version: 0.1. Status: DRAFT / NOT_ACTIVE.
 Owners: P37-PC05 and CS11 of the
 [community safety execution plan](../planning/COMMUNITY_SAFETY_EXECUTION_PLAN.md).

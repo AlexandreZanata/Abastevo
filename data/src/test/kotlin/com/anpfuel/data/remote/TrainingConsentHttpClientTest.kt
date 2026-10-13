@@ -5,6 +5,10 @@ import com.anpfuel.domain.repository.TrainingConsentReceipt
 import com.anpfuel.domain.repository.TrainingConsentRejectKind
 import com.anpfuel.domain.repository.TrainingConsentStatus
 import kotlinx.coroutines.test.runTest
+import io.mockk.*
+import org.json.JSONObject
+import com.anpfuel.domain.model.ContributionScope
+import com.anpfuel.domain.repository.ContributionRateLimited
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -26,82 +30,73 @@ import org.junit.jupiter.api.Test
  */
 class TrainingConsentHttpClientTest {
 
-    private val server = MockWebServer()
-
-    @AfterEach
-    fun tearDown() {
-        server.shutdown()
+    private val scope = ContributionScope("account:owner:key", "https://test.invalid")
+    private val proof = mockk<PhotoProofTransport>()
+    private val responses = java.util.ArrayDeque<Pair<Int, String>>()
+    private var calls = 0
+    private var lastPath = ""
+    private var lastBody = ""
+    private fun enqueue(code: Int, body: String) { responses.add(code to body) }
+    private fun respond(path: String, body: JSONObject? = null): JSONObject {
+        calls++; lastPath = path; lastBody = body?.toString().orEmpty()
+        val (code, raw) = responses.removeFirst()
+        if (code !in 200..299) throw PhotoOperationRefused(code,
+            runCatching { JSONObject(raw).getJSONObject("error").getString("code") }.getOrNull())
+        return JSONObject(raw)
     }
-
-    private fun client(): TrainingConsentHttpClient =
-        TrainingConsentHttpClient(OkHttpClient(), server.url("/").toString())
+    private fun client(): TrainingConsentHttpClient {
+        every { proof.origin } returns scope.origin
+        coEvery { proof.post(any(), any(), any(), scope.ownerScope) } coAnswers { respond(firstArg(), thirdArg()) }
+        coEvery { proof.get(any(), scope.ownerScope) } coAnswers { respond(firstArg()) }
+        return TrainingConsentHttpClient(proof)
+    }
 
     @Test
     fun `grant parses receipt`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"state":"GRANTED","revision":1,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":false}""",
-            ),
-        )
-        val receipt = client().grantConsent("training-terms-v1", "digest-v1", 1)
+        enqueue(200, """{"state":"GRANTED","revision":1,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":false}""")
+        val receipt = client().grantConsent(scope, "training-terms-v1", "digest-v1", 1, "decision")
         assertEquals("GRANTED", receipt.state)
-        assertEquals(1, receipt.revision)
+        assertEquals(1L, receipt.revision)
         assertFalse(receipt.replayed)
         assertFalse(receipt.deleteOwnedTrainingAssets)
-        val recorded = server.takeRequest()
-        assertEquals("/v1/privacy/training-consent/grant", recorded.path)
-        assertTrue(recorded.body.readUtf8().contains("\"revision\":1"))
+        assertEquals("/v1/privacy/training-consent/grant", lastPath)
+        assertTrue(lastBody.contains("\"revision\":1"))
     }
 
     @Test
     fun `replay converges with flag`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"state":"GRANTED","revision":1,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":true}""",
-            ),
-        )
-        val receipt = client().grantConsent("training-terms-v1", "digest-v1", 1)
+        enqueue(200, """{"state":"GRANTED","revision":1,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":true}""")
+        val receipt = client().grantConsent(scope, "training-terms-v1", "digest-v1", 1, "decision")
         assertTrue(receipt.replayed)
     }
 
     @Test
     fun `revoke carries deletion signal`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"state":"REVOKED","revision":2,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":false,"delete_owned_training_assets":true}""",
-            ),
-        )
-        val receipt = client().revokeConsent(2)
+        enqueue(200, """{"state":"REVOKED","revision":2,"terms_version":"training-terms-v1","decided_at":"2026-10-11T00:00:00Z","replayed":false,"delete_owned_training_assets":true}""")
+        val receipt = client().revokeConsent(scope, 2, "decision")
         assertEquals("REVOKED", receipt.state)
         assertTrue(receipt.deleteOwnedTrainingAssets)
-        val recorded = server.takeRequest()
-        assertEquals("/v1/privacy/training-consent/revoke", recorded.path)
+        assertEquals("/v1/privacy/training-consent/revoke", lastPath)
     }
 
     @Test
     fun `status parses granted view`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"granted":true,"state":"GRANTED","terms_version":"training-terms-v1","terms_digest":"digest-v1","revision":1,"decided_at":"2026-10-11T00:00:00Z"}""",
-            ),
-        )
-        val status = client().consentStatus()
+        enqueue(200, """{"granted":true,"state":"GRANTED","terms_version":"training-terms-v1","terms_digest":"digest-v1","revision":1,"decided_at":"2026-10-11T00:00:00Z"}""")
+        val status = client().consentStatus(scope)
         assertTrue(status.granted)
         assertEquals("GRANTED", status.state)
         assertEquals("digest-v1", status.termsDigest)
-        assertEquals(1, status.revision)
+        assertEquals(1L, status.revision)
         assertFalse(status.needsRegrant)
     }
 
     @Test
     fun `status parses default off`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody("""{"granted":false}"""),
-        )
-        val status = client().consentStatus()
+        enqueue(200, """{"granted":false}""")
+        val status = client().consentStatus(scope)
         assertFalse(status.granted)
         assertNull(status.state)
-        assertEquals(0, status.revision)
+        assertEquals(0L, status.revision)
     }
 
     @Test
@@ -115,10 +110,10 @@ class TrainingConsentHttpClientTest {
         )
         for ((request, kind) in cases) {
             val (code, body) = request
-            server.enqueue(MockResponse().setResponseCode(code).setBody(body))
+            enqueue(code, body)
             try {
                 kotlinx.coroutines.test.runTest {
-                    client().grantConsent("training-terms-v1", "digest-v1", 1)
+                    client().grantConsent(scope, "training-terms-v1", "digest-v1", 1, "decision")
                 }
                 fail("HTTP $code accepted")
             } catch (error: TrainingConsentException) {
@@ -129,23 +124,23 @@ class TrainingConsentHttpClientTest {
 
     @Test
     fun `unknown statuses and empty bodies never claim consent`() = runTest {
-        server.enqueue(MockResponse().setResponseCode(500).setBody("boom"))
+        enqueue(500, "boom")
         try {
-            client().consentStatus()
+            client().consentStatus(scope)
             fail("HTTP 500 accepted")
         } catch (error: TrainingConsentException) {
             assertEquals(TrainingConsentRejectKind.TRANSPORT, error.kind)
         }
-        server.enqueue(MockResponse().setResponseCode(200).setBody(""))
+        enqueue(200, "")
         try {
-            client().consentStatus()
+            client().consentStatus(scope)
             fail("empty body accepted")
         } catch (error: TrainingConsentException) {
             assertEquals(TrainingConsentRejectKind.TRANSPORT, error.kind)
         }
-        server.enqueue(MockResponse().setResponseCode(200).setBody("not json"))
+        enqueue(200, "not json")
         try {
-            client().revokeConsent(1)
+            client().revokeConsent(scope, 1, "decision")
             fail("malformed body accepted")
         } catch (error: TrainingConsentException) {
             assertEquals(TrainingConsentRejectKind.TRANSPORT, error.kind)
@@ -155,11 +150,61 @@ class TrainingConsentHttpClientTest {
     @Test
     fun `blank inputs refuse before io`() = runTest {
         try {
-            client().grantConsent("", "digest-v1", 1)
+            client().grantConsent(scope, "", "digest-v1", 1, "decision")
             fail("blank terms accepted")
         } catch (error: IllegalArgumentException) {
             assertTrue(error.message!!.contains("terms_version"))
         }
-        assertEquals(0, server.requestCount)
+        assertEquals(0, calls)
     }
+    @Test fun `foreign origin and anonymous scope refuse before transport`() = runTest {
+        val client = client()
+        for (foreign in listOf(scope.copy(origin="https://other.invalid"), scope.copy(ownerScope="anonymous:key"))) {
+            try { client.consentStatus(foreign); fail<Unit>("foreign accepted") }
+            catch (e: TrainingConsentException) { assertEquals(TrainingConsentRejectKind.AUTH_REQUIRED,e.kind) }
+        }
+        coVerify(exactly=0) { proof.get(any(),any()) }
+    }
+
+    @Test fun `invalid state revision and acknowledgement refuse closed`() = runTest {
+        for (body in listOf("{\"granted\":\"true\"}", "{\"granted\":true}",
+            "{\"granted\":false,\"revision\":1.5}", "{\"granted\":false,\"state\":\"OTHER\"}")) {
+            enqueue(200,body)
+            try { client().consentStatus(scope); fail<Unit>("invalid accepted") }
+            catch(e:TrainingConsentException) { assertEquals(TrainingConsentRejectKind.TRANSPORT,e.kind) }
+        }
+        enqueue(200,"{\"state\":\"REVOKED\",\"revision\":2,\"replayed\":false}")
+        try { client().revokeConsent(scope,1,"decision"); fail<Unit>("mismatched receipt") }
+        catch(e:TrainingConsentException) { assertEquals(TrainingConsentRejectKind.TRANSPORT,e.kind) }
+    }
+
+    @Test fun `rate limits preserve retry hint and cancellation propagates`() = runTest {
+        val client=client()
+        coEvery { proof.get(any(),any()) } throws ContributionRateLimited(7200)
+        try { client.consentStatus(scope); fail<Unit>("rate limited accepted") }
+        catch(e:TrainingConsentException) { assertEquals(7200L,e.retryAfterSeconds) }
+        coEvery { proof.get(any(),any()) } throws kotlinx.coroutines.CancellationException()
+        try { client.consentStatus(scope); fail<Unit>("cancel swallowed") }
+        catch(_:kotlinx.coroutines.CancellationException) { }
+    }
+
+    @Test fun `storage unavailable keeps OFF retryable with server deadline`() = runTest {
+        val client = client()
+        coEvery { proof.post(any(), any(), any(), scope.ownerScope) } throws PhotoOperationRefused(503, "privacy.unavailable", 5)
+        try { client.revokeConsent(scope, 1, "same-off"); fail<Unit>("unavailable accepted") }
+        catch (e: TrainingConsentException) {
+            assertEquals(TrainingConsentRejectKind.TRANSPORT, e.kind)
+            assertEquals(5L, e.retryAfterSeconds)
+        }
+    }
+
+    @Test fun `first OFF receipt has no fictitious terms review`() = runTest {
+        enqueue(200, """{"state":"REVOKED","revision":1,"terms_version":"","replayed":false,"delete_owned_training_assets":true}""")
+        val receipt = client().revokeConsent(scope, 1, "first-off")
+        assertEquals("REVOKED", receipt.state)
+        assertEquals("", receipt.termsVersion)
+        assertEquals(1L, receipt.revision)
+        assertEquals("{\"revision\":1}", lastBody)
+    }
+
 }

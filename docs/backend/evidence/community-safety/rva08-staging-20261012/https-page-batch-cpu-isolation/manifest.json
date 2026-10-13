@@ -1,0 +1,110 @@
+{
+  "format": "abastevo-https-pilot-v2",
+  "wall_end": "2026-10-12T23:05:05.642734+00:00",
+  "origin": "https://teste.abastevo.com.br",
+  "layer": "client HTTPS including TLS/edge/network",
+  "cache": "client asks no-cache; edge behavior unchanged",
+  "transport": "Python http.client, one reusable verified TLS/HTTP1.1 connection per worker; max8; no automatic retry",
+  "guard_sha256": "ae1066cbd9d0842b6f7e68942dc72cf50ca6e9ae194dcd6eac7d1211eb532633",
+  "driver_sha256": "46fd4ac1917a5b0494796205fb1aa0e89ef2e9c75b1461aef768317f422ee089",
+  "parameters": {
+    "routes": "routes.json",
+    "out": "https-page-batch-cpu-isolation",
+    "dataset_manifest": null,
+    "rate": 5.0,
+    "clients": 8,
+    "seconds": 120,
+    "warmup": 10,
+    "trials": 1,
+    "p95_ms": 500.0
+  },
+  "routes": [
+    {
+      "name": "city-directory",
+      "path": "/v1/stations?state=MT&municipality_code=5107925&limit=20",
+      "required": "items"
+    },
+    {
+      "name": "national-page",
+      "path": "/v1/stations?limit=20",
+      "required": "items"
+    }
+  ],
+  "hashes": {
+    "trial-1-warmup.csv": "105b8b470d7b007411d589424ed0aced4c336b0f9fadfbbebdbccbc067d774bc",
+    "trial-1-steady.csv": "5a58cbdd0a019d31a07bbb03ecc3ff63be037b22f1b6fb0b1def6d99abe77415",
+    "guard.jsonl": "80597a2de4885349c8a71fe1b6502f4ce95bd835f98c3dec411f9a1fee0e59e2"
+  },
+  "summaries": [
+    {
+      "trial": 1,
+      "phase": "warmup",
+      "requested_seconds": 10,
+      "observation_seconds": 10.122093779966235,
+      "offered": 50,
+      "completed": 50,
+      "success": 50,
+      "errors": 0,
+      "drops": 0,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.939689464146299,
+      "routes": {
+        "city-directory": {
+          "n": 25,
+          "p50_ms": 36.528537049889565,
+          "p95_ms": 155.58800660073757,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 25,
+          "p50_ms": 64.71981666982174,
+          "p95_ms": 298.47525991499424,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": false,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": true
+    },
+    {
+      "trial": 1,
+      "phase": "steady",
+      "requested_seconds": 120,
+      "observation_seconds": 120.07467345148325,
+      "offered": 600,
+      "completed": 600,
+      "success": 600,
+      "errors": 0,
+      "drops": 0,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.99689054113841,
+      "routes": {
+        "city-directory": {
+          "n": 300,
+          "p50_ms": 27.065400034189224,
+          "p95_ms": 74.05043765902519,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 300,
+          "p50_ms": 61.20560131967068,
+          "p95_ms": 164.55112397670746,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": true,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": true
+    }
+  ],
+  "dataset": null,
+  "stopped": false,
+  "reasons": [],
+  "qualification": "bounded real HTTPS campaign; dataset coverage and 24/48h stability require independent evidence"
+}

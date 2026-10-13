@@ -289,3 +289,30 @@ WHERE m.run_id= @run_id AND a.source='station-prep' AND a.municipality_code IS N
  AND NOT EXISTS (SELECT 1 FROM registry_assertions previous JOIN registry_source_runs r ON r.id=previous.run_id
  WHERE previous.source='station-prep' AND previous.source_key=a.source_key AND previous.station_id=s.id
  AND previous.display_name=s.display_name AND previous.address=s.address AND r.state='complete' AND r.prepared_manifest_sha256 IS NOT NULL);
+
+-- Resolve references only for the bounded search page; do not walk the catalog.
+-- Keep the same active identifier and complete official-source predicates as
+-- StationCNPJ/FindOfficialAssertion. No prepared/community trust is promoted.
+-- name: SearchPageReferences :many
+SELECT p.station_id::uuid AS station_id, COALESCE(i.normalized_value, '')::text AS cnpj,
+    COALESCE(a.source, '')::text AS official_source,
+    COALESCE(a.display_name, '')::text AS official_display_name,
+    a.municipality_code AS official_municipality, a.state AS official_state,
+    a.run_finished_at AS official_finished_at
+FROM unnest(@station_ids::uuid[]) AS p(station_id)
+LEFT JOIN LATERAL (
+    SELECT normalized_value FROM directory_identifiers
+    WHERE station_id = p.station_id AND kind = 'CNPJ' AND valid_to IS NULL
+    LIMIT 1
+) AS i ON TRUE
+LEFT JOIN LATERAL (
+    SELECT a.source, a.display_name, a.municipality_code, a.state,
+        r.finished_at AS run_finished_at
+    FROM registry_assertions AS a
+    JOIN registry_source_runs AS r ON r.id = a.run_id
+    WHERE a.source_key = i.normalized_value
+        AND a.source IN ('registry-csv', 'registry-api')
+        AND r.state = 'complete'
+    ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
+    LIMIT 1
+) AS a ON TRUE;

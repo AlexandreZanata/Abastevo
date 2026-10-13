@@ -95,4 +95,11 @@ class DispatchContributionUseCaseTest {
         assertEquals(DispatchOutcome.DONE, dispatcher.invoke("row"))
         assertEquals(listOf("nonce-1", "nonce-2"), nonces)
     }
+    @Test fun `unbounded server seconds saturate without negative delay`() = runTest {
+        ready()
+        coEvery { gateway.submit(any(), any(), any(), any()) } throws ContributionRateLimited(Long.MAX_VALUE)
+        assertEquals(DispatchOutcome.RETRY,dispatcher().invoke("row"))
+        coVerify {outbox.failDispatch("row",1,"lease",1000,Long.MAX_VALUE)}
+    }
+
 }

@@ -42,6 +42,20 @@ class AuthAccountContinuityDeviceTest {
         val keyAlias = "$scope-key"
         val api = SyntheticAccountApi()
         val holder = ViewModelStore()
+        val database=androidx.room.Room.inMemoryDatabaseBuilder(context,com.anpfuel.data.local.AnpFuelDatabase::class.java).build()
+        val erasure=com.anpfuel.data.repository.OwnerLocalErasure(
+            com.anpfuel.data.repository.RoomContributionOutboxRepository(database.contributionOutboxDao()),
+            database.photoUploadSessionDao(),
+            object:PhotoCache {
+                override fun put(id:String,bytes:ByteArray,capturedAtMillis:Long)=error("unexpected photo")
+                override fun get(id:String):ByteArray?=null
+                override fun delete(id:String)=Unit
+                override fun sweepExpired(nowMillis:Long)=0
+            },
+            com.anpfuel.application.port.ContributionScopeProvider {
+                com.anpfuel.domain.model.ContributionScope("account:account-test:synthetic-key","https://test.invalid")
+            },
+        )
         fun restoredFlow() = AuthFlow(AuthPorts(
             KeystoreSessionStore(prefs, AndroidKeystoreKeys(), sessionAlias),
             KeystoreAccountKey(prefs, AndroidKeystoreKeys(), keyAlias),
@@ -52,7 +66,7 @@ class AuthAccountContinuityDeviceTest {
         var navigated = false
         try {
             compose.setContent {
-                model = remember { AuthViewModel(flow).also { holder.put("auth", it) } }
+                model = remember { AuthViewModel(flow,erasure).also { holder.put("auth", it) } }
                 AnpFuelTheme(dynamicColor = false) {
                     AuthRoute(onNavigateBack = { navigated = true }, viewModel = model)
                 }
@@ -77,6 +91,7 @@ class AuthAccountContinuityDeviceTest {
             assertEquals(AuthFlow.AuthState.LoggedOut, restoredFlow().rehydrate())
         } finally {
             compose.runOnUiThread { holder.clear() }
+            database.close()
             prefs.edit().clear().commit()
             KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.also {
                 it.deleteEntry(keyAlias)

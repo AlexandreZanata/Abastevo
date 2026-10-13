@@ -185,6 +185,7 @@ sql:
       - db/migrations/000065_privacy_training_output.sql
       - db/migrations/000066_privacy_training_cleanup.sql
       - db/migrations/000067_privacy_training_erasure_cursor.sql
+      - db/migrations/000074_privacy_first_off.sql
     gen:
       go:
         package: privacy

@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">未记录（%1$s）</string>
 
     <!-- 社区隐私（P10-T08：离开设备的内容） -->
-    <string name="community_privacy_footnote">匿名：无需帐户。发送站点、价格和条件 — 仅当您附加照片时，照片会保留 24 小时。</string>
+    <string name="community_privacy_footnote">提交内容包括站点、价格和条件。附加照片用于核验。请在设置中查看隐私信息。</string>
     <string name="community_privacy_keys">您的设备持有唯一密钥。丢失密钥将终止此匿名身份。</string>
 
     <!-- 社区采集（P10-T08 i18n） -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">社区</string>
     <string name="community_header_subtitle">本地加油站动态与共识验证</string>
     <string name="community_empty_title">暂无近期更新</string>
-    <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。照片仅作临时审核证据，最多保留24小时。</string>
+    <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。附加照片仅临时用于核验。请在设置中查看隐私信息。</string>
     <string name="community_action_contribute">分享价格</string>
     <string name="community_rules_title">社区验证规则</string>
     <string name="community_rules_body">价格由贡献者共识验证。带日期的ANP数据不会与社区实时报告混合。</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">举报与申诉</string>
     <string name="help_report_body">活跃账户可举报违规。举报不会自动删除内容；获授权的审核员逐案处理。新的申诉理由将开启新的审核案件。</string>
     <string name="help_privacy_title">隐私</string>
-    <string name="help_privacy_body">匿名浏览无需账户，坐标不会被保存。审核照片最多保留24小时。</string>
+    <string name="help_privacy_body">匿名浏览无需账户。精确GPS位置不会公开。请在设置中查看照片用途和您的权利。</string>
     <string name="profile_tool_week_picker_title">调查周</string>
     <string name="profile_tool_week_picker_subtitle">选择存档的ANP每周调查</string>
     <string name="profile_privacy_section">隐私与参与</string>
-    <string name="profile_privacy_body">精确GPS位置不会公开。所有验证照片副本会在24小时内过期。付费功能不影响排名或信任。</string>
+    <string name="profile_privacy_body">精确GPS位置不会公开。照片仅临时用于核验。请在设置中查看隐私信息。付费功能不影响排名或信任。</string>
     <string name="onboarding_title_contribute">诚信贡献</string>
     <string name="onboarding_body_contribute">从安全的公共场所拍摄价格牌，保持金额清晰并选择准确条件。不得捏造价格或人物。</string>
     <string name="station_detail_anp_title">ANP参考价格</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">代表资格与管理</string>
     <string name="station_claim_title">加油站代表资格</string>
     <string name="station_claim_explanation">免费账户可申请限定范围的代表资格。独立审核将验证签名及企业授权。发送文件不会授予访问权限。</string>
-    <string name="station_claim_privacy">切勿发送私钥、密码或PFX/P12文件。仅接受已签名PDF，最大5 MiB。包含扫描图像的文件最多保留24小时。</string>
+    <string name="station_claim_privacy">切勿发送私钥、密码或PFX/P12文件。仅接受签名PDF，最大5 MiB。提交前请阅读隐私条件。</string>
     <string name="station_claim_role">申请的角色</string>
     <string name="station_claim_manager">经理</string>
     <string name="station_claim_administrator">管理员</string>
@@ -746,4 +746,25 @@
     <string name="training_consent_offline">没有连接，请联网后重试。</string>
     <string name="training_photo_opt_in">允许此照片用于训练审核</string>
     <string name="training_photo_opt_in_locked">请先在隐私设置中同意用于训练</string>
+
+    <string name="privacy_training_heading">隐私 · 改善价格识别</string>
+    <string name="privacy_training_unavailable">训练图片收集已停用。此选择仅记录偏好；启用收集需要新的条款和重新同意。</string>
+    <string name="privacy_training_optional">可选。免费账户、价格查询和社区参与不取决于此选择。</string>
+    <string name="privacy_terms_language">完整文件为巴西葡萄牙语。可离线阅读。</string>
+    <string name="privacy_read_terms">阅读完整条款</string>
+    <string name="privacy_terms_unavailable">无法加载文件。不能授权；仍可撤回或行使您的权利。</string>
+    <string name="privacy_sign_in">登录以管理可选偏好</string>
+    <string name="privacy_revocation_pending">已在此设备停用。撤回请求等待服务器接收。</string>
+    <string name="privacy_offline">离线。未发送新的授权。您可在此停用偏好。</string>
+    <string name="privacy_request_failed">服务未确认决定。请稍后重试；不会假定成功。</string>
+    <string name="privacy_preference_received">偏好授权已获服务器确认。收集仍停用。</string>
+    <string name="privacy_preference_off">此视图中没有已确认的授权。</string>
+    <string name="privacy_consent_check">我已阅读完整条款，自愿授权记录所述目的的可选偏好。</string>
+    <string name="privacy_confirm_preference">确认并发送偏好</string>
+    <string name="privacy_revoke_delete">停用并请求删除训练图片</string>
+    <string name="privacy_deletion_receipt_note">收到请求将启动删除；这不表示所有副本已被物理删除。</string>
+    <string name="privacy_digest">文件 SHA-256：%1$s</string>
+    <string name="privacy_finish_reading">已完成阅读 · 返回选择</string>
+    <string name="privacy_rights_heading">您的隐私权利</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

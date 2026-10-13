@@ -30,7 +30,7 @@
     <string name="community_screen_title">Comunidade</string>
     <string name="community_header_subtitle">Atividade local recente e verificação por consenso</string>
     <string name="community_empty_title">Nenhuma atualização recente</string>
-    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos anexadas são evidências temporárias de verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_action_contribute">Colaborar com preço</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
@@ -88,11 +88,11 @@
     <string name="help_report_title">Denúncia e recurso</string>
     <string name="help_report_body">Qualquer conta ativa pode denunciar abuso. Denúncias nunca apagam conteúdo sozinhas; moderadores restritos revisam cada caso. Discorda? Denuncie de novo com o novo motivo — recursos viram um novo caso revisado.</string>
     <string name="help_privacy_title">Privacidade</string>
-    <string name="help_privacy_body">A navegação anônima não precisa de conta e coordenadas não são guardadas. Fotos são evidências temporárias de auditoria mantidas por até 24 horas.</string>
+    <string name="help_privacy_body">A navegação anônima não precisa de conta. GPS preciso não é publicado. Consulte o uso das fotos e seus direitos nas Configurações.</string>
     <string name="profile_tool_week_picker_title">Semana de pesquisa</string>
     <string name="profile_tool_week_picker_subtitle">Selecione semanas anteriores arquivadas da ANP</string>
     <string name="profile_privacy_section">Privacidade e participação</string>
-    <string name="profile_privacy_body">Nenhum GPS exato é compartilhado publicamente. Fotos de verificação expiram em todas as cópias em 24 horas. Recursos pagos nunca afetam ranking ou confiança.</string>
+    <string name="profile_privacy_body">GPS preciso não é publicado. Fotos são evidências temporárias de verificação. Consulte a privacidade nas Configurações. Recursos pagos nunca afetam ranking ou confiança.</string>
 
     <!-- Home (UC-005) -->
     <string name="home_title">ANP</string>
@@ -493,7 +493,7 @@
     <string name="community_vote_rejected">Não registrada (%1$s)</string>
 
     <!-- Privacidade da comunidade (P10-T08: o que sai do aparelho) -->
-    <string name="community_privacy_footnote">Anônimo: sem conta. Envia posto, preço e condição — e sua foto por 24h só quando você anexa uma.</string>
+    <string name="community_privacy_footnote">O envio inclui posto, preço e condições. A foto anexada é usada para verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_privacy_keys">Seu aparelho guarda a única chave. Perdê-la encerra esta identidade anônima.</string>
 
     <!-- Captura da comunidade (P10-T08 i18n: extraído do CaptureScreen) -->
@@ -550,7 +550,7 @@
     <string name="station_profile_claim">Representação e gestão</string>
     <string name="station_claim_title">Representação do posto</string>
     <string name="station_claim_explanation">Uma conta gratuita pode solicitar representação com escopo definido. A análise independente verifica a assinatura e os poderes empresariais. Enviar um documento não concede acesso.</string>
-    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Arquivos com digitalizações seguem o limite de retenção de 24 horas.</string>
+    <string name="station_claim_privacy">Nunca envie chaves privadas, senhas ou arquivos PFX/P12. Apenas PDF assinado, até 5 MiB. Consulte as condições de privacidade antes do envio.</string>
     <string name="station_claim_role">Função solicitada</string>
     <string name="station_claim_manager">Gestor</string>
     <string name="station_claim_administrator">Administrador</string>
@@ -762,4 +762,25 @@
     <string name="training_consent_offline">Sem conexão — tente novamente quando estiver online.</string>
     <string name="training_photo_opt_in">Autorizar esta foto para análise de treinamento</string>
     <string name="training_photo_opt_in_locked">É preciso autorizar o treinamento primeiro nas configurações de privacidade</string>
+
+    <string name="privacy_training_heading">Privacidade · Melhorar o reconhecimento de preços</string>
+    <string name="privacy_training_unavailable">A coleta de imagens para treinamento está desativada. Esta escolha registra uma preferência; ativar a coleta exigirá novos termos e nova autorização.</string>
+    <string name="privacy_training_optional">Opcional. Sua conta gratuita, as consultas de preços e a participação na comunidade não dependem desta escolha.</string>
+    <string name="privacy_terms_language">Documento integral em português do Brasil. Disponível offline.</string>
+    <string name="privacy_read_terms">Ler os termos na íntegra</string>
+    <string name="privacy_terms_unavailable">Não foi possível carregar o documento. A autorização está indisponível; você ainda pode revogar ou exercer seus direitos.</string>
+    <string name="privacy_sign_in">Entrar para gerenciar sua preferência opcional</string>
+    <string name="privacy_revocation_pending">Desativado neste aparelho. A revogação está pendente de recebimento pelo servidor.</string>
+    <string name="privacy_offline">Sem conexão. Nenhuma nova autorização foi enviada. Você pode desativar a preferência aqui.</string>
+    <string name="privacy_request_failed">O serviço não confirmou a decisão. Tente depois; não se presume sucesso.</string>
+    <string name="privacy_preference_received">Preferência autorizada e confirmada pelo servidor. A coleta continua desativada.</string>
+    <string name="privacy_preference_off">Nenhuma autorização confirmada nesta consulta.</string>
+    <string name="privacy_consent_check">Li os termos integrais e autorizo livremente o registro da minha preferência opcional para a finalidade descrita.</string>
+    <string name="privacy_confirm_preference">Confirmar e enviar preferência</string>
+    <string name="privacy_revoke_delete">Desativar e solicitar exclusão das imagens de treinamento</string>
+    <string name="privacy_deletion_receipt_note">O recebimento da solicitação inicia a exclusão; não confirma a exclusão física de todas as cópias.</string>
+    <string name="privacy_digest">SHA-256 do documento: %1$s</string>
+    <string name="privacy_finish_reading">Concluí a leitura · voltar à escolha</string>
+    <string name="privacy_rights_heading">Seus direitos de privacidade</string>
+    <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
 </resources>

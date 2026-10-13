@@ -1,213 +1,96 @@
 package com.anpfuel.data.remote
 
+import com.anpfuel.domain.model.ContributionScope
+import com.anpfuel.domain.repository.ContributionRateLimited
 import com.anpfuel.domain.repository.TrainingConsentException
 import com.anpfuel.domain.repository.TrainingConsentGateway
 import com.anpfuel.domain.repository.TrainingConsentReceipt
 import com.anpfuel.domain.repository.TrainingConsentRejectKind
 import com.anpfuel.domain.repository.TrainingConsentStatus
-import java.io.IOException
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 
-/**
- * CS11A bounded training-consent HTTP client (B-BR-CS06).
- *
- * Network-only: `POST /v1/privacy/training-consent/grant`,
- * `POST /v1/privacy/training-consent/revoke` and
- * `GET /v1/privacy/training-consent` with the per-device monotonic
- * revision the server orders. Receipts and the owner status parse
- * exactly; absent consent (`{"granted":false}`) parses with nulls
- * and revision zero. Transport failures, empty bodies and unmapped
- * statuses throw [TrainingConsentException] with
- * [TrainingConsentRejectKind.TRANSPORT] so the UI never claims
- * consent it does not hold. Identical retries converge server-side
- * (`replayed = true`); this client never retries by itself.
- * HTTPS only; the preview base URL never resolves until deployment
- * configuration lands.
- */
-class TrainingConsentHttpClient(
-    private val client: OkHttpClient,
-    private val baseUrl: String,
-) : TrainingConsentGateway {
-
-    override suspend fun grantConsent(
-        termsVersion: String,
-        termsDigest: String,
-        revision: Long,
-    ): TrainingConsentReceipt {
+/** One shared signed attempt: stable decision/body, fresh nonce, exact owner/origin. */
+class TrainingConsentHttpClient(private val proof: PhotoProofTransport) : TrainingConsentGateway {
+    override suspend fun grantConsent(scope: ContributionScope, termsVersion: String, termsDigest: String, revision: Long, commandId: String): TrainingConsentReceipt {
         require(termsVersion.isNotBlank()) { "terms_version is blank" }
-        require(termsDigest.isNotBlank()) { "terms_digest is blank" }
-        require(revision >= 1) { "revision must be positive" }
-        val payload = JSONObject()
-            .put("terms_version", termsVersion)
-            .put("terms_digest", termsDigest)
-            .put("revision", revision)
-            .toString()
-        val raw = post("/v1/privacy/training-consent/grant", payload)
-        val body = parseObject(raw)
-        return TrainingConsentReceipt(
-            state = body.getString("state"),
-            revision = body.getLong("revision"),
-            termsVersion = body.optString("terms_version", termsVersion),
-            replayed = body.optBoolean("replayed", false),
-        )
-    }
-
-    override suspend fun revokeConsent(
-        revision: Long,
-    ): TrainingConsentReceipt {
-        require(revision >= 1) { "revision must be positive" }
-        val payload = JSONObject()
-            .put("revision", revision)
-            .toString()
-        val raw = post("/v1/privacy/training-consent/revoke", payload)
-        val body = parseObject(raw)
-        return TrainingConsentReceipt(
-            state = body.getString("state"),
-            revision = body.getLong("revision"),
-            termsVersion = body.optString("terms_version", ""),
-            replayed = body.optBoolean("replayed", false),
-            deleteOwnedTrainingAssets = body.optBoolean("delete_owned_training_assets", false),
-        )
-    }
-
-    override suspend fun consentStatus(): TrainingConsentStatus {
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/v1/privacy/training-consent")
-            .get()
-            .header("Accept", "application/json")
-            .build()
-        try {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw mapConsentError(response.code, body)
-                }
-                if (body.isBlank()) {
-                    throw TrainingConsentException(
-                        TrainingConsentRejectKind.TRANSPORT,
-                        "consent request failed: empty body",
-                    )
-                }
-                return parseStatus(body)
-            }
-        } catch (consentError: TrainingConsentException) {
-            throw consentError
-        } catch (error: IOException) {
-            throw TrainingConsentException(
-                TrainingConsentRejectKind.TRANSPORT,
-                "consent request failed: transport",
-            )
-        } catch (error: Exception) {
-            throw TrainingConsentException(
-                TrainingConsentRejectKind.TRANSPORT,
-                "consent request failed: transport",
-            )
+        require(termsDigest.isNotBlank() && termsVersion.length <= 128 && termsDigest.length <= 128)
+        require(revision > 0)
+        return call(scope) {
+            receipt(proof.post("/v1/privacy/training-consent/grant", commandId,
+                JSONObject().put("terms_version", termsVersion).put("terms_digest", termsDigest).put("revision", revision),
+                scope.ownerScope), "GRANTED", revision)
         }
     }
 
-    private fun parseStatus(raw: String): TrainingConsentStatus {
-        val body = parseObject(raw)
-        return TrainingConsentStatus(
-            granted = body.optBoolean("granted", false),
-            state = body.optString("state", "").takeIf { it.isNotBlank() },
-            termsVersion = body.optString("terms_version", "").takeIf { it.isNotBlank() },
-            termsDigest = body.optString("terms_digest", "").takeIf { it.isNotBlank() },
-            revision = body.optLong("revision", 0),
-            needsRegrant = body.optBoolean("needs_regrant", false),
-        )
+    override suspend fun revokeConsent(scope: ContributionScope, revision: Long, commandId: String): TrainingConsentReceipt {
+        require(revision > 0)
+        return call(scope) {
+            receipt(proof.post("/v1/privacy/training-consent/revoke", commandId,
+                JSONObject().put("revision", revision), scope.ownerScope), "REVOKED", revision)
+        }
     }
 
-    private fun parseObject(raw: String): JSONObject {
+    override suspend fun consentStatus(scope: ContributionScope): TrainingConsentStatus = call(scope) {
+        val body = proof.get("/v1/privacy/training-consent", scope.ownerScope)
+        val granted = body.get("granted") as? Boolean ?: invalid()
+        val state = string(body,"state")
+        val revision = if (body.has("revision")) number(body, "revision") else 0
+        val version = string(body,"terms_version")
+        val digest = string(body,"terms_digest")
+        if (revision < 0 || (state != null && state !in setOf("GRANTED", "REVOKED")) ||
+            (granted && (state != "GRANTED" || revision < 1 || version == null || digest == null))) invalid()
+        TrainingConsentStatus(granted, state, version, digest, revision, boolean(body,"needs_regrant"))
+    }
+
+    private fun receipt(body: JSONObject, expected: String, revision: Long): TrainingConsentReceipt {
+        if (body.getString("state") != expected || number(body, "revision") != revision) invalid()
+        return TrainingConsentReceipt(expected, revision, body.optString("terms_version", ""),
+            body.get("replayed") as? Boolean ?: invalid(), boolean(body,"delete_owned_training_assets"))
+    }
+
+    private fun string(body:JSONObject,name:String):String? {
+        if(!body.has(name)) return null
+        val value=body.get(name) as? String ?: invalid()
+        if(value.length>128) invalid()
+        return value.takeIf {it.isNotBlank()}
+    }
+
+    private fun boolean(body:JSONObject,name:String):Boolean =
+        if(body.has(name)) body.get(name) as? Boolean ?: invalid() else false
+
+    private fun number(body: JSONObject, name: String): Long {
+        val value = body.get(name)
+        if (value !is Int && value !is Long) invalid()
+        return (value as Number).toLong()
+    }
+
+    private suspend fun <T> call(scope: ContributionScope, run: suspend () -> T): T {
+        if (scope.origin != proof.origin || !scope.ownerScope.startsWith("account:")) {
+            throw TrainingConsentException(TrainingConsentRejectKind.AUTH_REQUIRED, "privacy owner unavailable")
+        }
         return try {
-            JSONObject(raw)
-        } catch (_: Exception) {
-            throw TrainingConsentException(
-                TrainingConsentRejectKind.TRANSPORT,
-                "consent request failed: malformed body",
-            )
-        }
-    }
-
-    private fun post(path: String, json: String): String {
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + path)
-            .post(json.toRequestBody(JSON_MEDIA))
-            .header("Accept", "application/json")
-            .build()
-        try {
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw mapConsentError(response.code, body)
-                }
-                if (body.isBlank()) {
-                    throw TrainingConsentException(
-                        TrainingConsentRejectKind.TRANSPORT,
-                        "consent request failed: empty body",
-                    )
-                }
-                return body
+            run()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: TrainingConsentException) {
+            throw error
+        } catch (error: ContributionRateLimited) {
+            throw TrainingConsentException(TrainingConsentRejectKind.TRANSPORT, "privacy request limited", error.retryAfterSeconds)
+        } catch (error: PhotoOperationRefused) {
+            val kind = when {
+                error.status == 401 || error.status == 403 -> TrainingConsentRejectKind.AUTH_REQUIRED
+                error.code == "privacy.terms-outdated" -> TrainingConsentRejectKind.TERMS_OUTDATED
+                error.code == "privacy.stale-revision" -> TrainingConsentRejectKind.STALE_REVISION
+                error.status == 409 -> TrainingConsentRejectKind.CONFLICT
+                error.status == 400 -> TrainingConsentRejectKind.INVALID
+                else -> TrainingConsentRejectKind.TRANSPORT
             }
-        } catch (consentError: TrainingConsentException) {
-            throw consentError
-        } catch (error: IOException) {
-            throw TrainingConsentException(
-                TrainingConsentRejectKind.TRANSPORT,
-                "consent request failed: transport",
-            )
-        } catch (error: Exception) {
-            throw TrainingConsentException(
-                TrainingConsentRejectKind.TRANSPORT,
-                "consent request failed: transport",
-            )
+            throw TrainingConsentException(kind, "privacy request refused",error.retryAfterSeconds)
+        } catch (_: Exception) {
+            invalid()
         }
     }
 
-    private fun mapConsentError(code: Int, body: String): TrainingConsentException {
-        // Fixed messages only: the raw body (which may echo metadata)
-        // never enters error text.
-        return when {
-            code == 401 || body.contains(CODE_AUTH) ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.AUTH_REQUIRED,
-                    "authentication required",
-                )
-            code == 400 && body.contains(CODE_TERMS) ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.TERMS_OUTDATED,
-                    "terms superseded; review the current terms",
-                )
-            code == 409 && body.contains(CODE_STALE) ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.STALE_REVISION,
-                    "decision superseded; reload the current state",
-                )
-            code == 409 ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.CONFLICT,
-                    "same revision, different decision",
-                )
-            code == 400 ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.INVALID,
-                    "invalid consent request",
-                )
-            else ->
-                TrainingConsentException(
-                    TrainingConsentRejectKind.TRANSPORT,
-                    "consent request failed: HTTP $code",
-                )
-        }
-    }
-
-    companion object {
-        private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-        private const val CODE_AUTH = "privacy.auth-required"
-        private const val CODE_TERMS = "privacy.terms-outdated"
-        private const val CODE_STALE = "privacy.stale-revision"
-    }
+    private fun invalid(): Nothing = throw TrainingConsentException(TrainingConsentRejectKind.TRANSPORT, "invalid privacy response")
 }

@@ -74,7 +74,7 @@ import com.anpfuel.app.ui.components.SkeletonLine
  *   - Surveyed stations -> Routes.STATIONS
  *   - Survey week picker -> Routes.WEEK_PICKER
  *   - App settings & offline cache -> Routes.SETTINGS
- * - Rights & privacy guarantees (no public precise GPS, 24h photo expiry, no paid ranking)
+ * - Rights & privacy information (no public precise GPS, temporary evidence, no paid ranking)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

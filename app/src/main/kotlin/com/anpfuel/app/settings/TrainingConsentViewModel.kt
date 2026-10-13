@@ -65,17 +65,19 @@ class TrainingConsentViewModel @Inject constructor(
 
     private var caller: TrainingConsentCaller? = null
     private var updating = false
+    private var revoking = false
     private var generation = 0L
 
-    fun prepare(accountId: String) {
+    fun prepare(accountId: String, scope: com.anpfuel.domain.model.ContributionScope? = null) {
         generation += 1
         updating = false
+        revoking = false
         caller = null
         if (accountId.isBlank()) {
             _state.value = TrainingConsentUiState.Guest
             return
         }
-        caller = TrainingConsentCaller(accountId)
+        caller = TrainingConsentCaller(accountId, scope)
         _state.value = TrainingConsentUiState.Loading
         refresh()
     }
@@ -114,10 +116,10 @@ class TrainingConsentViewModel @Inject constructor(
 
     fun setEnabled(enabled: Boolean, termsVersion: String, termsDigest: String) {
         val current = caller ?: return
-        if (_state.value is TrainingConsentUiState.Updating) return
-        if (updating) return
+        if (updating && (enabled || revoking)) return
         val request = ++generation
         updating = true
+        revoking = !enabled
         _state.value = TrainingConsentUiState.Updating
         viewModelScope.launch {
             try {
@@ -142,7 +144,7 @@ class TrainingConsentViewModel @Inject constructor(
                 }
                 if (generation == request) _state.value = next
             } finally {
-                if (generation == request) updating = false
+                if (generation == request) { updating = false; revoking = false }
             }
         }
     }

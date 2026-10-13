@@ -1,0 +1,23 @@
+{
+  "samples": 1476,
+  "overall": {
+    "steal_percent": 16.752313210163056,
+    "seconds": 149.9091574959457,
+    "until_utc": "2026-10-12T23:05:18.976402+00:00"
+  },
+  "peak_sample": {
+    "steal_percent": 83.15789473684211,
+    "seconds": 0.10197209939360619,
+    "until_utc": "2026-10-12T23:04:02.963040+00:00"
+  },
+  "peak_window_at_least_5s": {
+    "steal_percent": 53.96937158950889,
+    "seconds": 5.020041165873408,
+    "until_utc": "2026-10-12T23:05:06.675281+00:00"
+  },
+  "postgres_cpu_seconds": 22.106039,
+  "postgres_throttled_seconds": 0.689837,
+  "postgres_throttled_periods": 34,
+  "capacity_qualified": false,
+  "causal_attribution": "not proven"
+}

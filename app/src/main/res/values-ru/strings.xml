@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">Не записано (%1$s)</string>
 
     <!-- Приватность сообщества (P10-T08: что покидает устройство) -->
-    <string name="community_privacy_footnote">Анонимно: аккаунт не нужен. Отправляются станция, цена и условия — и ваше фото только на 24 ч, если вы его прикрепили.</string>
+    <string name="community_privacy_footnote">Отправляются станция, цена и условия. Прикреплённое фото используется для проверки. Условия конфиденциальности доступны в настройках.</string>
     <string name="community_privacy_keys">Ваше устройство хранит единственный ключ. Его потеря завершает эту анонимную личность.</string>
 
     <!-- Захват сообщества (P10-T08 i18n) -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">Сообщество</string>
     <string name="community_header_subtitle">Активность местных АЗС и проверка консенсусом</string>
     <string name="community_empty_title">Нет недавних обновлений</string>
-    <string name="community_empty_hint">Сообщайте цены, помогая водителям города. Фото — временные доказательства для проверки, хранятся не более 24 часов.</string>
+    <string name="community_empty_hint">Сообщайте цены, помогая водителям города. Прикреплённые фото временно используются для проверки. Условия конфиденциальности доступны в настройках.</string>
     <string name="community_action_contribute">Сообщить цену</string>
     <string name="community_rules_title">Правила проверки сообщества</string>
     <string name="community_rules_body">Цены проверяются консенсусом участников. Датированные данные ANP не смешиваются с текущими сообщениями.</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">Жалобы и апелляции</string>
     <string name="help_report_body">Активный аккаунт может сообщить о нарушении. Жалобы ничего не удаляют; уполномоченные модераторы проверяют каждый случай. Новая причина апелляции открывает новое дело.</string>
     <string name="help_privacy_title">Приватность</string>
-    <string name="help_privacy_body">Анонимный просмотр не требует аккаунта; координаты не сохраняются. Фото проверки хранятся не более 24 часов.</string>
+    <string name="help_privacy_body">Анонимный просмотр не требует аккаунта. Точные GPS-координаты не публикуются. Об использовании фото и ваших правах читайте в настройках.</string>
     <string name="profile_tool_week_picker_title">Неделя обследования</string>
     <string name="profile_tool_week_picker_subtitle">Выберите архивные еженедельные обследования ANP</string>
     <string name="profile_privacy_section">Приватность и участие</string>
-    <string name="profile_privacy_body">Точные GPS-данные не публикуются. Все копии фото проверки удаляются в течение 24 часов. Платные функции не влияют на рейтинг и доверие.</string>
+    <string name="profile_privacy_body">Точные GPS-координаты не публикуются. Фото временно используются для проверки. Условия конфиденциальности доступны в настройках. Платные функции не влияют на рейтинг и доверие.</string>
     <string name="onboarding_title_contribute">Публикуйте честно</string>
     <string name="onboarding_body_contribute">Снимайте табло из безопасных общественных мест, сохраняйте читаемость и выбирайте точное условие. Не выдумывайте цены или людей.</string>
     <string name="station_detail_anp_title">Ориентировочная цена ANP</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">Представительство и управление</string>
     <string name="station_claim_title">Представительство АЗС</string>
     <string name="station_claim_explanation">Бесплатный аккаунт может запросить ограниченное представительство. Независимая проверка подтверждает подпись и корпоративные полномочия. Отправка документа не даёт доступа.</string>
-    <string name="station_claim_privacy">Не отправляйте приватные ключи, пароли, PFX или P12. Только подписанный PDF до 5 MiB. Файлы со сканами хранятся не более 24 часов.</string>
+    <string name="station_claim_privacy">Не отправляйте закрытые ключи, пароли, файлы PFX или P12. Только подписанный PDF до 5 МиБ. Перед отправкой прочитайте условия конфиденциальности.</string>
     <string name="station_claim_role">Запрашиваемая роль</string>
     <string name="station_claim_manager">Управляющий</string>
     <string name="station_claim_administrator">Администратор</string>
@@ -746,4 +746,25 @@
     <string name="training_consent_offline">Нет подключения — повторите попытку, когда будете онлайн.</string>
     <string name="training_photo_opt_in">Разрешить проверку этой фотографии для обучения</string>
     <string name="training_photo_opt_in_locked">Сначала разрешите обучение в настройках конфиденциальности</string>
+
+    <string name="privacy_training_heading">Конфиденциальность · Улучшение распознавания цен</string>
+    <string name="privacy_training_unavailable">Сбор изображений для обучения отключён. Выбор сохраняет предпочтение; включение потребует новых условий и нового согласия.</string>
+    <string name="privacy_training_optional">Необязательно. Бесплатная учётная запись, поиск и участие не зависят от этого выбора.</string>
+    <string name="privacy_terms_language">Полный документ на бразильском португальском. Доступен офлайн.</string>
+    <string name="privacy_read_terms">Прочитать полные условия</string>
+    <string name="privacy_terms_unavailable">Документ не загружен. Согласие недоступно; отзыв и ваши права остаются доступны.</string>
+    <string name="privacy_sign_in">Войти для управления необязательным предпочтением</string>
+    <string name="privacy_revocation_pending">Отключено на этом устройстве. Отзыв ожидает получения сервером.</string>
+    <string name="privacy_offline">Нет подключения. Новое согласие не отправлено. Здесь можно отключить предпочтение.</string>
+    <string name="privacy_request_failed">Сервис не подтвердил решение. Повторите позже; успех не предполагается.</string>
+    <string name="privacy_preference_received">Предпочтение подтверждено сервером. Сбор остаётся отключённым.</string>
+    <string name="privacy_preference_off">В этом представлении нет подтверждённого согласия.</string>
+    <string name="privacy_consent_check">Я прочитал полные условия и добровольно разрешаю запись необязательного предпочтения для указанной цели.</string>
+    <string name="privacy_confirm_preference">Подтвердить и отправить предпочтение</string>
+    <string name="privacy_revoke_delete">Отключить и запросить удаление обучающих изображений</string>
+    <string name="privacy_deletion_receipt_note">Получение запускает удаление; оно не подтверждает физическое удаление всех копий.</string>
+    <string name="privacy_digest">SHA-256 документа: %1$s</string>
+    <string name="privacy_finish_reading">Чтение завершено · вернуться к выбору</string>
+    <string name="privacy_rights_heading">Ваши права на конфиденциальность</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

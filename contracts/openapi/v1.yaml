@@ -579,6 +579,32 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/privacy/training-terms:
+    get:
+      summary: Read the complete current optional training terms anonymously.
+      operationId: getTrainingTerms
+      tags: [privacy]
+      security: []
+      responses:
+        '200':
+          description: Exact UTF-8 document; SHA-256 binds its text bytes. Collection remains disabled.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [version, digest, locale, text, collection_available]
+                properties:
+                  version: {type: string, example: training-terms-v1}
+                  digest: {type: string, pattern: '^[a-f0-9]{64}$'}
+                  locale: {type: string, enum: [pt-BR]}
+                  text: {type: string, maxLength: 65536}
+                  collection_available: {type: boolean, enum: [false]}
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/privacy/training-consent/grant:
     post:
       summary: Grant training-image consent for future disclosed images (signed, idempotent).
@@ -594,7 +620,7 @@ paths:
               $ref: '#/components/schemas/TrainingConsentGrant'
             example:
               terms_version: training-terms-v1
-              terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+              terms_digest: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
               revision: 1
       responses:
         '200':
@@ -620,6 +646,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent/revoke:
     post:
       summary: Revoke training-image consent and request owned training-asset deletion (signed, idempotent).
@@ -660,6 +688,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/privacy/training-consent:
     get:
       summary: Own training-consent state (signed, owner only).
@@ -680,11 +710,13 @@ paths:
                 granted: true
                 state: GRANTED
                 terms_version: training-terms-v1
-                terms_digest: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+                terms_digest: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
                 revision: 1
                 decided_at: '2026-10-11T00:00:00Z'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/contributors/me/observations:
     get:
       summary: Own observation history (signed).
@@ -4823,7 +4855,7 @@ components:
           minLength: 1
           maxLength: 128
           description: Digest of the reviewed terms text; must equal the server current digest.
-          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+          example: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
         revision:
           type: integer
           minimum: 1
@@ -4883,7 +4915,7 @@ components:
           example: training-terms-v1
         terms_digest:
           type: string
-          example: 741dcce562dd29959c5fca09ad5ebd6f986fa6e94c80c2e556fe3f6f80beac48
+          example: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
         revision:
           type: integer
           minimum: 0

@@ -1,0 +1,122 @@
+{
+  "format": "abastevo-https-pilot-v2",
+  "wall_end": "2026-10-12T23:00:13.009056+00:00",
+  "origin": "https://teste.abastevo.com.br",
+  "layer": "client HTTPS including TLS/edge/network",
+  "cache": "client asks no-cache; edge behavior unchanged",
+  "transport": "Python http.client, one reusable verified TLS/HTTP1.1 connection per worker; max8; no automatic retry",
+  "guard_sha256": "ae1066cbd9d0842b6f7e68942dc72cf50ca6e9ae194dcd6eac7d1211eb532633",
+  "driver_sha256": "46fd4ac1917a5b0494796205fb1aa0e89ef2e9c75b1461aef768317f422ee089",
+  "parameters": {
+    "routes": "routes.json",
+    "out": "https-page-batch-confirmation",
+    "dataset_manifest": null,
+    "rate": 5.0,
+    "clients": 8,
+    "seconds": 120,
+    "warmup": 10,
+    "trials": 2,
+    "p95_ms": 500.0
+  },
+  "routes": [
+    {
+      "name": "city-directory",
+      "path": "/v1/stations?state=MT&municipality_code=5107925&limit=20",
+      "required": "items"
+    },
+    {
+      "name": "national-page",
+      "path": "/v1/stations?limit=20",
+      "required": "items"
+    }
+  ],
+  "hashes": {
+    "trial-1-warmup.csv": "7f6f3a3936674b2daf22cf3b88ef2dfa53d0ef4ab42113447cd258c2af0853d2",
+    "trial-1-steady.csv": "6e2bb28026382e54087ec9f34167503b79f508fe5db4f5547f46dcc202add3f0",
+    "guard.jsonl": "42a0b940d955bb9c2b656d0e043dc0d60191c648f92ef32f5b0ce07dfeb00d55"
+  },
+  "summaries": [
+    {
+      "trial": 1,
+      "phase": "warmup",
+      "requested_seconds": 10,
+      "observation_seconds": 10.000294007360935,
+      "offered": 50,
+      "completed": 50,
+      "success": 50,
+      "errors": 0,
+      "drops": 0,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.999853000641422,
+      "routes": {
+        "city-directory": {
+          "n": 25,
+          "p50_ms": 39.05804641544819,
+          "p95_ms": 137.65159249305725,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 25,
+          "p50_ms": 76.07477717101574,
+          "p95_ms": 173.215813934803,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": false,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": true
+    },
+    {
+      "trial": 1,
+      "phase": "steady",
+      "requested_seconds": 120,
+      "observation_seconds": 115.42816920764744,
+      "offered": 563,
+      "completed": 562,
+      "success": 554,
+      "errors": 8,
+      "drops": 1,
+      "missed": 0,
+      "reconciled": true,
+      "successful_rps": 4.799521674846905,
+      "routes": {
+        "city-directory": {
+          "n": 280,
+          "p50_ms": 24.924084544181824,
+          "p95_ms": 92.98117831349373,
+          "p99_ms": null,
+          "p99_qualified": false
+        },
+        "national-page": {
+          "n": 274,
+          "p50_ms": 53.53923700749874,
+          "p95_ms": 179.9373161047697,
+          "p99_ms": null,
+          "p99_qualified": false
+        }
+      },
+      "p95_qualified": true,
+      "p95_budget_ms": 500.0,
+      "p95_budget_pass": true
+    }
+  ],
+  "dataset": null,
+  "stopped": true,
+  "reasons": [
+    "bounded client slots exhausted",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "Command '['kubectl', '-n', 'abastevo-temp', 'exec', 'abastevo-temp-db-0', '--', 'sh', '-c', 'exec psql -qAt -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c \"$1\"', 'guard', \"SET statement_timeout='2s'; SELECT json_build_object(\\n      'wal_bytes',(SELECT wal_bytes::text FROM pg_stat_wal),\\n      'wal_stats_reset',(SELECT stats_reset::text FROM pg_stat_wal),\\n      'checkpoints_completed',(SELECT num_done FROM pg_stat_checkpointer),\\n      'checkpoint_stats_reset',(SELECT stats_reset::text FROM pg_stat_checkpointer),\\n      'table_bytes',(SELECT COALESCE(sum(pg_table_size(c.oid)),0) FROM pg_class c\\n        JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')),\\n      'index_bytes',(SELECT COALESCE(sum(pg_indexes_size(c.oid)),0) FROM pg_class c\\n        JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')),\\n      'dead_tuples',(SELECT COALESCE(sum(n_dead_tup),0) FROM pg_stat_user_tables),\\n      'run_backlog',(SELECT count(*) FROM registry_source_runs WHERE state='running'),\\n      'waiting',(SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'),\\n      'active',(SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='active'),\\n      'stations',(SELECT count(*) FROM directory_stations),\\n      'assertions',(SELECT count(*) FROM registry_assertions));\"]' timed out after 8 seconds",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "HTTP request failed: timeout",
+    "arrival/error/reconciliation budget breached"
+  ],
+  "qualification": "bounded real HTTPS campaign; dataset coverage and 24/48h stability require independent evidence"
+}

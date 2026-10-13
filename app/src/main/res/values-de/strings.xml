@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">Nicht gespeichert (%1$s)</string>
 
     <!-- Community-Datenschutz (P10-T08: was das Gerät verlässt) -->
-    <string name="community_privacy_footnote">Anonym: kein Konto nötig. Sendet Station, Preis und Zustand — und dein Foto nur für 24h, wenn du eines anhängst.</string>
+    <string name="community_privacy_footnote">Gesendet werden Station, Preis und Bedingungen. Ein angehängtes Foto dient der Prüfung. Datenschutzhinweise stehen in den Einstellungen.</string>
     <string name="community_privacy_keys">Dein Gerät hält den einzigen Schlüssel. Bei Verlust endet diese anonyme Identität.</string>
 
     <!-- Community-Erfassung (P10-T08 i18n) -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">Gemeinschaft</string>
     <string name="community_header_subtitle">Lokale Tankstellenaktivität und Konsensprüfung</string>
     <string name="community_empty_title">Keine aktuellen Beiträge</string>
-    <string name="community_empty_hint">Melden Sie Kraftstoffpreise für Fahrer Ihrer Stadt. Fotos dienen vorübergehend der Prüfung und bleiben höchstens 24 Stunden gespeichert.</string>
+    <string name="community_empty_hint">Melden Sie Kraftstoffpreise für Fahrer Ihrer Stadt. Angehängte Fotos dienen vorübergehend der Prüfung. Datenschutzhinweise finden Sie in den Einstellungen.</string>
     <string name="community_action_contribute">Preis melden</string>
     <string name="community_rules_title">Prüfregeln der Gemeinschaft</string>
     <string name="community_rules_body">Preise werden durch Konsens geprüft. Datierte ANP-Daten werden nie mit aktuellen Gemeinschaftsmeldungen vermischt.</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">Melden und Einspruch einlegen</string>
     <string name="help_report_body">Aktive Konten dürfen Missbrauch melden. Meldungen löschen nichts automatisch; befugte Moderatoren prüfen. Ein neuer Einspruchsgrund eröffnet einen neuen Prüffall.</string>
     <string name="help_privacy_title">Datenschutz</string>
-    <string name="help_privacy_body">Anonymes Lesen benötigt kein Konto; Koordinaten werden nicht gespeichert. Prüffotos bleiben höchstens 24 Stunden gespeichert.</string>
+    <string name="help_privacy_body">Anonymes Lesen benötigt kein Konto. Präzise GPS-Daten werden nicht veröffentlicht. Hinweise zur Fotonutzung und Ihren Rechten stehen in den Einstellungen.</string>
     <string name="profile_tool_week_picker_title">Erhebungswoche</string>
     <string name="profile_tool_week_picker_subtitle">Archivierte wöchentliche ANP-Erhebungen auswählen</string>
     <string name="profile_privacy_section">Datenschutz und Teilnahme</string>
-    <string name="profile_privacy_body">Präzise GPS-Daten werden nicht öffentlich geteilt. Alle Prüffotokopien verfallen binnen 24 Stunden. Bezahlfunktionen beeinflussen weder Rang noch Vertrauen.</string>
+    <string name="profile_privacy_body">Präzise GPS-Daten werden nicht veröffentlicht. Fotos dienen vorübergehend der Prüfung. Datenschutzhinweise stehen in den Einstellungen. Bezahlfunktionen beeinflussen weder Rang noch Vertrauen.</string>
     <string name="onboarding_title_contribute">Ehrlich beitragen</string>
     <string name="onboarding_body_contribute">Preistafeln nur von sicheren öffentlichen Orten fotografieren, Zahlen lesbar halten, genaue Bedingung wählen; keine Preise oder Personen erfinden.</string>
     <string name="station_detail_anp_title">ANP-Referenzpreis</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">Vertretung und Verwaltung</string>
     <string name="station_claim_title">Tankstellenvertretung</string>
     <string name="station_claim_explanation">Ein kostenloses Konto kann begrenzte Vertretung beantragen. Unabhängige Prüfung bestätigt Unterschrift und Unternehmensbefugnis. Dokumentversand gewährt keinen Zugriff.</string>
-    <string name="station_claim_privacy">Niemals private Schlüssel, Passwörter, PFX- oder P12-Dateien senden. Nur signierte PDFs bis 5 MiB. Dateien mit Scans bleiben höchstens 24 Stunden gespeichert.</string>
+    <string name="station_claim_privacy">Niemals private Schlüssel, Passwörter, PFX- oder P12-Dateien senden. Nur signierte PDFs bis 5 MiB. Vor dem Senden die Datenschutzbedingungen lesen.</string>
     <string name="station_claim_role">Beantragte Rolle</string>
     <string name="station_claim_manager">Verwalter</string>
     <string name="station_claim_administrator">Administrator</string>
@@ -746,4 +746,25 @@
     <string name="training_consent_offline">Keine Verbindung — versuchen Sie es erneut, sobald Sie online sind.</string>
     <string name="training_photo_opt_in">Dieses Foto zur Prüfung für das Training freigeben</string>
     <string name="training_photo_opt_in_locked">Erteilen Sie zuerst die Einwilligung zum Training in den Datenschutzeinstellungen</string>
+
+    <string name="privacy_training_heading">Datenschutz · Preiserkennung verbessern</string>
+    <string name="privacy_training_unavailable">Die Erfassung von Trainingsbildern ist deaktiviert. Diese Auswahl speichert eine Präferenz; die Aktivierung erfordert neue Bedingungen und eine neue Einwilligung.</string>
+    <string name="privacy_training_optional">Freiwillig. Kostenloses Konto, Preissuche und Teilnahme hängen nicht davon ab.</string>
+    <string name="privacy_terms_language">Vollständiges Dokument auf brasilianischem Portugiesisch. Offline verfügbar.</string>
+    <string name="privacy_read_terms">Vollständige Bedingungen lesen</string>
+    <string name="privacy_terms_unavailable">Das Dokument konnte nicht geladen werden. Keine Einwilligung möglich; Widerruf und Ihre Rechte bleiben verfügbar.</string>
+    <string name="privacy_sign_in">Anmelden, um die freiwillige Präferenz zu verwalten</string>
+    <string name="privacy_revocation_pending">Auf diesem Gerät deaktiviert. Widerruf wartet auf Empfang durch den Server.</string>
+    <string name="privacy_offline">Offline. Keine neue Einwilligung gesendet. Sie können die Präferenz hier deaktivieren.</string>
+    <string name="privacy_request_failed">Der Dienst konnte die Entscheidung nicht bestätigen. Später erneut versuchen; kein Erfolg wird angenommen.</string>
+    <string name="privacy_preference_received">Präferenz vom Server bestätigt. Die Erfassung bleibt deaktiviert.</string>
+    <string name="privacy_preference_off">In dieser Ansicht keine Einwilligung bestätigt.</string>
+    <string name="privacy_consent_check">Ich habe die vollständigen Bedingungen gelesen und willige freiwillig in die Speicherung meiner optionalen Präferenz für den beschriebenen Zweck ein.</string>
+    <string name="privacy_confirm_preference">Präferenz bestätigen und senden</string>
+    <string name="privacy_revoke_delete">Deaktivieren und Löschung der Trainingsbilder anfordern</string>
+    <string name="privacy_deletion_receipt_note">Der Empfang startet die Löschung; er bestätigt nicht die physische Löschung aller Kopien.</string>
+    <string name="privacy_digest">SHA-256 des Dokuments: %1$s</string>
+    <string name="privacy_finish_reading">Lesen abgeschlossen · zurück zur Auswahl</string>
+    <string name="privacy_rights_heading">Ihre Datenschutzrechte</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>

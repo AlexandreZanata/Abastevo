@@ -288,9 +288,9 @@ API/worker use the documented read-only executable override; the unchanged
 image tags alone do not describe their running revision. Keep those executables
 and their owned host directory while the Deployment references them.
 
-![Measured Rust preparation](evidence/rst-hardening-20261010/rust-preparation.svg)
+![Measured Rust preparation](../assets/rst-hardening-20261010/rust-preparation.svg)
 
-![Observed RAM reserve during import](evidence/rst-hardening-20261010/host-reserve.svg)
+![Observed RAM reserve during import](../assets/rst-hardening-20261010/host-reserve.svg)
 
 ## HTTPS outcome and safe stopping
 
@@ -324,7 +324,7 @@ mobile reliability, uploads/OCR/writes and long-term headroom are UNPROVEN.
 The H13 formula permits only explicitly hypothetical behavior estimates after
 an accepted repeated rate; it is not a capacity promise from this pilot.
 
-![One completed HTTPS window, not replicated capacity](evidence/rst-hardening-20261010/https-pooled-qualified-5-p95.svg)
+![One completed HTTPS window, not replicated capacity](../assets/rst-hardening-20261010/https-pooled-qualified-5-p95.svg)
 
 ## Reproduction and private artifact retention
 

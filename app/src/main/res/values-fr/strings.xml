@@ -313,7 +313,7 @@
     <string name="community_vote_rejected">Non enregistrée (%1$s)</string>
 
     <!-- Confidentialité de la communauté (P10-T08 : ce qui quitte l\'appareil) -->
-    <string name="community_privacy_footnote">Anonyme : aucun compte requis. La station, le prix et la condition sont envoyés — ainsi que votre photo pendant 24h seulement si vous en joignez une.</string>
+    <string name="community_privacy_footnote">L’envoi comprend la station, le prix et les conditions. La photo jointe sert à la vérification. Consultez la confidentialité dans les paramètres.</string>
     <string name="community_privacy_keys">Votre appareil détient la seule clé. La perdre met fin à cette identité anonyme.</string>
 
     <!-- Capture de la communauté (P10-T08 i18n) -->
@@ -334,7 +334,7 @@
     <string name="community_screen_title">Communauté</string>
     <string name="community_header_subtitle">Activité locale des stations et vérification par consensus</string>
     <string name="community_empty_title">Aucune mise à jour récente</string>
-    <string name="community_empty_hint">Partagez les prix pour aider les conducteurs de votre ville. Les photos sont des preuves temporaires conservées au plus 24 heures.</string>
+    <string name="community_empty_hint">Partagez les prix pour aider les conducteurs de votre ville. Les photos jointes servent temporairement à la vérification. Consultez la confidentialité dans les paramètres.</string>
     <string name="community_action_contribute">Partager un prix</string>
     <string name="community_rules_title">Règles de vérification communautaire</string>
     <string name="community_rules_body">Les prix sont validés par consensus. Les données ANP datées ne sont jamais mélangées aux signalements actuels.</string>
@@ -384,11 +384,11 @@
     <string name="help_report_title">Signaler et faire appel</string>
     <string name="help_report_body">Tout compte actif peut signaler un abus. Les signalements ne suppriment rien ; les modérateurs habilités examinent les dossiers. Un nouveau motif ouvre un nouvel appel examiné.</string>
     <string name="help_privacy_title">Confidentialité</string>
-    <string name="help_privacy_body">La consultation anonyme ne nécessite aucun compte et ne conserve pas les coordonnées. Les photos de contrôle restent au plus 24 heures.</string>
+    <string name="help_privacy_body">La consultation anonyme ne nécessite aucun compte. Le GPS précis n’est pas publié. Consultez l’usage des photos et vos droits dans les paramètres.</string>
     <string name="profile_tool_week_picker_title">Semaine d’enquête</string>
     <string name="profile_tool_week_picker_subtitle">Choisir les enquêtes hebdomadaires ANP archivées</string>
     <string name="profile_privacy_section">Confidentialité et participation</string>
-    <string name="profile_privacy_body">Les coordonnées GPS précises ne sont pas publiques. Toutes les copies des photos de vérification expirent en 24 heures. Les fonctions payantes n’affectent ni classement ni confiance.</string>
+    <string name="profile_privacy_body">Le GPS précis n’est pas publié. Les photos servent temporairement à la vérification. Consultez la confidentialité dans les paramètres. Les fonctions payantes n’affectent ni classement ni confiance.</string>
     <string name="onboarding_title_contribute">Contribuer honnêtement</string>
     <string name="onboarding_body_contribute">Photographiez les panneaux depuis des lieux publics sûrs, gardez les montants lisibles, choisissez la condition exacte ; n’inventez ni prix ni personnes.</string>
     <string name="station_detail_anp_title">Prix de référence ANP</string>
@@ -479,7 +479,7 @@
     <string name="station_profile_claim">Représentation et gestion</string>
     <string name="station_claim_title">Représentation de la station</string>
     <string name="station_claim_explanation">Un compte gratuit peut demander une représentation limitée. Un examen indépendant vérifie la signature et les pouvoirs dans l’entreprise. Envoyer un document ne donne aucun accès.</string>
-    <string name="station_claim_privacy">N’envoyez jamais de clés privées, mots de passe ni fichiers PFX/P12. PDF signé uniquement, jusqu’à 5 MiB. Les fichiers contenant des scans sont conservés au plus 24 heures.</string>
+    <string name="station_claim_privacy">N’envoyez jamais de clés privées, mots de passe ni fichiers PFX/P12. PDF signé uniquement, jusqu’à 5 MiB. Consultez les conditions de confidentialité avant l’envoi.</string>
     <string name="station_claim_role">Rôle demandé</string>
     <string name="station_claim_manager">Gestionnaire</string>
     <string name="station_claim_administrator">Administrateur</string>
@@ -746,4 +746,25 @@
     <string name="training_consent_offline">Hors connexion — réessayez une fois en ligne.</string>
     <string name="training_photo_opt_in">Autoriser cette photo pour une vérification destinée à l’entraînement</string>
     <string name="training_photo_opt_in_locked">Autorisez d’abord l’entraînement dans les paramètres de confidentialité</string>
+
+    <string name="privacy_training_heading">Confidentialité · Améliorer la reconnaissance des prix</string>
+    <string name="privacy_training_unavailable">La collecte pour entraînement est désactivée. Ce choix enregistre une préférence ; son activation exigera de nouvelles conditions et un nouveau consentement.</string>
+    <string name="privacy_training_optional">Facultatif. Le compte gratuit, les recherches et la participation ne dépendent pas de ce choix.</string>
+    <string name="privacy_terms_language">Document intégral en portugais du Brésil. Disponible hors ligne.</string>
+    <string name="privacy_read_terms">Lire les conditions intégrales</string>
+    <string name="privacy_terms_unavailable">Le document ne peut pas être chargé. Aucune autorisation possible ; la révocation et vos droits restent accessibles.</string>
+    <string name="privacy_sign_in">Se connecter pour gérer la préférence facultative</string>
+    <string name="privacy_revocation_pending">Désactivé sur cet appareil. Révocation en attente de réception par le serveur.</string>
+    <string name="privacy_offline">Hors ligne. Aucune nouvelle autorisation envoyée. Vous pouvez désactiver la préférence ici.</string>
+    <string name="privacy_request_failed">Le service ne confirme pas la décision. Réessayez plus tard ; aucun succès présumé.</string>
+    <string name="privacy_preference_received">Préférence autorisée et confirmée par le serveur. La collecte reste désactivée.</string>
+    <string name="privacy_preference_off">Aucune autorisation confirmée dans cette consultation.</string>
+    <string name="privacy_consent_check">Je confirme avoir lu les conditions intégrales et autorise librement l’enregistrement de ma préférence facultative pour la finalité décrite.</string>
+    <string name="privacy_confirm_preference">Confirmer et envoyer la préférence</string>
+    <string name="privacy_revoke_delete">Désactiver et demander la suppression des images d’entraînement</string>
+    <string name="privacy_deletion_receipt_note">La réception déclenche la suppression ; elle ne confirme pas la suppression physique de toutes les copies.</string>
+    <string name="privacy_digest">SHA-256 du document : %1$s</string>
+    <string name="privacy_finish_reading">Lecture terminée · revenir au choix</string>
+    <string name="privacy_rights_heading">Vos droits à la confidentialité</string>
+    <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
 </resources>
