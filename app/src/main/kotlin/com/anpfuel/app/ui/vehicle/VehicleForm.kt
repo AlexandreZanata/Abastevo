@@ -267,7 +267,7 @@ fun VehicleForm(
             label = stringResource(R.string.action_cancel),
             icon = Icons.Default.Close,
             onClick = onCancel,
-            style = VehicleActionStyle.Outlined,
+            style = VehicleActionStyle.Destructive,
             enabled = !isSaving,
         )
     }
@@ -381,10 +381,12 @@ private fun VehicleActionButton(
     val containerColor = when (style) {
         VehicleActionStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
         VehicleActionStyle.Outlined -> Color.Transparent
+        VehicleActionStyle.Destructive -> Color.Transparent
     }
     val contentColor = when (style) {
         VehicleActionStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
         VehicleActionStyle.Outlined -> MaterialTheme.colorScheme.onSurface
+        VehicleActionStyle.Destructive -> MaterialTheme.colorScheme.error
     }
     val border = when (style) {
         VehicleActionStyle.Primary -> null
@@ -392,6 +394,11 @@ private fun VehicleActionButton(
             BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.outline,
+            )
+        VehicleActionStyle.Destructive ->
+            BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.error,
             )
     }
     Card(
@@ -432,6 +439,7 @@ private fun VehicleActionButton(
 private enum class VehicleActionStyle {
     Primary,
     Outlined,
+    Destructive,
 }
 
 @Composable
