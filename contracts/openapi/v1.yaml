@@ -38,6 +38,8 @@ tags:
     description: FREE email-code signup/login plus session rotation.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
+  - name: premium
+    description: Private optional Premium subscription infrastructure; real payments OFF.
 paths:
   /health/live:
     get:
@@ -3261,8 +3263,282 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/premium/status:
+    post:
+      tags:
+      - premium
+      summary: Premium status
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumStatus
+      x-implementation-status: source-in-progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumStatusRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/purchases/verify:
+    post:
+      tags:
+      - premium
+      summary: Premium purchases verify
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumPurchasesVerify
+      x-implementation-status: source-in-progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumPurchaseRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumPurchaseReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/purchases/restore:
+    post:
+      tags:
+      - premium
+      summary: Premium purchases restore
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumPurchasesRestore
+      x-implementation-status: source-in-progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumPurchaseRequest'
+      responses:
+        '200':
+          description: Owner-only result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PremiumPurchaseReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/premium/provider-notifications:
+    post:
+      tags:
+      - premium
+      summary: Premium provider-notifications
+      description: Contract-first PRM00; owner session proof and signed owner binding
+        on purchase commands. Provider route uses independent authenticated push proof.
+        All responses are private/no-store. Production payment ports remain disabled.
+      operationId: premiumProvider-Notifications
+      x-implementation-status: source-in-progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PremiumProviderEnvelope'
+      responses:
+        '204':
+          description: Authenticated bounded notification durably received or duplicate.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
+    PremiumStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      properties:
+        family_id: &id001
+          type: string
+          format: uuid
+        access_token: &id002
+          type: string
+          minLength: 1
+          maxLength: 512
+    PremiumPurchaseRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - family_id
+      - access_token
+      - operation_id
+      - purchase_token
+      properties:
+        family_id: *id001
+        access_token: *id002
+        operation_id: *id001
+        purchase_token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+    PremiumCapability:
+      type: string
+      enum:
+      - cloud.sync
+      - cloud.backup
+      - cloud.restore
+      - alerts.advanced
+      - professional.write
+      - professional.report
+    PremiumStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - policy_version
+      - state
+      - reason
+      - capabilities
+      - valid_until
+      - retained_data_access
+      - payments_configured
+      properties:
+        policy_version:
+          type: integer
+          enum:
+          - 1
+        state:
+          type: string
+          enum:
+          - NONE
+          - PENDING
+          - ACTIVE
+          - CANCELED
+          - GRACE
+          - HOLD
+          - PAUSED
+          - EXPIRED
+          - REVOKED
+          - UNKNOWN
+        reason:
+          type: string
+          maxLength: 64
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/PremiumCapability'
+          uniqueItems: true
+        valid_until:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        retained_data_access:
+          type: boolean
+          enum:
+          - true
+        payments_configured:
+          type: boolean
+    PremiumPurchaseReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - status
+      - replayed
+      properties:
+        operation_id: *id001
+        status:
+          $ref: '#/components/schemas/PremiumStatusResponse'
+        replayed:
+          type: boolean
+    PremiumProviderEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - message
+      - subscription
+      properties:
+        message:
+          type: object
+          additionalProperties: false
+          required:
+          - messageId
+          - data
+          - publishTime
+          properties:
+            messageId:
+              type: string
+              minLength: 1
+              maxLength: 128
+            data:
+              type: string
+              minLength: 1
+              maxLength: 12288
+            publishTime:
+              type: string
+              format: date-time
+        subscription:
+          type: string
+          minLength: 1
+          maxLength: 256
     CommunityFeedPage:
       type: object
       description: A public allowlisted city feed, not raw observation history.

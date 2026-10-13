@@ -32,3 +32,12 @@ Validation: PASS
 RED: TestPremiumFinancialGoldenContract failed with missing golden file. GREEN: 15 synthetic reviewed cases; exact rational consumption/cost, partial-fill baseline exclusion, actual discount totals, weighted vehicles and explicit unsupported/gap/reset/month-window/overflow reasons. Money is centavos, quantity milli-units, distance metres; display half-up only. Financial engine remains a later owning task.
 
 Commands: go test -race -count=1 ./internal/platform/apicontract -run '^TestPremiumFinancialGoldenContract$'; go vet ./internal/platform/apicontract; GOTOOLCHAIN=go1.27.1 staticcheck ./internal/platform/apicontract. Passed. Scoped whitespace/secret review. Next PRM00-T04.
+
+## PRM00-T04 — API/dataset/verification ownership
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+
+RED: TestPremiumCurrentAndPlannedContracts failed for absent /v1/premium/status. GREEN: four additive subscription paths in v1, strict no-client-account/no-premium-flag golden requests, 15 explicitly planned future dataset routes and typed schemas. Premium financial units preserve existing L/M3 vocabulary and existing unit-price bound. Owner session plus bound signed proof, private no-store/errors, generations/receipts, module/schema/job ownership and actual verification selectors are frozen in PREMIUM_API_CONTRACT.
+
+Commands: go test -race -count=1 ./internal/platform/apicontract (11.515s); go vet ./internal/platform/apicontract; GOTOOLCHAIN=go1.27.1 staticcheck ./internal/platform/apicontract; vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check. Passed, OpenAPI zero errors (existing/new informational warnings retained). Scoped secret/whitespace checks. G-PR-CONTRACT is source-only; production capacity/catalog/provider proofs remain deferred. Next PRM01-T01.
