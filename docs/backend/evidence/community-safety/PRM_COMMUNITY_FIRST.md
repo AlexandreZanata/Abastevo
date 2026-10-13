@@ -15,3 +15,7 @@ LOCAL_DONE / INTEGRATION_PENDING: COMMUNITY_FIRST_POLICY freezes v2/legacy/debug
 ## PRM15-T03
 
 LOCAL_DONE / INTEGRATION_PENDING: existing consensus thresholds retained under a new version without proximity prerequisite; existing helpfulness/moderator authority/budgets retained. Frozen reviewed-coverage denominator/numerator, strict >90% and owner-reviewed product evidence; PRM22 DEFERRED. No new numeric vote/adoption threshold invented. Scoped document/diff review PASS.
+
+## PRM16-T01
+
+LOCAL_DONE / INTEGRATION_PENDING: new registry wire regression proves eight valid nominal-address rows survive with null latitude/longitude and unknown quality; no coordinate columns required. `CARGO_TARGET_DIR=/tmp/prm-community-rust cargo test --locked --manifest-path tools/station-prep/Cargo.toml community_first_registry`: 1 passed. Existing parser already supports this contract; no speculative parser rewrite.
