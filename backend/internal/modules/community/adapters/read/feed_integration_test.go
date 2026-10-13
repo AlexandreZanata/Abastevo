@@ -101,3 +101,31 @@ func TestCityFeedIsolationExpiryMoneyPaginationAndConcurrency(t *testing.T) {
 		t.Fatalf("expiry independent of worker %+v %v", page, err)
 	}
 }
+
+func TestFeedContributionReferenceOnlyTargetsCurrentVisibleValidatedRevision(t *testing.T) {
+	r, pool, stationID := freshReader(t)
+	ctx := context.Background()
+	seedProjection(t, pool, stationID)
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET state='MT',municipality_code='5107925' WHERE id=$1`, stationID); err != nil {
+		t.Fatal(err)
+	}
+	filter := application.FeedFilter{State: "MT", Municipality: "5107925", Product: "GASOLINE_REGULAR", Unit: "L", Order: "recent", Limit: 20}
+	before, _, err := r.Feed(ctx, filter)
+	if err != nil || len(before) != 1 || before[0].Contribution != nil {
+		t.Fatal("unvalidated public target", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO community_observation_decisions(id,observation_id,sequence,to_state,policy_version) VALUES('aaaaaaaa-1111-4111-8111-000000000003','d6c74c23-63db-4c24-a2e5-408cb23bad27',1,'VALIDATED','synthetic')`); err != nil {
+		t.Fatal(err)
+	}
+	ready, _, err := r.Feed(ctx, filter)
+	if err != nil || ready[0].Contribution == nil || ready[0].Contribution.ObservationID != "d6c74c23-63db-4c24-a2e5-408cb23bad27" || ready[0].Contribution.DecisionSequence != 1 {
+		t.Fatalf("target %+v %v", ready, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE community_observations SET hidden_at=now() WHERE id='d6c74c23-63db-4c24-a2e5-408cb23bad27'`); err != nil {
+		t.Fatal(err)
+	}
+	hidden, _, err := r.Feed(ctx, filter)
+	if err != nil || hidden[0].Contribution != nil {
+		t.Fatal("hidden contribution actionable", err)
+	}
+}

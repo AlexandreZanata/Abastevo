@@ -6607,6 +6607,14 @@ components:
       description: Current comparable price facts; no media or attribution identifiers.
       required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version, ratings_count]
       properties:
+        contribution:
+          type: object
+          additionalProperties: false
+          description: Opaque current visible validated contribution revision for signed community actions; absent when unavailable. No attribution or media.
+          required: [observation_id, decision_sequence]
+          properties:
+            observation_id: {type: string, format: uuid}
+            decision_sequence: {type: integer, minimum: 1}
         station_id: {type: string, format: uuid}
         station_name: {type: string}
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
