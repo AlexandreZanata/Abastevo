@@ -31,3 +31,7 @@ LOCAL_DONE / INTEGRATION_PENDING: actual Rust prepare_registry→Go loader/recon
 ## PRM17-T01
 
 LOCAL_DONE / INTEGRATION_PENDING: new real-PostGIS regression finds two homonymous address-only establishments, preserves their distinct UUIDs and addresses through stable pagination/detail, and keeps coordinates null/quality unknown. `go test -race -count=1 -tags=integration ./internal/modules/directory/adapters/read -run '^(TestCommunityFirst|TestSearch|TestHandoff)'` PASS (9.830s). Canonical schema/reads already support optional points; no migration required.
+
+## PRM17-T02
+
+LOCAL_DONE / INTEGRATION_PENDING: existing bounded parametrized/literal-escaped name search reused; documented case/accents, page bounds, stable cursor and address disambiguation. Full real-PostGIS Directory campaign `go test -race -count=1 -tags=integration ./internal/modules/directory/adapters/...` PASS (nine package summaries in /tmp/prm-directory-tests.log), including constant-round-trip/failure recovery/query plan/municipal/HTTP/cursor/source trust cases. Scoped read regression PASS above.
