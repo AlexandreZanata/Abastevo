@@ -93,6 +93,17 @@ type LedgerRecord struct {
 	SegmentNo  int64              `json:"segment_no"`
 }
 
+type LedgerReport struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	Year          int32              `json:"year"`
+	Month         int32              `json:"month"`
+	Timezone      string             `json:"timezone"`
+	Totals        []byte             `json:"totals"`
+	Revision      int64              `json:"revision"`
+	BaseUpdatedAt pgtype.Timestamptz `json:"base_updated_at"`
+	GeneratedAt   pgtype.Timestamptz `json:"generated_at"`
+}
+
 type LedgerSegment struct {
 	AccountID pgtype.UUID        `json:"account_id"`
 	VehicleID pgtype.UUID        `json:"vehicle_id"`

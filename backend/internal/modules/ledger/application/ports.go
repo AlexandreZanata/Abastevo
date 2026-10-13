@@ -65,3 +65,26 @@ type ConsentStore interface {
 	SetConsent(ctx context.Context, accountID string, datasets []string, enabled bool) (ConsentStatus, error)
 	EraseAll(ctx context.Context, accountID string) error
 }
+
+type ReportTotals struct {
+	PurchaseCentavos int64            `json:"purchase_centavos"`
+	ExpenseCentavos  int64            `json:"expense_centavos"`
+	ByVehicle        map[string]int64 `json:"by_vehicle"`
+	ByCategory       map[string]int64 `json:"by_category"`
+	RecordCount      int64            `json:"record_count"`
+	Coverage         map[string]string `json:"coverage"`
+}
+
+type Report struct {
+	Year        int          `json:"year"`
+	Month       int          `json:"month"`
+	Timezone    string       `json:"timezone"`
+	Totals      ReportTotals `json:"totals"`
+	Revision    int64        `json:"revision"`
+	GeneratedAt string       `json:"generated_at"`
+}
+
+type ReportStore interface {
+	BuildReport(ctx context.Context, accountID string, year, month int, timezone string) (Report, error)
+	GetReport(ctx context.Context, accountID string, year, month int, timezone string) (Report, error)
+}

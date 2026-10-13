@@ -178,3 +178,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 9ce463a. Pure fuel-purchase interval cost from actual totals, matched-window all-expense cost with explicit odometer and time endpoints, deduplicated expense inclusion, weighted cross-interval sums and frozen UNKNOWN reasons. Every ratio exposes numerator, denominator, window and method with calculation version 1; rollback regenerates without touching raw inputs. Unit/race PASS metrics cost cases with zero denominators, unmatched windows, double counts, discounts, unequal weights and boundary corrections. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
 Next PRM06-T03. Real payments OFF.
+
+## PRM06-T03 — Monthly report projections and correction invalidation
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 01db344. Timezone-aware BuildReport with half-open month bounds, revisioned summaries, advisory-lock serialization, base fencing against backdated edits and restart convergence without superseded publishes. Totals cover only frozen categories with voided and deleted exclusions and per-vehicle consumption coverage via the T01 engine. Append-only 000088 adds ledger_reports with report queries; sqlc vet/diff clean. Real PostGIS PASS (report suites): leap February, empty months, DST months, UTC events crossing local months, invalid month and timezone refusal, foreign empty months, indexed period plans, backdated invalidation with new revisions, concurrent restart convergence and coherent reads. Unit/race PASS metrics. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Privacy and retention registered; HTTP rides PRM06-T05. No merge/deploy/mobile edit.
+Next PRM06-T04. Real payments OFF.

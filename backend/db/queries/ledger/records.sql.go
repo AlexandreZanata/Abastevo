@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const baseLedgerUpdated = `-- name: BaseLedgerUpdated :one
+SELECT MAX(updated_at)::timestamptz FROM ledger_records WHERE account_id=$1
+`
+
+func (q *Queries) BaseLedgerUpdated(ctx context.Context, accountID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, baseLedgerUpdated, accountID)
+	var column_1 pgtype.Timestamptz
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const clearLedgerGaps = `-- name: ClearLedgerGaps :exec
 DELETE FROM ledger_gaps WHERE account_id=$1
 `
@@ -185,6 +196,41 @@ func (q *Queries) GetLedgerRecord(ctx context.Context, arg GetLedgerRecordParams
 	return i, err
 }
 
+const getReport = `-- name: GetReport :one
+SELECT totals,revision,base_updated_at,generated_at FROM ledger_reports WHERE account_id=$1 AND year=$2 AND month=$3 AND timezone=$4
+`
+
+type GetReportParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Year      int32       `json:"year"`
+	Month     int32       `json:"month"`
+	Timezone  string      `json:"timezone"`
+}
+
+type GetReportRow struct {
+	Totals        []byte             `json:"totals"`
+	Revision      int64              `json:"revision"`
+	BaseUpdatedAt pgtype.Timestamptz `json:"base_updated_at"`
+	GeneratedAt   pgtype.Timestamptz `json:"generated_at"`
+}
+
+func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (GetReportRow, error) {
+	row := q.db.QueryRow(ctx, getReport,
+		arg.AccountID,
+		arg.Year,
+		arg.Month,
+		arg.Timezone,
+	)
+	var i GetReportRow
+	err := row.Scan(
+		&i.Totals,
+		&i.Revision,
+		&i.BaseUpdatedAt,
+		&i.GeneratedAt,
+	)
+	return i, err
+}
+
 const ledgerVehicle = `-- name: LedgerVehicle :one
 SELECT id FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND id=$2
 `
@@ -276,6 +322,17 @@ func (q *Queries) ListLedger(ctx context.Context, arg ListLedgerParams) ([]ListL
 	return items, nil
 }
 
+const lockReport = `-- name: LockReport :one
+SELECT pg_advisory_xact_lock(hashtext($1))::text
+`
+
+func (q *Queries) LockReport(ctx context.Context, hashtext string) (string, error) {
+	row := q.db.QueryRow(ctx, lockReport, hashtext)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const maxSegmentNo = `-- name: MaxSegmentNo :one
 SELECT COALESCE(MAX(segment_no),1)::bigint FROM ledger_segments WHERE account_id=$1 AND vehicle_id=$2
 `
@@ -362,6 +419,51 @@ DELETE FROM ledger_operations WHERE account_id=$1
 func (q *Queries) PurgeLedgerOperations(ctx context.Context, accountID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, purgeLedgerOperations, accountID)
 	return err
+}
+
+const reportRows = `-- name: ReportRows :many
+SELECT dataset,id,vehicle_id,occurred_at,payload FROM ledger_records
+WHERE account_id=$1 AND NOT deleted AND NOT voided AND occurred_at>=$2 AND occurred_at<$3 ORDER BY occurred_at,id
+`
+
+type ReportRowsParams struct {
+	AccountID    pgtype.UUID        `json:"account_id"`
+	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
+	OccurredAt_2 pgtype.Timestamptz `json:"occurred_at_2"`
+}
+
+type ReportRowsRow struct {
+	Dataset    string             `json:"dataset"`
+	ID         pgtype.UUID        `json:"id"`
+	VehicleID  pgtype.UUID        `json:"vehicle_id"`
+	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
+	Payload    []byte             `json:"payload"`
+}
+
+func (q *Queries) ReportRows(ctx context.Context, arg ReportRowsParams) ([]ReportRowsRow, error) {
+	rows, err := q.db.Query(ctx, reportRows, arg.AccountID, arg.OccurredAt, arg.OccurredAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReportRowsRow
+	for rows.Next() {
+		var i ReportRowsRow
+		if err := rows.Scan(
+			&i.Dataset,
+			&i.ID,
+			&i.VehicleID,
+			&i.OccurredAt,
+			&i.Payload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const saveLedgerOperation = `-- name: SaveLedgerOperation :exec
@@ -453,6 +555,48 @@ func (q *Queries) SetLedgerConsent(ctx context.Context, arg SetLedgerConsentPara
 	row := q.db.QueryRow(ctx, setLedgerConsent, arg.Enabled, arg.Mask, arg.AccountID)
 	var i SetLedgerConsentRow
 	err := row.Scan(&i.Mask, &i.Revision)
+	return i, err
+}
+
+const upsertReport = `-- name: UpsertReport :one
+INSERT INTO ledger_reports(account_id,year,month,timezone,totals,base_updated_at)
+VALUES($1,$2,$3,$4,$5,$6)
+ON CONFLICT(account_id,year,month,timezone) DO UPDATE SET totals=EXCLUDED.totals,revision=ledger_reports.revision+1,base_updated_at=EXCLUDED.base_updated_at,generated_at=clock_timestamp()
+RETURNING totals,revision,base_updated_at,generated_at
+`
+
+type UpsertReportParams struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	Year          int32              `json:"year"`
+	Month         int32              `json:"month"`
+	Timezone      string             `json:"timezone"`
+	Totals        []byte             `json:"totals"`
+	BaseUpdatedAt pgtype.Timestamptz `json:"base_updated_at"`
+}
+
+type UpsertReportRow struct {
+	Totals        []byte             `json:"totals"`
+	Revision      int64              `json:"revision"`
+	BaseUpdatedAt pgtype.Timestamptz `json:"base_updated_at"`
+	GeneratedAt   pgtype.Timestamptz `json:"generated_at"`
+}
+
+func (q *Queries) UpsertReport(ctx context.Context, arg UpsertReportParams) (UpsertReportRow, error) {
+	row := q.db.QueryRow(ctx, upsertReport,
+		arg.AccountID,
+		arg.Year,
+		arg.Month,
+		arg.Timezone,
+		arg.Totals,
+		arg.BaseUpdatedAt,
+	)
+	var i UpsertReportRow
+	err := row.Scan(
+		&i.Totals,
+		&i.Revision,
+		&i.BaseUpdatedAt,
+		&i.GeneratedAt,
+	)
 	return i, err
 }
 

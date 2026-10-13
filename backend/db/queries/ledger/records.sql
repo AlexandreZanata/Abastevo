@@ -49,6 +49,25 @@ INSERT INTO ledger_gaps(account_id,gap_id,vehicle_id,after_id,before_id,note) VA
 -- name: PurgeLedgerOperations :exec
 DELETE FROM ledger_operations WHERE account_id=$1;
 
+-- name: LockReport :one
+SELECT pg_advisory_xact_lock(hashtext($1))::text;
+
+-- name: BaseLedgerUpdated :one
+SELECT MAX(updated_at)::timestamptz FROM ledger_records WHERE account_id=$1;
+
+-- name: ReportRows :many
+SELECT dataset,id,vehicle_id,occurred_at,payload FROM ledger_records
+WHERE account_id=$1 AND NOT deleted AND NOT voided AND occurred_at>=$2 AND occurred_at<$3 ORDER BY occurred_at,id;
+
+-- name: GetReport :one
+SELECT totals,revision,base_updated_at,generated_at FROM ledger_reports WHERE account_id=$1 AND year=$2 AND month=$3 AND timezone=$4;
+
+-- name: UpsertReport :one
+INSERT INTO ledger_reports(account_id,year,month,timezone,totals,base_updated_at)
+VALUES($1,$2,$3,$4,$5,$6)
+ON CONFLICT(account_id,year,month,timezone) DO UPDATE SET totals=EXCLUDED.totals,revision=ledger_reports.revision+1,base_updated_at=EXCLUDED.base_updated_at,generated_at=clock_timestamp()
+RETURNING totals,revision,base_updated_at,generated_at;
+
 -- name: EnsureLedgerConsent :exec
 INSERT INTO ledger_consent(account_id) VALUES($1) ON CONFLICT DO NOTHING;
 

@@ -403,6 +403,8 @@ Entry: PRM05. Exit: exact explainable metrics and private bounded reports/export
 
 ### PRM06-T03 — Monthly report projections and correction invalidation
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; PR15/18.
 - **Outcome/areas:** timezone-aware month/vehicle/category totals, revisioned report summaries, indexed reads and bounded rebuild jobs; register privacy/retention.
 - **Tests first:** month/year/leap boundaries, DST, UTC event crossing local month, backdated edit/delete during rebuild, stale worker fencing, empty report and query plans.
