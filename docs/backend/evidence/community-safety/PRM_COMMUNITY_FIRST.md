@@ -19,3 +19,7 @@ LOCAL_DONE / INTEGRATION_PENDING: existing consensus thresholds retained under a
 ## PRM16-T01
 
 LOCAL_DONE / INTEGRATION_PENDING: new registry wire regression proves eight valid nominal-address rows survive with null latitude/longitude and unknown quality; no coordinate columns required. `CARGO_TARGET_DIR=/tmp/prm-community-rust cargo test --locked --manifest-path tools/station-prep/Cargo.toml community_first_registry`: 1 passed. Existing parser already supports this contract; no speculative parser rewrite.
+
+## PRM16-T02
+
+LOCAL_DONE / INTEGRATION_PENDING: rejected optional PMQC coordinates cannot remove registry identity/address or manufacture points; explicit join regression preserves all eight serialized registry facts. Existing quarantine and deterministic join contract retained. Rust join suite 8/8 PASS; locked prepare_registry build PASS.
