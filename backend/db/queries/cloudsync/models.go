@@ -58,6 +58,24 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type CloudDevice struct {
+	ID            pgtype.UUID        `json:"id"`
+	AccountID     pgtype.UUID        `json:"account_id"`
+	FamilyID      pgtype.UUID        `json:"family_id"`
+	ContributorID pgtype.UUID        `json:"contributor_id"`
+	KeyID         pgtype.UUID        `json:"key_id"`
+	Origin        string             `json:"origin"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type CloudDeviceRevocation struct {
+	DeviceID  pgtype.UUID        `json:"device_id"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type CloudRecord struct {
 	AccountID     pgtype.UUID        `json:"account_id"`
 	Dataset       string             `json:"dataset"`

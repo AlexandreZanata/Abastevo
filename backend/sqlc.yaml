@@ -221,6 +221,7 @@ sql:
       - db/migrations/000022_account_bindings.sql
       - db/migrations/000078_cloud_records.sql
       - db/migrations/000079_cloud_portable.sql
+      - db/migrations/000080_cloud_devices.sql
     gen:
       go:
         package: cloudsync

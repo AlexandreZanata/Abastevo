@@ -188,6 +188,8 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 
 ### PRM02-T03 — Device registration, revocation and origin isolation
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01/T02; PR07/23/25.
 - **Outcome/areas:** random account-bound device records, capability-limited device sessions/reference binding, last-success status and immediate revoke API; no advertising ID or device fingerprint.
 - **Tests first:** account/origin switch, token reuse, deleted session, device cap race, revoke versus queued write, foreign device ID and restored revoked device.

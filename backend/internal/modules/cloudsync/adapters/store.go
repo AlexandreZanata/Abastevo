@@ -16,6 +16,7 @@ import (
 )
 
 type Store struct {
+	Origin  string
 	Station func(context.Context, pgx.Tx, string) (bool, error)
 	Pool    *pgxpool.Pool
 	Paid    func(context.Context, pgx.Tx, string) error

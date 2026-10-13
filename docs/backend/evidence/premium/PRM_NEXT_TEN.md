@@ -24,3 +24,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested candidate on 7276fca. Strict schema/version/duplicate-field allowlist tests reject credentials, permissions, Wi-Fi settings and GPS. Actual PostGIS verifies known active station selection, unknown/retired refusal, UUID ownership, repeat favorite convergence, preference singleton/revision/IDOR and no public fact creation. Explicit canonical-directory transaction port; no existing backend follows were duplicated. Unit/race and actual cloud SQL tests PASS (3.378s), affected vet/staticcheck, sqlc vet/diff, secret/diff review PASS.
 Next PRM02-T03. Real payments OFF; no merge/deploy/mobile edit.
+
+## PRM02-T03 — Bound device references and irreversible revocation
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested candidate on 6c49f0e. Random device UUIDs bind to account/session family/signing contributor/key/server origin; no hardware identifier or extra bearer secret. Explicit revocation ledger fences restored old rows; free signed revoke preserves records. Actual PostGIS tests PASS (12-way cap race admits three, repeat registration, origin crossover, foreign revoke, restored revoked UUID, deleted owner); unit/race, vet/staticcheck, sqlc vet/diff and diff/secret checks PASS.
+Next PRM02-T04. Real payments OFF; no merge/deploy/mobile edit.

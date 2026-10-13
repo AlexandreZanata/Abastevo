@@ -27,6 +27,17 @@ func (q *Queries) CountDataset(ctx context.Context, arg CountDatasetParams) (int
 	return count, err
 }
 
+const countDevices = `-- name: CountDevices :one
+SELECT count(*) FROM cloud_devices WHERE account_id=$1 AND revoked_at IS NULL
+`
+
+func (q *Queries) CountDevices(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDevices, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countVehicles = `-- name: CountVehicles :one
 SELECT count(*) FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND NOT deleted
 `
@@ -36,6 +47,72 @@ func (q *Queries) CountVehicles(ctx context.Context, accountID pgtype.UUID) (int
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deviceSuccess = `-- name: DeviceSuccess :execrows
+UPDATE cloud_devices SET last_success_at=clock_timestamp() WHERE id=$1 AND account_id=$2 AND origin=$3 AND revoked_at IS NULL
+`
+
+type DeviceSuccessParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+	Origin    string      `json:"origin"`
+}
+
+func (q *Queries) DeviceSuccess(ctx context.Context, arg DeviceSuccessParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deviceSuccess, arg.ID, arg.AccountID, arg.Origin)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const existingDevice = `-- name: ExistingDevice :one
+SELECT d.id,d.created_at,d.last_success_at,d.revoked_at,d.origin FROM cloud_devices d
+WHERE d.account_id=$1 AND d.family_id=$2 AND d.key_id=$3 AND d.origin=$4 AND d.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM cloud_device_revocations r WHERE r.device_id=d.id)
+`
+
+type ExistingDeviceParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	FamilyID  pgtype.UUID `json:"family_id"`
+	KeyID     pgtype.UUID `json:"key_id"`
+	Origin    string      `json:"origin"`
+}
+
+type ExistingDeviceRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+	Origin        string             `json:"origin"`
+}
+
+func (q *Queries) ExistingDevice(ctx context.Context, arg ExistingDeviceParams) (ExistingDeviceRow, error) {
+	row := q.db.QueryRow(ctx, existingDevice,
+		arg.AccountID,
+		arg.FamilyID,
+		arg.KeyID,
+		arg.Origin,
+	)
+	var i ExistingDeviceRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.LastSuccessAt,
+		&i.RevokedAt,
+		&i.Origin,
+	)
+	return i, err
+}
+
+const fenceRestoredDevices = `-- name: FenceRestoredDevices :exec
+UPDATE cloud_devices d SET revoked_at=clock_timestamp() WHERE d.account_id=$1 AND d.revoked_at IS NULL
+AND EXISTS(SELECT 1 FROM cloud_device_revocations r WHERE r.device_id=d.id)
+`
+
+func (q *Queries) FenceRestoredDevices(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, fenceRestoredDevices, accountID)
+	return err
 }
 
 const getRecord = `-- name: GetRecord :one
@@ -87,6 +164,33 @@ func (q *Queries) LockBinding(ctx context.Context, arg LockBindingParams) (strin
 	return contributor_id, err
 }
 
+const lockDevice = `-- name: LockDevice :one
+SELECT d.id FROM cloud_devices d WHERE d.id=$1 AND d.account_id=$2 AND d.family_id=$3 AND d.contributor_id=$4 AND d.key_id=$5 AND d.origin=$6 AND d.revoked_at IS NULL AND NOT EXISTS(SELECT 1 FROM cloud_device_revocations r WHERE r.device_id=d.id) FOR SHARE
+`
+
+type LockDeviceParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	FamilyID      pgtype.UUID `json:"family_id"`
+	ContributorID pgtype.UUID `json:"contributor_id"`
+	KeyID         pgtype.UUID `json:"key_id"`
+	Origin        string      `json:"origin"`
+}
+
+func (q *Queries) LockDevice(ctx context.Context, arg LockDeviceParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockDevice,
+		arg.ID,
+		arg.AccountID,
+		arg.FamilyID,
+		arg.ContributorID,
+		arg.KeyID,
+		arg.Origin,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const lockOwner = `-- name: LockOwner :one
 SELECT id FROM accounts WHERE id=$1::uuid AND status='active' FOR UPDATE
 `
@@ -133,6 +237,82 @@ func (q *Queries) LockSigningKey(ctx context.Context, arg LockSigningKeyParams) 
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const recordDeviceRevocation = `-- name: RecordDeviceRevocation :exec
+INSERT INTO cloud_device_revocations(device_id,account_id)
+SELECT d.id,d.account_id FROM cloud_devices d WHERE d.id=$1 AND d.account_id=$2 AND d.origin=$3 ON CONFLICT DO NOTHING
+`
+
+type RecordDeviceRevocationParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+	Origin    string      `json:"origin"`
+}
+
+func (q *Queries) RecordDeviceRevocation(ctx context.Context, arg RecordDeviceRevocationParams) error {
+	_, err := q.db.Exec(ctx, recordDeviceRevocation, arg.ID, arg.AccountID, arg.Origin)
+	return err
+}
+
+const registerDevice = `-- name: RegisterDevice :one
+INSERT INTO cloud_devices(id,account_id,family_id,contributor_id,key_id,origin) VALUES($1,$2,$3,$4,$5,$6)
+RETURNING id,created_at,last_success_at,revoked_at,origin
+`
+
+type RegisterDeviceParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	FamilyID      pgtype.UUID `json:"family_id"`
+	ContributorID pgtype.UUID `json:"contributor_id"`
+	KeyID         pgtype.UUID `json:"key_id"`
+	Origin        string      `json:"origin"`
+}
+
+type RegisterDeviceRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	LastSuccessAt pgtype.Timestamptz `json:"last_success_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+	Origin        string             `json:"origin"`
+}
+
+func (q *Queries) RegisterDevice(ctx context.Context, arg RegisterDeviceParams) (RegisterDeviceRow, error) {
+	row := q.db.QueryRow(ctx, registerDevice,
+		arg.ID,
+		arg.AccountID,
+		arg.FamilyID,
+		arg.ContributorID,
+		arg.KeyID,
+		arg.Origin,
+	)
+	var i RegisterDeviceRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.LastSuccessAt,
+		&i.RevokedAt,
+		&i.Origin,
+	)
+	return i, err
+}
+
+const revokeDevice = `-- name: RevokeDevice :execrows
+UPDATE cloud_devices SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE id=$1 AND account_id=$2 AND origin=$3
+`
+
+type RevokeDeviceParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+	Origin    string      `json:"origin"`
+}
+
+func (q *Queries) RevokeDevice(ctx context.Context, arg RevokeDeviceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeDevice, arg.ID, arg.AccountID, arg.Origin)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const saveRecord = `-- name: SaveRecord :one

@@ -304,3 +304,105 @@ func TestFavoriteCanonicalReferencesAndOwnedPreferences(t *testing.T) {
 		t.Fatal("private selection created public facts", err)
 	}
 }
+
+func TestDeviceRegistrationRevocationAndOriginIsolation(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	store.Origin = "one.example.test"
+	ctx := context.Background()
+	d, err := store.RegisterDevice(ctx, p)
+	if err != nil || !domain.ValidID(d.ID) {
+		t.Fatal("random device registration", err)
+	}
+	p.DeviceID = d.ID
+	if err = store.CheckDevice(ctx, p); err != nil {
+		t.Fatal("bound device", err)
+	}
+	again, err := store.RegisterDevice(ctx, p)
+	if err != nil || again.ID != d.ID {
+		t.Fatal("repeat register", err)
+	}
+	store.Origin = "two.example.test"
+	if err = store.CheckDevice(ctx, p); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("origin crossover", err)
+	}
+	store.Origin = "one.example.test"
+	if err = store.RevokeDevice(ctx, p, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.CheckDevice(ctx, p); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("revoked device reused", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE cloud_devices SET revoked_at=NULL WHERE id=$1", d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.CheckDevice(ctx, p); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("restored revoked row accepted", err)
+	}
+	fresh, err := store.RegisterDevice(ctx, p)
+	if err != nil || fresh.ID == d.ID {
+		t.Fatal("revoked UUID resurrected", err)
+	}
+}
+
+func TestDeviceCapConcurrentSessionsAndFreeRevoke(t *testing.T) {
+	pool := freshDB(t)
+	owner := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, owner)
+	store.Origin = "one.example.test"
+	ctx := context.Background()
+	principals := make([]app.Principal, 12)
+	for i := range principals {
+		p := owner
+		p.FamilyID = newid(t)
+		principals[i] = p
+		if _, err := pool.Exec(ctx, "INSERT INTO account_session_families(id,account_id,refresh_salt,refresh_hash,access_salt,access_hash,access_expires,issued_at) VALUES($1,$2,'s','h','s','h',clock_timestamp()+interval '1 hour',clock_timestamp())", p.FamilyID, p.AccountID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 12)
+	devices := make(chan app.Device, 12)
+	for _, p := range principals {
+		wg.Add(1)
+		go func(p app.Principal) {
+			defer wg.Done()
+			d, e := store.RegisterDevice(ctx, p)
+			errs <- e
+			if e == nil {
+				devices <- d
+			}
+		}(p)
+	}
+	wg.Wait()
+	close(errs)
+	close(devices)
+	wins := 0
+	for e := range errs {
+		if e == nil {
+			wins++
+		} else if !errors.Is(e, domain.ErrQuota) {
+			t.Fatal(e)
+		}
+	}
+	if wins != 3 {
+		t.Fatalf("device cap %d want 3", wins)
+	}
+	d := <-devices
+	if err := store.RevokeDevice(ctx, foreign, d.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatal("foreign revoke", err)
+	}
+	store.Paid = nil
+	if err := store.RevokeDevice(ctx, owner, d.ID); err != nil {
+		t.Fatal("revoke requires paid capability", err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", owner.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	var live int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM cloud_devices WHERE account_id=$1 AND revoked_at IS NULL", owner.AccountID).Scan(&live); err != nil || live != 0 {
+		t.Fatal("deletion device fence", err)
+	}
+}
