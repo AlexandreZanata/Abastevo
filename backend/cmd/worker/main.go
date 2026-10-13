@@ -477,7 +477,8 @@ func run() error {
 		},
 	}
 	// Payment ports remain deliberately nil until the future payment module is configured.
-	premiumService := &subscriptionapp.Service{Store: subscriptionadapters.NewStore(raw), Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	premiumStore := subscriptionadapters.NewStore(raw)
+	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
@@ -897,6 +898,14 @@ func run() error {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
+		if premiumService.Configured() {
+			if _, err := premiumService.Reconcile(ctx); err != nil {
+				logger.Warn(ctx, "subscription.reconcile-unavailable", "bounded reconciliation unavailable")
+			}
+		}
+		if err := premiumStore.CleanupReceipts(ctx); err != nil {
+			logger.Warn(ctx, "subscription.cleanup-unavailable", "bounded cleanup unavailable")
+		}
 		if _, err := scheduler.Tick(ctx); err != nil {
 			return err
 		}

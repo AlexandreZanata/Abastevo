@@ -87,3 +87,8 @@ type ExportRow struct {
 type ExportStore interface {
 	ExportRows(context.Context, Principal, int, time.Time, string) ([]ExportRow, error)
 }
+
+type ReconciliationStore interface {
+	ScheduleReconciliation(context.Context, string, string, int) (int, error)
+	CleanupReceipts(context.Context) error
+}

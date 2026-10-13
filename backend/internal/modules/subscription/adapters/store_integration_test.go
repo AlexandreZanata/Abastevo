@@ -313,7 +313,13 @@ func TestSubscriptionUpgradeReplayAndIndexedStatus(t *testing.T) {
 	p := seedOwner(t, pool)
 	dsn := pool.Config().ConnString()
 	got, err := migrate.Apply(context.Background(), dsn, migrations.Files)
-	if err != nil || len(got) != 2 || got[0] != "000075" || got[1] != "000076" {
+	expected := []string{}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".sql") && entry.Name() >= "000075" {
+			expected = append(expected, strings.SplitN(entry.Name(), "_", 2)[0])
+		}
+	}
+	if err != nil || strings.Join(got, ",") != strings.Join(expected, ",") {
 		t.Fatal("upgrade", got, err)
 	}
 	if got, err = migrate.Apply(context.Background(), dsn, migrations.Files); err != nil || len(got) != 0 {
@@ -781,5 +787,158 @@ func TestRestorePurchaseSameOwnerNeverTransfersOrRecoversSession(t *testing.T) {
 	restore.OperationID = newid(t)
 	if _, err = svc.Admit(ctx, p, restore); !errors.Is(err, domain.ErrUnauthorized) || lookups != 2 {
 		t.Fatal("restore recovered revoked session", err)
+	}
+}
+
+func TestReconciliationMissedNoticeAndParallelCheckpoint(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	p := seedOwner(t, pool)
+	ctx := context.Background()
+	a, err := store.Begin(ctx, attempt(t, p, "synthetic-missed-notification"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := verified()
+	v.Snapshot.Acknowledged = true
+	if err = store.Commit(ctx, a, v); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 12)
+	counts := make(chan int, 12)
+	for i := 0; i < 12; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25)
+			counts <- n
+			errs <- e
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	close(counts)
+	for e := range errs {
+		if e != nil {
+			t.Fatal(e)
+		}
+	}
+	total := 0
+	for n := range counts {
+		total += n
+	}
+	if total != 1 {
+		t.Fatalf("parallel scheduled %d want 1", total)
+	}
+	var jobsCount int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE kind='subscription-refresh'").Scan(&jobsCount); err != nil || jobsCount != 1 {
+		t.Fatal("missed event not recovered", err, jobsCount)
+	}
+	if _, err = store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 101); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unbounded reconciliation", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", p.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); e != nil || n != 0 {
+		t.Fatal("deleted owner scheduled", e)
+	}
+}
+
+func TestReconciliationEnqueueRollbackAndReceiptRetention(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	p := seedOwner(t, pool)
+	ctx := context.Background()
+	a, err := store.Begin(ctx, attempt(t, p, "synthetic-reconcile-rollback"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = store.Commit(ctx, a, verified()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, `CREATE FUNCTION refuse_premium_refresh() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='subscription-refresh' THEN RAISE EXCEPTION 'synthetic'; END IF; RETURN NEW; END $$; CREATE TRIGGER refuse_premium_refresh BEFORE INSERT ON job_queue FOR EACH ROW EXECUTE FUNCTION refuse_premium_refresh()`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatal("queue failure hidden", err)
+	}
+	var due bool
+	if err = pool.QueryRow(ctx, "SELECT next_check_at<=clock_timestamp() FROM subscription_purchases WHERE token_digest=$1", a.Digest).Scan(&due); err != nil || !due {
+		t.Fatal("checkpoint advanced on rollback", err)
+	}
+	if _, err = pool.Exec(ctx, "DROP TRIGGER refuse_premium_refresh ON job_queue"); err != nil {
+		t.Fatal(err)
+	}
+	if n, e := store.ScheduleReconciliation(ctx, "test", "com.anpfuel", 25); e != nil || n != 1 {
+		t.Fatal("restart lost candidate", e)
+	}
+	pending, err := store.Begin(ctx, attempt(t, p, "synthetic-old-pending"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE subscription_operations SET created_at=clock_timestamp()-interval '31 days',lease_until=clock_timestamp()-interval '30 days' WHERE operation_id=$1", pending.OperationID); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.CleanupReceipts(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var remaining int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM subscription_operations WHERE operation_id=$1", pending.OperationID).Scan(&remaining); err != nil || remaining != 0 {
+		t.Fatal("pending secret retention", err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE subscription_operations SET completed_at=clock_timestamp()-interval '91 days' WHERE operation_id=$1", a.OperationID); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.CleanupReceipts(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM subscription_operations").Scan(&remaining); err != nil || remaining != 0 {
+		t.Fatal("terminal retention", err)
+	}
+}
+
+func TestTerminalRetentionAndRestrictedReplay(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	p := seedOwner(t, pool)
+	ctx := context.Background()
+	a, err := store.Begin(ctx, attempt(t, p, "synthetic-old-expired"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = store.Commit(ctx, a, verified()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pool.Exec(ctx, "UPDATE subscription_purchases SET state='EXPIRED',verified_at=clock_timestamp()-interval '91 days',valid_until=clock_timestamp()-interval '91 days' WHERE token_digest=$1", a.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if err = store.CleanupReceipts(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err = pool.QueryRow(ctx, "SELECT count(*) FROM subscription_purchases WHERE token_digest=$1", a.Digest).Scan(&count); err != nil || count != 0 {
+		t.Fatal("terminal token material retained", err)
+	}
+	if _, err = store.Begin(ctx, attempt(t, p, "synthetic-old-expired")); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("purged retired token restored", err)
+	}
+	var id string
+	if err = pool.QueryRow(ctx, "UPDATE job_queue SET status='dead' WHERE kind='subscription-acknowledge' RETURNING id::text").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	pending, dead, err := store.Backlog(ctx)
+	if err != nil || pending != 0 || dead != 1 {
+		t.Fatal("safe metrics", err)
+	}
+	if err = store.ReplayDead(ctx, id, "", "provider-fixed"); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("anonymous operator", err)
+	}
+	if err = store.ReplayDead(ctx, id, "synthetic-operator", "provider-fixed"); err != nil {
+		t.Fatal("audited replay", err)
+	}
+	if err = store.ReplayDead(ctx, id, "synthetic-operator", "provider-fixed"); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("nondead replay", err)
 	}
 }

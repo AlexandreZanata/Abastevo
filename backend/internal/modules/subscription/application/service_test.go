@@ -27,6 +27,9 @@ func TestUnconfiguredPaymentsCannotPersistOrGrant(t *testing.T) {
 	if !errors.Is(err, domain.ErrUnavailable) || store.called {
 		t.Fatal("disabled provider persisted/granted")
 	}
+	if _, err := svc.Reconcile(context.Background()); !errors.Is(err, domain.ErrUnavailable) || store.called {
+		t.Fatal("disabled reconciliation started")
+	}
 	got, err := svc.Status(context.Background(), p)
 	if err != nil || got.PaymentsConfigured || len(got.Capabilities) != 0 || !got.RetainedDataAccess {
 		t.Fatal("disabled/free-exit status invalid")

@@ -10,6 +10,10 @@ The maintainer explicitly requested a new isolated backend branch and a new PR t
 
 The maintainer confirmed that no Play subscription/payment module exists yet: prepare the backend with real payments OFF. Adapter/handler contracts, durable work and local fault tests are in scope; real Play credentials/catalog/payment-module wiring and sandbox proof are explicitly deferred by this instruction. No manual premium-grant endpoint or deployable fake provider is allowed. PRM01-T07, remaining Premium features and Android UI are outside this ten-task request. Acceptance here means tested source, not commercial/provider certification.
 
+### 2026-10-13 next-ten continuation authorization
+
+The maintainer authorized the next ten tasks on the same branch/PR, one commit each: PRM01-T07, PRM02-T01..T05, PRM03-T01..T04. Preserve occupied dev and real payments OFF. Source construction can consume the tested local predecessor; real Play sandbox remains PROOF_OWED. This does not authorize deployment, merge or Android implementation. [Next-ten evidence](../backend/evidence/premium/PRM_NEXT_TEN.md) records actual acceptance.
+
 ### Original planning authorization (historical)
 
 At the original planning checkpoint, the request authorized **local planning only**. Do not implement code, open every future issue, charge customers, change providers, deploy, push, create PRs or mirror the wiki as a consequence of this plan. At that checkpoint all tasks were PLANNED / NOT STARTED; local documentation validation was not feature acceptance. The newer construction authorization and per-task statuses below govern the first ten.
@@ -152,6 +156,8 @@ Entry: PRM00. Exit: provider-verified capabilities and lifecycle/recovery tested
 - **Acceptance/recovery:** purchase restore never restores a session/key or claims someone else's data; ambiguous ownership uses the established recovery path. Status errors remain explicit.
 
 ### PRM01-T07 — Bounded reconciliation, sandbox evidence and billing runbook
+
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING; real sandbox PROOF_OWED.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
 
 - **Dependencies/rules:** T06; PR02–PR05.
 - **Outcome/areas:** recurring reconciliation with quotas/leases/checkpoints, minimal metrics and private operator commands; real Play sandbox matrix and credential/product setup runbook.

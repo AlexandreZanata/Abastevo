@@ -112,3 +112,52 @@ SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retire
 FROM subscription_purchases WHERE account_id=sqlc.arg(account_id)::uuid
 AND (NOT sqlc.arg(has_cursor)::boolean OR (verified_at,token_digest)<(sqlc.arg(after_time)::timestamptz,sqlc.arg(after_digest)::text))
 ORDER BY verified_at DESC,token_digest DESC LIMIT sqlc.arg(limit_count)::int;
+
+-- name: DuePurchases :many
+SELECT p.token_digest,p.account_id FROM subscription_purchases p JOIN accounts a ON a.id=p.account_id
+WHERE p.environment=$1 AND p.package_name=$2 AND NOT p.retired AND p.token_cipher IS NOT NULL
+AND p.next_check_at<=clock_timestamp() AND a.status='active'
+ORDER BY p.next_check_at,p.token_digest LIMIT $3;
+
+-- name: DeferReconciliation :execrows
+UPDATE subscription_purchases SET next_check_at=clock_timestamp()+interval '5 minutes'
+WHERE token_digest=$1 AND next_check_at<=clock_timestamp() AND NOT retired AND token_cipher IS NOT NULL;
+
+-- name: PurgeOldOperations :execrows
+DELETE FROM subscription_operations WHERE (account_id,operation_id) IN
+(SELECT account_id,operation_id FROM subscription_operations
+ WHERE ((status='pending' AND created_at<clock_timestamp()-interval '30 days' AND lease_until<clock_timestamp())
+ OR (status<>'pending' AND completed_at<clock_timestamp()-interval '90 days'))
+ AND NOT EXISTS(SELECT 1 FROM job_queue j WHERE j.id=subscription_operations.operation_id AND j.status IN ('queued','leased','failed'))
+ ORDER BY created_at,account_id,operation_id LIMIT 100 FOR UPDATE SKIP LOCKED);
+
+-- name: PurgeOldNotifications :execrows
+DELETE FROM subscription_provider_notifications WHERE (environment,message_id) IN
+(SELECT environment,message_id FROM subscription_provider_notifications WHERE received_at<clock_timestamp()-interval '90 days'
+ ORDER BY received_at,environment,message_id LIMIT 100 FOR UPDATE SKIP LOCKED);
+
+-- name: TerminalPurchases :many
+SELECT token_digest,account_id FROM subscription_purchases
+WHERE state IN ('EXPIRED','REVOKED') AND verified_at<clock_timestamp()-interval '90 days'
+AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days')
+ORDER BY verified_at,token_digest LIMIT 100;
+
+-- name: LockAnyOwner :one
+SELECT id FROM accounts WHERE id=$1 FOR UPDATE;
+
+-- name: PurgeTerminalPurchase :exec
+DELETE FROM subscription_purchases WHERE token_digest=$1 AND state IN ('EXPIRED','REVOKED')
+AND verified_at<clock_timestamp()-interval '90 days' AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days');
+
+-- name: LockTerminalPurchase :one
+SELECT token_digest FROM subscription_purchases WHERE token_digest=$1
+AND state IN ('EXPIRED','REVOKED') AND verified_at<clock_timestamp()-interval '90 days'
+AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days') FOR UPDATE;
+
+-- name: SubscriptionBacklog :one
+SELECT count(*) FILTER(WHERE status IN ('queued','leased','failed'))::bigint AS pending,
+count(*) FILTER(WHERE status='dead')::bigint AS dead FROM job_queue
+WHERE kind IN ('subscription-refresh','subscription-acknowledge');
+
+-- name: SubscriptionDeadJob :one
+SELECT id FROM job_queue WHERE id=$1 AND status='dead' AND kind IN ('subscription-refresh','subscription-acknowledge');

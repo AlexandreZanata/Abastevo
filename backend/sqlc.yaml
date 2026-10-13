@@ -199,10 +199,12 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000004_identity.sql
+      - db/migrations/000007_jobs.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000022_account_bindings.sql
       - db/migrations/000075_subscription_ownership.sql
       - db/migrations/000076_subscription_notifications.sql
+      - db/migrations/000077_subscription_reconcile.sql
     gen:
       go:
         package: subscription

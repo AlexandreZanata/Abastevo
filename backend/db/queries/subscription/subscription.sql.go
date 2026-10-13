@@ -33,6 +33,57 @@ func (q *Queries) ClaimSlot(ctx context.Context, arg ClaimSlotParams) (int64, er
 	return generation, err
 }
 
+const deferReconciliation = `-- name: DeferReconciliation :execrows
+UPDATE subscription_purchases SET next_check_at=clock_timestamp()+interval '5 minutes'
+WHERE token_digest=$1 AND next_check_at<=clock_timestamp() AND NOT retired AND token_cipher IS NOT NULL
+`
+
+func (q *Queries) DeferReconciliation(ctx context.Context, tokenDigest string) (int64, error) {
+	result, err := q.db.Exec(ctx, deferReconciliation, tokenDigest)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const duePurchases = `-- name: DuePurchases :many
+SELECT p.token_digest,p.account_id FROM subscription_purchases p JOIN accounts a ON a.id=p.account_id
+WHERE p.environment=$1 AND p.package_name=$2 AND NOT p.retired AND p.token_cipher IS NOT NULL
+AND p.next_check_at<=clock_timestamp() AND a.status='active'
+ORDER BY p.next_check_at,p.token_digest LIMIT $3
+`
+
+type DuePurchasesParams struct {
+	Environment string `json:"environment"`
+	PackageName string `json:"package_name"`
+	Limit       int32  `json:"limit"`
+}
+
+type DuePurchasesRow struct {
+	TokenDigest string      `json:"token_digest"`
+	AccountID   pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) DuePurchases(ctx context.Context, arg DuePurchasesParams) ([]DuePurchasesRow, error) {
+	rows, err := q.db.Query(ctx, duePurchases, arg.Environment, arg.PackageName, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DuePurchasesRow
+	for rows.Next() {
+		var i DuePurchasesRow
+		if err := rows.Scan(&i.TokenDigest, &i.AccountID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportPurchases = `-- name: ExportPurchases :many
 SELECT token_digest,product_id,base_plan_id,state,valid_until,verified_at,retired,acknowledged
 FROM subscription_purchases WHERE account_id=$1::uuid
@@ -167,7 +218,7 @@ func (q *Queries) GetProviderReceipt(ctx context.Context, arg GetProviderReceipt
 }
 
 const getPurchase = `-- name: GetPurchase :one
-SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest FROM subscription_purchases WHERE token_digest=$1
+SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at FROM subscription_purchases WHERE token_digest=$1
 `
 
 func (q *Queries) GetPurchase(ctx context.Context, tokenDigest string) (SubscriptionPurchase, error) {
@@ -189,6 +240,7 @@ func (q *Queries) GetPurchase(ctx context.Context, tokenDigest string) (Subscrip
 		&i.Acknowledged,
 		&i.TokenCipher,
 		&i.LinkedDigest,
+		&i.NextCheckAt,
 	)
 	return i, err
 }
@@ -282,6 +334,17 @@ func (q *Queries) InvalidateSlot(ctx context.Context, tokenDigest string) error 
 	return err
 }
 
+const lockAnyOwner = `-- name: LockAnyOwner :one
+SELECT id FROM accounts WHERE id=$1 FOR UPDATE
+`
+
+func (q *Queries) LockAnyOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockAnyOwner, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const lockBinding = `-- name: LockBinding :one
 SELECT contributor_id FROM account_contributor_bindings
 WHERE account_id=$1::uuid AND contributor_id=$2::text FOR SHARE
@@ -347,6 +410,19 @@ func (q *Queries) LockSigningKey(ctx context.Context, arg LockSigningKeyParams) 
 	return id, err
 }
 
+const lockTerminalPurchase = `-- name: LockTerminalPurchase :one
+SELECT token_digest FROM subscription_purchases WHERE token_digest=$1
+AND state IN ('EXPIRED','REVOKED') AND verified_at<clock_timestamp()-interval '90 days'
+AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days') FOR UPDATE
+`
+
+func (q *Queries) LockTerminalPurchase(ctx context.Context, tokenDigest string) (string, error) {
+	row := q.db.QueryRow(ctx, lockTerminalPurchase, tokenDigest)
+	var token_digest string
+	err := row.Scan(&token_digest)
+	return token_digest, err
+}
+
 const lockToken = `-- name: LockToken :exec
 SELECT pg_advisory_xact_lock(hashtextextended($1::text,0))
 `
@@ -396,8 +472,49 @@ func (q *Queries) PendingAdmissions(ctx context.Context, accountID pgtype.UUID) 
 	return count, err
 }
 
+const purgeOldNotifications = `-- name: PurgeOldNotifications :execrows
+DELETE FROM subscription_provider_notifications WHERE (environment,message_id) IN
+(SELECT environment,message_id FROM subscription_provider_notifications WHERE received_at<clock_timestamp()-interval '90 days'
+ ORDER BY received_at,environment,message_id LIMIT 100 FOR UPDATE SKIP LOCKED)
+`
+
+func (q *Queries) PurgeOldNotifications(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeOldNotifications)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeOldOperations = `-- name: PurgeOldOperations :execrows
+DELETE FROM subscription_operations WHERE (account_id,operation_id) IN
+(SELECT account_id,operation_id FROM subscription_operations
+ WHERE ((status='pending' AND created_at<clock_timestamp()-interval '30 days' AND lease_until<clock_timestamp())
+ OR (status<>'pending' AND completed_at<clock_timestamp()-interval '90 days'))
+ AND NOT EXISTS(SELECT 1 FROM job_queue j WHERE j.id=subscription_operations.operation_id AND j.status IN ('queued','leased','failed'))
+ ORDER BY created_at,account_id,operation_id LIMIT 100 FOR UPDATE SKIP LOCKED)
+`
+
+func (q *Queries) PurgeOldOperations(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeOldOperations)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeTerminalPurchase = `-- name: PurgeTerminalPurchase :exec
+DELETE FROM subscription_purchases WHERE token_digest=$1 AND state IN ('EXPIRED','REVOKED')
+AND verified_at<clock_timestamp()-interval '90 days' AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days')
+`
+
+func (q *Queries) PurgeTerminalPurchase(ctx context.Context, tokenDigest string) error {
+	_, err := q.db.Exec(ctx, purgeTerminalPurchase, tokenDigest)
+	return err
+}
+
 const readStatus = `-- name: ReadStatus :one
-SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest FROM subscription_purchases WHERE account_id=$1
+SELECT token_digest, account_id, environment, package_name, product_id, base_plan_id, state, valid_until, verified_at, revision, retired, refresh_required, acknowledged, token_cipher, linked_digest, next_check_at FROM subscription_purchases WHERE account_id=$1
 ORDER BY (NOT retired AND NOT refresh_required AND state IN ('ACTIVE','CANCELED','GRACE')
 AND valid_until>clock_timestamp() AND verified_at>clock_timestamp()-interval '15 minutes') DESC,
 verified_at DESC,token_digest LIMIT 1
@@ -422,6 +539,7 @@ func (q *Queries) ReadStatus(ctx context.Context, accountID pgtype.UUID) (Subscr
 		&i.Acknowledged,
 		&i.TokenCipher,
 		&i.LinkedDigest,
+		&i.NextCheckAt,
 	)
 	return i, err
 }
@@ -549,4 +667,65 @@ func (q *Queries) StartOperation(ctx context.Context, arg StartOperationParams) 
 		arg.Generation,
 	)
 	return err
+}
+
+const subscriptionBacklog = `-- name: SubscriptionBacklog :one
+SELECT count(*) FILTER(WHERE status IN ('queued','leased','failed'))::bigint AS pending,
+count(*) FILTER(WHERE status='dead')::bigint AS dead FROM job_queue
+WHERE kind IN ('subscription-refresh','subscription-acknowledge')
+`
+
+type SubscriptionBacklogRow struct {
+	Pending int64 `json:"pending"`
+	Dead    int64 `json:"dead"`
+}
+
+func (q *Queries) SubscriptionBacklog(ctx context.Context) (SubscriptionBacklogRow, error) {
+	row := q.db.QueryRow(ctx, subscriptionBacklog)
+	var i SubscriptionBacklogRow
+	err := row.Scan(&i.Pending, &i.Dead)
+	return i, err
+}
+
+const subscriptionDeadJob = `-- name: SubscriptionDeadJob :one
+SELECT id FROM job_queue WHERE id=$1 AND status='dead' AND kind IN ('subscription-refresh','subscription-acknowledge')
+`
+
+func (q *Queries) SubscriptionDeadJob(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, subscriptionDeadJob, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
+const terminalPurchases = `-- name: TerminalPurchases :many
+SELECT token_digest,account_id FROM subscription_purchases
+WHERE state IN ('EXPIRED','REVOKED') AND verified_at<clock_timestamp()-interval '90 days'
+AND (valid_until IS NULL OR valid_until<clock_timestamp()-interval '90 days')
+ORDER BY verified_at,token_digest LIMIT 100
+`
+
+type TerminalPurchasesRow struct {
+	TokenDigest string      `json:"token_digest"`
+	AccountID   pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) TerminalPurchases(ctx context.Context) ([]TerminalPurchasesRow, error) {
+	rows, err := q.db.Query(ctx, terminalPurchases)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TerminalPurchasesRow
+	for rows.Next() {
+		var i TerminalPurchasesRow
+		if err := rows.Scan(&i.TokenDigest, &i.AccountID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
