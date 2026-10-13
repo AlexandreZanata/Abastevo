@@ -13,6 +13,8 @@ distributed queries. RST-00–05 now have separate audit/contract/implementation
 records; this document does not replace their evidence or accept concurrent
 RST-06 work. New phases do not imply benchmark execution or measured speedups.
 
+Current source-contract and Sorriso identity/location follow-up: [2026-10-13 reliability audit](../backend/STATION_RELIABILITY_AUDIT_20261013.md). Includes the official reseller panel, Power BI, API manual/Swagger and independent RFB/IBGE/OSM corroboration boundaries.
+
 ## Outcome and scope
 
 Build a bounded Rust CLI/library which transforms official raw station records

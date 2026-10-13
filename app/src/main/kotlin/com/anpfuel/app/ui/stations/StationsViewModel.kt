@@ -91,7 +91,17 @@ data class StationsUiState(
      * owned by P36-T03.
      */
     val serverAccountId: String = "",
-)
+) {
+    val directoryOnlyStations: List<ServerStation>
+        get() = com.anpfuel.domain.discovery.StationDirectoryVisibilityRule.additionalStations(
+            serverStations,
+            if (!showNoLocation && !showDownloadPrompt && searchNoMatch == null && !showEmpty) {
+                stations.map { it.cnpjDigits }
+            } else {
+                emptyList()
+            },
+        )
+}
 
 sealed interface StationsNavigationEffect {
     data class LaunchMaps(val navigationQuery: String) : StationsNavigationEffect

@@ -1,0 +1,229 @@
+{
+  "format": "abastevo-national-ingestion-activation-v1",
+  "date": "2026-10-13",
+  "task": "ING-AUDIT-01-DEPLOY",
+  "authorization": "Explicit maintainer authorization after the initial approval-review block; national persistent publication then ingestion-only activation if checks pass.",
+  "behavior_revision": "2cc8b7b",
+  "source_integration_status": "INTEGRATION_PENDING",
+  "runtime_status": "ACTIVATED_STAGING",
+  "namespace": "abastevo-temp",
+  "cronjob": "abastevo-registry-sync",
+  "container": "registry-sync",
+  "deployment": {
+    "cron_generation_before": 2,
+    "cron_generation_after": 3,
+    "schedule": "0 3 * * *",
+    "timezone": "America/Cuiaba",
+    "suspend": false,
+    "only_spec_change": "tools hostPath revision 13c7c25 -> 2cc8b7b",
+    "container_image": "postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677",
+    "resources": {
+      "limits": {
+        "cpu": "250m",
+        "memory": "256Mi"
+      },
+      "requests": {
+        "cpu": "25m",
+        "memory": "32Mi"
+      }
+    },
+    "active_template_matches_tested_container": true,
+    "other_application_or_api_worker_storage_rollout": false
+  },
+  "binary_sha256": {
+    "prepare_registry": "02cf87f1f04d9eb769989cdbd791e9b2d4ef67233cc8dc1853cf9dcd471fb175",
+    "station-sync": "cdc0e8419b477126432ad9fdecf43bc5e62fd72be56caa694369950eb7ecd6f3",
+    "station-discover": "f89c1066391041bbfb6c298eb0c241112708b392ba32601f247880810986600d",
+    "station-load": "52de854acdd3669b45c9e8c53571b197f91a0b2427f53dad4c97c4cae284e380"
+  },
+  "national_events": [
+    {
+      "at": "2026-10-13T18:43:21.193044203Z",
+      "child_cpu_seconds": 1.536354,
+      "child_max_rss_kib": 115660,
+      "counts": {
+        "accepted": 45641,
+        "duplicates": 0,
+        "input": 45762,
+        "quarantined": 121
+      },
+      "event": "stage_complete",
+      "ok": true,
+      "seconds": 6.125683818,
+      "stage": "prepare"
+    },
+    {
+      "at": "2026-10-13T18:45:58.95965363Z",
+      "child_cpu_seconds": 37.572677,
+      "child_max_rss_kib": 14208,
+      "counts": {
+        "accepted": 45641,
+        "duplicates": 0,
+        "preserved_curated": 10,
+        "registry_assertions": 45641,
+        "rejected": 121
+      },
+      "event": "stage_complete",
+      "ok": true,
+      "seconds": 157.760660306,
+      "stage": "load_publish"
+    },
+    {
+      "at": "2026-10-13T18:45:58.968019438Z",
+      "event": "publication_complete"
+    },
+    {
+      "at": "2026-10-13T18:45:58.968188383Z",
+      "container_memory_peak_bytes": 197660672,
+      "event": "refresh_complete",
+      "seconds": 168.694855792
+    }
+  ],
+  "replay_events": [
+    {
+      "at": "2026-10-13T18:49:17.081506286Z",
+      "child_cpu_seconds": 0.018167000000000003,
+      "child_max_rss_kib": 14060,
+      "counts": {
+        "preserved_curated": 10,
+        "registry_assertions": 45641
+      },
+      "event": "stage_complete",
+      "ok": true,
+      "seconds": 2.309144179,
+      "stage": "verify"
+    },
+    {
+      "at": "2026-10-13T18:49:17.094760694Z",
+      "event": "unchanged_verified"
+    },
+    {
+      "at": "2026-10-13T18:49:17.099935235Z",
+      "container_memory_peak_bytes": 21880832,
+      "event": "refresh_complete",
+      "seconds": 7.110902046
+    }
+  ],
+  "source_counts": {
+    "registry-13col": {
+      "input": 45762,
+      "accepted": 45641,
+      "duplicates": 0,
+      "quarantined": 121
+    }
+  },
+  "published_snapshot": {
+    "key": "24eb64927fce5b307444d386b108471699a8d8258fa6412f799f9f3ba97ff17f",
+    "fingerprint": "7f64a32a7c43a1555cefc65a6ee5e320ac47786fa77b22f9f2cd32b7509a0e36",
+    "source_hash": "5794a1f358c5f4acf090ecc1b13807b5653e36ffa9fac479604e3e0802972e13",
+    "alias_hash": "ad659182c9fbef2c1a9d61f95beb92e6fcbcb7dbc780403cd74bf95c01415c33",
+    "run_id": "24eb6492-7fce-5b30-b444-d386b1084716",
+    "fetched_at": "2026-10-13T18:43:14.981189097Z",
+    "manifest_hash": "98414f79e8b995fb70b6558c0e02ec765b1604b74b182cef2a27121f5f7e18b9"
+  },
+  "manifest_hash_verified": true,
+  "pipeline_fingerprint_verified": true,
+  "preservation": {
+    "existing_station_rows_verified": 45618,
+    "missing_existing_ids": 0,
+    "new_ids": 28,
+    "changed_active_cnpj_mappings": 0,
+    "changed_protected_status_locality_locations": 0,
+    "changed_existing_profiles": 0,
+    "curated_station_rows_verified": 10,
+    "changed_curated_facts": 0,
+    "updated_source_backed_facts": 11,
+    "before": {
+      "schema_max": "000074",
+      "stations": 45618,
+      "active_identifiers": 45617,
+      "duplicate_active_identifiers": 0,
+      "location_revisions": 0,
+      "projected_points": 0,
+      "reviewed_points": 0,
+      "profiles": 45617,
+      "source_runs_running": 0
+    },
+    "after": {
+      "schema_max": "000074",
+      "stations": 45646,
+      "active_identifiers": 45645,
+      "duplicate_active_identifiers": 0,
+      "location_revisions": 0,
+      "projected_points": 0,
+      "reviewed_points": 0,
+      "profiles": 45645,
+      "source_runs_running": 0
+    },
+    "snapshot_sha256": {
+      "before": "46bdaea4249d07619e2d8888ca247ca2df779453f3640c3276f50a243b23e295",
+      "after": "53055e3f54cb5296ee2b1a4c89d7b7507778354c9a7790fbeae1798984e3f04d"
+    },
+    "violations": []
+  },
+  "source_delta": {
+    "previous_unique_cnpjs": 45617,
+    "current_unique_cnpjs": 45641,
+    "new_cnpjs": 28,
+    "missing_from_new_edition": 4,
+    "sorriso_stations": 25,
+    "sorriso_projected_points": 0
+  },
+  "guards": {
+    "national": {
+      "samples": 26,
+      "max_load1": 4.8466796875,
+      "load1_limit": 5.2,
+      "min_available_mib": 24536.796875,
+      "min_disk_free_mib": 237893.90234375,
+      "violations": 0,
+      "max_sampled_service_memory_mib": {
+        "api": 7.0,
+        "private-storage": 229.0,
+        "worker": 4.0,
+        "postgres": 228.0
+      },
+      "service_restart_deltas": {
+        "api": 0,
+        "private-storage": 0,
+        "worker": 0,
+        "postgres": 0
+      }
+    },
+    "replay": {
+      "samples": 3,
+      "max_load1": 1.5263671875,
+      "load1_limit": 5.2,
+      "min_available_mib": 24533.5,
+      "min_disk_free_mib": 237893.5078125,
+      "violations": 0,
+      "max_sampled_service_memory_mib": {
+        "api": 7.0,
+        "private-storage": 229.0,
+        "worker": 4.0,
+        "postgres": 214.0
+      },
+      "service_restart_deltas": {
+        "api": 0,
+        "private-storage": 0,
+        "worker": 0,
+        "postgres": 0
+      }
+    }
+  },
+  "final": {
+    "ready_containers": 4,
+    "source_runs_running": 0,
+    "state_pending": null,
+    "previous_snapshot_retained": true,
+    "violations": []
+  },
+  "limits": [
+    "121 rows remain quarantined for locality review.",
+    "Four CNPJs absent from the new accepted edition retain canonical identity/history; absence never establishes revocation.",
+    "Coordinate candidates remain unreviewed; this rollout does not activate the 150m gate for unknown locations.",
+    "Full official API adapter and location-review policy code in API/worker were not rolled out; the corrected stage-only API CLI remains available in the ingestion tools directory.",
+    "No Android installation, main/PR/wiki integration, capacity/soak or production-release certification.",
+    "Initial correlated read-only invariant query hit its 12-second statement timeout; replaced by grouped materialized sets under the same timeout before publication."
+  ]
+}

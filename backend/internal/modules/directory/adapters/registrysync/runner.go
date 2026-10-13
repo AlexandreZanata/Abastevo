@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const Pipeline = "station-prep-v0.3.0-policy-v2-sync-v1"
+const Pipeline = "station-prep-v0.3.1-policy-v2-sync-v1"
 
 type Runner struct {
 	Root    string

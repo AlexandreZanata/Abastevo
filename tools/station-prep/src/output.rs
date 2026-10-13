@@ -19,7 +19,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 /// Parser and policy versions stamped on every manifest.
-pub const PARSER_VERSION: &str = "station-prep-v0.3.0";
+pub const PARSER_VERSION: &str = "station-prep-v0.3.1";
 pub const POLICY_VERSION: &str = "station-policy-v2";
 
 /// Published stream file names.

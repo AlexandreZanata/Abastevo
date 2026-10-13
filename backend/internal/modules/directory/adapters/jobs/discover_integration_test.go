@@ -101,7 +101,7 @@ func discoverLoopback(t *testing.T, hits *int, status int, body string) *httptes
 	}))
 }
 
-const discoverItemPage = `{"items": [{"cnpj": "04218406000104", "razaoSocial": "[RST08-TEST] POSTO KILO LTDA", "nomeFantasia": "Kilo", "endereco": {"municipio": "SAO PAULO", "uf": "SP", "codigoIbge": "3550308"}, "situacao": "ATIVA", "location_quality": "unknown", "coordenadas": null}], "page": 1, "pageSize": 100, "nextCursor": null}`
+const discoverItemPage = `{"status":200,"succeeded":true,"data":[{"cnpj":"04218406000104","razaoSocial":"[RST08-TEST] POSTO JOTA LTDA","endereco":"TEST STREET, 10","municipio":"SAO PAULO","uf":"SP"}],"searchPageFilter":{"numeroPagina":1,"tamanhoPagina":5000,"totalRegistro":1,"totalPagina":1}}`
 
 func discoverHandler(store *registry.PGStore, server *httptest.Server) Discover {
 	return Discover{Store: store, Config: registry.APIConfig{
