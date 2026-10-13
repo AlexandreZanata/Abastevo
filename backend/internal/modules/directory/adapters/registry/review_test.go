@@ -232,3 +232,17 @@ func TestReviewCandidateWiresIntoReconcile(t *testing.T) {
 }
 
 func ctxForTest() context.Context { return context.Background() }
+
+func TestReviewCandidateRejectsCopiedObservationAcrossRuns(t *testing.T) {
+	store := newFakeStore()
+	row := evidenceRow("48151623000191", -23.561, -46.656, "2024-04-01")
+	a := stageEvidenceRow(t, store, "copy-a", row)
+	b := stageEvidenceRow(t, store, "copy-b", row)
+	before := len(store.runs)
+	if _, err := ReviewCandidate(context.Background(), store, fakeTransformer{}, a, b, "reviewer:test"); err == nil {
+		t.Fatal("same source observation in two runs is not independent evidence")
+	}
+	if len(store.runs) != before {
+		t.Fatal("rejected pair created review run")
+	}
+}

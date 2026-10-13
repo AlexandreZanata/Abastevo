@@ -18,8 +18,8 @@
       "key": "pmqc",
       "ref": "pmqc-sample.csv",
       "edition": "synthetic-2024-04",
-      "sha256": "c73a696a5fefd956973bf8fa26752fdc9d70db366c189c4d0413b42255d85304",
-      "bytes": 573,
+      "sha256": "fe24b685f50912dd27329a14dae296c27d2113166f8953d6daa72347a3f1d4b3",
+      "bytes": 572,
       "rows": 11,
       "encoding": "UTF-8 without BOM"
     }

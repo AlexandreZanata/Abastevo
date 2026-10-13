@@ -121,3 +121,12 @@ confirmed byte replay emits no PUT. The existing worker process has four
 serial safety dispatchers alongside one general dispatcher, with no new service.
 The operational copy deadline stays first receipt +24h; cleanup starts at 22h.
 Provider/version/backup and autonomous elapsed-time proof remain required.
+
+## Bounded ANP location-candidate discovery
+
+See the [Sorriso reliability audit](../docs/backend/STATION_RELIABILITY_AUDIT_20261013.md).
+`go run ./cmd/station-discover --snapshot <immutable-edition> --uf MT --municipio SORRISO`
+uses `ANPFUEL_DATABASE_URL` and stages only official records/candidate points.
+It runs no migrations, canonical publication or location review. Exact snapshot
+replay reuses stored results; new source editions need new snapshot identities.
+Do not use a persistent database for integration tests.

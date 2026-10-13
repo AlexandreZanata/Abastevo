@@ -16,11 +16,26 @@ import (
 // identifiers fall back safely instead of corrupting identity.
 
 func pageBody(items ...string) string {
-	return fmt.Sprintf(`{"items": [%s], "page": 1, "pageSize": 100, "nextCursor": null}`, strings.Join(items, ","))
+	return officialPage(1, 1, len(items), strings.Join(items, ","))
 }
 
-func recordBody(cnpj, qualidade, coords string) string {
-	return fmt.Sprintf(`{"cnpj": %q, "razaoSocial": "[P25-TEST] X", "nomeFantasia": "X", "endereco": {"municipio": "SAO PAULO", "uf": "SP", "codigoIbge": "3550308"}, "situacao": "ATIVA", "location_quality": %q, "coordenadas": %s}`, cnpj, qualidade, coords)
+func recordBody(cnpj, quality, coords string) string {
+	var point *struct {
+		Lat float64 `json:"lat"`
+		Lon float64 `json:"lon"`
+		CRS string  `json:"crs"`
+	}
+	_ = json.Unmarshal([]byte(coords), &point)
+	lat, lon, srid, crs := "", "", "", ""
+	if point != nil {
+		lat = fmt.Sprint(point.Lat)
+		lon = fmt.Sprint(point.Lon)
+		crs = point.CRS
+		if crs == "WGS84" {
+			srid = "4326"
+		}
+	}
+	return fmt.Sprintf(`{"cnpj":%q,"razaoSocial":"[P25-TEST] X","endereco":"TEST STREET, 10","municipio":"SAO PAULO","uf":"SP","latitude":%q,"longitude":%q,"srid":%q,"src":%q,"validacao":%q}`, cnpj, lat, lon, srid, crs, quality)
 }
 
 func testAPIConfig(server *httptest.Server) APIConfig {
@@ -65,12 +80,12 @@ func TestDiscoverPagesAndDedupsAcrossPages(t *testing.T) {
 
 func TestDiscoverFollowsCursorAndCountsDuplicates(t *testing.T) {
 	pages := []string{
-		`{"items": [` + recordBody("04218406000104", "reviewed", `{"lat": -23.561, "lon": -46.656, "crs": "WGS84"}`) + `], "nextCursor": "p2"}`,
-		`{"items": [` + recordBody("04218406000104", "reviewed", `{"lat": -23.561, "lon": -46.656, "crs": "WGS84"}`) + `], "nextCursor": null}`,
+		strings.Replace(officialPage(1, 2, 2, recordBody("04218406000104", "reviewed", `{"lat": -23.561, "lon": -46.656, "crs": "WGS84"}`)), `"tamanhoPagina":5000`, `"tamanhoPagina":1`, 1),
+		strings.Replace(officialPage(2, 2, 2, recordBody("04218406000104", "reviewed", `{"lat": -23.561, "lon": -46.656, "crs": "WGS84"}`)), `"tamanhoPagina":5000`, `"tamanhoPagina":1`, 1),
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Query().Get("cursor") == "" {
+		if r.URL.Query().Get("numeropagina") == "1" {
 			_, _ = w.Write([]byte(pages[0]))
 			return
 		}
@@ -89,11 +104,11 @@ func TestDiscoverFollowsCursorAndCountsDuplicates(t *testing.T) {
 }
 
 func TestDiscoverRejectsBadRecordsHonestly(t *testing.T) {
-	body := `{"items": [
-		{"cnpj": "123", "situacao": "ATIVA", "location_quality": "reviewed"},
-		{"cnpj": "04218406000104", "situacao": "ATIVA", "location_quality": "reviewed", "coordenadas": {"lat": -23.5, "lon": -46.6, "crs": "MERCATOR"}},
-		{"cnpj": "00428184000195", "situacao": "ATIVA", "location_quality": "reviewed", "coordenadas": {"lat": -91, "lon": 0, "crs": "WGS84"}}
-	], "nextCursor": null}`
+	body := pageBody(
+		recordBody("123", "reviewed", `null`),
+		recordBody("04218406000104", "reviewed", `{"lat":-23.5,"lon":-46.6,"crs":"MERCATOR"}`),
+		recordBody("00428184000195", "reviewed", `{"lat":-91,"lon":0,"crs":"WGS84"}`),
+	)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(body))
@@ -179,23 +194,9 @@ func TestDiscoverTargetedLookupRejectsUnsupportedCNPJ(t *testing.T) {
 	}
 }
 
-func TestAPIRecordJSONShapeMatchesFixture(t *testing.T) {
-	raw := ReadFixture(t, "registry-api-sample.json")
-	var doc struct {
-		Value struct {
-			Items []json.RawMessage `json:"items"`
-		} `json:"value"`
-	}
-	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
-		t.Fatalf("fixture: %v", err)
-	}
-	if len(doc.Value.Items) != 3 {
-		t.Fatalf("fixture records = %d", len(doc.Value.Items))
-	}
-	for _, item := range doc.Value.Items {
-		if _, ok := parseAPIRecord(item); !ok {
-			t.Logf("fixture record rejected (unknown status stays honest): %s", truncate(string(item), 80))
-		}
+func TestLegacyNormalizedRecordCannotClaimOfficialLocationReview(t *testing.T) {
+	if _, ok := parseOfficialAPIRecord(json.RawMessage(`{"cnpj":"04218406000104","endereco":{"uf":"SP"},"location_quality":"reviewed"}`)); ok {
+		t.Fatal("legacy invented wire must not be an official record")
 	}
 }
 

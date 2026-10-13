@@ -1,0 +1,75 @@
+{
+  "format": "abastevo-station-reliability-audit-v1",
+  "date": "2026-10-13",
+  "task": "ING-AUDIT-01",
+  "source_base": "b7800b2",
+  "namespace": "abastevo-temp",
+  "rust_parser": "station-prep-v0.3.1",
+  "api_parser": "registry-api-v2",
+  "national_preparation": {
+    "input": 45738,
+    "accepted": 45617,
+    "duplicates": 0,
+    "quarantined": 121,
+    "assertion_bytes": 43328274,
+    "canonical_publication": false
+  },
+  "sorriso_api": {
+    "accepted": 25,
+    "unique_full_cnpj": 25,
+    "rejected": 0,
+    "coordinate_candidates": 24,
+    "location_quality_unknown": 25,
+    "canonical_cnpj_matches": 25,
+    "distinct_matched_station_ids": 25,
+    "replay_same_run": true,
+    "reviewed_promotions": 0
+  },
+  "real_postgis_candidate_geometry": {
+    "points": 24,
+    "inside_149_9m": 24,
+    "outside_150_1m": 24,
+    "radius_m": 150,
+    "physical_site_validation": false
+  },
+  "canonical_sorriso": {
+    "stations": 25,
+    "projected_points": 0,
+    "reviewed_points": 0
+  },
+  "national_active_identifier_duplicates": 0,
+  "local_validation": {
+    "domain_tests": 493,
+    "app_tests": 300,
+    "app_state_followup_tests": 1,
+    "jvm_failures": 0,
+    "android_lint_errors": 0,
+    "android_debug_build": true,
+    "native_execution": false,
+    "postgis_race_packages": [
+      "registry",
+      "jobs",
+      "directory adapters",
+      "directory read"
+    ],
+    "rust_tests": 61
+  },
+  "deployment": {
+    "isolated_audit_job_succeeded": true,
+    "active_daily_ingestor_changed": false,
+    "api_worker_storage_restarts": 0,
+    "full_national_publication": "AUTO_REVIEW_BLOCKED_PENDING_EXPLICIT_CONFIRMATION"
+  },
+  "limitations": [
+    "ANP source points explicitly unvalidated/dated; no physical forecourt certification.",
+    "121 national locality rows remain quarantined, not guessed.",
+    "New daily pipeline/worker activation and native app installation are not claimed.",
+    "First negative harness job failed because sed appended after the official CRLF; corrected CRLF-normalized header test refused as expected. No API rows were staged by the first job.",
+    "No capacity, production release, public pilot or 24/48h soak acceptance."
+  ],
+  "binaries_sha256": {
+    "prepare_registry": "02cf87f1f04d9eb769989cdbd791e9b2d4ef67233cc8dc1853cf9dcd471fb175",
+    "station_discover": "f89c1066391041bbfb6c298eb0c241112708b392ba32601f247880810986600d",
+    "station_sync": "cdc0e8419b477126432ad9fdecf43bc5e62fd72be56caa694369950eb7ecd6f3"
+  }
+}
