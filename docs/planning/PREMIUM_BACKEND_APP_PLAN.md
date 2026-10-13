@@ -492,6 +492,8 @@ Entry: PRM01–PRM07 locally complete; no Android feature UI yet (a test-only pu
 
 ### PRM08-T01 — Full private-data export, erasure and restore campaign
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM01–PRM07; PR04/07/09/12/20/23.
 - **Outcome/areas:** account-wide inventory covering purchase metadata, devices, cloud records, ledgers, reports, rules, inbox and snapshots; integrate existing privacy commands/recovery.
 - **Tests first:** delete during purchase/sync/snapshot/report/dispatch; restore old DB/storage, reconnect stale device, provider outage and parallel erasure retries; bounded physical deletion deadlines.
