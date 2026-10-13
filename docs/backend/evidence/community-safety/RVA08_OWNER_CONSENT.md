@@ -338,3 +338,32 @@ or radio-off test; simulated time is not elapsed retention proof. RVA07.C real
 Remaining RVA08 helpfulness integration and RVA10–14/CS15–25 are not closed by
 these eight cases. Protected integration/main/wiki remain pending the batch.
 The original dev checkout's unrelated Store edit remains untouched/excluded.
+
+## E requested ADB APK refresh — 2026-10-13
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Scope: user-requested update/opening of the existing Android debug application,
+using clean construction head e6a8dfa in the isolated owner-consent worktree.
+The primary dev checkout's foreign Store edit remains untouched. Connected
+physical device model 2311DRK48G, API36; serial/account/UI dumps remain out of Git.
+
+Gradle `:app:assembleDebug` and the focused TrainingConsentHttpClientTest task
+completed BUILD SUCCESSFUL (11s, 75 tasks up-to-date). This reuses prior matching
+test/build inputs; it is not a fresh 13-case execution. APK package
+`com.anpfuel.app.debug`, version 3.1.0-debug/code4, SHA-256
+09988f5fced795b7734e467bc6adac9149a8bcce56908cca442edc035ee116b2.
+Its signing certificate matches the installed package. The previous APK was
+byte-identical: the phone already had this latest Android build. Reinstalled
+with `adb install -r` as requested; result Success, launch Status ok.
+Last update became October 13; original October 5 installation date retained.
+No uninstall, data clear, test orchestrator or permission/radio setting change.
+
+Bundled full pt-BR text is 5,224 bytes, SHA-256
+4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce.
+Real navigation Profile → App settings → Read full terms opens the reader;
+the actual UI text equals the APK asset and its title is visible. Reader left
+open for the user. No checkbox, read-completion or consent submission was
+clicked. This installation/UI smoke does not close the remaining native,
+backend, stability, retention, upload-edge or complete synchronization gates.
