@@ -122,3 +122,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 642f0c0. Erase purges snapshot and restore metadata with record fences in one transaction and deletes objects before commit; outages fail closed, old IDs and stale devices stay blocked, restored bytes remain fenced, and unconfirmed bytes stay inventoried for retry. New ListSnapshotKeys, PurgeSnapshots and PurgeRestores queries vet/diff clean; no migration. Real PostGIS PASS (erasure suites): stale-device plus old-snapshot blocking with object purge counts, retry convergence, outage inventory preservation with retry, restored-byte fencing, and idempotent erase. Unit/race PASS cloudsync/http/apicontract/cmd/api. No HTTP or OpenAPI surface; staging provider proof remains owed. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. No merge/deploy/mobile edit.
 Next PRM05-T01. Real payments OFF.
+
+## PRM05-T01 — Pure refuel and expense domain values
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 22ac5b3. New ledger domain with exact integer centavos, milli-units and metres, IANA timezones, full, partial and unknown markers, seven frozen expense categories and 280-rune notes; no station or GPS required. Stated unit prices preserve authoritative totals with explicit discrepancy flags. Unit/race PASS ledger domain (exact values, bounds, units, incomplete inputs, time, station, notes and categories). Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
+Next PRM05-T02. Real payments OFF.

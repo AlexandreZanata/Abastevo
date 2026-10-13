@@ -327,6 +327,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T01 — Pure refuel/expense records and validation
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM00-T03; PR13–PR15.
 - **Outcome/areas:** professional domain values, actual money/quantity/odometer/timezone, full/partial/unknown markers, expense category and bounded notes; no station/GPS required.
 - **Tests first:** precision/rounding/overflow, currency/unit errors, optional odometer, discount discrepancy, invalid time/category and accepted incomplete inputs.
