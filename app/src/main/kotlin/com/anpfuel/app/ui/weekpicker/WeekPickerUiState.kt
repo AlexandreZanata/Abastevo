@@ -16,5 +16,4 @@ data class WeekPickerUiState(
     val showLatestCta: Boolean = true,
     val pendingWeekSelection: SurveyWeekCatalogEntry? = null,
     val pendingSelectionMode: SurveyWeekSelectionMode? = null,
-    val pendingConfirmation: SurveyWeekCatalogEntry? = null,
 )

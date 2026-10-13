@@ -78,7 +78,6 @@ fun WeekPickerBottomSheet(
     viewModel: WeekPickerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val locale = LocalConfiguration.current.locales[0]
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val maxSheetHeight = LocalConfiguration.current.screenHeightDp.dp * 0.92f
     val bottomSafePadding = rememberRawSystemBottomPadding()
@@ -119,20 +118,12 @@ fun WeekPickerBottomSheet(
                     onUseLatestWeek = viewModel::useLatestWeek,
                     onSelectWeek = viewModel::onWeekRowTapped,
                     onRetrySync = viewModel::retrySync,
+                    onCancelSync = viewModel::cancelSync,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
                 )
             }
         }
-    }
-
-    uiState.pendingConfirmation?.let { entry ->
-        WeekPickerConfirmDialog(
-            entry = entry,
-            locale = locale,
-            onConfirm = viewModel::confirmPendingWeek,
-            onDismiss = viewModel::dismissPendingConfirmation,
-        )
     }
 }

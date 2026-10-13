@@ -196,6 +196,8 @@
     <string name="week_picker_operational_note_collapse">Collapse operational note</string>
     <string name="week_picker_operational_note_title">Operational notice</string>
     <string name="week_picker_download_week">Download this week</string>
+    <string name="week_picker_downloading_title">Downloading week</string>
+    <string name="week_picker_downloading_message">Downloading and importing ANP data for %1$s. You can cancel at any time.</string>
     <string name="week_picker_downloaded_tag">Downloaded</string>
     <string name="week_picker_download_tag">Download</string>
     <string name="week_picker_confirm_title">Download historical week?</string>

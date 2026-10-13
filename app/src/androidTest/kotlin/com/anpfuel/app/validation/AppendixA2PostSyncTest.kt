@@ -53,8 +53,8 @@ class AppendixA2PostSyncTest {
   private lateinit var locationNoDataLabel: String
   private lateinit var br010EmptyLabel: String
   private lateinit var operationalNoteBannerLabel: String
-  private lateinit var downloadWeekLabel: String
   private lateinit var ethanolLabel: String
+  private lateinit var downloadingTitleLabel: String
   private lateinit var stationsTitle: String
   private lateinit var backLabel: String
   private lateinit var homeEmptyMessage: String
@@ -75,7 +75,7 @@ class AppendixA2PostSyncTest {
     locationNoDataLabel = context.getString(R.string.location_no_data_this_week)
     br010EmptyLabel = context.getString(R.string.prices_empty_no_data_this_week)
     operationalNoteBannerLabel = context.getString(R.string.week_picker_operational_note_banner)
-    downloadWeekLabel = context.getString(R.string.week_picker_download_week)
+    downloadingTitleLabel = context.getString(R.string.week_picker_downloading_title)
     ethanolLabel = context.getString(R.string.fuel_product_ethanol)
     stationsTitle = context.getString(R.string.stations_title)
     backLabel = context.getString(R.string.action_back)
@@ -195,14 +195,23 @@ class AppendixA2PostSyncTest {
     }
     composeRule.onNodeWithText(HISTORICAL_WEEK_START_TOKEN, substring = true).performClick()
     if (runCatching {
-        composeRule.waitForText(downloadWeekLabel, timeoutMillis = 10_000L)
-        composeRule.onNodeWithText(downloadWeekLabel).performClick()
-        composeRule.waitForText(homeTitle, timeoutMillis = SYNC_TIMEOUT_MS)
+        awaitWeekDownloadDone()
+        navigateBackFromWeekPicker()
       }.isSuccess
     ) {
       return
     }
     navigateBackFromWeekPicker()
+  }
+
+  private fun awaitWeekDownloadDone() {
+    // Direct download without confirmation: a cancelable overlay covers the
+    // list while syncing. Wait for it to appear, then for it to clear, so
+    // back navigation never aborts an in-flight sync.
+    runCatching { composeRule.waitForText(downloadingTitleLabel, timeoutMillis = 30_000L) }
+    composeRule.waitUntil(timeoutMillis = SYNC_TIMEOUT_MS) {
+      runCatching { composeRule.onNodeWithText(downloadingTitleLabel).assertDoesNotExist() }.isSuccess
+    }
   }
 
   private fun assertOperationalNoteIfPresent() {
@@ -222,15 +231,15 @@ class AppendixA2PostSyncTest {
     composeRule.waitForText(weekPickerTitle, timeoutMillis = 120_000L)
     if (runCatching {
         composeRule.onNodeWithText(HISTORICAL_WEEK_START_TOKEN, substring = true).performClick()
-        composeRule.waitForText(downloadWeekLabel, timeoutMillis = 10_000L)
-        composeRule.onNodeWithText(downloadWeekLabel).performClick()
+        awaitWeekDownloadDone()
       }.isSuccess
     ) {
-      composeRule.waitForText(homeTitle, timeoutMillis = SYNC_TIMEOUT_MS)
+      navigateBackFromWeekPicker()
       return
     }
     composeRule.tapWhenVisible(useLatestWeekLabel)
-    composeRule.waitForText(homeTitle, timeoutMillis = SYNC_TIMEOUT_MS)
+    awaitWeekDownloadDone()
+    navigateBackFromWeekPicker()
   }
 
   private fun navigateBackFromWeekPicker() {

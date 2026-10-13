@@ -11,6 +11,7 @@ import com.anpfuel.domain.model.SurveyWeekCatalogEntry
 import com.anpfuel.domain.valueobject.SurveyWeekSelectionMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -36,6 +37,9 @@ class WeekPickerViewModel @Inject constructor(
 
     private val _navigation = MutableSharedFlow<WeekPickerNavigation>(extraBufferCapacity = 1)
     val navigation: SharedFlow<WeekPickerNavigation> = _navigation.asSharedFlow()
+
+    private var syncJob: Job? = null
+    private var cancelledByUser = false
 
     init {
         loadCatalog()
@@ -85,11 +89,6 @@ class WeekPickerViewModel @Inject constructor(
         }
 
         val catalog = _uiState.value.catalog
-        if (WeekPickerSelectionPolicy.requiresConfirmation(catalog, entry)) {
-            _uiState.update { it.copy(pendingConfirmation = entry) }
-            return
-        }
-
         val mode = if (WeekPickerSelectionPolicy.isLatestCatalogEntry(catalog, entry)) {
             SurveyWeekSelectionMode.LATEST
         } else {
@@ -98,14 +97,9 @@ class WeekPickerViewModel @Inject constructor(
         selectWeek(entry, mode)
     }
 
-    fun confirmPendingWeek() {
-        val entry = _uiState.value.pendingConfirmation ?: return
-        _uiState.update { it.copy(pendingConfirmation = null) }
-        selectWeek(entry, SurveyWeekSelectionMode.SPECIFIC)
-    }
-
-    fun dismissPendingConfirmation() {
-        _uiState.update { it.copy(pendingConfirmation = null) }
+    fun cancelSync() {
+        cancelledByUser = true
+        syncJob?.cancel()
     }
 
     fun retrySync() {
@@ -122,43 +116,71 @@ class WeekPickerViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
+        cancelledByUser = false
+        syncJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isSyncing = true,
                     syncError = null,
-                    pendingConfirmation = null,
                     pendingWeekSelection = entry,
                     pendingSelectionMode = selectionMode,
                 )
             }
 
-            when (
-                val result = selectWeekAndSyncUseCase(
-                    catalogEntry = entry,
-                    selectionMode = selectionMode,
-                )
-            ) {
-                is SelectWeekAndSyncResult.Failed -> {
-                    _uiState.update {
-                        it.copy(
-                            isSyncing = false,
-                            syncError = result.error,
-                        )
+            try {
+                when (
+                    val result = selectWeekAndSyncUseCase(
+                        catalogEntry = entry,
+                        selectionMode = selectionMode,
+                    )
+                ) {
+                    is SelectWeekAndSyncResult.Failed -> {
+                        if (cancelledByUser) {
+                            _uiState.update {
+                                it.copy(
+                                    isSyncing = false,
+                                    syncError = null,
+                                    pendingWeekSelection = null,
+                                    pendingSelectionMode = null,
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isSyncing = false,
+                                    syncError = result.error,
+                                )
+                            }
+                        }
+                    }
+
+                    is SelectWeekAndSyncResult.Success -> {
+                        val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
+                            .getOrDefault(_uiState.value.downloadedWeeks)
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncError = null,
+                                downloadedWeeks = downloadedWeeks,
+                            )
+                        }
+                        _navigation.emit(WeekPickerNavigation.Completed)
                     }
                 }
-
-                is SelectWeekAndSyncResult.Success -> {
-                    val downloadedWeeks = runCatching { getDownloadedSurveyWeeksUseCase() }
-                        .getOrDefault(_uiState.value.downloadedWeeks)
-                    _uiState.update {
+            } finally {
+                cancelledByUser = false
+                syncJob = null
+                _uiState.update {
+                    if (it.isSyncing) {
                         it.copy(
                             isSyncing = false,
                             syncError = null,
-                            downloadedWeeks = downloadedWeeks,
+                            pendingWeekSelection = null,
+                            pendingSelectionMode = null,
                         )
+                    } else {
+                        it
                     }
-                    _navigation.emit(WeekPickerNavigation.Completed)
                 }
             }
         }

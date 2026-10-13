@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
@@ -17,10 +19,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -32,17 +36,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.accessibility.accessibilityDescription
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
-import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -61,7 +68,6 @@ fun WeekPickerRoute(
     viewModel: WeekPickerViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val locale = LocalConfiguration.current.locales[0]
 
     LaunchedEffect(viewModel) {
         viewModel.navigation.collect { destination ->
@@ -77,18 +83,10 @@ fun WeekPickerRoute(
         onUseLatestWeek = viewModel::useLatestWeek,
         onSelectWeek = viewModel::onWeekRowTapped,
         onRetrySync = viewModel::retrySync,
+        onCancelSync = viewModel::cancelSync,
         onNavigateBack = onNavigateBack,
         modifier = modifier,
     )
-
-    uiState.pendingConfirmation?.let { entry ->
-        WeekPickerConfirmDialog(
-            entry = entry,
-            locale = locale,
-            onConfirm = viewModel::confirmPendingWeek,
-            onDismiss = viewModel::dismissPendingConfirmation,
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +98,7 @@ fun WeekPickerScreen(
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
+    onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -118,6 +117,7 @@ fun WeekPickerScreen(
             onUseLatestWeek = onUseLatestWeek,
             onSelectWeek = onSelectWeek,
             onRetrySync = onRetrySync,
+            onCancelSync = onCancelSync,
             onSkip = onSkip,
             modifier = Modifier
                 .fillMaxSize()
@@ -133,6 +133,7 @@ fun WeekPickerContent(
     onUseLatestWeek: (() -> Unit)? = null,
     onSelectWeek: ((SurveyWeekCatalogEntry) -> Unit)? = null,
     onRetrySync: (() -> Unit)? = null,
+    onCancelSync: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -147,13 +148,6 @@ fun WeekPickerContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when {
-            uiState.isSyncing -> {
-                LoadingState(
-                    message = stringResource(R.string.sync_progress_discovering),
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
             uiState.isLoadingCatalog -> {
                 WeekPickerLoadingSkeleton()
             }
@@ -232,6 +226,15 @@ fun WeekPickerContent(
                 }
             }
         }
+
+        if (uiState.isSyncing && onCancelSync != null) {
+            uiState.pendingWeekSelection?.surveyWeek?.let { downloadingWeek ->
+                WeekDownloadingDialog(
+                    weekLabel = SurveyWeekFormatter.formatRange(downloadingWeek, locale),
+                    onCancel = onCancelSync,
+                )
+            }
+        }
     }
 }
 
@@ -246,6 +249,54 @@ private fun WeekPickerLoadingSkeleton() {
                 SkeletonLine(width = 140.dp, height = 14.dp)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+@Composable
+fun WeekDownloadingDialog(
+    weekLabel: String,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .accessibilityDescription(stringResource(R.string.a11y_loading)),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = stringResource(R.string.week_picker_downloading_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(R.string.week_picker_downloading_message, weekLabel),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                TextButton(onClick = onCancel) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            }
         }
     }
 }

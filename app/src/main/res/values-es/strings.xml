@@ -110,6 +110,8 @@
     <string name="week_picker_operational_note_collapse">Contraer nota operativa</string>
     <string name="week_picker_operational_note_title">Aviso operativo</string>
     <string name="week_picker_download_week">Descargar esta semana</string>
+    <string name="week_picker_downloading_title">Descargando semana</string>
+    <string name="week_picker_downloading_message">Descargando e importando datos de la ANP para %1$s. Puedes cancelar en cualquier momento.</string>
     <string name="week_picker_downloaded_tag">Descargada</string>
     <string name="week_picker_download_tag">Descargar</string>
     <string name="week_picker_confirm_title">¿Descargar semana histórica?</string>
