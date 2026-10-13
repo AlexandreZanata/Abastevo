@@ -255,6 +255,8 @@ Entry: PRM02. Exit: two-device convergence/conflicts/deletion recovery, without 
 
 ### PRM03-T05 — Actual two-client protocol and failure acceptance
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T04; PR05/08/09/25.
 - **Outcome/areas:** real HTTP clients against disposable API/PostGIS, exercising reconnect, conflicts, revoke, lapse and resnapshot; evidence/protocol runbook.
 - **Tests first:** A offline/B edit or delete, duplicate retry/lost response, account/origin crossover, worker/DB restart and large bounded delta stream.
