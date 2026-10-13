@@ -18,14 +18,18 @@ const family = "11111111-1111-4111-8111-111111111111"
 const owner = "22222222-2222-4222-8222-222222222222"
 
 type probe struct {
-	epoch           int64
-	lists, commands int
-	pulls           int
-	pullFeed        app.Feed
-	lastPrincipal   app.Principal
-	lastPos         app.Position
-	lastLimit       int
-	err             error
+	epoch                         int64
+	lists, commands               int
+	pulls                         int
+	pullFeed                      app.Feed
+	lastPrincipal                 app.Principal
+	lastPos                       app.Position
+	lastLimit                     int
+	consents, previews, snapshots int
+	previewResult                 app.PreviewResult
+	snapshotResult                app.SnapshotResult
+	consentStatus                 app.Status
+	err                           error
 }
 
 func (p *probe) Status(context.Context, app.Principal) (app.Status, error) {
@@ -57,6 +61,31 @@ func (p *probe) Pull(_ context.Context, principal app.Principal, pos app.Positio
 		return app.Feed{}, p.err
 	}
 	return p.pullFeed, nil
+}
+func (p *probe) Preview(_ context.Context, principal app.Principal, _ app.Batch) (app.PreviewResult, error) {
+	p.previews++
+	p.lastPrincipal = principal
+	if p.err != nil {
+		return app.PreviewResult{}, p.err
+	}
+	return p.previewResult, nil
+}
+func (p *probe) SetConsent(_ context.Context, principal app.Principal, _ []string, _ bool) (app.Status, error) {
+	p.consents++
+	p.lastPrincipal = principal
+	if p.err != nil {
+		return app.Status{}, p.err
+	}
+	return p.consentStatus, nil
+}
+func (p *probe) Snapshot(_ context.Context, principal app.Principal, pos app.SnapshotQuery, limit int) (app.SnapshotResult, error) {
+	p.snapshots++
+	p.lastPrincipal = principal
+	p.lastLimit = limit
+	if p.err != nil {
+		return app.SnapshotResult{}, p.err
+	}
+	return p.snapshotResult, nil
 }
 func call(h Handler, path, body string) *httptest.ResponseRecorder {
 	router := chi.NewRouter()
@@ -345,6 +374,149 @@ func TestSyncPushConflictDetailsWithoutPrivateLeak(t *testing.T) {
 	p.err = domain.ErrConflict
 	if w = call(h, "/v1/cloud/sync/push", base); w.Code != 409 {
 		t.Fatal("generic conflict hidden")
+	}
+	p.err = nil
+}
+
+func consentHandler(p *probe) Handler {
+	who := owner
+	return Handler{
+		Service:      p,
+		Origin:       "one.example.test",
+		CursorSecret: []byte(strings.Repeat("s", 32)),
+		Sessions: func(_ context.Context, f, a string) (string, error) {
+			if f != family || a != "synthetic" {
+				return "", domain.ErrUnauthorized
+			}
+			return who, nil
+		},
+		SignedOwner: func(_ *http.Request, _ string) (string, string, error) {
+			return "33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444", nil
+		},
+	}
+}
+
+func TestConsentExplicitPerDataset(t *testing.T) {
+	p := &probe{consentStatus: app.Status{Epoch: 1, Revision: 2, ConsentRevision: 2, EnabledDatasets: []string{"vehicles"}}}
+	h := consentHandler(p)
+	base := `{"family_id":"` + family + `","access_token":"synthetic","datasets":["vehicles"],"enabled":true}`
+	w := call(h, "/v1/cloud/consent", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("consent opt-in %d", w.Code)
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/consent", base); w.Code != 401 || p.consents != 1 {
+		t.Fatal("unsigned consent admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"enabled":true`, `"enabled":false,"enabled":true`, 1),
+		strings.Replace(base, `"datasets"`, `"mask"`, 1),
+		strings.Replace(base, `"enabled":true`, `"enabled":false,"epoch":99`, 1),
+		`{"family_id":"` + family + `","access_token":"synthetic","datasets":["vehicles"]}`,
+		`{"family_id":"` + family + `","access_token":"synthetic","datasets":[],"enabled":true}`,
+	} {
+		before := p.consents
+		if w = call(h, "/v1/cloud/consent", bad); w.Code != 400 || p.consents != before {
+			t.Fatalf("bad consent admitted %d %s", w.Code, bad)
+		}
+	}
+	p.err = domain.ErrDenied
+	if w = call(h, "/v1/cloud/consent", base); w.Code != 403 {
+		t.Fatal("consent denial hidden")
+	}
+	p.err = nil
+}
+
+func TestImportPreviewNoUploadAndBinding(t *testing.T) {
+	p := &probe{previewResult: app.PreviewResult{Epoch: 1, Revision: 1, ConsentRevision: 1, Items: []app.PreviewItem{{OperationID: "66666666-6666-4666-8666-666666666666", Dataset: "vehicles", ID: "77777777-7777-4777-8777-777777777777", Action: "create"}}}}
+	h := consentHandler(p)
+	device := "55555555-5555-4555-8555-555555555555"
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","epoch":1,"consent_revision":1,"commands":[{"operation_id":"66666666-6666-4666-8666-666666666666","dataset":"vehicles","id":"77777777-7777-4777-8777-777777777777","expected_revision":0,"payload":{"id":"77777777-7777-4777-8777-777777777777","display_name":"Synthetic","capacity_milli":50000,"fuel_product":"ETHANOL","unit":"L","price_source":"CHEAPEST_STATION","price_drop_alert_enabled":false,"sort_order":0,"archived":false}}]}`
+	w := call(h, "/v1/cloud/import/preview", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("preview %d", w.Code)
+	}
+	if p.previews != 1 || p.lastPrincipal.DeviceID != device {
+		t.Fatal("preview not bound to device")
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/import/preview", base); w.Code != 401 {
+		t.Fatal("unsigned preview admitted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"device_id"`, `"account_id"`, 1),
+		strings.Replace(base, `"device_id":"`+device+`"`, `"device_id":"not-a-uuid"`, 1),
+		strings.Replace(base, `"epoch":1`, `"epoch":1,"epoch":2`, 1),
+	} {
+		before := p.previews
+		if w = call(h, "/v1/cloud/import/preview", bad); w.Code != 400 || p.previews != before {
+			t.Fatalf("bad preview admitted %d", w.Code)
+		}
+	}
+	p.err = domain.ErrResnapshot
+	if w = call(h, "/v1/cloud/import/preview", base); w.Code != 409 {
+		t.Fatal("stale preview hidden")
+	}
+	p.err = domain.ErrDenied
+	if w = call(h, "/v1/cloud/import/preview", base); w.Code != 403 {
+		t.Fatal("revoked preview hidden")
+	}
+	p.err = nil
+}
+
+func TestSnapshotConsistentPagesAndIsolation(t *testing.T) {
+	device := "55555555-5555-4555-8555-555555555555"
+	p := &probe{snapshotResult: app.SnapshotResult{
+		Records:         []app.Record{{Dataset: "vehicles", ID: "66666666-6666-4666-8666-666666666666", Revision: 1}},
+		Through:         2,
+		Epoch:           1,
+		ConsentRevision: 1,
+	}}
+	h := consentHandler(p)
+	h.CursorSecret = []byte(strings.Repeat("s", 32))
+	base := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","dataset":"vehicles","limit":10}`
+	w := call(h, "/v1/cloud/sync/snapshot", base)
+	if w.Code != 200 || w.Header().Get("ETag") != "" || w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("snapshot first page %d", w.Code)
+	}
+	var first struct {
+		Records []app.Record `json:"records"`
+		Through int64        `json:"through"`
+		Next    string       `json:"next_cursor"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &first); err != nil || len(first.Records) != 1 || first.Next == "" {
+		t.Fatal("snapshot body", err)
+	}
+	nextBody := `{"family_id":"` + family + `","access_token":"synthetic","device_id":"` + device + `","dataset":"vehicles","limit":10,"cursor":"` + first.Next + `"}`
+	before := p.snapshots
+	p.snapshotResult = app.SnapshotResult{Records: []app.Record{}, Through: 2, Epoch: 1, ConsentRevision: 1}
+	if w = call(h, "/v1/cloud/sync/snapshot", nextBody); w.Code != 200 || p.snapshots != before+1 {
+		t.Fatal("snapshot resume", w.Code)
+	}
+	if w = call(h, "/v1/cloud/sync/snapshot", strings.Replace(nextBody, first.Next, "forged", 1)); w.Code != 400 {
+		t.Fatal("forged snapshot cursor accepted")
+	}
+	otherDevice := strings.Replace(nextBody, device, "88888888-8888-4888-8888-888888888888", 1)
+	if w = call(h, "/v1/cloud/sync/snapshot", otherDevice); w.Code != 400 {
+		t.Fatal("device crossover snapshot accepted")
+	}
+	for _, bad := range []string{
+		strings.Replace(base, `"dataset":"vehicles"`, `"dataset":"professional"`, 1),
+		strings.Replace(base, `"limit":10`, `"limit":0`, 1),
+		strings.Replace(base, `"device_id"`, `"mask"`, 1),
+	} {
+		before = p.snapshots
+		if w = call(h, "/v1/cloud/sync/snapshot", bad); w.Code != 400 || p.snapshots != before {
+			t.Fatalf("bad snapshot admitted %d", w.Code)
+		}
+	}
+	unsigned := Handler{Service: p, Origin: h.Origin, CursorSecret: h.CursorSecret, Sessions: h.Sessions}
+	if w = call(unsigned, "/v1/cloud/sync/snapshot", base); w.Code != 401 {
+		t.Fatal("unsigned snapshot admitted")
+	}
+	p.err = domain.ErrResnapshot
+	if w = call(h, "/v1/cloud/sync/snapshot", nextBody); w.Code != 409 {
+		t.Fatal("stale snapshot hidden")
 	}
 	p.err = nil
 }

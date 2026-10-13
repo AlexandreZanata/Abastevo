@@ -125,3 +125,40 @@ type Feed struct {
 type PullStore interface {
 	Pull(context.Context, Principal, Position, int) (Feed, error)
 }
+
+type PreviewItem struct {
+	OperationID      string `json:"operation_id"`
+	Dataset          string `json:"dataset"`
+	ID               string `json:"id"`
+	Action           string `json:"action"`
+	ExpectedRevision int64  `json:"expected_revision"`
+	CurrentRevision  int64  `json:"current_revision"`
+	CurrentDeleted   bool   `json:"current_deleted"`
+	Erased           bool   `json:"erased"`
+}
+type PreviewResult struct {
+	Epoch           int64         `json:"epoch"`
+	Revision        int64         `json:"revision"`
+	ConsentRevision int64         `json:"consent_revision"`
+	Items           []PreviewItem `json:"items"`
+}
+type ImportStore interface {
+	Preview(context.Context, Principal, Batch) (PreviewResult, error)
+	SetConsent(context.Context, Principal, []string, bool) (Status, error)
+}
+type SnapshotQuery struct {
+	Dataset         string `json:"dataset"`
+	After           string `json:"after"`
+	Through         int64  `json:"through"`
+	Epoch           int64  `json:"epoch"`
+	ConsentRevision int64  `json:"consent_revision"`
+}
+type SnapshotResult struct {
+	Records         []Record `json:"records"`
+	Through         int64    `json:"through"`
+	Epoch           int64    `json:"epoch"`
+	ConsentRevision int64    `json:"consent_revision"`
+}
+type SnapshotStore interface {
+	Snapshot(context.Context, Principal, SnapshotQuery, int) (SnapshotResult, error)
+}

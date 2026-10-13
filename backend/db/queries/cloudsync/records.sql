@@ -136,3 +136,9 @@ INSERT INTO cloud_device_revocations(device_id,account_id) SELECT id,account_id 
 -- name: ListChanges :many
 SELECT sequence,epoch,dataset,id,record_revision,deleted,payload FROM cloud_changes
 WHERE account_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence LIMIT $4;
+
+-- name: SetConsent :one
+UPDATE cloud_state SET
+ consent_mask=CASE WHEN sqlc.arg(enabled)::boolean THEN consent_mask | sqlc.arg(mask)::integer ELSE consent_mask & (~sqlc.arg(mask)::integer) END,
+ consent_revision=consent_revision+1, revision=revision+1
+WHERE account_id=sqlc.arg(account_id)::uuid RETURNING epoch,revision,consent_mask,consent_revision;

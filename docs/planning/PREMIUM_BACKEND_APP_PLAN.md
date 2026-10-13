@@ -237,6 +237,8 @@ Entry: PRM02. Exit: two-device convergence/conflicts/deletion recovery, without 
 
 ### PRM03-T03 — Initial import, resnapshot and sync consent control
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T02; PR06/07/09.
 - **Outcome/areas:** preview-based merge/import for vehicles/favorites/preferences, dataset opt-in/revoke, safe resnapshot token and resumable bounded progress.
 - **Tests first:** guest data with signed-in cloud data, conflicting UUID/vehicle counts, interrupted first import, stale server snapshot, account switch and revoked consent.

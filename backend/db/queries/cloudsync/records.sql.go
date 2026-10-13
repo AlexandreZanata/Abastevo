@@ -799,3 +799,35 @@ func (q *Queries) SaveRecord(ctx context.Context, arg SaveRecordParams) (SaveRec
 	)
 	return i, err
 }
+
+const setConsent = `-- name: SetConsent :one
+UPDATE cloud_state SET
+ consent_mask=CASE WHEN $1::boolean THEN consent_mask | $2::integer ELSE consent_mask & (~$2::integer) END,
+ consent_revision=consent_revision+1, revision=revision+1
+WHERE account_id=$3::uuid RETURNING epoch,revision,consent_mask,consent_revision
+`
+
+type SetConsentParams struct {
+	Enabled   bool        `json:"enabled"`
+	Mask      int32       `json:"mask"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+type SetConsentRow struct {
+	Epoch           int64 `json:"epoch"`
+	Revision        int64 `json:"revision"`
+	ConsentMask     int32 `json:"consent_mask"`
+	ConsentRevision int64 `json:"consent_revision"`
+}
+
+func (q *Queries) SetConsent(ctx context.Context, arg SetConsentParams) (SetConsentRow, error) {
+	row := q.db.QueryRow(ctx, setConsent, arg.Enabled, arg.Mask, arg.AccountID)
+	var i SetConsentRow
+	err := row.Scan(
+		&i.Epoch,
+		&i.Revision,
+		&i.ConsentMask,
+		&i.ConsentRevision,
+	)
+	return i, err
+}

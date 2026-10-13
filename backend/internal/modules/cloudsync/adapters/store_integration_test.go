@@ -1014,3 +1014,167 @@ func counts(t *testing.T, pool *pgxpool.Pool) string {
 	}
 	return fmt.Sprintf("%d/%d/%d", records, changes, receipts)
 }
+
+func TestImportPreviewPreservesUUIDsAndCounts(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	p = readyDevice(t, store, p)
+	ctx := context.Background()
+	cloud := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, cloud, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	same := cloud
+	guest := []app.Command{vehicleCommand(t, same, 0), vehicleCommand(t, vehicle(t), 0), vehicleCommand(t, vehicle(t), 0)}
+	preview, err := store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: guest})
+	if err != nil || len(preview.Items) != 3 {
+		t.Fatalf("preview %v", err)
+	}
+	if preview.Items[0].Action != "converge" || preview.Items[1].Action != "create" || preview.Items[2].Action != "create" {
+		t.Fatalf("preview merge %+v", preview.Items)
+	}
+	if after := counts(t, pool); after != "1/1/1" {
+		t.Fatalf("preview uploaded guest %s", after)
+	}
+	divergent := cloud
+	divergent.Name = "Guest divergent name"
+	divPreview, err := store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, divergent, 0)}})
+	if err != nil || divPreview.Items[0].Action != "conflict" {
+		t.Fatalf("UUID conflict not reported %+v %v", divPreview, err)
+	}
+	fourth := app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0), vehicleCommand(t, vehicle(t), 0), vehicleCommand(t, vehicle(t), 0)}}
+	quotaPreview, err := store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: fourth.Commands})
+	if err != nil {
+		t.Fatal(err)
+	}
+	quota := 0
+	for _, item := range quotaPreview.Items {
+		if item.Action == "quota" {
+			quota++
+		}
+	}
+	if quota == 0 {
+		t.Fatalf("fourth slot not reported %+v", quotaPreview.Items)
+	}
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: fourth.Commands}); !errors.Is(err, domain.ErrQuota) {
+		t.Fatal("fourth vehicle admitted")
+	}
+	rows, err := store.List(ctx, p, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 || rows[0].ID != cloud.ID {
+		t.Fatal("UUID rewritten", err)
+	}
+}
+
+func TestImportStaleSnapshotAccountSwitchAndRevokedConsent(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	paidStore(t, pool, foreign)
+	p = readyDevice(t, store, p)
+	foreign = readyDevice(t, store, foreign)
+	ctx := context.Background()
+	v := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, v, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	before := counts(t, pool)
+	cancelPreview, err := store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}})
+	if err != nil || cancelPreview.Items[0].Action != "create" {
+		t.Fatal("preview", err)
+	}
+	if after := counts(t, pool); after != before {
+		t.Fatal("canceled preview wrote")
+	}
+	if _, err = store.Preview(ctx, p, app.Batch{Epoch: 2, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("stale preview epoch accepted")
+	}
+	if _, err = store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 9, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("stale preview consent accepted")
+	}
+	wrong := p
+	wrong.FamilyID = foreign.FamilyID
+	if _, err = store.Preview(ctx, wrong, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("account switch preview admitted")
+	}
+	status, err := store.SetConsent(ctx, p, []string{"vehicles"}, false)
+	if err != nil || len(status.EnabledDatasets) != 2 {
+		t.Fatalf("revoke %v %v", status, err)
+	}
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: status.Epoch, ConsentRevision: status.ConsentRevision, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("revoked consent push admitted")
+	}
+	rows, err := store.List(ctx, p, "vehicles", 100, "")
+	if err != nil || len(rows) != 1 {
+		t.Fatal("revoke cleared local cloud copy", err)
+	}
+	restored, err := store.SetConsent(ctx, p, []string{"vehicles"}, true)
+	if err != nil || len(restored.EnabledDatasets) != 3 {
+		t.Fatal("regrant", err)
+	}
+	if _, err = store.Preview(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, vehicle(t), 0)}}); !errors.Is(err, domain.ErrDenied) {
+		t.Fatal("obsolete preview version accepted")
+	}
+}
+
+func TestSnapshotConsistentPagesAndResume(t *testing.T) {
+	pool := freshDB(t)
+	p := seedOwner(t, pool)
+	foreign := seedOwner(t, pool)
+	store := paidStore(t, pool, p)
+	paidStore(t, pool, foreign)
+	p = readyDevice(t, store, p)
+	foreign = readyDevice(t, store, foreign)
+	ctx := context.Background()
+	firstVehicle := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, firstVehicle, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	secondVehicle := vehicle(t)
+	if _, err := store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, secondVehicle, 0)}}); err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Snapshot(ctx, p, app.SnapshotQuery{Dataset: "vehicles"}, 1)
+	if err != nil || len(first.Records) != 1 || first.Through == 0 {
+		t.Fatalf("snapshot first page %v %v", first, err)
+	}
+	through := first.Through
+	after := first.Records[0].ID
+	interleaved := firstVehicle
+	interleaved.Name = "Interleaved write"
+	if _, err = store.Apply(ctx, p, app.Batch{Epoch: 1, ConsentRevision: 1, Commands: []app.Command{vehicleCommand(t, interleaved, 1)}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = store.Snapshot(ctx, p, app.SnapshotQuery{Dataset: "vehicles", After: after, Through: through, Epoch: 1, ConsentRevision: 1}, 10); !errors.Is(err, domain.ErrResnapshot) {
+		t.Fatal("inconsistent snapshot page advanced")
+	}
+	restarted, err := store.Snapshot(ctx, p, app.SnapshotQuery{Dataset: "vehicles"}, 10)
+	if err != nil || len(restarted.Records) != 2 {
+		t.Fatalf("explicit restart %v %v", restarted, err)
+	}
+	if _, err = store.Snapshot(ctx, foreign, app.SnapshotQuery{Dataset: "vehicles"}, 10); err != nil {
+		t.Fatal("foreign snapshot", err)
+	} else {
+		rows, _ := store.Snapshot(ctx, foreign, app.SnapshotQuery{Dataset: "vehicles"}, 10)
+		if len(rows.Records) != 0 {
+			t.Fatal("cross-owner snapshot leaked")
+		}
+	}
+	forged := p
+	forged.DeviceID = newid(t)
+	if _, err = store.Snapshot(ctx, forged, app.SnapshotQuery{Dataset: "vehicles"}, 10); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("foreign device snapshot admitted")
+	}
+	store.Origin = "two.example.test"
+	if _, err = store.Snapshot(ctx, p, app.SnapshotQuery{Dataset: "vehicles"}, 10); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatal("origin crossover snapshot admitted")
+	}
+	store.Origin = "one.example.test"
+	if _, err = store.SetConsent(ctx, p, []string{"nope"}, true); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("direct mask accepted")
+	}
+	if _, err = store.Snapshot(ctx, p, app.SnapshotQuery{Dataset: "professional"}, 10); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatal("unknown dataset snapshot accepted")
+	}
+}

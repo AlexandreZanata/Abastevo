@@ -3883,6 +3883,124 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/cloud/consent:
+    post:
+      tags:
+      - premium
+      summary: Set explicit dataset consent for sync
+      description: Explicit per-dataset opt-in or revoke. No automatic guest upload.
+        The server computes the consent mask and bumps the consent revision. The client
+        never sets the mask or epoch directly. Revocation stops future commands and
+        dispatch while preserving local and held cloud records. All responses are
+        no-store without ETags. Paid production ports remain disabled.
+      operationId: cloudConsent
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudConsentRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudStatus'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/import/preview:
+    post:
+      tags:
+      - premium
+      summary: Preview guest import without uploading
+      description: Dry-run merge for vehicles, favorites and preferences. Preserves
+        local UUIDs and the three-vehicle ceiling. Binds owner, device, epoch, consent
+        revision and server revision and refuses obsolete versions. Cancellation discards
+        staged work with no writes. Confirmation is an explicit Apply with fresh proof
+        and versions. All responses are no-store without ETags.
+      operationId: cloudImportPreview
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudBatchRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudImportPreviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/cloud/sync/snapshot:
+    post:
+      tags:
+      - premium
+      summary: Read consistent snapshot page for resync
+      description: Revision-consistent full-record pages for one dataset. The first
+        page captures the current revision. Later pages require the same revision
+        and return resnapshot-required on intervening writes for explicit restart.
+        The cursor binds owner, origin, device, dataset, revision, epoch and consent.
+        New devices after compaction obtain this snapshot before deltas. All responses
+        are no-store without ETags.
+      operationId: cloudSyncSnapshot
+      x-implementation-status: source-local-done-payments-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudSnapshotRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudSnapshotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   schemas:
     CloudVehicle:
@@ -4437,6 +4555,140 @@ components:
       - epoch
       - revision
       - conflicts
+    CloudConsentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        datasets:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum: *id002
+        enabled:
+          type: boolean
+      required:
+      - family_id
+      - access_token
+      - datasets
+      - enabled
+    CloudPreviewItem:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        id: *id001
+        action:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - converge
+          - conflict
+          - quota
+          - invalid
+          - erased
+        expected_revision:
+          type: integer
+          minimum: 0
+        current_revision:
+          type: integer
+          minimum: 0
+        current_deleted:
+          type: boolean
+        erased:
+          type: boolean
+      required:
+      - operation_id
+      - dataset
+      - id
+      - action
+      - expected_revision
+      - current_revision
+      - current_deleted
+      - erased
+    CloudImportPreviewResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        epoch:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 0
+        consent_revision:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CloudPreviewItem'
+      required:
+      - epoch
+      - revision
+      - consent_revision
+      - items
+    CloudSnapshotRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id003
+        device_id: *id001
+        dataset:
+          type: string
+          enum: *id002
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - family_id
+      - access_token
+      - device_id
+      - dataset
+    CloudSnapshotResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        records:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudRecord'
+        through:
+          type: integer
+          minimum: 0
+        epoch:
+          type: integer
+          minimum: 1
+        consent_revision:
+          type: integer
+          minimum: 0
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - records
+      - through
+      - epoch
+      - consent_revision
+      - next_cursor
     PremiumExportRequest:
       type: object
       additionalProperties: false

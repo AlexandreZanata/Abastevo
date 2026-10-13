@@ -21,6 +21,8 @@ type Service interface {
 	app.DeviceStore
 	app.BatchStore
 	app.PullStore
+	app.ImportStore
+	app.SnapshotStore
 }
 type Handler struct {
 	Service      Service
@@ -118,6 +120,9 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/cloud/erase", h.erase)
 	r.Post("/v1/cloud/sync/pull", h.syncPull)
 	r.Post("/v1/cloud/sync/push", h.syncPush)
+	r.Post("/v1/cloud/consent", h.consent)
+	r.Post("/v1/cloud/import/preview", h.importPreview)
+	r.Post("/v1/cloud/sync/snapshot", h.syncSnapshot)
 }
 func (h Handler) status(w http.ResponseWriter, r *http.Request) {
 	var dto session
