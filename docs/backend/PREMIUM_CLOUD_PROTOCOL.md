@@ -1,0 +1,7 @@
+# Premium private cloud protocol v1
+
+PRM02 opening; rules B-BR-PR06–PR12 and BUC-PR02/07. One account owns each record; local UUIDs remain unchanged and are scoped by owner (the same UUID in a different account never selects the first account's data). No tenant/fleet ownership.
+
+Vehicles are typed version-1 records: local UUID, display name (1–100 Unicode characters, no controls), tank capacity in integer milli-units (positive, <=200000, multiples of 10 to preserve local two-decimal precision), canonical fuel/unit pair, existing cheapest/specific-CNPJ source, basic-alert switch, nonnegative sort order and archived flag. Legacy GASOLINE_PREMIUM maps explicitly to GASOLINE_ADDITIVED; true premium grade stays distinct. LPG_P13 is not a vehicle tank fuel; unsupported local records remain local and produce a recoverable import error. Archived vehicles count toward the existing three-record ceiling. Import never changes local IDs or allocates a fourth hosted vehicle.
+
+Private commands resolve owner via session and require current signed contributor/key binding. Store locks owner/session/key before live capability check in the same transaction. Missing paid port fails closed. No deployable synthetic entitlement. Initial identical vehicle import converges; divergent existing UUID requires expected revision and explicit resolution. No automatic guest upload or account merge is implied. Consent, device proofs, common receipts and public owner APIs land in their owning tasks before any consumer is enabled.

@@ -9,3 +9,11 @@ Rules PR02–PR05: a missed notification must not permanently prevent canonical 
 Status: LOCAL_DONE / INTEGRATION_PENDING (source)
 Validation: PASS
 Checks: subscription unit/race plus cmd/ops and worker compilation; real PostGIS TestReconciliation*, TestTerminalRetention*, TestSubscriptionUpgrade* (2.996s); affected vet/staticcheck; sqlc vet/diff; diff/secret review. Twelve parallel ticks produce one job; failed enqueue leaves due checkpoint intact; restart recovers; deleted owners excluded; bounded cleanup removes expired pending/terminal receipts and terminal purchase material while retaining opaque retirement fence; restricted operator replay refuses anonymous/nondead work. Real provider sandbox remains PROOF_OWED. No production paid scheduler runs with nil ports. Next PRM02-T01.
+
+## PRM02-T01 — Owned vehicle identity and three-slot model
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+RED→GREEN domain tests pin legacy fuel mapping, UUID stability, integer capacity precision, incompatible units/empty names/source requirements. Append-only 000078 plus sqlc private records; account/session/signing-key locks and an explicit live subscription transaction port. Twelve competing creates admit exactly the two remaining slots; archived records count. Real SQL covers same UUID in different owners, identical import convergence/divergence, stale revision, foreign session, missing/dirty/expired capability, precommit lapse rollback, unavailable gate and synchronous deletion bytes. Main-before-075 upgrade/replay now verifies every actual append-only migration, including 000078. No app/UUID rewrite or fourth slot.
+
+Checks: domain unit/race; real cloud vehicle SQL/race (4.169s); subscription upgrade SQL (1.803s in initial run); affected vet/staticcheck; sqlc vet/diff; secret/diff review. Next PRM02-T02.

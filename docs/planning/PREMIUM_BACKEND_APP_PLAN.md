@@ -170,6 +170,8 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 
 ### PRM02-T01 — Owned private vehicle model and legacy ID mapping
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** PRM01 capability port; PR01/06/07/13.
 - **Outcome/areas:** private vehicle schema/ports compatible with current local UUIDs and three-vehicle allowance; explicit account-bound mapping on initial opt-in.
 - **Tests first:** cross-owner ID collision, repeat import, fourth-slot boundary, archived vehicle, fuel/unit compatibility and upgrade with existing users.

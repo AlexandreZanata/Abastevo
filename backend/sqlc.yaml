@@ -211,3 +211,18 @@ sql:
         out: db/queries/subscription
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/cloudsync
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000022_account_bindings.sql
+      - db/migrations/000078_cloud_records.sql
+    gen:
+      go:
+        package: cloudsync
+        out: db/queries/cloudsync
+        sql_package: pgx/v5
+        emit_json_tags: true
