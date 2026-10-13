@@ -1,0 +1,44 @@
+diff --git a/docs/planning/PROGRESS.md b/docs/planning/PROGRESS.md
+index 1efa94c5..0094f3eb 100644
+--- a/docs/planning/PROGRESS.md
++++ b/docs/planning/PROGRESS.md
+@@ -21,6 +21,6 @@
+ 
+ ## P00 approved brand publication (2026-10-01)
+ 
+-- P00-T01–T03 LOCAL_DONE / AWAITING_PHASE_MERGE; publication of approved V2 artwork, README and identity/vector assets authorized. Branch codex/phase-00-abastevo-brand-preview; base origin/main 047a347 merged normally; milestone 11; issues #63–#65; PR #66.
++- P00-T01–T03 INTEGRATED via PR #66 (fd3dbcd); publication of approved V2 artwork, README and identity/vector assets authorized. Branch codex/phase-00-abastevo-brand-preview; base origin/main 047a347 merged normally; milestone 11; issues #63–#65; PR #66.
+ - Task commits b3b7de6 / 9903f70 / 9dd10f4; evidence: [P00 publication record](../release-evidence/p00-brand-publication.md) and docs/brand/IDENTITY.md. Native SVGs, Android compile/link, zero-raster iOS PDF, hashes/links/visual/secret/whitespace checks PASS; no runtime changes.
+-- Next: one local quick gate through finish + current-head/base required Quick verification → guarded merge → owned wiki mirror. Functional phase work stays separate; no tag/deploy.
++- Post-merge local summary (pending next authorized branch): current-head Quick verification SUCCESS (044af08 / base 047a347), local docs quick PASS once through finish; guarded merge fd3dbcd verified; wiki 0cf4dce synced from merge SHA. Branch deleted locally/remotely; worktree retained detached. Functional phase checkout untouched; no tag/deploy.
+diff --git a/docs/planning/p00-brand-ledger.json b/docs/planning/p00-brand-ledger.json
+index 161afec5..35fb7364 100644
+--- a/docs/planning/p00-brand-ledger.json
++++ b/docs/planning/p00-brand-ledger.json
+@@ -17,5 +17,14 @@
+     "guarded_merge",
+     "wiki"
+   ],
+-  "state": "LOCAL_DONE / AWAITING_PHASE_MERGE"
++  "state": "INTEGRATED / WIKI_SYNCED",
++  "merged_sha": "fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9",
++  "tested_head": "044af08825510138c5daecb82ef0d16cb2e2cde0",
++  "tested_base": "047a347ab9bdf85b15817e8c039ead52bf5b9109",
++  "required_check": "Quick verification SUCCESS",
++  "check_run": "https://github.com/AlexandreZanata/brazil-fuel-prices/actions/runs/36892213676",
++  "local_quick": "PASS (docs-only, run once by finish)",
++  "wiki_commit": "0cf4dce",
++  "cleanup": "phase branch deleted locally/remotely; worktree retained detached",
++  "post_merge_record": "LOCAL_PENDING_NEXT_AUTHORIZED_BRANCH; no bookkeeping push to main"
+ }
+diff --git a/docs/release-evidence/p00-brand-publication.md b/docs/release-evidence/p00-brand-publication.md
+index a039c858..b8953d34 100644
+--- a/docs/release-evidence/p00-brand-publication.md
++++ b/docs/release-evidence/p00-brand-publication.md
+@@ -18,3 +18,6 @@ The following records predate approval/publication; their pending states are his
+ - Vector checks: 32–4096 px render/visual inspection, SVG safety, SVG/Android path-gradient parity, Android aapt2 compile/link and PDF zero-raster inventory PASS; no device/runtime integration. Next: review brand preview, then authorized publication separately; banner approval remains pending.
+ 
+ - P00-T03 LOCAL_PREVIEW_DONE / AWAITING_VISUAL_APPROVAL (same isolated branch; uncommitted): reference uppercase text traced as independent SVG; V2 README combines both native SVG assets. Original-logo bytes/geometry unchanged; SVG safety, renders and glyph IoU 0.990820 PASS. Evidence: docs/brand/IDENTITY.md / wordmark-provenance.json. No remote publication or runtime change.
++
++
++Post-merge local record 2026-10-01 (pending next authorized branch): PR #66 merged as fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9 after local docs-only quick PASS once and required GitHub Quick verification SUCCESS, workflow quick.yml / provider 15368, head 044af08 / base 047a347, run 36892213676. A single-branch clone fetch refspec omitted main after guarded merge; explicit main fetch verified ancestry and remaining cleanup completed with fail-fast guards. No gate bypass/repeated backend suite. Branch deletion verified; wiki commit 0cf4dce published the merged snapshot, preserving unmanaged pages.

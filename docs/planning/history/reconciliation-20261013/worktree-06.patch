@@ -1,0 +1,61 @@
+diff --git a/docs/planning/PROGRESS.md b/docs/planning/PROGRESS.md
+index 72ea4b2d..a61e0d32 100644
+--- a/docs/planning/PROGRESS.md
++++ b/docs/planning/PROGRESS.md
+@@ -7,13 +7,14 @@
+ - P18/G18 full acceptance remains NOT_ACCEPTED; issues #60–#62 and milestone 10 remain OPEN. Android instrumented regressions 2/2 PASS, cached-home 382ms; this is not full functional/cold-start/performance acceptance. Native iOS/device and local private-storage matrix gaps remain recorded.
+ - iOS: **DEFERRED_EXPLICIT_RESUME_ONLY**, archived by explicit user request. No Mac; preserve source/KMP ports/assets/evidence. Resume only after a new explicit request, never automatically. [Archived backlog](archive/IOS_DEFERRED.md).
+ - G09: real-production RELEASE, **DEFERRED_UNTIL_G24_ANDROID_COMMERCIAL**, tracker #13. Historical full multiplatform G18 is not accepted; future Android/backend certification scope is explicit. No production deployment/tag/public pilot authorized by this plan.
+-- Current phase: P00 continuation, branch `codex/phase-00-app-icons`, base `origin/main 9c090c6`, milestone 12; draft [PR #70](https://github.com/AlexandreZanata/abastevo/pull/70), issues #68/#69. Isolated worktree preserves unrelated primary-checkout changes.
++- Completed phase: P00 continuation INTEGRATED via PR #70 (`bad31b7`); wiki Home `aac4b37` synced; issues #68/#69 and milestone 12 closed. Tested head `81347bf` / base `9c090c6`: Quick verification + Android test SUCCESS; local full quick PASS once (16s). Phase branch deleted locally/remotely; worktree retained detached. Post-merge local summary, pending next authorized branch; durable remote evidence in PR #70.
++- Delivery branch history: P00 continuation, branch `codex/phase-00-app-icons`, base `origin/main 9c090c6`, milestone 12; draft [PR #70](https://github.com/AlexandreZanata/abastevo/pull/70), issues #68/#69. Isolated worktree preserves unrelated primary-checkout changes.
+ - P00-T04 LOCAL_DONE: issue #68, commit `1de6423`; native Android white-background A and density/monochrome assets; assembly PASS, source/geometry/gradient/dimension/opacity checks PASS. iOS catalog PREPARED/DEFERRED, not compiled. [Icon guide](../brand/APP_ICONS.md).
+ - P00-T05 LOCAL_DONE (issue #69, commit `28bf779`): commercial community plan/new P19–P24 tasks, policy/iOS archive, current-state reconciliation and explicit wiki Home adoption. [Plan](COMMERCIAL_COMMUNITY_PLAN.md), [experience](../product/COMMUNITY_EXPERIENCE.md), [batch evidence](../release-evidence/p00-app-icons-commercial-plan.md).
+ - Future sequence: P19 identity/navigation → P20 discovery → P21 photo contribution → P22 social/moderation → P23 community operations → P24 Android acceptance → P09/G09 real production → P10-T09 public pilot → P11 optional paid benefits. New phases remain PLANNED; no future issue creation or social redesign implementation in this batch.
+ - Required protection: Quick verification, current head/base and guarded merge; immediate critical risk tests, phase exit once, local quick through finish once, merged-SHA wiki once. No release evidence is inferred from plans.
+ - User choices: comments/replies 280 Unicode scalar characters; free email-code/Google/Apple accounts; ANP is dated reference, community current projection primary; private audit photos all-copy maximum 24h; payment never changes trust/free social participation.
+-- Next: current-head required checks and actual finish, guarded PR #70 merge and one merged-SHA Home mirror. Local assembly/asset/docs checks and wiki battery 39/39 PASS. G09 remains uncertified.
++- Next authorized implementation: P19-T01 baseline, only when requested. Local assembly/asset/docs checks, wiki battery 39/39 and deferred-release policy positives/negatives PASS. G09 remains uncertified; no future phase was started.
+ 
+ ## Preserved history
+ 
+diff --git a/docs/planning/p00-commercial-ledger.json b/docs/planning/p00-commercial-ledger.json
+index 044d85e1..f0204a18 100644
+--- a/docs/planning/p00-commercial-ledger.json
++++ b/docs/planning/p00-commercial-ledger.json
+@@ -14,7 +14,7 @@
+     "guarded_merge",
+     "wiki_home_explicit_adoption"
+   ],
+-  "state": "READY_FOR_REQUIRED_CURRENT_HEAD_INTEGRATION",
++  "state": "INTEGRATED / WIKI_SYNCED",
+   "ios_workstream": "DEFERRED_EXPLICIT_RESUME_ONLY",
+   "release": "G09_NOT_CERTIFIED",
+   "evidence": "docs/release-evidence/p00-app-icons-commercial-plan.md",
+@@ -23,7 +23,14 @@
+     "P00-T04": "1de6423",
+     "P00-T05": "28bf779"
+   },
+-  "required_check": "Quick verification",
++  "required_check": "Quick verification SUCCESS",
+   "tested_base": "9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96",
+-  "wiki": "PENDING_MERGED_SNAPSHOT"
++  "wiki": "PENDING_MERGED_SNAPSHOT",
++  "merged_sha": "bad31b79d6b83bf0fede7b456321f05846c2e06a",
++  "tested_head": "81347bff99dabccd73c589095846bc536f164609",
++  "local_quick": "full PASS once through finish, 16s",
++  "android_ci": "test SUCCESS",
++  "wiki_commit": "aac4b37fbcef3193598678ff12edeb3340d50cd9",
++  "cleanup": "phase branch deleted locally/remotely; worktree retained detached; primary edits untouched",
++  "post_merge_record": "LOCAL_PENDING_NEXT_AUTHORIZED_BRANCH; durable evidence published in PR #70 comment"
+ }
+diff --git a/docs/release-evidence/p00-app-icons-commercial-plan.md b/docs/release-evidence/p00-app-icons-commercial-plan.md
+index 5778c52c..8df805ad 100644
+--- a/docs/release-evidence/p00-app-icons-commercial-plan.md
++++ b/docs/release-evidence/p00-app-icons-commercial-plan.md
+@@ -27,3 +27,5 @@ Issue #69, LOCAL_DONE (planning only). Commercial experience contract B-BR-C01
+ ## Integration
+ 
+ Task commits `1de6423` / `28bf779`; issues #68/#69; draft [PR #70](https://github.com/AlexandreZanata/abastevo/pull/70); base `9c090c6577b9cedb6119f9d5f8f8de96f2c6aa96`. Required protection is Quick verification with strict base/enforced admins. Closure verifies final head/base/provider, runs local quick once through finish, guarded merge preserving task commits and one wiki snapshot. Actual post-merge SHA/wiki commit cannot be fabricated in their own source snapshot; record them in the retained ledger and next authorized branch. No deploy/tag/pilot.
++
++Post-merge retained local record (pending next authorized branch): PR #70 merged as `bad31b79d6b83bf0fede7b456321f05846c2e06a`; Quick verification / Android test SUCCESS on `81347bf` / base `9c090c6`; local full quick PASS once (16s) through finish. Wiki `aac4b37fbcef3193598678ff12edeb3340d50cd9` mirrored the merged snapshot to Home, preserved original Home history and unrelated manual-page bytes. Issues #68/#69 and milestone 12 closed; phase branch removed locally/remotely, detached worktree preserved; primary unowned edits untouched. Remote durable record: PR #70 comment `5937298311`. iOS explicitly archived, G18 unaccepted, G09 uncertified; no future implementation or production launch performed.

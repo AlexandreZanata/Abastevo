@@ -1,0 +1,68 @@
+[
+  {
+    "id": "worktree-00",
+    "checkout": "primary-checkout",
+    "head": "e22824db74729bf0e115d1a695a7e97cec1e6141",
+    "patch": "worktree-00.patch",
+    "patch_sha256": "1e4737421267710f2ec593565479eccfb4a7ed4a8ea109a8fe46dc7adf3e4a6a",
+    "untracked": []
+  },
+  {
+    "id": "worktree-06",
+    "checkout": "abastevo-app-icons",
+    "head": "bad31b79d6b83bf0fede7b456321f05846c2e06a",
+    "patch": "worktree-06.patch",
+    "patch_sha256": "1b2c8980f9b28f88ebaeebae0e9f280bed26e7d44c732a57eb440d53610dcc95",
+    "untracked": []
+  },
+  {
+    "id": "worktree-07",
+    "checkout": "abastevo-brand-preview",
+    "head": "fd3dbcd7e5eb7cd8b1ee6e58c72615156011bba9",
+    "patch": "worktree-07.patch",
+    "patch_sha256": "6325d4366d9fac4850e892d282bc040401f00ca71b64f0680608a7d842ad720e",
+    "untracked": []
+  },
+  {
+    "id": "worktree-12",
+    "checkout": "abastevo-station-catalog-plan",
+    "head": "b4f664e6b12cb3e053dff6aeb84607dd5dbe5d62",
+    "patch": "worktree-12.patch",
+    "patch_sha256": "b1c6f467d83aa6b86e2639d2d7ccac3dc031f8f744e7c433cd615a981b252564",
+    "untracked": [
+      {
+        "original": "docs/adr/017-station-profile-and-verified-representation.md",
+        "snapshot": "worktree-12/docs/adr/017-station-profile-and-verified-representation.md.txt",
+        "sha256": "fc9ce9b0b703cfa8a86dd77ddd7c203106ebf97fb1665cd733722a8e3b5bd733"
+      },
+      {
+        "original": "docs/planning/STATION_CATALOG_PLAN.md",
+        "snapshot": "worktree-12/docs/planning/STATION_CATALOG_PLAN.md.txt",
+        "sha256": "3993baeacfb7051b623c88920b6a539daf87cdf6c51815978cc2b3efbda05b3f"
+      },
+      {
+        "original": "docs/planning/STATION_PROFILE_PLAN.md",
+        "snapshot": "worktree-12/docs/planning/STATION_PROFILE_PLAN.md.txt",
+        "sha256": "71dc6b47914f8b92fd7724a58e4a368adb69c6a81b5de2ac254060c7b4f7eda1"
+      },
+      {
+        "original": "docs/product/STATION_CATALOG.md",
+        "snapshot": "worktree-12/docs/product/STATION_CATALOG.md.txt",
+        "sha256": "11069dcc8557cacb59f8fe5ad8dff22cd83d4662f7ad002723c8e90cd8329325"
+      },
+      {
+        "original": "docs/product/STATION_PROFILE_REPRESENTATION.md",
+        "snapshot": "worktree-12/docs/product/STATION_PROFILE_REPRESENTATION.md.txt",
+        "sha256": "5b0447bc8de06cc8d4ecabb2c00f012bd61c96d0fa1fe89bf90d7bff29d9709c"
+      }
+    ]
+  },
+  {
+    "id": "worktree-15",
+    "checkout": "landing-hero-art",
+    "head": "dbd1a2aab34dec67e669bbb5c97b9fe60195db66",
+    "patch": "worktree-15.patch",
+    "patch_sha256": "96a7035563bbc7dd4d4330cf079e895b2c9d07bbe803bff5374232e98021c50b",
+    "untracked": []
+  }
+]
