@@ -129,3 +129,10 @@ Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Tested working tree atop 22ac5b3. New ledger domain with exact integer centavos, milli-units and metres, IANA timezones, full, partial and unknown markers, seven frozen expense categories and 280-rune notes; no station or GPS required. Stated unit prices preserve authoritative totals with explicit discrepancy flags. Unit/race PASS ledger domain (exact values, bounds, units, incomplete inputs, time, station, notes and categories). Affected vet/staticcheck clean; sqlc vet/diff clean; diff-check clean; secrets synthetic-only. No migration, DB, HTTP or OpenAPI surface. No merge/deploy/mobile edit.
 Next PRM05-T02. Real payments OFF.
+
+## PRM05-T02 — Owned ledger schema and conditional commands
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+Tested working tree atop 0a2449f. Append-only 000085 adds ledger_records with period, vehicle-period and live indexes plus ledger_operations receipts; sqlc ledger package vet/diff clean. Conditional Apply with 1..50 operation and 64 KiB batch bounds, operation-ID replay, revision guards and void and delete intents; archived vehicles stay writable, foreign vehicles refused, and no fact reaches public community tables. Real PostGIS PASS (ledger suites): foreign and archived handling with replay and divergent conflict, simultaneous-edit single winner, backdated acceptance, full-batch rollback, max-value bounds, indexed period EXPLAIN and community-table isolation. Unit/race PASS ledger domain. Affected vet/staticcheck clean; diff-check clean; secrets synthetic-only. Auth rides PRM05-T04. No merge/deploy/mobile edit.
+Next PRM05-T03. Real payments OFF.

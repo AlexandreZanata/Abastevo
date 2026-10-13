@@ -232,3 +232,18 @@ sql:
         out: db/queries/cloudsync
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/ledger
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000078_cloud_records.sql
+      - db/migrations/000079_cloud_portable.sql
+      - db/migrations/000085_ledger_records.sql
+    gen:
+      go:
+        package: ledger
+        out: db/queries/ledger
+        sql_package: pgx/v5
+        emit_json_tags: true

@@ -336,6 +336,8 @@ Entry: PRM00 mathematics and PRM02–PRM04 infrastructure. Exit: private owned l
 
 ### PRM05-T02 — Owned ledger schema, indexes and conditional commands
 
+**Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
+
 - **Dependencies/rules:** T01; PRM02 vehicle port; PR08/13–PR15.
 - **Outcome/areas:** append-only migrations/sqlc for records, categories, revision receipts, period indexes and vehicle ownership constraints; create/update/void/delete intents.
 - **Tests first:** foreign/archived vehicle, duplicate/divergent command, simultaneous edit, backdated insertion, rollback, max values, empty/upgrade migration and realistic query plans.
