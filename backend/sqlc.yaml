@@ -281,3 +281,16 @@ sql:
         out: db/queries/alerts
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/quality
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000093_quality_assay_ledger.sql
+    gen:
+      go:
+        package: quality
+        out: db/queries/quality
+        sql_package: pgx/v5
+        emit_json_tags: true
