@@ -28,11 +28,9 @@ type SignalPorts struct {
 	Regional func(ctx context.Context, stationID, product, unit string) (meanMilli int64, ok bool, err error)
 }
 
-// DeriveSignals loads one observation, reduces every available input to
-// bands and persists the projection, converging recomputation. Claimant
-// position intake does not exist yet, so proximity derives UNKNOWN
-// honestly until it lands; the pure matrix (including NEAR/FAR) is
-// proven in the policy suite and activates with the intake.
+// DeriveSignals retains legacy geometry-dependent derivation for deterministic
+// replay. New processing uses DeriveCommunitySignals; a future proximity policy
+// requires separate authorization and evidence under ADR-021.
 func DeriveSignals(ctx context.Context, p SignalPorts, observationID string) (Bands, error) {
 	return deriveSignals(ctx, p, observationID, false)
 }

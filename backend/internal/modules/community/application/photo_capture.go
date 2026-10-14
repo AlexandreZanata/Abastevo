@@ -101,6 +101,9 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 	}
 	out, err := p.Idempotent(ctx, IdempotencyKey{ContributorID: caller.ContributorID, Method: "POST", Route: "/v1/photo-captures", Key: key}, body, func(ctx context.Context) (Outcome, error) {
 		now := p.Clock()
+		if now.IsZero() {
+			return Outcome{}, ErrPhotoCaptureIneligible
+		}
 		policy := CommunityPhotoCapturePolicy
 		if in.DevelopmentPreview {
 			if p.DevelopmentPhotoPreviewUntil.IsZero() || !now.Before(p.DevelopmentPhotoPreviewUntil) || p.CheckDevelopmentStation == nil {

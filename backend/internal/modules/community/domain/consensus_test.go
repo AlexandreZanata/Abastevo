@@ -307,3 +307,47 @@ func TestCommunityFirstConsensusIndependentPhotosWithoutProximity(t *testing.T) 
 		t.Fatal("one contributor granted confidence", err)
 	}
 }
+
+func TestCommunityFirstConsensusRetainsIndependentMediaAndModerationGates(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "GASOLINE_REGULAR", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	base := []Vote{}
+	for _, id := range []string{"a", "b", "c"} {
+		base = append(base, Vote{VoterRef: id, ObservationID: id, EventID: "obs:" + id, AuthorRef: id, AmountMilli: 5999, ReceivedAt: now, AnchorReceivedAt: now, TrustTier: "ESTABLISHED", PhotoValidated: true, MediaKey: "photo:" + id, StationID: key.StationID, Product: key.Product, Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier})
+	}
+	for _, tc := range []struct {
+		name   string
+		change func([]Vote)
+		want   string
+	}{
+		{"no media", func(v []Vote) {
+			for i := range v {
+				v[i].PhotoValidated = false
+			}
+		}, ConfLow},
+		{"duplicate media", func(v []Vote) {
+			for i := range v {
+				v[i].MediaKey = "same-photo"
+			}
+		}, ConfMedium},
+		{"missing media key", func(v []Vote) {
+			for i := range v {
+				v[i].MediaKey = ""
+			}
+		}, ConfLow},
+		{"blocked actor", func(v []Vote) { v[2].TrustTier = "BLOCKED" }, ConfMedium},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			votes := append([]Vote(nil), base...)
+			tc.change(votes)
+			got, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || got.Confidence != tc.want {
+				t.Fatalf("gates %+v %v", got, err)
+			}
+		})
+	}
+	got, err := Compute(key, base, now, Options{Version: ConsensusCommunity, ModerationOpen: true})
+	if err != nil || got.Verdict != VerdictDisputed {
+		t.Fatal("moderation bypass", got, err)
+	}
+}

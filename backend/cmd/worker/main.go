@@ -543,12 +543,9 @@ func run() error {
 			},
 		},
 		"validate-observation": communityjobs.Validate{
-			// Fresh signal bands persist after admission (P06-T01):
-			// claimant-position intake does not exist yet, so the
-			// loader derives UNKNOWN proximity honestly while the
-			// tested NEAR/FAR matrix activates with the intake. The
-			// upsert converges, so derivation failures safely retry
-			// the whole job without forking history.
+			// ADR-021: new signal processing does not read station geometry or
+			// require contributor location. The upsert converges, so derivation
+			// failures retry without forking history; legacy replay stays separate.
 			Derive: func(ctx context.Context, observationID string) error {
 				_, err := communityapp.DeriveCommunitySignals(ctx, communityapp.SignalPorts{
 					Clock: time.Now,

@@ -254,3 +254,12 @@ func TestCommunityFirstCaptureRejectsForgedOptionalClaimAndMissingStationPort(t 
 		t.Fatal("missing station port admitted capture")
 	}
 }
+
+func TestCommunityFirstCaptureRefusesZeroClock(t *testing.T) {
+	p := testPorts()
+	p.Clock = func() time.Time { return time.Time{} }
+	in := PhotoCaptureIntent{ClientCaptureID: "zero-clock", StationID: testDTO().StationID}
+	if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), in.ClientCaptureID, nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("zero clock admitted capture", err)
+	}
+}

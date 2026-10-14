@@ -151,7 +151,11 @@ func TestPublicProcessDevelopmentPhotoPreview(t *testing.T) {
 	testPublicProcessIdentityAndSignedWrites(t, true)
 }
 
-func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
+func TestPublicProcessCommunityActions(t *testing.T) {
+	testPublicProcessIdentityAndSignedWrites(t, false, true)
+}
+
+func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, communityActions ...bool) {
 	ctx := context.Background()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -475,6 +479,31 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 				request.Header.Set("Idempotency-Key", "development-"+product)
 				observation := h.call(request, 201)["id"].(string)
 				waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", observation)
+				if len(communityActions) > 0 && communityActions[0] && product == "ETHANOL" {
+					var sequence int64
+					if err := conn.QueryRow(ctx, `SELECT max(sequence) FROM community_observation_decisions WHERE observation_id=$1`, observation).Scan(&sequence); err != nil {
+						t.Fatal(err)
+					}
+					for index, choice := range []string{"HELPFUL", "NOT_HELPFUL"} {
+						vote := []byte(fmt.Sprintf(`{"client_submission_id":%q,"choice":%q,"decision_sequence":%d}`, fmt.Sprintf("community-vote-%d", index), choice, sequence))
+						request := h.signed(b, "POST", "/v1/observations/"+observation+"/helpfulness", vote)
+						request.Header.Set("Idempotency-Key", fmt.Sprintf("community-vote-%d", index))
+						h.call(request, 201)
+						tally := h.call(h.signed(b, "GET", fmt.Sprintf("/v1/observations/%s/helpfulness?decision_sequence=%d", observation, sequence), nil), 200)
+						if tally["my_choice"] != choice || tally["total"] != float64(1) {
+							t.Fatal("signed tally/choice did not converge", tally)
+						}
+					}
+					remove := []byte(fmt.Sprintf(`{"decision_sequence":%d}`, sequence))
+					removed := h.call(h.signed(b, "POST", "/v1/observations/"+observation+"/helpfulness/remove", remove), 200)
+					if removed["total"] != float64(0) {
+						t.Fatal("signed remove did not converge", removed)
+					}
+					report := []byte(`{"client_submission_id":"community-report","reason":"WRONG_PRODUCT"}`)
+					h.call(h.signed(b, "POST", "/v1/observations/"+observation+"/disputes", report), 201)
+					h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
+					return // Dedicated action campaign retains production challenge quotas; baseline rotation suite runs separately.
+				}
 				h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
 			}
 		}
