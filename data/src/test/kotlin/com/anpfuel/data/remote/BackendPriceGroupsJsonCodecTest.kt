@@ -131,4 +131,23 @@ class BackendPriceGroupsJsonCodecTest {
             )
         }
     }
+    @Test fun `typed community coexists with ANP and survives the Room payload round trip`() {
+        val doc = org.json.JSONObject(payload())
+        doc.getJSONArray("items").getJSONObject(0).put("community", org.json.JSONObject()
+            .put("source", "COMMUNITY").put("availability", "AVAILABLE").put("amount_milli_brl", 5799)
+            .put("currency", "BRL").put("confidence", "LOW").put("freshness", "FRESH")
+            .put("independent_supporters", 1).put("confirmation_count", 0)
+            .put("representative_observation_id", org.json.JSONObject.NULL)
+            .put("last_observation_received_at", "2026-10-14T12:00:00Z")
+            .put("expires_at", "2026-10-16T12:00:00Z").put("algorithm_version", "consensus-community-v2")
+            .put("projection_version", 2))
+        val decoded = BackendPriceGroupsJsonCodec.decode(doc.toString(), stationId, null, 1000, 2000)
+        val encoded = BackendPriceGroupsJsonCodec.encode(decoded)
+        assertEquals(5799, org.json.JSONObject(encoded).getJSONArray("items").getJSONObject(0).getJSONObject("community").getInt("amount_milli_brl"))
+        assertEquals(5999L, decoded.groups.single().official?.amountMilliBrl)
+        assertEquals(encoded, BackendPriceGroupsJsonCodec.encode(BackendPriceGroupsJsonCodec.decode(encoded, stationId, null, 1000, 2000)))
+        doc.getJSONArray("items").getJSONObject(0).getJSONObject("community").put("amount_milli_brl", 5.799)
+        assertThrows(DomainException::class.java) { BackendPriceGroupsJsonCodec.decode(doc.toString(),stationId,null,1000,2000) }
+    }
+
 }

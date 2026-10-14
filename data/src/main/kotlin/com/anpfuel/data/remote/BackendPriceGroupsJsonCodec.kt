@@ -1,6 +1,8 @@
 package com.anpfuel.data.remote
 
 import com.anpfuel.domain.exception.DomainException
+import com.anpfuel.domain.model.BackendCommunitySection
+import java.time.Instant
 import com.anpfuel.domain.model.BackendOfficialSection
 import com.anpfuel.domain.model.BackendPriceGroup
 import com.anpfuel.domain.model.BackendPriceGroups
@@ -11,8 +13,7 @@ import org.json.JSONObject
  * P10-T02 backend `PriceGroups` JSON codec.
  *
  * Parses `GET /v1/stations/{id}/prices` (`items` + `generated_at`) into
- * [BackendPriceGroups]. Community must stay null until P04; a non-null
- * community is refused explicitly rather than silently dropped. Encoding
+ * [BackendPriceGroups]. Official and community sections are independent and typed. Encoding
  * preserves the same shape so Room round-trips stay lossless.
  */
 object BackendPriceGroupsJsonCodec {
@@ -68,7 +69,16 @@ object BackendPriceGroupsJsonCodec {
                         .put("revision_id", official.revisionId),
                 )
             }
-            item.put("community", JSONObject.NULL)
+            item.put("community", group.community?.let { c -> JSONObject()
+                .put("source", c.source).put("availability", c.availability)
+                .put("amount_milli_brl", c.amountMilliBrl ?: JSONObject.NULL).put("currency", c.currency)
+                .put("confidence", c.confidence).put("freshness", c.freshness)
+                .put("independent_supporters", c.supporters).put("confirmation_count", c.confirmations)
+                .put("representative_observation_id", c.representativeObservationId ?: JSONObject.NULL)
+                .put("last_observation_received_at", c.lastReceivedAt?.toString() ?: JSONObject.NULL)
+                .put("expires_at", c.expiresAt?.toString() ?: JSONObject.NULL)
+                .put("algorithm_version", c.algorithmVersion).put("projection_version", c.projectionVersion)
+            } ?: JSONObject.NULL)
             items.put(item)
         }
         return JSONObject()
@@ -88,9 +98,6 @@ object BackendPriceGroupsJsonCodec {
     }
 
     private fun parseGroup(item: JSONObject): BackendPriceGroup {
-        if (!item.isNull("community")) {
-            throw DomainException("community must stay null until P04")
-        }
         val official = if (item.isNull("official")) {
             null
         } else {
@@ -103,7 +110,22 @@ object BackendPriceGroupsJsonCodec {
             unit = item.optString("unit", ""),
             conditionKind = condition?.optString("kind", "") ?: "",
             official = official,
-            community = null,
+            community = if(item.isNull("community")) null else parseCommunity(item.getJSONObject("community")),
+        )
+    }
+
+    private fun parseCommunity(doc: JSONObject): BackendCommunitySection {
+        val amount = if (doc.isNull("amount_milli_brl")) null else doc.get("amount_milli_brl").let {
+            require(it is Number && it.toString().matches(Regex("[0-9]+")))
+            it.toString().toLong()
+        }
+        return BackendCommunitySection(
+            doc.getString("source"), doc.getString("availability"), amount, doc.getString("currency"),
+            doc.getString("confidence"), doc.getString("freshness"), doc.getInt("independent_supporters"),
+            doc.getInt("confirmation_count"), if(doc.isNull("representative_observation_id")) null else doc.getString("representative_observation_id"),
+            if(doc.isNull("last_observation_received_at")) null else Instant.parse(doc.getString("last_observation_received_at")),
+            if(doc.isNull("expires_at")) null else Instant.parse(doc.getString("expires_at")),
+            doc.getString("algorithm_version"), doc.getLong("projection_version"),
         )
     }
 

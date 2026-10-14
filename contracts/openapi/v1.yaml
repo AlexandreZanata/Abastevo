@@ -1142,7 +1142,7 @@ paths:
           example: GASOLINE_REGULAR
       responses:
         '200':
-          description: Groups per product/unit/condition; community null until P04.
+          description: Groups per product/unit/condition from the union of official and community standard keys; missing source sections are null.
           headers:
             ETag:
               schema: {type: string}
@@ -6865,7 +6865,7 @@ components:
     PriceGroup:
       description: >
         One product/unit/condition group with independent official and
-        community sections. Community stays null until P04; a null is
+        community sections, including community-only stations. A null is
         UNKNOWN, never an ANP substitution (B-BR-001).
       type: object
       required: [station_id, fuel_product, unit, condition]

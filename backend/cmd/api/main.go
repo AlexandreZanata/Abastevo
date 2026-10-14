@@ -290,6 +290,23 @@ func run() error {
 		// Projected community section (P06-T05): one indexed row per
 		// exact key, mapped onto the public shape without contributor
 		// identities. Missing keys stay null, never an ANP fill-in.
+		CommunityGroups: func(ctx context.Context, stationID, fuel string) ([]officialhttp.CommunityGroup, error) {
+			rows, err := communityPrices.StationPrices(ctx, stationID, fuel)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]officialhttp.CommunityGroup, 0, len(rows))
+			for _, row := range rows {
+				view := row.View
+				out = append(out, officialhttp.CommunityGroup{Product: row.Product, Unit: row.Unit, Price: officialhttp.CommunityPrice{
+					Availability: view.Availability, Confidence: view.Confidence, Freshness: view.Freshness, AmountMilli: view.AmountMilliBrl, HasAmount: view.HasAmount,
+					Supporters: view.Supporters, Confirmations: view.Confirmations, RepresentativeID: view.RepresentativeID,
+					AnchorReceivedAt: view.AnchorReceivedAt, HasAnchor: view.HasAnchor, ExpiresAt: view.ExpiresAt, HasExpiry: view.HasExpiry,
+					AlgorithmVersion: view.AlgorithmVersion, ProjectionVersion: view.ProjectionVersion,
+				}})
+			}
+			return out, nil
+		},
 		Community: func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (officialhttp.CommunityPrice, bool, error) {
 			view, err := communityPrices.CurrentPrice(ctx, stationID, product, unit, conditionKind, qualifier)
 			if err != nil {

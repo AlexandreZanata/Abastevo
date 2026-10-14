@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -19,10 +20,17 @@ import (
 // projection; nil keeps the historical null (UNKNOWN, never an
 // official substitution).
 type Handler struct {
-	Prices        application.PriceReader
-	StationsExist func(ctx context.Context, id string) (bool, error)
-	Community     func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (CommunityPrice, bool, error)
-	Secrets       []byte
+	Prices          application.PriceReader
+	StationsExist   func(ctx context.Context, id string) (bool, error)
+	CommunityGroups func(context.Context, string, string) ([]CommunityGroup, error)
+	Community       func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (CommunityPrice, bool, error)
+	Secrets         []byte
+}
+
+// CommunityGroup is an explicit public batch port for a station's standard keys.
+type CommunityGroup struct {
+	Product, Unit string
+	Price         CommunityPrice
 }
 
 // CommunityPrice is one projected community section: source-separated
@@ -148,13 +156,41 @@ func (h Handler) groups(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, http.StatusInternalServerError, "official.unavailable", "try again later", nil)
 		return
 	}
+	communityByKey := map[string]CommunityPrice{}
+	if h.CommunityGroups != nil {
+		rows, err := h.CommunityGroups(r.Context(), id, fuel)
+		if err != nil {
+			httpapi.WriteError(w, r, 500, "official.unavailable", "try again later", nil)
+			return
+		}
+		seen := map[string]bool{}
+		for _, g := range groups {
+			seen[g.Product+"/"+g.Unit] = true
+		}
+		for _, g := range rows {
+			key := g.Product + "/" + g.Unit
+			communityByKey[key] = g.Price
+			if !seen[key] {
+				groups = append(groups, application.PriceGroup{StationID: id, Product: g.Product, Unit: g.Unit, Condition: application.Condition{Kind: "STANDARD"}})
+				seen[key] = true
+			}
+		}
+	}
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i].Product == groups[j].Product {
+			return groups[i].Unit < groups[j].Unit
+		}
+		return groups[i].Product < groups[j].Product
+	})
 	wire := make([]wireGroup, 0, len(groups))
 	for _, g := range groups {
 		wg := wireGroup{
 			StationID: g.StationID, Product: g.Product, Unit: g.Unit,
 			Condition: map[string]any{"kind": g.Condition.Kind, "qualifier_id": nil},
 		}
-		if h.Community != nil {
+		if view, ok := communityByKey[g.Product+"/"+g.Unit]; ok {
+			wg.Community = wireCommunityPrice(view)
+		} else if h.CommunityGroups == nil && h.Community != nil {
 			if view, ok, err := h.Community(r.Context(), g.StationID, g.Product, g.Unit, g.Condition.Kind, "STANDARD"); err == nil && ok {
 				wg.Community = wireCommunityPrice(view)
 			} else if err != nil {
