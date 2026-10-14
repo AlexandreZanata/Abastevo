@@ -52,6 +52,7 @@ type result struct {
 
 func main() {
 	allow := flag.Bool("allow-staging-writes", false, "explicitly enroll two synthetic owners and grant/revoke their consent")
+	station := flag.String("community-station", "", "owned synthetic station UUID for community integration verification")
 	flag.Parse()
 	if !*allow || flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "explicit --allow-staging-writes required; only the owned staging origin is supported")
@@ -60,7 +61,12 @@ func main() {
 	p := probe{client: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	err := p.run(ctx)
+	var err error
+	if *station != "" {
+		err = p.runCommunity(ctx, *station)
+	} else {
+		err = p.run(ctx)
+	}
 	report := map[string]any{"origin": origin, "checked_at": time.Now().UTC().Format(time.RFC3339), "checks": p.checks, "requests": p.requests, "passed": err == nil, "collection_available": nil}
 	if len(p.checks) > 0 && p.checks[0] == "exact-published-terms-off" {
 		report["collection_available"] = false
@@ -202,6 +208,17 @@ func (p *probe) signed(ctx context.Context, o *owner, method, path string, b []b
 	}
 	if forge {
 		sig = base64.RawURLEncoding.EncodeToString(make([]byte, 64))
+	}
+	if method == "POST" {
+		var body map[string]any
+		if json.Unmarshal(b, &body) == nil {
+			for _, field := range []string{"client_submission_id", "client_capture_id"} {
+				if value, ok := body[field].(string); ok {
+					r.Header.Set("Idempotency-Key", value)
+					break
+				}
+			}
+		}
 	}
 	r.Header.Set(auth.HeaderSignature, sig)
 	r.Header.Set(auth.HeaderCreated, c)
