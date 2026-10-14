@@ -73,6 +73,18 @@ type QualityEdition struct {
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
+type QualityEnforcementEvent struct {
+	ID          pgtype.UUID `json:"id"`
+	RevisionID  pgtype.UUID `json:"revision_id"`
+	NativeKey   string      `json:"native_key"`
+	Scope       string      `json:"scope"`
+	Status      string      `json:"status"`
+	SubjectCnpj string      `json:"subject_cnpj"`
+	OccurredOn  pgtype.Date `json:"occurred_on"`
+	AsOf        pgtype.Date `json:"as_of"`
+	EvidenceRef string      `json:"evidence_ref"`
+}
+
 type QualityLink struct {
 	ID         pgtype.UUID `json:"id"`
 	RevisionID pgtype.UUID `json:"revision_id"`
@@ -93,6 +105,13 @@ type QualityManifest struct {
 	RecordedAt   pgtype.Timestamptz `json:"recorded_at"`
 }
 
+type QualityPeriod struct {
+	EditionID   pgtype.UUID `json:"edition_id"`
+	PeriodLabel string      `json:"period_label"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
 type QualityResource struct {
 	EditionID pgtype.UUID `json:"edition_id"`
 	Url       string      `json:"url"`
@@ -107,4 +126,17 @@ type QualityRevision struct {
 	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
 	PublishedAt          pgtype.Timestamptz `json:"published_at"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
+type QualitySanctionEvent struct {
+	ID            pgtype.UUID `json:"id"`
+	RevisionID    pgtype.UUID `json:"revision_id"`
+	NativeKey     string      `json:"native_key"`
+	ProceedingRef string      `json:"proceeding_ref"`
+	PartyCnpj     string      `json:"party_cnpj"`
+	AmountMinor   pgtype.Int8 `json:"amount_minor"`
+	Status        string      `json:"status"`
+	DecidedOn     pgtype.Date `json:"decided_on"`
+	AsOf          pgtype.Date `json:"as_of"`
+	EvidenceRef   string      `json:"evidence_ref"`
 }

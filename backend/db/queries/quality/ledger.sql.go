@@ -45,6 +45,28 @@ func (q *Queries) CountRevisionAssays(ctx context.Context, revisionID pgtype.UUI
 	return count, err
 }
 
+const countRevisionEnforcement = `-- name: CountRevisionEnforcement :one
+SELECT count(*) FROM quality_enforcement_events WHERE revision_id = $1
+`
+
+func (q *Queries) CountRevisionEnforcement(ctx context.Context, revisionID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRevisionEnforcement, revisionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRevisionSanctions = `-- name: CountRevisionSanctions :one
+SELECT count(*) FROM quality_sanction_events WHERE revision_id = $1
+`
+
+func (q *Queries) CountRevisionSanctions(ctx context.Context, revisionID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRevisionSanctions, revisionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createEdition = `-- name: CreateEdition :one
 INSERT INTO quality_editions (id, source, stream, edition, predecessor)
 VALUES ($1, $2, $3, $4, $5)
@@ -218,6 +240,38 @@ func (q *Queries) GetRevision(ctx context.Context, id pgtype.UUID) (QualityRevis
 	return i, err
 }
 
+const listEditionPeriods = `-- name: ListEditionPeriods :many
+SELECT edition_id, period_label, period_start, period_end
+FROM quality_periods
+WHERE edition_id = $1
+ORDER BY period_start ASC, period_label ASC
+`
+
+func (q *Queries) ListEditionPeriods(ctx context.Context, editionID pgtype.UUID) ([]QualityPeriod, error) {
+	rows, err := q.db.Query(ctx, listEditionPeriods, editionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QualityPeriod
+	for rows.Next() {
+		var i QualityPeriod
+		if err := rows.Scan(
+			&i.EditionID,
+			&i.PeriodLabel,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRevisionAssays = `-- name: ListRevisionAssays :many
 SELECT id, revision_id, sample_ref, assay_ref, source_cnpj, observed_on, fuel,
     result_text, unit, conformity, evidence_ref, fingerprint
@@ -248,6 +302,83 @@ func (q *Queries) ListRevisionAssays(ctx context.Context, revisionID pgtype.UUID
 			&i.Conformity,
 			&i.EvidenceRef,
 			&i.Fingerprint,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRevisionEnforcement = `-- name: ListRevisionEnforcement :many
+SELECT id, revision_id, native_key, scope, status, subject_cnpj, occurred_on,
+    as_of, evidence_ref
+FROM quality_enforcement_events
+WHERE revision_id = $1
+ORDER BY native_key ASC, id ASC
+`
+
+func (q *Queries) ListRevisionEnforcement(ctx context.Context, revisionID pgtype.UUID) ([]QualityEnforcementEvent, error) {
+	rows, err := q.db.Query(ctx, listRevisionEnforcement, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QualityEnforcementEvent
+	for rows.Next() {
+		var i QualityEnforcementEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.NativeKey,
+			&i.Scope,
+			&i.Status,
+			&i.SubjectCnpj,
+			&i.OccurredOn,
+			&i.AsOf,
+			&i.EvidenceRef,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRevisionSanctions = `-- name: ListRevisionSanctions :many
+SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
+    status, decided_on, as_of, evidence_ref
+FROM quality_sanction_events
+WHERE revision_id = $1
+ORDER BY native_key ASC, id ASC
+`
+
+func (q *Queries) ListRevisionSanctions(ctx context.Context, revisionID pgtype.UUID) ([]QualitySanctionEvent, error) {
+	rows, err := q.db.Query(ctx, listRevisionSanctions, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QualitySanctionEvent
+	for rows.Next() {
+		var i QualitySanctionEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.NativeKey,
+			&i.ProceedingRef,
+			&i.PartyCnpj,
+			&i.AmountMinor,
+			&i.Status,
+			&i.DecidedOn,
+			&i.AsOf,
+			&i.EvidenceRef,
 		); err != nil {
 			return nil, err
 		}
@@ -374,6 +505,45 @@ func (q *Queries) StageAssay(ctx context.Context, arg StageAssayParams) (pgtype.
 	return id, err
 }
 
+const stageEnforcementEvent = `-- name: StageEnforcementEvent :one
+INSERT INTO quality_enforcement_events
+    (id, revision_id, native_key, scope, status, subject_cnpj, occurred_on,
+     as_of, evidence_ref)
+VALUES ($1, $2, $3, $4, $5, $6,
+    $7, $8, $9)
+ON CONFLICT (revision_id, native_key) DO NOTHING
+RETURNING id
+`
+
+type StageEnforcementEventParams struct {
+	ID          pgtype.UUID `json:"id"`
+	RevisionID  pgtype.UUID `json:"revision_id"`
+	NativeKey   string      `json:"native_key"`
+	Scope       string      `json:"scope"`
+	Status      string      `json:"status"`
+	SubjectCnpj string      `json:"subject_cnpj"`
+	OccurredOn  pgtype.Date `json:"occurred_on"`
+	AsOf        pgtype.Date `json:"as_of"`
+	EvidenceRef string      `json:"evidence_ref"`
+}
+
+func (q *Queries) StageEnforcementEvent(ctx context.Context, arg StageEnforcementEventParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, stageEnforcementEvent,
+		arg.ID,
+		arg.RevisionID,
+		arg.NativeKey,
+		arg.Scope,
+		arg.Status,
+		arg.SubjectCnpj,
+		arg.OccurredOn,
+		arg.AsOf,
+		arg.EvidenceRef,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const stageLink = `-- name: StageLink :one
 INSERT INTO quality_links (id, revision_id, record_key, station_id, automatic, reason, active)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -406,6 +576,47 @@ func (q *Queries) StageLink(ctx context.Context, arg StageLinkParams) (pgtype.UU
 	return id, err
 }
 
+const stageSanctionEvent = `-- name: StageSanctionEvent :one
+INSERT INTO quality_sanction_events
+    (id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
+     status, decided_on, as_of, evidence_ref)
+VALUES ($1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10)
+ON CONFLICT (revision_id, native_key) DO NOTHING
+RETURNING id
+`
+
+type StageSanctionEventParams struct {
+	ID            pgtype.UUID `json:"id"`
+	RevisionID    pgtype.UUID `json:"revision_id"`
+	NativeKey     string      `json:"native_key"`
+	ProceedingRef string      `json:"proceeding_ref"`
+	PartyCnpj     string      `json:"party_cnpj"`
+	AmountMinor   pgtype.Int8 `json:"amount_minor"`
+	Status        string      `json:"status"`
+	DecidedOn     pgtype.Date `json:"decided_on"`
+	AsOf          pgtype.Date `json:"as_of"`
+	EvidenceRef   string      `json:"evidence_ref"`
+}
+
+func (q *Queries) StageSanctionEvent(ctx context.Context, arg StageSanctionEventParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, stageSanctionEvent,
+		arg.ID,
+		arg.RevisionID,
+		arg.NativeKey,
+		arg.ProceedingRef,
+		arg.PartyCnpj,
+		arg.AmountMinor,
+		arg.Status,
+		arg.DecidedOn,
+		arg.AsOf,
+		arg.EvidenceRef,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const updateManifest = `-- name: UpdateManifest :exec
 UPDATE quality_manifests
 SET input = $1, accepted = $2, duplicates = $3,
@@ -431,6 +642,30 @@ func (q *Queries) UpdateManifest(ctx context.Context, arg UpdateManifestParams) 
 		arg.Quarantined,
 		arg.ManifestHash,
 		arg.EditionID,
+	)
+	return err
+}
+
+const upsertPeriod = `-- name: UpsertPeriod :exec
+INSERT INTO quality_periods (edition_id, period_label, period_start, period_end)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (edition_id, period_label)
+DO UPDATE SET period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end
+`
+
+type UpsertPeriodParams struct {
+	EditionID   pgtype.UUID `json:"edition_id"`
+	PeriodLabel string      `json:"period_label"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
+func (q *Queries) UpsertPeriod(ctx context.Context, arg UpsertPeriodParams) error {
+	_, err := q.db.Exec(ctx, upsertPeriod,
+		arg.EditionID,
+		arg.PeriodLabel,
+		arg.PeriodStart,
+		arg.PeriodEnd,
 	)
 	return err
 }

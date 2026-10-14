@@ -159,6 +159,23 @@ func (a Assay) Fingerprint() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// ValidDay reports whether s is a date-only YYYY-MM-DD value. Source and
+// review clocks use date-only precision; no midnight time is invented.
+func ValidDay(s string) bool {
+	if len(s) != 10 || s[4] != '-' || s[7] != '-' {
+		return false
+	}
+	for i, c := range s {
+		if i == 4 || i == 7 {
+			continue
+		}
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // Quarantine records one refused input with its reason.
 type Quarantine struct {
 	Locator string

@@ -102,3 +102,53 @@ DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now();
 -- name: GetCurrentRevision :one
 SELECT revision_id FROM quality_current_revisions
 WHERE source = @source AND stream = @stream;
+
+-- name: StageEnforcementEvent :one
+INSERT INTO quality_enforcement_events
+    (id, revision_id, native_key, scope, status, subject_cnpj, occurred_on,
+     as_of, evidence_ref)
+VALUES (@id, @revision_id, @native_key, @scope, @status, @subject_cnpj,
+    @occurred_on, @as_of, @evidence_ref)
+ON CONFLICT (revision_id, native_key) DO NOTHING
+RETURNING id;
+
+-- name: CountRevisionEnforcement :one
+SELECT count(*) FROM quality_enforcement_events WHERE revision_id = @revision_id;
+
+-- name: ListRevisionEnforcement :many
+SELECT id, revision_id, native_key, scope, status, subject_cnpj, occurred_on,
+    as_of, evidence_ref
+FROM quality_enforcement_events
+WHERE revision_id = @revision_id
+ORDER BY native_key ASC, id ASC;
+
+-- name: StageSanctionEvent :one
+INSERT INTO quality_sanction_events
+    (id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
+     status, decided_on, as_of, evidence_ref)
+VALUES (@id, @revision_id, @native_key, @proceeding_ref, @party_cnpj,
+    @amount_minor, @status, @decided_on, @as_of, @evidence_ref)
+ON CONFLICT (revision_id, native_key) DO NOTHING
+RETURNING id;
+
+-- name: CountRevisionSanctions :one
+SELECT count(*) FROM quality_sanction_events WHERE revision_id = @revision_id;
+
+-- name: ListRevisionSanctions :many
+SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
+    status, decided_on, as_of, evidence_ref
+FROM quality_sanction_events
+WHERE revision_id = @revision_id
+ORDER BY native_key ASC, id ASC;
+
+-- name: UpsertPeriod :exec
+INSERT INTO quality_periods (edition_id, period_label, period_start, period_end)
+VALUES (@edition_id, @period_label, @period_start, @period_end)
+ON CONFLICT (edition_id, period_label)
+DO UPDATE SET period_start = EXCLUDED.period_start, period_end = EXCLUDED.period_end;
+
+-- name: ListEditionPeriods :many
+SELECT edition_id, period_label, period_start, period_end
+FROM quality_periods
+WHERE edition_id = @edition_id
+ORDER BY period_start ASC, period_label ASC;

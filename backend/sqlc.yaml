@@ -288,6 +288,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000093_quality_assay_ledger.sql
+      - db/migrations/000094_quality_event_ledgers.sql
     gen:
       go:
         package: quality
