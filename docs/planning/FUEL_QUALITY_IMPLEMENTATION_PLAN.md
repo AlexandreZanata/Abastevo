@@ -1,8 +1,10 @@
 # Fuel quality evidence and station reliability implementation plan
 
+**2026-10-14 D deferral — adopted maintainer restriction:** [Future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) supersedes earlier timing for FQ-10 and document attachment in FQ-15. They are DEFERRED_FUTURE until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. FQ-00–08 source evidence remains intact; official history/non-document reporting need not wait. The dependency slices below prevent deferred proof work from blocking selected document-free delivery or being implemented under another label.
+
 Status: PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED.
 Date: 2026-10-14. Scope: requested Abastevo quality feature, Android/backend.
-Owning task namespace: FQ-00–FQ-17. All implementation tasks are PLANNED.
+Owning task namespace: FQ-00–FQ-17. Actual source acceptance is recorded in current PROGRESS and linked task evidence; unstarted target scope is PLANNED except the explicitly DEFERRED_FUTURE D overlap.
 
 This is a local planning deliverable. It does not implement a parser, schema,
 API, score, national backfill or mobile flow; it does not publish issues, a PR,
@@ -450,6 +452,8 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-10 — Private documents and purchase verification decisions (M)
 
+State amendment: **DEFERRED_FUTURE / D_GATE_REQUIRED**. No implementation or intake before the future D gate or an explicit earlier named maintainer request. The original target acceptance below remains for that future scope.
+
 - Depends: FQ-09; existing media retention/provider prerequisites. BUC-FQ-06/08.
 - Deliver: minimized document policy, verifier port, typed checked/unverified/
   failed/review-required outcomes, private binding and expiry/rights handling.
@@ -462,7 +466,7 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-11 — Community signal and moderation policy (M)
 
-- Depends: FQ-09/FQ-10. BUC-FQ-07/08.
+- Depends: FQ-09 for an explicitly frozen document-free review/signal slice; purchase-checked/document-supported clustering additionally requires FQ-10 and the D gate. BUC-FQ-07/08. Never label unverified reports as checked independent purchases; retain incomplete future acceptance.
 - Deliver: independently supported signal policy, review/appeal reasons,
   source-separated aggregation and abuse/resource ceilings.
 - Tests/acceptance: linked keys, self support, account farms, repeated receipts,
@@ -508,7 +512,9 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-15 — Android report, document and official case response (M)
 
-- Depends: FQ-09/FQ-10/FQ-11 and FQ-14.
+Scope amendment: document-free reporting/case response can be selected separately. Private document attachment/verification is **DEFERRED_FUTURE / D_GATE_REQUIRED**. Record accepted versus deferred slices; do not claim full original FQ-15 acceptance from the document-free slice.
+
+- Depends: FQ-09/FQ-14 and any displayed accepted document-free FQ-11 slice; private-document features additionally require FQ-10 and the D gate.
 - Deliver: free-login gated form, own report/status, optional private documents,
   linkage-review request and official ANP guidance link with deliberate handoff.
 - Tests/acceptance: plain-language evidence levels, no auto-reporting, expired/
@@ -518,7 +524,7 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-16 — Offline, privacy and end-to-end compatibility (M)
 
-- Depends: FQ-14/FQ-15 and affected existing offline/privacy checkpoints.
+- Depends: FQ-14 and the selected accepted FQ-15 slice plus affected existing offline/privacy checkpoints; unselected D document features do not block document-free acceptance.
 - Deliver: bounded public history cache and owner-scoped stable command outbox
   only where backend deadlines permit; stale labels, migration/expiry/erase.
 - Tests/acceptance: offline before/after cache, process death/restart, clock

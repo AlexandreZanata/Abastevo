@@ -16,6 +16,8 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**2026-10-14 selected planning amendment:** [A → B → C consolidation](docs/planning/APP_CONSOLIDATION_PLAN.md) defines future offline efficiency, reliability without mandatory GPS and user economy work after actual app-first/current-head prerequisites. [D](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) is DEFERRED_FUTURE: no receipt/NFC-e/private-document or business claim/management/portal expansion until extreme consolidation AND thousands of real clients, unless the maintainer explicitly requests earlier named scope. New D work is outside the core A–C/launch prerequisite set. Earlier sequences containing new P30–P33 expansion are superseded for that scope; preserve implemented evidence and all existing safety/release obligations.
+
 Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
@@ -2990,6 +2992,8 @@ Priority: **MUST for catalog scope**. Entry: G27; every selected enabled G28 tas
 
 ## Station profile and representation — PLANNED
 
+New private claim/proof/management/portal expansion is **DEFERRED_FUTURE / D_GATE_REQUIRED** under [the 2026-10-14 maintainer restriction](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md). Public read-only station metadata and existing security/privacy maintenance remain in scope; historical task acceptance is preserved. No new D task is required to close the selected A–C/core candidate.
+
 <a id="station-profile-and-representation"></a>
 
 [STATION_PROFILE_PLAN](docs/planning/STATION_PROFILE_PLAN.md) defines the full process; [STATION_PROFILE_REPRESENTATION](docs/product/STATION_PROFILE_REPRESENTATION.md) owns B-BR-P01–P16 / BUC-P01–P10; [ADR-017](docs/adr/017-station-profile-and-verified-representation.md) records identity/authority boundaries. Reuse Directory Station; new profile/claim/grant entities do not duplicate station IDs. Sequence after app-first P34–P38 and catalog checkpoints: G29 source checkpoint → P30 → P31 → P32 → P33 → end affected Android manual/device acceptance → final integration → existing P09/G09. P28-T04 is superseded, preserving its ID; no duplicate owner-verification implementation. All tasks below are PLANNED, local-only documentation, not runtime readiness or remote issues.
@@ -3649,3 +3653,19 @@ Execution index; task details/tests/recovery are canonical in the linked plan:
 - [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
 
 Next implementation candidate: FQ-09, after explicit task selection and current-head prerequisite reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
+
+## A–D app consolidation planning
+
+<a id="opt-plan"></a>
+
+### OPT-PLAN — Offline efficiency, community reliability and economy plans
+
+- **Priority / state:** requested planning deliverable / PLANNING_LOCAL_DONE; A/B/C implementation PLANNED, D DEFERRED_FUTURE / NOT_AUTHORIZED.
+- **Goal:** Define sequential bounded tasks for local-first Home, measured operational efficiency, calibrated independent community confidence and useful alerts/history/net fueling economy; reserve private purchase evidence and business portal for future adoption/maturity.
+- **Canonical scope:** [Master](docs/planning/APP_CONSOLIDATION_PLAN.md), [target B-BR-OPT-01–18 / BUC-OPT-01–10](docs/product/APP_CONSOLIDATION_TARGET_CONTRACT.md), [continuation](docs/planning/APP_CONSOLIDATION_EXECUTION_PROMPT.md).
+- **Stages / stable IDs:** [A: OPT-A00–A07](docs/planning/HOME_OFFLINE_EFFICIENCY_PLAN.md); [B: OPT-B00–B08](docs/planning/COMMUNITY_RELIABILITY_PLAN.md); [C: OPT-C00–C08](docs/planning/ECONOMY_RETENTION_PLAN.md); [D: OPT-D00–D06](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md).
+- **Inputs/dependencies:** current app/quality/safety evidence and actual source; preserve current occupied checkouts and FQ-00–08 acceptance. Reuse Room/summary, media/Trust/Jobs, vehicles/history/alerts and Profile/FQ ownership.
+- **Acceptance:** every task has dependencies, inputs/areas, output, meaningful tests and recovery; scope/freshness/independence/units/privacy/provider limits explicit. D held across FQ/Profile/Premium, not just behind a flag; core A–C excludes D.
+- **Validation:** changed/new Markdown paths/anchors, rule/task/dependency consistency, D timing precedence, git diff --check and scoped secret/PII review; no runtime suite for docs.
+- **Recovery/limits:** documentation-only isolated commit; no product implementation, remote issue/PR/wiki publication, provider enrollment, live collection/VPS/device/deployment or release claim.
+- **Next:** explicit implementation selection, current dev/main reconciliation and OPT-A00. Generic continuation of current work does not override future D.
