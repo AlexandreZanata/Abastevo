@@ -24,6 +24,11 @@ WHERE s.state = @state AND s.municipality_code = @municipality_code AND s.status
  AND p.availability = 'AVAILABLE' AND p.amount_milli_brl IS NOT NULL
  AND p.anchor_received_at IS NOT NULL AND p.anchor_received_at <= @now
  AND p.expires_at > @now
+ AND (p.representative_observation_id IS NULL OR EXISTS (
+  SELECT 1 FROM community_observations visible WHERE visible.id=p.representative_observation_id
+   AND visible.hidden_at IS NULL AND visible.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=visible.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
+ ))
  AND (NOT @has_cursor::boolean OR
   (@sort_order::text = 'recent' AND (p.anchor_received_at < @after_time OR
     (p.anchor_received_at = @after_time AND p.station_id::text > @after_id::text))) OR

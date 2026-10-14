@@ -880,6 +880,21 @@ func run() error {
 	votePorts := communityapp.VotePorts{
 		Clock: time.Now,
 		NewID: newUUID,
+		OpenReportCase: func(ctx context.Context, tx pgx.Tx, observationID, reason, detail string) error {
+			id, err := newUUID()
+			if err != nil {
+				return err
+			}
+			caseRecord, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+				ID: id, TargetType: moderationdomain.TargetObservation, TargetID: observationID,
+				Priority: moderationdomain.PriorityP2, Reason: reason, Detail: detail, OpenedAt: time.Now(),
+			})
+			if err != nil {
+				return err
+			}
+			_, _, err = moderationStore.OpenCaseTx(ctx, tx, caseRecord)
+			return err
+		},
 		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
 			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
 			if err != nil {

@@ -16,6 +16,7 @@ WHERE s.state = @state AND s.municipality_code = @municipality_code AND s.status
  AND p.anchor_received_at IS NOT NULL AND p.anchor_received_at <= @now AND p.expires_at > @now
  AND (p.representative_observation_id IS NULL OR EXISTS (
   SELECT 1 FROM community_observations o WHERE o.id=p.representative_observation_id AND o.hidden_at IS NULL AND o.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
  ))
 GROUP BY p.fuel_product,p.unit
 ORDER BY p.fuel_product,p.unit;

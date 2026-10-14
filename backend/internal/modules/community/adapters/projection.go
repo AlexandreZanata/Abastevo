@@ -33,8 +33,8 @@ func (s *Store) SaveProjection(ctx context.Context, key domain.PriceKey, result 
 	if err != nil {
 		return err
 	}
-	if row, err := tq.GetProjection(ctx, params); err == nil {
-		version = row.ProjectionVersion
+	if storedVersion, err := tq.ProjectionVersion(ctx, community.ProjectionVersionParams(params)); err == nil {
+		version = storedVersion
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
@@ -120,7 +120,7 @@ func (s *Store) EligibleAnchors(ctx context.Context, key domain.PriceKey, cutoff
 	rows, err := community.New(s.pool).EligibleAnchors(ctx, community.EligibleAnchorsParams{
 		StationID: station, FuelProduct: key.Product, Unit: key.Unit,
 		ConditionKind: key.ConditionKind, QualifierKey: key.Qualifier,
-		Cutoff: pgTime(cutoff),
+		Cutoff: pgTime(cutoff), Now: pgTime(cutoff.Add(domain.ConsensusWindow)),
 	})
 	if err != nil {
 		return nil, err

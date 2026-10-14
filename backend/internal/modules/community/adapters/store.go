@@ -216,117 +216,85 @@ func (s *Store) resolveConflict(ctx context.Context, obs domain.Observation) (st
 	return uuidString(row.ID), true, nil
 }
 
-// RecordDecision appends one decision after enforcing the machine at the
-// boundary: the FromState must match the derived current state, the
-// transition must be known, and the sequence must continue exactly.
+// RecordDecision appends a guarded decision while locking its observation.
 func (s *Store) RecordDecision(ctx context.Context, d domain.Decision) error {
-	if d.EventName() == "" {
-		return domain.ErrBadTransition
-	}
-	obsUUID, err := mustUUID(d.ObservationID)
-	if err != nil {
-		return err
-	}
-	q := community.New(s.pool)
-	rows, err := q.ListDecisions(ctx, obsUUID)
-	if err != nil {
-		return err
-	}
-	current := domain.StateReceived
-	for _, row := range rows {
-		current = row.ToState
-	}
-	if d.FromState != current {
-		return domain.ErrBadTransition
-	}
-	if d.Sequence != int64(len(rows)+1) {
-		return domain.ErrBadTransition
-	}
-	idText, err := newUUIDv4()
-	if err != nil {
-		return err
-	}
-	id, err := mustUUID(idText)
-	if err != nil {
-		return err
-	}
-	_, err = q.AppendDecision(ctx, community.AppendDecisionParams{
-		ID:            id,
-		ObservationID: obsUUID,
-		Sequence:      d.Sequence,
-		ToState:       d.ToState,
-		ReasonCodes:   append([]string{}, d.ReasonCodes...),
-		PolicyVersion: d.PolicyVersion,
-		OccurredAt:    pgTime(d.OccurredAt),
-		ActorRef:      d.Actor,
-	})
-	return err
+	return s.RecordDecisionWithJob(ctx, d, "", nil, "", nil)
 }
 
-// RecordDecisionWithJob appends one decision and enqueues downstream work
-// atomically: the VALIDATED decision and its consensus intent commit
-// together or not at all, so no validated fact waits without downstream
-// work and no consensus job points at an unrecorded transition. Guards
-// mirror RecordDecision inside the transaction so concurrent validators
-// converge instead of forking history; the enqueue closure receives the
-// open transaction, keeping this package decoupled from the jobs table.
-func (s *Store) RecordDecisionWithJob(ctx context.Context, d domain.Decision, kind string, payload []byte, dedupe string, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) error {
-	if d.EventName() == "" {
-		return domain.ErrBadTransition
-	}
-	obsUUID, err := mustUUID(d.ObservationID)
-	if err != nil {
-		return err
-	}
+// RecordDecisionWithJob commits the decision and its downstream intent together.
+func (s *Store) RecordDecisionWithJob(ctx context.Context, d domain.Decision, kind string, payload []byte, dedupe string, enqueue func(context.Context, pgx.Tx, string, []byte, string) error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	tq := community.New(tx)
-	rows, err := tq.ListDecisions(ctx, obsUUID)
-	if err != nil {
-		return err
-	}
-	current := domain.StateReceived
-	for _, row := range rows {
-		current = row.ToState
-	}
-	if d.FromState != current {
-		return domain.ErrBadTransition
-	}
-	if d.Sequence != int64(len(rows)+1) {
-		return domain.ErrBadTransition
-	}
-	idText, err := newUUIDv4()
-	if err != nil {
-		return err
-	}
-	id, err := mustUUID(idText)
-	if err != nil {
-		return err
-	}
-	if _, err := tq.AppendDecision(ctx, community.AppendDecisionParams{
-		ID:            id,
-		ObservationID: obsUUID,
-		Sequence:      d.Sequence,
-		ToState:       d.ToState,
-		ReasonCodes:   append([]string{}, d.ReasonCodes...),
-		PolicyVersion: d.PolicyVersion,
-		OccurredAt:    pgTime(d.OccurredAt),
-		ActorRef:      d.Actor,
-	}); err != nil {
+	if err := s.RecordDecisionTx(ctx, tx, d); err != nil {
 		return err
 	}
 	if kind != "" {
 		if enqueue == nil {
-			return errors.New("adapters: consensus enqueue required for validated transition")
+			return errors.New("adapters: consensus enqueue required for transition")
 		}
 		if err := enqueue(ctx, tx, kind, payload, dedupe); err != nil {
 			return err
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// RecordDecisionTx is the explicit owned port for atomic moderator actions.
+func (s *Store) RecordDecisionTx(ctx context.Context, tx pgx.Tx, d domain.Decision) error {
+	if d.EventName() == "" {
+		return domain.ErrBadTransition
+	}
+	uid, err := mustUUID(d.ObservationID)
+	if err != nil {
+		return err
+	}
+	q := community.New(tx)
+	target, err := lockObservationForWrite(ctx, q, uid)
+	if err != nil {
+		return err
+	}
+	current := target.State
+	if current == "" {
+		current = domain.StateReceived
+	}
+	if d.FromState != current || d.Sequence != target.Sequence+1 {
+		return domain.ErrBadTransition
+	}
+	idText, err := newUUIDv4()
+	if err != nil {
+		return err
+	}
+	id, err := mustUUID(idText)
+	if err != nil {
+		return err
+	}
+	_, err = q.AppendDecision(ctx, community.AppendDecisionParams{ID: id, ObservationID: uid, Sequence: d.Sequence, ToState: d.ToState, ReasonCodes: append([]string{}, d.ReasonCodes...), PolicyVersion: d.PolicyVersion, OccurredAt: pgTime(d.OccurredAt), ActorRef: d.Actor})
+	return err
+}
+
+// InvalidateTx derives the reviewed transition under the same target lock.
+func (s *Store) InvalidateTx(ctx context.Context, tx pgx.Tx, id, caseID string, at time.Time) error {
+	uid, err := mustUUID(id)
+	if err != nil {
+		return err
+	}
+	q := community.New(tx)
+	target, err := lockObservationForWrite(ctx, q, uid)
+	if err != nil {
+		return err
+	}
+	row, err := q.GetObservation(ctx, uid)
+	if err != nil {
+		return err
+	}
+	d, err := domain.Invalidate(mapObservation(row), target.State, domain.ActorModerator, caseID, []string{"moderation-invalid"}, at, target.Sequence+1)
+	if err != nil {
+		return err
+	}
+	return s.RecordDecisionTx(ctx, tx, d)
 }
 
 // Observation loads one fact by ID.
@@ -376,7 +344,7 @@ func mapObservation(row community.GetObservationRow) domain.Observation {
 		claimed = row.ClaimedCapturedAt.Time
 	}
 	return domain.Observation{
-		ID: row.ID.String(), ContributorRef: row.ContributorRef,
+		ID: row.ID.String(), ContributorRef: row.ContributorRef, Hidden: row.Hidden, Deleted: row.Deleted,
 		ClientSubmissionID: row.ClientSubmissionID,
 		StationID:          uuidString(row.StationID),
 		Product:            row.FuelProduct, Unit: row.Unit,
@@ -425,7 +393,7 @@ func (s *Store) ListByContributor(ctx context.Context, ref string, limit int, af
 	out := make([]domain.Observation, 0, len(rows))
 	for _, row := range rows {
 		// ListByContributor projects the stable fact columns; the
-		// visibility pair stays out of owner history reads.
+		// visibility metadata is internal and never serialized in owner history.
 		out = append(out, mapObservation(community.GetObservationRow(row)))
 	}
 	return out, nil

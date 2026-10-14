@@ -67,16 +67,44 @@ func pgTime(t time.Time) pgtype.Timestamptz {
 // appends all land in history; the current view converges on the
 // latest committed verdict with a bumped version.
 func (s *Store) AppendDecision(ctx context.Context, d domain.Decision, enqueue func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error) (string, error) {
-	uid, err := mustUUID(d.ID)
-	if err != nil {
-		return "", err
-	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := s.AppendDecisionTx(ctx, tx, d); err != nil {
+		return "", err
+	}
+	if enqueue == nil {
+		return "", errors.New("trust: recompute enqueue required")
+	}
+	payload, _ := json.Marshal(map[string]any{"version": 1, "contributor_ref": d.ContributorRef})
+	if err := enqueue(ctx, tx, "trust-affected-recompute", payload, "trust:"+d.ContributorRef+":"+d.ID); err != nil {
+		return "", err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+	return d.ID, nil
+}
+
+// AppendDecisionTx joins an audited moderation transaction without a nested
+// commit or duplicate job. Upserting current first serializes all verdicts
+// for this contributor before the caller takes its moderation case lock.
+func (s *Store) AppendDecisionTx(ctx context.Context, tx pgx.Tx, d domain.Decision) (string, error) {
+	if tx == nil {
+		return "", errors.New("trust: decision transaction required")
+	}
+	uid, err := mustUUID(d.ID)
+	if err != nil {
+		return "", err
+	}
 	tq := trust.New(tx)
+	if _, err := tq.UpsertCurrent(ctx, trust.UpsertCurrentParams{
+		ContributorRef: d.ContributorRef, Tier: d.Tier, UpdatedAt: pgTime(d.OccurredAt),
+	}); err != nil {
+		return "", err
+	}
 	inserted, err := tq.InsertDecision(ctx, trust.InsertDecisionParams{
 		ID: uid, ContributorRef: d.ContributorRef, Tier: d.Tier,
 		Reason: d.Reason, CaseRefs: append([]string{}, d.CaseRefs...),
@@ -84,18 +112,6 @@ func (s *Store) AppendDecision(ctx context.Context, d domain.Decision, enqueue f
 	})
 	_ = inserted
 	if err != nil {
-		return "", err
-	}
-	if _, err := tq.UpsertCurrent(ctx, trust.UpsertCurrentParams{
-		ContributorRef: d.ContributorRef, Tier: d.Tier, UpdatedAt: pgTime(d.OccurredAt),
-	}); err != nil {
-		return "", err
-	}
-	payload, _ := json.Marshal(map[string]any{"version": 1, "contributor_ref": d.ContributorRef})
-	if err := enqueue(ctx, tx, "trust-affected-recompute", payload, "trust:"+d.ContributorRef); err != nil {
-		return "", err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
 	return d.ID, nil

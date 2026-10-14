@@ -54,21 +54,25 @@ func (f *fakeActStore) RecordAction(_ context.Context, a domain.Action, toStatus
 	if f.failJob {
 		return "", errors.New("enqueue down")
 	}
+	if enqueue != nil {
+		if err := enqueue(context.Background(), nil, kind, []byte(`{}`), "dedupe"); err != nil {
+			return "", err
+		}
+		f.jobs = append(f.jobs, kind)
+	}
 	f.actions = append(f.actions, a)
 	c.Status = toStatus
 	f.cases[a.CaseID] = c
-	if enqueue != nil {
-		_ = enqueue(context.Background(), nil, kind, []byte(`{}`), "dedupe")
-		f.jobs = append(f.jobs, kind)
-	}
 	return a.ID, nil
 }
 
 func actPorts(store *fakeActStore) ActPorts {
 	return ActPorts{
-		Clock: func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) },
-		NewID: func() (string, error) { return "a0000000-0000-4000-8000-000000000001", nil },
-		Store: store,
+		InvalidateObservation: func(context.Context, pgx.Tx, string, string, time.Time) error { return nil },
+		BlockContributor:      func(context.Context, pgx.Tx, string, string, string, time.Time) error { return nil },
+		Clock:                 func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) },
+		NewID:                 func() (string, error) { return "a0000000-0000-4000-8000-000000000001", nil },
+		Store:                 store,
 		EnqueueJob: func(context.Context, pgx.Tx, string, []byte, string) error {
 			return nil
 		},
@@ -184,5 +188,34 @@ func TestActPropagatesEnqueueFailure(t *testing.T) {
 		Action: domain.ActionReview, Reason: "triage",
 	}); err == nil {
 		t.Error("enqueue failure accepted")
+	}
+}
+
+func TestInvalidateRequiresAtomicEligibilityPort(t *testing.T) {
+	c := openTestCase(domain.StatusOpen, domain.TargetObservation, "b0000000-0000-4000-8000-000000000002")
+	store := newFakeActStore(c)
+	ports := actPorts(store)
+	ports.InvalidateObservation = nil
+	_, err := Act(context.Background(), ports, Caller{OperatorID: "operator"}, ActDTO{CaseID: c.ID, Action: domain.ActionInvalidate, Reason: "reviewed"})
+	if !errors.Is(err, domain.ErrActionForbidden) || len(store.actions) != 0 {
+		t.Fatalf("missing atomic port mutated: %v", err)
+	}
+}
+
+func TestBlockRequiresAtomicTrustVerdict(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		c := openTestCase(domain.StatusOpen, domain.TargetContributor, "synthetic-contributor")
+		store := newFakeActStore(c)
+		ports := actPorts(store)
+		failure := errors.New("trust unavailable")
+		ports.BlockContributor = func(context.Context, pgx.Tx, string, string, string, time.Time) error { return failure }
+		want := failure
+		if missing {
+			ports.BlockContributor, want = nil, domain.ErrActionForbidden
+		}
+		_, err := Act(context.Background(), ports, Caller{OperatorID: "operator"}, ActDTO{CaseID: c.ID, Action: domain.ActionBlock, Reason: "reviewed abuse"})
+		if !errors.Is(err, want) || len(store.actions) != 0 || len(store.jobs) != 0 || store.cases[c.ID].Status != domain.StatusOpen {
+			t.Fatalf("block without trust verdict changed audit/case (missing=%v): %v %+v", missing, err, store)
+		}
 	}
 }

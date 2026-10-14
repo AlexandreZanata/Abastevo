@@ -133,3 +133,16 @@ func TestBoundaryRejectsBadPayload(t *testing.T) {
 		t.Errorf("due failure = %v", err)
 	}
 }
+
+func TestBoundaryRetryConvergesButLaterCycleRecomputesSameKey(t *testing.T) {
+	var enqueued []string
+	h := boundaryHandler([]domain.PriceKey{boundaryKey("STANDARD")}, &enqueued)
+	for _, id := range []string{"cycle-one", "cycle-one", "cycle-two"} {
+		if err := h.Handle(context.Background(), jobs.Job{ID: id, Payload: []byte(`{"version":1}`)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(enqueued) != 3 || enqueued[0] != enqueued[1] || enqueued[1] == enqueued[2] {
+		t.Fatalf("cycle intents lost or replay diverged: %v", enqueued)
+	}
+}

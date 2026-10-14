@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -47,6 +48,24 @@ func (s *Store) Confirm(ctx context.Context, c domain.Confirmation, enqueue func
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	tq := community.New(tx)
+	if _, err := tq.GetConfirmationByNaturalKey(ctx, community.GetConfirmationByNaturalKeyParams{ContributorRef: c.ContributorRef, ClientSubmissionID: c.ClientSubmissionID}); err == nil {
+		return s.resolveConfirmConflict(ctx, c)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", false, err
+	}
+	target, err := lockObservationForWrite(ctx, tq, obsUUID)
+	if err != nil || target.HiddenAt.Valid || target.DeletedAt.Valid {
+		if err == nil || errors.Is(err, pgx.ErrNoRows) {
+			return "", false, application.ErrTargetNotFound
+		}
+		return "", false, err
+	}
+	if target.State != domain.StateValidated || target.ReceivedAt.Time.After(c.ReceivedAt) || c.ReceivedAt.Sub(target.ReceivedAt.Time) > application.EligibilityWindow {
+		return "", false, application.ErrIneligibleTarget
+	}
+	if target.ContributorRef == c.ContributorRef {
+		return "", false, domain.ErrSelfConfirmation
+	}
 	inserted, err := tq.InsertConfirmation(ctx, community.InsertConfirmationParams{
 		ID: uid, ObservationID: obsUUID,
 		ContributorRef: c.ContributorRef, ClientSubmissionID: c.ClientSubmissionID,
@@ -63,7 +82,7 @@ func (s *Store) Confirm(ctx context.Context, c domain.Confirmation, enqueue func
 		}
 		return "", false, err
 	}
-	if err := enqueue(ctx, tx, "community-consensus", consensusPayload(c.ObservationID), "consensus:"+c.ObservationID); err != nil {
+	if err := enqueue(ctx, tx, "community-consensus", consensusPayload(c.ObservationID), "consensus:confirmation:"+c.ID); err != nil {
 		return "", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -109,6 +128,21 @@ func (s *Store) Report(ctx context.Context, d domain.Dispute, enqueue func(ctx c
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	tq := community.New(tx)
+	if _, err := tq.GetDisputeByNaturalKey(ctx, community.GetDisputeByNaturalKeyParams{ContributorRef: d.ContributorRef, ClientSubmissionID: d.ClientSubmissionID}); err == nil {
+		return s.resolveDisputeConflict(ctx, d)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", false, err
+	}
+	target, err := lockObservationForWrite(ctx, tq, targetUUID)
+	if err != nil || target.HiddenAt.Valid || target.DeletedAt.Valid {
+		if err == nil || errors.Is(err, pgx.ErrNoRows) {
+			return "", false, application.ErrTargetNotFound
+		}
+		return "", false, err
+	}
+	if target.State != domain.StateValidated {
+		return "", false, application.ErrIneligibleTarget
+	}
 	detail := strings.TrimSpace(d.Detail)
 	inserted, err := tq.InsertDispute(ctx, community.InsertDisputeParams{
 		ID: uid, TargetObservationID: targetUUID,
@@ -127,7 +161,7 @@ func (s *Store) Report(ctx context.Context, d domain.Dispute, enqueue func(ctx c
 		}
 		return "", false, err
 	}
-	if err := enqueue(ctx, tx, "community-consensus", consensusPayload(d.TargetObservationID), "consensus:"+d.TargetObservationID); err != nil {
+	if err := enqueue(ctx, tx, "community-consensus", consensusPayload(d.TargetObservationID), "consensus:dispute:"+d.ID); err != nil {
 		return "", false, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -165,4 +199,13 @@ func (s *Store) convergeOpenReport(ctx context.Context, targetUUID pgtype.UUID, 
 		return "", false, err
 	}
 	return uuidString(row.ID), true, nil
+}
+
+// PostgreSQL takes the statement snapshot before waiting for a row lock.
+// Read decisions again after acquiring it so a concurrent invalidation is visible.
+func lockObservationForWrite(ctx context.Context, q *community.Queries, id pgtype.UUID) (community.ReadObservationTargetRow, error) {
+	if _, err := q.LockObservationTarget(ctx, id); err != nil {
+		return community.ReadObservationTargetRow{}, err
+	}
+	return q.ReadObservationTarget(ctx, id)
 }

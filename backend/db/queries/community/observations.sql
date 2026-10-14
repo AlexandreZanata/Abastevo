@@ -20,7 +20,8 @@ RETURNING id;
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE contributor_ref = @contributor_ref AND client_submission_id = @client_submission_id;
 
@@ -28,7 +29,8 @@ WHERE contributor_ref = @contributor_ref AND client_submission_id = @client_subm
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE id = @id;
 
@@ -61,7 +63,8 @@ ORDER BY sequence ASC;
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE contributor_ref = @contributor_ref
     AND (@has_cursor::boolean = FALSE OR
@@ -101,3 +104,16 @@ SELECT received_at
 FROM community_observations
 ORDER BY received_at ASC
 LIMIT 1;
+
+-- Serialize visibility-sensitive writes with erasure/moderation and decisions.
+-- name: LockObservationTarget :one
+SELECT o.id, o.contributor_ref, o.received_at, o.hidden_at, o.deleted_at,
+ COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1),'')::text AS state,
+ COALESCE((SELECT MAX(d.sequence) FROM community_observation_decisions d WHERE d.observation_id=o.id),0)::bigint AS sequence
+FROM community_observations o WHERE o.id = @id FOR UPDATE;
+
+-- name: ReadObservationTarget :one
+SELECT o.id, o.contributor_ref, o.received_at, o.hidden_at, o.deleted_at,
+ COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1),'')::text AS state,
+ COALESCE((SELECT MAX(d.sequence) FROM community_observation_decisions d WHERE d.observation_id=o.id),0)::bigint AS sequence
+FROM community_observations o WHERE o.id = @id;

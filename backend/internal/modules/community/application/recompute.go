@@ -18,9 +18,9 @@ type RecomputePorts struct {
 	Anchors       func(ctx context.Context, key domain.PriceKey, cutoff time.Time) ([]domain.Observation, error)
 	Confirmations func(ctx context.Context, anchorIDs []string) ([]ConfirmationVote, error)
 	Tiers         func(ctx context.Context, refs []string) (map[string]string, error)
-	// Photo resolves one anchor's photographic standing: server-verified
-	// bytes plus acceptable proximity from the anchor's own signals.
-	// Missing signals fail closed to no-proximity, never to verified.
+	// Photo resolves server-verified bytes and legacy proximity signals.
+	// Community-v2 uses independent evidence without a proximity gate;
+	// explicit v1 replay retains its original proximity policy.
 	Photo      func(ctx context.Context, anchor domain.Observation) (PhotoInfo, error)
 	Moderation func(ctx context.Context, key domain.PriceKey) (bool, error)
 }

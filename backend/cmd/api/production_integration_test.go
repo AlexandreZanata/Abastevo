@@ -522,6 +522,14 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 					}
 					report := []byte(`{"client_submission_id":"community-report","reason":"WRONG_PRODUCT"}`)
 					h.call(h.signed(b, "POST", "/v1/observations/"+observation+"/disputes", report), 201)
+					var queued int
+					if err := conn.QueryRow(ctx, `SELECT count(*) FROM moderation_cases WHERE target_type='OBSERVATION' AND target_id=$1 AND status='OPEN' AND reason='WRONG_PRODUCT'`, observation).Scan(&queued); err != nil || queued != 1 {
+						t.Fatalf("accepted report missing from operator queue: count=%d error=%v", queued, err)
+					}
+					reviewed := h.call(h.req("GET", fmt.Sprintf("/v1/observations/%s/helpfulness?decision_sequence=%d", observation, sequence), nil), 200)
+					if reviewed["under_review"] != true || reviewed["my_choice"] != nil {
+						t.Fatal("public review annotation missing or private choice leaked", reviewed)
+					}
 					h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
 					return // Dedicated action campaign retains production challenge quotas; baseline rotation suite runs separately.
 				}

@@ -715,6 +715,17 @@ func run() error {
 				return communityapp.RecomputeKey(ctx, recomputePorts, key)
 			},
 		},
+		"trust-affected-recompute": communityjobs.TrustAffected{
+			Batch:    100,
+			Affected: communityStore.AffectedContributorKeys,
+			Recompute: func(ctx context.Context, key communitydomain.PriceKey) (communitydomain.Result, error) {
+				return communityapp.RecomputeKey(ctx, recomputePorts, key)
+			},
+			Enqueue: func(ctx context.Context, kind string, payload []byte, dedupe string) error {
+				_, err := jobs.Enqueue(ctx, raw, kind, payload, dedupe, 5, time.Time{})
+				return err
+			},
+		},
 		"consensus-boundary": communityjobs.Boundary{
 			Clock: time.Now,
 			Batch: 100,

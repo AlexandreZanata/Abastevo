@@ -99,6 +99,19 @@ func (s *HelpfulnessStore) castOnce(ctx context.Context, id, obs pgtype.UUID, re
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return domain.StoredVote{}, false, false, err
 	}
+	target, err := lockObservationForWrite(ctx, q, obs)
+	if err != nil || target.HiddenAt.Valid || target.DeletedAt.Valid {
+		if err == nil || errors.Is(err, pgx.ErrNoRows) {
+			return domain.StoredVote{}, false, false, application.ErrTargetNotFound
+		}
+		return domain.StoredVote{}, false, false, err
+	}
+	if target.State != domain.StateValidated || target.Sequence != rec.DecisionSequence {
+		return domain.StoredVote{}, false, false, application.ErrTargetNotFound
+	}
+	if target.ContributorRef == rec.ContributorRef {
+		return domain.StoredVote{}, false, false, domain.ErrSelfVote
+	}
 	row, err := q.LockHelpfulnessVote(ctx, community.LockHelpfulnessVoteParams{
 		ContributorRef: rec.ContributorRef, ObservationID: obs, DecisionSequence: rec.DecisionSequence,
 	})

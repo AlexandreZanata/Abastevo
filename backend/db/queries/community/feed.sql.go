@@ -33,6 +33,11 @@ WHERE s.state = $1 AND s.municipality_code = $2 AND s.status = 'active'
  AND p.availability = 'AVAILABLE' AND p.amount_milli_brl IS NOT NULL
  AND p.anchor_received_at IS NOT NULL AND p.anchor_received_at <= $5
  AND p.expires_at > $5
+ AND (p.representative_observation_id IS NULL OR EXISTS (
+  SELECT 1 FROM community_observations visible WHERE visible.id=p.representative_observation_id
+   AND visible.hidden_at IS NULL AND visible.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=visible.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
+ ))
  AND (NOT $6::boolean OR
   ($7::text = 'recent' AND (p.anchor_received_at < $8 OR
     (p.anchor_received_at = $8 AND p.station_id::text > $9::text))) OR

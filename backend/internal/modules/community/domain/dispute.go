@@ -26,6 +26,9 @@ const (
 	DisputeRejected = "REJECTED"
 )
 
+// MaxDisputeDetailChars matches the bounded private moderation case detail.
+const MaxDisputeDetailChars = 500
+
 var (
 	ErrInvalidDispute = errors.New("community: invalid dispute")
 	ErrUnknownReason  = errors.New("community: unknown dispute reason")
@@ -90,13 +93,17 @@ func NewDispute(p DisputeParams) (Dispute, ObservationDisputed, error) {
 	if p.ReceivedAt.IsZero() {
 		return Dispute{}, ObservationDisputed{}, ErrInvalidDispute
 	}
+	detail := strings.TrimSpace(p.Detail)
+	if len([]rune(detail)) > MaxDisputeDetailChars {
+		return Dispute{}, ObservationDisputed{}, ErrInvalidDispute
+	}
 	if p.PolicyVersion == "" {
 		p.PolicyVersion = PolicyV1
 	}
 	d := Dispute{
 		ID: p.ID, TargetObservationID: p.TargetObservationID,
 		ContributorRef: p.ContributorRef, ClientSubmissionID: p.ClientSubmissionID,
-		Reason: p.Reason, Detail: p.Detail, ReplacementID: p.ReplacementID,
+		Reason: p.Reason, Detail: detail, ReplacementID: p.ReplacementID,
 		Status: DisputeOpen, ReceivedAt: p.ReceivedAt, PolicyVersion: p.PolicyVersion,
 	}
 	return d, ObservationDisputed{DisputeID: d.ID, ObservationID: d.TargetObservationID, OccurredAt: d.ReceivedAt}, nil

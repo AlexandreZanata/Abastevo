@@ -15,6 +15,11 @@ const stationPrices = `-- name: StationPrices :many
 SELECT p.station_id, p.fuel_product, p.unit, p.condition_kind, p.qualifier_key, p.amount_milli_brl, p.availability, p.confidence, p.representative_observation_id, p.independent_supporters, p.confirmation_count, p.anchor_received_at, p.expires_at, p.next_recompute_at, p.computed_at, p.projection_version, p.algorithm_version, p.policy_config_version FROM community_current_prices p
 WHERE p.station_id = $1 AND ($2::text = '' OR p.fuel_product = $2)
  AND p.condition_kind = 'STANDARD' AND p.qualifier_key = 'STANDARD'
+ AND (p.representative_observation_id IS NULL OR EXISTS (
+  SELECT 1 FROM community_observations visible WHERE visible.id=p.representative_observation_id
+   AND visible.hidden_at IS NULL AND visible.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=visible.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
+ ))
 ORDER BY p.fuel_product, p.unit
 `
 
