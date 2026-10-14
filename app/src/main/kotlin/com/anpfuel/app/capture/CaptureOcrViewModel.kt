@@ -98,6 +98,10 @@ class CaptureOcrViewModel @Inject constructor(
     private var stationSearch: Job? = null
     private var searchGeneration = 0L
     private var normalSearchActive = false
+    private var entryTargetBound = false
+    fun bindEntryTarget(stationId: String?, fuel: String?) {
+        if (!entryTargetBound) { bindTarget(stationId, fuel); entryTargetBound = true }
+    }
     private val _selectedNominalStation = MutableStateFlow<com.anpfuel.domain.discovery.ServerStation?>(null)
     val selectedNominalStation = _selectedNominalStation.asStateFlow()
 
@@ -182,6 +186,7 @@ class CaptureOcrViewModel @Inject constructor(
     fun pickPreviewStation(id: String) {
         if (normalSearchActive || (DeveloperCaptureMode.available && _previewEnabled.value)) {
             val station = _previewStations.value.firstOrNull { it.stationId == id } ?: return
+            if (normalSearchActive && !_previewEnabled.value) bindTarget(null,null)
             pickStation(id); _selectedNominalStation.value = station
         }
     }
@@ -304,7 +309,7 @@ class CaptureOcrViewModel @Inject constructor(
     private fun receiptCameraWindowOpen(now: Long, issuedAtMillis: Long, cameraExpiresAtMillis: Long): Boolean =
         now >= issuedAtMillis - PhotoCaptureHttpClient.ISSUED_AT_LEEWAY_MILLIS && now < cameraExpiresAtMillis
 
-    /** No camera callback is delivered on a missing fix, refused receipt or changed target. */
+    /** No camera callback is delivered on a refused receipt or changed owner/target; GPS is optional. */
     fun authorizeCamera(onAuthorized: () -> Unit) {
         if (submitting) return
         if (_gateBusy.value || !flagProvider.isEnabled() || _targetInvalid.value) return
@@ -317,14 +322,8 @@ class CaptureOcrViewModel @Inject constructor(
             try {
                 val preview = DeveloperCaptureMode.available && _previewEnabled.value
                 val clientId = java.util.UUID.randomUUID().toString()
-                val permission = if (preview) captureGate.authorizeDevelopmentPreview(station, clientId) else {
-                    val fix = captureLocation.freshFix()
-                    if (fix == null || !fix.isEligibleForPhotoCapture(System.currentTimeMillis())) {
-                        _gateFailure.value = "photo.location-required"
-                        return@launch
-                    }
-                    captureGate.authorize(station, clientId, fix)
-                }
+                val permission = if (preview) captureGate.authorizeDevelopmentPreview(station, clientId)
+                    else captureGate.authorizeCommunity(station, clientId)
                 if (permission.developmentPreview != preview) { _gateFailure.value = "photo.permission-invalid"; return@launch }
                 if (ticket != generation || station != (_target.value?.stationId ?: _pickedStationId.value)) return@launch
                 if (permission.stationId != station || !captureGate.isCurrent(permission) ||

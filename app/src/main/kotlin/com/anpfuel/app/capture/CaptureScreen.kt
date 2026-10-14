@@ -172,14 +172,8 @@ fun CaptureScreen(
             } else cameraPermission.launch(android.Manifest.permission.CAMERA)
         }
     }
-    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-        val granted = grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        // Camera permission follows signed proximity authorization, never screen entry.
-        viewModel.onLocationPermission(granted)
-        if (granted && stationId != null && reviewUri == null && viewModel.pendingUri() == null) requestCamera()
-    }
     LaunchedEffect(stationId, previewEnabled) {
-        viewModel.bindTarget(if (previewEnabled) null else stationId, fuelProductWire)
+        if (previewEnabled) viewModel.bindTarget(null, fuelProductWire) else viewModel.bindEntryTarget(stationId, fuelProductWire)
         withContext(Dispatchers.IO) { files.sweep() }
         if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
             viewModel.rememberReviewUri(null)
@@ -233,14 +227,16 @@ fun CaptureScreen(
                         stringResource(R.string.capture_permission_required),
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
+                    if (previewEnabled) Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
+                    else NominalStationPicker(viewModel, requestCamera, onChooseCity)
                 }
                 CaptureOcrUiState.Cancelled -> {
                     Text(
                         stringResource(R.string.capture_cancelled),
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
+                    if (previewEnabled) Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
+                    else NominalStationPicker(viewModel, requestCamera, onChooseCity)
                 }
                 else -> {
                     val relevantId = target?.stationId ?: pickedStationId
@@ -823,7 +819,7 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleMedium)
         city?.let { Text("${it.name} · ${it.state.abbreviation}") }
-        TextButton(onClick = onChooseCity, enabled = !busy) { Text(stringResource(R.string.capture_choose_city)) }
+        TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) { Text(stringResource(R.string.capture_choose_city)) }
         if (selected != null) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

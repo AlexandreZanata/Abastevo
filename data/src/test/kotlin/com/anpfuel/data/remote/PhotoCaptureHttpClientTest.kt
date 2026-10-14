@@ -15,12 +15,12 @@ class PhotoCaptureHttpClientTest {
     private fun receipt() = JSONObject().put("capture_id", "589a13ba-1f78-41dc-a4ab-d63a511c73da")
         .put("station_id", station).put("issued_at", Instant.ofEpochMilli(now - 1000).toString())
         .put("camera_expires_at", Instant.ofEpochMilli(now + 119000).toString())
-        .put("expires_at", Instant.ofEpochMilli(now + 86399000).toString()).put("policy_version", "photo-capture-v1")
+        .put("expires_at", Instant.ofEpochMilli(now + 86399000).toString()).put("policy_version", "photo-capture-community-v2")
     private fun prepare(response: JSONObject) {
         every { transport.origin } returns "https://example.invalid"
         every { transport.ownerScope() } returns "anonymous:synthetic"
         coEvery { transport.identityScope() } returns "anonymous:synthetic"
-        coEvery { transport.post(any(), any(), any()) } returns response
+        coEvery { transport.post(any(), any(), any(), any()) } returns response
     }
     @Test fun `strict signed receipt and transient fix are bound to current owner station origin`() = runTest {
         prepare(receipt())
@@ -58,4 +58,16 @@ class PhotoCaptureHttpClientTest {
             fail<Unit>("changed owner accepted")
         } catch (_: java.io.IOException) { }
     }
+    @Test fun `community capture omits GPS and developer preview entirely`() = runTest {
+        prepare(receipt())
+        val body=slot<JSONObject>()
+        coEvery { transport.post("/v1/photo-captures","capture-client",capture(body),"anonymous:synthetic") } returns receipt()
+        val permission=PhotoCaptureHttpClient(transport).authorizeCommunity(station,"capture-client")
+        assertEquals(station,permission.stationId)
+        assertFalse(body.captured.has("location"))
+        assertFalse(body.captured.has("development_preview"))
+        prepare(receipt().put("policy_version","photo-capture-v1"))
+        assertThrows(java.io.IOException::class.java) { kotlinx.coroutines.runBlocking { PhotoCaptureHttpClient(transport).authorizeCommunity(station,"legacy-server") } }
+    }
+
 }

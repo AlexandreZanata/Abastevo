@@ -483,30 +483,28 @@ class CaptureOcrViewModelTest {
             now + 86399000, "synthetic-owner", "https://example.invalid")
     }
 
-    @Test fun `location denial and server refusal never launch camera`() = runTest(dispatcher) {
-        val gate = mockk<PhotoCaptureGate>()
-        val missing = viewModel(true, true, gate = gate)
-        missing.bindTarget(stationId, "ETHANOL")
-        var launches = 0
-        missing.authorizeCamera { launches++ }
+    @Test fun `normal camera admits denied GPS but still respects server refusal`() = runTest(dispatcher) {
+        val gate=mockk<PhotoCaptureGate>()
+        io.mockk.coEvery { gate.authorizeCommunity(any(),any()) } returns validReceipt()
+        every { gate.isCurrent(any()) } returns true
+        val vm=viewModel(true,true,gate=gate,locationSource=CaptureLocationSource { error("GPS must not be requested") })
+        vm.bindTarget(stationId,"ETHANOL")
+        var launches=0
+        vm.authorizeCamera { launches++ }
         advanceUntilIdle()
-        assertEquals(0, launches)
-        io.mockk.coVerify(exactly = 0) { gate.authorize(any(), any(), any()) }
-        val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
-        val refused = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
-        refused.bindTarget(stationId, "ETHANOL")
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } throws java.io.IOException("refused")
-        refused.authorizeCamera { launches++ }
+        assertEquals(1,launches)
+        io.mockk.coEvery { gate.authorizeCommunity(any(),any()) } throws java.io.IOException("refused")
+        vm.authorizeCamera { launches++ }
         advanceUntilIdle()
-        assertEquals(0, launches)
-        assertFalse(refused.gateBusy.value)
-        assertEquals("photo.authorization-unavailable", refused.gateFailure.value)
+        assertEquals(1,launches)
+        assertFalse(vm.gateBusy.value)
+        assertEquals("photo.authorization-unavailable",vm.gateFailure.value)
     }
 
     @Test fun `duplicate taps and changed station cannot launch stale camera`() = runTest(dispatcher) {
         val result = CompletableDeferred<PhotoCapturePermission>()
         val gate = mockk<PhotoCaptureGate>()
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } coAnswers { result.await() }
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } coAnswers { result.await() }
         every { gate.isCurrent(any()) } returns true
         val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
         val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
@@ -519,14 +517,14 @@ class CaptureOcrViewModelTest {
         result.complete(validReceipt())
         advanceUntilIdle()
         assertEquals(0, launches)
-        io.mockk.coVerify(exactly = 1) { gate.authorize(any(), any(), any()) }
+        io.mockk.coVerify(exactly = 1) { gate.authorizeCommunity(any(), any()) }
     }
 
     @Test fun `receipt is checked again after camera permission and survives saved state`() = runTest(dispatcher) {
         val saved = SavedStateHandle()
         val gate = mockk<PhotoCaptureGate>()
         val receipt = validReceipt()
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } returns receipt
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } returns receipt
         every { gate.isCurrent(any()) } returns true
         val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
         val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix }, saved = saved)

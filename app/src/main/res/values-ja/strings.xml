@@ -706,7 +706,7 @@
     <string name="feed_worst">評価の低い燃料</string>
     <string name="feed_rating_value">%1$.1f · コミュニティの評価 %2$d 件</string>
     <string name="auth_brand_wordmark">Abastevoのロゴ</string>
-    <string name="capture_authorization_required">この給油所から150メートル以内に移動し、正確な位置情報を許可して接続を確認してください。その後、もう一度お試しください。</string>
+    <string name="capture_authorization_required">給油所を選択して接続を確認してください。必要に応じて再ログインしてから再試行してください。</string>
     <string name="capture_recognizing">写真の価格を読み取り中…</string>
     <string name="capture_reanalyze">この写真をもう一度読み取る</string>
     <string name="capture_add_fuel">燃料を追加</string>

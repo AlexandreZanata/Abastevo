@@ -706,7 +706,7 @@
     <string name="feed_worst">Schlechtester Kraftstoff</string>
     <string name="feed_rating_value">%1$.1f · %2$d Bewertungen der Community</string>
     <string name="auth_brand_wordmark">Abastevo-Logo</string>
-    <string name="capture_authorization_required">Bleibe im Umkreis von 150 Metern dieser Tankstelle, erlaube den genauen Standort und prüfe deine Verbindung. Versuche es danach erneut.</string>
+    <string name="capture_authorization_required">Tankstelle wählen und Verbindung prüfen. Bei Bedarf erneut anmelden und wiederholen.</string>
     <string name="capture_recognizing">Preise werden aus dem Foto gelesen…</string>
     <string name="capture_reanalyze">Dieses Foto erneut lesen</string>
     <string name="capture_add_fuel">Kraftstoff hinzufügen</string>

@@ -763,7 +763,7 @@
     <string name="station_page_report_other">Other inappropriate content</string>
     <string name="station_page_report_send">Send report</string>
     <string name="station_page_report_received">Report received for review.</string>
-    <string name="capture_authorization_required">Stand within 150 metres of this station, allow accurate location and check your connection. Then try again.</string>
+    <string name="capture_authorization_required">Select the station and check your connection. Sign in again if needed, then retry.</string>
     <string name="capture_recognizing">Reading prices from the photo…</string>
     <string name="capture_reanalyze">Read this photo again</string>
     <string name="capture_add_fuel">Add a fuel</string>

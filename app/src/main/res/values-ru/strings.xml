@@ -706,7 +706,7 @@
     <string name="feed_worst">Худшее топливо</string>
     <string name="feed_rating_value">%1$.1f · %2$d оценок сообщества</string>
     <string name="auth_brand_wordmark">Логотип Abastevo</string>
-    <string name="capture_authorization_required">Находитесь не дальше 150 метров от этой АЗС, разрешите точное местоположение и проверьте соединение. Затем повторите попытку.</string>
+    <string name="capture_authorization_required">Выберите АЗС и проверьте подключение. При необходимости войдите снова и повторите попытку.</string>
     <string name="capture_recognizing">Чтение цен с фотографии…</string>
     <string name="capture_reanalyze">Прочитать эту фотографию снова</string>
     <string name="capture_add_fuel">Добавить топливо</string>

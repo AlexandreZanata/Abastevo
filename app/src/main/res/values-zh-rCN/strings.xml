@@ -706,7 +706,7 @@
     <string name="feed_worst">最差燃油</string>
     <string name="feed_rating_value">%1$.1f · %2$d 条社区评分</string>
     <string name="auth_brand_wordmark">Abastevo 标志</string>
-    <string name="capture_authorization_required">请移动到此加油站150米范围内，允许精确定位并检查网络连接，然后重试。</string>
+    <string name="capture_authorization_required">请选择加油站并检查连接。必要时重新登录，然后重试。</string>
     <string name="capture_recognizing">正在读取照片中的价格…</string>
     <string name="capture_reanalyze">重新读取这张照片</string>
     <string name="capture_add_fuel">添加燃料</string>

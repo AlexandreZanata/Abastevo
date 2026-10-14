@@ -25,6 +25,14 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
     override fun isCurrent(permission: PhotoCapturePermission): Boolean =
         permission.origin == transport.origin && permission.ownerScope == transport.ownerScope()
 
+    override suspend fun authorizeCommunity(stationId: String, clientCaptureId: String): PhotoCapturePermission {
+        require(UUID.fromString(stationId).toString() == stationId.lowercase())
+        val scope = transport.identityScope()
+        val response = transport.post("/v1/photo-captures", clientCaptureId, JSONObject()
+            .put("client_capture_id", clientCaptureId).put("station_id", stationId), scope)
+        return decode(response, stationId, scope, false)
+    }
+
     override suspend fun authorize(stationId: String,clientCaptureId: String,fix: CaptureFix): PhotoCapturePermission {
         require(UUID.fromString(stationId).toString()==stationId.lowercase())
         val scope=transport.identityScope()
@@ -50,7 +58,7 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
         val receipt=PhotoCapturePermission(result.getString("capture_id"),result.getString("station_id"),
             Instant.parse(result.getString("issued_at")).toEpochMilli(),Instant.parse(result.getString("camera_expires_at")).toEpochMilli(),
             Instant.parse(result.getString("expires_at")).toEpochMilli(),scope,transport.origin, development)
-        if(!isCurrent(receipt) || receipt.stationId!=stationId || result.optString("policy_version") != (if (development) "photo-capture-ui-test-v1" else "photo-capture-v1") ||
+        if(!isCurrent(receipt) || receipt.stationId!=stationId || result.optString("policy_version") != (if (development) "photo-capture-ui-test-v1" else "photo-capture-community-v2") ||
             receipt.cameraExpiresAtMillis-receipt.issuedAtMillis !in 1..120000 ||
             receipt.expiresAtMillis-receipt.issuedAtMillis !in 1..86400000 ||
             receipt.expiresAtMillis < receipt.cameraExpiresAtMillis ||

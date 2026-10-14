@@ -706,7 +706,7 @@
     <string name="feed_worst">Pire carburant</string>
     <string name="feed_rating_value">%1$.1f · %2$d évaluations de la communauté</string>
     <string name="auth_brand_wordmark">Logo Abastevo</string>
-    <string name="capture_authorization_required">Placez-vous à moins de 150 mètres de cette station, autorisez la localisation précise et vérifiez votre connexion. Réessayez ensuite.</string>
+    <string name="capture_authorization_required">Sélectionnez la station et vérifiez la connexion. Reconnectez-vous si nécessaire puis réessayez.</string>
     <string name="capture_recognizing">Lecture des prix sur la photo…</string>
     <string name="capture_reanalyze">Relire cette photo</string>
     <string name="capture_add_fuel">Ajouter un carburant</string>
