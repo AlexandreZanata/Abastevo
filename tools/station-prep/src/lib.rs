@@ -22,6 +22,7 @@ pub mod pmqc;
 pub mod quality;
 pub mod registry;
 pub mod replay;
+pub mod sanction;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
@@ -45,4 +46,7 @@ pub use pmqc::{parse_pmqc, PmqcBatch, PmqcCandidate, PmqcError};
 pub use quality::{parse_quality_assays, QualityAssay, QualityBatch, QualityError, QUALITY_SOURCE};
 pub use registry::{parse_registry, RegistryBatch, RegistryError, RegistryRow};
 pub use replay::{replay_decision, ReplayDecision};
+pub use sanction::{
+    parse_sanctions, SanctionBatch, SanctionError, SanctionSnapshot, SANCTION_SOURCE,
+};
 pub use types::{Counts, Limits, QuarantineRow, RunState};
