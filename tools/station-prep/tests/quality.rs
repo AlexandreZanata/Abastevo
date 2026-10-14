@@ -178,6 +178,35 @@ fn quality_manifest_hash_changes_with_content() {
 }
 
 #[test]
+fn quality_correction_pair_reorders_identically() {
+    // Same sample and assay with a corrected result: both determinations
+    // stay, and reordered input emits byte-identical output.
+    let raw = "AMOSTRAID;CNPJPOSTO;DATACOLETA;PRODUTO;ENSAIO;RESULTADO;UNIDADE;CONFORMIDADE\n\
+         S-1;48151623000191;2026-09-04;ETANOL;TEOR;92,6;%;CONFORME\n\
+         S-1;48151623000191;2026-09-04;ETANOL;TEOR;92,7;%;CONFORME\n"
+        .to_string();
+    let flipped = "AMOSTRAID;CNPJPOSTO;DATACOLETA;PRODUTO;ENSAIO;RESULTADO;UNIDADE;CONFORMIDADE\n\
+         S-1;48151623000191;2026-09-04;ETANOL;TEOR;92,7;%;CONFORME\n\
+         S-1;48151623000191;2026-09-04;ETANOL;TEOR;92,6;%;CONFORME\n"
+        .to_string();
+    let first = parse_quality_assays("pair.csv", raw.into_bytes(), &Limits::default())
+        .expect("pair parses");
+    let second = parse_quality_assays("pair.csv", flipped.into_bytes(), &Limits::default())
+        .expect("flipped parses");
+    assert_eq!(first.counts.accepted, 2);
+    let to_jsonl = |batch: &station_prep::QualityBatch| {
+        batch
+            .assays
+            .iter()
+            .map(|row| row.to_jsonl())
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    assert_eq!(to_jsonl(&first), to_jsonl(&second));
+    assert_eq!(first.manifest_hash(), second.manifest_hash());
+}
+
+#[test]
 fn quality_bom_prefix_is_stripped() {
     let mut raw = vec![0xEF, 0xBB, 0xBF];
     raw.extend(

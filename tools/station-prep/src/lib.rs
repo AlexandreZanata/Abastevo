@@ -14,6 +14,7 @@
 
 pub mod cnpj;
 pub mod datasets;
+pub mod enforcement;
 pub mod join;
 pub mod municipality;
 pub mod output;
@@ -29,6 +30,9 @@ pub use datasets::{
     stratum, stress_100k_profile, stress_1m_profile, tiny_profile, CityWeight, DatasetOracle,
     DatasetProfile, DeltaEdition, GeneratedDataset, RequestTrace, StrataSummary, SyntheticLocation,
     TraceDistribution, DATASETS_VERSION, EMPTY_CITIES, UNIVERSE_CITIES,
+};
+pub use enforcement::{
+    parse_enforcement, EnforcementAction, EnforcementBatch, EnforcementError, ENFORCEMENT_SOURCE,
 };
 pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};

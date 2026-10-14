@@ -360,12 +360,17 @@ pub fn parse_quality_assays(
         });
     }
 
+    // Same-key content corrections share every identity field: content
+    // fields break the tie so reordered input emits byte-identical output.
     assays.sort_by(|a, b| {
         a.source_key
             .cmp(&b.source_key)
             .then_with(|| a.observed_at.cmp(&b.observed_at))
             .then_with(|| a.sample_ref.cmp(&b.sample_ref))
             .then_with(|| a.assay_ref.cmp(&b.assay_ref))
+            .then_with(|| a.result_text.cmp(&b.result_text))
+            .then_with(|| a.unit.cmp(&b.unit))
+            .then_with(|| a.conformity.cmp(&b.conformity))
     });
 
     // Resolve repeats to byte-identical assay twins so the emitted
