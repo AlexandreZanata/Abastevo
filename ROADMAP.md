@@ -20,6 +20,8 @@ Existing phase tasks below retain their detailed scoped checks; “all earlier p
 
 **Independent website phase:** [P25 — Static landing page](#p25--static-landing-page) follows its own T01–T05 sequence after existing G09-LOCAL integration. It can be built locally before Play Store availability; it neither blocks nor accepts Android/backend release gates. This planning request authorizes local docs only, with website publication and store-link activation handled separately.
 
+**Fuel quality planning overlay (2026-10-14):** [FQ-00–FQ-17](#fuel-quality-evidence-and-station-reliability) adds official quality history, Rust preparation extensions, structured consumer reports and calibrated station/fuel reliability targets. Planning is local-only; implementation selection must reconcile the existing app-first/safety checkpoints. No phase reorder, score publication or new runtime acceptance follows from this overlay.
+
 ## P00 — Project identity documentation and visual preview
 
 Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved identity/assets/README via guarded phase merge and wiki mirror. Maintainer approved V2 publication on 2026-10-01. This task does not block or alter the ongoing functional phase.
@@ -3607,3 +3609,41 @@ User-selected 2026-10-11: isolated `games` branch, offline Android only.
 See [original plan](docs/planning/GAMES_OFFLINE_PLAN.md) and
 [mobile implementation contract](docs/mobile/games-mvp.md). Backend GME-03 and
 ranked consumer GME-05 remain deferred; no leaderboard or backend change.
+
+## Fuel quality evidence and station reliability
+
+<a id="fq-plan"></a>
+
+### FQ-PLAN — Professional quality implementation planning
+
+- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-17 implementation PLANNED.
+- **Goal:** Define a source-auditable quality history, safe canonical station linkage, consumer case responses and an explainable score without conflating official findings, personal ratings or community signals.
+- **Inputs:** Maintainer request/attachment 2026-10-14; current PROGRESS and actual dev code; existing RST/ING-AUDIT evidence; verified ANP PMQC, enforcement, fines, retailer registry and complaint guidance.
+- **Canonical scope:** [Implementation plan](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md), [target B-BR-FQ-01–16 / BUC-FQ-01–09](docs/product/FUEL_QUALITY_TARGET_CONTRACT.md) and [continuation prompt](docs/planning/FUEL_QUALITY_EXECUTION_PROMPT.md).
+- **Dependencies:** Documentation can be prepared locally now; future code selection reconciles affected app-first and safety/privacy checkpoints under ADR-019/020. Reuse the existing Rust crate, Directory identity and Go ownership.
+- **Acceptance:** Source facts separated from uninspected schemas; loss accounting/quarantine, sample-versus-assay identity, legal status, score sufficiency/methodology, private documentation/24h rights and complete-case access explicitly planned. Every implementation task has dependencies, checks, acceptance and recovery.
+- **Validation:** Changed/new Markdown paths/anchors and rule/task references; dependency/state consistency; git diff --check; scoped secret/PII review. No runtime suites for this documentation-only deliverable.
+- **Recovery / limits:** Preserve all existing task IDs/history and occupied edits. Planning does not authorize national fetch, implementation, live receipt verification, issue creation, VPS/device mutation, PR/main merge or wiki publication.
+
+Execution index; task details/tests/recovery are canonical in the linked plan:
+
+- [FQ-00 — Current code and official source inventory](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-00--reconcile-current-code-and-official-source-inventory-s).
+- [FQ-01 — Product, module and batch contracts](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-01--freeze-product-module-and-batch-contracts-m).
+- [FQ-02 — Lossless Rust PMQC quality preparation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-02--extend-rust-with-lossless-pmqc-quality-preparation-m).
+- [FQ-03 — Identity resolution and review](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-03--identity-resolution-and-review-policy-s).
+- [FQ-04 — Go ledger, migrations and publication](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-04--go-quality-ledger-migrations-and-atomic-publication-m).
+- [FQ-05 — Backfill and incremental discovery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-05--historical-backfill-and-incremental-discovery-m).
+- [FQ-06 — Enforcement events](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-06--enforcement-adapter-and-legally-accurate-events-m).
+- [FQ-07 — Sanction revisions and case correlation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-07--sanction-snapshots-corrections-and-case-correlation-m).
+- [FQ-08 — Official API, timeline and coverage](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-08--official-read-api-timeline-and-coverage-m).
+- [FQ-09 — Structured reports and linkage review](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-09--signed-structured-reports-and-case-link-review-requests-m).
+- [FQ-10 — Private documents and purchase verification](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-10--private-documents-and-purchase-verification-decisions-m).
+- [FQ-11 — Community signals and moderation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-11--community-signal-and-moderation-policy-m).
+- [FQ-12 — Score calibration and methodology](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-12--calibrate-and-freeze-score-methodology-m).
+- [FQ-13 — Score engine and projections](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-13--deterministic-score-engine-and-projections-m).
+- [FQ-14 — Android official quality/score journeys](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-14--android-official-quality-and-score-journeys-m).
+- [FQ-15 — Android reports/documents/case response](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-15--android-report-document-and-official-case-response-m).
+- [FQ-16 — Offline, privacy and compatibility](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-16--offline-privacy-and-end-to-end-compatibility-m).
+- [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
+
+Next implementation candidate: FQ-00, after explicit task selection and current-head prerequisite reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
