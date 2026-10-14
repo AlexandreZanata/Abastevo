@@ -1,5 +1,7 @@
 # Fuel quality implementation continuation prompt
 
+**2026-10-14 D deferral — adopted maintainer restriction:** Read [future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) before selecting overlapping work. Do not execute FQ-10 or private-document attachment in FQ-15 through this prompt until the documented maturity/adoption gate plus selection, or explicit earlier named maintainer request. Preserve ordinary capture receipts, official history, non-document reports and existing privacy/security maintenance. A generic FQ continuation does not override the hold.
+
 Status: local planning handoff, 2026-10-14. Implementation is PLANNED.
 Read the [implementation plan](FUEL_QUALITY_IMPLEMENTATION_PLAN.md) and
 [target contract](../product/FUEL_QUALITY_TARGET_CONTRACT.md). This prompt does

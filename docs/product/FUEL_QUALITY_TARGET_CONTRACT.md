@@ -1,5 +1,7 @@
 # Fuel quality and station reliability target contract
 
+**2026-10-14 D deferral — adopted maintainer restriction:** [Future D](../planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) holds private purchase/document verification and attachment features until extreme app consolidation plus thousands of real clients, unless the maintainer explicitly requests earlier named scope. Official ANP history and non-document reports remain independent. Rules below are future target semantics, not permission to collect documents or implement D now.
+
 Status: PROPOSED / NOT IMPLEMENTED by this planning change, 2026-10-14.
 Owner: [FQ-00–FQ-17 implementation plan](../planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md).
 Existing price, account, feedback, media, trust and profile rules retain their

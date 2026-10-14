@@ -1,5 +1,7 @@
 # National station catalog expansion delivery plan
 
+**2026-10-14 D deferral — adopted maintainer restriction:** [Future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) holds new fuel-purchase/private-document verification and business claim/management/portal implementation until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. A–C completion or generic continuation is not an override. This restriction supersedes earlier timing for that overlapping expansion; preserve existing source/evidence and necessary privacy/security maintenance. Core public station/ANP/ordinary photo features are outside the hold.
+
 State: **PLANNED / LOCAL_ONLY**, 2026-10-02. Authority: maintainer requested a plan to implement researched national station-discovery alternatives. No runtime implementation, issue/milestone creation, PR, GitHub push, wiki publication, procurement or deployment is performed by this planning batch. Canonical tasks: [ROADMAP P25–P29](../../ROADMAP.md#station-catalog-expansion). Target rules/use cases: [STATION_CATALOG](../product/STATION_CATALOG.md). Current implementation state remains in [PROGRESS](PROGRESS.md).
 
 ## Outcome and boundaries

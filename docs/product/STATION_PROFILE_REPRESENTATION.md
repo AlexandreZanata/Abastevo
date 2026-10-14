@@ -1,5 +1,7 @@
 # Station profile and verified representation target
 
+**2026-10-14 D deferral — adopted maintainer restriction:** [Future D](../planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) holds new fuel-purchase/private-document verification and business claim/management/portal implementation until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. A–C completion or generic continuation is not an override. This restriction supersedes earlier timing for that overlapping expansion; preserve existing source/evidence and necessary privacy/security maintenance. Core public station/ANP/ordinary photo features are outside the hold.
+
 State: **PLANNED target**, 2026-10-02. Authority: maintainer requested the station/profile entity and the full representation-claim process discussed in this session. Owning implementation phases: [P30–P33 plan](../planning/STATION_PROFILE_PLAN.md); canonical tasks: [ROADMAP](../../ROADMAP.md#station-profile-and-representation). No new entity, endpoint, signature verifier or permission is implemented by this document. Preserve [catalog rules](STATION_CATALOG.md), existing account/social/media/location/moderation policies and explicit iOS deferral.
 
 ## Entity vocabulary and ownership

@@ -1,5 +1,7 @@
 # Station profile and representation delivery plan
 
+**2026-10-14 D deferral — adopted maintainer restriction:** [Future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) holds new fuel-purchase/private-document verification and business claim/management/portal implementation until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. A–C completion or generic continuation is not an override. This restriction supersedes earlier timing for that overlapping expansion; preserve existing source/evidence and necessary privacy/security maintenance. Core public station/ANP/ordinary photo features are outside the hold.
+
 State: **PLANNED / LOCAL_ONLY**, 2026-10-02. Authority: maintainer requested the station entity/profile and complete secure representation process. This batch extends the existing local [catalog plan](STATION_CATALOG_PLAN.md), defines [B-BR-P01–P16 / BUC-P01–P10](../product/STATION_PROFILE_REPRESENTATION.md) and adds [P30–P33 tasks](../../ROADMAP.md#station-profile-and-representation). It does not implement runtime behavior, create remote issues/milestones/PRs, publish GitHub/wiki, collect real documents, buy providers or deploy.
 
 ## Current evidence and approach
