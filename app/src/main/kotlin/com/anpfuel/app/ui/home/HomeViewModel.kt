@@ -115,8 +115,20 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(communityLoading = false) }
     }
 
-    fun refreshCommunity() {
+    internal fun expireCommunity(expectedExpiry: java.time.Instant) {
+        _uiState.update { state ->
+            if (state.priceSource == HomePriceSource.COMMUNITY && state.communityExpiresAt == expectedExpiry)
+                state.copy(communityPrices = emptyList(), communityGeneratedAt = null,
+                    communityUpdatedAt = null, communityExpiresAt = null)
+            else state
+        }
+    }
+
+    fun refreshCommunity(periodic: Boolean = false) {
         if (_uiState.value.priceSource != HomePriceSource.COMMUNITY) return
+        // A periodic tick must not restart a slow city lookup plus HTTP load.
+        // Explicit refreshes still replace it so city changes and retries win.
+        if (periodic && communityJob?.isActive == true) return
         val ticket = ++communityGeneration
         communityJob?.cancel()
         _uiState.update { state ->

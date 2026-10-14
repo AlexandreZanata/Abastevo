@@ -100,6 +100,40 @@ class PhotoProofTransportTest {
         verify { fixture.identity wasNot Called }
     }
 
+    @Test fun `account change during registration refuses GET and POST before obtaining signing authority`() = runTest {
+        for (method in listOf("GET", "POST")) {
+            val fixture = OwnerFixture()
+            every { fixture.keys.publicJwk() } returns ("synthetic-x" to "synthetic-y")
+            every { fixture.keys.signDigest(any()) } returns ByteArray(64) { 1 }
+            every { fixture.identity.requestChallenge(fixture.fingerprint, any()) } answers {
+                AnonymousProofHttpClient.ChallengeResponse("synthetic-challenge",
+                    "123e4567-e89b-12d3-a456-426614174000." + "1".repeat(32), fixture.fingerprint, secondArg(), "{}")
+            }
+            // Registration is a network boundary outside the auth session's lock.
+            every { fixture.identity.register(any(), any(), any(), any()) } answers {
+                fixture.session = fixture.session!!.copy(accountId = "synthetic-other")
+                "{\"contributor_id\":\"synthetic\",\"key_id\":\"synthetic\"}"
+            }
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setBody("{\"received\":true}"))
+                server.start()
+                val transport = PhotoProofTransport(fixture.keys, fixture.identity, fixture.auth,
+                    server.url("/").toString().trimEnd('/'), OkHttpClient())
+                val originalOwner = transport.ownerScope()!!
+                try {
+                    if (method == "GET") transport.get("/v1/privacy/training-consent", originalOwner)
+                    else transport.post("/v1/observations", "original-intent", JSONObject(), originalOwner)
+                    fail<Unit>("$method dispatched as the replacement account")
+                } catch (failure: java.io.IOException) {
+                    assertEquals("photo.identity-changed", failure.message)
+                }
+                assertEquals(0, server.requestCount, "$method operation reached the server")
+                verify(exactly = 1) { fixture.identity.register(any(), any(), any(), any()) }
+                verify(exactly = 0) { fixture.identity.requestChallenge(any(), "SIGN") }
+            }
+        }
+    }
+
     @Test fun `access expiry during signed response does not discard the same owners receipt`() = runTest {
         val fixture=OwnerFixture()
         every { fixture.keys.publicJwk() } returns ("synthetic-x" to "synthetic-y")

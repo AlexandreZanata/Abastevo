@@ -69,6 +69,7 @@ class PhotoProofTransport internal constructor(
             if (expectedScope != null && ownerScope() != expectedScope) throw IOException("photo.identity-changed")
             ensureRegistered()
             val scope = ownerScope() ?: throw IOException("photo.identity-unavailable")
+            if (expectedScope != null && scope != expectedScope) throw IOException("photo.identity-changed")
             val fingerprint = keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
             val challenge = identity.requestChallenge(fingerprint, "SIGN")
             val now = System.currentTimeMillis() / 1000
@@ -91,6 +92,7 @@ class PhotoProofTransport internal constructor(
             if (expectedScope != null && ownerScope() != expectedScope) throw IOException("photo.identity-changed")
             ensureRegistered()
             val scope=ownerScope() ?: throw IOException("photo.identity-unavailable")
+            if (expectedScope != null && scope != expectedScope) throw IOException("photo.identity-changed")
             val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
             val challenge=identity.requestChallenge(fingerprint,"SIGN")
             val body=doc.toString().toByteArray(Charsets.UTF_8)

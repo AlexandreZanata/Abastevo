@@ -109,9 +109,18 @@ fun HomeScreen(
             if(uiState.priceSource==HomePriceSource.ANP) viewModel.load(locale)
             else {
                 val session=viewModel.startCommunitySession()
-                try { while(true) { viewModel.refreshCommunity();kotlinx.coroutines.delay(15_000) } }
+                try { while(true) { viewModel.refreshCommunity(periodic = true);kotlinx.coroutines.delay(15_000) } }
                 finally {viewModel.stopCommunityRefresh(session)}
             }
+        }
+    }
+
+    LaunchedEffect(uiState.priceSource, uiState.communityExpiresAt) {
+        val expiry = uiState.communityExpiresAt
+        if (uiState.priceSource == HomePriceSource.COMMUNITY && expiry != null) {
+            val remaining = java.time.Duration.between(java.time.Instant.now(), expiry).toMillis().coerceAtLeast(0)
+            kotlinx.coroutines.delay(remaining)
+            viewModel.expireCommunity(expiry)
         }
     }
 

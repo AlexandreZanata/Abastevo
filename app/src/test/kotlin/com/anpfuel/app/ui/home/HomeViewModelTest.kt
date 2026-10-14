@@ -374,4 +374,76 @@ class HomeViewModelTest {
         coVerify(exactly=0){communitySummary(any())}
     }
 
+    @Test fun `periodic refresh preserves a slow city lookup and summary until they finish`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val selectedCity = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity>()
+        val response = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary.city() } coAnswers { selectedCity.await() }
+        coEvery { communitySummary(city) } coAnswers { response.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        testScheduler.advanceTimeBy(15_000)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 1) { communitySummary.city() }
+        selectedCity.complete(city)
+        runCurrent()
+        testScheduler.advanceTimeBy(15_000)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 1) { communitySummary(city) }
+        response.complete(summary(city))
+        runCurrent()
+        assertEquals("R$ 4,500", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        assertEquals(false, viewModel.uiState.value.communityLoading)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 2) { communitySummary.city() }
+        coVerify(exactly = 2) { communitySummary(city) }
+    }
+
+    @Test fun `manual refresh replaces an in flight periodic request for a changed city`() = runTest(dispatcher) {
+        val first = summaryCity()
+        val second = summaryCity("5107925", "Synthetic second city")
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        var cancelled = false
+        coEvery { communitySummary.city() } returnsMany listOf(first, second)
+        coEvery { communitySummary(first) } coAnswers {
+            try { pending.await() }
+            finally { cancelled = true }
+        }
+        coEvery { communitySummary(second) } returns summary(second, 4900)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        viewModel.refresh(Locale.US)
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(second, viewModel.uiState.value.communityCity)
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
+    @Test fun `community expiry clears prices while slow refresh continues and stale expiry cannot clear fresh prices`() = runTest(dispatcher) {
+        val city = summaryCity("5107925", "Sorriso")
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city, 4500)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity()
+        runCurrent()
+        val expiry = requireNotNull(viewModel.uiState.value.communityExpiresAt)
+        viewModel.expireCommunity(expiry.minusSeconds(1))
+        assertEquals(1, viewModel.uiState.value.communityPrices.size)
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary(city) } coAnswers { pending.await() }
+        viewModel.refreshCommunity()
+        runCurrent()
+        viewModel.expireCommunity(expiry)
+        assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
+        assertTrue(viewModel.uiState.value.communityLoading)
+        pending.complete(summary(city, 4900))
+        runCurrent()
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
 }
