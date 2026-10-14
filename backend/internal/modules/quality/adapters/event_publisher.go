@@ -29,7 +29,7 @@ func pgInt8OrNull(v *int64) pgtype.Int8 {
 // machinery: editions, manifests, revisions and the read lease behave
 // exactly like assay publications, scoped per source/stream. Procedural
 // scope/status stay source-verbatim; classification belongs to FQ-06/FQ-07.
-func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInput, newID func() string) (string, error) {
+func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInput, newID func() (string, error)) (string, error) {
 	if err := in.Validate(); err != nil {
 		return "", err
 	}
@@ -64,7 +64,7 @@ func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInpu
 			if derr != nil {
 				return derr
 			}
-			rowID, rerr := mustUUID(newID())
+			rowID, rerr := nextID(newID)
 			if rerr != nil {
 				return rerr
 			}
@@ -92,7 +92,7 @@ func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInpu
 			if derr != nil {
 				return derr
 			}
-			rowID, rerr := mustUUID(newID())
+			rowID, rerr := nextID(newID)
 			if rerr != nil {
 				return rerr
 			}

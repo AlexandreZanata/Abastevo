@@ -96,8 +96,8 @@ type idMaker struct {
 	n atomic.Int64
 }
 
-func (m *idMaker) next() string {
-	return fmt.Sprintf("aaaaaaaa-1111-4111-8111-%012d", m.n.Add(1))
+func (m *idMaker) next() (string, error) {
+	return fmt.Sprintf("aaaaaaaa-1111-4111-8111-%012d", m.n.Add(1)), nil
 }
 
 func sampleInput(hashChar string) application.Input {

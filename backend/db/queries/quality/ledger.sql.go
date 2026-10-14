@@ -240,6 +240,30 @@ func (q *Queries) GetRevision(ctx context.Context, id pgtype.UUID) (QualityRevis
 	return i, err
 }
 
+const getWatermark = `-- name: GetWatermark :one
+SELECT source, stream, last_edition, last_hash, updated_at
+FROM quality_watermarks
+WHERE source = $1 AND stream = $2
+`
+
+type GetWatermarkParams struct {
+	Source string `json:"source"`
+	Stream string `json:"stream"`
+}
+
+func (q *Queries) GetWatermark(ctx context.Context, arg GetWatermarkParams) (QualityWatermark, error) {
+	row := q.db.QueryRow(ctx, getWatermark, arg.Source, arg.Stream)
+	var i QualityWatermark
+	err := row.Scan(
+		&i.Source,
+		&i.Stream,
+		&i.LastEdition,
+		&i.LastHash,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listEditionPeriods = `-- name: ListEditionPeriods :many
 SELECT edition_id, period_label, period_start, period_end
 FROM quality_periods
@@ -390,6 +414,44 @@ func (q *Queries) ListRevisionSanctions(ctx context.Context, revisionID pgtype.U
 	return items, nil
 }
 
+const listStreamResourceHashes = `-- name: ListStreamResourceHashes :many
+SELECT e.edition, r.sha256
+FROM quality_resources AS r
+JOIN quality_editions AS e ON e.id = r.edition_id
+WHERE e.source = $1 AND e.stream = $2
+ORDER BY e.edition ASC, r.sha256 ASC
+`
+
+type ListStreamResourceHashesParams struct {
+	Source string `json:"source"`
+	Stream string `json:"stream"`
+}
+
+type ListStreamResourceHashesRow struct {
+	Edition string `json:"edition"`
+	Sha256  string `json:"sha256"`
+}
+
+func (q *Queries) ListStreamResourceHashes(ctx context.Context, arg ListStreamResourceHashesParams) ([]ListStreamResourceHashesRow, error) {
+	rows, err := q.db.Query(ctx, listStreamResourceHashes, arg.Source, arg.Stream)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStreamResourceHashesRow
+	for rows.Next() {
+		var i ListStreamResourceHashesRow
+		if err := rows.Scan(&i.Edition, &i.Sha256); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordManifest = `-- name: RecordManifest :one
 INSERT INTO quality_manifests (edition_id, input, accepted, duplicates, quarantined, manifest_hash)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -457,6 +519,31 @@ WHERE id = $1 AND status = 'published'
 
 func (q *Queries) SetRevisionSuperseded(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, setRevisionSuperseded, id)
+	return err
+}
+
+const setWatermark = `-- name: SetWatermark :exec
+INSERT INTO quality_watermarks (source, stream, last_edition, last_hash)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (source, stream)
+DO UPDATE SET last_edition = EXCLUDED.last_edition, last_hash = EXCLUDED.last_hash,
+    updated_at = now()
+`
+
+type SetWatermarkParams struct {
+	Source      string `json:"source"`
+	Stream      string `json:"stream"`
+	LastEdition string `json:"last_edition"`
+	LastHash    string `json:"last_hash"`
+}
+
+func (q *Queries) SetWatermark(ctx context.Context, arg SetWatermarkParams) error {
+	_, err := q.db.Exec(ctx, setWatermark,
+		arg.Source,
+		arg.Stream,
+		arg.LastEdition,
+		arg.LastHash,
+	)
 	return err
 }
 

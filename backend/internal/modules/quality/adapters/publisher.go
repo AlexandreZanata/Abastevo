@@ -67,6 +67,15 @@ func mustUUID(text string) (pgtype.UUID, error) {
 	return id, nil
 }
 
+// nextID mints one identifier through the caller's maker.
+func nextID(newID func() (string, error)) (pgtype.UUID, error) {
+	raw, err := newID()
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	return mustUUID(raw)
+}
+
 func nullUUID() pgtype.UUID {
 	return pgtype.UUID{}
 }
@@ -96,7 +105,7 @@ func pgText(s string) pgtype.Text {
 // switch commit together or not at all. Replaying an identical manifest
 // returns the existing published revision without new rows; a concurrent
 // loser of the published-per-edition index converges to the winner.
-func (p *Publisher) Publish(ctx context.Context, in application.Input, newID func() string) (string, error) {
+func (p *Publisher) Publish(ctx context.Context, in application.Input, newID func() (string, error)) (string, error) {
 	if err := in.Validate(); err != nil {
 		return "", err
 	}
@@ -111,7 +120,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 			if derr != nil {
 				return derr
 			}
-			rowID, rerr := mustUUID(newID())
+			rowID, rerr := nextID(newID)
 			if rerr != nil {
 				return rerr
 			}
@@ -138,7 +147,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 			if serr != nil {
 				return serr
 			}
-			linkID, rerr := mustUUID(newID())
+			linkID, rerr := nextID(newID)
 			if rerr != nil {
 				return rerr
 			}
@@ -163,7 +172,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 	}
 }
 
-func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID func() string, stage stageFunc) (string, bool, error) {
+func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID func() (string, error), stage stageFunc) (string, bool, error) {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
 		return "", false, err
@@ -176,11 +185,11 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 	}()
 	q := quality.New(p.pool).WithTx(tx)
 
-	editionID, err := mustUUID(newID())
+	editionID, err := nextID(newID)
 	if err != nil {
 		return "", false, err
 	}
-	revisionID, err := mustUUID(newID())
+	revisionID, err := nextID(newID)
 	if err != nil {
 		return "", false, err
 	}

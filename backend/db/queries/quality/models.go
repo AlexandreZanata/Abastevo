@@ -140,3 +140,11 @@ type QualitySanctionEvent struct {
 	AsOf          pgtype.Date `json:"as_of"`
 	EvidenceRef   string      `json:"evidence_ref"`
 }
+
+type QualityWatermark struct {
+	Source      string             `json:"source"`
+	Stream      string             `json:"stream"`
+	LastEdition string             `json:"last_edition"`
+	LastHash    string             `json:"last_hash"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}

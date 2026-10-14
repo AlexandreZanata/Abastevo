@@ -152,3 +152,22 @@ SELECT edition_id, period_label, period_start, period_end
 FROM quality_periods
 WHERE edition_id = @edition_id
 ORDER BY period_start ASC, period_label ASC;
+
+-- name: ListStreamResourceHashes :many
+SELECT e.edition, r.sha256
+FROM quality_resources AS r
+JOIN quality_editions AS e ON e.id = r.edition_id
+WHERE e.source = @source AND e.stream = @stream
+ORDER BY e.edition ASC, r.sha256 ASC;
+
+-- name: GetWatermark :one
+SELECT source, stream, last_edition, last_hash, updated_at
+FROM quality_watermarks
+WHERE source = @source AND stream = @stream;
+
+-- name: SetWatermark :exec
+INSERT INTO quality_watermarks (source, stream, last_edition, last_hash)
+VALUES (@source, @stream, @last_edition, @last_hash)
+ON CONFLICT (source, stream)
+DO UPDATE SET last_edition = EXCLUDED.last_edition, last_hash = EXCLUDED.last_hash,
+    updated_at = now();
