@@ -188,6 +188,19 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 			AlgorithmVersion: opts.Version,
 		}, nil
 	}
+	if opts.Version == ConsensusCommunity {
+		// Contributor reduction can remove an author's old anchor while
+		// leaving other people's confirmations of it. Such a group cannot
+		// recommend a price or manufacture a runner-up conflict. Keep v1
+		// unchanged for historical replay; v2 requires an anchor per group.
+		anchored := groups[:0]
+		for _, group := range groups {
+			if len(group.anchors) > 0 {
+				anchored = append(anchored, group)
+			}
+		}
+		groups = anchored
+	}
 	freshest := newestAnchor(anchors)
 	expires := freshest.Add(windowHours * time.Hour)
 	freshness := freshnessAt(now, freshest)

@@ -351,3 +351,51 @@ func TestCommunityFirstConsensusRetainsIndependentMediaAndModerationGates(t *tes
 		t.Fatal("moderation bypass", got, err)
 	}
 }
+
+func TestCommunityConsensusRequiresDirectAnchorInEachPriceGroup(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "ETHANOL", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	anchor := func(voter, observation string, amount int64, received time.Time) Vote {
+		return Vote{VoterRef: voter, ObservationID: observation, EventID: "obs:" + observation, AuthorRef: voter,
+			AmountMilli: amount, ReceivedAt: received, AnchorReceivedAt: received, TrustTier: "NEW",
+			PhotoValidated: true, MediaKey: "photo:" + observation, StationID: key.StationID, Product: key.Product,
+			Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier}
+	}
+	old := anchor("author", "old", 5000, now.Add(-time.Hour))
+	current := anchor("author", "current", 6000, now)
+	confirmation := func(voter string) Vote {
+		v := old
+		v.VoterRef, v.ConfirmationID, v.EventID = voter, "confirmation:"+voter, "conf:"+voter
+		v.ReceivedAt, v.PhotoValidated, v.MediaKey = now, false, ""
+		return v
+	}
+	for _, tc := range []struct {
+		name              string
+		additional        []Vote
+		wantConfidence    string
+		wantLegacyVerdict string
+		wantLegacyAmount  int64
+	}{
+		{"orphan confirmations cannot win", nil, ConfLow, VerdictPrice, 5000},
+		{"orphan runner cannot dispute anchored price", []Vote{anchor("second", "second-current", 6000, now)}, ConfMedium, VerdictDisputed, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			votes := append([]Vote{old, current, confirmation("supporter-one"), confirmation("supporter-two")}, tc.additional...)
+			got, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || got.Verdict != VerdictPrice || got.AmountMilli != 6000 || got.Confidence != tc.wantConfidence || got.Confirmations != 0 || got.Groups != 1 || len(got.WinnerObservationIDs) == 0 {
+				t.Fatalf("orphan confirmation group published or counted: %+v, %v", got, err)
+			}
+			legacy, err := Compute(key, votes, now, Options{Version: ConsensusV1})
+			if err != nil || legacy.Verdict != tc.wantLegacyVerdict || legacy.AmountMilli != tc.wantLegacyAmount {
+				t.Fatalf("legacy replay changed: %+v, %v", legacy, err)
+			}
+			for i, j := 0, len(votes)-1; i < j; i, j = i+1, j-1 {
+				votes[i], votes[j] = votes[j], votes[i]
+			}
+			again, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || !reflect.DeepEqual(got, again) {
+				t.Fatalf("input order changed anchored outcome: %+v, %v", again, err)
+			}
+		})
+	}
+}
