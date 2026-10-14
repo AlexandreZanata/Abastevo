@@ -1,0 +1,13 @@
+AcaoId;CnpjAlvo;DataOcorrencia;Escopo;Situacao;DataExtracao;Evidencia
+AUTO-001;48151623000191;2026-08-02;municipal;autuado;2026-09-30;pagina-12
+AUTO-002;48151623000191;2026-08-02;municipal;autuado;2026-09-30;pagina-13
+AUTO-001;48151623000191;2026-08-02;municipal;autuado;2026-09-30;pagina-12
+AUTO-003;00428184000195;2026-12-10;regional;interditado;2026-09-30;pagina-44
+AUTO-004;00428184000195;;regional;em análise;2026-09-30;pagina-45
+AUTO-005;48151623000191;2026-08-05;MUNICIPAL;Autuado;2026-09-30;pagina-50
+AUTO-006;123;2026-08-06;municipal;autuado;2026-09-30;pagina-51
+AUTO-007;48151623000191;2026-08-07;;autuado;2026-09-30;pagina-52
+AUTO-008;48151623000191;2026-08-08;municipal;;2026-09-30;pagina-53
+AUTO-009;48151623000191;08/08/2026;municipal;autuado;2026-09-30;pagina-54
+AUTO-010;48151623000191;2026-08-10;municipal;autuado;2026-09-30;
+AUTO-001;48151623000191;2026-08-02;municipal;interditado;2026-09-30;pagina-12
