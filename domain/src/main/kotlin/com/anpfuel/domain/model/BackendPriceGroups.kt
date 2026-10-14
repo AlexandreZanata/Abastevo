@@ -102,7 +102,7 @@ class BackendPriceGroup private constructor(
             for ((index, char) in value.withIndex()) {
                 when (index) {
                     8, 13, 18, 23 -> if (char != '-') return false
-                    else -> if (!char.isDigit() && char.lowercaseChar() !in 'a'..'f') return false
+                    else -> if (char !in '0'..'9' && char.lowercaseChar() !in 'a'..'f') return false
                 }
             }
             return true
