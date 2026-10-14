@@ -100,7 +100,7 @@ func seedAssayEdition(t *testing.T, pool *pgxpool.Pool, label, hashChar, resSHA 
 	rev, err := pub.Publish(context.Background(), application.Input{
 		Source: "pmqc", Stream: "pmqc-assay-v1", Edition: label,
 		Resources: []application.Resource{{
-			URL: "https://www.gov.br/anp/pmqc_" + label + ".zip",
+			URL:    "https://www.gov.br/anp/pmqc_" + label + ".zip",
 			SHA256: resSHA, Bytes: 10,
 		}},
 		Counts:       domain.Counts{Input: 1, Accepted: 1},
