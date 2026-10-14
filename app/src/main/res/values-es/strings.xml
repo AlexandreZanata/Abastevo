@@ -794,4 +794,14 @@
     <string name="capture_station_name">Nombre de la estación</string>
     <string name="capture_search_failed">No se pudieron buscar estaciones. Revisa la conexión e inténtalo de nuevo.</string>
     <string name="capture_search_empty">No se encontraron estaciones.</string>
+    <string name="community_action_unavailable">Acciones no disponibles para esta revisión.</string>
+    <string name="community_confirm_price">Confirmar este precio</string>
+    <string name="community_action_received">Acción recibida por el servicio de la comunidad.</string>
+    <string name="community_report_price_changed">El precio cambió</string>
+    <string name="community_report_wrong_station">Estación incorrecta</string>
+    <string name="community_report_wrong_product">Combustible incorrecto</string>
+    <string name="community_report_wrong_condition">Condición de precio incorrecta</string>
+    <string name="community_report_evidence">La foto no coincide</string>
+    <string name="community_report_other">Otro problema</string>
+    <string name="capture_policy_unavailable">Las contribuciones no están disponibles temporalmente en esta versión del servicio. Inténtalo más tarde.</string>
 </resources>

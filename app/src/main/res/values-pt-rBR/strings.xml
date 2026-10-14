@@ -807,4 +807,14 @@
     <string name="capture_station_name">Nome do posto</string>
     <string name="capture_search_failed">Não foi possível buscar os postos. Verifique a conexão e tente novamente.</string>
     <string name="capture_search_empty">Nenhum posto encontrado.</string>
+    <string name="community_action_unavailable">Ações indisponíveis para esta revisão do preço.</string>
+    <string name="community_confirm_price">Confirmar este preço</string>
+    <string name="community_action_received">Ação recebida pelo serviço da comunidade.</string>
+    <string name="community_report_price_changed">O preço mudou</string>
+    <string name="community_report_wrong_station">Posto incorreto</string>
+    <string name="community_report_wrong_product">Combustível incorreto</string>
+    <string name="community_report_wrong_condition">Condição de preço incorreta</string>
+    <string name="community_report_evidence">A foto não corresponde</string>
+    <string name="community_report_other">Outro problema</string>
+    <string name="capture_policy_unavailable">As contribuições estão temporariamente indisponíveis nesta versão do serviço. Tente novamente mais tarde.</string>
 </resources>

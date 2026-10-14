@@ -72,9 +72,11 @@ object CommunityModule {
     @Provides
     @Singleton
     fun provideCommunityHelpfulnessHttpClient(
+        proof: com.anpfuel.data.remote.PhotoProofTransport,
         @Named("apiOrigin") environment: ApiEnvironment,
     ): CommunityHelpfulnessHttpClient =
         CommunityHelpfulnessHttpClient(
+            proof = proof,
             client = OkHttpClientFactory.create(),
             baseUrl = environment.origin,
         )

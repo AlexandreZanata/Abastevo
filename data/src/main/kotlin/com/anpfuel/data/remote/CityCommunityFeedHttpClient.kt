@@ -107,6 +107,9 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                     updatedAt = Instant.parse(row.getString("updated_at")), expiresAt = Instant.parse(row.getString("expires_at")),
                     supporters = row.getInt("supporters"), confirmations = row.getInt("confirmations"),
                     confidence = row.getString("confidence"), version = row.getLong("version"),
+                    contribution = row.optJSONObject("contribution")?.let { ref ->
+                        com.anpfuel.domain.community.ContributionReference(ref.getString("observation_id"),ref.getLong("decision_sequence"))
+                    },
                     ratingsCount = row.optInt("ratings_count"),
                     ratingsAvg = if (row.isNull("ratings_avg")) null else row.getDouble("ratings_avg"),
                 )

@@ -14,20 +14,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * CS08B helpful/unhelpful state (B-BR-CS01, BUC-CS02).
- *
- * Flag-gated: [UiState.Disabled] performs no network IO and renders
- * nothing (rollback is flag OFF). Guests see [UiState.Guest] with the
- * free-login explanation and no network IO. [prepare] fixes the target
- * (observation + immutable sequence) and mints one stable client
- * submission id; [vote] and [remove] reuse that id so retries converge
- * instead of amplifying the vote. A second tap while
- * [UiState.Submitting] is ignored (single flight). Counts render from
- * exact tallies with the owner's choice and the frozen review notice;
- * terminal rejection carries a fixed kind label and a sanitized
- * message. Reporting reuses the existing dispute flow through the
- * host-provided callback — this ViewModel never reports by itself.
+/** Shared signed helpfulness, independent confirmation and structured report controller.
+ * UI changes only after server outcomes. Main serialization plus target/owner/origin generations
+ * prevent late responses from rendering or releasing another account/revision operation.
  */
 sealed interface CommunityHelpfulnessUiState {
     data object Disabled : CommunityHelpfulnessUiState
@@ -56,173 +45,100 @@ sealed interface CommunityHelpfulnessUiState {
 class CommunityHelpfulnessViewModel @Inject constructor(
     private val useCase: SubmitHelpfulnessVoteUseCase,
     private val flagProvider: CommunityHelpfulnessFlagProvider,
+    private val proof: com.anpfuel.data.remote.PhotoProofTransport? = null,
 ) : ViewModel() {
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
+    private data class Target(val observationId:String,val decisionSequence:Long,val clientSubmissionId:String,val scope:String?,val accountId:String,val ownerScope:String?)
+    private var target:Target?=null
+    private var generation=0L
+    private var submitting=false
+    private var pendingChoice:String?=null
+    private val actionIds=mutableMapOf<String,String>()
+    private val _state=MutableStateFlow<CommunityHelpfulnessUiState>(if(flagProvider.isEnabled()) CommunityHelpfulnessUiState.Idle else CommunityHelpfulnessUiState.Disabled)
+    val state=_state.asStateFlow()
+    private val _actionReceived=MutableStateFlow(false)
+    val actionReceived=_actionReceived.asStateFlow()
+    fun signedAccount():String = proof?.ownerScope()?.takeIf { it.startsWith("account:") }.orEmpty()
+    private fun scopeStamp():String? = proof?.let { it.origin+"|"+it.ownerScope() }
 
-    /** Test seam for the IO context (unit tests inject the test dispatcher). */
-    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher =
-        kotlinx.coroutines.Dispatchers.IO
-
-    private data class Target(
-        val observationId: String,
-        val decisionSequence: Long,
-        val clientSubmissionId: String,
-    )
-
-    private val _state =
-        MutableStateFlow<CommunityHelpfulnessUiState>(initialState())
-    val state: StateFlow<CommunityHelpfulnessUiState> = _state.asStateFlow()
-
-    private var target: Target? = null
-    private var submitting = false
-
-    private fun initialState(): CommunityHelpfulnessUiState =
-        if (flagProvider.isEnabled()) {
-            CommunityHelpfulnessUiState.Idle
-        } else {
-            CommunityHelpfulnessUiState.Disabled
-        }
-
-    fun prepare(observationId: String, decisionSequence: Long, accountId: String) {
-        if (!flagProvider.isEnabled()) {
-            _state.value = CommunityHelpfulnessUiState.Disabled
+    fun prepare(observationId:String,decisionSequence:Long,accountId:String) {
+        if(!flagProvider.isEnabled() || accountId.isBlank()) {
+            generation++;target=null;submitting=false;pendingChoice=null;actionIds.clear();_actionReceived.value=false
+            _state.value=if(flagProvider.isEnabled()) CommunityHelpfulnessUiState.Guest else CommunityHelpfulnessUiState.Disabled
             return
         }
-        if (accountId.isBlank()) {
-            _state.value = CommunityHelpfulnessUiState.Guest
-            return
-        }
-        target = Target(observationId, decisionSequence, UUID.randomUUID().toString())
+        if(target?.let { it.observationId==observationId && it.decisionSequence==decisionSequence && it.scope==scopeStamp() && it.accountId==accountId }==true) { refresh();return }
+        generation++;submitting=false;pendingChoice=null;actionIds.clear();_actionReceived.value=false
+        target=Target(observationId,decisionSequence,UUID.randomUUID().toString(),scopeStamp(),accountId,proof?.ownerScope())
         refresh()
     }
-
-    fun refresh() {
-        val current = target ?: return
-        if (_state.value is CommunityHelpfulnessUiState.Submitting) return
-        _state.value = CommunityHelpfulnessUiState.Loading
-        viewModelScope.launch(ioDispatcher) {
-            when (
-                val outcome =
-                    useCase.tally(
-                        SubmitHelpfulnessVoteUseCase.TallyRequest(
-                            current.observationId,
-                            current.decisionSequence,
-                        ),
-                    )
-            ) {
-                is HelpfulnessVoteOutcome.Disabled ->
-                    _state.value = CommunityHelpfulnessUiState.Disabled
-                is HelpfulnessVoteOutcome.Tallied ->
-                    _state.value = contentOf(current, outcome.tally.helpful, outcome.tally.notHelpful,
-                        outcome.tally.total, outcome.tally.helpfulBasisPoints,
-                        outcome.tally.myChoice, outcome.tally.underReview)
-                is HelpfulnessVoteOutcome.Rejected ->
-                    _state.value = CommunityHelpfulnessUiState.Rejected(outcome.kind, outcome.message)
-                else ->
-                    _state.value = CommunityHelpfulnessUiState.Rejected(
-                        CommunityHelpfulnessRejectKind.TRANSPORT,
-                        "helpfulness read failed",
-                    )
-            }
-        }
-    }
-
-    fun vote(choiceWire: String) {
-        val current = target ?: return
-        if (_state.value is CommunityHelpfulnessUiState.Submitting) return
-        if (submitting) return
-        submitting = true
-        _state.value = CommunityHelpfulnessUiState.Submitting
-        viewModelScope.launch(ioDispatcher) {
+    fun clear() { generation++;target=null;submitting=false;_state.value=CommunityHelpfulnessUiState.Idle;_actionReceived.value=false }
+    private fun perform(loading:Boolean=false,onAccepted:()->Unit={},action:suspend (Target)->CommunityHelpfulnessUiState) {
+        val current=target ?: return
+        if(proof!=null && current.scope!=scopeStamp()) {clear();_state.value=CommunityHelpfulnessUiState.Guest;return}
+        if(submitting) return
+        val ticket=++generation
+        submitting=true
+        _state.value=if(loading) CommunityHelpfulnessUiState.Loading else CommunityHelpfulnessUiState.Submitting
+        viewModelScope.launch {
             try {
-                when (
-                    val outcome =
-                        useCase.cast(
-                            SubmitHelpfulnessVoteUseCase.CastRequest(
-                                current.observationId,
-                                current.clientSubmissionId,
-                                choiceWire,
-                                current.decisionSequence,
-                            ),
-                        )
-                ) {
-                    is HelpfulnessVoteOutcome.Disabled ->
-                        _state.value = CommunityHelpfulnessUiState.Disabled
-                    is HelpfulnessVoteOutcome.Voted ->
-                        _state.value = contentOf(current, outcome.receipt.helpful, outcome.receipt.notHelpful,
-                            outcome.receipt.total, outcome.receipt.helpfulBasisPoints,
-                            outcome.receipt.myChoice, underReview = false)
-                    is HelpfulnessVoteOutcome.Rejected ->
-                        _state.value = CommunityHelpfulnessUiState.Rejected(outcome.kind, outcome.message)
-                    else ->
-                        _state.value = CommunityHelpfulnessUiState.Rejected(
-                            CommunityHelpfulnessRejectKind.TRANSPORT,
-                            "helpfulness vote failed",
-                        )
-                }
-            } finally {
-                submitting = false
+                val result=kotlinx.coroutines.withContext(ioDispatcher) { action(current) }
+                if(ticket!=generation || current!=target) return@launch
+                if(proof!=null && current.scope!=scopeStamp()) {clear();_state.value=CommunityHelpfulnessUiState.Guest;return@launch}
+                _state.value=result
+                if(result is CommunityHelpfulnessUiState.Content) {target=current.copy(clientSubmissionId=result.submissionId);onAccepted()}
+            } catch(cancelled:kotlinx.coroutines.CancellationException) {throw cancelled}
+            catch(_:Exception) {if(ticket==generation) _state.value=CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")}
+            finally {if(ticket==generation) submitting=false}
+        }
+    }
+    fun refresh()=perform(loading=true) { current ->
+        when(val outcome=useCase.tally(SubmitHelpfulnessVoteUseCase.TallyRequest(current.observationId,current.decisionSequence,current.ownerScope))) {
+            HelpfulnessVoteOutcome.Disabled -> CommunityHelpfulnessUiState.Disabled
+            is HelpfulnessVoteOutcome.Tallied -> content(current,outcome.tally.helpful,outcome.tally.notHelpful,outcome.tally.total,outcome.tally.helpfulBasisPoints,outcome.tally.myChoice,outcome.tally.underReview)
+            is HelpfulnessVoteOutcome.Rejected -> CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
+            else -> CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")
+        }
+    }
+    fun vote(choiceWire:String) {
+        if(submitting) return
+        if(pendingChoice!=null && pendingChoice!=choiceWire) target=target?.copy(clientSubmissionId=UUID.randomUUID().toString())
+        pendingChoice=choiceWire
+        perform {current ->
+            when(val outcome=useCase.cast(SubmitHelpfulnessVoteUseCase.CastRequest(current.observationId,current.clientSubmissionId,choiceWire,current.decisionSequence,current.ownerScope))) {
+                HelpfulnessVoteOutcome.Disabled -> CommunityHelpfulnessUiState.Disabled
+                is HelpfulnessVoteOutcome.Voted -> content(current,outcome.receipt.helpful,outcome.receipt.notHelpful,outcome.receipt.total,outcome.receipt.helpfulBasisPoints,outcome.receipt.myChoice,false)
+                is HelpfulnessVoteOutcome.Rejected -> CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
+                else -> CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")
             }
         }
     }
-
-    fun remove() {
-        val current = target ?: return
-        if (_state.value is CommunityHelpfulnessUiState.Submitting) return
-        if (submitting) return
-        submitting = true
-        _state.value = CommunityHelpfulnessUiState.Submitting
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                when (
-                    val outcome =
-                        useCase.remove(
-                            SubmitHelpfulnessVoteUseCase.RemoveRequest(
-                                current.observationId,
-                                current.decisionSequence,
-                            ),
-                        )
-                ) {
-                    is HelpfulnessVoteOutcome.Disabled ->
-                        _state.value = CommunityHelpfulnessUiState.Disabled
-                    is HelpfulnessVoteOutcome.Removed ->
-                        _state.value = contentOf(current, outcome.tally.helpful, outcome.tally.notHelpful,
-                            outcome.tally.total, outcome.tally.helpfulBasisPoints,
-                            outcome.tally.myChoice, outcome.tally.underReview)
-                    is HelpfulnessVoteOutcome.Rejected ->
-                        _state.value = CommunityHelpfulnessUiState.Rejected(outcome.kind, outcome.message)
-                    else ->
-                        _state.value = CommunityHelpfulnessUiState.Rejected(
-                            CommunityHelpfulnessRejectKind.TRANSPORT,
-                            "helpfulness removal failed",
-                        )
-                }
-            } finally {
-                submitting = false
-            }
+    fun remove()=perform {current ->
+        when(val outcome=useCase.remove(SubmitHelpfulnessVoteUseCase.RemoveRequest(current.observationId,current.decisionSequence,current.ownerScope))) {
+            HelpfulnessVoteOutcome.Disabled -> CommunityHelpfulnessUiState.Disabled
+            is HelpfulnessVoteOutcome.Removed -> content(current.copy(clientSubmissionId=UUID.randomUUID().toString()),outcome.tally.helpful,outcome.tally.notHelpful,outcome.tally.total,outcome.tally.helpfulBasisPoints,outcome.tally.myChoice,outcome.tally.underReview)
+            is HelpfulnessVoteOutcome.Rejected -> CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
+            else -> CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")
         }
     }
-
-    fun retry() {
-        refresh()
+    fun report(reason:String) {
+        require(reason in setOf("PRICE_CHANGED","WRONG_STATION","WRONG_PRODUCT","WRONG_CONDITION","EVIDENCE_MISMATCH","OTHER"))
+        publicAction("disputes",reason)
     }
-
-    private fun contentOf(
-        current: Target,
-        helpful: Long,
-        notHelpful: Long,
-        total: Long,
-        basisPoints: Long?,
-        myChoice: String?,
-        underReview: Boolean,
-    ) = CommunityHelpfulnessUiState.Content(
-        observationId = current.observationId,
-        decisionSequence = current.decisionSequence,
-        submissionId = current.clientSubmissionId,
-        helpful = helpful,
-        notHelpful = notHelpful,
-        total = total,
-        helpfulBasisPoints = basisPoints,
-        myChoice = myChoice,
-        underReview = underReview,
-    )
+    fun confirmPrice()=publicAction("confirmations",null)
+    private fun publicAction(route:String,reason:String?) {
+        val transport=proof ?: return
+        val before=_state.value as? CommunityHelpfulnessUiState.Content ?: return
+        val id=actionIds.getOrPut(route+reason) {UUID.randomUUID().toString()}
+        _actionReceived.value=false
+        perform(onAccepted={_actionReceived.value=true}) {current ->
+            val doc=org.json.JSONObject().put("client_submission_id",id)
+            if(reason!=null) doc.put("reason",reason)
+            val scope=current.ownerScope ?: throw java.io.IOException("community owner unavailable")
+            transport.post("/v1/observations/${current.observationId}/$route",id,doc,scope)
+            before
+        }
+    }
+    private fun content(current:Target,helpful:Long,notHelpful:Long,total:Long,basisPoints:Long?,myChoice:String?,underReview:Boolean)=
+        CommunityHelpfulnessUiState.Content(current.observationId,current.decisionSequence,current.clientSubmissionId,helpful,notHelpful,total,basisPoints,myChoice,underReview)
 }

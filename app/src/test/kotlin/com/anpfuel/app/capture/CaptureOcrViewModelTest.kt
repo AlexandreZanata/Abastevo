@@ -79,6 +79,7 @@ class CaptureOcrViewModelTest {
         saved: SavedStateHandle = SavedStateHandle(),
         owned: GetOwnedContributionsUseCase = mockk(relaxed = true),
         nearbyDeferred: CompletableDeferred<NearbyServerStationsOutcome>? = null,
+        directorySearch: (suspend (String,String,Int) -> com.anpfuel.domain.discovery.ServerStationPage)? = null,
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
             override fun isEnabled(): Boolean = enabled
@@ -101,8 +102,10 @@ class CaptureOcrViewModelTest {
         val city = mockk<com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase>()
         io.mockk.coEvery { city.city() } returns com.anpfuel.domain.community.FeedCity("5103403", com.anpfuel.domain.valueobject.BrazilianState.MATO_GROSSO, "Test City")
         val stationGateway = mockk<com.anpfuel.domain.repository.ServerStationGateway>()
-        io.mockk.coEvery { stationGateway.search(any(), any(), any()) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
-            ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
+        io.mockk.coEvery { stationGateway.search(any(), any(), any()) } coAnswers {
+            directorySearch?.invoke(firstArg(),secondArg(),thirdArg()) ?: com.anpfuel.domain.discovery.ServerStationPage(listOf(
+                ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
+        }
         return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
     }
 
@@ -597,6 +600,43 @@ class CaptureOcrViewModelTest {
         advanceUntilIdle()
         assertNull(vm.pickedStationId.value)
         assertTrue(vm.previewStations.value.isEmpty())
+    }
+
+    @Test fun `old uncancellable query cannot release the new search guard`()=runTest(dispatcher) {
+        val oldStarted=CompletableDeferred<Unit>();val newStarted=CompletableDeferred<Unit>()
+        val oldResult=CompletableDeferred<com.anpfuel.domain.discovery.ServerStationPage>()
+        val newResult=CompletableDeferred<com.anpfuel.domain.discovery.ServerStationPage>()
+        val vm=viewModel(true,true,directorySearch={_,query,_ ->
+            when(query) {
+                "old" -> {oldStarted.complete(Unit);kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable){oldResult.await()}}
+                "new" -> {newStarted.complete(Unit);newResult.await()}
+                else -> com.anpfuel.domain.discovery.ServerStationPage(emptyList(),null)
+            }
+        })
+        vm.loadStationSearch();advanceUntilIdle()
+        vm.searchPreviewStation("old");advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){oldStarted.await()}}
+        vm.searchPreviewStation("new");advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){newStarted.await()}}
+        oldResult.complete(com.anpfuel.domain.discovery.ServerStationPage(emptyList(),null))
+        advanceUntilIdle()
+        assertTrue(vm.previewSearchBusy.value)
+        val station=ServerStation.create("123e4567-e89b-12d3-a456-426614174000","New station",StationLocationQuality.UNKNOWN,null,null,null,"5103403","MT",null)
+        newResult.complete(com.anpfuel.domain.discovery.ServerStationPage(listOf(station),null))
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){vm.previewStations.first{it.isNotEmpty()}}}
+        advanceUntilIdle()
+        assertFalse(vm.previewSearchBusy.value)
+        vm.pickPreviewStation(station.stationId)
+        assertEquals(station.stationId,vm.pickedStationId.value)
+    }
+
+    @Test fun `old server policy gives service recovery without asking for GPS`()=runTest(dispatcher) {
+        val gate=mockk<PhotoCaptureGate>()
+        io.mockk.coEvery {gate.authorizeCommunity(any(),any())} throws com.anpfuel.data.remote.PhotoCapturePolicyUnavailable()
+        val vm=viewModel(true,true,gate=gate,locationSource=CaptureLocationSource{error("GPS requested")})
+        vm.bindTarget(stationId,"ETHANOL")
+        vm.authorizeCamera {error("incompatible policy launched camera")};advanceUntilIdle()
+        assertEquals("photo.policy-unavailable",vm.gateFailure.value)
     }
 
 }

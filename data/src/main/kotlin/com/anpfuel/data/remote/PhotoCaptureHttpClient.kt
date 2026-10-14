@@ -55,13 +55,14 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
     }
 
     private fun decode(result: JSONObject, stationId: String, scope: String, development: Boolean): PhotoCapturePermission {
+        val expectedPolicy=if(development) "photo-capture-ui-test-v1" else "photo-capture-community-v2"
+        if(result.optString("policy_version")!=expectedPolicy) throw PhotoCapturePolicyUnavailable()
         val receipt=PhotoCapturePermission(result.getString("capture_id"),result.getString("station_id"),
             Instant.parse(result.getString("issued_at")).toEpochMilli(),Instant.parse(result.getString("camera_expires_at")).toEpochMilli(),
             Instant.parse(result.getString("expires_at")).toEpochMilli(),scope,transport.origin, development)
-        if(!isCurrent(receipt) || receipt.stationId!=stationId || result.optString("policy_version") != (if (development) "photo-capture-ui-test-v1" else "photo-capture-community-v2") ||
+        if(!isCurrent(receipt) || receipt.stationId!=stationId ||
             receipt.cameraExpiresAtMillis-receipt.issuedAtMillis !in 1..120000 ||
             receipt.expiresAtMillis-receipt.issuedAtMillis !in 1..86400000 ||
-            receipt.expiresAtMillis < receipt.cameraExpiresAtMillis ||
             receipt.expiresAtMillis < receipt.cameraExpiresAtMillis ||
             receipt.issuedAtMillis - System.currentTimeMillis() > ISSUED_AT_LEEWAY_MILLIS ||
             System.currentTimeMillis()>=receipt.cameraExpiresAtMillis) throw IOException("photo.invalid-permission")
@@ -69,3 +70,6 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
         return receipt
     }
 }
+
+/** Old/unknown fresh policies are recoverable service incompatibility, never a GPS refusal. */
+class PhotoCapturePolicyUnavailable: IOException("photo.policy-unavailable")

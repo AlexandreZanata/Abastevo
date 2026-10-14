@@ -336,6 +336,7 @@ class CaptureOcrViewModel @Inject constructor(
                     permission.cameraExpiresAtMillis.toString(), permission.expiresAtMillis.toString(), permission.ownerScope, permission.origin, permission.developmentPreview.toString())
                 onAuthorized()
             } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: com.anpfuel.data.remote.PhotoCapturePolicyUnavailable) { if (ticket == generation) _gateFailure.value = "photo.policy-unavailable" }
             catch (_: Exception) { if (ticket == generation) _gateFailure.value = "photo.authorization-unavailable" }
             finally { if (ticket == generation) _gateBusy.value = false }
         }

@@ -794,4 +794,14 @@
     <string name="capture_station_name">Name der Tankstelle</string>
     <string name="capture_search_failed">Tankstellen konnten nicht gesucht werden. Verbindung prüfen und erneut versuchen.</string>
     <string name="capture_search_empty">Keine Tankstellen gefunden.</string>
+    <string name="community_action_unavailable">Aktionen für diese Preisversion nicht verfügbar.</string>
+    <string name="community_confirm_price">Diesen Preis bestätigen</string>
+    <string name="community_action_received">Aktion vom Community-Dienst empfangen.</string>
+    <string name="community_report_price_changed">Preis hat sich geändert</string>
+    <string name="community_report_wrong_station">Falsche Tankstelle</string>
+    <string name="community_report_wrong_product">Falscher Kraftstoff</string>
+    <string name="community_report_wrong_condition">Falsche Preisbedingung</string>
+    <string name="community_report_evidence">Foto stimmt nicht überein</string>
+    <string name="community_report_other">Anderes Problem</string>
+    <string name="capture_policy_unavailable">Beiträge sind in dieser Dienstversion vorübergehend nicht verfügbar. Bitte später erneut versuchen.</string>
 </resources>

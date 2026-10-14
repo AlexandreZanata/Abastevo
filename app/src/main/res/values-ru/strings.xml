@@ -794,4 +794,14 @@
     <string name="capture_station_name">Название АЗС</string>
     <string name="capture_search_failed">Не удалось найти АЗС. Проверьте подключение и повторите попытку.</string>
     <string name="capture_search_empty">АЗС не найдены.</string>
+    <string name="community_action_unavailable">Действия для этой версии цены недоступны.</string>
+    <string name="community_confirm_price">Подтвердить эту цену</string>
+    <string name="community_action_received">Действие получено сервисом сообщества.</string>
+    <string name="community_report_price_changed">Цена изменилась</string>
+    <string name="community_report_wrong_station">Неверная АЗС</string>
+    <string name="community_report_wrong_product">Неверное топливо</string>
+    <string name="community_report_wrong_condition">Неверное условие цены</string>
+    <string name="community_report_evidence">Фото не соответствует</string>
+    <string name="community_report_other">Другая проблема</string>
+    <string name="capture_policy_unavailable">Публикации временно недоступны в этой версии сервиса. Повторите попытку позже.</string>
 </resources>

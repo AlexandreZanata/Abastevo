@@ -164,7 +164,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             items(state.items, key = { it.stationId }) { item ->
-                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationPage(item.stationId, state.fuel)) })
+                FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationPage(item.stationId, state.fuel)) }, onSignIn={onNavigate(Routes.PROFILE)})
             }
             if (state.nextCursor != null && state.items.size < 200 && !state.loading) item {
                 OutlinedButton(onClick = onMore, enabled = !state.loadingMore, modifier = Modifier.fillMaxWidth()) {
@@ -234,55 +234,6 @@ private fun feedSortIcon(sort: FeedSort) = when (sort) {
     FeedSort.WORST -> Icons.Default.StarOutline
 }
 
-/**
- * Frontend-only approve/contest/report toggles.
- *
- * The city feed exposes exact [CommunityFeedItem.supporters] but no
- * dispute tally and no observation id, so the dislike icon carries no
- * invented count. Taps only flip local state with a spring pulse —
- * they never navigate and never reach the backend. The confirmation
- * count travels with the check badge next to the fuel name.
- */
-@Composable
-private fun FeedVoteActions(item: CommunityFeedItem) {
-    var liked by remember { mutableStateOf(false) }
-    var disliked by remember { mutableStateOf(false) }
-    var reported by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        BouncyToggleIcon(
-            selected = liked,
-            onToggle = {
-                liked = !liked
-                if (liked) disliked = false
-            },
-            icon = Icons.Default.ThumbUp,
-            contentDescription = stringResource(R.string.station_feedback_vote_valid),
-        )
-        Text("${item.supporters + if (liked) 1 else 0}",
-            style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(4.dp))
-        BouncyToggleIcon(
-            selected = disliked,
-            onToggle = {
-                disliked = !disliked
-                if (disliked) liked = false
-            },
-            icon = Icons.Default.ThumbDown,
-            contentDescription = stringResource(R.string.station_feedback_vote_invalid),
-            selectedTint = MaterialTheme.colorScheme.error,
-        )
-        Spacer(Modifier.weight(1f))
-        BouncyToggleIcon(
-            selected = reported,
-            onToggle = { reported = !reported },
-            icon = Icons.Default.Flag,
-            contentDescription = stringResource(R.string.station_page_report_title),
-            selectedTint = MaterialTheme.colorScheme.error,
-            unselectedTint = MaterialTheme.colorScheme.error,
-        )
-    }
-}
-
 @Composable
 private fun FeedMessage(title: String, description: String, action: @Composable () -> Unit) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
@@ -295,7 +246,7 @@ private fun FeedMessage(title: String, description: String, action: @Composable 
 }
 
 @Composable
-private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: () -> Unit) {
+private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: () -> Unit, onSignIn: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     val timestamp = DateTimeFormatter.ofPattern("d MMM · HH:mm", locale).withZone(ZoneId.systemDefault()).format(item.updatedAt)
     val price = remember(item.amountMilliBrl) {
@@ -337,7 +288,7 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            FeedVoteActions(item)
+            com.anpfuel.app.community.CommunityContributionActions(item,onSignIn)
         }
     }
 }

@@ -794,4 +794,14 @@
     <string name="capture_station_name">加油站名称</string>
     <string name="capture_search_failed">无法搜索加油站。请检查连接后重试。</string>
     <string name="capture_search_empty">未找到加油站。</string>
+    <string name="community_action_unavailable">此价格版本暂不支持操作。</string>
+    <string name="community_confirm_price">确认此价格</string>
+    <string name="community_action_received">社区服务已收到操作。</string>
+    <string name="community_report_price_changed">价格已变更</string>
+    <string name="community_report_wrong_station">加油站错误</string>
+    <string name="community_report_wrong_product">燃料错误</string>
+    <string name="community_report_wrong_condition">价格条件错误</string>
+    <string name="community_report_evidence">照片不符</string>
+    <string name="community_report_other">其他问题</string>
+    <string name="capture_policy_unavailable">此服务版本暂时无法提交贡献。请稍后重试。</string>
 </resources>

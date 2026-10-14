@@ -813,4 +813,14 @@
     <string name="capture_station_name">Station name</string>
     <string name="capture_search_failed">Could not search stations. Check your connection and try again.</string>
     <string name="capture_search_empty">No matching stations.</string>
+    <string name="community_action_unavailable">Actions unavailable for this price revision.</string>
+    <string name="community_confirm_price">Confirm this price</string>
+    <string name="community_action_received">Action received by the community service.</string>
+    <string name="community_report_price_changed">Price has changed</string>
+    <string name="community_report_wrong_station">Wrong station</string>
+    <string name="community_report_wrong_product">Wrong fuel</string>
+    <string name="community_report_wrong_condition">Wrong price condition</string>
+    <string name="community_report_evidence">Photo does not match</string>
+    <string name="community_report_other">Other issue</string>
+    <string name="capture_policy_unavailable">Contributions are temporarily unavailable on this service version. Please try again later.</string>
 </resources>

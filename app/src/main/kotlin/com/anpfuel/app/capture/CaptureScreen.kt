@@ -214,7 +214,7 @@ fun CaptureScreen(
                 )
                 return@Column
             }
-            if (gateFailure != null) Text(stringResource(R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
+            if (gateFailure != null) Text(stringResource(if(gateFailure=="photo.policy-unavailable") R.string.capture_policy_unavailable else R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
             when (state) {
                 CaptureOcrUiState.Disabled -> {
                     Text(

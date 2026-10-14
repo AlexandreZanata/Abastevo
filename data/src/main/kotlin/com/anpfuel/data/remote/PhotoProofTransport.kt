@@ -62,8 +62,9 @@ class PhotoProofTransport internal constructor(
         ownerScope() ?: throw IOException("photo.identity-unavailable")
     }
 
-    suspend fun get(path: String, expectedScope: String? = null): JSONObject = withContext(Dispatchers.IO) {
+    suspend fun get(path: String, expectedScope: String? = null, query: String? = null): JSONObject = withContext(Dispatchers.IO) {
         require(path.startsWith("/v1/") && !path.contains('?') && !path.contains('#'))
+        require(query == null || Regex("decision_sequence=[1-9][0-9]{0,18}").matches(query))
         synchronized(this@PhotoProofTransport) {
             if (expectedScope != null && ownerScope() != expectedScope) throw IOException("photo.identity-changed")
             ensureRegistered()
@@ -71,8 +72,8 @@ class PhotoProofTransport internal constructor(
             val fingerprint = keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
             val challenge = identity.requestChallenge(fingerprint, "SIGN")
             val now = System.currentTimeMillis() / 1000
-            val lines = PortableAnonymousProof.buildBaseLines("GET", authority(), path, "", null, null, now, now + 120, fingerprint, challenge.nonce)
-            val request = Request.Builder().url(origin.trimEnd('/') + path).get()
+            val lines = PortableAnonymousProof.buildBaseLines("GET", authority(), path, query.orEmpty(), null, null, now, now + 120, fingerprint, challenge.nonce)
+            val request = Request.Builder().url(origin.trimEnd('/') + path + (query?.let { "?$it" } ?: "")).get()
                 .header("Accept", "application/json").header("Cache-Control", "no-store")
                 .header("Signature", sign(lines)).header("Signature-Created", now.toString())
                 .header("Signature-Expires", (now + 120).toString()).header("Signature-Keyid", fingerprint)

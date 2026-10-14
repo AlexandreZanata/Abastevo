@@ -58,15 +58,18 @@ interface CommunityHelpfulnessGateway {
         clientSubmissionId: String,
         choiceWire: String,
         decisionSequence: Long,
+        expectedOwnerScope: String? = null,
     ): CommunityHelpfulnessReceipt
 
     suspend fun removeHelpfulness(
         observationId: String,
         decisionSequence: Long,
+        expectedOwnerScope: String? = null,
     ): CommunityHelpfulnessTally
 
     suspend fun tallyFor(
         observationId: String,
         decisionSequence: Long,
+        expectedOwnerScope: String? = null,
     ): CommunityHelpfulnessTally
 }

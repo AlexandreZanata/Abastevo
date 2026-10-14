@@ -794,4 +794,14 @@
     <string name="capture_station_name">給油所名</string>
     <string name="capture_search_failed">検索できませんでした。接続を確認して再試行してください。</string>
     <string name="capture_search_empty">給油所が見つかりません。</string>
+    <string name="community_action_unavailable">この価格の版では操作できません。</string>
+    <string name="community_confirm_price">この価格を確認</string>
+    <string name="community_action_received">コミュニティサービスが操作を受信しました。</string>
+    <string name="community_report_price_changed">価格が変わった</string>
+    <string name="community_report_wrong_station">給油所が違う</string>
+    <string name="community_report_wrong_product">燃料が違う</string>
+    <string name="community_report_wrong_condition">価格条件が違う</string>
+    <string name="community_report_evidence">写真が一致しない</string>
+    <string name="community_report_other">その他の問題</string>
+    <string name="capture_policy_unavailable">このサービスのバージョンでは投稿を一時的に利用できません。後でもう一度お試しください。</string>
 </resources>

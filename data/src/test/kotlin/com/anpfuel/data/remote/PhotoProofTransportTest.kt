@@ -185,8 +185,16 @@ class PhotoProofTransportTest {
             assertArrayEquals(MessageDigest.getInstance("SHA-512").digest(PortableAnonymousProof.buildBase(readLines).toByteArray()), digests.last())
             try { transport.post("/v1/observations", "row", JSONObject(), "different-owner"); fail<Unit>("owner changed") }
             catch (_: java.io.IOException) { }
-            assertEquals(3, server.requestCount)
-            verify(exactly = 3) { identity.requestChallenge(fp, "SIGN") }
+            server.enqueue(MockResponse().setBody("{\"helpful\":1}"))
+            val queryPath="/v1/observations/123e4567-e89b-12d3-a456-426614174010/helpfulness"
+            transport.get(queryPath,"anonymous:$fp","decision_sequence=2")
+            val queried=server.takeRequest()
+            assertEquals("$queryPath?decision_sequence=2",queried.path)
+            val queryLines=PortableAnonymousProof.buildBaseLines("GET",java.net.URI(origin).rawAuthority,queryPath,"decision_sequence=2",null,null,
+                queried.getHeader("Signature-Created")!!.toLong(),queried.getHeader("Signature-Expires")!!.toLong(),fp,signNonce)
+            assertArrayEquals(MessageDigest.getInstance("SHA-512").digest(PortableAnonymousProof.buildBase(queryLines).toByteArray()),digests.last())
+            assertEquals(4, server.requestCount)
+            verify(exactly = 4) { identity.requestChallenge(fp, "SIGN") }
             verify(exactly = 1) { identity.register(any(), any(), any(), any()) }
         }
     }
