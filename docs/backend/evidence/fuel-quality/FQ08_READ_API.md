@@ -93,3 +93,42 @@ external healthy restart of guia-cidade gc-api, unrelated).
   `/debugz/schema-check` draft, kept out of the branch), or compare a
   fresh pod's first-probe timing against pool setup; audit any concurrent
   writer to the image store (tag flapping observed on throwaway tags).
+
+## Readiness recovery (2026-10-14, selected FQ-08 source)
+
+Status: STAGING_READY for the existing FQ-08 binary; not FQ-17 acceptance.
+
+Root cause: the Kubernetes `command` overrides were `/opt/abastevo-tools/api`
+and `/opt/abastevo-tools/worker`, backed by a read-only hostPath containing
+community source `8bc9e5ba` (migration chain 92). Updating the image to FQ-08
+(chain 95) did not replace those executed binaries. The image itself was
+correct; the mounted executables were incompatible with the migrated database.
+The worker also exited with `database schema is not compatible`.
+
+Only `abastevo-temp/deployment/abastevo-temp-api` was patched, guarded by its
+resourceVersion and expected container/image/command set. A private deployment
+backup is retained at `/opt/abastevo-temp/fq08-recovery-20261014/` outside Git.
+API/worker commands now select `/api` and `/worker`; image references are fixed
+to the already imported FQ-08 manifests:
+
+- API: `sha256:df0c44c915642ef860e1fa9a30d1f6535c4ee379d61d34ae8de6e0ae05564094`.
+- Worker: `sha256:5815c86e62aaade3d517248bd6e212ab55012f97fd102f222f8145f271bd125d`.
+
+The first rollout attempt could not resolve digest-only references because k3s
+had imported only `:temp` aliases. Registered the digest aliases for these two
+existing Abastevo images; no rebuild/pull or unrelated image changes. Private
+storage, all environment values, volumes, quotas and other namespaces remained
+unchanged. Provenance annotations now name actual source `91ff1f93` and schema95.
+
+Observed after recovery: pod `abastevo-temp-api-59fdd7477-cm8tb` 3/3 Running,
+zero restarts; GET `/health/ready` 200 `ready`; GET `/v1/stations?limit=1` 200;
+GET quality summary for a nonexistent synthetic station 404 `quality.not-found`
+(proves the current FQ-08 route executes). Worker starts and performs its existing
+privacy/evidence sweeps successfully. No schema check was relaxed or bypassed.
+
+Deployment regression rule: inspect effective commands, entrypoints and mounted
+executable provenance together. Image labels/digests alone never establish the
+running source. Register local digest references before selecting imported k3s
+images. A rollback binary must still support the applied append-only chain;
+restore the previous specification only with a compatible executable, never
+blindly return to the stale mounted binaries.
