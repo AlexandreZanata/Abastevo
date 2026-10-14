@@ -75,3 +75,46 @@ LOCAL_DONE / INTEGRATION_PENDING: replaced feed/station local fake supporter inc
 ## PRM20-T03 safety and recovery
 
 LOCAL_DONE / INTEGRATION_PENDING: full existing community/moderation/feedback real-PostGIS race campaign passed, covering auth/revocation, exact reversal, hidden/deleted visibility, operator authority/privacy, replay/concurrency, projection recovery and bounded safety isolation. New actual-process TestPublicProcessCommunityActions proves signed vote→flip→own-choice tally→remove→structured dispute without GPS (9.494s); original capture/rotation campaigns remain intact. Initially adding all extra calls to the rotation campaign exhausted its existing 60-challenge budget; isolated the independent social campaign instead of increasing the limit. New negative consensus cases preserve LOW without validated media, reject missing/distinct media misuse and retain blocked/moderation gates. RED zero-clock capture regression reproduced an attempted insert; GREEN explicitly refuses before station authorization/insertion. Affected application/domain race suites passed (1.015s/1.020s). No quota or privacy gate weakened.
+
+## PRM19-T03 durable source acceptance
+
+LOCAL_DONE / INTEGRATION_PENDING. Existing production outbox/WorkManager/receipt suites plus new capture state tests cover atomic reviewed subsets/stable IDs, saved capture deadlines, server received versus validation, retry/offline refusal, account/origin isolation, camera cancellation/permission delay, stale query/city/target results and actual address-only selection. Unsupported old/unknown fresh policy now has a distinct localized recoverable service message, with no GPS/developer fallback. All eight locale resources compile and lint. Room 12→13 was exercised against actual host SQLite; native migration and Compose suites compile but have NOT been executed. Device evidence remains OWED.
+
+## PRM21-T01 final source matrix — 2026-10-14
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested behavior revision: e2a58f25 (preceded by backend safety 6003ed56 and ASCII UUID correction 24fc6ee0); subsequent acceptance documentation does not change behavior. Base: integrated origin/dev=origin/main 68483db9. No new dependency. API/worker sources share this candidate; migrations 000091/000092 are tested locally, not deployed. Local Rust prepare_registry SHA-256: 7adf679ec353e1db13cbb8ae9fb2c3defde11f0affa611b1040ed4f02766914f. Android debug APK SHA-256: d52fb04ec883df3adbe443c481608858abebd67f1226fbf7e03656c242c1bd8c; unsigned release: cb6f60e7181e2b587e89853f4e840c47b8f879ad40e63aa7f28283a70d3b6e54. These local artifacts are not deployment/release certification.
+
+Requirement → tasks → meaningful acceptance:
+
+- CF01 optional coordinates/nominal address → PRM16/PRM17: Rust registry/join regressions, actual preparer→Go loader→reconciliation→anonymous HTTP, homonyms/stable UUID pagination, null-point profiles and actual SQLite address cache migration.
+- CF02/CF03 no initial GPS/150m admission/trust → PRM18/PRM19/PRM20-T01: signed normal capture with no claim/address-only station; claim forgery/owner/key/station/expiry refusal; actual API→private S3→worker validation; v1 replay and v2 no-point/near/far consensus parity, independent media/support and nongeometric risks retained.
+- CF04 normal nominal selection → PRM19: manual city, debounced query/generation cancellation, same-name address disambiguation, no developer flag; no GPS camera admission, changed target and late uncancellable responses refuse, camera permission/receipt deadline retained.
+- CF05/CF07 free community controls and unchanged security → PRM20: real signed helpfulness/query proof, exact flip/remove/tally, original-account dispatch/late-response guards, distinct confirmation/report commands, actual-process social campaign; full existing moderator/feedback/visibility/privacy/replay/concurrency/erasure suites and safety isolation remain green. No price weighting from likes or payment.
+- Legacy compatibility → PRM18/PRM19/PRM21: original v1/debug/v2 binding and immutable deadlines, unknown policy refusal/recoverable app state, append-only migration upgrade/replay/rollback. Existing quota and capacity limits unchanged.
+- CF06 future proximity → PRM15/PRM21: strict >90% reviewed national coverage plus product validation and new explicit authorization; no automatic toggle or measured coverage claim. PRM22 remains DEFERRED.
+
+Actual acceptance commands/results (disposable fixture environment described below):
+
+- `CARGO_TARGET_DIR=/tmp/prm-community-rust bash scripts/check-rust-fast.sh`: PASS format/clippy/locked tests; no subsequent Rust changes.
+- From backend with ANPFUEL_TEST_DATABASE_URL, private test-storage variables and ANPFUEL_TEST_PREPARER_PATH: `go test -race -count=1 -tags=integration ./internal/modules/directory/adapters/...`: PASS nine package summaries. New nominal prepared HTTP/regression selectors PASS separately. Full community/moderation/feedback adapters campaign: PASS eleven packages; capture migration/concurrency, signal migration rollback/replay and read/HTTP public-reference suites PASS as recorded at their task checkpoints.
+- `go test -race -count=1 -tags=integration ./cmd/api -run '^TestPublicProcess(IdentityAndSignedWrites|DevelopmentPhotoPreview)$'`: PASS final community policy (24.252s). `go test -race -count=1 -tags=integration ./cmd/api -run '^TestPublicProcessCommunityActions$'`: PASS (9.494s). Existing challenge quota retained after the test-composition failure described above.
+- `go test -race ./internal/modules/community/application ./internal/modules/community/domain`: PASS after zero-clock and negative consensus tests. `bash scripts/check-backend-fast.sh`: PASS final functional Go source; later changes only clarify two legacy/worker comments. Build/vet/unit/staticcheck/sqlc vet+drift/OpenAPI/secret checks pass; existing OpenAPI lint reports 329 warnings/91 informs and zero errors.
+- `govulncheck ./...`: no vulnerabilities found. `bash scripts/check-mobile.sh --static-only`: PASS.
+- With ANDROID_HOME and ANDROID_SDK_ROOT both /data/dev/android/sdk/Sdk: `./gradlew :domain:test :domain:jacocoTestCoverageVerification :application:test :data:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease :data:assembleDebugAndroidTest :app:assembleDebugAndroidTest --console=plain`: BUILD SUCCESSFUL (2m21s; 269 tasks). Domain 537/application 353/data 366/app 324 discovered; 1,580 total, 1,578 executed, zero failures/errors and two pre-existing explicit opt-in data tests skipped. Native APK compilation is not native execution. Lint zero errors; release APK unsigned.
+
+Coverage gate RED initially exposed 86.63% domain instructions, below the unchanged 90% requirement. Added meaningful nominal/feed/money/profile/owner-envelope negative cases, not exclusions or a reduced threshold. A new Unicode-digit UUID refusal test failed RED and demonstrated canonical identity validation accepted non-ASCII digits; fixed both station/draft UUID validators to ASCII hexadecimal. Final instruction coverage is 20,589 covered / 22,838 total = 90.1524%; actual jacocoTestCoverageVerification PASS. All domain cases reran after the fix. A first Android rerun used conflicting SDK environment paths; resolved by using the host's actual configured SDK, without project configuration changes.
+
+Disposable PostGIS/private MinIO project: prm-community-20261013 only; synthetic fixtures/loopback credentials were outside Git. No staging/provider/device records or contributor GPS/photos introduced. Raw machine logs remain local /tmp/prm-*; versioned source tests and these exact acceptance results are the durable evidence.
+
+## PRM21-T02 operational handoff
+
+Concrete server/worker/schema/Android ordering, incompatibility recovery, immutable-receipt rollback and explicit synthetic staging/device matrix are [prepared here](PRM_COMMUNITY_FIRST_ROLLOUT.md). Operational execution is OWED: no staging deployment, device install, live retention/provider/capacity observation or operator proof was performed for this batch. No G09/public pilot/commercial Premium/iOS completion is inferred.
+
+## PRM21-T03 source closure and publication handoff
+
+Source acceptance LOCAL_DONE / INTEGRATION_PENDING. PRM15–PRM20 source tasks and PRM21-T01/T03 are complete locally. PRM21-T02 is PREPARED / OPERATIONAL_ACCEPTANCE_OWED, not falsely marked complete. PRM22 is DEFERRED. Existing Premium/OneSignal/commercial obligations remain owned by their original plan/evidence; this free-community batch does not implement or accept them.
+
+The maintained dev checkout was occupied, so the isolated cumulative branch preserves its edits and all meaningful source commits. User authorized pushing this batch and opening its PR to main; no merge/deployment/wiki authorized here. Required remote Quick verification and current head/base review still gate integration; no CI polling/wait is part of construction. Wiki mirrors only after a separately authorized actual merge. Final document-link/task inventory, diff/secret review and current-main reconciliation are recorded by the closure commit and PR metadata.

@@ -1,6 +1,6 @@
 # Premium delivery plan — complete backend, minimal Android UI
 
-State: **BOUNDED CONSTRUCTION AUTHORIZATIONS + PLANNING AMENDMENTS**, 2026-10-13. Current acceptance: **first ten source microtasks LOCAL_DONE / INTEGRATION_PENDING**, [PR #131](https://github.com/AlexandreZanata/Abastevo/pull/131), [execution evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); later task checkpoints are recorded individually below. Original planning provenance is retained. Requested Premium scope: optional cloud services plus individual professional tools in one offering. The original scope defines 62 microtasks in 11 phases; OneSignal adds 17 in PRM11–PRM14. The community-first planning amendment adds 24 in PRM15–PRM22: **103 tasks in 23 phases**, including three explicitly DEFERRED future tasks. These free-community phases share this execution plan for handoff, never Premium entitlement. The [product contract](../product/PREMIUM_PRODUCT_CONTRACT.md) owns B-BR-PR01–PR25, BUC-PR01–PR07 and D-PR01–D-PR05. Existing [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) remains the commercial parent; free-community work refines P14/P16/P37 and the Rust/Directory plans.
+State: **BOUNDED CONSTRUCTION AUTHORIZATIONS + PLANNING AMENDMENTS**, updated 2026-10-14. Community-first PRM15–PRM20 source LOCAL_DONE / INTEGRATION_PENDING; PRM21-T01/T03 local acceptance/handoff complete, T02 rollout prepared with staging/device proof OWED. [Community-first execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Current acceptance: **first ten source microtasks LOCAL_DONE / INTEGRATION_PENDING**, [PR #131](https://github.com/AlexandreZanata/Abastevo/pull/131), [execution evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); later task checkpoints are recorded individually below. Original planning provenance is retained. Requested Premium scope: optional cloud services plus individual professional tools in one offering. The original scope defines 62 microtasks in 11 phases; OneSignal adds 17 in PRM11–PRM14. The community-first planning amendment adds 24 in PRM15–PRM22: **103 tasks in 23 phases**, including three explicitly DEFERRED future tasks. These free-community phases share this execution plan for handoff, never Premium entitlement. The [product contract](../product/PREMIUM_PRODUCT_CONTRACT.md) owns B-BR-PR01–PR25, BUC-PR01–PR07 and D-PR01–D-PR05. Existing [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) remains the commercial parent; free-community work refines P14/P16/P37 and the Rust/Directory plans.
 
 ## Authorization, ordering and readiness
 
@@ -707,9 +707,11 @@ State: PLANNED / NOT STARTED. Entry: PRM12/PRM13 and appropriate future end-batc
 
 ## PRM15 — Community-first contracts and transition (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: explicit future implementation request for this track and reconciled current source. Exit: versioned initial policy and compatibility matrix. Validation: DOC + BE contract tests where fixtures change.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry satisfied by the explicit implementation request and reconciled dev/main 68483db9. Exit: versioned initial policy and compatibility matrix. Validation: DOC + BE contract tests where fixtures change.
 
 ### PRM15-T01 — Freeze the initial address-first/no-proximity contract
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** B-BR-CF01–CF07; BUC-CF01–05; current P14/P16/P37, SEC08 and Rust/Directory ownership.
 - **Outcome/areas:** record an ADR and reconcile active product, PHOTO_CAPTURE_CONTRACT, OpenAPI, PHOTO_PRICE_CONTRIBUTION_PLAN, ANDROID_VPS_PLAN, Rust plan/prompt, community safety/offline plans and ROADMAP. Separate camera eligibility, contribution acceptance, source validation and physical presence. Preserve historical 150m evidence as historical.
@@ -718,12 +720,16 @@ State: PLANNED / NOT STARTED. Entry: explicit future implementation request for 
 
 ### PRM15-T02 — Version receipts, API compatibility and durable drafts
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; CF02/03/07; BUC-CF02/04.
 - **Outcome/areas:** freeze a normal community-first capture policy version distinct from both photo-capture-v1 and photo-capture-ui-test-v1; specify optional location fields, absent-coordinate DTOs and old/new app/API compatibility. Keep existing deadlines and owner/key/station/evidence binding; legacy receipts retain their original policy/expiry, without renewal or reinterpretation.
 - **Tests first:** old client still locally blocks camera, new client against old server, unknown policy, replay across rollout, legacy outbox expiry, account/origin/key switch and developer preview attempting normal trust.
 - **Acceptance/recovery:** exact supported combinations, stable error/recovery copy and server-first rollout order documented. Old clients needing an update remain explicitly limited; no promise that a server update alone repairs their UI. Pause rollout on incompatibility without erasing drafts or extending expiry.
 
 ### PRM15-T03 — Freeze community validation and future coverage evidence
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T01/T02; CF03/05/06; BUC-CF03/05.
 - **Outcome/areas:** inspect existing price confirmations/disputes, confidence and helpfulness; freeze the tested no-proximity consensus/moderation behavior and anti-abuse bounds before PRM20. Define national active-station denominator, verified-coordinate numerator, snapshot date, evidence provenance/deduplication, quality audit and product-validation evidence owner for PRM22.
@@ -732,9 +738,11 @@ State: PLANNED / NOT STARTED. Entry: explicit future implementation request for 
 
 ## PRM16 — Rust ingestion with optional coordinates (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM15 contracts. Exit: bounded versioned preparation output accepts valid identity/address without coordinates. Validation: DOC + relevant Rust unit/integration/format/clippy checks using existing scripts.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM15 contracts. Exit: bounded versioned preparation output accepts valid identity/address without coordinates. Validation: DOC + relevant Rust unit/integration/format/clippy checks using existing scripts.
 
 ### PRM16-T01 — Pin address-only source and wire fixtures
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM15; CF01; BUC-CF01; existing RST source/header/manifest contracts.
 - **Outcome/areas:** audit tools/station-prep registry/PMQC/join/output types and contracts/testdata/station-prep; add synthetic cases for absent/null/blank coordinates, nominal address and municipality/UF, exact CNPJ and optional valid enrichment. Coordinate-less registry rows may already work: preserve demonstrated support and fix only actual gaps.
@@ -743,12 +751,16 @@ State: PLANNED / NOT STARTED. Entry: PRM15 contracts. Exit: bounded versioned pr
 
 ### PRM16-T02 — Implement optional enrichment without blocking catalog rows
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; CF01/03; frozen schema version.
 - **Outcome/areas:** adjust only necessary Rust validation/join/serialization so coordinate absence or rejected optional enrichment cannot drop a valid identity/address row. Preserve source provenance, quarantine diagnostics, row accounting, deterministic manifests and complete-run publication fencing.
 - **Tests first:** all T01 cases, failed/incomplete enrichment batch, bounded streaming/replay, output determinism and old-consumer compatibility.
 - **Acceptance/recovery:** absent points remain absent/unknown; zero/centroid never becomes precise. Coordinates that are supplied remain validated. No new geocoder, nationwide fetch or dependency without recorded need/review; reject incompatible artifacts before publication.
 
 ### PRM16-T03 — Prove Rust-to-Go address-only ingestion parity
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T02; current Directory staging adapter and RST replay harness.
 - **Outcome/areas:** versioned synthetic prepared artifacts feed existing Go staging/reconciliation on disposable real PostGIS. Pin exact source IDs, address fields, absent points and reprocessing/enrichment behavior.
@@ -757,9 +769,11 @@ State: PLANNED / NOT STARTED. Entry: PRM15 contracts. Exit: bounded versioned pr
 
 ## PRM17 — Go Directory publication and nominal search (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM15 and compatible PRM16 artifacts. Exit: address-only stations are published, searchable and selectable. Validation: BE/DB and OpenAPI contract checks.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM15 and compatible PRM16 artifacts. Exit: address-only stations are published, searchable and selectable. Validation: BE/DB and OpenAPI contract checks.
 
 ### PRM17-T01 — Preserve address-only stations in canonical reads
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM16-T02; CF01/03; Directory source lifecycle contracts.
 - **Outcome/areas:** audit canonical schema/reconciliation, search/detail/profile DTOs and consumer filters for required points; change only actual gaps. Add append-only migrations only if necessary; emit optional coordinates and honest location quality.
@@ -768,12 +782,16 @@ State: PLANNED / NOT STARTED. Entry: PRM15 and compatible PRM16 artifacts. Exit:
 
 ### PRM17-T02 — Harden bounded name search and disambiguation
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; CF04; existing Directory query bounds/indexes.
 - **Outcome/areas:** reuse/extend existing city-scoped nominal search with station name, address, municipality/UF and supported identity disambiguators, stable UUID/pagination and documented normalization. No second search service.
 - **Tests first:** accents/case, homonyms, empty/short/oversize input, cursor ties, SQL injection, address-only results, no GPS, sparse/dense cities and real EXPLAIN/query-count limits.
 - **Acceptance/recovery:** bounded parametrized search needs no coordinates, development flag or write account; same query/page is deterministic. Preserve measured bounds and clear empty/retry behavior without full-catalog scans on each keystroke.
 
 ### PRM17-T03 — Prove actual API search-to-selection contracts
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T02; PRM16-T03 cross-stack exit; BUC-CF01/02.
 - **Outcome/areas:** real HTTP/SQL registry→name search→detail→canonical selection campaign; Kotlin wire fixtures represent absent coordinates. Record selectors and consumer guidance before Android work.
@@ -782,9 +800,11 @@ State: PLANNED / NOT STARTED. Entry: PRM15 and compatible PRM16 artifacts. Exit:
 
 ## PRM18 — Backend capture and intake without a 150m barrier (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM15 and PRM17 accepted contracts. Exit: normal signed no-GPS capture/intake works without proximity-based trust. Validation: BE/DB; OBJ for affected media paths, immediate auth/privacy/replay/concurrency checks.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM15 and PRM17 accepted contracts. Exit: normal signed no-GPS capture/intake works without proximity-based trust. Validation: BE/DB; OBJ for affected media paths, immediate auth/privacy/replay/concurrency checks.
 
 ### PRM18-T01 — Issue normal community-first capture receipts
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM15-T02; PRM17; CF02/03/07.
 - **Outcome/areas:** community/application/photo_capture.go, HTTP contracts and existing store: normal policy uses canonical station existence/eligibility and signed account/quota/idempotency checks without CheckPhotoCaptureLocation as admission. Do not reuse DevelopmentPreview or its secret/deadline/allowlist.
@@ -793,12 +813,16 @@ State: PLANNED / NOT STARTED. Entry: PRM15 and PRM17 accepted contracts. Exit: n
 
 ### PRM18-T02 — Carry the policy through upload, submit and retry
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; CF02/03/07; BUC-CF02/04.
 - **Outcome/areas:** ValidatePhotoCaptureUse, reservation/evidence binding, submit_location, batch/subset intake and durable retries: honor the new version end to end, omit proximity weight, preserve all other price/media/source/account rules. Optional forged claims still fail their documented integrity checks; absence is not forgery.
 - **Tests first:** missing coordinates, far valid optional claim, forged VERIFIED, changed station/owner/key/body, expired/unknown policy, stolen evidence, response loss, late retry, concurrent subsets/consumption and retention/intake outage.
 - **Acceptance/recovery:** no hidden 150m/precise-station/teleport eligibility barrier survives in this policy; legitimate catalog-based distant submissions are not rejected merely as travel. No absent-location HIGH/NEAR promotion, new TTL or intake-budget bypass. Legacy receipts follow PRM15 compatibility, not silent conversion.
 
 ### PRM18-T03 — Prove signed backend no-proximity journeys
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T01/T02; PRM17-T03; BUC-CF01/02/04.
 - **Outcome/areas:** actual API/worker/PostGIS/private-object campaign: address-only station→signed receipt→bounded upload→reviewed fuel subset→observation/status/retry/expiry. Update backend contract/evidence and remove stale initial-policy assumptions.
@@ -807,9 +831,11 @@ State: PLANNED / NOT STARTED. Entry: PRM15 and PRM17 accepted contracts. Exit: n
 
 ## PRM19 — Normal Android nominal search and capture (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM17/PRM18 backend contracts pass; PRM20 backend changes pass before dependent DTO consumers. Exit: normal release-capable journey works without GPS/developer mode. Validation: ANDROID + actual backend contract checks; native rows at authorized end batch.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM17/PRM18 backend contracts pass; PRM20 backend changes pass before dependent DTO consumers. Exit: normal release-capable journey works without GPS/developer mode. Validation: ANDROID + actual backend contract checks; native rows at authorized end batch.
 
 ### PRM19-T01 — Expose station-name selection in normal capture
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM17-T03; CF04; BUC-CF01/02.
 - **Outcome/areas:** CaptureOcrViewModel/CaptureScreen and existing Directory gateway: adapt the developer search experience into normal UI with manual city/UF, bounded debounced/cancellable query, station name/address and explicit selection. Do not enable developer auth/test-station bypass or recreate the removed standalone Buscar page.
@@ -818,12 +844,16 @@ State: PLANNED / NOT STARTED. Entry: PRM17/PRM18 backend contracts pass; PRM20 b
 
 ### PRM19-T02 — Remove client proximity admission from capture/review
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; PRM18; CF02/03/07.
 - **Outcome/areas:** application capture eligibility ports, receipt adapter, CaptureOcrViewModel and permission/copy paths: normal capture uses the new server policy and selected station, without 150m/local fix/reviewed-point precondition. Preserve OCR/crop/manual review/subsets and existing camera permission, outbox and owner-scoped persistence.
 - **Tests first:** no GPS permission/location services, station without point, >150m, old backend/policy, camera denied/cancelled, changed station mid-OCR, process death, exact retry and account/origin switch.
 - **Acceptance/recovery:** no compulsory location prompt or proximity error in the initial capture journey; no developer-only flag enables it. Submission still requires explicit review and signed receipt; receipt expiry remains visible and is not renewed by queueing.
 
 ### PRM19-T03 — Prove release-path durable contribution and clear states
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T02; backend moderation DTOs if changed; BUC-CF02–04.
 - **Outcome/areas:** production-path configuration tests plus Room/WorkManager/Compose tests for select→camera/OCR→review→queue→receipt→pending/validated/moderated outcomes; supported localized strings/accessibility and existing design system.
@@ -832,9 +862,11 @@ State: PLANNED / NOT STARTED. Entry: PRM17/PRM18 backend contracts pass; PRM20 b
 
 ## PRM20 — Community validation, feedback and moderation (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM15-T03 frozen policy and PRM18 backend. Exit: usable free community validation/moderation without GPS weighting. Validation: BE/DB and affected ANDROID; immediate abuse/auth/concurrency/privacy cases.
+State: SOURCE_LOCAL_DONE / INTEGRATION_PENDING. Actual commands/results and runtime limits: [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM15-T03 frozen policy and PRM18 backend. Exit: usable free community validation/moderation without GPS weighting. Validation: BE/DB and affected ANDROID; immediate abuse/auth/concurrency/privacy cases.
 
 ### PRM20-T01 — Apply community price validation without proximity weight
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM15-T03; PRM18; CF03/05; BUC-CF03.
 - **Outcome/areas:** existing community consensus/projections and confirmation/dispute commands: remove initial-policy proximity weighting/eligibility dependencies and apply the frozen independent-evidence rules. Recompute affected projections/jobs idempotently where policy inputs change, preserving official/community separation and existing expiry.
@@ -843,12 +875,16 @@ State: PLANNED / NOT STARTED. Entry: PRM15-T03 frozen policy and PRM18 backend. 
 
 ### PRM20-T02 — Complete free helpfulness, reports and moderator outcomes
 
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
+
 - **Dependencies/rules:** T01; existing helpfulness/report/moderation contracts; CF05/07.
 - **Outcome/areas:** reuse/finish helpful/not-helpful change/remove counts, own-vote state, report reasons and existing authorized moderation queue/status. Expose existing Android controls and actual backend outcomes; freeze any missing moderation authority/action contract before implementation.
 - **Tests first:** self-vote/duplicate/foreign mutation, account/key farm, report flood/collusion, hidden/deleted contribution, concurrent tally/reversal, unauthorized moderator and late account response.
 - **Acceptance/recovery:** likes/dislikes and reports are available without proximity or payment; abuse cannot directly rewrite prices or grant moderator authority. Tallies remain exact; moderator reasons/status are auditable without exposing reporters. Failed actions have bounded retry and truthful status.
 
 ### PRM20-T03 — Prove moderation recovery, visibility and abuse bounds
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T01/T02; BUC-CF03; existing CS/SEC budgets.
 - **Outcome/areas:** signed HTTP/SQL and affected app campaign for contribute→confirm/dispute→vote/report→authorized review→hide/restore/recompute, with existing quota/metrics/job capacity bounds and privacy erasure.
@@ -857,9 +893,11 @@ State: PLANNED / NOT STARTED. Entry: PRM15-T03 frozen policy and PRM18 backend. 
 
 ## PRM21 — Initial-policy integrated acceptance and handoff (3 tasks)
 
-State: PLANNED / NOT STARTED. Entry: PRM15–PRM20 tested local checkpoints. Exit: scoped source acceptance, separately recorded device/staging/integration status. Validation: affected union once under CI_PLAN/ADR-018; no redundant full aggregate run before finish.
+State: LOCAL_ACCEPTANCE_DONE / INTEGRATION_PENDING; PRM21-T02 operational execution OWED. [Execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Entry: PRM15–PRM20 tested local checkpoints. Exit: scoped source acceptance, separately recorded device/staging/integration status. Validation: affected union once under CI_PLAN/ADR-018; no redundant full aggregate run before finish.
 
 ### PRM21-T01 — Cross-stack regression and compatibility matrix
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** PRM15–PRM20; BUC-CF01–04; all CF rules except future activation.
 - **Outcome/areas:** pin Rust/Go/API/worker/schema/APK/policy revisions and execute address-only import/search/capture/submit/moderation/offline-retry matrix; update active contracts and task evidence with exact commands/results.
@@ -868,12 +906,16 @@ State: PLANNED / NOT STARTED. Entry: PRM15–PRM20 tested local checkpoints. Exi
 
 ### PRM21-T02 — Scoped staging/device and operational rollout evidence
 
+Status: ROLLOUT_PREPARED / DEVICE_STAGING_OWED; see [rehearsal and rollback](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST_ROLLOUT.md).
+
 - **Dependencies/rules:** T01; separate actual device/VPS authorization and current staging prerequisites.
 - **Outcome/areas:** prepare/review concrete rollout/rollback first, then when authorized prove normal app name search and no-GPS capture against staging origin https://teste.abastevo.com.br with synthetic owned records. Verify live media admission/retention and moderation availability separately from source tests.
 - **Tests first:** denied location, distant selection, no coordinates, camera/offline/restart, old-client compatibility, backend outage and policy rollback without changing legacy deadlines or deleting drafts.
 - **Acceptance/recovery:** actual configured policy/build and observed device/API states recorded; missing provider/intake capacity/retention/device evidence leaves operational acceptance pending. No deployment or data mutation is authorized merely by this plan, no public pilot/G09 certification inferred.
 
 ### PRM21-T03 — Pin initial-policy completion and future obligations
+
+Status: LOCAL_DONE / INTEGRATION_PENDING; see [tested source evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md).
 
 - **Dependencies/rules:** T01 and truthful T02 outcome; separately authorized protected batch delivery.
 - **Outcome/areas:** requirement→task→test matrix, tested revision, LOCAL_DONE/INTEGRATION_PENDING versus INTEGRATED/WIKI_PENDING, remaining operational rows and PRM22 DEFERRED. Maintain concise PROGRESS and final protected dev→main handoff; mirror merged docs only under publication scope.

@@ -1,5 +1,7 @@
 # Community-first PRM implementation handoff
 
+Continuation 2026-10-14: the subsequent explicit request authorized source implementation and GitHub PR. PRM15–PRM20 and PRM21 local source acceptance are recorded in [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md); staging/device execution remains OWED and PRM22 DEFERRED. The original planning-only record below is historical, not the current execution state.
+
 State: PLANNED / NOT STARTED, 2026-10-13. This is a reusable prompt for the next agent after an explicit implementation request. The originating request authorized writing the plan, not executing these tasks, deploying, publishing or activating a policy. Canonical tasks/rules: [Premium/shared execution plan, PRM15–PRM22](PREMIUM_BACKEND_APP_PLAN.md#2026-10-13-community-first-planning-amendment--prm15prm22). [Planning validation](PRM_COMMUNITY_FIRST_VALIDATION.md) distinguishes inspected source from future acceptance.
 
 ## Prompt to use for an explicitly authorized implementation batch
