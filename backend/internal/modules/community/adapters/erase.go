@@ -85,7 +85,7 @@ func (s *Store) EraseContributor(ctx context.Context, ref, anon string, enqueue 
 	}
 	unlinkedVotes = conf + disp
 	for _, k := range order {
-		if err := enqueue(ctx, tx, "community-consensus", consensusPayload(k.observation), "consensus:"+k.observation); err != nil {
+		if err := enqueue(ctx, tx, "community-consensus", consensusPayload(k.observation), "consensus:erase:"+anon+":"+k.observation); err != nil {
 			return 0, 0, 0, err
 		}
 	}

@@ -51,7 +51,8 @@ const getObservation = `-- name: GetObservation :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE id = $1
 `
@@ -76,6 +77,8 @@ type GetObservationRow struct {
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
 	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+	Hidden             bool               `json:"hidden"`
+	Deleted            bool               `json:"deleted"`
 }
 
 func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (GetObservationRow, error) {
@@ -101,6 +104,8 @@ func (q *Queries) GetObservation(ctx context.Context, id pgtype.UUID) (GetObserv
 		&i.LocationProximity,
 		&i.LocationReason,
 		&i.PhotoCaptureID,
+		&i.Hidden,
+		&i.Deleted,
 	)
 	return i, err
 }
@@ -109,7 +114,8 @@ const getObservationByNaturalKey = `-- name: GetObservationByNaturalKey :one
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE contributor_ref = $1 AND client_submission_id = $2
 `
@@ -139,6 +145,8 @@ type GetObservationByNaturalKeyRow struct {
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
 	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+	Hidden             bool               `json:"hidden"`
+	Deleted            bool               `json:"deleted"`
 }
 
 func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObservationByNaturalKeyParams) (GetObservationByNaturalKeyRow, error) {
@@ -164,6 +172,8 @@ func (q *Queries) GetObservationByNaturalKey(ctx context.Context, arg GetObserva
 		&i.LocationProximity,
 		&i.LocationReason,
 		&i.PhotoCaptureID,
+		&i.Hidden,
+		&i.Deleted,
 	)
 	return i, err
 }
@@ -263,7 +273,8 @@ const listByContributor = `-- name: ListByContributor :many
 SELECT id, contributor_ref, client_submission_id, station_id, fuel_product,
     unit, amount_milli_brl, raw_price_text, condition_kind, qualifier_key,
     evidence_id, received_at, claimed_captured_at, supersedes_id, policy_version,
-    location_verdict, location_proximity, location_reason, photo_capture_id
+    location_verdict, location_proximity, location_reason, photo_capture_id,
+    (hidden_at IS NOT NULL)::boolean AS hidden, (deleted_at IS NOT NULL)::boolean AS deleted
 FROM community_observations
 WHERE contributor_ref = $1
     AND ($2::boolean = FALSE OR
@@ -300,6 +311,8 @@ type ListByContributorRow struct {
 	LocationProximity  pgtype.Text        `json:"location_proximity"`
 	LocationReason     pgtype.Text        `json:"location_reason"`
 	PhotoCaptureID     pgtype.UUID        `json:"photo_capture_id"`
+	Hidden             bool               `json:"hidden"`
+	Deleted            bool               `json:"deleted"`
 }
 
 func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorParams) ([]ListByContributorRow, error) {
@@ -337,6 +350,8 @@ func (q *Queries) ListByContributor(ctx context.Context, arg ListByContributorPa
 			&i.LocationProximity,
 			&i.LocationReason,
 			&i.PhotoCaptureID,
+			&i.Hidden,
+			&i.Deleted,
 		); err != nil {
 			return nil, err
 		}
@@ -385,6 +400,39 @@ func (q *Queries) ListDecisions(ctx context.Context, observationID pgtype.UUID) 
 	return items, nil
 }
 
+const lockObservationTarget = `-- name: LockObservationTarget :one
+SELECT o.id, o.contributor_ref, o.received_at, o.hidden_at, o.deleted_at,
+ COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1),'')::text AS state,
+ COALESCE((SELECT MAX(d.sequence) FROM community_observation_decisions d WHERE d.observation_id=o.id),0)::bigint AS sequence
+FROM community_observations o WHERE o.id = $1 FOR UPDATE
+`
+
+type LockObservationTargetRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	ContributorRef string             `json:"contributor_ref"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+	HiddenAt       pgtype.Timestamptz `json:"hidden_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	State          string             `json:"state"`
+	Sequence       int64              `json:"sequence"`
+}
+
+// Serialize visibility-sensitive writes with erasure/moderation and decisions.
+func (q *Queries) LockObservationTarget(ctx context.Context, id pgtype.UUID) (LockObservationTargetRow, error) {
+	row := q.db.QueryRow(ctx, lockObservationTarget, id)
+	var i LockObservationTargetRow
+	err := row.Scan(
+		&i.ID,
+		&i.ContributorRef,
+		&i.ReceivedAt,
+		&i.HiddenAt,
+		&i.DeletedAt,
+		&i.State,
+		&i.Sequence,
+	)
+	return i, err
+}
+
 const oldestObservation = `-- name: OldestObservation :one
 
 SELECT received_at
@@ -402,6 +450,38 @@ func (q *Queries) OldestObservation(ctx context.Context) (pgtype.Timestamptz, er
 	var received_at pgtype.Timestamptz
 	err := row.Scan(&received_at)
 	return received_at, err
+}
+
+const readObservationTarget = `-- name: ReadObservationTarget :one
+SELECT o.id, o.contributor_ref, o.received_at, o.hidden_at, o.deleted_at,
+ COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=o.id ORDER BY d.sequence DESC LIMIT 1),'')::text AS state,
+ COALESCE((SELECT MAX(d.sequence) FROM community_observation_decisions d WHERE d.observation_id=o.id),0)::bigint AS sequence
+FROM community_observations o WHERE o.id = $1
+`
+
+type ReadObservationTargetRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	ContributorRef string             `json:"contributor_ref"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+	HiddenAt       pgtype.Timestamptz `json:"hidden_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	State          string             `json:"state"`
+	Sequence       int64              `json:"sequence"`
+}
+
+func (q *Queries) ReadObservationTarget(ctx context.Context, id pgtype.UUID) (ReadObservationTargetRow, error) {
+	row := q.db.QueryRow(ctx, readObservationTarget, id)
+	var i ReadObservationTargetRow
+	err := row.Scan(
+		&i.ID,
+		&i.ContributorRef,
+		&i.ReceivedAt,
+		&i.HiddenAt,
+		&i.DeletedAt,
+		&i.State,
+		&i.Sequence,
+	)
+	return i, err
 }
 
 const unlinkConfirmations = `-- name: UnlinkConfirmations :execrows

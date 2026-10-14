@@ -101,6 +101,8 @@ type Params struct {
 // bands (P16-T03B); empty means no location evidence was supplied.
 // Coordinates never live here: only bands persist.
 type Observation struct {
+	Hidden             bool `json:"-"`
+	Deleted            bool `json:"-"`
 	ID                 string
 	ContributorRef     string
 	ClientSubmissionID string

@@ -156,3 +156,25 @@ fn no_joined_row_promotes_location() {
         assert_eq!(row.original_crs, "EPSG:4674");
     }
 }
+
+#[test]
+fn rejected_optional_points_do_not_remove_registry_identity_or_address() {
+    let table = AliasTable::from_json(&text("ibge-mapping-sample.json")).unwrap();
+    let registry = parse_registry(REGISTRY, bytes(REGISTRY), &Limits::default(), &table).unwrap();
+    let before: Vec<_> = registry.accepted.iter().map(|r| r.to_jsonl()).collect();
+    let pmqc = parse_pmqc(
+        "pmqc-sample.csv",
+        bytes("pmqc-sample.csv"),
+        &Limits::default(),
+    )
+    .unwrap();
+    assert!(pmqc.counts.quarantined > 0);
+    let _candidates = join_candidates(&registry.accepted, &pmqc.candidates);
+    let after: Vec<_> = registry.accepted.iter().map(|r| r.to_jsonl()).collect();
+    assert_eq!(before, after);
+    assert_eq!(after.len(), 8);
+    assert!(registry
+        .accepted
+        .iter()
+        .all(|r| r.latitude.is_none() && r.longitude.is_none()));
+}

@@ -1,5 +1,7 @@
 # Android-first VPS integration plan
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 State: PLANNED / LOCAL_ONLY, 2026-10-05. [ADR-019](../adr/019-android-vps-integration-first.md) owns sequencing; [ADR-018](../adr/018-project-batch-delivery.md) owns rapid delivery. This batch edits plans only. No app/backend runtime change, issue creation, VPS write/deploy, fixture seeding, GitHub publication or pilot occurs here.
 
 ## Goal and current evidence

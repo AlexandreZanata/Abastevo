@@ -135,3 +135,30 @@ func TestCurrentPriceServesIndexedRow(t *testing.T) {
 		t.Error("malformed station accepted")
 	}
 }
+
+func TestStationPricesBatchIncludesCommunityOnlyAndRetainsExpiryWithoutANP(t *testing.T) {
+	r, pool, id := freshReader(t)
+	ctx := context.Background()
+	seedProjection(t, pool, id)
+	if _, err := pool.Exec(ctx, `INSERT INTO community_current_prices(station_id,fuel_product,unit,condition_kind,qualifier_key,amount_milli_brl,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version) SELECT station_id,'ETHANOL',unit,condition_kind,qualifier_key,4321,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version FROM community_current_prices WHERE station_id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := r.StationPrices(ctx, id, "")
+	if err != nil || len(rows) != 2 || rows[0].Product != "ETHANOL" || rows[0].View.AmountMilliBrl != 4321 {
+		t.Fatalf("batch %+v %v", rows, err)
+	}
+	rows, err = r.StationPrices(ctx, id, "GASOLINE_REGULAR")
+	if err != nil || len(rows) != 1 || rows[0].Product != "GASOLINE_REGULAR" {
+		t.Fatalf("filter %+v %v", rows, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE community_current_prices SET expires_at=now()-interval '1 minute' WHERE station_id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	rows, err = r.StationPrices(ctx, id, "")
+	if err != nil || len(rows) != 2 || rows[0].View.HasAmount || rows[1].View.Availability != "UNKNOWN" {
+		t.Fatalf("expired batch %+v %v", rows, err)
+	}
+	if _, err = r.StationPrices(ctx, "invalid", ""); err == nil {
+		t.Fatal("invalid identity accepted")
+	}
+}

@@ -483,3 +483,43 @@ func TestSearchBatchRejectsIncompleteAndPreparedOfficialAnchors(t *testing.T) {
 		t.Fatal("fixture station missing")
 	}
 }
+
+func TestCommunityFirstNominalSearchDisambiguatesAddressOnlyStations(t *testing.T) {
+	pool := freshPool(t)
+	ctx := context.Background()
+	repo := parent.NewRepository(pool)
+	ids := map[string]bool{}
+	for i, cnpj := range []string{"04218406000104", "11222333000181"} {
+		station, err := repo.ResolveCNPJ(ctx, cnpj, "Posto Comunidade", map[string]string{"street": "Synthetic Street", "number": fmt.Sprint(i + 1)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[station.ID] = true
+		if _, err := pool.Exec(ctx, `UPDATE directory_stations SET municipality_code='3550308', state='SP' WHERE id=$1`, station.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reader := NewReader(pool)
+	filter, err := application.ValidateSearch("SP", "3550308", "comunidade", 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, cursor, err := reader.Search(ctx, filter)
+	if err != nil || len(first) != 1 || cursor == "" {
+		t.Fatalf("first page %+v %q %v", first, cursor, err)
+	}
+	filter.AfterID = cursor
+	second, _, err := reader.Search(ctx, filter)
+	if err != nil || len(second) != 1 || first[0].ID == second[0].ID {
+		t.Fatalf("second page %+v %v", second, err)
+	}
+	for _, station := range append(first, second...) {
+		detail, err := reader.Detail(ctx, station.ID)
+		if err != nil || !ids[detail.ID] || detail.Coordinates != nil || detail.LocationQuality != "unknown" {
+			t.Fatalf("detail %+v %v", detail, err)
+		}
+		if detail.Address["number"] != station.Address["number"] || detail.Address["number"] == nil {
+			t.Fatalf("address not preserved: %+v %+v", detail, station)
+		}
+	}
+}

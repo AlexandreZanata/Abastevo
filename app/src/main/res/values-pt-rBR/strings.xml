@@ -728,7 +728,7 @@
     <string name="station_page_report_other">Outro conteúdo inadequado</string>
     <string name="station_page_report_send">Enviar denúncia</string>
     <string name="station_page_report_received">Denúncia recebida para análise.</string>
-    <string name="capture_authorization_required">Fique a até 150 metros deste posto, permita a localização precisa e verifique sua conexão. Depois tente novamente.</string>
+    <string name="capture_authorization_required">Selecione o posto e verifique a conexão. Entre novamente se necessário e tente outra vez.</string>
     <string name="capture_recognizing">Lendo os preços da foto…</string>
     <string name="capture_reanalyze">Ler esta foto novamente</string>
     <string name="capture_add_fuel">Adicionar combustível</string>
@@ -740,15 +740,6 @@
     <string name="capture_retake">Tirar outra foto</string>
     <string name="capture_saving">Salvando os preços revisados…</string>
     <string name="capture_retry_guidance">Confira a foto, o posto e sua conta; se necessário, tire outra foto.</string>
-    <string name="developer_capture_title">Modo desenvolvedor temporário</string>
-    <string name="developer_capture_notice">Apenas no servidor de testes: sem proximidade e com fotos da galeria. Os envios ficam identificados como teste; a permissão do servidor expira automaticamente.</string>
-    <string name="developer_capture_city">Cidade: %1$s · %2$s</string>
-    <string name="developer_capture_city_missing">Escolha sua cidade manualmente no Início e abra esta tela novamente.</string>
-    <string name="developer_capture_station">Nome do posto</string>
-    <string name="developer_capture_gallery">Escolher da galeria</string>
-    <string name="developer_capture_search_failed">Não foi possível buscar postos. Confira a conexão e tente novamente.</string>
-    <string name="developer_capture_no_station">Nenhum posto com esse nome nesta cidade. Tente outro nome.</string>
-    <string name="developer_capture_change_station">Trocar de posto</string>
     <string name="fuel_product_gasoline_premium_grade">Gasolina premium</string>
 
     <!-- Community helpfulness and optional training consent -->
@@ -802,4 +793,26 @@
     <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
     <string name="stations_list_summary">Resumo da lista</string>
     <string name="stations_summary_order">Ordenação: %1$s</string>
+    <string name="capture_choose_city">Escolher cidade</string>
+    <string name="capture_change_station">Trocar posto</string>
+    <string name="capture_station_name">Nome do posto</string>
+    <string name="capture_search_failed">Não foi possível buscar os postos. Verifique a conexão e tente novamente.</string>
+    <string name="capture_search_empty">Nenhum posto encontrado.</string>
+    <string name="community_action_unavailable">Ações indisponíveis para esta revisão do preço.</string>
+    <string name="community_confirm_price">Confirmar este preço</string>
+    <string name="community_action_received">Ação recebida pelo serviço da comunidade.</string>
+    <string name="community_report_price_changed">O preço mudou</string>
+    <string name="community_report_wrong_station">Posto incorreto</string>
+    <string name="community_report_wrong_product">Combustível incorreto</string>
+    <string name="community_report_wrong_condition">Condição de preço incorreta</string>
+    <string name="community_report_evidence">A foto não corresponde</string>
+    <string name="community_report_other">Outro problema</string>
+    <string name="capture_policy_unavailable">As contribuições estão temporariamente indisponíveis nesta versão do serviço. Tente novamente mais tarde.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Comunidade</string>
+    <string name="home_community_prices_title">Preços da comunidade</string>
+    <string name="home_community_empty">Sem preços comunitários atuais</string>
+    <string name="home_community_empty_hint">Contribua com um preço para iniciar a comparação na sua cidade.</string>
+    <string name="home_community_unavailable">Preços da comunidade indisponíveis no momento. Tente novamente.</string>
+    <string name="home_community_updated">Comunidade · atualizado em %1$s</string>
 </resources>

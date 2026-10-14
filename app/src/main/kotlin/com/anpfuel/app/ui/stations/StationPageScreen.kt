@@ -156,7 +156,7 @@ internal fun StationPageContent(
                     } else {
                         val community = state.communityItem
                         if (community != null) {
-                            StationCommunityPrice(community)
+                            StationCommunityPrice(community,onSignIn)
                         } else {
                             Text(
                                 stringResource(
@@ -282,68 +282,13 @@ internal fun StationPageContent(
     }
 }
 
-/**
- * Community price from the public city feed (amount + exact supporter /
- * confirmation counts). The backend price-groups community section stays
- * null (P04), so this feed lookup is the only honest community source.
- * The vote/report icons are frontend-only toggles (no navigation, no
- * backend); signed confirm/dispute/report actions live below in the
- * experience section, where the shown snapshot is fixed and signed.
- */
+/** Public community price and exact signed actions on its current contribution revision. */
 @Composable
-private fun StationCommunityPrice(item: com.anpfuel.domain.community.CommunityFeedItem) {
-    var liked by remember { mutableStateOf(false) }
-    var disliked by remember { mutableStateOf(false) }
-    var reported by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(CommunityPriceDisplay.formatMilliBrl(item.amountMilliBrl),
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(stringResource(when (item.unit) {
-                "M3" -> R.string.feed_unit_m3
-                "KG_13" -> R.string.feed_unit_cylinder
-                else -> R.string.feed_unit_litre
-            }), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Icon(Icons.Default.Verified, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            Text("${item.confirmations}", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BouncyToggleIcon(
-                selected = liked,
-                onToggle = {
-                    liked = !liked
-                    if (liked) disliked = false
-                },
-                icon = Icons.Default.ThumbUp,
-                contentDescription = stringResource(R.string.station_feedback_vote_valid),
-            )
-            Text("${item.supporters + if (liked) 1 else 0}",
-                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.size(4.dp))
-            BouncyToggleIcon(
-                selected = disliked,
-                onToggle = {
-                    disliked = !disliked
-                    if (disliked) liked = false
-                },
-                icon = Icons.Default.ThumbDown,
-                contentDescription = stringResource(R.string.station_feedback_vote_invalid),
-                selectedTint = MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.weight(1f))
-            BouncyToggleIcon(
-                selected = reported,
-                onToggle = { reported = !reported },
-                icon = Icons.Default.Flag,
-                contentDescription = stringResource(R.string.station_page_report_title),
-                selectedTint = MaterialTheme.colorScheme.error,
-                unselectedTint = MaterialTheme.colorScheme.error,
-            )
-        }
+private fun StationCommunityPrice(item: com.anpfuel.domain.community.CommunityFeedItem,onSignIn:()->Unit) {
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(CommunityPriceDisplay.formatMilliBrl(item.amountMilliBrl),style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)
+        Text(stringResource(when(item.unit){"M3"->R.string.feed_unit_m3;"KG_13"->R.string.feed_unit_cylinder;else->R.string.feed_unit_litre}))
+        com.anpfuel.app.community.CommunityContributionActions(item,onSignIn)
     }
 }
 

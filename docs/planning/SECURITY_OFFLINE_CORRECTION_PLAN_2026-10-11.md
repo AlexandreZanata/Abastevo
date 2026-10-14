@@ -1,5 +1,7 @@
 # Independent security/offline correction plan — 2026-10-11
 
+Current initial-policy amendment: [ADR-021](../adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 Status: AUTHORIZED / EXECUTION_IN_PROGRESS (user instruction, 2026-10-11).
 The original review checkpoint below remains historical; the subsequent user
 request authorizes all corrections, GitHub delivery and protected merge.

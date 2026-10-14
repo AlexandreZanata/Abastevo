@@ -8,7 +8,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * CS08A helpfulness flag (default OFF).
+ * Community-first helpfulness flag (default ON; an explicit OFF remains respected).
  *
  * Synchronous SharedPreferences read so the use case never blocks on
  * DataStore; flag OFF hides helpful/unhelpful actions while recorded
@@ -23,7 +23,7 @@ class CommunityHelpfulnessFlagStore @Inject constructor(
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     override fun isEnabled(): Boolean =
-        prefs.getBoolean(KEY_ENABLED, false)
+        prefs.getBoolean(KEY_ENABLED, true)
 
     fun setEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()

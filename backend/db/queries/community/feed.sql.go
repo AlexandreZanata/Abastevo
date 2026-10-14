@@ -16,16 +16,28 @@ SELECT p.station_id, s.display_name, p.fuel_product, p.unit,
  p.amount_milli_brl, p.confidence, p.independent_supporters,
  p.confirmation_count, p.anchor_received_at, p.expires_at, p.projection_version,
  COALESCE(rs.ratings_count, 0)::bigint AS ratings_count,
- COALESCE(rs.stars_sum, 0)::bigint AS stars_sum
+ COALESCE(rs.stars_sum, 0)::bigint AS stars_sum,
+ o.id AS contribution_observation_id,
+ COALESCE(d.sequence,0)::bigint AS contribution_decision_sequence,
+ COALESCE(d.to_state,'')::text AS contribution_state
 FROM directory_stations s
 JOIN community_current_prices p ON p.station_id = s.id
 LEFT JOIN feedback_rating_stats rs ON rs.station_id = p.station_id AND rs.product = p.fuel_product
+LEFT JOIN community_observations o ON o.id = p.representative_observation_id AND o.hidden_at IS NULL AND o.deleted_at IS NULL
+LEFT JOIN LATERAL (
+ SELECT sequence,to_state FROM community_observation_decisions WHERE observation_id=o.id ORDER BY sequence DESC LIMIT 1
+) d ON true
 WHERE s.state = $1 AND s.municipality_code = $2 AND s.status = 'active'
  AND p.fuel_product = $3 AND p.unit = $4
  AND p.condition_kind = 'STANDARD' AND p.qualifier_key = 'STANDARD'
  AND p.availability = 'AVAILABLE' AND p.amount_milli_brl IS NOT NULL
  AND p.anchor_received_at IS NOT NULL AND p.anchor_received_at <= $5
  AND p.expires_at > $5
+ AND (p.representative_observation_id IS NULL OR EXISTS (
+  SELECT 1 FROM community_observations visible WHERE visible.id=p.representative_observation_id
+   AND visible.hidden_at IS NULL AND visible.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=visible.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
+ ))
  AND (NOT $6::boolean OR
   ($7::text = 'recent' AND (p.anchor_received_at < $8 OR
     (p.anchor_received_at = $8 AND p.station_id::text > $9::text))) OR
@@ -61,19 +73,22 @@ type CityFeedParams struct {
 }
 
 type CityFeedRow struct {
-	StationID             pgtype.UUID        `json:"station_id"`
-	DisplayName           string             `json:"display_name"`
-	FuelProduct           string             `json:"fuel_product"`
-	Unit                  string             `json:"unit"`
-	AmountMilliBrl        pgtype.Int8        `json:"amount_milli_brl"`
-	Confidence            string             `json:"confidence"`
-	IndependentSupporters int32              `json:"independent_supporters"`
-	ConfirmationCount     int32              `json:"confirmation_count"`
-	AnchorReceivedAt      pgtype.Timestamptz `json:"anchor_received_at"`
-	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
-	ProjectionVersion     int64              `json:"projection_version"`
-	RatingsCount          int64              `json:"ratings_count"`
-	StarsSum              int64              `json:"stars_sum"`
+	StationID                    pgtype.UUID        `json:"station_id"`
+	DisplayName                  string             `json:"display_name"`
+	FuelProduct                  string             `json:"fuel_product"`
+	Unit                         string             `json:"unit"`
+	AmountMilliBrl               pgtype.Int8        `json:"amount_milli_brl"`
+	Confidence                   string             `json:"confidence"`
+	IndependentSupporters        int32              `json:"independent_supporters"`
+	ConfirmationCount            int32              `json:"confirmation_count"`
+	AnchorReceivedAt             pgtype.Timestamptz `json:"anchor_received_at"`
+	ExpiresAt                    pgtype.Timestamptz `json:"expires_at"`
+	ProjectionVersion            int64              `json:"projection_version"`
+	RatingsCount                 int64              `json:"ratings_count"`
+	StarsSum                     int64              `json:"stars_sum"`
+	ContributionObservationID    pgtype.UUID        `json:"contribution_observation_id"`
+	ContributionDecisionSequence int64              `json:"contribution_decision_sequence"`
+	ContributionState            string             `json:"contribution_state"`
 }
 
 // Owned public community read: the explicitly declared directory join reads
@@ -116,6 +131,9 @@ func (q *Queries) CityFeed(ctx context.Context, arg CityFeedParams) ([]CityFeedR
 			&i.ProjectionVersion,
 			&i.RatingsCount,
 			&i.StarsSum,
+			&i.ContributionObservationID,
+			&i.ContributionDecisionSequence,
+			&i.ContributionState,
 		); err != nil {
 			return nil, err
 		}

@@ -31,7 +31,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class HomePriceSource { ANP, COMMUNITY }
+
 data class HomeUiState(
+    val priceSource: HomePriceSource = HomePriceSource.ANP,
+    val communityPrices: List<AveragePriceUiModel> = emptyList(),
+    val communityLoading: Boolean = false,
+    val communityFailed: Boolean = false,
+    val communityGeneratedAt: java.time.Instant? = null,
+    val communityUpdatedAt: java.time.Instant? = null,
+    val communityExpiresAt: java.time.Instant? = null,
+    val communityCity: com.anpfuel.domain.community.FeedCity? = null,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val readiness: DataReadinessState = DataReadinessState.EMPTY,
@@ -64,6 +74,7 @@ class HomeViewModel @Inject constructor(
     private val homeVehiclePresenceStore: HomeVehiclePresenceStore,
     private val homeBenefitsVisibilityStore: HomeBenefitsVisibilityStore,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
+    private val communitySummary: com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -75,6 +86,92 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var hasPresentedContent = false
+    private var loadJob: kotlinx.coroutines.Job? = null
+    private var loadGeneration = 0L
+    private var communityJob: kotlinx.coroutines.Job? = null
+    private var communityGeneration = 0L
+    private var communitySession = 0L
+    /** A resumed screen owns a lease; cleanup from an older screen cannot cancel this one. */
+    fun startCommunitySession(): Long {
+        _uiState.update { it.copy(communityPrices = emptyList(), communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+        return ++communitySession
+    }
+
+    fun selectPriceSource(source: HomePriceSource, locale: Locale) {
+        if (source == _uiState.value.priceSource) return
+        loadGeneration++
+        loadJob?.cancel()
+        stopCommunityRefresh()
+        _uiState.update { it.copy(priceSource = source, isLoading = false, communityPrices = emptyList(),
+            communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+        if (source == HomePriceSource.ANP) load(locale)
+    }
+
+    fun stopCommunityRefresh(session: Long? = null) {
+        if (session != null && session != communitySession) return
+        communitySession++
+        communityGeneration++
+        communityJob?.cancel()
+        _uiState.update { it.copy(communityLoading = false) }
+    }
+
+    internal fun expireCommunity(expectedExpiry: java.time.Instant) {
+        _uiState.update { state ->
+            if (state.priceSource == HomePriceSource.COMMUNITY && state.communityExpiresAt == expectedExpiry)
+                state.copy(communityPrices = emptyList(), communityGeneratedAt = null,
+                    communityUpdatedAt = null, communityExpiresAt = null)
+            else state
+        }
+    }
+
+    fun refreshCommunity(periodic: Boolean = false) {
+        if (_uiState.value.priceSource != HomePriceSource.COMMUNITY) return
+        // A periodic tick must not restart a slow city lookup plus HTTP load.
+        // Explicit refreshes still replace it so city changes and retries win.
+        if (periodic && communityJob?.isActive == true) return
+        val ticket = ++communityGeneration
+        communityJob?.cancel()
+        _uiState.update { state ->
+            state.copy(communityLoading = true, communityFailed = false,
+                communityPrices = if (state.communityExpiresAt?.let { it > java.time.Instant.now() } == true) state.communityPrices else emptyList())
+        }
+        communityJob = viewModelScope.launch {
+            try {
+                val city = communitySummary.city()
+                if (ticket != communityGeneration) return@launch
+                if (city != _uiState.value.communityCity) {
+                    _uiState.update { it.copy(communityPrices = emptyList(), communityGeneratedAt = null,
+                        communityUpdatedAt = null, communityExpiresAt = null, communityCity = city) }
+                }
+                _uiState.update { it.copy(hasLocation = city != null, municipality = city?.name, state = city?.state) }
+                if (city == null) {
+                    _uiState.update { it.copy(communityLoading = false) }
+                    return@launch
+                }
+                val summary = communitySummary(city)
+                if (ticket != communityGeneration || _uiState.value.priceSource != HomePriceSource.COMMUNITY) return@launch
+                require(summary.city == city)
+                val now = java.time.Instant.now()
+                val live = summary.items.filter { it.expiresAt > now }
+                val prices = live.sortedBy { it.fuel.ordinal }.map { price ->
+                    AveragePriceUiModel(price.fuel,
+                        com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.averageMilliBrl),
+                        com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.minimumMilliBrl),
+                        com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount)
+                }
+                _uiState.update { it.copy(communityLoading = false, communityFailed = false, communityPrices = prices,
+                    communityGeneratedAt = summary.generatedAt, communityUpdatedAt = live.maxOfOrNull { row -> row.updatedAt },
+                    communityExpiresAt = live.minOfOrNull { row -> row.expiresAt }) }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (ticket == communityGeneration) {
+                    _uiState.update { it.copy(communityLoading = false, communityFailed = true,
+                        communityPrices = emptyList(), communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+                }
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -85,7 +182,9 @@ class HomeViewModel @Inject constructor(
     }
 
     fun load(locale: Locale, showLoadingIndicator: Boolean = false) {
-        viewModelScope.launch {
+        if(_uiState.value.priceSource==HomePriceSource.COMMUNITY) {refreshCommunity();return}
+        val ticket=++loadGeneration;loadJob?.cancel()
+        loadJob=viewModelScope.launch {
             val showLoading = showLoadingIndicator || !hasPresentedContent
             if (showLoading) {
                 _uiState.update { it.copy(isLoading = true, error = null, errorMessage = null) }
@@ -96,6 +195,7 @@ class HomeViewModel @Inject constructor(
                 val readinessResult = getDataReadinessUseCase()
                 val preferred = selectLocationUseCase.getPreferredLocation()
                 val vehicles = listVehiclesUseCase()
+                if(ticket!=loadGeneration) return@launch
 
                 if (preferred == null || !readinessResult.hasCachedData) {
                     homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
@@ -138,6 +238,7 @@ class HomeViewModel @Inject constructor(
                     municipality = tankFillResult.municipality,
                 )
 
+                if(ticket!=loadGeneration) return@launch
                 homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
                 _uiState.update {
                     it.copy(
@@ -158,6 +259,8 @@ class HomeViewModel @Inject constructor(
                 }
                 hasPresentedContent = true
             }.onFailure { error ->
+                if(error is kotlinx.coroutines.CancellationException) throw error
+                if(ticket!=loadGeneration) return@launch
                 val appError = AppErrorResolver.fromThrowable(error)
                 _uiState.update {
                     it.copy(
@@ -181,6 +284,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refresh(locale: Locale) {
+        if(_uiState.value.priceSource==HomePriceSource.COMMUNITY) {refreshCommunity();return}
         if (_uiState.value.isRefreshing) {
             return
         }

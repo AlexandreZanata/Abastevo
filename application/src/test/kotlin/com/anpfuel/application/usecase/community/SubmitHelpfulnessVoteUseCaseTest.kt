@@ -49,6 +49,7 @@ class SubmitHelpfulnessVoteUseCaseTest {
             clientSubmissionId: String,
             choiceWire: String,
             decisionSequence: Long,
+            expectedOwnerScope: String?,
         ): CommunityHelpfulnessReceipt {
             casts += CastCall(observationId, clientSubmissionId, choiceWire, decisionSequence)
             return castResult.getOrThrow()
@@ -57,6 +58,7 @@ class SubmitHelpfulnessVoteUseCaseTest {
         override suspend fun removeHelpfulness(
             observationId: String,
             decisionSequence: Long,
+            expectedOwnerScope: String?,
         ): CommunityHelpfulnessTally {
             removes++
             return removeResult.getOrThrow()
@@ -65,6 +67,7 @@ class SubmitHelpfulnessVoteUseCaseTest {
         override suspend fun tallyFor(
             observationId: String,
             decisionSequence: Long,
+            expectedOwnerScope: String?,
         ): CommunityHelpfulnessTally {
             tallies++
             return tallyResult.getOrThrow()

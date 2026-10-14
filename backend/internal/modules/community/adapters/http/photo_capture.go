@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/jackc/pgx/v5/pgtype"
 	"net/http"
 	"strings"
 
@@ -28,7 +29,9 @@ func (h Handler) photoCapture(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = httpapi.DecodeJSON(raw, &in)
 	}
-	if err != nil || (!in.DevelopmentPreview && in.Location == nil) || (in.DevelopmentPreview && in.Location != nil) || strings.TrimSpace(in.StationID) == "" {
+	var stationUUID pgtype.UUID
+	stationErr := stationUUID.Scan(in.StationID)
+	if err != nil || stationErr != nil || !stationUUID.Valid || len(in.StationID) != 36 || (in.DevelopmentPreview && in.Location != nil) || strings.TrimSpace(in.StationID) == "" {
 		httpapi.WriteError(w, r, 400, "community.capture-invalid", "invalid photo capture request", nil)
 		return
 	}

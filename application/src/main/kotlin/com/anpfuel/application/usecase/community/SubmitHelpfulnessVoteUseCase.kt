@@ -50,16 +50,19 @@ class SubmitHelpfulnessVoteUseCase(
         val clientSubmissionId: String,
         val choiceWire: String,
         val decisionSequence: Long,
+        val expectedOwnerScope: String? = null,
     )
 
     data class RemoveRequest(
         val observationId: String,
         val decisionSequence: Long,
+        val expectedOwnerScope: String? = null,
     )
 
     data class TallyRequest(
         val observationId: String,
         val decisionSequence: Long,
+        val expectedOwnerScope: String? = null,
     )
 
     suspend fun cast(request: CastRequest): HelpfulnessVoteOutcome {
@@ -84,6 +87,7 @@ class SubmitHelpfulnessVoteUseCase(
                 request.clientSubmissionId,
                 request.choiceWire,
                 request.decisionSequence,
+                request.expectedOwnerScope,
             )
             HelpfulnessVoteOutcome.Voted(receipt, receipt.replayed)
         } catch (voteError: CommunityHelpfulnessException) {
@@ -108,7 +112,7 @@ class SubmitHelpfulnessVoteUseCase(
         }
         return try {
             HelpfulnessVoteOutcome.Removed(
-                gateway.removeHelpfulness(request.observationId, request.decisionSequence),
+                gateway.removeHelpfulness(request.observationId, request.decisionSequence,request.expectedOwnerScope),
             )
         } catch (voteError: CommunityHelpfulnessException) {
             HelpfulnessVoteOutcome.Rejected(voteError.kind, voteError.message ?: voteError.kind.name)
@@ -132,7 +136,7 @@ class SubmitHelpfulnessVoteUseCase(
         }
         return try {
             HelpfulnessVoteOutcome.Tallied(
-                gateway.tallyFor(request.observationId, request.decisionSequence),
+                gateway.tallyFor(request.observationId, request.decisionSequence,request.expectedOwnerScope),
             )
         } catch (voteError: CommunityHelpfulnessException) {
             HelpfulnessVoteOutcome.Rejected(voteError.kind, voteError.message ?: voteError.kind.name)

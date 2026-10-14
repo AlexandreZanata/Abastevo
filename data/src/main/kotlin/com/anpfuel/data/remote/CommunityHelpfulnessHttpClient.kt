@@ -34,6 +34,7 @@ import org.json.JSONObject
 class CommunityHelpfulnessHttpClient(
     private val client: OkHttpClient,
     private val baseUrl: String,
+    private val proof: PhotoProofTransport? = null,
 ) : CommunityHelpfulnessGateway {
 
     override suspend fun castHelpfulness(
@@ -41,6 +42,7 @@ class CommunityHelpfulnessHttpClient(
         clientSubmissionId: String,
         choiceWire: String,
         decisionSequence: Long,
+        expectedOwnerScope: String?,
     ): CommunityHelpfulnessReceipt {
         require(observationId.isNotBlank()) { "observation_id is blank" }
         require(clientSubmissionId.isNotBlank()) { "client_submission_id is blank" }
@@ -53,6 +55,7 @@ class CommunityHelpfulnessHttpClient(
         val raw = post(
             path = "/v1/observations/" + encode(observationId) + "/helpfulness",
             json = payload,
+            expectedOwnerScope = expectedOwnerScope,
         )
         val body = JSONObject(raw)
         return CommunityHelpfulnessReceipt(
@@ -70,6 +73,7 @@ class CommunityHelpfulnessHttpClient(
     override suspend fun removeHelpfulness(
         observationId: String,
         decisionSequence: Long,
+        expectedOwnerScope: String?,
     ): CommunityHelpfulnessTally {
         require(observationId.isNotBlank()) { "observation_id is blank" }
         val payload = JSONObject()
@@ -78,6 +82,7 @@ class CommunityHelpfulnessHttpClient(
         val raw = post(
             path = "/v1/observations/" + encode(observationId) + "/helpfulness/remove",
             json = payload,
+            expectedOwnerScope = expectedOwnerScope,
         )
         return parseTally(observationId, raw)
     }
@@ -85,8 +90,17 @@ class CommunityHelpfulnessHttpClient(
     override suspend fun tallyFor(
         observationId: String,
         decisionSequence: Long,
+        expectedOwnerScope: String?,
     ): CommunityHelpfulnessTally {
         require(observationId.isNotBlank()) { "observation_id is blank" }
+        if (proof != null) {
+            try {
+                val scope = expectedOwnerScope ?: proof.identityScope()
+                return parseTally(observationId,proof.get("/v1/observations/"+encode(observationId)+"/helpfulness",scope,"decision_sequence=$decisionSequence").toString())
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (failure: PhotoOperationRefused) { throw mapHelpfulnessError(failure.status,JSONObject().put("code",failure.code).toString()) }
+            catch (_: Exception) { throw CommunityHelpfulnessException(CommunityHelpfulnessRejectKind.TRANSPORT,"helpfulness transport failed") }
+        }
         val request = Request.Builder()
             .url(
                 baseUrl.trimEnd('/') + "/v1/observations/" + encode(observationId) +
@@ -145,7 +159,15 @@ class CommunityHelpfulnessHttpClient(
         )
     }
 
-    private fun post(path: String, json: String): String {
+    private suspend fun post(path: String, json: String, expectedOwnerScope: String?): String {
+        if (proof != null) {
+            try {
+                val scope=expectedOwnerScope ?: proof.identityScope()
+                return proof.post(path,idempotencyOf(json),JSONObject(json),scope).toString()
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (failure: PhotoOperationRefused) { throw mapHelpfulnessError(failure.status,JSONObject().put("code",failure.code).toString()) }
+            catch (_: Exception) { throw CommunityHelpfulnessException(CommunityHelpfulnessRejectKind.TRANSPORT,"helpfulness transport failed") }
+        }
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + path)
             .post(json.toRequestBody(JSON_MEDIA))

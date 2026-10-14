@@ -47,7 +47,10 @@ type VotePorts struct {
 	// ErrAccountBlocked.
 	CheckAccount func(ctx context.Context, contributorID string) error
 	EnqueueJob   func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
-	Store        VoteStore
+	// OpenReportCase joins the report transaction through the moderation
+	// module's owned port. Reporter identity never enters the case payload.
+	OpenReportCase func(ctx context.Context, tx pgx.Tx, observationID, reason, detail string) error
+	Store          VoteStore
 }
 
 // ConfirmDTO carries one support vote: target plus client operation
@@ -89,7 +92,7 @@ func Confirm(ctx context.Context, p VotePorts, caller Caller, dto ConfirmDTO) (C
 	if err != nil {
 		return ConfirmResult{}, err
 	}
-	if now.Sub(obs.ReceivedAt) > EligibilityWindow {
+	if obs.ReceivedAt.After(now) || now.Sub(obs.ReceivedAt) > EligibilityWindow {
 		return ConfirmResult{}, ErrIneligibleTarget
 	}
 	id, err := p.NewID()
@@ -184,7 +187,13 @@ func Dispute(ctx context.Context, p VotePorts, caller Caller, dto DisputeDTO) (D
 			return DisputeResult{}, ErrTargetNotFound
 		}
 	}
+	if p.OpenReportCase == nil || p.EnqueueJob == nil {
+		return DisputeResult{}, errors.New("community: report moderation not configured")
+	}
 	storedID, replayed, err := p.Store.Report(ctx, report, func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+		if err := p.OpenReportCase(ctx, tx, report.TargetObservationID, report.Reason, report.Detail); err != nil {
+			return err
+		}
 		return p.EnqueueJob(ctx, tx, kind, payload, dedupe)
 	})
 	if err != nil {
@@ -201,6 +210,9 @@ func Dispute(ctx context.Context, p VotePorts, caller Caller, dto DisputeDTO) (D
 func eligibleObservation(ctx context.Context, store VoteStore, id string) (domain.Observation, string, error) {
 	obs, err := store.Observation(ctx, id)
 	if err != nil {
+		return domain.Observation{}, "", ErrTargetNotFound
+	}
+	if obs.Hidden || obs.Deleted {
 		return domain.Observation{}, "", ErrTargetNotFound
 	}
 	decisions, err := store.Decisions(ctx, id)

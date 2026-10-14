@@ -17,11 +17,15 @@ import (
 // FeedHandler exposes only dated public price facts. Signed writes/owner reads
 // remain on Handler, with their original proof and privacy requirements.
 type FeedHandler struct {
+	Summary func(context.Context, application.FeedFilter) ([]communityread.CitySummaryItem, error)
 	Read    func(context.Context, application.FeedFilter) ([]communityread.FeedItem, string, error)
 	Secrets []byte
 }
 
-func (h FeedHandler) RegisterRoutes(r chi.Router) { r.Get("/v1/community/feed", h.feed) }
+func (h FeedHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/v1/community/feed", h.feed)
+	r.Get("/v1/community/summary", h.summary)
+}
 func (h FeedHandler) feed(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit := 20
@@ -66,5 +70,29 @@ func (h FeedHandler) feed(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := json.Marshal(map[string]any{"items": items, "next_cursor": next, "generated_at": generatedNow(),
 		"municipality_code": f.Municipality, "state": f.State, "fuel_product": f.Product, "sort": f.Order, "refresh_after_seconds": 15})
+	httpapi.WriteJSON(w, r, 200, "no-store", body)
+}
+
+// summary is a bounded product population, independent of feed pagination and identity.
+func (h FeedHandler) summary(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	f, err := application.ValidateFeed(q.Get("state"), q.Get("municipality_code"), "GASOLINE_REGULAR", "recent", 20, "")
+	if err != nil {
+		httpapi.WriteError(w, r, 400, "community.bad-summary-filter", "city invalid", nil)
+		return
+	}
+	if h.Summary == nil {
+		httpapi.WriteError(w, r, 503, "community.summary-unavailable", "try again later", nil)
+		return
+	}
+	items, err := h.Summary(r.Context(), f)
+	if err != nil {
+		httpapi.WriteError(w, r, 503, "community.summary-unavailable", "try again later", nil)
+		return
+	}
+	if items == nil {
+		items = []communityread.CitySummaryItem{}
+	}
+	body, _ := json.Marshal(map[string]any{"items": items, "generated_at": generatedNow(), "state": f.State, "municipality_code": f.Municipality, "refresh_after_seconds": 15})
 	httpapi.WriteJSON(w, r, 200, "no-store", body)
 }

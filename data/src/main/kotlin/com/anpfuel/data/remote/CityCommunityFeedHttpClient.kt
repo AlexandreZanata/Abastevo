@@ -1,7 +1,7 @@
 package com.anpfuel.data.remote
 
 import com.anpfuel.data.mapper.WireFuelMapper
-import com.anpfuel.domain.community.CityCommunityFeedReader
+import com.anpfuel.domain.community.*
 import com.anpfuel.domain.community.CommunityFeedItem
 import com.anpfuel.domain.community.CommunityFeedPage
 import com.anpfuel.domain.community.FeedQuery
@@ -20,7 +20,7 @@ import okhttp3.Response
 import org.json.JSONObject
 
 /** Anonymous public feed. Cancellation terminates the HTTP call on tab/city change. */
-class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val origin: String) : CityCommunityFeedReader {
+class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val origin: String) : CityCommunityFeedReader, CityCommunitySummaryReader {
     override suspend fun read(query: FeedQuery, cursor: String?): CommunityFeedPage {
         val url = (origin.trimEnd('/') + "/v1/community/feed").toHttpUrl().newBuilder()
             .addQueryParameter("state", query.city.state.abbreviation)
@@ -34,6 +34,16 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
             })
             .addQueryParameter("limit", "20")
             .apply { cursor?.let { addQueryParameter("cursor", it) } }.build()
+        return decode(fetch(url), query)
+    }
+
+    override suspend fun readSummary(city: FeedCity): CityCommunitySummary {
+        val url = (origin.trimEnd('/') + "/v1/community/summary").toHttpUrl().newBuilder()
+            .addQueryParameter("state", city.state.abbreviation).addQueryParameter("municipality_code", city.code).build()
+        return decodeSummary(fetch(url), city)
+    }
+
+    private suspend fun fetch(url: okhttp3.HttpUrl): String {
         val call = client.newCall(Request.Builder().url(url).header("Accept", "application/json").build())
         val payload = suspendCancellableCoroutine<String> { continuation ->
             continuation.invokeOnCancellation { call.cancel() }
@@ -59,32 +69,44 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                 }
             })
         }
-        return decode(payload, query)
+        return payload
     }
 
     companion object {
-        internal fun decode(payload: String, query: FeedQuery): CommunityFeedPage {
-            require(payload.length <= 256 * 1024)
-            // Limit nesting before org.json recursively parses an untrusted body.
-            var depth = 0
-            var quoted = false
-            var escaped = false
-            for (character in payload) {
-                if (quoted) {
-                    when {
-                        escaped -> escaped = false
-                        character == '\\' -> escaped = true
-                        character == '"' -> quoted = false
-                    }
-                } else {
-                    when (character) {
-                        '"' -> quoted = true
-                        '{', '[' -> { depth++; require(depth <= 12) }
-                        '}', ']' -> { depth--; require(depth >= 0) }
-                    }
+        internal fun decodeSummary(payload: String, city: FeedCity): CityCommunitySummary {
+            checkEnvelope(payload)
+            val page = JSONObject(payload)
+            require(page.getString("state") == city.state.abbreviation && page.getString("municipality_code") == city.code)
+            require(page.getInt("refresh_after_seconds") == 15)
+            val generated = Instant.parse(page.getString("generated_at"))
+            val rows = page.getJSONArray("items"); require(rows.length() <= 8)
+            fun integer(row: JSONObject, field: String): Long = row.get(field).let {
+                require(it is Number && it.toString().matches(Regex("[0-9]+")))
+                it.toString().toLong()
+            }
+            val items = (0 until rows.length()).map { index ->
+                val row = rows.getJSONObject(index)
+                require(row.getString("source") == "COMMUNITY" && row.getString("currency") == "BRL" && row.getString("condition") == "STANDARD")
+                val count = integer(row,"station_count"); require(count in 1..Int.MAX_VALUE.toLong())
+                CommunitySummaryPrice(WireFuelMapper.fromWire(row.getString("fuel_product")).getOrThrow(),
+                    integer(row,"average_milli_brl"), integer(row,"minimum_milli_brl"), integer(row,"maximum_milli_brl"), count.toInt(),
+                    Instant.parse(row.getString("updated_at")), Instant.parse(row.getString("expires_at"))).also {
+                    require(it.unit == row.getString("unit"))
                 }
             }
+            return CityCommunitySummary(city, items, generated)
+        }
+        private fun checkEnvelope(payload: String) {
+            require(payload.length <= 256 * 1024)
+            var depth = 0; var quoted = false; var escaped = false
+            for(character in payload) {
+                if(quoted) {when { escaped -> escaped=false; character=='\\' -> escaped=true; character=='"' -> quoted=false }}
+                else when(character) { '"' -> quoted=true; '{','[' -> {depth++;require(depth<=12)}; '}',']' -> {depth--;require(depth>=0)} }
+            }
             require(depth == 0 && !quoted)
+        }
+        internal fun decode(payload: String, query: FeedQuery): CommunityFeedPage {
+            checkEnvelope(payload)
             val page = JSONObject(payload)
             require(page.getString("state") == query.city.state.abbreviation && page.getString("municipality_code") == query.city.code)
             require(page.getString("fuel_product") == WireFuelMapper.toWire(query.fuel))
@@ -107,6 +129,9 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                     updatedAt = Instant.parse(row.getString("updated_at")), expiresAt = Instant.parse(row.getString("expires_at")),
                     supporters = row.getInt("supporters"), confirmations = row.getInt("confirmations"),
                     confidence = row.getString("confidence"), version = row.getLong("version"),
+                    contribution = row.optJSONObject("contribution")?.let { ref ->
+                        com.anpfuel.domain.community.ContributionReference(ref.getString("observation_id"),ref.getLong("decision_sequence"))
+                    },
                     ratingsCount = row.optInt("ratings_count"),
                     ratingsAvg = if (row.isNull("ratings_avg")) null else row.getDouble("ratings_avg"),
                 )

@@ -275,3 +275,127 @@ func TestWinnerIDsFeedRestrictedAudit(t *testing.T) {
 		t.Errorf("confirmations = %v", got.WinnerConfirmationIDs)
 	}
 }
+
+func TestCommunityFirstConsensusIndependentPhotosWithoutProximity(t *testing.T) {
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "GASOLINE_REGULAR", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	var votes []Vote
+	for _, id := range []string{"a", "b", "c"} {
+		votes = append(votes, Vote{VoterRef: id, ObservationID: id, EventID: "obs:" + id, AuthorRef: id, AmountMilli: 5999, ReceivedAt: now, AnchorReceivedAt: now, TrustTier: "ESTABLISHED", PhotoValidated: true, PhotoProximityOK: false, MediaKey: "photo:" + id, StationID: key.StationID, Product: key.Product, Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier})
+	}
+	current, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || current.Confidence != ConfHigh {
+		t.Fatalf("independent community confidence %+v %v", current, err)
+	}
+	for i := range votes {
+		votes[i].PhotoProximityOK = true
+	}
+	near, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || !reflect.DeepEqual(current, near) {
+		t.Fatal("proximity changed initial confidence", err)
+	}
+	for i := range votes {
+		votes[i].PhotoProximityOK = false
+	}
+	old, err := Compute(key, votes, now, Options{Version: ConsensusV1})
+	if err != nil || old.Confidence != ConfLow {
+		t.Fatal("legacy replay reinterpreted", err)
+	}
+	votes = votes[:1]
+	alone, err := Compute(key, votes, now, Options{Version: "consensus-community-v2"})
+	if err != nil || alone.Confidence != ConfLow {
+		t.Fatal("one contributor granted confidence", err)
+	}
+}
+
+func TestCommunityFirstConsensusRetainsIndependentMediaAndModerationGates(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "GASOLINE_REGULAR", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	base := []Vote{}
+	for _, id := range []string{"a", "b", "c"} {
+		base = append(base, Vote{VoterRef: id, ObservationID: id, EventID: "obs:" + id, AuthorRef: id, AmountMilli: 5999, ReceivedAt: now, AnchorReceivedAt: now, TrustTier: "ESTABLISHED", PhotoValidated: true, MediaKey: "photo:" + id, StationID: key.StationID, Product: key.Product, Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier})
+	}
+	for _, tc := range []struct {
+		name   string
+		change func([]Vote)
+		want   string
+	}{
+		{"no media", func(v []Vote) {
+			for i := range v {
+				v[i].PhotoValidated = false
+			}
+		}, ConfLow},
+		{"duplicate media", func(v []Vote) {
+			for i := range v {
+				v[i].MediaKey = "same-photo"
+			}
+		}, ConfMedium},
+		{"missing media key", func(v []Vote) {
+			for i := range v {
+				v[i].MediaKey = ""
+			}
+		}, ConfLow},
+		{"blocked actor", func(v []Vote) { v[2].TrustTier = "BLOCKED" }, ConfMedium},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			votes := append([]Vote(nil), base...)
+			tc.change(votes)
+			got, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || got.Confidence != tc.want {
+				t.Fatalf("gates %+v %v", got, err)
+			}
+		})
+	}
+	got, err := Compute(key, base, now, Options{Version: ConsensusCommunity, ModerationOpen: true})
+	if err != nil || got.Verdict != VerdictDisputed {
+		t.Fatal("moderation bypass", got, err)
+	}
+}
+
+func TestCommunityConsensusRequiresDirectAnchorInEachPriceGroup(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	key := PriceKey{StationID: "station", Product: "ETHANOL", Unit: "L", ConditionKind: "STANDARD", Qualifier: "STANDARD"}
+	anchor := func(voter, observation string, amount int64, received time.Time) Vote {
+		return Vote{VoterRef: voter, ObservationID: observation, EventID: "obs:" + observation, AuthorRef: voter,
+			AmountMilli: amount, ReceivedAt: received, AnchorReceivedAt: received, TrustTier: "NEW",
+			PhotoValidated: true, MediaKey: "photo:" + observation, StationID: key.StationID, Product: key.Product,
+			Unit: key.Unit, ConditionKind: key.ConditionKind, Qualifier: key.Qualifier}
+	}
+	old := anchor("author", "old", 5000, now.Add(-time.Hour))
+	current := anchor("author", "current", 6000, now)
+	confirmation := func(voter string) Vote {
+		v := old
+		v.VoterRef, v.ConfirmationID, v.EventID = voter, "confirmation:"+voter, "conf:"+voter
+		v.ReceivedAt, v.PhotoValidated, v.MediaKey = now, false, ""
+		return v
+	}
+	for _, tc := range []struct {
+		name              string
+		additional        []Vote
+		wantConfidence    string
+		wantLegacyVerdict string
+		wantLegacyAmount  int64
+	}{
+		{"orphan confirmations cannot win", nil, ConfLow, VerdictPrice, 5000},
+		{"orphan runner cannot dispute anchored price", []Vote{anchor("second", "second-current", 6000, now)}, ConfMedium, VerdictDisputed, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			votes := append([]Vote{old, current, confirmation("supporter-one"), confirmation("supporter-two")}, tc.additional...)
+			got, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || got.Verdict != VerdictPrice || got.AmountMilli != 6000 || got.Confidence != tc.wantConfidence || got.Confirmations != 0 || got.Groups != 1 || len(got.WinnerObservationIDs) == 0 {
+				t.Fatalf("orphan confirmation group published or counted: %+v, %v", got, err)
+			}
+			legacy, err := Compute(key, votes, now, Options{Version: ConsensusV1})
+			if err != nil || legacy.Verdict != tc.wantLegacyVerdict || legacy.AmountMilli != tc.wantLegacyAmount {
+				t.Fatalf("legacy replay changed: %+v, %v", legacy, err)
+			}
+			for i, j := 0, len(votes)-1; i < j; i, j = i+1, j-1 {
+				votes[i], votes[j] = votes[j], votes[i]
+			}
+			again, err := Compute(key, votes, now, Options{Version: ConsensusCommunity})
+			if err != nil || !reflect.DeepEqual(got, again) {
+				t.Fatalf("input order changed anchored outcome: %+v, %v", again, err)
+			}
+		})
+	}
+}

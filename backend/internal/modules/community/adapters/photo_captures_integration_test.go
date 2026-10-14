@@ -78,8 +78,8 @@ func TestPhotoCapturePostGISOwnershipReplayAndConcurrency(t *testing.T) {
 	in.ClientCaptureID = "outside"
 	in.Location = e2eLocationDTO("", e2eStationA, now, e2eLatB, e2eLonB).Location
 	p.Clock = func() time.Time { return now }
-	if _, _, err = app.AuthorizePhotoCapture(ctx, p, s, caller, in.ClientCaptureID, []byte("synthetic outside"), in); !errors.Is(err, app.ErrPhotoCaptureIneligible) {
-		t.Fatal("real PostGIS outside accepted")
+	if got, _, err := app.AuthorizePhotoCapture(ctx, p, s, caller, in.ClientCaptureID, []byte("synthetic outside"), in); err != nil || got.PolicyVersion != app.CommunityPhotoCapturePolicy {
+		t.Fatal("community policy incorrectly blocked distant capture", err)
 	}
 	// The append-only migration is replay safe through the migration ledger.
 	if _, err = migrate.Apply(ctx, pool.Config().ConnConfig.ConnString(), migrations.Files); err != nil {
@@ -220,5 +220,57 @@ func TestPhotoCaptureMetadataExpiryIsBoundedAndErasureRemovesOwnedReceipts(t *te
 	var count int
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM community_photo_captures WHERE contributor_ref='owner'").Scan(&count); err != nil || count != 0 {
 		t.Fatalf("owned metadata=%d %v", count, err)
+	}
+}
+
+func TestCommunityFirstCaptureAddressOnlyAndPolicyPersistence(t *testing.T) {
+	s, pool, _ := freshStore(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `INSERT INTO directory_stations(id,display_name,address) VALUES($1,'Synthetic address-only station','{"street":"Synthetic Street"}')`, e2eStationA); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	p := e2eSubmitPorts(s, pool, now)
+	p.Locate = func(context.Context, string, float64, float64) (float64, app.StationSite, error) {
+		t.Fatal("coordinate lookup for address-only station")
+		return 0, app.SiteUnknown, nil
+	}
+	caller := e2eCaller("address-owner")
+	caller.KeyID = "address-key"
+	in := app.PhotoCaptureIntent{ClientCaptureID: "address-capture", StationID: e2eStationA}
+	receipt, _, err := app.AuthorizePhotoCapture(ctx, p, s, caller, in.ClientCaptureID, []byte("address-only"), in)
+	if err != nil || receipt.PolicyVersion != app.CommunityPhotoCapturePolicy {
+		t.Fatalf("address-only %+v %v", receipt, err)
+	}
+	use := app.PhotoCaptureUse{CaptureID: receipt.ID, StationID: receipt.StationID, CapturedAt: now.Add(time.Second)}
+	if _, err := app.ValidatePhotoCaptureUse(ctx, s, caller, use, now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	legacy := receipt
+	legacy.ContributorRef = caller.Token
+	legacy.KeyID = caller.KeyID
+	legacy.ID = e2eStationB
+	legacy.ClientCaptureID = "legacy"
+	legacy.PolicyVersion = app.PhotoCapturePolicy
+	if _, err := s.InsertPhotoCapture(ctx, legacy); err != nil {
+		t.Fatal("legacy migration compatibility", err)
+	}
+	use.CaptureID = legacy.ID
+	if _, err := app.ValidatePhotoCaptureUse(ctx, s, caller, use, now.Add(time.Second)); err != nil {
+		t.Fatal("legacy receipt invalidated", err)
+	}
+	unknown := legacy
+	unknown.ID = "aaaaaaaa-1111-4111-8111-000000000003"
+	unknown.ClientCaptureID = "unknown"
+	unknown.PolicyVersion = "unknown-policy"
+	if _, err := s.InsertPhotoCapture(ctx, unknown); err == nil {
+		t.Fatal("schema accepted unknown policy")
+	}
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET status='closed' WHERE id=$1`, e2eStationA); err != nil {
+		t.Fatal(err)
+	}
+	in.ClientCaptureID = "closed"
+	if _, _, err := app.AuthorizePhotoCapture(ctx, p, s, caller, in.ClientCaptureID, []byte("closed"), in); !errors.Is(err, app.ErrPhotoCaptureIneligible) {
+		t.Fatal("closed station admitted", err)
 	}
 }

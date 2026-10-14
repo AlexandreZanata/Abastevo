@@ -85,6 +85,20 @@ func rowToCase(row dbmoderation.ModerationCase) domain.Case {
 // reports never flood the queue. Retries with the same target converge
 // the same way; resolution history stays in P07-T02 actions.
 func (s *Store) OpenCase(ctx context.Context, c domain.Case) (string, bool, error) {
+	return openCase(ctx, dbmoderation.New(s.pool), c)
+}
+
+// OpenCaseTx joins another module's explicitly authorized transaction. It
+// neither commits nor opens a second transaction: report, case and durable
+// job must succeed together, using only this module's owned queries.
+func (s *Store) OpenCaseTx(ctx context.Context, tx pgx.Tx, c domain.Case) (string, bool, error) {
+	if tx == nil {
+		return "", false, errors.New("moderation: report transaction required")
+	}
+	return openCase(ctx, dbmoderation.New(tx), c)
+}
+
+func openCase(ctx context.Context, queries *dbmoderation.Queries, c domain.Case) (string, bool, error) {
 	uid, err := mustUUID(c.ID)
 	if err != nil {
 		return "", false, err
@@ -93,7 +107,7 @@ func (s *Store) OpenCase(ctx context.Context, c domain.Case) (string, bool, erro
 	if err != nil {
 		return "", false, err
 	}
-	inserted, err := dbmoderation.New(s.pool).InsertCase(ctx, dbmoderation.InsertCaseParams{
+	inserted, err := queries.InsertCase(ctx, dbmoderation.InsertCaseParams{
 		ID: uid, TargetType: c.TargetType, TargetID: c.TargetID,
 		Status: c.Status, Priority: c.Priority, Reason: c.Reason,
 		Detail: c.Detail, EvidenceID: evidence,
@@ -108,7 +122,7 @@ func (s *Store) OpenCase(ctx context.Context, c domain.Case) (string, bool, erro
 	// DO NOTHING hit a conflict: converge on the open case for this
 	// target. Any unique violation outside the open-target index
 	// surfaces here as the open row missing, which fails loudly.
-	row, err := dbmoderation.New(s.pool).GetOpenCase(ctx, dbmoderation.GetOpenCaseParams{
+	row, err := queries.GetOpenCase(ctx, dbmoderation.GetOpenCaseParams{
 		TargetType: c.TargetType, TargetID: c.TargetID,
 	})
 	if err != nil {

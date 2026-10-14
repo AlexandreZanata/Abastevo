@@ -33,6 +33,13 @@ func (s *Store) RecordAction(ctx context.Context, a domain.Action, toStatus, kin
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	tq := dbmoderation.New(tx)
+	// Acquire downstream observation locks before case locks, matching reports.
+	// All effects roll back if the guarded case transition later refuses.
+	if enqueue != nil {
+		if err := enqueue(ctx, tx, kind, payload, dedupe); err != nil {
+			return "", err
+		}
+	}
 	if _, err := tq.InsertAction(ctx, dbmoderation.InsertActionParams{
 		ID: uid, CaseID: caseUUID, ActorID: a.ActorID, Action: a.Action,
 		Reason: a.Reason, OccurredAt: pgTime(a.OccurredAt),
@@ -50,11 +57,6 @@ func (s *Store) RecordAction(ctx context.Context, a domain.Action, toStatus, kin
 		return "", err
 	}
 	_ = moved
-	if enqueue != nil {
-		if err := enqueue(ctx, tx, kind, payload, dedupe); err != nil {
-			return "", err
-		}
-	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}

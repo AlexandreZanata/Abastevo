@@ -164,3 +164,27 @@ func pgTime(t time.Time) pgtype.Timestamptz {
 	}
 	return pgtype.Timestamptz{Time: t, Valid: true}
 }
+
+// StationPriceView is one public product/unit projection; no history or attribution.
+type StationPriceView struct {
+	Product, Unit string
+	View          PriceView
+}
+
+// StationPrices reads every standard station key in one indexed batch, even without ANP coverage.
+func (r *Reader) StationPrices(ctx context.Context, stationID, fuel string) ([]StationPriceView, error) {
+	id, err := mustUUID(stationID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := community.New(r.pool).StationPrices(ctx, community.StationPricesParams{StationID: id, Fuel: fuel})
+	if err != nil {
+		return nil, err
+	}
+	now := r.clock()
+	out := make([]StationPriceView, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, StationPriceView{Product: row.FuelProduct, Unit: row.Unit, View: mapView(row, now)})
+	}
+	return out, nil
+}

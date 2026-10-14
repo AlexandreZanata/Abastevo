@@ -1,0 +1,38 @@
+# Community-first PRM implementation handoff
+
+Continuation 2026-10-14: the subsequent explicit request authorized source implementation and GitHub PR. PRM15–PRM20 and PRM21 local source acceptance are recorded in [execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md); staging/device execution remains OWED and PRM22 DEFERRED. The original planning-only record below is historical, not the current execution state.
+
+State: PLANNED / NOT STARTED, 2026-10-13. This is a reusable prompt for the next agent after an explicit implementation request. The originating request authorized writing the plan, not executing these tasks, deploying, publishing or activating a policy. Canonical tasks/rules: [Premium/shared execution plan, PRM15–PRM22](PREMIUM_BACKEND_APP_PLAN.md#2026-10-13-community-first-planning-amendment--prm15prm22). [Planning validation](PRM_COMMUNITY_FIRST_VALIDATION.md) distinguishes inspected source from future acceptance.
+
+## Prompt to use for an explicitly authorized implementation batch
+
+Implement the selected community-first phases of PREMIUM_BACKEND_APP_PLAN.md, PRM15–PRM21, one bounded microtask at a time. If the request names a smaller range, execute only that range and its authorized prerequisites. Do not execute PRM22: it remains DEFERRED until a validated product, strictly greater than 90% verified reliable national station-coordinate coverage, and a new explicit owner request.
+
+The initial outcome is free nominal station discovery and contribution without a mandatory 150m/GPS requirement. Rust ingestion and Go Directory must accept stations with valid canonical identity and nominal address/municipality/UF without latitude/longitude. Normal Android capture must let the user search station names in a manually chosen city, disambiguate by address and select the canonical UUID. Signed capture, upload and price submission must work without a location fix, for stations without coordinates and when the user is farther than 150m. Reuse existing developer search UX as a reference; normal operation must not depend on developer flags, secrets, preview policy, test-station allowlist or cutoff.
+
+Keep signed identity/account ownership, quotas, replay/idempotency, actual capture timestamps, owner/key/station/evidence binding, bounded media intake, 24-hour operational media retention, training consent/erasure and official/community separation. Removing proximity never automatically validates prices or grants HIGH/VERIFIED/NEAR. Do not request contributor GPS just to unlock capture or add proximity-based positive consensus weight under the initial policy. Optional nearby discovery may still use permission; any optional claim remains untrusted and subject to forgery validation. Nominal address is sufficient location information, not permission to merge homonymous establishments or invent canonical IDs.
+
+Community participation stays free. Use existing price confirmations/disputes, helpful/not-helpful votes, reports and authorized moderation. Helpfulness does not become price confidence, consensus weight, station rating or paid trust. Freeze missing numeric/authority decisions in PRM15-T03 before changing behavior; do not invent thresholds. Address-only/no-GPS contributions need an honest community-validation path, not permanent pending solely due to absent proximity. Moderation can hide/correct visibility through the owning contracts; it cannot overwrite official source facts.
+
+At opening:
+
+1. Read AGENTS.md, docs/planning/FAST_EXECUTION.md, current PROGRESS.md, DELIVERY_WORKFLOW.md, the selected ROADMAP parent, PRM15–PRM22 and relevant source/tests. Respect user authorization and current branch policy over historical special Premium branch permissions.
+2. Inspect status/diff/worktrees/commits and reconcile dev/main and actual checkpoints. Never overwrite/stash another effort or cherry-pick unrelated Premium implementations just to obtain this plan. Bring only the planning amendment onto maintained dev; isolate an occupied checkout. Preserve historical evidence and known source/release obligations.
+3. Record exact chosen task/rules, source revision and meaningful test selectors. Audit the mandatory normal photo gate separately from optional observation location and informational nearby radii. Start PRM15 before policy code.
+
+Execute PRM15 → PRM16 → PRM17 → PRM18 → PRM19 → PRM20 → PRM21. Complete PRM20 backend changes before Android consumers if they change consumed contracts; do not let a later heading justify app work against unfinished backend contracts. PRM16-T03 cross-stack acceptance can close after required PRM17 consumer fixes; never call it passed before the real path works. This free track does not wait for billing, Play, OneSignal, Premium UI or commercialization. Complete/reconcile any already authorized agent task before changing scope.
+
+Use domain RED → GREEN → REFACTOR. For SQL/migrations/auth/privacy/jobs, run immediate real disposable PostGIS negative/failure/replay/concurrency/recovery cases. Never use staging/shared databases for destructive fixtures. Use existing backend/README.md, docs/backend/TEST_STRATEGY.md and scripts/check-rust-fast.sh for actual commands, plus affected Kotlin domain/application/data/app tests, compilation/lint, contract/static/format checks, git diff --check and secret review. No invented passing command or ignored existing failure.
+
+Required acceptance distinguishes:
+
+- Valid address-only stations survive bounded Rust artifacts, complete-run Go reconciliation, nominal search/detail and later coordinate enrichment without ID churn or invented pins/distances.
+- Normal signed photo workflow admits otherwise valid missing-location, denied-permission and 149.9m/150m/150.1m/far cases equally on proximity. Auth/quota/forgery/expiry/IDOR/binding/media-capacity failures still refuse appropriately.
+- New policy versions work end to end; old receipts/drafts retain their original immutable policy and expiry. Old apps that block locally need an update; never claim server rollout fixes them alone.
+- Normal app search handles homonyms, manual city/UF, stale query responses, missing coordinates, accessible empty/error states and explicit station selection; camera/OCR/review/outbox survive account/origin switch and process death.
+- Independent evidence, disputes, helpfulness and reports converge with honest pending/validated/moderated states, bounded abuse handling and privacy. A received receipt or a like is not price validation.
+- Strictly more than 90% national coordinate coverage and validated-product proof are future prerequisites, not observed results, initial launch blockers or automatic activation triggers.
+
+End each task with exact tested revision/commands/results and open obligations in linked evidence, a concise current PROGRESS entry and a meaningful atomic commit. Continue through tested local checkpoints without PR/CI polling or wiki waits under ADR-018/ADR-020. Source LOCAL_DONE / INTEGRATION_PENDING, integrated source, deployed policy, device proof and release certification are distinct. Required unknown/failing checks block dependent acceptance; fix failures immediately rather than weakening tests.
+
+Prepare concrete staging/device rollout and rollback before requesting any missing scope. Use https://teste.abastevo.com.br only when actual mutation/device authority and prerequisites are present; keep source work independent of external proof. No publication, deployment, sales, public pilot or release is implied by this prompt file. Protected final dev→main delivery and merged-SHA wiki happen only under the user's actual batch authorization, with current required Quick verification and guarded finish.

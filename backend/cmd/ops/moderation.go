@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
-	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
@@ -116,9 +114,25 @@ func moderationAct(a actArgs, getenv func(string) string) error {
 	raw := pool.Underlying()
 	store := moderationadapters.NewStore(raw)
 	res, err := moderationapp.Act(ctx, moderationapp.ActPorts{
-		Clock: time.Now,
-		NewID: newUUID,
-		Store: store,
+		Clock:                 time.Now,
+		NewID:                 newUUID,
+		Store:                 store,
+		InvalidateObservation: communityadapters.NewStore(raw).InvalidateTx,
+		BlockContributor: func(ctx context.Context, tx pgx.Tx, contributorRef, caseID, reason string, at time.Time) error {
+			id, err := newUUID()
+			if err != nil {
+				return err
+			}
+			verdict, _, err := trustdomain.NewDecision(trustdomain.DecisionParams{
+				ID: id, ContributorRef: contributorRef, Tier: trustdomain.TierBlocked, Reason: reason,
+				CaseRefs: []string{caseID}, OccurredAt: at,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = trustadapters.NewStore(raw).AppendDecisionTx(ctx, tx, verdict)
+			return err
+		},
 		EnqueueJob: func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
 			_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
 			return err
@@ -134,127 +148,12 @@ func moderationAct(a actArgs, getenv func(string) string) error {
 	return nil
 }
 
-// moderationInvalidate applies a reviewed observation invalidation
-// (BUC-006): first the moderation audit action, then the community
-// VALIDATED→REJECTED decision bound to the same case ID with its
-// consensus recompute job. Each step is atomic; a downstream failure
-// after a recorded audit is reported for audited retry (the audit shows
-// the attempt, the follow-up completes it), never silently dropped.
+// moderationInvalidate uses the same atomic audit/decision/job path as act.
 func moderationInvalidate(c caseArgs, getenv func(string) string) error {
-	operator, err := resolveOperatorID(c.operator, getenv)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	pool, _, err := openPool(ctx)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-	raw := pool.Underlying()
-	modStore := moderationadapters.NewStore(raw)
-	enqueue := func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-		_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
-		return err
-	}
-	actRes, err := moderationapp.Act(ctx, moderationapp.ActPorts{
-		Clock: time.Now, NewID: newUUID, Store: modStore, EnqueueJob: enqueue,
-	}, moderationapp.Caller{OperatorID: operator}, moderationapp.ActDTO{
-		CaseID: c.caseID, Action: moderationdomain.ActionInvalidate, Reason: c.reason,
-	})
-	if err != nil {
-		return fmt.Errorf("audit action: %w", err)
-	}
-	target, err := modStore.Get(ctx, c.caseID)
-	if err != nil {
-		return err
-	}
-	if target.TargetType != moderationdomain.TargetObservation && target.TargetType != moderationdomain.TargetContribution {
-		return fmt.Errorf("invalidate applies to OBSERVATION/CONTRIBUTION targets (case targets %s); use act for other targets", target.TargetType)
-	}
-	communityStore := communityadapters.NewStore(raw)
-	obs, err := communityStore.Observation(ctx, target.TargetID)
-	if err != nil {
-		return fmt.Errorf("audit %s recorded; observation load: %w", actRes.ActionID, err)
-	}
-	decisions, err := communityStore.Decisions(ctx, obs.ID)
-	if err != nil {
-		return fmt.Errorf("audit %s recorded; decision history: %w", actRes.ActionID, err)
-	}
-	state := communitydomain.StateReceived
-	for _, d := range decisions {
-		state = d.ToState
-	}
-	decision, err := communitydomain.Invalidate(obs, state, communitydomain.ActorModerator,
-		c.caseID, []string{"moderation-invalid"}, time.Now(), int64(len(decisions)+1))
-	if err != nil {
-		return fmt.Errorf("audit %s recorded; invalidation refused (state %s): %w", actRes.ActionID, state, err)
-	}
-	raw2, _ := json.Marshal(map[string]any{"version": 1, "observation_id": obs.ID})
-	if err := communityStore.RecordDecisionWithJob(ctx, decision,
-		"community-consensus", raw2, "consensus:"+obs.ID, enqueue); err != nil {
-		return fmt.Errorf("audit %s recorded; decision commit: %w", actRes.ActionID, err)
-	}
-	fmt.Fprintf(os.Stdout, "action=%s case=%s status=%s observation=%s invalidated\n",
-		actRes.ActionID, actRes.CaseID, actRes.ToStatus, obs.ID)
-	return nil
+	return moderationAct(actArgs{operator: c.operator, caseID: c.caseID, action: moderationdomain.ActionInvalidate, reason: c.reason}, getenv)
 }
 
-// moderationBlock applies a reviewed contributor block (BUC-006): first
-// the moderation audit action, then the trust BLOCKED verdict bound to
-// the same case ID. Each step is atomic with its downstream job;
-// failures after the audit are reported for audited retry.
+// moderationBlock uses the same atomic audit/trust/job path as act.
 func moderationBlock(c caseArgs, getenv func(string) string) error {
-	operator, err := resolveOperatorID(c.operator, getenv)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	pool, _, err := openPool(ctx)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-	raw := pool.Underlying()
-	modStore := moderationadapters.NewStore(raw)
-	enqueue := func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
-		_, err := platformjobs.Enqueue(ctx, tx, kind, payload, dedupe, 5, time.Time{})
-		return err
-	}
-	actRes, err := moderationapp.Act(ctx, moderationapp.ActPorts{
-		Clock: time.Now, NewID: newUUID, Store: modStore, EnqueueJob: enqueue,
-	}, moderationapp.Caller{OperatorID: operator}, moderationapp.ActDTO{
-		CaseID: c.caseID, Action: moderationdomain.ActionBlock, Reason: c.reason,
-	})
-	if err != nil {
-		return fmt.Errorf("audit action: %w", err)
-	}
-	target, err := modStore.Get(ctx, c.caseID)
-	if err != nil {
-		return err
-	}
-	if target.TargetType != moderationdomain.TargetContributor {
-		return fmt.Errorf("block applies to CONTRIBUTOR targets (case targets %s); use act for other targets", target.TargetType)
-	}
-	id, err := newUUID()
-	if err != nil {
-		return fmt.Errorf("audit %s recorded; id: %w", actRes.ActionID, err)
-	}
-	verdict, _, err := trustdomain.NewDecision(trustdomain.DecisionParams{
-		ID: id, ContributorRef: target.TargetID, Tier: trustdomain.TierBlocked,
-		Reason: c.reason, CaseRefs: []string{c.caseID},
-		OccurredAt: time.Now(), PolicyVersion: trustdomain.PolicyV1,
-	})
-	if err != nil {
-		return fmt.Errorf("audit %s recorded; verdict: %w", actRes.ActionID, err)
-	}
-	trustStore := trustadapters.NewStore(raw)
-	if _, err := trustStore.AppendDecision(ctx, verdict, enqueue); err != nil {
-		return fmt.Errorf("audit %s recorded; verdict commit: %w", actRes.ActionID, err)
-	}
-	fmt.Fprintf(os.Stdout, "action=%s case=%s status=%s contributor=%s blocked\n",
-		actRes.ActionID, actRes.CaseID, actRes.ToStatus, target.TargetID)
-	return nil
+	return moderationAct(actArgs{operator: c.operator, caseID: c.caseID, action: moderationdomain.ActionBlock, reason: c.reason}, getenv)
 }

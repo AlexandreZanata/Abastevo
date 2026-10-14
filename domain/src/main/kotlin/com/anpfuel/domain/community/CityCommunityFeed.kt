@@ -11,6 +11,10 @@ data class FeedCity(val code: String, val state: BrazilianState, val name: Strin
 }
 enum class FeedSort { RECENT, CHEAPEST, BEST, WORST }
 data class FeedQuery(val city: FeedCity, val fuel: FuelProduct, val sort: FeedSort = FeedSort.RECENT)
+data class ContributionReference(val observationId: String, val decisionSequence: Long) {
+    init { require(UUID.fromString(observationId).toString() == observationId); require(decisionSequence > 0) }
+}
+
 data class CommunityFeedItem(
     val stationId: String,
     val stationName: String,
@@ -24,6 +28,7 @@ data class CommunityFeedItem(
     val version: Long,
     val ratingsCount: Int = 0,
     val ratingsAvg: Double? = null,
+    val contribution: ContributionReference? = null,
 ) {
     init {
         require(UUID.fromString(stationId).toString() == stationId)

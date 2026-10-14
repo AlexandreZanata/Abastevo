@@ -397,4 +397,10 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_12_13: Migration = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `server_station_cache` ADD COLUMN `address_json` TEXT NOT NULL DEFAULT '{}'")
+        }
+    }
+
 }

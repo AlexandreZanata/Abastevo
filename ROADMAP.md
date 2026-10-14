@@ -1,5 +1,7 @@
 # abastevo implementation roadmap
 
+Current initial-policy amendment: [ADR-021](docs/adr/021-community-first-contribution.md) / PRM15–PRM21 supersedes mandatory 150m/GPS contribution admission and proximity-based price confidence. Identity, media, privacy and source-integrity checks remain. Historical location evidence and optional nearby geometry retain their original scope; future mandatory proximity is PRM22 DEFERRED.
+
 Current delivery policy: [ADR-020](docs/adr/020-maintained-dev-main-delivery.md), maintained dev → protected main. Historical issues are closed by the explicit 2026-10-06 backlog reset; unchecked runtime/release criteria remain obligations in [the consolidation record](docs/planning/repository-consolidation-20261006.md), not completed gates.
 
 Planning revision: 2026-10-05; [commercial community plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and ADR-016 own current app direction; [P25 static landing plan](docs/planning/STATIC_LANDING_PLAN.md) owns the independent website phase. Historical P01–P09 evidence is preserved in [progress history](docs/planning/history/P01_P09_PROGRESS_20260930.md); the [previous roadmap](docs/planning/history/ROADMAP_BEFORE_MULTIPLATFORM_20260930.md) retains original task wording. Current implementation/integration state is in [PROGRESS](docs/planning/PROGRESS.md), not the old initial NOT STARTED labels. Do not recreate completed work.

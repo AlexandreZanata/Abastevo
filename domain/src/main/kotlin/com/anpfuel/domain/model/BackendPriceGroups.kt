@@ -6,8 +6,8 @@ import com.anpfuel.domain.exception.DomainException
  * P10-T02 backend price-group read model.
  *
  * Mirrors `GET /v1/stations/{id}/prices` (backend `PriceGroup`):
- * one product/unit/condition with its official section. Community stays
- * null until P04 (UNKNOWN, never an ANP substitution). Money is exact
+ * one product/unit/condition with separate official and community sections.
+ * Missing sources remain null, never substituted. Money is exact
  * integer thousandths of a real; no float money.
  */
 class BackendOfficialSection private constructor(
@@ -49,19 +49,49 @@ class BackendOfficialSection private constructor(
     }
 }
 
+/** Public projection only: no contributor identity or private supporting media. */
+data class BackendCommunitySection(
+    val source: String,
+    val availability: String,
+    val amountMilliBrl: Long?,
+    val currency: String,
+    val confidence: String,
+    val freshness: String,
+    val supporters: Int,
+    val confirmations: Int,
+    val representativeObservationId: String?,
+    val lastReceivedAt: java.time.Instant?,
+    val expiresAt: java.time.Instant?,
+    val algorithmVersion: String,
+    val projectionVersion: Long,
+) {
+    init {
+        require(source == "COMMUNITY" && currency == "BRL")
+        require(availability in setOf("AVAILABLE", "UNKNOWN", "DISPUTED"))
+        require(amountMilliBrl == null || amountMilliBrl in 1..1_000_000)
+        require(confidence in setOf("", "LOW", "MEDIUM", "HIGH"))
+        require(freshness in setOf("UNKNOWN", "FRESH", "AGING", "STALE"))
+        require(supporters >= 0 && confirmations >= 0 && projectionVersion > 0 && algorithmVersion.isNotBlank())
+        require(representativeObservationId == null || BackendPriceGroup.isUuid(representativeObservationId))
+        require(expiresAt == null || lastReceivedAt == null || expiresAt > lastReceivedAt)
+        require(availability != "AVAILABLE" || (amountMilliBrl != null && confidence.isNotBlank() && lastReceivedAt != null && expiresAt != null))
+    }
+}
+
 class BackendPriceGroup private constructor(
     val stationId: String,
     val fuelProductWire: String,
     val unit: String,
     val conditionKind: String,
     val official: BackendOfficialSection?,
-    val community: String?,
+    val community: BackendCommunitySection?,
 ) {
     companion object {
         val WIRE_PRODUCTS: Set<String> = setOf(
             "ETHANOL",
             "GASOLINE_REGULAR",
             "GASOLINE_ADDITIVED",
+            "GASOLINE_PREMIUM_GRADE",
             "DIESEL_S500",
             "DIESEL_S10",
             "CNG",
@@ -74,7 +104,7 @@ class BackendPriceGroup private constructor(
             unit: String,
             conditionKind: String,
             official: BackendOfficialSection?,
-            community: String?,
+            community: BackendCommunitySection?,
         ): BackendPriceGroup {
             if (!isUuid(stationId)) {
                 throw DomainException("malformed station_id")
@@ -84,16 +114,13 @@ class BackendPriceGroup private constructor(
             }
             require(unit.isNotBlank()) { "unit is blank" }
             require(conditionKind.isNotBlank()) { "condition kind is blank" }
-            if (community != null) {
-                throw DomainException("community must stay null until P04")
-            }
             return BackendPriceGroup(
                 stationId = stationId.lowercase(),
                 fuelProductWire = fuelProductWire,
                 unit = unit,
                 conditionKind = conditionKind,
                 official = official,
-                community = null,
+                community = community,
             )
         }
 
@@ -102,7 +129,7 @@ class BackendPriceGroup private constructor(
             for ((index, char) in value.withIndex()) {
                 when (index) {
                     8, 13, 18, 23 -> if (char != '-') return false
-                    else -> if (!char.isDigit() && char.lowercaseChar() !in 'a'..'f') return false
+                    else -> if (char !in '0'..'9' && char.lowercaseChar() !in 'a'..'f') return false
                 }
             }
             return true

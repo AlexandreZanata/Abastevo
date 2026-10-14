@@ -34,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -59,6 +60,7 @@ class HomeViewModelTest {
     private val homeBenefitsVisibilityStore = mockk<com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore>()
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
 
+    private val communitySummary = mockk<com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase>()
     private lateinit var viewModel: HomeViewModel
 
     private val surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
@@ -83,6 +85,7 @@ class HomeViewModelTest {
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+            communitySummary = communitySummary,
         )
     }
 
@@ -211,6 +214,7 @@ class HomeViewModelTest {
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+            communitySummary = communitySummary,
         )
 
         assertTrue(viewModel.uiState.value.hasVehicle)
@@ -229,6 +233,7 @@ class HomeViewModelTest {
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
+            communitySummary = communitySummary,
         )
 
         assertEquals(false, viewModel.uiState.value.showBenefits)
@@ -325,4 +330,120 @@ class HomeViewModelTest {
             totalCost = PriceAmount.of(total),
             unitPriceSource = TankFillCostUnitPriceSource.CHEAPEST_STATION,
         )
+    private fun summaryCity(code:String="5103403",name:String="Synthetic city") =
+        com.anpfuel.domain.community.FeedCity(code,BrazilianState.MATO_GROSSO,name)
+    private fun summary(city:com.anpfuel.domain.community.FeedCity,amount:Long=4500):com.anpfuel.domain.community.CityCommunitySummary {
+        val now=java.time.Instant.now()
+        return com.anpfuel.domain.community.CityCommunitySummary(city,listOf(
+            com.anpfuel.domain.community.CommunitySummaryPrice(FuelProduct.ETHANOL,amount,4000,5000,65,now.minusSeconds(60),now.plusSeconds(3600))),now)
+    }
+    @Test fun `community source uses all three statistics without ANP cache GPS or sync`()=runTest(dispatcher) {
+        val city=summaryCity();coEvery {communitySummary.city()} returns city;coEvery {communitySummary(city)} returns summary(city)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY,Locale.US);viewModel.refreshCommunity();advanceUntilIdle()
+        assertEquals(HomePriceSource.COMMUNITY,viewModel.uiState.value.priceSource)
+        val price=viewModel.uiState.value.communityPrices.single()
+        assertEquals("R$ 4,500",price.averageFormatted);assertEquals("R$ 4,000",price.minimumFormatted);assertEquals("R$ 5,000",price.maximumFormatted);assertEquals(65,price.stationCount)
+        HomePriceSortOrder.entries.forEach {viewModel.onPriceSortChanged(it);assertEquals(it,viewModel.uiState.value.priceSort);assertEquals(price,viewModel.uiState.value.communityPrices.single())}
+        assertEquals("R$ 4,500",HomePriceSortOrder.DEFAULT.featuredPrice(price))
+        assertEquals("R$ 4,000",HomePriceSortOrder.PRICE_ASC.featuredPrice(price))
+        assertEquals("R$ 5,000",HomePriceSortOrder.PRICE_DESC.featuredPrice(price))
+        assertTrue(viewModel.uiState.value.communityUpdatedAt!! < viewModel.uiState.value.communityGeneratedAt!!)
+        coVerify(exactly=0){getMunicipalityPricesUseCase()};coVerify(exactly=0){syncPriceTablesUseCase(any())};coVerify(exactly=0){getDataReadinessUseCase()}
+        coEvery {communitySummary(city)} throws java.io.IOException("private details")
+        viewModel.refresh(Locale.US);advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.communityFailed);assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
+        assertEquals(null,viewModel.uiState.value.communityGeneratedAt)
+    }
+    @Test fun `late old city cannot replace current city and an old lifecycle cannot cancel the new request`()=runTest(dispatcher) {
+        val first=summaryCity();val second=summaryCity("5107925","Synthetic second city")
+        val delayed=kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery {communitySummary.city()} returnsMany listOf(first,second)
+        coEvery {communitySummary(first)} coAnswers {kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable){delayed.await()}}
+        coEvery {communitySummary(second)} returns summary(second,4900)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY,Locale.US)
+        val oldLease=viewModel.startCommunitySession();viewModel.refreshCommunity();runCurrent()
+        viewModel.startCommunitySession();viewModel.refreshCommunity();viewModel.stopCommunityRefresh(oldLease);advanceUntilIdle()
+        assertEquals(second,viewModel.uiState.value.communityCity);assertEquals("R$ 4,900",viewModel.uiState.value.communityPrices.single().averageFormatted)
+        delayed.complete(summary(first,4100));advanceUntilIdle()
+        assertEquals(second,viewModel.uiState.value.communityCity);assertEquals("R$ 4,900",viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+    @Test fun `no manually selected city gives no summary call or fabricated price`()=runTest(dispatcher) {
+        coEvery {communitySummary.city()} returns null
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY,Locale.US);viewModel.refreshCommunity();advanceUntilIdle()
+        assertTrue(!viewModel.uiState.value.hasLocation);assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
+        coVerify(exactly=0){communitySummary(any())}
+    }
+
+    @Test fun `periodic refresh preserves a slow city lookup and summary until they finish`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val selectedCity = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity>()
+        val response = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary.city() } coAnswers { selectedCity.await() }
+        coEvery { communitySummary(city) } coAnswers { response.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        testScheduler.advanceTimeBy(15_000)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 1) { communitySummary.city() }
+        selectedCity.complete(city)
+        runCurrent()
+        testScheduler.advanceTimeBy(15_000)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 1) { communitySummary(city) }
+        response.complete(summary(city))
+        runCurrent()
+        assertEquals("R$ 4,500", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        assertEquals(false, viewModel.uiState.value.communityLoading)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        coVerify(exactly = 2) { communitySummary.city() }
+        coVerify(exactly = 2) { communitySummary(city) }
+    }
+
+    @Test fun `manual refresh replaces an in flight periodic request for a changed city`() = runTest(dispatcher) {
+        val first = summaryCity()
+        val second = summaryCity("5107925", "Synthetic second city")
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        var cancelled = false
+        coEvery { communitySummary.city() } returnsMany listOf(first, second)
+        coEvery { communitySummary(first) } coAnswers {
+            try { pending.await() }
+            finally { cancelled = true }
+        }
+        coEvery { communitySummary(second) } returns summary(second, 4900)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(periodic = true)
+        runCurrent()
+        viewModel.refresh(Locale.US)
+        runCurrent()
+        assertTrue(cancelled)
+        assertEquals(second, viewModel.uiState.value.communityCity)
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
+    @Test fun `community expiry clears prices while slow refresh continues and stale expiry cannot clear fresh prices`() = runTest(dispatcher) {
+        val city = summaryCity("5107925", "Sorriso")
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city, 4500)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity()
+        runCurrent()
+        val expiry = requireNotNull(viewModel.uiState.value.communityExpiresAt)
+        viewModel.expireCommunity(expiry.minusSeconds(1))
+        assertEquals(1, viewModel.uiState.value.communityPrices.size)
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary(city) } coAnswers { pending.await() }
+        viewModel.refreshCommunity()
+        runCurrent()
+        viewModel.expireCommunity(expiry)
+        assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
+        assertTrue(viewModel.uiState.value.communityLoading)
+        pending.complete(summary(city, 4900))
+        runCurrent()
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
 }

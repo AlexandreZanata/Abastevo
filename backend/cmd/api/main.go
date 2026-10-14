@@ -245,7 +245,7 @@ func run() error {
 	stations := directoryread.NewReader(pool.Underlying())
 	prices := officialread.NewReader(pool.Underlying())
 	communityPrices := communityread.NewReader(pool.Underlying())
-	communityhttp.FeedHandler{Read: communityPrices.Feed, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	communityhttp.FeedHandler{Read: communityPrices.Feed, Summary: communityPrices.CitySummary, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so
@@ -290,6 +290,23 @@ func run() error {
 		// Projected community section (P06-T05): one indexed row per
 		// exact key, mapped onto the public shape without contributor
 		// identities. Missing keys stay null, never an ANP fill-in.
+		CommunityGroups: func(ctx context.Context, stationID, fuel string) ([]officialhttp.CommunityGroup, error) {
+			rows, err := communityPrices.StationPrices(ctx, stationID, fuel)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]officialhttp.CommunityGroup, 0, len(rows))
+			for _, row := range rows {
+				view := row.View
+				out = append(out, officialhttp.CommunityGroup{Product: row.Product, Unit: row.Unit, Price: officialhttp.CommunityPrice{
+					Availability: view.Availability, Confidence: view.Confidence, Freshness: view.Freshness, AmountMilli: view.AmountMilliBrl, HasAmount: view.HasAmount,
+					Supporters: view.Supporters, Confirmations: view.Confirmations, RepresentativeID: view.RepresentativeID,
+					AnchorReceivedAt: view.AnchorReceivedAt, HasAnchor: view.HasAnchor, ExpiresAt: view.ExpiresAt, HasExpiry: view.HasExpiry,
+					AlgorithmVersion: view.AlgorithmVersion, ProjectionVersion: view.ProjectionVersion,
+				}})
+			}
+			return out, nil
+		},
 		Community: func(ctx context.Context, stationID, product, unit, conditionKind, qualifier string) (officialhttp.CommunityPrice, bool, error) {
 			view, err := communityPrices.CurrentPrice(ctx, stationID, product, unit, conditionKind, qualifier)
 			if err != nil {
@@ -761,6 +778,19 @@ func run() error {
 	directoryRepo := directoryadapters.NewRepository(pool.Underlying())
 	evidenceStore := evidenceadapters.NewIntakeStore(pool.Underlying(), cfg.EvidenceMaxPendingPhotos)
 	communityPorts := communityapp.Ports{
+		CheckCaptureStation: func(ctx context.Context, id string) error {
+			station, err := directoryRepo.Station(ctx, id)
+			if errors.Is(err, directorydomain.ErrUnknownStation) {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			if err != nil {
+				return err
+			}
+			if station.Status != "active" {
+				return communityapp.ErrPhotoCaptureIneligible
+			}
+			return nil
+		},
 		DevelopmentPhotoPreviewUntil: cfg.DevelopmentPhotoPreviewUntil,
 		CheckDevelopmentStation: func(ctx context.Context, id string) error {
 			if _, err := directoryRepo.Station(ctx, id); err != nil {
@@ -850,6 +880,21 @@ func run() error {
 	votePorts := communityapp.VotePorts{
 		Clock: time.Now,
 		NewID: newUUID,
+		OpenReportCase: func(ctx context.Context, tx pgx.Tx, observationID, reason, detail string) error {
+			id, err := newUUID()
+			if err != nil {
+				return err
+			}
+			caseRecord, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+				ID: id, TargetType: moderationdomain.TargetObservation, TargetID: observationID,
+				Priority: moderationdomain.PriorityP2, Reason: reason, Detail: detail, OpenedAt: time.Now(),
+			})
+			if err != nil {
+				return err
+			}
+			_, _, err = moderationStore.OpenCaseTx(ctx, tx, caseRecord)
+			return err
+		},
 		CheckQuota: func(ctx context.Context, subject, operation string) (time.Duration, error) {
 			retryAfter, err := identityLimiter.Check(ctx, subject, operation)
 			if err != nil {
