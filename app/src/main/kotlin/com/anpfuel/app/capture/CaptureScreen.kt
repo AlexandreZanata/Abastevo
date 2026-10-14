@@ -102,13 +102,8 @@ fun CaptureScreen(
     onChooseCity: () -> Unit = onNavigateBack,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val previewEnabled by viewModel.previewEnabled.collectAsStateWithLifecycle()
     val target by viewModel.target.collectAsStateWithLifecycle()
     val targetInvalid by viewModel.targetInvalid.collectAsStateWithLifecycle()
-    val nearby by viewModel.nearby.collectAsStateWithLifecycle()
-    val nearbyLoading by viewModel.nearbyLoading.collectAsStateWithLifecycle()
-    val nearbyFailed by viewModel.nearbyFailed.collectAsStateWithLifecycle()
-    val locationDenied by viewModel.locationDenied.collectAsStateWithLifecycle()
     val pickedStationId by viewModel.pickedStationId.collectAsStateWithLifecycle()
     val photoId by viewModel.photoId.collectAsStateWithLifecycle()
     val photoRefused by viewModel.photoRefused.collectAsStateWithLifecycle()
@@ -172,13 +167,13 @@ fun CaptureScreen(
             } else cameraPermission.launch(android.Manifest.permission.CAMERA)
         }
     }
-    LaunchedEffect(stationId, previewEnabled) {
-        if (previewEnabled) viewModel.bindTarget(null, fuelProductWire) else viewModel.bindEntryTarget(stationId, fuelProductWire)
+    LaunchedEffect(stationId) {
+        viewModel.bindEntryTarget(stationId, fuelProductWire)
         withContext(Dispatchers.IO) { files.sweep() }
         if (reviewPhotoUri != null && !withContext(Dispatchers.IO) { files.exists(reviewPhotoUri, viewModel.originalCapturedAtMillis) }) {
             viewModel.rememberReviewUri(null)
         }
-        if (!previewEnabled && reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
+        if (reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
     }
     AnpScaffold(
         modifier = Modifier.fillMaxSize(),
@@ -194,7 +189,6 @@ fun CaptureScreen(
                 .verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            DeveloperCaptureMode.Controls(viewModel, requestCamera)
             target?.let {
                 Text(
                     text = stringResource(
@@ -227,29 +221,19 @@ fun CaptureScreen(
                         stringResource(R.string.capture_permission_required),
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    if (previewEnabled) Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
-                    else NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
                 }
                 CaptureOcrUiState.Cancelled -> {
                     Text(
                         stringResource(R.string.capture_cancelled),
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    if (previewEnabled) Button(onClick = requestCamera, enabled = !gateBusy) { Text(stringResource(R.string.capture_take_photo)) }
-                    else NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
                 }
                 else -> {
-                    val relevantId = target?.stationId ?: pickedStationId
-                    val distance = nearby.firstOrNull { it.station.stationId == relevantId }?.distanceMeters
-                    val inside = CaptureOcrViewModel.isInsideStationArea(distance)
                     val photoUri = reviewPhotoUri
                     if (photoUri == null) {
-                        if (previewEnabled) {
-                            Button(onClick = requestCamera, enabled = pickedStationId != null && !gateBusy,
-                                modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
-                            if (gateBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                            photoRefused?.let { Text(stringResource(R.string.capture_recognition_unavailable)) }
-                        } else NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
 
                     } else {
                         PhotoReviewContent(
@@ -281,184 +265,6 @@ fun CaptureScreen(
                             onNavigateBack = onReturnCommunity,
                             onSubmit = viewModel::submitContributions,
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Station-area gate: the camera opens only when the contributor is
- * inside the minimum station radius. Outside it (or without location)
- * the screen shows what to do instead of opening the camera.
- */
-@Composable
-private fun StationGateContent(
-    targetStationId: String?,
-    nearby: List<NearbyServerStation>,
-    nearbyLoading: Boolean,
-    nearbyFailed: Boolean,
-    locationDenied: Boolean,
-    pickedStationId: String?,
-    distanceMeters: Double?,
-    insideArea: Boolean,
-    photoRefused: String?,
-    gateBusy: Boolean,
-    gateFailure: String?,
-    onPickStation: (String?) -> Unit,
-    onTakePhoto: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (targetStationId == null) {
-            NearbyStationPicker(
-                nearby = nearby,
-                nearbyLoading = nearbyLoading,
-                nearbyFailed = nearbyFailed,
-                locationDenied = locationDenied,
-                pickedStationId = pickedStationId,
-                onPickStation = onPickStation,
-            )
-        }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.capture_area_title),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                when {
-                    nearbyLoading -> Text(
-                        text = stringResource(R.string.capture_nearby_loading),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    locationDenied || (nearby.isEmpty() && !nearbyFailed) -> Text(
-                        text = stringResource(
-                            R.string.capture_area_nolocation,
-                            CaptureOcrViewModel.MIN_STATION_AREA_METERS.roundToInt(),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    nearbyFailed -> Text(
-                        text = stringResource(R.string.capture_nearby_failed),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    pickedStationId == null && targetStationId == null -> Text(
-                        text = stringResource(R.string.capture_pick_station),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    insideArea -> Text(
-                        text = stringResource(
-                            R.string.capture_area_ok,
-                            distanceMeters?.roundToInt() ?: 0,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    else -> Text(
-                        text = stringResource(
-                            R.string.capture_area_far,
-                            distanceMeters?.roundToInt() ?: 0,
-                            CaptureOcrViewModel.MIN_STATION_AREA_METERS.roundToInt(),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
-        Button(
-            onClick = onTakePhoto,
-            enabled = !gateBusy && !locationDenied && (targetStationId != null || pickedStationId != null),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.capture_take_photo))
-        }
-        if (gateBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (gateFailure != null) Text(stringResource(R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
-        photoRefused?.let { code ->
-            Text(
-                text = stringResource(R.string.capture_recognition_unavailable),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
-
-@Composable
-private fun NearbyStationPicker(
-    nearby: List<NearbyServerStation>,
-    nearbyLoading: Boolean,
-    nearbyFailed: Boolean,
-    locationDenied: Boolean,
-    pickedStationId: String?,
-    onPickStation: (String?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.capture_pick_station),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        when {
-            nearbyLoading -> Text(
-                text = stringResource(R.string.capture_nearby_loading),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            locationDenied -> Text(
-                text = stringResource(R.string.capture_location_needed),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            nearbyFailed -> Text(
-                text = stringResource(R.string.capture_nearby_failed),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-            nearby.isEmpty() -> Text(
-                text = stringResource(R.string.capture_nearby_empty),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
-                items(nearby, key = { it.station.stationId }) { row ->
-                    val selected = row.station.stationId == pickedStationId
-                    val inside = CaptureOcrViewModel.isInsideStationArea(row.distanceMeters)
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .selectable(
-                                selected = selected,
-                                onClick = { onPickStation(row.station.stationId) },
-                                role = Role.RadioButton,
-                            )
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        RadioButton(selected = selected, onClick = null)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = row.station.displayName, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = stringResource(
-                                    if (inside) {
-                                        R.string.capture_area_row_inside
-                                    } else {
-                                        R.string.capture_nearby_distance
-                                    },
-                                    row.distanceMeters.toInt(),
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                 }
             }
@@ -809,12 +615,12 @@ private fun cropToFrame(
 /** Canonical nominal selection; station geometry is optional enrichment. */
 @Composable
 private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () -> Unit, onChooseCity: () -> Unit) {
-    val city by viewModel.previewCity.collectAsStateWithLifecycle()
-    val query by viewModel.previewQuery.collectAsStateWithLifecycle()
-    val stations by viewModel.previewStations.collectAsStateWithLifecycle()
+    val city by viewModel.stationCity.collectAsStateWithLifecycle()
+    val query by viewModel.stationQuery.collectAsStateWithLifecycle()
+    val stations by viewModel.stationResults.collectAsStateWithLifecycle()
     val selected by viewModel.selectedNominalStation.collectAsStateWithLifecycle()
-    val loading by viewModel.previewSearchBusy.collectAsStateWithLifecycle()
-    val failed by viewModel.previewSearchFailed.collectAsStateWithLifecycle()
+    val loading by viewModel.stationSearchBusy.collectAsStateWithLifecycle()
+    val failed by viewModel.stationSearchFailed.collectAsStateWithLifecycle()
     val busy by viewModel.gateBusy.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleMedium)
@@ -830,14 +636,14 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
             }
             Button(onClick = onCamera, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
         } else {
-            OutlinedTextField(value = query, onValueChange = viewModel::searchPreviewStation,
+            OutlinedTextField(value = query, onValueChange = viewModel::searchStations,
                 label = { Text(stringResource(R.string.capture_station_name)) }, singleLine = true,
                 enabled = city != null && !busy, modifier = Modifier.fillMaxWidth())
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (failed) Text(stringResource(R.string.capture_search_failed), color = MaterialTheme.colorScheme.error)
             if (city != null && !loading && !failed && stations.isEmpty() && query.trim().length != 1) Text(stringResource(R.string.capture_search_empty))
             stations.forEach { station ->
-                OutlinedButton(onClick = { viewModel.pickPreviewStation(station.stationId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { viewModel.selectStation(station.stationId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.fillMaxWidth()) {
                         Text(station.displayName)
                         Text(station.addressLabel.ifBlank { station.cnpjNormalized.orEmpty() }, style = MaterialTheme.typography.bodySmall)

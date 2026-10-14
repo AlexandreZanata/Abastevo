@@ -30,8 +30,6 @@ interface PhotoCaptureGate {
     suspend fun authorizeCommunity(stationId: String, clientCaptureId: String): PhotoCapturePermission =
         throw UnsupportedOperationException("community capture unavailable")
     fun isCurrent(permission: PhotoCapturePermission): Boolean
-    suspend fun authorizeDevelopmentPreview(stationId: String, clientCaptureId: String): PhotoCapturePermission =
-        throw UnsupportedOperationException("development capture unavailable")
     suspend fun authorize(stationId: String, clientCaptureId: String, fix: CaptureFix): PhotoCapturePermission
 }
 

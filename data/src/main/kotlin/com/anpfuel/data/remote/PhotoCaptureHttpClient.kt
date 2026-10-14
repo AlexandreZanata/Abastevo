@@ -30,7 +30,7 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
         val scope = transport.identityScope()
         val response = transport.post("/v1/photo-captures", clientCaptureId, JSONObject()
             .put("client_capture_id", clientCaptureId).put("station_id", stationId), scope)
-        return decode(response, stationId, scope, false)
+        return decode(response, stationId, scope)
     }
 
     override suspend fun authorize(stationId: String,clientCaptureId: String,fix: CaptureFix): PhotoCapturePermission {
@@ -43,23 +43,15 @@ class PhotoCaptureHttpClient @Inject constructor(private val transport: PhotoPro
             .put("lat",fix.latitude).put("lon",fix.longitude)
         val result=transport.post("/v1/photo-captures",clientCaptureId,JSONObject()
             .put("client_capture_id",clientCaptureId).put("station_id",stationId).put("location",location))
-        return decode(result, stationId, scope, false)
+        return decode(result, stationId, scope)
     }
 
-    override suspend fun authorizeDevelopmentPreview(stationId: String, clientCaptureId: String): PhotoCapturePermission {
-        check(DevelopmentPhotoCapture.available)
-        require(UUID.fromString(stationId).toString() == stationId.lowercase())
-        val request = DevelopmentPhotoCapture.request(transport.origin, stationId, clientCaptureId)
-        val scope = transport.identityScope()
-        return decode(transport.post("/v1/photo-captures", clientCaptureId, request), stationId, scope, true)
-    }
-
-    private fun decode(result: JSONObject, stationId: String, scope: String, development: Boolean): PhotoCapturePermission {
-        val expectedPolicy=if(development) "photo-capture-ui-test-v1" else "photo-capture-community-v2"
+    private fun decode(result: JSONObject, stationId: String, scope: String): PhotoCapturePermission {
+        val expectedPolicy = "photo-capture-community-v2"
         if(result.optString("policy_version")!=expectedPolicy) throw PhotoCapturePolicyUnavailable()
         val receipt=PhotoCapturePermission(result.getString("capture_id"),result.getString("station_id"),
             Instant.parse(result.getString("issued_at")).toEpochMilli(),Instant.parse(result.getString("camera_expires_at")).toEpochMilli(),
-            Instant.parse(result.getString("expires_at")).toEpochMilli(),scope,transport.origin, development)
+            Instant.parse(result.getString("expires_at")).toEpochMilli(),scope,transport.origin)
         if(!isCurrent(receipt) || receipt.stationId!=stationId ||
             receipt.cameraExpiresAtMillis-receipt.issuedAtMillis !in 1..120000 ||
             receipt.expiresAtMillis-receipt.issuedAtMillis !in 1..86400000 ||

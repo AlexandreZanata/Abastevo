@@ -109,25 +109,6 @@ class CaptureOcrViewModelTest {
         return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
     }
 
-    private fun developmentGate(): PhotoCaptureGate {
-        val gate = mockk<PhotoCaptureGate>()
-        val now = System.currentTimeMillis()
-        io.mockk.coEvery { gate.authorizeDevelopmentPreview(any(), any()) } answers {
-            PhotoCapturePermission("10000000-0000-4000-8000-000000000001", firstArg(), now - 1000, now + 119000, now + 86399000, "owner", "https://teste.abastevo.com.br", true)
-        }
-        every { gate.isCurrent(any()) } returns true
-        return gate
-    }
-
-    private suspend fun prepareDevelopment(vm: CaptureOcrViewModel) {
-        vm.setPreviewEnabled(true)
-        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
-        vm.searchPreviewStation("Test")
-        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
-        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } } }
-        vm.pickPreviewStation("123e4567-e89b-12d3-a456-426614174000")
-    }
-
     @Test
     fun `restored preview draft cannot use normal submission or forged receipt`() = runTest(dispatcher) {
         val saved = SavedStateHandle(mapOf("previewPhoto" to true, "photoId" to "local-photo",
@@ -588,18 +569,16 @@ class CaptureOcrViewModelTest {
 
     @Test fun `normal nominal lookup selects an address-only station without developer mode`() = runTest(dispatcher) {
         val vm=viewModel(true,true)
-        assertFalse(vm.previewEnabled.value)
         vm.loadStationSearch()
         advanceUntilIdle()
-        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } } }
-        vm.pickPreviewStation("123e4567-e89b-12d3-a456-426614174000")
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.stationResults.first { it.isNotEmpty() } } }
+        vm.selectStation("123e4567-e89b-12d3-a456-426614174000")
         assertEquals("123e4567-e89b-12d3-a456-426614174000",vm.pickedStationId.value)
         assertNull(vm.selectedNominalStation.value!!.latitude)
-        assertFalse(vm.previewEnabled.value)
-        vm.searchPreviewStation("x")
+        vm.searchStations("x")
         advanceUntilIdle()
         assertNull(vm.pickedStationId.value)
-        assertTrue(vm.previewStations.value.isEmpty())
+        assertTrue(vm.stationResults.value.isEmpty())
     }
 
     @Test fun `old uncancellable query cannot release the new search guard`()=runTest(dispatcher) {
@@ -614,19 +593,19 @@ class CaptureOcrViewModelTest {
             }
         })
         vm.loadStationSearch();advanceUntilIdle()
-        vm.searchPreviewStation("old");advanceUntilIdle()
+        vm.searchStations("old");advanceUntilIdle()
         kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){oldStarted.await()}}
-        vm.searchPreviewStation("new");advanceUntilIdle()
+        vm.searchStations("new");advanceUntilIdle()
         kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){newStarted.await()}}
         oldResult.complete(com.anpfuel.domain.discovery.ServerStationPage(emptyList(),null))
         advanceUntilIdle()
-        assertTrue(vm.previewSearchBusy.value)
+        assertTrue(vm.stationSearchBusy.value)
         val station=ServerStation.create("123e4567-e89b-12d3-a456-426614174000","New station",StationLocationQuality.UNKNOWN,null,null,null,"5103403","MT",null)
         newResult.complete(com.anpfuel.domain.discovery.ServerStationPage(listOf(station),null))
-        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){vm.previewStations.first{it.isNotEmpty()}}}
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){vm.stationResults.first{it.isNotEmpty()}}}
         advanceUntilIdle()
-        assertFalse(vm.previewSearchBusy.value)
-        vm.pickPreviewStation(station.stationId)
+        assertFalse(vm.stationSearchBusy.value)
+        vm.selectStation(station.stationId)
         assertEquals(station.stationId,vm.pickedStationId.value)
     }
 
