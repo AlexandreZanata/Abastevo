@@ -101,3 +101,67 @@ func TestCityFeedIsolationExpiryMoneyPaginationAndConcurrency(t *testing.T) {
 		t.Fatalf("expiry independent of worker %+v %v", page, err)
 	}
 }
+
+func TestFeedContributionReferenceOnlyTargetsCurrentVisibleValidatedRevision(t *testing.T) {
+	r, pool, stationID := freshReader(t)
+	ctx := context.Background()
+	seedProjection(t, pool, stationID)
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET state='MT',municipality_code='5107925' WHERE id=$1`, stationID); err != nil {
+		t.Fatal(err)
+	}
+	filter := application.FeedFilter{State: "MT", Municipality: "5107925", Product: "GASOLINE_REGULAR", Unit: "L", Order: "recent", Limit: 20}
+	before, _, err := r.Feed(ctx, filter)
+	if err != nil || len(before) != 1 || before[0].Contribution != nil {
+		t.Fatal("unvalidated public target", err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO community_observation_decisions(id,observation_id,sequence,to_state,policy_version) VALUES('aaaaaaaa-1111-4111-8111-000000000003','d6c74c23-63db-4c24-a2e5-408cb23bad27',1,'VALIDATED','synthetic')`); err != nil {
+		t.Fatal(err)
+	}
+	ready, _, err := r.Feed(ctx, filter)
+	if err != nil || ready[0].Contribution == nil || ready[0].Contribution.ObservationID != "d6c74c23-63db-4c24-a2e5-408cb23bad27" || ready[0].Contribution.DecisionSequence != 1 {
+		t.Fatalf("target %+v %v", ready, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE community_observations SET hidden_at=now() WHERE id='d6c74c23-63db-4c24-a2e5-408cb23bad27'`); err != nil {
+		t.Fatal(err)
+	}
+	hidden, _, err := r.Feed(ctx, filter)
+	if err != nil || len(hidden) != 0 {
+		t.Fatal("hidden contribution actionable", err)
+	}
+}
+
+func TestEveryPublicPriceReadSuppressesInvisibleRepresentative(t *testing.T) {
+	r, pool, station := freshReader(t)
+	ctx := context.Background()
+	seedProjection(t, pool, station)
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET state='MT',municipality_code='5107925' WHERE id=$1`, station); err != nil {
+		t.Fatal(err)
+	}
+	filter := application.FeedFilter{State: "MT", Municipality: "5107925", Product: "GASOLINE_REGULAR", Unit: "L", Order: "recent", Limit: 20}
+	for _, mutation := range []string{"hidden_at=now()", "hidden_at=NULL,deleted_at=now()", "deleted_at=NULL"} {
+		if _, err := pool.Exec(ctx, "UPDATE community_observations SET "+mutation); err != nil {
+			t.Fatal(err)
+		}
+		if mutation == "deleted_at=NULL" {
+			if _, err := pool.Exec(ctx, `INSERT INTO community_observation_decisions(id,observation_id,sequence,to_state,policy_version) VALUES('aaaaaaaa-1111-4111-8111-000000000009','d6c74c23-63db-4c24-a2e5-408cb23bad27',1,'REJECTED','synthetic')`); err != nil {
+				t.Fatal(err)
+			}
+		}
+		view, err := r.CurrentPrice(ctx, station, "GASOLINE_REGULAR", "L", "STANDARD", "STANDARD")
+		if err != nil || view.Found {
+			t.Fatalf("current leaked after %s: %+v %v", mutation, view, err)
+		}
+		prices, err := r.StationPrices(ctx, station, "")
+		if err != nil || len(prices) != 0 {
+			t.Fatalf("batch leaked: %+v %v", prices, err)
+		}
+		feed, _, err := r.Feed(ctx, filter)
+		if err != nil || len(feed) != 0 {
+			t.Fatalf("feed leaked: %+v %v", feed, err)
+		}
+		summary, err := r.CitySummary(ctx, filter)
+		if err != nil || len(summary) != 0 {
+			t.Fatalf("summary leaked: %+v %v", summary, err)
+		}
+	}
+}

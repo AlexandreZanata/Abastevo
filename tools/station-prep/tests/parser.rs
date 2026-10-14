@@ -462,3 +462,26 @@ fn pmqc_surplus_fields_and_repeated_identity_headers_are_refused() {
     .unwrap();
     assert_eq!(batch.state, RunState::Quarantined);
 }
+
+#[test]
+fn community_first_registry_accepts_nominal_address_without_coordinate_columns() {
+    let raw = bytes("registry-13col-sample.csv");
+    let header = String::from_utf8_lossy(&raw)
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    assert!(!header.to_lowercase().contains("latitude"));
+    let batch = parse_registry("address-only.csv", raw, &Limits::default(), &aliases()).unwrap();
+    assert_eq!(batch.counts.accepted, 8);
+    for row in &batch.accepted {
+        assert!(!row.address_raw.is_empty());
+        assert!(!row.municipality_ibge.is_empty());
+        assert_eq!(row.latitude, None);
+        assert_eq!(row.longitude, None);
+        assert_eq!(row.location_quality, "unknown");
+        let wire: serde_json::Value = serde_json::from_str(&row.to_jsonl()).unwrap();
+        assert!(wire["latitude"].is_null());
+        assert!(wire["longitude"].is_null());
+    }
+}

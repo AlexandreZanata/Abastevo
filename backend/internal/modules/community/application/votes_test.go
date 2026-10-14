@@ -104,11 +104,13 @@ func (f *fakeVoteStore) Report(_ context.Context, d domain.Dispute, enqueue func
 			return prev.ID, true, nil
 		}
 	}
-	f.disputes[d.ID] = d
 	if enqueue != nil {
-		_ = enqueue(context.Background(), nil, "community-consensus", []byte(`{}`), "consensus:"+d.TargetObservationID)
+		if err := enqueue(context.Background(), nil, "community-consensus", []byte(`{}`), "consensus:"+d.TargetObservationID); err != nil {
+			return "", false, err
+		}
 		f.jobs = append(f.jobs, "consensus:"+d.TargetObservationID)
 	}
+	f.disputes[d.ID] = d
 	return d.ID, false, nil
 }
 
@@ -122,8 +124,9 @@ func votePorts(store *fakeVoteStore, now time.Time) VotePorts {
 		CheckQuota: func(context.Context, string, string) (time.Duration, error) {
 			return 0, nil
 		},
-		EnqueueJob: func(context.Context, pgx.Tx, string, []byte, string) error { return nil },
-		Store:      store,
+		EnqueueJob:     func(context.Context, pgx.Tx, string, []byte, string) error { return nil },
+		OpenReportCase: func(context.Context, pgx.Tx, string, string, string) error { return nil },
+		Store:          store,
 	}
 }
 
@@ -288,5 +291,100 @@ func TestVotesCheckQuotaFirst(t *testing.T) {
 	}
 	if _, err := Dispute(context.Background(), ports, voteCaller(), DisputeDTO{TargetObservationID: "x", ClientSubmissionID: "y", Reason: domain.ReasonOther}); !errors.Is(err, ErrQuotaDenied) {
 		t.Errorf("dispute quota = %v", err)
+	}
+}
+
+func TestDisputeRequiresAtomicModerationCase(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	for _, missing := range []bool{false, true} {
+		store := newFakeVoteStore()
+		obs := validatedObs("author", now.Add(-time.Hour))
+		store.obs[obs.ID], store.decisions[obs.ID] = obs, validatedDecisions(obs, now)
+		ports := votePorts(store, now)
+		failure := errors.New("moderation unavailable")
+		ports.OpenReportCase = func(context.Context, pgx.Tx, string, string, string) error { return failure }
+		if missing {
+			ports.OpenReportCase = nil
+		}
+		_, err := Dispute(context.Background(), ports, voteCaller(), DisputeDTO{TargetObservationID: obs.ID, ClientSubmissionID: "report", Reason: domain.ReasonWrongProduct})
+		if err == nil || (!missing && !errors.Is(err, failure)) || len(store.disputes) != 0 || len(store.jobs) != 0 {
+			t.Fatalf("report survived unavailable moderation (missing=%v): error=%v reports=%d jobs=%d", missing, err, len(store.disputes), len(store.jobs))
+		}
+	}
+}
+
+func TestDisputeOpensOwnedModerationCaseExactlyOnce(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	store := newFakeVoteStore()
+	obs := validatedObs("author", now.Add(-time.Hour))
+	store.obs[obs.ID], store.decisions[obs.ID] = obs, validatedDecisions(obs, now)
+	ports := votePorts(store, now)
+	var cases []string
+	ports.OpenReportCase = func(_ context.Context, _ pgx.Tx, target, reason, detail string) error {
+		cases = append(cases, target+"|"+reason+"|"+detail)
+		return nil
+	}
+	intent := DisputeDTO{TargetObservationID: obs.ID, ClientSubmissionID: "report", Reason: domain.ReasonWrongProduct, Detail: "wrong label"}
+	for i := 0; i < 2; i++ {
+		if _, err := Dispute(context.Background(), ports, voteCaller(), intent); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(cases) != 1 || cases[0] != obs.ID+"|WRONG_PRODUCT|wrong label" || len(store.disputes) != 1 || len(store.jobs) != 1 {
+		t.Fatalf("report/case/job did not converge together: cases=%v reports=%d jobs=%d", cases, len(store.disputes), len(store.jobs))
+	}
+}
+
+func TestVotesRefuseHiddenAndDeletedTargets(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	for _, hidden := range []bool{true, false} {
+		store := newFakeVoteStore()
+		obs := validatedObs("author", now.Add(-time.Hour))
+		obs.Hidden, obs.Deleted = hidden, !hidden
+		store.obs[obs.ID], store.decisions[obs.ID] = obs, validatedDecisions(obs, now)
+		ports := votePorts(store, now)
+		if _, err := Confirm(context.Background(), ports, voteCaller(), ConfirmDTO{ObservationID: obs.ID, ClientSubmissionID: "confirm"}); !errors.Is(err, ErrTargetNotFound) {
+			t.Fatalf("hidden=%v confirmation = %v", hidden, err)
+		}
+		if _, err := Dispute(context.Background(), ports, voteCaller(), DisputeDTO{TargetObservationID: obs.ID, ClientSubmissionID: "report", Reason: domain.ReasonOther}); !errors.Is(err, ErrTargetNotFound) {
+			t.Fatalf("hidden=%v report = %v", hidden, err)
+		}
+		if len(store.confirmByID) != 0 || len(store.disputes) != 0 || len(store.jobs) != 0 {
+			t.Fatal("invisible target mutated")
+		}
+	}
+}
+
+func TestConfirmationRefusesFutureAnchor(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	store := newFakeVoteStore()
+	obs := validatedObs("author", now.Add(time.Second))
+	store.obs[obs.ID], store.decisions[obs.ID] = obs, validatedDecisions(obs, now.Add(time.Second))
+	if _, err := Confirm(context.Background(), votePorts(store, now), voteCaller(), ConfirmDTO{ObservationID: obs.ID, ClientSubmissionID: "confirm"}); !errors.Is(err, ErrIneligibleTarget) {
+		t.Fatalf("future anchor confirmation = %v", err)
+	}
+	if len(store.confirmByID) != 0 || len(store.jobs) != 0 {
+		t.Fatal("future anchor mutated")
+	}
+}
+
+type observationReviewLookup struct{ failure error }
+
+func (s observationReviewLookup) OpenReview(_ context.Context, targetType, _ string) (bool, error) {
+	if targetType == ReviewTargetObservation {
+		return true, s.failure
+	}
+	return false, nil
+}
+func TestTallyIncludesPriceAccuracyReview(t *testing.T) {
+	ports := helpfulPorts(newFakeHelpfulnessStore())
+	ports.Reviews = observationReviewLookup{}
+	got, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3)
+	if err != nil || !got.UnderReview {
+		t.Fatalf("price review missing: %+v %v", got, err)
+	}
+	ports.Reviews = observationReviewLookup{failure: errors.New("queue unavailable")}
+	if _, err := TallyFor(context.Background(), ports, helpfulCaller(), "obs-1", 3); !errors.Is(err, ErrReviewUnavailable) {
+		t.Fatalf("price review outage hidden: %v", err)
 	}
 }

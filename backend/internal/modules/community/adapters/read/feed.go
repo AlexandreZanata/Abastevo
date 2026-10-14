@@ -10,22 +10,29 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 )
 
+// ContributionReference is a public opaque revision target for signed community actions, never attribution/media.
+type ContributionReference struct {
+	ObservationID    string `json:"observation_id"`
+	DecisionSequence int64  `json:"decision_sequence"`
+}
+
 // FeedItem is an explicit public allowlist; raw observations and media stay private.
 type FeedItem struct {
-	StationID      string    `json:"station_id"`
-	StationName    string    `json:"station_name"`
-	FuelProduct    string    `json:"fuel_product"`
-	Unit           string    `json:"unit"`
-	AmountMilliBrl int64     `json:"amount_milli_brl"`
-	Currency       string    `json:"currency"`
-	Source         string    `json:"source"`
-	Condition      string    `json:"condition"`
-	Confidence     string    `json:"confidence"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	ExpiresAt      time.Time `json:"expires_at"`
-	Supporters     int       `json:"supporters"`
-	Confirmations  int       `json:"confirmations"`
-	Version        int64     `json:"version"`
+	Contribution   *ContributionReference `json:"contribution,omitempty"`
+	StationID      string                 `json:"station_id"`
+	StationName    string                 `json:"station_name"`
+	FuelProduct    string                 `json:"fuel_product"`
+	Unit           string                 `json:"unit"`
+	AmountMilliBrl int64                  `json:"amount_milli_brl"`
+	Currency       string                 `json:"currency"`
+	Source         string                 `json:"source"`
+	Condition      string                 `json:"condition"`
+	Confidence     string                 `json:"confidence"`
+	UpdatedAt      time.Time              `json:"updated_at"`
+	ExpiresAt      time.Time              `json:"expires_at"`
+	Supporters     int                    `json:"supporters"`
+	Confirmations  int                    `json:"confirmations"`
+	Version        int64                  `json:"version"`
 	// Community star average of the same station+fuel; nil when unrated.
 	RatingsCount int      `json:"ratings_count"`
 	RatingsAvg   *float64 `json:"ratings_avg,omitempty"`
@@ -67,7 +74,11 @@ func (r *Reader) Feed(ctx context.Context, f application.FeedFilter) ([]FeedItem
 			v := float64(row.StarsSum) / float64(row.RatingsCount)
 			avg = &v
 		}
-		items = append(items, FeedItem{StationID: uuidString(row.StationID), StationName: row.DisplayName,
+		var contribution *ContributionReference
+		if row.ContributionObservationID.Valid && row.ContributionDecisionSequence > 0 && row.ContributionState == "VALIDATED" {
+			contribution = &ContributionReference{ObservationID: uuidString(row.ContributionObservationID), DecisionSequence: row.ContributionDecisionSequence}
+		}
+		items = append(items, FeedItem{Contribution: contribution, StationID: uuidString(row.StationID), StationName: row.DisplayName,
 			FuelProduct: row.FuelProduct, Unit: row.Unit, AmountMilliBrl: row.AmountMilliBrl.Int64,
 			Currency: "BRL", Source: "COMMUNITY", Condition: "STANDARD", Confidence: confidence,
 			UpdatedAt: row.AnchorReceivedAt.Time, ExpiresAt: row.ExpiresAt.Time,

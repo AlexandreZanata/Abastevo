@@ -107,4 +107,15 @@ class CommunityPriceDisplayTest {
     fun `confidence renders as support never guarantee`() {
         assertTrue(CommunityPriceDisplay.confidenceNote().contains("not a guarantee"))
     }
+    @Test fun `live community price is separate from ANP and cannot survive expiry or stale fallback`() {
+        val now=java.time.Instant.parse("2026-10-14T12:00:00Z")
+        val community=com.anpfuel.domain.model.BackendCommunitySection("COMMUNITY","AVAILABLE",4321,"BRL","LOW","FRESH",1,0,null,now.minusSeconds(60),now.plusSeconds(60),"consensus-community-v2",1)
+        val group=BackendPriceGroup.create("d6c74c23-63db-4c24-a2e5-408cb23bad26","ETHANOL","L","STANDARD",null,community)
+        val live=CommunityPriceDisplay.fromGroup(group,false,null,now)
+        assertEquals(4321L,live.communityAmountMilli);assertEquals(null,live.officialAmountMilli);assertEquals(CommunityAvailability.AVAILABLE,live.availability)
+        assertEquals(null,CommunityPriceDisplay.fromGroup(group,true,null,now).communityAmountMilli)
+        val expired=CommunityPriceDisplay.fromGroup(group,false,null,now.plusSeconds(60))
+        assertEquals(null,expired.communityAmountMilli);assertEquals(CommunityFreshness.STALE,expired.freshness)
+    }
+
 }

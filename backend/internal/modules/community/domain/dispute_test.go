@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -92,4 +93,22 @@ func TestNewDisputeRequiresIdentity(t *testing.T) {
 			t.Errorf("%s accepted: %v", name, err)
 		}
 	}
+}
+
+func TestNewDisputeBoundsNormalizedUnicodeDetail(t *testing.T) {
+	t.Run("500 normalized Unicode characters", func(t *testing.T) {
+		p := validDisputeParams()
+		p.Detail = " \n" + strings.Repeat("界", 500) + "\t "
+		dispute, _, err := NewDispute(p)
+		if err != nil || dispute.Detail != strings.Repeat("界", 500) {
+			t.Fatalf("500-character normalized detail rejected or changed: length=%d error=%v", len([]rune(dispute.Detail)), err)
+		}
+	})
+	t.Run("501 Unicode characters", func(t *testing.T) {
+		p := validDisputeParams()
+		p.Detail = strings.Repeat("界", 501)
+		if _, _, err := NewDispute(p); !errors.Is(err, ErrInvalidDispute) {
+			t.Fatalf("501-character detail = %v, want invalid dispute", err)
+		}
+	})
 }

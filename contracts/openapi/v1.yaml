@@ -197,7 +197,7 @@ paths:
           $ref: '#/components/responses/BadRequest'
   /v1/photo-captures:
     post:
-      summary: Authorize camera capture inside the reviewed station area.
+      summary: Authorize community photo capture for an active canonical station.
       operationId: authorizePhotoCapture
       tags: [community]
       security: []
@@ -210,7 +210,7 @@ paths:
           schema: {type: string, minLength: 1, maxLength: 128}
       requestBody:
         required: true
-        description: Canonical station and transient fresh location claim.
+        description: Canonical station; location is optional and never required for admission.
         content:
           application/json:
             schema:
@@ -218,8 +218,7 @@ paths:
               additionalProperties: false
               required: [client_capture_id, station_id]
               oneOf:
-                - required: [location]
-                  properties:
+                - properties:
                     development_preview: {const: false}
                 - required: [development_preview]
                   properties:
@@ -251,13 +250,13 @@ paths:
                   issued_at: {type: string, format: date-time}
                   camera_expires_at: {type: string, format: date-time}
                   expires_at: {type: string, format: date-time}
-                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1]}
+                  policy_version: {type: string, enum: [photo-capture-v1, photo-capture-ui-test-v1, photo-capture-community-v2]}
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Location or account does not permit capture.
+          description: Station or account does not permit capture.
         '409':
           $ref: '#/components/responses/Conflict'
         '429':
@@ -899,6 +898,28 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/community/summary:
+    get:
+      summary: Full municipal community price statistics (anonymous).
+      description: >
+        One equal-weight live STANDARD projection per active station/product/unit.
+        Exact milli-BRL mean rounded half up, minimum and maximum over the whole
+        selected city, independent of feed pagination. No ANP substitution or private data.
+        Expired/disputed/future-anchor/hidden-representative prices are excluded at query time.
+      operationId: communityCitySummary
+      tags: [community]
+      security: []
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: municipality_code, in: query, required: true, schema: {type: string, pattern: '^[0-9]{7}$'}}
+      responses:
+        '200':
+          description: Full municipal product statistics; an empty city has an empty items array.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommunitySummaryPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /v1/community/feed:
     get:
       summary: Current community prices for one city and fuel (anonymous).
@@ -1143,7 +1164,7 @@ paths:
           example: GASOLINE_REGULAR
       responses:
         '200':
-          description: Groups per product/unit/condition; community null until P04.
+          description: Groups per product/unit/condition from the union of official and community standard keys; missing source sections are null.
           headers:
             ETag:
               schema: {type: string}
@@ -6586,6 +6607,35 @@ components:
           type: string
           minLength: 1
           maxLength: 256
+    CommunitySummaryPage:
+      type: object
+      additionalProperties: false
+      required: [items, generated_at, state, municipality_code, refresh_after_seconds]
+      properties:
+        items:
+          type: array
+          maxItems: 8
+          items: {$ref: '#/components/schemas/CommunitySummaryItem'}
+        generated_at: {type: string, format: date-time}
+        municipality_code: {type: string, pattern: '^[0-9]{7}$'}
+        state: {type: string, minLength: 2, maxLength: 2}
+        refresh_after_seconds: {type: integer, const: 15}
+    CommunitySummaryItem:
+      type: object
+      additionalProperties: false
+      required: [fuel_product, unit, currency, source, condition, average_milli_brl, minimum_milli_brl, maximum_milli_brl, station_count, updated_at, expires_at]
+      properties:
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {type: string, enum: [L, M3, KG_13]}
+        currency: {type: string, const: BRL}
+        source: {type: string, const: COMMUNITY}
+        condition: {type: string, const: STANDARD}
+        average_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        minimum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        maximum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        station_count: {type: integer, minimum: 1}
+        updated_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
     CommunityFeedPage:
       type: object
       description: A public allowlisted city feed, not raw observation history.
@@ -6600,7 +6650,7 @@ components:
         municipality_code: {type: string, pattern: '^[0-9]{7}$'}
         state: {type: string, minLength: 2, maxLength: 2}
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
-        sort: {type: string, enum: [recent, cheapest]}
+        sort: {type: string, enum: [recent, cheapest, best, worst]}
         refresh_after_seconds: {type: integer, const: 15}
     CommunityFeedItem:
       type: object
@@ -6608,6 +6658,14 @@ components:
       description: Current comparable price facts; no media or attribution identifiers.
       required: [station_id, station_name, fuel_product, unit, amount_milli_brl, currency, source, condition, confidence, updated_at, expires_at, supporters, confirmations, version, ratings_count]
       properties:
+        contribution:
+          type: object
+          additionalProperties: false
+          description: Opaque current visible validated contribution revision for signed community actions; absent when unavailable. No attribution or media.
+          required: [observation_id, decision_sequence]
+          properties:
+            observation_id: {type: string, format: uuid}
+            decision_sequence: {type: integer, minimum: 1}
         station_id: {type: string, format: uuid}
         station_name: {type: string}
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
@@ -6858,7 +6916,7 @@ components:
     PriceGroup:
       description: >
         One product/unit/condition group with independent official and
-        community sections. Community stays null until P04; a null is
+        community sections, including community-only stations. A null is
         UNKNOWN, never an ANP substitution (B-BR-001).
       type: object
       required: [station_id, fuel_product, unit, condition]

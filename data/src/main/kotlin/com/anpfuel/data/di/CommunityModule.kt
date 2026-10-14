@@ -46,6 +46,16 @@ object CommunityModule {
     fun provideCityFeedUseCase(reader: CityCommunityFeedReader, locations: SelectLocationUseCase, catalog: MunicipalityCatalogRepository) =
         GetCityCommunityFeedUseCase(reader, locations, catalog)
 
+    @Provides
+    @Singleton
+    fun provideCitySummaryReader(@Named("apiOrigin") environment: ApiEnvironment): com.anpfuel.domain.community.CityCommunitySummaryReader =
+        CityCommunityFeedHttpClient(OkHttpClientFactory.create(maxRetries=0).newBuilder()
+            .callTimeout(12,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build(),environment.origin)
+
+    @Provides
+    fun provideCitySummaryUseCase(reader: com.anpfuel.domain.community.CityCommunitySummaryReader, cityFeed: GetCityCommunityFeedUseCase) =
+        com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase(reader, cityFeed)
+
     /** Preview API base; kept for reference, DI uses the shared origin. */
     const val PREVIEW_BASE_URL: String = "https://api.anpfuel.example.invalid"
 
@@ -72,9 +82,11 @@ object CommunityModule {
     @Provides
     @Singleton
     fun provideCommunityHelpfulnessHttpClient(
+        proof: com.anpfuel.data.remote.PhotoProofTransport,
         @Named("apiOrigin") environment: ApiEnvironment,
     ): CommunityHelpfulnessHttpClient =
         CommunityHelpfulnessHttpClient(
+            proof = proof,
             client = OkHttpClientFactory.create(),
             baseUrl = environment.origin,
         )

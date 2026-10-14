@@ -79,6 +79,11 @@ func TestPreparedPublicationThroughHTTPAndProfiles(t *testing.T) {
 	if search.Code != 200 || !strings.Contains(search.Body.String(), "[RST-H-TEST] PUBLICATION") {
 		t.Fatalf("city HTTP %d %s", search.Code, search.Body.String())
 	}
+	named := httptest.NewRecorder()
+	router.ServeHTTP(named, httptest.NewRequest(http.MethodGet, "/v1/stations?municipality_code=3550308&state=SP&q=publication&limit=20", nil))
+	if named.Code != 200 || !strings.Contains(named.Body.String(), "PUBLICATION") || !strings.Contains(named.Body.String(), `"coordinates":null`) || !strings.Contains(named.Body.String(), "SYNTHETIC TEST STREET") {
+		t.Fatalf("address-only nominal HTTP %d %s", named.Code, named.Body.String())
+	}
 	var stationID string
 	if err := pool.QueryRow(ctx, "SELECT id::text FROM directory_stations").Scan(&stationID); err != nil {
 		t.Fatal(err)

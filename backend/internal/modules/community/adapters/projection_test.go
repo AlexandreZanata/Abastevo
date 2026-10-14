@@ -197,6 +197,15 @@ func TestEligibleAnchorsFilterState(t *testing.T) {
 	if len(anchors) != 1 || anchors[0].ID != good.ID {
 		t.Fatalf("anchors = %+v, want only the validated fresh fact", anchors)
 	}
+	for _, mutation := range []string{"hidden_at=now()", "hidden_at=NULL,deleted_at=now()", "deleted_at=NULL,received_at=now()+interval '1 day'"} {
+		if _, err := pool.Exec(ctx, "UPDATE community_observations SET "+mutation+" WHERE id=$1", good.ID); err != nil {
+			t.Fatal(err)
+		}
+		remaining, err := s.EligibleAnchors(ctx, key, now.Add(-48*time.Hour))
+		if err != nil || len(remaining) != 0 {
+			t.Fatalf("ineligible anchor after %s: %+v %v", mutation, remaining, err)
+		}
+	}
 	if anchors[0].AmountMilli != 5999 || anchors[0].ContributorRef != "ref-1" {
 		t.Errorf("anchor = %+v", anchors[0])
 	}

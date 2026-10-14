@@ -121,6 +121,7 @@ func TestVotesMapDomainErrors(t *testing.T) {
 		{"conflict", application.ErrConflict, http.StatusConflict},
 		{"already", domain.ErrAlreadyConfirmed, http.StatusConflict},
 		{"reason", domain.ErrUnknownReason, http.StatusBadRequest},
+		{"dispute detail", domain.ErrInvalidDispute, http.StatusBadRequest},
 		{"quota", &application.QuotaDeniedError{RetryAfter: 30 * time.Second}, http.StatusTooManyRequests},
 	}
 	for _, c := range cases {

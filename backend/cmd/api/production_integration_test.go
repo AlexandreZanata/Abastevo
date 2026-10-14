@@ -151,7 +151,11 @@ func TestPublicProcessDevelopmentPhotoPreview(t *testing.T) {
 	testPublicProcessIdentityAndSignedWrites(t, true)
 }
 
-func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
+func TestPublicProcessCommunityActions(t *testing.T) {
+	testPublicProcessIdentityAndSignedWrites(t, false, true)
+}
+
+func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, communityActions ...bool) {
 	ctx := context.Background()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -259,7 +263,7 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 		t.Fatal("duplicate registration changed identity")
 	}
 	// Every public read mounts in the actual process; nearby needs real coordinates.
-	for _, path := range []string{"/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
+	for _, path := range []string{"/v1/community/summary?state=SP&municipality_code=3550308", "/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
 		h.call(h.req("GET", path, nil), 200)
 	}
 	// Incomplete private representation never reaches its token-only handlers.
@@ -426,18 +430,22 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 		photoID := h.call(photoReq, 201)["id"].(string)
 		waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", photoID)
 		h.call(h.signed(b, "POST", "/v1/observations/"+photoID+"/disputes", []byte(`{"client_submission_id":"process-dispute","reason":"PRICE_CHANGED"}`)), 201)
-		if development {
+		{ // Both normal no-GPS and isolated development capture use the actual media pipeline.
 			// A distinct photo must not reuse evidence already bound above.
 			img.Reset()
 			if err := jpeg.Encode(&img, image.NewRGBA(image.Rect(0, 0, 6, 6)), &jpeg.Options{Quality: 85}); err != nil {
 				t.Fatal(err)
 			}
-			captureBody := []byte(fmt.Sprintf(`{"client_capture_id":"development-camera","station_id":%q,"development_preview":true}`, station))
+			captureBody := []byte(fmt.Sprintf(`{"client_capture_id":"development-camera","station_id":%q,"development_preview":%t}`, station, development))
 			captureRequest := h.signed(a, "POST", "/v1/photo-captures", captureBody)
 			captureRequest.Header.Set("Idempotency-Key", "development-camera")
 			capture := h.call(captureRequest, 201)
-			if capture["policy_version"] != "photo-capture-ui-test-v1" {
-				t.Fatal("wrong development provenance")
+			expectedPolicy := "photo-capture-community-v2"
+			if development {
+				expectedPolicy = "photo-capture-ui-test-v1"
+			}
+			if capture["policy_version"] != expectedPolicy {
+				t.Fatal("wrong capture policy")
 			}
 			captureID := capture["capture_id"].(string)
 			capturedAt := time.Now().UTC().Truncate(time.Millisecond).Format(time.RFC3339Nano)
@@ -471,6 +479,60 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool) {
 				request.Header.Set("Idempotency-Key", "development-"+product)
 				observation := h.call(request, 201)["id"].(string)
 				waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", observation)
+				if product == "ETHANOL" && !development {
+					waitSQL("SELECT EXISTS(SELECT 1 FROM community_current_prices WHERE station_id=$1 AND fuel_product='ETHANOL' AND availability='AVAILABLE' AND amount_milli_brl=5899)", station)
+					summary := h.call(h.req("GET", "/v1/community/summary?state=SP&municipality_code=3550308", nil), 200)
+					found := false
+					for _, raw := range summary["items"].([]any) {
+						item := raw.(map[string]any)
+						if item["fuel_product"] == "ETHANOL" {
+							found = true
+							if item["source"] != "COMMUNITY" || item["unit"] != "L" || item["average_milli_brl"] != float64(5899) || item["minimum_milli_brl"] != float64(5899) || item["maximum_milli_brl"] != float64(5899) || item["station_count"] != float64(1) {
+								t.Fatal("normal contribution not consolidated", item)
+							}
+						}
+					}
+					if !found {
+						t.Fatal("normal validated contribution absent from municipal summary")
+					}
+					groups := h.call(h.req("GET", "/v1/stations/"+station+"/prices?fuel_product=ETHANOL", nil), 200)["items"].([]any)
+					if len(groups) != 1 || groups[0].(map[string]any)["official"] != nil || groups[0].(map[string]any)["community"].(map[string]any)["amount_milli_brl"] != float64(5899) {
+						t.Fatal("community-only station group missing", groups)
+					}
+				}
+				if len(communityActions) > 0 && communityActions[0] && product == "ETHANOL" {
+					var sequence int64
+					if err := conn.QueryRow(ctx, `SELECT max(sequence) FROM community_observation_decisions WHERE observation_id=$1`, observation).Scan(&sequence); err != nil {
+						t.Fatal(err)
+					}
+					for index, choice := range []string{"HELPFUL", "NOT_HELPFUL"} {
+						vote := []byte(fmt.Sprintf(`{"client_submission_id":%q,"choice":%q,"decision_sequence":%d}`, fmt.Sprintf("community-vote-%d", index), choice, sequence))
+						request := h.signed(b, "POST", "/v1/observations/"+observation+"/helpfulness", vote)
+						request.Header.Set("Idempotency-Key", fmt.Sprintf("community-vote-%d", index))
+						h.call(request, 201)
+						tally := h.call(h.signed(b, "GET", fmt.Sprintf("/v1/observations/%s/helpfulness?decision_sequence=%d", observation, sequence), nil), 200)
+						if tally["my_choice"] != choice || tally["total"] != float64(1) {
+							t.Fatal("signed tally/choice did not converge", tally)
+						}
+					}
+					remove := []byte(fmt.Sprintf(`{"decision_sequence":%d}`, sequence))
+					removed := h.call(h.signed(b, "POST", "/v1/observations/"+observation+"/helpfulness/remove", remove), 200)
+					if removed["total"] != float64(0) {
+						t.Fatal("signed remove did not converge", removed)
+					}
+					report := []byte(`{"client_submission_id":"community-report","reason":"WRONG_PRODUCT"}`)
+					h.call(h.signed(b, "POST", "/v1/observations/"+observation+"/disputes", report), 201)
+					var queued int
+					if err := conn.QueryRow(ctx, `SELECT count(*) FROM moderation_cases WHERE target_type='OBSERVATION' AND target_id=$1 AND status='OPEN' AND reason='WRONG_PRODUCT'`, observation).Scan(&queued); err != nil || queued != 1 {
+						t.Fatalf("accepted report missing from operator queue: count=%d error=%v", queued, err)
+					}
+					reviewed := h.call(h.req("GET", fmt.Sprintf("/v1/observations/%s/helpfulness?decision_sequence=%d", observation, sequence), nil), 200)
+					if reviewed["under_review"] != true || reviewed["my_choice"] != nil {
+						t.Fatal("public review annotation missing or private choice leaked", reviewed)
+					}
+					h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
+					return // Dedicated action campaign retains production challenge quotas; baseline rotation suite runs separately.
+				}
 				h.call(h.signed(b, "GET", "/v1/observations/"+observation, nil), 404)
 			}
 		}

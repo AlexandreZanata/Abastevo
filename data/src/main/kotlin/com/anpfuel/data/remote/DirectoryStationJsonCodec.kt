@@ -80,6 +80,11 @@ object DirectoryStationJsonCodec {
             municipalityCode = optNullableString(item, "municipality_code"),
             state = optNullableString(item, "state"),
             currentRevisionId = optNullableString(item, "current_revision_id"),
+            address = item.optJSONObject("address")?.let { address ->
+                address.keys().asSequence().mapNotNull { key ->
+                    if (address.isNull(key)) null else key to address.optString(key)
+                }.toMap()
+            } ?: emptyMap(),
         )
     }
 

@@ -28,12 +28,19 @@ type SignalPorts struct {
 	Regional func(ctx context.Context, stationID, product, unit string) (meanMilli int64, ok bool, err error)
 }
 
-// DeriveSignals loads one observation, reduces every available input to
-// bands and persists the projection, converging recomputation. Claimant
-// position intake does not exist yet, so proximity derives UNKNOWN
-// honestly until it lands; the pure matrix (including NEAR/FAR) is
-// proven in the policy suite and activates with the intake.
+// DeriveSignals retains legacy geometry-dependent derivation for deterministic
+// replay. New processing uses DeriveCommunitySignals; a future proximity policy
+// requires separate authorization and evidence under ADR-021.
 func DeriveSignals(ctx context.Context, p SignalPorts, observationID string) (Bands, error) {
+	return deriveSignals(ctx, p, observationID, false)
+}
+
+// DeriveCommunitySignals is the active initial policy; legacy derivation remains replayable.
+func DeriveCommunitySignals(ctx context.Context, p SignalPorts, observationID string) (Bands, error) {
+	return deriveSignals(ctx, p, observationID, true)
+}
+
+func deriveSignals(ctx context.Context, p SignalPorts, observationID string, communityFirst bool) (Bands, error) {
 	now := time.Now()
 	if p.Clock != nil {
 		now = p.Clock()
@@ -42,9 +49,12 @@ func DeriveSignals(ctx context.Context, p SignalPorts, observationID string) (Ba
 	if err != nil {
 		return Bands{}, err
 	}
-	site, err := p.Station(ctx, obs.StationID)
-	if err != nil {
-		return Bands{}, err
+	site := SiteUnknown
+	if !communityFirst {
+		site, err = p.Station(ctx, obs.StationID)
+		if err != nil {
+			return Bands{}, err
+		}
 	}
 	present, dups := false, 0
 	if obs.EvidenceID != "" {
@@ -65,7 +75,22 @@ func DeriveSignals(ctx context.Context, p SignalPorts, observationID string) (Ba
 		HasPhoto: present, DuplicateCount: dups,
 		AmountMilli: obs.AmountMilli, RegionalMeanMilli: mean,
 	}, now)
-	mergeStoredLocation(&bands, site, obs)
+	if communityFirst {
+		bands.PolicyVersion = "signals-community-v2"
+		bands.Proximity = ProximityUnknown
+		kept := bands.RiskCodes[:0]
+		for _, code := range bands.RiskCodes {
+			switch code {
+			case RiskMissingClaim, RiskUnknownStationPoint, RiskPoorAccuracy, RiskFarFromStation, RiskTeleportSuspect:
+			default:
+				kept = append(kept, code)
+			}
+		}
+		bands.RiskCodes = kept
+		bands.NeedsReview = len(kept) > 0
+	} else {
+		mergeStoredLocation(&bands, site, obs)
+	}
 	if err := p.Store.UpsertSignals(ctx, obs.ID, bands, now); err != nil {
 		return Bands{}, err
 	}

@@ -11,6 +11,7 @@ import (
 // Changes require fixtures and a new version, never silent
 // reinterpretation: unknown versions fail loudly for replay safety.
 const ConsensusV1 = "consensus-v1"
+const ConsensusCommunity = "consensus-community-v2"
 
 // ConsensusWindow bounds input eligibility and projection expiry: 48 h.
 // Recency factors by vote age at evaluation time T.
@@ -150,7 +151,7 @@ type Result struct {
 // gates. Same facts, clock and version always produce the same result,
 // independent of input order.
 func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, error) {
-	if opts.Version != ConsensusV1 {
+	if opts.Version != ConsensusV1 && opts.Version != ConsensusCommunity {
 		return Result{}, ErrUnknownVersion
 	}
 	if strings.TrimSpace(key.StationID) == "" || strings.TrimSpace(key.Product) == "" ||
@@ -167,16 +168,16 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 	if len(eligible) == 0 {
 		return Result{
 			Verdict: VerdictUnknown, Freshness: FreshUnknown,
-			ComputedAt: now, Reasons: reasons, AlgorithmVersion: ConsensusV1,
+			ComputedAt: now, Reasons: reasons, AlgorithmVersion: opts.Version,
 		}, nil
 	}
 	reduced := reducePerContributor(eligible)
-	groups := groupByAmount(reduced)
+	groups := groupByAmount(reduced, opts.Version == ConsensusCommunity)
 	if len(groups) == 0 {
 		return Result{
 			Verdict: VerdictUnknown, Freshness: FreshUnknown,
 			ComputedAt: now, Reasons: append(reasons, ReasonNoEligibleVotes),
-			AlgorithmVersion: ConsensusV1,
+			AlgorithmVersion: opts.Version,
 		}, nil
 	}
 	anchors := directAnchors(reduced)
@@ -184,8 +185,21 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 		return Result{
 			Verdict: VerdictUnknown, Freshness: FreshUnknown,
 			ComputedAt: now, Reasons: append(reasons, ReasonConfirmationsAlone),
-			AlgorithmVersion: ConsensusV1,
+			AlgorithmVersion: opts.Version,
 		}, nil
+	}
+	if opts.Version == ConsensusCommunity {
+		// Contributor reduction can remove an author's old anchor while
+		// leaving other people's confirmations of it. Such a group cannot
+		// recommend a price or manufacture a runner-up conflict. Keep v1
+		// unchanged for historical replay; v2 requires an anchor per group.
+		anchored := groups[:0]
+		for _, group := range groups {
+			if len(group.anchors) > 0 {
+				anchored = append(anchored, group)
+			}
+		}
+		groups = anchored
 	}
 	freshest := newestAnchor(anchors)
 	expires := freshest.Add(windowHours * time.Hour)
@@ -196,7 +210,7 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 			Verdict: VerdictDisputed, Freshness: freshness, ExpiresAt: expires,
 			ComputedAt: now, Groups: len(groups),
 			Reasons:          append(reasons, ReasonOpenModeration),
-			AlgorithmVersion: ConsensusV1,
+			AlgorithmVersion: opts.Version,
 		}, nil
 	}
 
@@ -211,7 +225,7 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 			Verdict: VerdictDisputed, Freshness: freshness, ExpiresAt: expires,
 			ComputedAt: now, Groups: len(groups),
 			Reasons:          append(reasons, ReasonRunnerConflict),
-			AlgorithmVersion: ConsensusV1,
+			AlgorithmVersion: opts.Version,
 		}, nil
 	}
 
@@ -224,7 +238,7 @@ func Compute(key PriceKey, votes []Vote, now time.Time, opts Options) (Result, e
 		Reasons:               append(reasons, confReasons...),
 		WinnerObservationIDs:  leader.sortedAnchorIDs(),
 		WinnerConfirmationIDs: leader.sortedConfirmationIDs(),
-		AlgorithmVersion:      ConsensusV1,
+		AlgorithmVersion:      opts.Version,
 	}
 	return out, nil
 }
@@ -373,7 +387,7 @@ type photoAnchor struct {
 // by total weight, independent contributors, newest anchor receipt,
 // amount ascending, then smallest observation UUID. No fuzzy clusters
 // in v1; the ordering never bypasses the conflict rule.
-func groupByAmount(votes []eligibleVote) []amountGroup {
+func groupByAmount(votes []eligibleVote, communityFirst bool) []amountGroup {
 	byAmount := map[int64]*amountGroup{}
 	var order []int64
 	for _, v := range votes {
@@ -400,7 +414,7 @@ func groupByAmount(votes []eligibleVote) []amountGroup {
 		if v.vote.TrustTier == "ESTABLISHED" {
 			g.established++
 		}
-		if v.direct && v.vote.PhotoValidated && v.vote.PhotoProximityOK {
+		if v.direct && v.vote.PhotoValidated && (communityFirst || v.vote.PhotoProximityOK) {
 			g.photos = append(g.photos, photoAnchor{mediaKey: v.vote.MediaKey, receivedAt: v.vote.AnchorReceivedAt})
 		}
 	}

@@ -113,40 +113,44 @@ func (s savedCaptureStore) PhotoCapture(context.Context, string, string) (PhotoC
 }
 
 func TestPhotoCaptureUseRejectsChangedScopeTimeSessionAndExpiry(t *testing.T) {
-	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
-	receipt := PhotoCapture{ID: "capture", ContributorRef: "owner", KeyID: "key", StationID: "station", PolicyVersion: PhotoCapturePolicy, IssuedAt: now.Add(-time.Minute), CameraExpiresAt: now.Add(time.Minute), ExpiresAt: now.Add(23 * time.Hour)}
-	caller := Caller{ContributorID: "contributor", Token: "owner", KeyID: "key"}
-	in := PhotoCaptureUse{CaptureID: "capture", StationID: "station", CapturedAt: now.Add(-time.Second)}
-	if got, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, caller, in, now); err != nil || got.ID != receipt.ID {
-		t.Fatalf("valid use=%+v %v", got, err)
-	}
-	for _, mutate := range []func(*PhotoCapture){
-		func(r *PhotoCapture) { r.KeyID = "other" }, func(r *PhotoCapture) { r.ContributorRef = "other" },
-		func(r *PhotoCapture) { r.StationID = "other" }, func(r *PhotoCapture) { r.PolicyVersion = "other" },
-		func(r *PhotoCapture) { r.ExpiresAt = now }, func(r *PhotoCapture) { r.IssuedAt = now },
-		func(r *PhotoCapture) { r.CameraExpiresAt = in.CapturedAt },
-		func(r *PhotoCapture) { r.EvidenceSessionID = "session"; r.CapturedAt = now.Add(-2 * time.Second) },
-	} {
-		changed := receipt
-		mutate(&changed)
-		if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: changed}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
-			t.Fatalf("changed receipt accepted: %v", err)
-		}
-	}
-	bound := receipt
-	bound.EvidenceSessionID = "session"
-	bound.CapturedAt = in.CapturedAt
-	in.EvidenceSessionID = "other"
-	if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: bound}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
-		t.Fatal("other session accepted")
-	}
-	in.EvidenceSessionID = "session"
-	if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: bound}, caller, in, now); err != nil {
-		t.Fatal(err)
-	}
-	in.CapturedAt = now.Add(time.Second)
-	if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
-		t.Fatal("future capture accepted")
+	for _, policy := range []string{PhotoCapturePolicy, CommunityPhotoCapturePolicy} {
+		t.Run(policy, func(t *testing.T) {
+			now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+			receipt := PhotoCapture{ID: "capture", ContributorRef: "owner", KeyID: "key", StationID: "station", PolicyVersion: policy, IssuedAt: now.Add(-time.Minute), CameraExpiresAt: now.Add(time.Minute), ExpiresAt: now.Add(23 * time.Hour)}
+			caller := Caller{ContributorID: "contributor", Token: "owner", KeyID: "key"}
+			in := PhotoCaptureUse{CaptureID: "capture", StationID: "station", CapturedAt: now.Add(-time.Second)}
+			if got, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, caller, in, now); err != nil || got.ID != receipt.ID {
+				t.Fatalf("valid use=%+v %v", got, err)
+			}
+			for _, mutate := range []func(*PhotoCapture){
+				func(r *PhotoCapture) { r.KeyID = "other" }, func(r *PhotoCapture) { r.ContributorRef = "other" },
+				func(r *PhotoCapture) { r.StationID = "other" }, func(r *PhotoCapture) { r.PolicyVersion = "other" },
+				func(r *PhotoCapture) { r.ExpiresAt = now }, func(r *PhotoCapture) { r.IssuedAt = now },
+				func(r *PhotoCapture) { r.CameraExpiresAt = in.CapturedAt },
+				func(r *PhotoCapture) { r.EvidenceSessionID = "session"; r.CapturedAt = now.Add(-2 * time.Second) },
+			} {
+				changed := receipt
+				mutate(&changed)
+				if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: changed}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
+					t.Fatalf("changed receipt accepted: %v", err)
+				}
+			}
+			bound := receipt
+			bound.EvidenceSessionID = "session"
+			bound.CapturedAt = in.CapturedAt
+			in.EvidenceSessionID = "other"
+			if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: bound}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
+				t.Fatal("other session accepted")
+			}
+			in.EvidenceSessionID = "session"
+			if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: bound}, caller, in, now); err != nil {
+				t.Fatal(err)
+			}
+			in.CapturedAt = now.Add(time.Second)
+			if _, err := ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, caller, in, now); !errors.Is(err, ErrPhotoCaptureIneligible) {
+				t.Fatal("future capture accepted")
+			}
+		})
 	}
 }
 
@@ -191,11 +195,12 @@ func TestDevelopmentPhotoPreviewRequiresOptInDeadlineCanonicalStationAndProof(t 
 		t.Fatal("expired opt-in allowed")
 	}
 	p.Clock = func() time.Time { return now }
+	previewReceipt := store.receipt
 	in.DevelopmentPreview = false
-	if _, _, err = AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
-		t.Fatal("normal flow bypassed location")
+	if normal, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "preview", nil, in); err != nil || normal.PolicyVersion != CommunityPhotoCapturePolicy {
+		t.Fatal("normal flow must use distinct community policy", err)
 	}
-	receipt := store.receipt
+	receipt := previewReceipt
 	receipt.ContributorRef = testCaller().Token
 	receipt.KeyID = testCaller().KeyID
 	use := PhotoCaptureUse{CaptureID: receipt.ID, StationID: receipt.StationID, CapturedAt: now.Add(time.Second)}
@@ -204,5 +209,57 @@ func TestDevelopmentPhotoPreviewRequiresOptInDeadlineCanonicalStationAndProof(t 
 	}
 	if _, err = ValidatePhotoCaptureUse(context.Background(), savedCaptureStore{receipt: receipt}, testCaller(), use, now.Add(time.Second), p.DevelopmentPhotoPreviewUntil); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCommunityFirstCaptureNeedsStationProofNotLocation(t *testing.T) {
+	for _, distance := range []float64{0, 149.9, 150, 150.1, 100000} {
+		p := testPorts()
+		p.CheckCaptureStation = func(context.Context, string) error { return nil }
+		p.Locate = func(context.Context, string, float64, float64) (float64, StationSite, error) {
+			t.Fatal("normal capture queried location")
+			return distance, SiteUnknown, nil
+		}
+		store := &previewCaptureStore{}
+		in := PhotoCaptureIntent{ClientCaptureID: "community", StationID: testDTO().StationID}
+		if distance > 0 {
+			now := p.Clock()
+			in.Location = locationDTO(FixVerified, acc(10), &now, acc(-23.5+distance/111000), acc(-46.6))
+		}
+		got, _, err := AuthorizePhotoCapture(context.Background(), p, store, testCaller(), "community", nil, in)
+		if err != nil || got.PolicyVersion != "photo-capture-community-v2" {
+			t.Fatalf("no-GPS capture %v %+v", err, got)
+		}
+		if got.CameraExpiresAt.Sub(got.IssuedAt) != 2*time.Minute || got.ExpiresAt.Sub(got.IssuedAt) != 24*time.Hour {
+			t.Fatal("changed deadlines")
+		}
+		p.CheckCaptureStation = func(context.Context, string) error { return ErrPhotoCaptureIneligible }
+		if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), "community", nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+			t.Fatal("unknown/inactive station admitted", err)
+		}
+	}
+}
+
+func TestCommunityFirstCaptureRejectsForgedOptionalClaimAndMissingStationPort(t *testing.T) {
+	p := testPorts()
+	now := p.Clock()
+	in := PhotoCaptureIntent{ClientCaptureID: "forged", StationID: testDTO().StationID, Location: locationDTO(FixVerified, acc(10), &now, acc(-23.5), acc(-46.6))}
+	in.Location.Simulated = true
+	if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), in.ClientCaptureID, nil, in); !errors.Is(err, ErrLocationForged) {
+		t.Fatal("forged optional claim admitted", err)
+	}
+	in.Location = nil
+	p.CheckCaptureStation = nil
+	if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), in.ClientCaptureID, nil, in); err == nil {
+		t.Fatal("missing station port admitted capture")
+	}
+}
+
+func TestCommunityFirstCaptureRefusesZeroClock(t *testing.T) {
+	p := testPorts()
+	p.Clock = func() time.Time { return time.Time{} }
+	in := PhotoCaptureIntent{ClientCaptureID: "zero-clock", StationID: testDTO().StationID}
+	if _, _, err := AuthorizePhotoCapture(context.Background(), p, noCaptureStore{}, testCaller(), in.ClientCaptureID, nil, in); !errors.Is(err, ErrPhotoCaptureIneligible) {
+		t.Fatal("zero clock admitted capture", err)
 	}
 }

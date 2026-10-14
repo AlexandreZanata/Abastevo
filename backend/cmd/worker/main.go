@@ -455,21 +455,11 @@ func run() error {
 			if err != nil || !resolved.present {
 				return communityapp.PhotoInfo{}, err
 			}
-			// Proximity comes from the anchor's own derived signals;
-			// missing bands fail closed to no proximity, never to
-			// verified.
-			proximity := false
-			signals, err := communityStore.LoadSignals(ctx, anchor.ID)
-			if err != nil {
-				if !errors.Is(err, communityadapters.ErrNoSignals) {
-					return communityapp.PhotoInfo{}, err
-				}
-			} else if signals.Proximity == communityapp.ProximityNear {
-				proximity = true
-			}
+			// Independently verified bytes count under v2; location is not a trust input.
+
 			return communityapp.PhotoInfo{
 				Found: true, Validated: true,
-				ProximityOK: proximity, MediaKey: fmt.Sprintf("%016x", resolved.dhash),
+				ProximityOK: false, MediaKey: fmt.Sprintf("%016x", resolved.dhash),
 			}, nil
 		},
 		// Regional deviation already routes through the
@@ -553,14 +543,11 @@ func run() error {
 			},
 		},
 		"validate-observation": communityjobs.Validate{
-			// Fresh signal bands persist after admission (P06-T01):
-			// claimant-position intake does not exist yet, so the
-			// loader derives UNKNOWN proximity honestly while the
-			// tested NEAR/FAR matrix activates with the intake. The
-			// upsert converges, so derivation failures safely retry
-			// the whole job without forking history.
+			// ADR-021: new signal processing does not read station geometry or
+			// require contributor location. The upsert converges, so derivation
+			// failures retry without forking history; legacy replay stays separate.
 			Derive: func(ctx context.Context, observationID string) error {
-				_, err := communityapp.DeriveSignals(ctx, communityapp.SignalPorts{
+				_, err := communityapp.DeriveCommunitySignals(ctx, communityapp.SignalPorts{
 					Clock: time.Now,
 					Store: communityadapters.NewStore(raw),
 					Station: func(ctx context.Context, stationID string) (communityapp.StationSite, error) {
@@ -726,6 +713,17 @@ func run() error {
 			},
 			ByKey: func(ctx context.Context, key communitydomain.PriceKey) (communitydomain.Result, error) {
 				return communityapp.RecomputeKey(ctx, recomputePorts, key)
+			},
+		},
+		"trust-affected-recompute": communityjobs.TrustAffected{
+			Batch:    100,
+			Affected: communityStore.AffectedContributorKeys,
+			Recompute: func(ctx context.Context, key communitydomain.PriceKey) (communitydomain.Result, error) {
+				return communityapp.RecomputeKey(ctx, recomputePorts, key)
+			},
+			Enqueue: func(ctx context.Context, kind string, payload []byte, dedupe string) error {
+				_, err := jobs.Enqueue(ctx, raw, kind, payload, dedupe, 5, time.Time{})
+				return err
 			},
 		},
 		"consensus-boundary": communityjobs.Boundary{

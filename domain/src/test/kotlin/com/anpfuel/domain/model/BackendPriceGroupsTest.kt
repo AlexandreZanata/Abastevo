@@ -50,7 +50,7 @@ class BackendPriceGroupsTest {
     }
 
     @Test
-    fun `refuses unknown fuel and non-null community`() {
+    fun `refuses unknown fuel and invalid community source`() {
         assertThrows(DomainException::class.java) {
             BackendPriceGroup.create(
                 stationId = stationId,
@@ -61,14 +61,14 @@ class BackendPriceGroupsTest {
                 community = null,
             )
         }
-        assertThrows(DomainException::class.java) {
+        assertThrows(IllegalArgumentException::class.java) {
             BackendPriceGroup.create(
                 stationId = stationId,
                 fuelProductWire = "ETHANOL",
                 unit = "L",
                 conditionKind = "STANDARD",
                 official = null,
-                community = "COMMUNITY",
+                community = BackendCommunitySection("ANP", "UNKNOWN", null, "BRL", "", "UNKNOWN", 0, 0, null, null, null, "consensus-community-v2", 1),
             )
         }
     }

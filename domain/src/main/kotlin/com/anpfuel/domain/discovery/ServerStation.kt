@@ -36,7 +36,10 @@ class ServerStation private constructor(
     val municipalityCode: String?,
     val state: String?,
     val currentRevisionId: String?,
+    val address: Map<String, String>,
 ) {
+    val addressLabel: String get() = address.values.filter { it.isNotBlank() }.joinToString(", ")
+
     val artwork = com.anpfuel.domain.profile.StationArtwork.BETA_DEFAULT
 
     companion object {
@@ -50,6 +53,7 @@ class ServerStation private constructor(
             municipalityCode: String?,
             state: String?,
             currentRevisionId: String?,
+            address: Map<String, String> = emptyMap(),
         ): ServerStation {
             if (!BackendPriceGroup.isUuid(stationId)) {
                 throw DomainException("malformed station_id")
@@ -83,6 +87,7 @@ class ServerStation private constructor(
                 municipalityCode = municipalityCode?.trim()?.takeIf { it.isNotEmpty() },
                 state = state?.trim()?.takeIf { it.isNotEmpty() },
                 currentRevisionId = currentRevisionId?.lowercase(),
+                address = address.toMap(),
             )
         }
     }

@@ -56,6 +56,10 @@ type HelpfulnessStore interface {
 // annotation tests instead of the compiler.
 const ReviewTargetContribution = "CONTRIBUTION"
 
+// Price-accuracy reports target the same observation under the moderation
+// module's distinct OBSERVATION vocabulary; social abuse uses CONTRIBUTION.
+const ReviewTargetObservation = "OBSERVATION"
+
 // ReviewLookup reports whether a contribution target carries an open
 // moderation review. Implementations read the moderation queue; the
 // community module owns only this narrow interface, never the
@@ -205,6 +209,12 @@ func Remove(ctx context.Context, p HelpfulnessPorts, caller Caller, observationI
 	if err := checkHelpfulnessAccount(ctx, p, caller.ContributorID); err != nil {
 		return err
 	}
+	if p.CheckQuota == nil {
+		return ErrQuotaDenied
+	}
+	if _, err := p.CheckQuota(ctx, caller.Fingerprint, "write"); err != nil {
+		return err
+	}
 	target, err := p.Store.Target(ctx, strings.TrimSpace(observationID))
 	if err != nil {
 		return err
@@ -257,6 +267,12 @@ func TallyFor(ctx context.Context, p HelpfulnessPorts, caller Caller, observatio
 	review, err := p.Reviews.OpenReview(ctx, ReviewTargetContribution, target.ObservationID)
 	if err != nil {
 		return TallyResult{}, ErrReviewUnavailable
+	}
+	if !review {
+		review, err = p.Reviews.OpenReview(ctx, ReviewTargetObservation, target.ObservationID)
+		if err != nil {
+			return TallyResult{}, ErrReviewUnavailable
+		}
 	}
 	res.UnderReview = review
 	return res, nil

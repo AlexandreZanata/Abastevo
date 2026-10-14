@@ -218,3 +218,31 @@ func TestDeriveSignalsPropagatesUnavailable(t *testing.T) {
 		t.Error("missing observation accepted")
 	}
 }
+
+func TestCommunityFirstSignalsIgnoreGeometryAndRetainEvidenceRisks(t *testing.T) {
+	store := newFakeSignalStore()
+	obs := deriveObs()
+	obs.LocationVerdict = FixVerified
+	obs.LocationProximity = ProximityNear
+	obs.LocationReason = RiskTeleportSuspect
+	store.obs[obs.ID] = obs
+	p := derivePorts(store)
+	p.Station = func(context.Context, string) (StationSite, error) {
+		t.Fatal("geometry required for initial policy")
+		return SiteUnknown, nil
+	}
+	bands, err := DeriveCommunitySignals(context.Background(), p, obs.ID)
+	if err != nil || bands.Proximity != ProximityUnknown || bands.PolicyVersion != "signals-community-v2" {
+		t.Fatalf("bands %+v %v", bands, err)
+	}
+	for _, code := range bands.RiskCodes {
+		if code == RiskTeleportSuspect || code == RiskUnknownStationPoint || code == RiskMissingClaim {
+			t.Fatal("geometric penalty retained", code)
+		}
+	}
+	p.Photo = func(context.Context, string) (bool, int, error) { return false, 0, nil }
+	bands, err = DeriveCommunitySignals(context.Background(), p, obs.ID)
+	if err != nil || !bands.NeedsReview {
+		t.Fatal("missing-photo review lost", err)
+	}
+}

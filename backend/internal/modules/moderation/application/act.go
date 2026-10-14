@@ -22,10 +22,12 @@ type ActStore interface {
 // atomic store and the recompute enqueue threaded into the same
 // transaction.
 type ActPorts struct {
-	Clock      func() time.Time
-	NewID      func() (string, error)
-	Store      ActStore
-	EnqueueJob func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
+	Clock                 func() time.Time
+	NewID                 func() (string, error)
+	Store                 ActStore
+	InvalidateObservation func(ctx context.Context, tx pgx.Tx, observationID, caseID string, at time.Time) error
+	BlockContributor      func(ctx context.Context, tx pgx.Tx, contributorRef, caseID, reason string, at time.Time) error
+	EnqueueJob            func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
 }
 
 // Caller carries the accountable operator identity. It arrives from
@@ -91,9 +93,27 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 	if err != nil {
 		return ActResult{}, err
 	}
+	invalidates := probe.Action == domain.ActionInvalidate && (c.TargetType == domain.TargetObservation || c.TargetType == domain.TargetContribution)
+	if invalidates && p.InvalidateObservation == nil {
+		return ActResult{}, domain.ErrActionForbidden
+	}
+	blocks := probe.Action == domain.ActionBlock && c.TargetType == domain.TargetContributor
+	if blocks && p.BlockContributor == nil {
+		return ActResult{}, domain.ErrActionForbidden
+	}
 	kind, payload := actionJob(c, probe)
 	storedID, err := p.Store.RecordAction(ctx, probe, toStatus, kind, payload, "moderation:"+c.ID+":"+probe.ID,
 		func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			if invalidates {
+				if err := p.InvalidateObservation(ctx, tx, c.TargetID, c.ID, now); err != nil {
+					return err
+				}
+			}
+			if blocks {
+				if err := p.BlockContributor(ctx, tx, c.TargetID, c.ID, probe.Reason, now); err != nil {
+					return err
+				}
+			}
 			return p.EnqueueJob(ctx, tx, kind, payload, dedupe)
 		})
 	if err != nil {

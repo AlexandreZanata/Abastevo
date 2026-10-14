@@ -100,7 +100,7 @@ func (v Boundary) Handle(ctx context.Context, job jobs.Job) error {
 	if payload.Version != 1 {
 		return fmt.Errorf("boundary: bad payload")
 	}
-	if v.Clock == nil || v.Due == nil || v.Enqueue == nil || v.Batch < 1 {
+	if job.ID == "" || v.Clock == nil || v.Due == nil || v.Enqueue == nil || v.Batch < 1 {
 		return fmt.Errorf("boundary: no sweep configured")
 	}
 	keys, err := v.Due(ctx, v.Clock(), v.Batch)
@@ -119,7 +119,7 @@ func (v Boundary) Handle(ctx context.Context, job jobs.Job) error {
 		if err != nil {
 			return err
 		}
-		if err := v.Enqueue(ctx, "community-consensus", raw, "consensus:key:"+application.PriceKeyString(key)); err != nil {
+		if err := v.Enqueue(ctx, "community-consensus", raw, "consensus:boundary:"+job.ID+":"+application.PriceKeyString(key)); err != nil {
 			return err
 		}
 	}

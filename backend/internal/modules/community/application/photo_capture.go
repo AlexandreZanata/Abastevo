@@ -10,7 +10,8 @@ import (
 )
 
 const PhotoCaptureRadiusM = 150.0
-const PhotoCapturePolicy = "photo-capture-v1"
+const PhotoCapturePolicy = "photo-capture-v1" // Immutable legacy receipts.
+const CommunityPhotoCapturePolicy = "photo-capture-community-v2"
 const DevelopmentPhotoCapturePolicy = "photo-capture-ui-test-v1"
 
 var ErrPhotoCaptureIneligible = errors.New("community: photo capture not eligible")
@@ -100,7 +101,10 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 	}
 	out, err := p.Idempotent(ctx, IdempotencyKey{ContributorID: caller.ContributorID, Method: "POST", Route: "/v1/photo-captures", Key: key}, body, func(ctx context.Context) (Outcome, error) {
 		now := p.Clock()
-		policy := PhotoCapturePolicy
+		if now.IsZero() {
+			return Outcome{}, ErrPhotoCaptureIneligible
+		}
+		policy := CommunityPhotoCapturePolicy
 		if in.DevelopmentPreview {
 			if p.DevelopmentPhotoPreviewUntil.IsZero() || !now.Before(p.DevelopmentPhotoPreviewUntil) || p.CheckDevelopmentStation == nil {
 				return Outcome{}, ErrPhotoCaptureIneligible
@@ -111,8 +115,23 @@ func AuthorizePhotoCapture(ctx context.Context, p Ports, store PhotoCaptureStore
 			policy = DevelopmentPhotoCapturePolicy
 		}
 		if !in.DevelopmentPreview {
-			if err := CheckPhotoCaptureLocation(ctx, p, in.StationID, in.Location, now); err != nil {
+			if p.CheckCaptureStation == nil {
+				return Outcome{}, errors.New("community: station eligibility not configured")
+			}
+			if err := p.CheckCaptureStation(ctx, in.StationID); err != nil {
 				return Outcome{}, err
+			}
+			if in.Location != nil {
+				loc := in.Location
+				_, err := VerifyDeviceFix(DeviceFix{
+					ClaimedVerdict: loc.ClaimedVerdict, PermissionGranted: loc.PermissionGranted,
+					HasFix: loc.HasFix, SourceInfoPresent: loc.SourceInfoPresent, Simulated: loc.Simulated,
+					AccuracyMeters: loc.AccuracyMeters, ClockSkewSeconds: loc.ClockSkewSeconds,
+					Manual: loc.Manual, CapturedAt: loc.CapturedAt, Latitude: loc.Latitude, Longitude: loc.Longitude,
+				}, now)
+				if err != nil {
+					return Outcome{}, ErrLocationForged
+				}
 			}
 		}
 		id, err := p.NewID()
@@ -165,7 +184,7 @@ func ValidatePhotoCaptureUse(ctx context.Context, store PhotoCaptureStore, calle
 	if err != nil {
 		return PhotoCapture{}, err
 	}
-	allowedPolicy := receipt.PolicyVersion == PhotoCapturePolicy
+	allowedPolicy := receipt.PolicyVersion == PhotoCapturePolicy || receipt.PolicyVersion == CommunityPhotoCapturePolicy
 	if receipt.PolicyVersion == DevelopmentPhotoCapturePolicy && len(developmentUntil) == 1 {
 		allowedPolicy = !developmentUntil[0].IsZero() && now.Before(developmentUntil[0])
 	}

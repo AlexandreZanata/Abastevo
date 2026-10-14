@@ -567,9 +567,10 @@ func TestContributionInvalidationRemovesEligibilityKeepsAudit(t *testing.T) {
 	}
 	var kinds []string
 	acted, err := modapp.Act(ctx, modapp.ActPorts{
-		Clock: time.Now,
-		NewID: func() (string, error) { return helpfulVoteID(), nil },
-		Store: modStore,
+		Clock:                 time.Now,
+		NewID:                 func() (string, error) { return helpfulVoteID(), nil },
+		Store:                 modStore,
+		InvalidateObservation: s.InvalidateTx,
 		EnqueueJob: func(_ context.Context, _ pgx.Tx, kind string, payload []byte, _ string) error {
 			kinds = append(kinds, kind)
 			_ = payload
@@ -584,16 +585,7 @@ func TestContributionInvalidationRemovesEligibilityKeepsAudit(t *testing.T) {
 	if acted.ToStatus != moddomain.StatusResolved || len(kinds) != 1 || kinds[0] != "community-consensus" {
 		t.Fatalf("act = %+v kinds = %v", acted, kinds)
 	}
-	// The consensus worker records the invalidation decision; the
-	// observation leaves the eligible set while audit rows stay.
-	now := time.Now()
-	inv, err := domain.Invalidate(obs, domain.StateValidated, domain.ActorModerator, opened.CaseID, []string{"spam"}, now, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.RecordDecision(ctx, inv); err != nil {
-		t.Fatalf("record invalidate: %v", err)
-	}
+	// The operator transaction already applied the audited decision.
 	target, err := hs.Target(ctx, obs.ID)
 	if err != nil {
 		t.Fatal(err)

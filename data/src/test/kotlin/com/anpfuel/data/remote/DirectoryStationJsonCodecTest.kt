@@ -25,6 +25,7 @@ class DirectoryStationJsonCodecTest {
             {
               "station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26",
               "display_name": "Posto Central",
+              "address": {"street":"Synthetic Street","number":"12"},
               "cnpj_normalized": "04218406000104",
               "municipality_code": "3550308",
               "state": "SP",
@@ -54,6 +55,7 @@ class DirectoryStationJsonCodecTest {
         assertNull(page.nextCursor)
         assertEquals("d6c74c23-63db-4c24-a2e5-408cb23bad26", page.items[0].stationId)
         assertEquals(-23.55, page.items[0].latitude)
+        assertEquals("Synthetic Street", page.items[0].address["street"])
         assertNull(page.items[1].latitude)
         assertEquals("12ABC34501DE35", page.items[1].cnpjNormalized)
     }

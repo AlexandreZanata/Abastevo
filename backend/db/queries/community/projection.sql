@@ -17,7 +17,8 @@ WHERE o.station_id = @station_id
     AND o.unit = @unit
     AND o.condition_kind = @condition_kind
     AND o.qualifier_key = @qualifier_key
-    AND o.received_at >= @cutoff
+    AND o.received_at >= @cutoff AND o.received_at <= @now
+    AND o.hidden_at IS NULL AND o.deleted_at IS NULL
     AND (SELECT d.to_state FROM community_observation_decisions d
          WHERE d.observation_id = o.id
          ORDER BY d.sequence DESC LIMIT 1) = 'VALIDATED'
@@ -62,18 +63,24 @@ ON CONFLICT (station_id, fuel_product, unit, condition_kind,
 WHERE p.projection_version < EXCLUDED.projection_version;
 
 -- name: GetProjection :one
-SELECT station_id, fuel_product, unit, condition_kind, qualifier_key,
-    amount_milli_brl, availability, confidence,
-    representative_observation_id, independent_supporters,
-    confirmation_count, anchor_received_at, expires_at,
-    next_recompute_at, computed_at, projection_version,
-    algorithm_version, policy_config_version
-FROM community_current_prices
-WHERE station_id = @station_id
-    AND fuel_product = @fuel_product
-    AND unit = @unit
-    AND condition_kind = @condition_kind
-    AND qualifier_key = @qualifier_key;
+SELECT p.station_id, p.fuel_product, p.unit, p.condition_kind, p.qualifier_key,
+    p.amount_milli_brl, p.availability, p.confidence,
+    p.representative_observation_id, p.independent_supporters,
+    p.confirmation_count, p.anchor_received_at, p.expires_at,
+    p.next_recompute_at, p.computed_at, p.projection_version,
+    p.algorithm_version, p.policy_config_version
+FROM community_current_prices p
+WHERE p.station_id = @station_id
+    AND p.fuel_product = @fuel_product
+    AND p.unit = @unit
+    AND p.condition_kind = @condition_kind
+    AND p.qualifier_key = @qualifier_key
+ AND (p.representative_observation_id IS NULL OR EXISTS (
+  SELECT 1 FROM community_observations visible WHERE visible.id=p.representative_observation_id
+   AND visible.hidden_at IS NULL AND visible.deleted_at IS NULL
+   AND COALESCE((SELECT d.to_state FROM community_observation_decisions d WHERE d.observation_id=visible.id ORDER BY d.sequence DESC LIMIT 1),'') <> 'REJECTED'
+ ))
+;
 
 -- name: DueProjections :many
 SELECT station_id, fuel_product, unit, condition_kind, qualifier_key,
@@ -96,3 +103,10 @@ ON CONFLICT (projection_key) DO UPDATE SET
     reason_codes = EXCLUDED.reason_codes,
     computed_at = EXCLUDED.computed_at
 WHERE i.version < EXCLUDED.version;
+
+-- Internal version reads must include invisible representatives. Public filtering
+-- must never reset the monotonic version used under LockPriceKey.
+-- name: ProjectionVersion :one
+SELECT projection_version FROM community_current_prices
+WHERE station_id = @station_id AND fuel_product = @fuel_product AND unit = @unit
+ AND condition_kind = @condition_kind AND qualifier_key = @qualifier_key;

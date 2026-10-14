@@ -248,7 +248,7 @@ fun AnpNavGraph(
             )
         }
         composable(Routes.CAPTURE) {
-            CaptureScreen(onNavigateBack = { navController.popBackStack() }, onReturnCommunity = returnToCommunity)
+            CaptureScreen(onNavigateBack = { navController.popBackStack() }, onReturnCommunity = returnToCommunity, onChooseCity = { navController.navigate(Routes.LOCATION) })
         }
         composable(Routes.SUGGEST) {
             com.anpfuel.app.ui.suggest.SuggestStationScreen(
@@ -263,6 +263,7 @@ fun AnpNavGraph(
             ),
         ) { entry ->
             CaptureScreen(
+                onChooseCity = { navController.navigate(Routes.LOCATION) },
                 onReturnCommunity = returnToCommunity,
                 onNavigateBack = { navController.popBackStack() },
                 stationId = entry.arguments?.getString("stationId")?.takeIf { it.isNotEmpty() },

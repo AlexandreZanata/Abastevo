@@ -190,6 +190,34 @@ func TestCastRefusesInactiveAccount(t *testing.T) {
 	}
 }
 
+func TestRemoveRequiresWriteBudgetBeforeMutation(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		store := newFakeHelpfulnessStore()
+		ports := helpfulPorts(store)
+		caller := helpfulCaller()
+		if _, err := Cast(context.Background(), ports, caller, helpfulDTO()); err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		ports.CheckQuota = func(_ context.Context, subject, operation string) (time.Duration, error) {
+			calls++
+			if subject != caller.Fingerprint || operation != "write" {
+				t.Fatalf("wrong removal quota scope: %s %s", subject, operation)
+			}
+			return time.Minute, &QuotaDeniedError{RetryAfter: time.Minute}
+		}
+		if missing {
+			ports.CheckQuota = nil
+		}
+		if err := Remove(context.Background(), ports, caller, "obs-1", 3); !errors.Is(err, ErrQuotaDenied) {
+			t.Fatalf("removal bypassed write budget (missing=%v): %v", missing, err)
+		}
+		if len(store.votes) != 1 || store.tally.Helpful != 1 || (!missing && calls != 1) {
+			t.Fatal("quota refusal changed owner vote or tally")
+		}
+	}
+}
+
 func TestCastRefusesUnknownAndIneligibleTargets(t *testing.T) {
 	store := newFakeHelpfulnessStore()
 	dto := helpfulDTO()

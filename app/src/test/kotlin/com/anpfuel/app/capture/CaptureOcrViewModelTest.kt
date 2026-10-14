@@ -38,6 +38,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -78,6 +79,7 @@ class CaptureOcrViewModelTest {
         saved: SavedStateHandle = SavedStateHandle(),
         owned: GetOwnedContributionsUseCase = mockk(relaxed = true),
         nearbyDeferred: CompletableDeferred<NearbyServerStationsOutcome>? = null,
+        directorySearch: (suspend (String,String,Int) -> com.anpfuel.domain.discovery.ServerStationPage)? = null,
     ): CaptureOcrViewModel {
         val flags = object : CaptureOcrFlagProvider {
             override fun isEnabled(): Boolean = enabled
@@ -100,28 +102,11 @@ class CaptureOcrViewModelTest {
         val city = mockk<com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase>()
         io.mockk.coEvery { city.city() } returns com.anpfuel.domain.community.FeedCity("5103403", com.anpfuel.domain.valueobject.BrazilianState.MATO_GROSSO, "Test City")
         val stationGateway = mockk<com.anpfuel.domain.repository.ServerStationGateway>()
-        io.mockk.coEvery { stationGateway.search(any(), any(), any()) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
-            ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
-        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
-    }
-
-    private fun developmentGate(): PhotoCaptureGate {
-        val gate = mockk<PhotoCaptureGate>()
-        val now = System.currentTimeMillis()
-        io.mockk.coEvery { gate.authorizeDevelopmentPreview(any(), any()) } answers {
-            PhotoCapturePermission("10000000-0000-4000-8000-000000000001", firstArg(), now - 1000, now + 119000, now + 86399000, "owner", "https://teste.abastevo.com.br", true)
+        io.mockk.coEvery { stationGateway.search(any(), any(), any()) } coAnswers {
+            directorySearch?.invoke(firstArg(),secondArg(),thirdArg()) ?: com.anpfuel.domain.discovery.ServerStationPage(listOf(
+                ServerStation.create("123e4567-e89b-12d3-a456-426614174000", "Test Station", StationLocationQuality.UNKNOWN, null, null, null, "5103403", "MT", null)), null)
         }
-        every { gate.isCurrent(any()) } returns true
-        return gate
-    }
-
-    private suspend fun prepareDevelopment(vm: CaptureOcrViewModel) {
-        vm.setPreviewEnabled(true)
-        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
-        vm.searchPreviewStation("Test")
-        kotlinx.coroutines.test.TestScope(dispatcher).advanceUntilIdle()
-        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.previewStations.first { it.isNotEmpty() } } }
-        vm.pickPreviewStation("123e4567-e89b-12d3-a456-426614174000")
+        return CaptureOcrViewModel(useCase, handler, flags, enqueue, locations, nearbyUseCase, photos, locationSource, gate, pixels, saved, city, stationGateway, owned)
     }
 
     @Test
@@ -482,30 +467,28 @@ class CaptureOcrViewModelTest {
             now + 86399000, "synthetic-owner", "https://example.invalid")
     }
 
-    @Test fun `location denial and server refusal never launch camera`() = runTest(dispatcher) {
-        val gate = mockk<PhotoCaptureGate>()
-        val missing = viewModel(true, true, gate = gate)
-        missing.bindTarget(stationId, "ETHANOL")
-        var launches = 0
-        missing.authorizeCamera { launches++ }
+    @Test fun `normal camera admits denied GPS but still respects server refusal`() = runTest(dispatcher) {
+        val gate=mockk<PhotoCaptureGate>()
+        io.mockk.coEvery { gate.authorizeCommunity(any(),any()) } returns validReceipt()
+        every { gate.isCurrent(any()) } returns true
+        val vm=viewModel(true,true,gate=gate,locationSource=CaptureLocationSource { error("GPS must not be requested") })
+        vm.bindTarget(stationId,"ETHANOL")
+        var launches=0
+        vm.authorizeCamera { launches++ }
         advanceUntilIdle()
-        assertEquals(0, launches)
-        io.mockk.coVerify(exactly = 0) { gate.authorize(any(), any(), any()) }
-        val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
-        val refused = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
-        refused.bindTarget(stationId, "ETHANOL")
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } throws java.io.IOException("refused")
-        refused.authorizeCamera { launches++ }
+        assertEquals(1,launches)
+        io.mockk.coEvery { gate.authorizeCommunity(any(),any()) } throws java.io.IOException("refused")
+        vm.authorizeCamera { launches++ }
         advanceUntilIdle()
-        assertEquals(0, launches)
-        assertFalse(refused.gateBusy.value)
-        assertEquals("photo.authorization-unavailable", refused.gateFailure.value)
+        assertEquals(1,launches)
+        assertFalse(vm.gateBusy.value)
+        assertEquals("photo.authorization-unavailable",vm.gateFailure.value)
     }
 
     @Test fun `duplicate taps and changed station cannot launch stale camera`() = runTest(dispatcher) {
         val result = CompletableDeferred<PhotoCapturePermission>()
         val gate = mockk<PhotoCaptureGate>()
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } coAnswers { result.await() }
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } coAnswers { result.await() }
         every { gate.isCurrent(any()) } returns true
         val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
         val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix })
@@ -518,14 +501,14 @@ class CaptureOcrViewModelTest {
         result.complete(validReceipt())
         advanceUntilIdle()
         assertEquals(0, launches)
-        io.mockk.coVerify(exactly = 1) { gate.authorize(any(), any(), any()) }
+        io.mockk.coVerify(exactly = 1) { gate.authorizeCommunity(any(), any()) }
     }
 
     @Test fun `receipt is checked again after camera permission and survives saved state`() = runTest(dispatcher) {
         val saved = SavedStateHandle()
         val gate = mockk<PhotoCaptureGate>()
         val receipt = validReceipt()
-        io.mockk.coEvery { gate.authorize(any(), any(), any()) } returns receipt
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } returns receipt
         every { gate.isCurrent(any()) } returns true
         val fix = CaptureFix(-12.5, -55.7, 10.0, System.currentTimeMillis(), true, true, false)
         val vm = viewModel(true, true, gate = gate, locationSource = CaptureLocationSource { fix }, saved = saved)
@@ -582,6 +565,57 @@ class CaptureOcrViewModelTest {
         assertTrue(vm.fuelAmounts.value.isEmpty())
         assertTrue(vm.state.value is CaptureOcrUiState.Cancelled)
         io.mockk.coVerify(exactly = 0) { enqueue.invoke(any()) }
+    }
+
+    @Test fun `normal nominal lookup selects an address-only station without developer mode`() = runTest(dispatcher) {
+        val vm=viewModel(true,true)
+        vm.loadStationSearch()
+        advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.withTimeout(5000) { vm.stationResults.first { it.isNotEmpty() } } }
+        vm.selectStation("123e4567-e89b-12d3-a456-426614174000")
+        assertEquals("123e4567-e89b-12d3-a456-426614174000",vm.pickedStationId.value)
+        assertNull(vm.selectedNominalStation.value!!.latitude)
+        vm.searchStations("x")
+        advanceUntilIdle()
+        assertNull(vm.pickedStationId.value)
+        assertTrue(vm.stationResults.value.isEmpty())
+    }
+
+    @Test fun `old uncancellable query cannot release the new search guard`()=runTest(dispatcher) {
+        val oldStarted=CompletableDeferred<Unit>();val newStarted=CompletableDeferred<Unit>()
+        val oldResult=CompletableDeferred<com.anpfuel.domain.discovery.ServerStationPage>()
+        val newResult=CompletableDeferred<com.anpfuel.domain.discovery.ServerStationPage>()
+        val vm=viewModel(true,true,directorySearch={_,query,_ ->
+            when(query) {
+                "old" -> {oldStarted.complete(Unit);kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable){oldResult.await()}}
+                "new" -> {newStarted.complete(Unit);newResult.await()}
+                else -> com.anpfuel.domain.discovery.ServerStationPage(emptyList(),null)
+            }
+        })
+        vm.loadStationSearch();advanceUntilIdle()
+        vm.searchStations("old");advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){oldStarted.await()}}
+        vm.searchStations("new");advanceUntilIdle()
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){newStarted.await()}}
+        oldResult.complete(com.anpfuel.domain.discovery.ServerStationPage(emptyList(),null))
+        advanceUntilIdle()
+        assertTrue(vm.stationSearchBusy.value)
+        val station=ServerStation.create("123e4567-e89b-12d3-a456-426614174000","New station",StationLocationQuality.UNKNOWN,null,null,null,"5103403","MT",null)
+        newResult.complete(com.anpfuel.domain.discovery.ServerStationPage(listOf(station),null))
+        kotlinx.coroutines.withContext(Dispatchers.Default){kotlinx.coroutines.withTimeout(5000){vm.stationResults.first{it.isNotEmpty()}}}
+        advanceUntilIdle()
+        assertFalse(vm.stationSearchBusy.value)
+        vm.selectStation(station.stationId)
+        assertEquals(station.stationId,vm.pickedStationId.value)
+    }
+
+    @Test fun `old server policy gives service recovery without asking for GPS`()=runTest(dispatcher) {
+        val gate=mockk<PhotoCaptureGate>()
+        io.mockk.coEvery {gate.authorizeCommunity(any(),any())} throws com.anpfuel.data.remote.PhotoCapturePolicyUnavailable()
+        val vm=viewModel(true,true,gate=gate,locationSource=CaptureLocationSource{error("GPS requested")})
+        vm.bindTarget(stationId,"ETHANOL")
+        vm.authorizeCamera {error("incompatible policy launched camera")};advanceUntilIdle()
+        assertEquals("photo.policy-unavailable",vm.gateFailure.value)
     }
 
 }

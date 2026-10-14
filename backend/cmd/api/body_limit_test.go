@@ -49,7 +49,10 @@ func TestStagingMaximumAndOverLimitOnRealHTTPStreams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := httpserver.New(httpserver.Options{Addr: "127.0.0.1:0", ReadTimeout: 5 * time.Second, ReadHeaderTimeout: time.Second, WriteTimeout: 5 * time.Second, ShutdownTimeout: time.Second, MaxBodyBytes: cfg.MaxBodyBytes, BodyLimit: requestBodyLimit(cfg), Logger: log}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// This suite verifies exact byte limits, not network latency. The full
+	// race/PostGIS CI matrix competes for CPU; keep harness deadlines separate
+	// from the unchanged 3 MiB/1 MiB admission assertions.
+	srv, err := httpserver.New(httpserver.Options{Addr: "127.0.0.1:0", ReadTimeout: 30 * time.Second, ReadHeaderTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second, ShutdownTimeout: 5 * time.Second, MaxBodyBytes: cfg.MaxBodyBytes, BodyLimit: requestBodyLimit(cfg), Logger: log}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := io.Copy(io.Discard, r.Body); err != nil {
 			w.WriteHeader(413)
 			return
@@ -68,7 +71,7 @@ func TestStagingMaximumAndOverLimitOnRealHTTPStreams(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 45 * time.Second}
 	for _, chunked := range []bool{false, true} {
 		for _, tc := range []struct {
 			path       string
@@ -80,7 +83,7 @@ func TestStagingMaximumAndOverLimitOnRealHTTPStreams(t *testing.T) {
 			}
 			res, err := client.Do(r)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("path=%s chunked=%v size=%d: %v", tc.path, chunked, tc.size, err)
 			}
 			res.Body.Close()
 			if res.StatusCode != tc.code {

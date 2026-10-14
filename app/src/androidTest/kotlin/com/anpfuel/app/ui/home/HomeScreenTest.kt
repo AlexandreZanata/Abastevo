@@ -1,5 +1,8 @@
 package com.anpfuel.app.ui.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -309,4 +312,22 @@ class HomeScreenTest {
             }
         }
     }
+    @Test fun communitySourceWorksWithoutANPCacheAndKeepsThreePriceFilters() {
+        val context=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.setContent {
+            var sort by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(HomePriceSortOrder.DEFAULT) }
+            AnpFuelTheme { HomeContent(HomeUiState(priceSource=HomePriceSource.COMMUNITY,isLoading=false,hasLocation=true,
+                municipality="Synthetic city",state=BrazilianState.MATO_GROSSO,hasCachedData=false,showBenefits=false,
+                communityPrices=listOf(AveragePriceUiModel(FuelProduct.ETHANOL,"R$ 4,500","R$ 4,000","R$ 5,000",65)),priceSort=sort),
+                false,{}, {}, {}, {}, {},includeSurveyWeekChip=false,onPriceSortChanged={sort=it}) }
+        }
+        composeTestRule.onNodeWithText("R$ 4,500").assertExists()
+        composeTestRule.onNodeWithText(context.getString(R.string.home_filter_button)).performScrollTo().performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.home_filter_lowest)).performClick()
+        composeTestRule.onNodeWithText("R$ 4,000").assertExists()
+        composeTestRule.onNodeWithText(context.getString(R.string.home_filter_button)).performScrollTo().performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.home_filter_highest)).performClick()
+        composeTestRule.onNodeWithText("R$ 5,000").assertExists()
+    }
+
 }

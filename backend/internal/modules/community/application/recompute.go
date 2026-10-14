@@ -18,9 +18,9 @@ type RecomputePorts struct {
 	Anchors       func(ctx context.Context, key domain.PriceKey, cutoff time.Time) ([]domain.Observation, error)
 	Confirmations func(ctx context.Context, anchorIDs []string) ([]ConfirmationVote, error)
 	Tiers         func(ctx context.Context, refs []string) (map[string]string, error)
-	// Photo resolves one anchor's photographic standing: server-verified
-	// bytes plus acceptable proximity from the anchor's own signals.
-	// Missing signals fail closed to no-proximity, never to verified.
+	// Photo resolves server-verified bytes and legacy proximity signals.
+	// Community-v2 uses independent evidence without a proximity gate;
+	// explicit v1 replay retains its original proximity policy.
 	Photo      func(ctx context.Context, anchor domain.Observation) (PhotoInfo, error)
 	Moderation func(ctx context.Context, key domain.PriceKey) (bool, error)
 }
@@ -46,7 +46,7 @@ type PhotoInfo struct {
 // PolicyConfigVersion tracks the tunable thresholds alongside the
 // algorithm: threshold changes ship a new consensus version with
 // fixtures, so both columns move together by design.
-const PolicyConfigVersion = domain.ConsensusV1
+const PolicyConfigVersion = domain.ConsensusCommunity
 
 // PriceKeyString renders one price key for advisory locks, audit input
 // keys and job dedupe. The pipe separator never appears in UUIDs or
@@ -151,7 +151,7 @@ func RecomputeKey(ctx context.Context, p RecomputePorts, key domain.PriceKey) (d
 			ConditionKind: anchor.ConditionKind, Qualifier: anchor.QualifierKey,
 		})
 	}
-	result, err := domain.Compute(key, votes, now, domain.Options{Version: domain.ConsensusV1, ModerationOpen: moderation})
+	result, err := domain.Compute(key, votes, now, domain.Options{Version: domain.ConsensusCommunity, ModerationOpen: moderation})
 	if err != nil {
 		return domain.Result{}, err
 	}
