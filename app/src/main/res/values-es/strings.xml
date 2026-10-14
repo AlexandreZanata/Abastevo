@@ -795,4 +795,11 @@
     <string name="community_report_evidence">La foto no coincide</string>
     <string name="community_report_other">Otro problema</string>
     <string name="capture_policy_unavailable">Las contribuciones no están disponibles temporalmente en esta versión del servicio. Inténtalo más tarde.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Comunidad</string>
+    <string name="home_community_prices_title">Precios de la comunidad</string>
+    <string name="home_community_empty">Sin precios comunitarios actuales</string>
+    <string name="home_community_empty_hint">Comparte un precio para iniciar la comparación en tu ciudad.</string>
+    <string name="home_community_unavailable">Precios comunitarios no disponibles. Inténtalo de nuevo.</string>
+    <string name="home_community_updated">Comunidad · actualizado %1$s</string>
 </resources>

@@ -36,13 +36,10 @@ internal fun HomeReferencePriceCard(
     darkTheme: Boolean,
     onClick: () -> Unit,
     priceSort: HomePriceSortOrder = HomePriceSortOrder.DEFAULT,
+    community: Boolean = false,
 ) {
     val fuelLabel = stringResource(FuelProductI18n.toStringRes(price.fuelProduct))
-    val featured = when (priceSort) {
-        HomePriceSortOrder.PRICE_ASC -> price.minimumFormatted
-        HomePriceSortOrder.PRICE_DESC -> price.maximumFormatted
-        HomePriceSortOrder.DEFAULT -> null
-    } ?: price.averageFormatted ?: stringResource(R.string.prices_not_available)
+    val featured = priceSort.featuredPrice(price) ?: stringResource(R.string.prices_not_available)
     val description = stringResource(R.string.a11y_fuel_price_card, fuelLabel, featured)
     Card(
         onClick = onClick,
@@ -64,6 +61,11 @@ internal fun HomeReferencePriceCard(
                     fontWeight = FontWeight.Bold,
                     color = FuelProductTint.colorFor(price.fuelProduct, darkTheme),
                 )
+                if(community) Text(stringResource(when(price.fuelProduct) {
+                    com.anpfuel.domain.valueobject.FuelProduct.CNG -> R.string.feed_unit_m3
+                    com.anpfuel.domain.valueobject.FuelProduct.LPG_P13 -> R.string.feed_unit_cylinder
+                    else -> R.string.feed_unit_litre
+                }),style=MaterialTheme.typography.bodySmall)
                 price.stationCount?.let { count ->
                     Text(
                         stringResource(R.string.prices_station_count, count),
@@ -78,7 +80,7 @@ internal fun HomeReferencePriceCard(
                 shape = RoundedCornerShape(8.dp),
             ) {
                 Text(
-                    stringResource(R.string.home_reference_source),
+                    stringResource(if(community) R.string.home_source_community else R.string.home_reference_source),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall,
                 )

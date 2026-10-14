@@ -91,6 +91,7 @@ class BackendPriceGroup private constructor(
             "ETHANOL",
             "GASOLINE_REGULAR",
             "GASOLINE_ADDITIVED",
+            "GASOLINE_PREMIUM_GRADE",
             "DIESEL_S500",
             "DIESEL_S10",
             "CNG",

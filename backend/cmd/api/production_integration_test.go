@@ -479,6 +479,27 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 				request.Header.Set("Idempotency-Key", "development-"+product)
 				observation := h.call(request, 201)["id"].(string)
 				waitSQL("SELECT EXISTS(SELECT 1 FROM community_observation_decisions WHERE observation_id=$1 AND to_state='VALIDATED')", observation)
+				if product == "ETHANOL" && !development {
+					waitSQL("SELECT EXISTS(SELECT 1 FROM community_current_prices WHERE station_id=$1 AND fuel_product='ETHANOL' AND availability='AVAILABLE' AND amount_milli_brl=5899)", station)
+					summary := h.call(h.req("GET", "/v1/community/summary?state=SP&municipality_code=3550308", nil), 200)
+					found := false
+					for _, raw := range summary["items"].([]any) {
+						item := raw.(map[string]any)
+						if item["fuel_product"] == "ETHANOL" {
+							found = true
+							if item["source"] != "COMMUNITY" || item["unit"] != "L" || item["average_milli_brl"] != float64(5899) || item["minimum_milli_brl"] != float64(5899) || item["maximum_milli_brl"] != float64(5899) || item["station_count"] != float64(1) {
+								t.Fatal("normal contribution not consolidated", item)
+							}
+						}
+					}
+					if !found {
+						t.Fatal("normal validated contribution absent from municipal summary")
+					}
+					groups := h.call(h.req("GET", "/v1/stations/"+station+"/prices?fuel_product=ETHANOL", nil), 200)["items"].([]any)
+					if len(groups) != 1 || groups[0].(map[string]any)["official"] != nil || groups[0].(map[string]any)["community"].(map[string]any)["amount_milli_brl"] != float64(5899) {
+						t.Fatal("community-only station group missing", groups)
+					}
+				}
 				if len(communityActions) > 0 && communityActions[0] && product == "ETHANOL" {
 					var sequence int64
 					if err := conn.QueryRow(ctx, `SELECT max(sequence) FROM community_observation_decisions WHERE observation_id=$1`, observation).Scan(&sequence); err != nil {

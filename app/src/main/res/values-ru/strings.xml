@@ -795,4 +795,11 @@
     <string name="community_report_evidence">Фото не соответствует</string>
     <string name="community_report_other">Другая проблема</string>
     <string name="capture_policy_unavailable">Публикации временно недоступны в этой версии сервиса. Повторите попытку позже.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Сообщество</string>
+    <string name="home_community_prices_title">Цены сообщества</string>
+    <string name="home_community_empty">Нет актуальных цен сообщества</string>
+    <string name="home_community_empty_hint">Добавьте цену для сравнения в вашем городе.</string>
+    <string name="home_community_unavailable">Цены сообщества временно недоступны. Повторите попытку.</string>
+    <string name="home_community_updated">Сообщество · обновлено %1$s</string>
 </resources>

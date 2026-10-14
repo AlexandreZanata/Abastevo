@@ -795,4 +795,11 @@
     <string name="community_report_evidence">Foto stimmt nicht überein</string>
     <string name="community_report_other">Anderes Problem</string>
     <string name="capture_policy_unavailable">Beiträge sind in dieser Dienstversion vorübergehend nicht verfügbar. Bitte später erneut versuchen.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Community</string>
+    <string name="home_community_prices_title">Community-Preise</string>
+    <string name="home_community_empty">Keine aktuellen Community-Preise</string>
+    <string name="home_community_empty_hint">Teile einen Preis für den Vergleich in deiner Stadt.</string>
+    <string name="home_community_unavailable">Community-Preise sind vorübergehend nicht verfügbar. Erneut versuchen.</string>
+    <string name="home_community_updated">Community · aktualisiert %1$s</string>
 </resources>

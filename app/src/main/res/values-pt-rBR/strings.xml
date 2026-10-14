@@ -808,4 +808,11 @@
     <string name="community_report_evidence">A foto não corresponde</string>
     <string name="community_report_other">Outro problema</string>
     <string name="capture_policy_unavailable">As contribuições estão temporariamente indisponíveis nesta versão do serviço. Tente novamente mais tarde.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Comunidade</string>
+    <string name="home_community_prices_title">Preços da comunidade</string>
+    <string name="home_community_empty">Sem preços comunitários atuais</string>
+    <string name="home_community_empty_hint">Contribua com um preço para iniciar a comparação na sua cidade.</string>
+    <string name="home_community_unavailable">Preços da comunidade indisponíveis no momento. Tente novamente.</string>
+    <string name="home_community_updated">Comunidade · atualizado em %1$s</string>
 </resources>

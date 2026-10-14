@@ -119,7 +119,7 @@ private fun PriceSections(
             }
             if (rows.isEmpty()) {
                 Text(
-                    text = stringResource(R.string.community_pending_p04),
+                    text = stringResource(R.string.home_community_empty),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -165,6 +165,10 @@ private fun CommunityPriceRow(row: CommunityPriceRowUiModel) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        row.communityAmountMilli?.let { amount ->
+            Text(stringResource(R.string.home_source_community)+" · "+CommunityPriceDisplay.formatMilliBrl(amount)+" / "+row.unit,
+                style=MaterialTheme.typography.bodyMedium)
+        }
         Text(
             text = stringResource(
                 R.string.community_availability_detail,

@@ -150,4 +150,9 @@ class BackendPriceGroupsJsonCodecTest {
         assertThrows(DomainException::class.java) { BackendPriceGroupsJsonCodec.decode(doc.toString(),stationId,null,1000,2000) }
     }
 
+    @Test fun `premium grade remains distinct from additived in the public price contract`() {
+        val decoded=BackendPriceGroupsJsonCodec.decode(payload(fuel="GASOLINE_PREMIUM_GRADE"),stationId,"GASOLINE_PREMIUM_GRADE",1000,2000)
+        assertEquals("GASOLINE_PREMIUM_GRADE",decoded.groups.single().fuelProductWire)
+    }
+
 }

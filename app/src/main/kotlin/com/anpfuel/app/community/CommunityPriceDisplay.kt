@@ -8,10 +8,8 @@ import com.anpfuel.domain.model.BackendPriceGroups
  * PRODUCT_CONTRACT, COMMUNITY_PRICING_SPEC).
  *
  * Sources, conditions, uncertainty and age stay separate: the existing ANP
- * panel is never blended with community numbers. Community is UNKNOWN
- * until P04 (domain refuses non-null community); STALE comes only from an
- * explicit stale cache; DISPUTED is a future availability the mapper
- * already labels honestly without inventing backend data. Confidence is
+ * panel is never blended with community numbers. Missing/expired projections
+ * are UNKNOWN; cached or expired values are labelled STALE. Confidence is
  * support, never a guarantee. Money stays exact integer thousandths of a
  * real; every value carries its unit. APP/LOYALTY require a qualifier and
  * never compete as unconditional STANDARD.
@@ -42,6 +40,7 @@ data class CommunityPriceRowUiModel(
     val availability: CommunityAvailability,
     val freshness: CommunityFreshness,
     val staleCache: Boolean,
+    val communityAmountMilli: Long? = null,
 )
 
 object CommunityPriceDisplay {
@@ -95,7 +94,7 @@ object CommunityPriceDisplay {
 
     /**
      * Maps one backend response to distinct official/community rows.
-     * Community stays UNKNOWN until P04; [staleCache] marks an explicit
+     * Community follows its typed current projection; [staleCache] marks an explicit
      * stale fallback (never presented as fresh). [qualifierByFuel] carries
      * optional APP/LOYALTY qualifiers keyed by wire product.
      */
@@ -103,15 +102,21 @@ object CommunityPriceDisplay {
         groups: BackendPriceGroups,
         staleCache: Boolean = false,
         qualifierByFuel: Map<String, String?> = emptyMap(),
+        now: java.time.Instant = java.time.Instant.now(),
     ): List<CommunityPriceRowUiModel> =
-        groups.groups.map { group -> fromGroup(group, staleCache, qualifierByFuel[group.fuelProductWire]) }
+        groups.groups.map { group -> fromGroup(group, staleCache, qualifierByFuel[group.fuelProductWire], now) }
 
     internal fun fromGroup(
         group: BackendPriceGroup,
         staleCache: Boolean,
         qualifierId: String?,
+        now: java.time.Instant = java.time.Instant.now(),
     ): CommunityPriceRowUiModel {
         val official = group.official
+        val community = group.community
+        val expired = community?.expiresAt?.let { it<=now } == true
+        val future = community?.lastReceivedAt?.let { it>now } == true
+        val available = community?.availability=="AVAILABLE" && !expired && !future && !staleCache
         return CommunityPriceRowUiModel(
             fuelProductWire = group.fuelProductWire,
             unit = group.unit,
@@ -122,8 +127,9 @@ object CommunityPriceDisplay {
             officialSource = official?.source,
             officialCollectedOn = official?.collectedOn,
             officialRevisionId = official?.revisionId,
-            availability = CommunityAvailability.UNKNOWN,
-            freshness = if (staleCache) CommunityFreshness.STALE else CommunityFreshness.UNKNOWN,
+            availability = when { available -> CommunityAvailability.AVAILABLE; community?.availability=="DISPUTED" -> CommunityAvailability.DISPUTED; else -> CommunityAvailability.UNKNOWN },
+            freshness = when { staleCache || expired -> CommunityFreshness.STALE; future || community==null -> CommunityFreshness.UNKNOWN; else -> CommunityFreshness.valueOf(community.freshness) },
+            communityAmountMilli = if(available) community?.amountMilliBrl else null,
             staleCache = staleCache,
         )
     }

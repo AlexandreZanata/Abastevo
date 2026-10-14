@@ -18,8 +18,7 @@ import kotlinx.coroutines.launch
  *
  * Flag-gated: [UiState.Disabled] performs no network/cache IO and the
  * caller keeps the local ANP path (rollback is flag OFF). Otherwise one
- * station fetch resolves to [UiState.Content] (fresh, community UNKNOWN
- * until P04), [UiState.Stale] (explicit stale fallback, never as fresh)
+ * station fetch resolves to [UiState.Content] (fresh, distinct current source sections), [UiState.Stale] (explicit stale fallback, never as fresh)
  * or [UiState.Unavailable] (retry). Confidence never renders as a
  * guarantee; units/conditions/sources stay on every row.
  */

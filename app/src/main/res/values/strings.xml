@@ -814,4 +814,11 @@
     <string name="community_report_evidence">Photo does not match</string>
     <string name="community_report_other">Other issue</string>
     <string name="capture_policy_unavailable">Contributions are temporarily unavailable on this service version. Please try again later.</string>
+    <string name="home_source_anp">ANP</string>
+    <string name="home_source_community">Community</string>
+    <string name="home_community_prices_title">Community prices</string>
+    <string name="home_community_empty">No current community prices</string>
+    <string name="home_community_empty_hint">Contribute a price to start your city’s comparison.</string>
+    <string name="home_community_unavailable">Community prices are temporarily unavailable. Try again.</string>
+    <string name="home_community_updated">Community · updated %1$s</string>
 </resources>

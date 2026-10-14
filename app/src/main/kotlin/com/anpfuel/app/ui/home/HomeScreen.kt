@@ -104,9 +104,14 @@ fun HomeScreen(
     val locale = LocalConfiguration.current.locales[0]
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(lifecycleOwner, locale) {
+    LaunchedEffect(lifecycleOwner, locale, uiState.priceSource) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.load(locale)
+            if(uiState.priceSource==HomePriceSource.ANP) viewModel.load(locale)
+            else {
+                val session=viewModel.startCommunitySession()
+                try { while(true) { viewModel.refreshCommunity();kotlinx.coroutines.delay(15_000) } }
+                finally {viewModel.stopCommunityRefresh(session)}
+            }
         }
     }
 
@@ -120,6 +125,7 @@ fun HomeScreen(
         onWeekChanged = { viewModel.load(locale, showLoadingIndicator = true) },
         onPriceSortChanged = viewModel::onPriceSortChanged,
         onDismissBenefits = viewModel::dismissBenefits,
+        onPriceSourceChanged = { viewModel.selectPriceSource(it, locale) },
         modifier = modifier,
     )
 }
@@ -138,6 +144,7 @@ internal fun HomeContent(
     includeSurveyWeekChip: Boolean = true,
     onPriceSortChanged: (HomePriceSortOrder) -> Unit = {},
     onDismissBenefits: () -> Unit = {},
+    onPriceSourceChanged: (HomePriceSource) -> Unit = {},
 ) {
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
@@ -167,7 +174,7 @@ internal fun HomeContent(
                     )
                 },
                 actions = {
-                    if (includeSurveyWeekChip) {
+                    if (includeSurveyWeekChip && uiState.priceSource == HomePriceSource.ANP) {
                         SurveyWeekChipAction(
                             onWeekChanged = onWeekChanged,
                             hasTrailingAction = true,
@@ -193,14 +200,14 @@ internal fun HomeContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SyncStatusBanner(readiness = uiState.readiness)
+            if (uiState.priceSource == HomePriceSource.ANP) SyncStatusBanner(readiness = uiState.readiness)
 
-            if (uiState.isOffline && uiState.hasCachedData) {
+            if (uiState.isOffline && (uiState.hasCachedData || uiState.priceSource == HomePriceSource.COMMUNITY)) {
                 OfflineBanner()
             }
 
-            if (uiState.readiness == DataReadinessState.STALE ||
-                uiState.readiness == DataReadinessState.ERROR
+            if (uiState.priceSource == HomePriceSource.ANP &&
+                (uiState.readiness == DataReadinessState.STALE || uiState.readiness == DataReadinessState.ERROR)
             ) {
                 TextButton(
                     onClick = onRefresh,
@@ -236,7 +243,30 @@ internal fun HomeContent(
                 HomeBenefits(onDismiss = onDismissBenefits)
             }
 
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth().testTag("home_price_source")) {
+                HomePriceSource.entries.forEach { source ->
+                    androidx.compose.material3.FilterChip(selected=uiState.priceSource==source,onClick={onPriceSourceChanged(source)},
+                        label={Text(stringResource(if(source==HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))})
+                }
+            }
             when {
+                uiState.priceSource==HomePriceSource.COMMUNITY -> {
+                    Text(stringResource(R.string.home_community_prices_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+                    HomePriceFilterButton(uiState.priceSort,onOpenFilters={ filterOpen=true })
+                    when {
+                        uiState.communityFailed -> ErrorState(stringResource(R.string.home_community_unavailable),onRetry=onRetry)
+                        !uiState.hasLocation && !uiState.communityLoading -> { EmptyState(stringResource(R.string.home_no_location_message),hint=stringResource(R.string.home_no_location_hint));RowActions(onNavigate) }
+                        uiState.communityLoading && uiState.communityPrices.isEmpty() -> HomeLoadingSkeleton()
+                        uiState.communityPrices.isEmpty() -> EmptyState(stringResource(R.string.home_community_empty),hint=stringResource(R.string.home_community_empty_hint))
+                        else -> {
+                            if(uiState.communityLoading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+                            uiState.communityUpdatedAt?.let { at -> Text(stringResource(R.string.home_community_updated,
+                                com.anpfuel.app.mapper.LastSyncFormatter.format(at, LocalConfiguration.current.locales[0]).orEmpty()),style=MaterialTheme.typography.bodySmall) }
+                            uiState.communityPrices.forEach { price -> HomeReferencePriceCard(price,darkTheme,
+                                onClick={onNavigate(Routes.COMMUNITY)},priceSort=uiState.priceSort,community=true) }
+                        }
+                    }
+                }
                 uiState.isLoading -> HomeLoadingSkeleton()
 
                 uiState.error != null -> {

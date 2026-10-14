@@ -16,3 +16,11 @@ enum class HomePriceSortOrder(@StringRes val labelRes: Int) {
     PRICE_ASC(R.string.home_filter_lowest),
     PRICE_DESC(R.string.home_filter_highest),
 }
+
+/** The three filters select a statistic from the chosen source; they never combine sources. */
+internal fun HomePriceSortOrder.featuredPrice(price: com.anpfuel.app.ui.model.AveragePriceUiModel): String? =
+    when(this) {
+        HomePriceSortOrder.DEFAULT -> price.averageFormatted
+        HomePriceSortOrder.PRICE_ASC -> price.minimumFormatted ?: price.averageFormatted
+        HomePriceSortOrder.PRICE_DESC -> price.maximumFormatted ?: price.averageFormatted
+    }
