@@ -263,7 +263,7 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 		t.Fatal("duplicate registration changed identity")
 	}
 	// Every public read mounts in the actual process; nearby needs real coordinates.
-	for _, path := range []string{"/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
+	for _, path := range []string{"/v1/community/summary?state=SP&municipality_code=3550308", "/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
 		h.call(h.req("GET", path, nil), 200)
 	}
 	// Incomplete private representation never reaches its token-only handlers.

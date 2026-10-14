@@ -898,6 +898,28 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/community/summary:
+    get:
+      summary: Full municipal community price statistics (anonymous).
+      description: >
+        One equal-weight live STANDARD projection per active station/product/unit.
+        Exact milli-BRL mean rounded half up, minimum and maximum over the whole
+        selected city, independent of feed pagination. No ANP substitution or private data.
+        Expired/disputed/future-anchor/hidden-representative prices are excluded at query time.
+      operationId: communityCitySummary
+      tags: [community]
+      security: []
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string, minLength: 2, maxLength: 2}}
+        - {name: municipality_code, in: query, required: true, schema: {type: string, pattern: '^[0-9]{7}$'}}
+      responses:
+        '200':
+          description: Full municipal product statistics; an empty city has an empty items array.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CommunitySummaryPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /v1/community/feed:
     get:
       summary: Current community prices for one city and fuel (anonymous).
@@ -6585,6 +6607,35 @@ components:
           type: string
           minLength: 1
           maxLength: 256
+    CommunitySummaryPage:
+      type: object
+      additionalProperties: false
+      required: [items, generated_at, state, municipality_code, refresh_after_seconds]
+      properties:
+        items:
+          type: array
+          maxItems: 8
+          items: {$ref: '#/components/schemas/CommunitySummaryItem'}
+        generated_at: {type: string, format: date-time}
+        municipality_code: {type: string, pattern: '^[0-9]{7}$'}
+        state: {type: string, minLength: 2, maxLength: 2}
+        refresh_after_seconds: {type: integer, const: 15}
+    CommunitySummaryItem:
+      type: object
+      additionalProperties: false
+      required: [fuel_product, unit, currency, source, condition, average_milli_brl, minimum_milli_brl, maximum_milli_brl, station_count, updated_at, expires_at]
+      properties:
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        unit: {type: string, enum: [L, M3, KG_13]}
+        currency: {type: string, const: BRL}
+        source: {type: string, const: COMMUNITY}
+        condition: {type: string, const: STANDARD}
+        average_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        minimum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        maximum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+        station_count: {type: integer, minimum: 1}
+        updated_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
     CommunityFeedPage:
       type: object
       description: A public allowlisted city feed, not raw observation history.
@@ -6599,7 +6650,7 @@ components:
         municipality_code: {type: string, pattern: '^[0-9]{7}$'}
         state: {type: string, minLength: 2, maxLength: 2}
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
-        sort: {type: string, enum: [recent, cheapest]}
+        sort: {type: string, enum: [recent, cheapest, best, worst]}
         refresh_after_seconds: {type: integer, const: 15}
     CommunityFeedItem:
       type: object

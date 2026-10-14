@@ -81,3 +81,47 @@ func TestFeedAnonymousScopeCursorAndFailures(t *testing.T) {
 		}
 	}
 }
+
+func TestSummaryAnonymousCityScopeEmptyAndRedactedFailure(t *testing.T) {
+	calls := 0
+	h := FeedHandler{Summary: func(_ context.Context, f application.FeedFilter) ([]communityread.CitySummaryItem, error) {
+		calls++
+		if f.State != "MT" || f.Municipality != "5103403" {
+			t.Fatal("lost city")
+		}
+		return nil, nil
+	}}
+	r := chi.NewRouter()
+	h.RegisterRoutes(r)
+	request := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w
+	}
+	path := "/v1/community/summary?state=MT&municipality_code=5103403"
+	w := request(path)
+	if w.Code != 200 || w.Header().Get("Cache-Control") != "no-store" || !strings.Contains(w.Body.String(), `"items":[]`) || !strings.Contains(w.Body.String(), `"refresh_after_seconds":15`) {
+		t.Fatalf("empty %d %s", w.Code, w.Body.String())
+	}
+	for _, invalid := range []string{"/v1/community/summary", path + "x", strings.Replace(path, "state=MT", "state=XX", 1)} {
+		before := calls
+		if request(invalid).Code != 400 || calls != before {
+			t.Fatal("invalid scope reached reader")
+		}
+	}
+	h.Summary = func(context.Context, application.FeedFilter) ([]communityread.CitySummaryItem, error) {
+		return nil, errors.New("private database details")
+	}
+	r = chi.NewRouter()
+	h.RegisterRoutes(r)
+	w = request(path)
+	if w.Code != 503 || strings.Contains(w.Body.String(), "private database") {
+		t.Fatal("outage became empty success or leaked")
+	}
+	h.Summary = nil
+	r = chi.NewRouter()
+	h.RegisterRoutes(r)
+	if request(path).Code != 503 {
+		t.Fatal("missing summary port accepted")
+	}
+}
