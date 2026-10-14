@@ -62,3 +62,34 @@ rerun green.
 Turn quality reads off (`ANPFUEL_QUALITY_READS_ENABLED=false`); existing
 station/price/community reads keep working, routes untouched otherwise.
 Next: FQ-09 signed structured reports.
+
+## VPS deployment attempt (abastevo-temp only, 2026-10-14)
+
+Scope respected: only namespace `abastevo-temp` mutated (images,
+migration job, one deployment's rollout); primary checkout, test-agent
+branch and all other namespaces untouched (pods diff clean except one
+external healthy restart of guia-cidade gc-api, unrelated).
+
+- Built `abastevo-api:temp` + `abastevo-migrate:temp` + `abastevo-worker:temp`
+  from `91ff1f93`, imported to k3s, migration job applied exactly
+  `[000093 000094 000095]`, rollout restarted only
+  `deployment/abastevo-temp-api`.
+- RESULT: BLOCKED — pods run the new image (config-digest verified) but
+  `/health/ready` stays 503 on the `schema` check while `db` passes.
+- Ruled out with evidence: ledger chain (95/95 byte-identical checksums),
+  all 11 tables present, embedded chain in the image (95 files, quality
+  SQL present), credentials and DSN (migration job succeeds with them),
+  DNS/service endpoints (single ready endpoint), locks (none), disk
+  (42%), secret stability (unchanged since Oct 08). The same image
+  reports READY against a freshly migrated scratch database, and
+  `migrate.Apply` re-run reports "already current".
+- Not yet determined: the exact `Check` error text inside the pod
+  (distroless image has no shell; ephemeral debug containers share neither
+  network namespace nor target-container access on this runtime).
+- State left: deployment on `:temp` images, DB migrated (append-only,
+  irreversible by policy), service degraded until the check passes.
+  Rollback to an older image cannot pass either (chain older than DB).
+- Resume: instrumented rebuild with the check error surfaced (prepared
+  `/debugz/schema-check` draft, kept out of the branch), or compare a
+  fresh pod's first-probe timing against pool setup; audit any concurrent
+  writer to the image store (tag flapping observed on throwaway tags).
