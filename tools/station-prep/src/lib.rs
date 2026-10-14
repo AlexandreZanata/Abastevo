@@ -14,12 +14,15 @@
 
 pub mod cnpj;
 pub mod datasets;
+pub mod enforcement;
 pub mod join;
 pub mod municipality;
 pub mod output;
 pub mod pmqc;
+pub mod quality;
 pub mod registry;
 pub mod replay;
+pub mod sanction;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
@@ -29,6 +32,9 @@ pub use datasets::{
     DatasetProfile, DeltaEdition, GeneratedDataset, RequestTrace, StrataSummary, SyntheticLocation,
     TraceDistribution, DATASETS_VERSION, EMPTY_CITIES, UNIVERSE_CITIES,
 };
+pub use enforcement::{
+    parse_enforcement, EnforcementAction, EnforcementBatch, EnforcementError, ENFORCEMENT_SOURCE,
+};
 pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};
 pub use output::{
@@ -37,6 +43,10 @@ pub use output::{
     QUARANTINE_FILE,
 };
 pub use pmqc::{parse_pmqc, PmqcBatch, PmqcCandidate, PmqcError};
+pub use quality::{parse_quality_assays, QualityAssay, QualityBatch, QualityError, QUALITY_SOURCE};
 pub use registry::{parse_registry, RegistryBatch, RegistryError, RegistryRow};
 pub use replay::{replay_decision, ReplayDecision};
+pub use sanction::{
+    parse_sanctions, SanctionBatch, SanctionError, SanctionSnapshot, SANCTION_SOURCE,
+};
 pub use types::{Counts, Limits, QuarantineRow, RunState};

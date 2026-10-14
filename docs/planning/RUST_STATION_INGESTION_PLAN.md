@@ -17,6 +17,8 @@ RST-06 work. New phases do not imply benchmark execution or measured speedups.
 
 Current source-contract and Sorriso identity/location follow-up: [2026-10-13 reliability audit](../backend/STATION_RELIABILITY_AUDIT_20261013.md). Includes the official reseller panel, Power BI, API manual/Swagger and independent RFB/IBGE/OSM corroboration boundaries.
 
+Quality extension proposed 2026-10-14: [FQ-00–FQ-17 plan](FUEL_QUALITY_IMPLEMENTATION_PLAN.md) reuses this crate and Go ownership for a separate lossless PMQC sample/assay stream, enforcement and sanction adapters. The current coordinate-candidate contract remains distinct; its sample deduplication cannot discard assays or establish fuel conformity. Quality backfill/scoring are PLANNED, not accepted by RST or registry activation.
+
 ## Outcome and scope
 
 Build a bounded Rust CLI/library which transforms official raw station records

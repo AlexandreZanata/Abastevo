@@ -69,6 +69,10 @@ const (
 	keyGlobalQuotaRegister  = "ANPFUEL_GLOBAL_QUOTA_REGISTER"
 	keyGlobalQuotaWrite     = "ANPFUEL_GLOBAL_QUOTA_WRITE"
 	keyEvidenceMaxPending   = "ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS"
+	// keyQualityReadsEnabled gates the anonymous quality ledger reads
+	// (FQ-08). Enabled by default; setting it false answers 404 without
+	// touching storage, which is the documented read recovery.
+	keyQualityReadsEnabled = "ANPFUEL_QUALITY_READS_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -103,6 +107,8 @@ type Config struct {
 	// MetricsAddr is the private metrics listener; empty disables it.
 	MetricsAddr         string
 	ANPDiscoveryEnabled bool
+	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
+	QualityReadsEnabled bool
 	// TrainingTermsDigest is the published digest fresh training
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
@@ -157,6 +163,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_ANP_DISCOVERY_ENABLED must be boolean")
 		}
 		cfg.ANPDiscoveryEnabled = enabled
+	}
+	cfg.QualityReadsEnabled = true
+	if raw, present := getenv(keyQualityReadsEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_READS_ENABLED must be boolean")
+		}
+		cfg.QualityReadsEnabled = enabled
 	}
 
 	env, _ := getenv(keyEnv)

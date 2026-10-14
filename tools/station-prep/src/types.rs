@@ -74,6 +74,12 @@ pub mod reason {
     pub const RECORD_TOO_LARGE: &str = "record_too_large";
     pub const OLDER_CONFLICTING_EVIDENCE: &str = "older_conflicting_evidence";
     pub const INVALID_FIELD: &str = "invalid_field";
+    /// FQ-02 assay stream: source fuel outside the frozen vocabulary. The
+    /// row quarantines for review; the label is never coerced.
+    pub const UNMAPPED_FUEL: &str = "unmapped_fuel";
+    /// FQ-02 assay stream: unrecognized or empty conformity text. The row
+    /// quarantines; unknown status never classifies as conforming.
+    pub const UNKNOWN_CONFORMITY: &str = "unknown_conformity";
 }
 
 /// One quarantined row with a stable locator. `row_locator` is

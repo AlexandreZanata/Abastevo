@@ -1233,6 +1233,243 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/quality/summary:
+    get:
+      summary: Station fuel conformity denominators from the published assay lease (anonymous).
+      operationId: qualitySummary
+      tags: [quality]
+      security: []
+      parameters:
+        - name: station_id
+          in: query
+          required: true
+          description: Summary station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel
+          in: query
+          description: Optional closed-vocabulary product filter.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: ETHANOL
+      responses:
+        '200':
+          description: Per-fuel denominators with the frozen read lease. No source identifiers.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/assays:
+    get:
+      summary: Keyset assay page for one station from the published lease (anonymous).
+      operationId: qualityAssays
+      tags: [quality]
+      security: []
+      parameters:
+        - name: station_id
+          in: query
+          required: true
+          description: Page station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel
+          in: query
+          description: Optional closed-vocabulary product filter.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+        - name: limit
+          in: query
+          description: Assay page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Complete frozen-edition traversal, oldest first. Cursors bind one revision.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityAssayPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/samples/{sample_ref}:
+    get:
+      summary: Sample detail with assays, links and lease (anonymous).
+      operationId: qualitySample
+      tags: [quality]
+      security: []
+      parameters:
+        - name: sample_ref
+          in: path
+          required: true
+          description: Source-native sample reference.
+          schema: {type: string, maxLength: 128}
+          example: S-001
+      responses:
+        '200':
+          description: Sample assays with link state. Unknown samples return empty rows with the live lease.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/actions:
+    get:
+      summary: Keyset enforcement-action page from the published lease (anonymous).
+      operationId: qualityActions
+      tags: [quality]
+      security: []
+      parameters:
+        - name: status
+          in: query
+          description: Optional verbatim procedural status filter.
+          schema: {type: string, maxLength: 64}
+        - name: scope
+          in: query
+          description: Optional verbatim scope filter.
+          schema: {type: string, maxLength: 64}
+        - name: limit
+          in: query
+          description: Action page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Source-verbatim actions with no guilt semantics.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityActionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/actions/{id}:
+    get:
+      summary: One enforcement action within the current lease (anonymous).
+      operationId: qualityAction
+      tags: [quality]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Action identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: The action with its lease.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityAction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/sanctions:
+    get:
+      summary: Keyset sanction-snapshot page from the published lease (anonymous).
+      operationId: qualitySanctions
+      tags: [quality]
+      security: []
+      parameters:
+        - name: status
+          in: query
+          description: Optional verbatim extraction-time status filter.
+          schema: {type: string, maxLength: 64}
+        - name: limit
+          in: query
+          description: Snapshot page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Extraction-time snapshots with no finality inference.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySanctionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/sanctions/{id}:
+    get:
+      summary: One sanction snapshot within the current lease (anonymous).
+      operationId: qualitySanction
+      tags: [quality]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Snapshot identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: The snapshot with its lease.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySanction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/stations/{station_id}/profile:
     get:
       summary: Read a station public profile (anonymous).
@@ -6728,6 +6965,144 @@ components:
       type: string
       enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, GASOLINE_PREMIUM_GRADE]
       example: GASOLINE_ADDITIVED
+    QualityLease:
+      description: >
+        Frozen read context served with every quality response. Stale
+        leases stay served with the flag set; missing leases report
+        available false without inventing data.
+      type: object
+      required: [source, stream, edition, revision_id, available, stale, coverage_note]
+      properties:
+        source: {type: string, example: pmqc}
+        stream: {type: string, example: pmqc-assay-v1}
+        edition: {type: string, example: '2026-09'}
+        revision_id: {type: string, format: uuid}
+        published_at: {type: string, format: date-time, nullable: true}
+        available: {type: boolean}
+        stale: {type: boolean}
+        stale_reason: {type: string}
+        coverage_note: {type: string}
+        periods:
+          type: array
+          items:
+            type: object
+            required: [label, start, end]
+            properties:
+              label: {type: string, example: '2026-09'}
+              start: {type: string, format: date, example: '2026-09-01'}
+              end: {type: string, format: date, example: '2026-09-30'}
+    QualitySummary:
+      description: Per-fuel conformity denominators with the read lease.
+      type: object
+      required: [station_id, fuel_cells, lease, generated_at]
+      properties:
+        station_id: {type: string, format: uuid}
+        fuel_cells:
+          type: array
+          items:
+            type: object
+            required: [fuel_product, conformity, count, last_observed]
+            properties:
+              fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+              conformity: {type: string, enum: [CONFORMING, NONCONFORMING, INCONCLUSIVE, UNKNOWN]}
+              count: {type: integer, minimum: 0}
+              last_observed: {type: string, format: date}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityAssay:
+      description: One published determination without source identifiers.
+      type: object
+      required: [id, sample_ref, assay_ref, observed_on, fuel_product, result_text, unit, conformity, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        sample_ref: {type: string, example: S-001}
+        assay_ref: {type: string, example: ASPECTO}
+        observed_on: {type: string, format: date}
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        result_text: {type: string, example: '181,5'}
+        unit: {type: string, example: '°C'}
+        conformity: {type: string, enum: [CONFORMING, NONCONFORMING, INCONCLUSIVE, UNKNOWN]}
+        evidence_ref: {type: string}
+    QualityAssayPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAssay'}
+        next_cursor: {type: string, nullable: true}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySample:
+      description: Sample assays with link state and lease.
+      type: object
+      required: [sample_ref, assays, links, lease, generated_at]
+      properties:
+        sample_ref: {type: string}
+        assays:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAssay'}
+        links:
+          type: array
+          items:
+            type: object
+            required: [station_id, automatic, reason, active]
+            properties:
+              station_id: {type: string, format: uuid, nullable: true}
+              automatic: {type: boolean}
+              reason: {type: string}
+              active: {type: boolean}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityAction:
+      description: One published fiscal action, source-verbatim, no guilt semantics. Page items omit lease and generated_at; detail responses include them.
+      type: object
+      required: [id, native_key, scope, status, as_of, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        native_key: {type: string, example: AUTO-001}
+        scope: {type: string}
+        status: {type: string}
+        occurred_on: {type: string, format: date, nullable: true}
+        as_of: {type: string, format: date}
+        evidence_ref: {type: string}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityActionPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAction'}
+        next_cursor: {type: string, nullable: true}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySanction:
+      description: One published snapshot, extraction-time status only. Page items omit lease and generated_at; detail responses include them.
+      type: object
+      required: [id, native_key, proceeding_ref, status, as_of, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        native_key: {type: string, example: MULTA-001}
+        proceeding_ref: {type: string}
+        amount_minor: {type: integer, minimum: 0, nullable: true}
+        status: {type: string}
+        decided_on: {type: string, format: date, nullable: true}
+        as_of: {type: string, format: date}
+        evidence_ref: {type: string}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySanctionPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualitySanction'}
+        next_cursor: {type: string, nullable: true}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
     PriceCondition:
       description: >
         Sale condition. STANDARD forbids qualifier_id (mirrored

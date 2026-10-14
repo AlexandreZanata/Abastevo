@@ -76,6 +76,8 @@ import (
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
@@ -327,6 +329,27 @@ func run() error {
 				ProjectionVersion: view.ProjectionVersion,
 			}, true, nil
 		},
+	}.RegisterRoutes(router)
+	// Anonymous quality ledger reads (FQ-08). Same composition rule: the
+	// handler gets station existence as a closure so modules never
+	// cross-read. Disabled by ANPFUEL_QUALITY_READS_ENABLED=false, which
+	// answers 404 without touching storage.
+	qualityReads := qualityread.NewReader(pool.Underlying())
+	qualityReadsEnabled := cfg.QualityReadsEnabled
+	qualityhttp.Handler{
+		Read:    qualityReads,
+		Secrets: cfg.CursorSecret,
+		StationsExist: func(ctx context.Context, id string) (bool, error) {
+			_, err := stations.Detail(ctx, id)
+			if err == nil {
+				return true, nil
+			}
+			if errors.Is(err, directoryapp.ErrUnknownStation) {
+				return false, nil
+			}
+			return false, err
+		},
+		Enabled: func() bool { return qualityReadsEnabled },
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.
