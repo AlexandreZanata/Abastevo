@@ -18,6 +18,7 @@ pub mod join;
 pub mod municipality;
 pub mod output;
 pub mod pmqc;
+pub mod quality;
 pub mod registry;
 pub mod replay;
 pub mod types;
@@ -37,6 +38,7 @@ pub use output::{
     QUARANTINE_FILE,
 };
 pub use pmqc::{parse_pmqc, PmqcBatch, PmqcCandidate, PmqcError};
+pub use quality::{parse_quality_assays, QualityAssay, QualityBatch, QualityError, QUALITY_SOURCE};
 pub use registry::{parse_registry, RegistryBatch, RegistryError, RegistryRow};
 pub use replay::{replay_decision, ReplayDecision};
 pub use types::{Counts, Limits, QuarantineRow, RunState};
