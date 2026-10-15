@@ -1356,6 +1356,96 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/quality/revisions:
+    get:
+      summary: List retained official source revisions (anonymous, live catalog).
+      operationId: qualityRevisions
+      tags:
+      - quality
+      security: []
+      parameters:
+      - name: stream
+        in: query
+        required: true
+        description: Exact official source stream.
+        schema:
+          $ref: '#/components/schemas/QualityStream'
+      - name: limit
+        in: query
+        description: Maximum entries.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: cursor
+        in: query
+        description: Sealed live-catalog UUID keyset cursor; restart after concurrent
+          imports to enumerate newly inserted revisions.
+        schema:
+          type: string
+          maxLength: 2048
+      responses:
+        '200':
+          description: Bounded official revision metadata.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRevisionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/revisions/{id}:
+    get:
+      summary: Inspect frozen revision provenance and availability (anonymous).
+      operationId: qualityRevisionDetail
+      tags:
+      - quality
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Retained official revision UUID.
+        schema:
+          type: string
+          format: uuid
+      - name: stream
+        in: query
+        required: true
+        description: Exact official source stream.
+        schema:
+          $ref: '#/components/schemas/QualityStream'
+      responses:
+        '200':
+          description: Bounded official revision metadata.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRevisionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/summary:
     get:
       summary: Station fuel conformity denominators from the published assay lease (anonymous).
@@ -1363,6 +1453,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: station_id
           in: query
           required: true
@@ -1399,6 +1490,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: station_id
           in: query
           required: true
@@ -1443,6 +1535,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: sample_ref
           in: path
           required: true
@@ -1474,6 +1567,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: status
           in: query
           description: Optional verbatim procedural status filter.
@@ -1514,6 +1608,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: id
           in: path
           required: true
@@ -1539,6 +1634,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: status
           in: query
           description: Optional verbatim extraction-time status filter.
@@ -1575,6 +1671,7 @@ paths:
       tags: [quality]
       security: []
       parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
         - name: id
           in: path
           required: true
@@ -5141,6 +5238,16 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
 components:
+  parameters:
+    QualityRevisionSelector:
+      name: revision_id
+      in: query
+      description: Optional exact revision of this source/stream; omission selects the
+        current stream. Verified superseded history is explicitly labeled; withdrawn/legacy
+        revisions remain unavailable.
+      schema:
+        type: string
+        format: uuid
   schemas:
     CloudVehicle:
       type: object
@@ -7315,6 +7422,140 @@ components:
         next_after_id: *quality_report_id001
       required:
       - items
+    QualityStream:
+      type: string
+      enum:
+      - pmqc-assay-v1
+      - enforcement-v1
+      - sanction-v1
+    QualityRevisionHeader:
+      type: object
+      additionalProperties: false
+      required:
+      - revision_id
+      - edition
+      - revision_status
+      - provenance_state
+      - is_current_stream
+      - published_at
+      properties:
+        supersedes_revision_id: {type: [string, 'null'], format: uuid}
+        revision_id:
+          type: string
+          format: uuid
+        edition:
+          type: string
+        revision_status:
+          type: string
+          enum:
+          - published
+          - superseded
+          - withdrawn
+        provenance_state:
+          type: string
+          enum:
+          - VERIFIED
+          - LEGACY_UNVERIFIED
+        is_current_stream:
+          type: boolean
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    QualityRevisionPage:
+      type: object
+      additionalProperties: false
+      required:
+      - source
+      - stream
+      - items
+      - next_cursor
+      - catalog_live
+      - generated_at
+      properties:
+        source:
+          type: string
+        stream:
+          $ref: '#/components/schemas/QualityStream'
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/QualityRevisionHeader'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        catalog_live:
+          type: boolean
+          const: true
+        generated_at:
+          type: string
+          format: date-time
+    QualityRevisionDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - lease
+      - counts
+      - manifest_hash
+      - resources
+      - generated_at
+      properties:
+        lease:
+          $ref: '#/components/schemas/QualityLease'
+        counts:
+          type:
+          - object
+          - 'null'
+          additionalProperties: false
+          required:
+          - input
+          - accepted
+          - duplicates
+          - quarantined
+          properties:
+            input:
+              type: integer
+              minimum: 0
+            accepted:
+              type: integer
+              minimum: 0
+            duplicates:
+              type: integer
+              minimum: 0
+            quarantined:
+              type: integer
+              minimum: 0
+        manifest_hash:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9a-f]{64}$
+        resources:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - url
+            - sha256
+            - bytes
+            properties:
+              url:
+                type: string
+                format: uri
+              sha256:
+                type: string
+                pattern: ^[0-9a-f]{64}$
+              bytes:
+                type: integer
+                format: int64
+                minimum: 0
+        generated_at:
+          type: string
+          format: date-time
     QualityLease:
       description: >
         Frozen read context served with every quality response. Stale
@@ -7323,6 +7564,10 @@ components:
       type: object
       required: [source, stream, edition, revision_id, available, stale, coverage_note]
       properties:
+        supersedes_revision_id: {type: [string, 'null'], format: uuid}
+        revision_status: {type: string, enum: [published, superseded, withdrawn, unavailable]}
+        provenance_state: {type: string, enum: [VERIFIED, LEGACY_UNVERIFIED, UNAVAILABLE]}
+        is_current_stream: {type: boolean}
         source: {type: string, example: pmqc}
         stream: {type: string, example: pmqc-assay-v1}
         edition: {type: string, example: '2026-09'}

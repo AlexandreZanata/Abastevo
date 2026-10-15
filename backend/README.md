@@ -130,3 +130,35 @@ uses `ANPFUEL_DATABASE_URL` and stages only official records/candidate points.
 It runs no migrations, canonical publication or location review. Exact snapshot
 replay reuses stored results; new source editions need new snapshot identities.
 Do not use a persistent database for integration tests.
+
+## Fuel quality source reads (FQ-08/FQ-08H)
+
+The additive public quality API has a live bounded revision catalog:
+`GET /v1/quality/revisions?stream=pmqc-assay-v1&limit=20`, then
+`GET /v1/quality/revisions/{id}?stream=pmqc-assay-v1` for frozen provenance.
+Streams also include `enforcement-v1` and `sanction-v1`. Existing summary, assay,
+sample, action and sanction routes accept optional `revision_id`; omission reads
+current. Select the exact revision when continuing a historical record cursor.
+Superseded verified history is explicitly labeled; withdrawn/legacy revisions
+have unavailable facts and null denominators. Catalog metadata is live, so restart
+catalog traversal after imports to include newly inserted revisions.
+
+`ANPFUEL_QUALITY_READS_ENABLED=false` contains all official quality routes.
+Private signed document-free report commands/get/list remain separate; disabling
+`ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
+owner appeal, withdrawal and reads. Existing account write quota applies per account
+transactionally; acknowledged replay costs no second unit. No payment/GPS/document
+or business portal requirement is introduced. See [review](../docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)
+and [historical validation](../docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md).
+
+Critical quality persistence/read/job checks, from backend/ against disposable
+local PostGIS (never the staging database):
+
+```sh
+go test -race -tags=integration ./internal/modules/quality/... -count=1
+go test ./internal/platform/apicontract -count=1
+```
+
+Explicit `-count=1` is required after changing external OpenAPI/vector inputs;
+Go test cache does not track those files. Local source acceptance does not imply
+live native imports, score calibration, mobile/device or production acceptance.

@@ -38,6 +38,8 @@ type Handler struct {
 
 // RegisterRoutes mounts the quality reads under /v1/quality.
 func (h Handler) RegisterRoutes(r chi.Router) {
+	r.Get("/v1/quality/revisions", h.revisions)
+	r.Get("/v1/quality/revisions/{id}", h.revisionDetail)
 	r.Get("/v1/quality/summary", h.summary)
 	r.Get("/v1/quality/assays", h.assays)
 	r.Get("/v1/quality/samples/{sample_ref}", h.sample)
@@ -67,24 +69,34 @@ type wirePeriod struct {
 }
 
 type wireLease struct {
-	Source       string       `json:"source"`
-	Stream       string       `json:"stream"`
-	Edition      string       `json:"edition"`
-	RevisionID   *string      `json:"revision_id"`
-	PublishedAt  *string      `json:"published_at"`
-	Available    bool         `json:"available"`
-	Stale        bool         `json:"stale"`
-	StaleReason  string       `json:"stale_reason"`
-	CoverageNote string       `json:"coverage_note"`
-	Periods      []wirePeriod `json:"periods"`
+	SupersedesRevisionID *string      `json:"supersedes_revision_id"`
+	RevisionStatus       string       `json:"revision_status"`
+	ProvenanceState      string       `json:"provenance_state"`
+	IsCurrentStream      bool         `json:"is_current_stream"`
+	Source               string       `json:"source"`
+	Stream               string       `json:"stream"`
+	Edition              string       `json:"edition"`
+	RevisionID           *string      `json:"revision_id"`
+	PublishedAt          *string      `json:"published_at"`
+	Available            bool         `json:"available"`
+	Stale                bool         `json:"stale"`
+	StaleReason          string       `json:"stale_reason"`
+	CoverageNote         string       `json:"coverage_note"`
+	Periods              []wirePeriod `json:"periods"`
 }
 
 func wireLeaseOf(l read.Lease) wireLease {
 	out := wireLease{
-		Source: l.Source, Stream: l.Stream, Edition: l.Edition,
+		SupersedesRevisionID: nullableString(l.SupersedesRevisionID), RevisionStatus: l.Status, ProvenanceState: l.ProvenanceState, IsCurrentStream: l.IsCurrentStream, Source: l.Source, Stream: l.Stream, Edition: l.Edition,
 		RevisionID: nullableString(l.RevisionID), Available: l.HasPublished,
 		Stale: l.Stale, StaleReason: l.StaleReason,
 		CoverageNote: l.CoverageNote, Periods: []wirePeriod{},
+	}
+	if out.RevisionStatus == "" {
+		out.RevisionStatus = "unavailable"
+	}
+	if out.ProvenanceState == "" {
+		out.ProvenanceState = "UNAVAILABLE"
 	}
 	if !l.PublishedAt.IsZero() {
 		out.PublishedAt = nullableString(l.PublishedAt.UTC().Format(time.RFC3339))
@@ -124,6 +136,9 @@ func (h Handler) summary(w http.ResponseWriter, r *http.Request) {
 	if h.disabled(w, r) {
 		return
 	}
+	if !h.selectRevision(w, r) {
+		return
+	}
 	q := r.URL.Query()
 	id, err := application.ValidateStationID(q.Get("station_id"))
 	if err != nil {
@@ -142,7 +157,7 @@ func (h Handler) summary(w http.ResponseWriter, r *http.Request) {
 	}
 	cells, lease, err := h.Read.Summary(r.Context(), h.now(), assaySource, assayStream, id, fuel)
 	if err != nil {
-		sourceDown(w, r)
+		h.readErr(w, r, err)
 		return
 	}
 	wire := make([]map[string]any, 0, len(cells))
@@ -162,6 +177,9 @@ func (h Handler) summary(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 	if h.disabled(w, r) {
+		return
+	}
+	if !h.selectRevision(w, r) {
 		return
 	}
 	q := r.URL.Query()
@@ -190,7 +208,7 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 	// cursors cannot wander across concurrent publications.
 	lease, err := h.Read.LeaseBlock(r.Context(), h.now(), assaySource, assayStream)
 	if err != nil {
-		sourceDown(w, r)
+		h.readErr(w, r, err)
 		return
 	}
 	fh := httpapi.FilterHash("quality-assays", id, fuel, strconv.Itoa(limit), lease.RevisionID)
@@ -203,7 +221,7 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 	afterObserved, afterID := splitCursor(lastKey)
 	rows, nextKey, _, err := h.Read.AssaysAtLease(r.Context(), lease, id, fuel, afterObserved, afterID, limit)
 	if err != nil {
-		sourceDown(w, r)
+		h.readErr(w, r, err)
 		return
 	}
 	var next *string
@@ -243,6 +261,9 @@ func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
 	if h.disabled(w, r) {
 		return
 	}
+	if !h.selectRevision(w, r) {
+		return
+	}
 	ref := strings.TrimSpace(chi.URLParam(r, "sample_ref"))
 	if ref == "" || len(ref) > 128 {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-sample", "sample ref required",
@@ -251,7 +272,7 @@ func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
 	}
 	detail, err := h.Read.Sample(r.Context(), h.now(), assaySource, assayStream, ref)
 	if err != nil {
-		sourceDown(w, r)
+		h.readErr(w, r, err)
 		return
 	}
 	wire := make([]map[string]any, 0, len(detail.Assays))
@@ -289,6 +310,9 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 	if h.disabled(w, r) {
 		return
 	}
+	if !h.selectRevision(w, r) {
+		return
+	}
 	q := r.URL.Query()
 	status, err := application.ValidateTextFilter("status", q.Get("status"), 64)
 	if err != nil {
@@ -310,7 +334,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 	}
 	lease, err := h.leaseOf(r, source, stream)
 	if err != nil {
-		sourceDown(w, r)
+		h.readErr(w, r, err)
 		return
 	}
 	fh := httpapi.FilterHash("quality-"+name, status, scope, strconv.Itoa(limit), lease.RevisionID)
@@ -382,6 +406,9 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 	if h.disabled(w, r) {
 		return
 	}
+	if !h.selectRevision(w, r) {
+		return
+	}
 	id, err := application.ValidateStationID(chi.URLParam(r, "id"))
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-id", "id must be a UUID",
@@ -420,7 +447,7 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 
 func (h Handler) readErr(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, read.ErrNotFound) || errors.Is(err, read.ErrNoLease) {
-		httpapi.WriteError(w, r, http.StatusNotFound, "quality.not-found", "row outside the current lease", nil)
+		httpapi.WriteError(w, r, http.StatusNotFound, "quality.not-found", "row outside the selected lease", nil)
 		return
 	}
 	sourceDown(w, r)

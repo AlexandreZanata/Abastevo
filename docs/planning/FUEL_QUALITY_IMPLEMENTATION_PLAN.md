@@ -430,6 +430,8 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-08 — Official read API, timeline and coverage (M)
 
+Historical completion: [FQ-08H evidence](../backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md), LOCAL_DONE / INTEGRATION_PENDING. Explicit source-bound revision selection and live catalog preserve complete reachable edition/correction history; no runtime import or deployment is implied.
+
 - Depends: FQ-04/FQ-06/FQ-07. BUC-FQ-04/09.
 - Deliver: additive OpenAPI schemas, bounded station/fuel summary, keyset event
   pages, sample/assay detail and source/edition/coverage/explanation fields.

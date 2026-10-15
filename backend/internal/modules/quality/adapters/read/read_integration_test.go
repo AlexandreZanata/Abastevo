@@ -86,10 +86,14 @@ func seedStation(t *testing.T, pool *pgxpool.Pool) {
 	}
 }
 
-func seedAssays(t *testing.T, pool *pgxpool.Pool, hashChar string) string {
+func seedAssays(t *testing.T, pool *pgxpool.Pool, hashChar string, editions ...string) string {
 	t.Helper()
+	edition := "2026-09"
+	if len(editions) > 0 {
+		edition = editions[0]
+	}
 	rev, err := parentadapters.NewPublisher(pool).Publish(context.Background(), application.Input{
-		Source: "pmqc", Stream: "pmqc-assay-v1", Edition: "2026-09",
+		Source: "pmqc", Stream: "pmqc-assay-v1", Edition: edition,
 		Resources: []application.Resource{{
 			URL:    "https://www.gov.br/anp/pmqc_2026_09.zip",
 			SHA256: strings.Repeat("a", 64), Bytes: 10,

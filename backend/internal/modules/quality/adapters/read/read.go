@@ -20,13 +20,14 @@ import (
 // an explicit unavailable lease, never an invented one.
 var ErrNoLease = errors.New("read: no published revision")
 
-// ErrNotFound reports an id outside the current published revision: either
-// unknown or superseded with history retained elsewhere.
+// ErrNotFound reports an unknown/cross-stream revision or a row outside
+// the selected revision. Verified superseded history is explicitly selectable.
 var ErrNotFound = errors.New("read: row outside the current lease")
 
 // Reader serves frozen-lease quality reads.
 type Reader struct {
-	pool *pgxpool.Pool
+	pool       *pgxpool.Pool
+	revisionID string
 }
 
 // NewReader wires the owned generated queries to a pool.
@@ -83,18 +84,22 @@ type Period struct {
 // identity, edition, revision, reconciled denominators, claimed periods
 // and the staleness flag with its reason.
 type Lease struct {
-	Source       string
-	Stream       string
-	Edition      string
-	RevisionID   string
-	PublishedAt  time.Time
-	HasPublished bool
-	Counts       domain.Counts
-	ManifestHash string
-	Periods      []Period
-	Stale        bool
-	StaleReason  string
-	CoverageNote string
+	SupersedesRevisionID string
+	Status               string
+	ProvenanceState      string
+	IsCurrentStream      bool
+	Source               string
+	Stream               string
+	Edition              string
+	RevisionID           string
+	PublishedAt          time.Time
+	HasPublished         bool
+	Counts               domain.Counts
+	ManifestHash         string
+	Periods              []Period
+	Stale                bool
+	StaleReason          string
+	CoverageNote         string
 }
 
 // FuelCell is one fuel/conformity denominator of a station summary.
@@ -159,7 +164,22 @@ type SanctionEvent struct {
 
 func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time) (Lease, pgtype.UUID, error) {
 	q := quality.New(r.pool)
-	row, err := q.LeaseByStream(ctx, quality.LeaseByStreamParams{Source: source, Stream: stream})
+	var row quality.LeaseByStreamRow
+	var err error
+	if r.revisionID == "" {
+		row, err = q.LeaseByStream(ctx, quality.LeaseByStreamParams{Source: source, Stream: stream})
+	} else {
+		id, e := mustUUID(r.revisionID)
+		if e != nil {
+			return Lease{}, pgtype.UUID{}, ErrNotFound
+		}
+		selected, e := q.RevisionLeaseByStream(ctx, quality.RevisionLeaseByStreamParams{Source: source, Stream: stream, RevisionID: id})
+		err = e
+		row = quality.LeaseByStreamRow(selected)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Lease{}, pgtype.UUID{}, ErrNotFound
+		}
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Lease{Source: source, Stream: stream, Stale: true, StaleReason: "no published revision"}, pgtype.UUID{}, ErrNoLease
@@ -167,12 +187,16 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		return Lease{}, pgtype.UUID{}, err
 	}
 	if row.ProvenanceState != "VERIFIED" {
-		return Lease{Source: source, Stream: stream, Edition: row.Edition, RevisionID: uuidString(row.RevisionID), HasPublished: false, Stale: true, StaleReason: "revision provenance unverified", CoverageNote: "Frozen source provenance unavailable; verified reimport required."}, pgtype.UUID{}, ErrNoLease
+		return Lease{PublishedAt: row.PublishedAt.Time, SupersedesRevisionID: uuidString(row.SupersedesRevisionID), Status: row.Status, ProvenanceState: row.ProvenanceState, IsCurrentStream: row.IsCurrentStream, Source: source, Stream: stream, Edition: row.Edition, RevisionID: uuidString(row.RevisionID), HasPublished: false, Stale: true, StaleReason: "revision provenance unverified", CoverageNote: "Frozen source provenance unavailable; verified reimport required."}, pgtype.UUID{}, ErrNoLease
 	}
 	publishedAt, hasPublished := timeString(row.PublishedAt)
-	stale, reason := application.Stale(hasLease(row), publishedAt, now)
+	servable := row.Status == "published" || (r.revisionID != "" && row.Status == "superseded")
+	if !servable || !hasPublished {
+		return Lease{PublishedAt: row.PublishedAt.Time, SupersedesRevisionID: uuidString(row.SupersedesRevisionID), Status: row.Status, ProvenanceState: row.ProvenanceState, IsCurrentStream: row.IsCurrentStream, Source: source, Stream: stream, Edition: row.Edition, RevisionID: uuidString(row.RevisionID), Stale: true, StaleReason: "revision unavailable", CoverageNote: "Revision retained as metadata; no facts served."}, pgtype.UUID{}, ErrNoLease
+	}
+	stale, reason := application.Stale(true, publishedAt, now)
 	lease := Lease{
-		Source: row.Source, Stream: row.Stream, Edition: row.Edition,
+		SupersedesRevisionID: uuidString(row.SupersedesRevisionID), Status: row.Status, ProvenanceState: row.ProvenanceState, IsCurrentStream: row.IsCurrentStream, Source: row.Source, Stream: row.Stream, Edition: row.Edition,
 		RevisionID:  uuidString(row.RevisionID),
 		PublishedAt: publishedAt, HasPublished: hasPublished,
 		Counts: domain.Counts{
@@ -183,6 +207,9 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		Stale:        stale, StaleReason: reason,
 	}
 	lease.CoverageNote = application.CoverageNote(row.Edition, lease.Counts)
+	if row.Status == "superseded" {
+		lease.CoverageNote = "Historical superseded revision; consult its correction. " + strings.Replace(lease.CoverageNote, "only published revisions serve reads", "completed verified historical revisions remain explicitly accessible", 1)
+	}
 	if periods, perr := q.ListRevisionPeriods(ctx, row.RevisionID); perr == nil {
 		for _, p := range periods {
 			lease.Periods = append(lease.Periods, Period{
@@ -193,10 +220,6 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		return Lease{}, pgtype.UUID{}, perr
 	}
 	return lease, row.RevisionID, nil
-}
-
-func hasLease(row quality.LeaseByStreamRow) bool {
-	return row.Status == "published" && row.ProvenanceState == "VERIFIED"
 }
 
 // LeaseBlock returns the servable lease envelope for a stream: unavailable
@@ -302,7 +325,7 @@ func wireAssay(sampleRef, assayRef string, observed pgtype.Date, fuel, result, u
 }
 
 // Sample returns one sample's assays, links and lease. Samples outside
-// the current published revision report no rows with the live lease.
+// the selected servable revision report no rows with that lease.
 func (r *Reader) Sample(ctx context.Context, now time.Time, source, stream, sampleRef string) (SampleDetail, error) {
 	lease, revisionID, err := r.lease(ctx, source, stream, now)
 	if err != nil && !errors.Is(err, ErrNoLease) {
@@ -429,7 +452,7 @@ func (r *Reader) SanctionsAtLease(ctx context.Context, lease Lease, status, afte
 	return out, "", lease, nil
 }
 
-// EnforcementOne returns one action by id within the current revision.
+// EnforcementOne returns one action by id within the selected revision.
 func (r *Reader) EnforcementOne(ctx context.Context, now time.Time, source, stream, id string) (EnforcementEvent, Lease, error) {
 	lease, revisionID, err := r.lease(ctx, source, stream, now)
 	if err != nil {
@@ -456,7 +479,7 @@ func (r *Reader) EnforcementOne(ctx context.Context, now time.Time, source, stre
 	}, lease, nil
 }
 
-// SanctionOne returns one snapshot by id within the current revision.
+// SanctionOne returns one snapshot by id within the selected revision.
 func (r *Reader) SanctionOne(ctx context.Context, now time.Time, source, stream, id string) (SanctionEvent, Lease, error) {
 	lease, revisionID, err := r.lease(ctx, source, stream, now)
 	if err != nil {

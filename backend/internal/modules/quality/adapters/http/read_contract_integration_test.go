@@ -24,7 +24,13 @@ func TestQualityActualReadResponsesMatchOpenAPI(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	var revision string
+	if e := p.QueryRow(context.Background(), "SELECT revision_id::text FROM quality_current_revisions WHERE source='pmqc'").Scan(&revision); e != nil {
+		t.Fatal(e)
+	}
 	for _, tc := range []struct{ path, schema string }{
+		{"/v1/quality/revisions?stream=" + assayStream, "QualityRevisionPage"},
+		{"/v1/quality/revisions/" + revision + "?stream=" + assayStream, "QualityRevisionDetail"},
 		{"/v1/quality/summary?station_id=" + httpStation, "QualitySummary"},
 		{"/v1/quality/assays?station_id=" + httpStation, "QualityAssayPage"},
 		{"/v1/quality/actions?status=absent", "QualityActionPage"},
@@ -44,6 +50,18 @@ func TestQualityActualReadResponsesMatchOpenAPI(t *testing.T) {
 				t.Fatal(e)
 			}
 		})
+	}
+	if _, e := p.Exec(context.Background(), "UPDATE quality_revisions SET status='withdrawn' WHERE id=$1", revision); e != nil {
+		t.Fatal(e)
+	}
+	unavailable := httptest.NewRecorder()
+	r.ServeHTTP(unavailable, httptest.NewRequest("GET", "/v1/quality/revisions/"+revision+"?stream="+assayStream, nil))
+	var unavailableValue any
+	if e := json.Unmarshal(unavailable.Body.Bytes(), &unavailableValue); e != nil {
+		t.Fatal(e)
+	}
+	if e := spec.Components.Schemas["QualityRevisionDetail"].Value.VisitJSON(unavailableValue); e != nil {
+		t.Fatal("unavailable provenance contract", e)
 	}
 	if _, e := p.Exec(context.Background(), "DELETE FROM quality_current_revisions"); e != nil {
 		t.Fatal(e)
@@ -115,7 +133,11 @@ func TestQualityHTTPCacheIncludesStaleness(t *testing.T) {
 	h := Handler{Read: qualityread.NewReader(p), Secrets: testSecrets, StationsExist: func(context.Context, string) (bool, error) { return true, nil }, Now: func() time.Time { return at }}
 	r := chi.NewRouter()
 	h.RegisterRoutes(r)
-	for _, path := range []string{"/v1/quality/assays?station_id=" + httpStation, "/v1/quality/actions", "/v1/quality/samples/S-1"} {
+	var revision string
+	if e := p.QueryRow(context.Background(), "SELECT revision_id::text FROM quality_current_revisions WHERE source='pmqc'").Scan(&revision); e != nil {
+		t.Fatal(e)
+	}
+	for _, path := range []string{"/v1/quality/revisions/" + revision + "?stream=" + assayStream, "/v1/quality/assays?station_id=" + httpStation, "/v1/quality/actions", "/v1/quality/samples/S-1"} {
 		at = time.Now()
 		code, _, headers := get(t, r, path)
 		if code != 200 {

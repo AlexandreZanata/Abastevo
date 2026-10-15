@@ -185,11 +185,11 @@ func (q *Queries) EnforcementByID(ctx context.Context, arg EnforcementByIDParams
 
 const leaseByStream = `-- name: LeaseByStream :one
 
-SELECT r.id AS revision_id, r.status, r.published_at,
+SELECT r.id AS revision_id, r.status, r.published_at, r.supersedes_revision_id,
     e.id AS edition_id, e.source, e.stream, e.edition, e.predecessor,
     COALESCE(m.input,0)::bigint AS input, COALESCE(m.accepted,0)::bigint AS accepted,
     COALESCE(m.duplicates,0)::bigint AS duplicates, COALESCE(m.quarantined,0)::bigint AS quarantined,
-    COALESCE(m.manifest_hash,'')::text AS manifest_hash, m.provenance_state
+    COALESCE(m.manifest_hash,'')::text AS manifest_hash, m.provenance_state, true::boolean AS is_current_stream
 FROM quality_current_revisions AS c
 JOIN quality_revisions AS r ON r.id = c.revision_id
 JOIN quality_editions AS e ON e.id = r.edition_id
@@ -203,24 +203,27 @@ type LeaseByStreamParams struct {
 }
 
 type LeaseByStreamRow struct {
-	RevisionID      pgtype.UUID        `json:"revision_id"`
-	Status          string             `json:"status"`
-	PublishedAt     pgtype.Timestamptz `json:"published_at"`
-	EditionID       pgtype.UUID        `json:"edition_id"`
-	Source          string             `json:"source"`
-	Stream          string             `json:"stream"`
-	Edition         string             `json:"edition"`
-	Predecessor     pgtype.Text        `json:"predecessor"`
-	Input           int64              `json:"input"`
-	Accepted        int64              `json:"accepted"`
-	Duplicates      int64              `json:"duplicates"`
-	Quarantined     int64              `json:"quarantined"`
-	ManifestHash    string             `json:"manifest_hash"`
-	ProvenanceState string             `json:"provenance_state"`
+	RevisionID           pgtype.UUID        `json:"revision_id"`
+	Status               string             `json:"status"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	EditionID            pgtype.UUID        `json:"edition_id"`
+	Source               string             `json:"source"`
+	Stream               string             `json:"stream"`
+	Edition              string             `json:"edition"`
+	Predecessor          pgtype.Text        `json:"predecessor"`
+	Input                int64              `json:"input"`
+	Accepted             int64              `json:"accepted"`
+	Duplicates           int64              `json:"duplicates"`
+	Quarantined          int64              `json:"quarantined"`
+	ManifestHash         string             `json:"manifest_hash"`
+	ProvenanceState      string             `json:"provenance_state"`
+	IsCurrentStream      bool               `json:"is_current_stream"`
 }
 
 // Owned by quality (FQ-08 official reads). All reads resolve the current
-// published revision first and scope every row to it, so one request sees
+// published or explicitly selected historical revision and scope every row to
+// it, so one request sees
 // one frozen lease even across concurrent publications. No read exposes
 // source CNPJs or internal notes; station scoping for assays flows only
 // through active links. Events page per stream without station filter:
@@ -232,6 +235,7 @@ func (q *Queries) LeaseByStream(ctx context.Context, arg LeaseByStreamParams) (L
 		&i.RevisionID,
 		&i.Status,
 		&i.PublishedAt,
+		&i.SupersedesRevisionID,
 		&i.EditionID,
 		&i.Source,
 		&i.Stream,
@@ -243,6 +247,159 @@ func (q *Queries) LeaseByStream(ctx context.Context, arg LeaseByStreamParams) (L
 		&i.Quarantined,
 		&i.ManifestHash,
 		&i.ProvenanceState,
+		&i.IsCurrentStream,
+	)
+	return i, err
+}
+
+const readRevisionResources = `-- name: ReadRevisionResources :many
+SELECT url,sha256,bytes FROM quality_revision_resources WHERE revision_id= $1 ORDER BY url
+`
+
+type ReadRevisionResourcesRow struct {
+	Url    string `json:"url"`
+	Sha256 string `json:"sha256"`
+	Bytes  int64  `json:"bytes"`
+}
+
+func (q *Queries) ReadRevisionResources(ctx context.Context, revisionID pgtype.UUID) ([]ReadRevisionResourcesRow, error) {
+	rows, err := q.db.Query(ctx, readRevisionResources, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadRevisionResourcesRow
+	for rows.Next() {
+		var i ReadRevisionResourcesRow
+		if err := rows.Scan(&i.Url, &i.Sha256, &i.Bytes); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revisionCatalog = `-- name: RevisionCatalog :many
+SELECT r.id,r.status,r.published_at,r.supersedes_revision_id,e.edition,m.provenance_state,
+ EXISTS(SELECT 1 FROM quality_current_revisions c WHERE c.revision_id=r.id)::boolean AS is_current_stream
+FROM quality_revisions r JOIN quality_editions e ON e.id=r.edition_id
+JOIN quality_revision_provenance m ON m.revision_id=r.id
+WHERE e.source= $1 AND e.stream= $2
+AND r.status IN ('published','superseded','withdrawn') AND r.id> $3
+ORDER BY r.id LIMIT $4::int
+`
+
+type RevisionCatalogParams struct {
+	Source       string      `json:"source"`
+	Stream       string      `json:"stream"`
+	AfterID      pgtype.UUID `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type RevisionCatalogRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	Status               string             `json:"status"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	Edition              string             `json:"edition"`
+	ProvenanceState      string             `json:"provenance_state"`
+	IsCurrentStream      bool               `json:"is_current_stream"`
+}
+
+func (q *Queries) RevisionCatalog(ctx context.Context, arg RevisionCatalogParams) ([]RevisionCatalogRow, error) {
+	rows, err := q.db.Query(ctx, revisionCatalog,
+		arg.Source,
+		arg.Stream,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RevisionCatalogRow
+	for rows.Next() {
+		var i RevisionCatalogRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.PublishedAt,
+			&i.SupersedesRevisionID,
+			&i.Edition,
+			&i.ProvenanceState,
+			&i.IsCurrentStream,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const revisionLeaseByStream = `-- name: RevisionLeaseByStream :one
+SELECT r.id AS revision_id, r.status, r.published_at, r.supersedes_revision_id,
+    e.id AS edition_id, e.source, e.stream, e.edition, e.predecessor,
+    COALESCE(m.input,0)::bigint AS input, COALESCE(m.accepted,0)::bigint AS accepted,
+    COALESCE(m.duplicates,0)::bigint AS duplicates, COALESCE(m.quarantined,0)::bigint AS quarantined,
+    COALESCE(m.manifest_hash,'')::text AS manifest_hash, m.provenance_state, EXISTS(SELECT 1 FROM quality_current_revisions c WHERE c.revision_id=r.id)::boolean AS is_current_stream
+FROM quality_revisions AS r
+JOIN quality_editions AS e ON e.id = r.edition_id
+JOIN quality_revision_provenance AS m ON m.revision_id = r.id
+WHERE e.source = $1 AND e.stream = $2 AND r.id= $3
+ AND r.status IN ('published','superseded','withdrawn')
+`
+
+type RevisionLeaseByStreamParams struct {
+	Source     string      `json:"source"`
+	Stream     string      `json:"stream"`
+	RevisionID pgtype.UUID `json:"revision_id"`
+}
+
+type RevisionLeaseByStreamRow struct {
+	RevisionID           pgtype.UUID        `json:"revision_id"`
+	Status               string             `json:"status"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	EditionID            pgtype.UUID        `json:"edition_id"`
+	Source               string             `json:"source"`
+	Stream               string             `json:"stream"`
+	Edition              string             `json:"edition"`
+	Predecessor          pgtype.Text        `json:"predecessor"`
+	Input                int64              `json:"input"`
+	Accepted             int64              `json:"accepted"`
+	Duplicates           int64              `json:"duplicates"`
+	Quarantined          int64              `json:"quarantined"`
+	ManifestHash         string             `json:"manifest_hash"`
+	ProvenanceState      string             `json:"provenance_state"`
+	IsCurrentStream      bool               `json:"is_current_stream"`
+}
+
+func (q *Queries) RevisionLeaseByStream(ctx context.Context, arg RevisionLeaseByStreamParams) (RevisionLeaseByStreamRow, error) {
+	row := q.db.QueryRow(ctx, revisionLeaseByStream, arg.Source, arg.Stream, arg.RevisionID)
+	var i RevisionLeaseByStreamRow
+	err := row.Scan(
+		&i.RevisionID,
+		&i.Status,
+		&i.PublishedAt,
+		&i.SupersedesRevisionID,
+		&i.EditionID,
+		&i.Source,
+		&i.Stream,
+		&i.Edition,
+		&i.Predecessor,
+		&i.Input,
+		&i.Accepted,
+		&i.Duplicates,
+		&i.Quarantined,
+		&i.ManifestHash,
+		&i.ProvenanceState,
+		&i.IsCurrentStream,
 	)
 	return i, err
 }
