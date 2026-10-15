@@ -9,6 +9,7 @@ import (
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -33,12 +34,17 @@ func TestNativePMQCEmptyResultIsRetained(t *testing.T) {
 func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 	ctx := context.Background()
 	prior := fstest.MapFS{}
+	var expected []string
 	entries, e := fs.ReadDir(dbmigrations.Files, ".")
 	if e != nil {
 		t.Fatal(e)
 	}
 	for _, entry := range entries {
-		if entry.Name() >= "000097" || entry.IsDir() {
+		if entry.IsDir() {
+			continue
+		}
+		if entry.Name() >= "000097" {
+			expected = append(expected, entry.Name()[:6])
 			continue
 		}
 		b, e := fs.ReadFile(dbmigrations.Files, entry.Name())
@@ -56,7 +62,7 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 		t.Fatal("old chain marked compatible")
 	}
 	applied, e := migrate.Apply(ctx, dsn, dbmigrations.Files)
-	if e != nil || len(applied) < 1 || applied[0] != "000097" {
+	if e != nil || !slices.Equal(applied, expected) {
 		t.Fatal(applied, e)
 	}
 	applied, e = migrate.Apply(ctx, dsn, dbmigrations.Files)
@@ -74,7 +80,7 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 	if e != nil || legacyProv.ProvenanceState != "LEGACY_UNVERIFIED" {
 		t.Fatal("legacy provenance fabricated", legacyProv, e)
 	}
-	if legacyProv.ManifestHash.Valid {
+	if legacyProv.ManifestHash.Valid || legacyProv.PublicationKey.Valid || legacyProv.Input.Valid || legacyProv.Accepted.Valid || legacyProv.Duplicates.Valid || legacyProv.Quarantined.Valid {
 		t.Fatal("legacy provenance invented a hash")
 	}
 	legacyLease, e := qualityread.NewReader(p).LeaseBlock(ctx, time.Now(), "pmqc", "pmqc-assay-v1")

@@ -43,8 +43,9 @@ legacy revisions carried no explicit provenance state at all.
 
 ## Validation
 
-RED→GREEN: the new suites passed first run; two acceptance gaps found on
-review were closed with new assertions (per-revision period snapshots on
+RED→GREEN: pre-fix runs reproduced missing revision provenance and eight
+correction forks under the deterministic lock barrier. Final acceptance gaps
+found on review were closed with new assertions (per-revision period snapshots on
 the events correction path; LEGACY_UNVERIFIED state plus unavailable
 lease plus intact frozen provenance on the upgrade/replay path). No
 production assertion was weakened.
@@ -68,10 +69,24 @@ production assertion was weakened.
 
 ## Recovery
 
-Retain the original publication: superseded revisions keep serving
-their rows with frozen provenance; replaying a manifest returns the
-same revision id; failed corrections roll back whole transactions.
+Retain the original publication: superseded revisions retain
+their immutable rows and provenance. Current HTTP reads select the current
+revision; complete historical HTTP traversal remains owed by FQ-14/FQ-17.
+Current-publication replay converges; superseded retries are refused and
+failed corrections roll back whole transactions.
 Legacy revisions require verified source reimport into a new revision
 before explained publication/scoring. Never edit 000093–000098. Next:
 immutable per-revision provenance is LOCAL_DONE; document-free FQ-11
 and calibrated remaining FQ scope per FQ-02B sequencing (FQ-10 D-held).
+
+## Independent verification, 2026-10-15
+
+Inspected commit `ee528693` against actual dev and reran the complete quality
+PostGIS/race suite: all six packages PASS. Reinforced period snapshots with a
+changed/removed period and a changed raw resource, asserted every legacy
+count/hash/publication key remains NULL, and asserted the exact ordered missing
+migration chain on upgrade. Added real SQL cases for changed raw resources under
+the same prepared-content hash, refused historical resurrection, and obsolete
+import acknowledgment without pointer/watermark regression. All six targeted
+cases PASS, plus affected vet/staticcheck/sqlc vet+diff/whitespace/secret checks.
+The correction remains source-local; historical API access and rollout are owed.

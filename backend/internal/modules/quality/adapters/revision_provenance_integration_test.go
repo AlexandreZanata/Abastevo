@@ -4,7 +4,9 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	quality "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/quality"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"strings"
 	"sync"
@@ -135,31 +137,67 @@ func TestRevisionProvenancePeriodSnapshots(t *testing.T) {
 	}
 	corrected := sampleEventsInput("e")
 	corrected.Enforcement[0].Status = "interditado"
+	corrected.Periods = []application.PeriodInput{{Label: "2026-10", Start: "2026-10-01", End: "2026-10-14"}}
+	corrected.Resources[0].SHA256 = strings.Repeat("f", 64)
 	rev2, e := pub.PublishEvents(ctx, corrected, m.next)
 	if e != nil {
 		t.Fatal(e)
 	}
 	q := quality.New(p)
+
 	for _, tc := range []struct {
-		id, hash string
-	}{{rev1, strings.Repeat("b", 64)}, {rev2, strings.Repeat("e", 64)}} {
+		id, hash, resource string
+		periods            []application.PeriodInput
+	}{
+		{rev1, strings.Repeat("b", 64), strings.Repeat("a", 64), sampleEventsInput("b").Periods},
+		{rev2, strings.Repeat("e", 64), strings.Repeat("f", 64), corrected.Periods},
+	} {
 		rid, e := mustUUID(tc.id)
 		if e != nil {
 			t.Fatal(e)
 		}
 		periods, e := q.ListRevisionPeriods(ctx, rid)
-		if e != nil || len(periods) != 2 {
+		if e != nil || len(periods) != len(tc.periods) {
 			t.Fatal("period snapshot lost", tc.id, periods, e)
 		}
-		if periods[0].PeriodLabel != "2026-08" || periods[0].PeriodStart.Time.Format("2006-01-02") != "2026-08-01" || periods[0].PeriodEnd.Time.Format("2006-01-02") != "2026-08-31" {
-			t.Fatal("period snapshot wrong", tc.id, periods[0])
-		}
-		if periods[1].PeriodLabel != "2026-09" {
-			t.Fatal("period snapshot wrong", tc.id, periods[1])
+		for i, want := range tc.periods {
+			got := periods[i]
+			if got.PeriodLabel != want.Label || got.PeriodStart.Time.Format("2006-01-02") != want.Start || got.PeriodEnd.Time.Format("2006-01-02") != want.End {
+				t.Fatal("period overwritten", tc.id, got, want)
+			}
 		}
 		prov, e := q.GetRevisionProvenance(ctx, rid)
 		if e != nil || prov.ProvenanceState != "VERIFIED" || !prov.ManifestHash.Valid || prov.ManifestHash.String != tc.hash {
 			t.Fatal("provenance snapshot wrong", tc.id, prov, e)
 		}
+		var resource string
+		if e = p.QueryRow(ctx, "SELECT sha256 FROM quality_revision_resources WHERE revision_id=$1", tc.id).Scan(&resource); e != nil || resource != tc.resource {
+			t.Fatal("resource snapshot wrong", tc.id, resource, e)
+		}
+	}
+}
+
+func TestRevisionProvenanceRejectsSupersededAndBindsRawResources(t *testing.T) {
+	p := freshPool(t)
+	ctx := context.Background()
+	m := &idMaker{}
+	pub := NewPublisher(p)
+	original := sampleInput("b")
+	old, e := pub.Publish(ctx, original, m.next)
+	if e != nil {
+		t.Fatal(e)
+	}
+	corrected := sampleInput("b")
+	corrected.Resources[0].SHA256 = strings.Repeat("f", 64)
+	current, e := pub.Publish(ctx, corrected, m.next)
+	if e != nil || old == current {
+		t.Fatal("raw resource change ignored", current, e)
+	}
+	if _, e = pub.Publish(ctx, original, m.next); !errors.Is(e, application.ErrSupersededPublication) {
+		t.Fatal("historical input resurrected", e)
+	}
+	var actual string
+	if e = p.QueryRow(ctx, "SELECT revision_id::text FROM quality_current_revisions WHERE source='pmqc'").Scan(&actual); e != nil || actual != current {
+		t.Fatal("stale retry replaced current", actual, e)
 	}
 }

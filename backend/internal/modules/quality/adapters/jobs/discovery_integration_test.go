@@ -311,6 +311,41 @@ func TestImportPublishesAndAdvancesWatermark(t *testing.T) {
 	}
 }
 
+func TestImportSupersededRetryDoesNotRegressWatermark(t *testing.T) {
+	pool := freshJobsDB(t)
+	ctx := context.Background()
+	raw := []byte("old source")
+	manifest := strings.Repeat("e", 64)
+	im := Import{Pool: pool, Publish: adapters.NewPublisher(pool), Fetch: func(context.Context, string) ([]byte, error) { return raw, nil }, Prepare: func(b []byte) (PreparedBatch, error) { return fakePrepare(manifest)(b) }}
+	oldJob := importJob(t, raw)
+	if e := im.Handle(ctx, oldJob); e != nil {
+		t.Fatal(e)
+	}
+	raw = []byte("corrected source")
+	manifest = strings.Repeat("f", 64)
+	if e := im.Handle(ctx, importJob(t, raw)); e != nil {
+		t.Fatal(e)
+	}
+	q := quality.New(pool)
+	current, e := q.GetCurrentRevision(ctx, quality.GetCurrentRevisionParams{Source: "pmqc", Stream: "pmqc-assay-v1"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	raw = []byte("old source")
+	manifest = strings.Repeat("e", 64)
+	if e := im.Handle(ctx, oldJob); e != nil {
+		t.Fatal("obsolete retry not acknowledged", e)
+	}
+	mark, e := q.GetWatermark(ctx, quality.GetWatermarkParams{Source: "pmqc", Stream: "pmqc-assay-v1"})
+	if e != nil || mark.LastHash != strings.Repeat("f", 64) {
+		t.Fatal("watermark regressed", mark, e)
+	}
+	actual, e := q.GetCurrentRevision(ctx, quality.GetCurrentRevisionParams{Source: "pmqc", Stream: "pmqc-assay-v1"})
+	if e != nil || actual != current {
+		t.Fatal("publication regressed", actual, e)
+	}
+}
+
 func TestImportHashMismatchFailsClean(t *testing.T) {
 	pool := freshJobsDB(t)
 	ctx := context.Background()
