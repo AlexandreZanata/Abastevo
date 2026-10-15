@@ -32,7 +32,8 @@ const (
 	// vote gaming and off-topic content. Price-accuracy reports keep
 	// using OBSERVATION with dispute reasons; contribution reports use
 	// the frozen reason set below, never free text.
-	TargetContribution = "CONTRIBUTION"
+	TargetContribution  = "CONTRIBUTION"
+	TargetQualityReport = "QUALITY_REPORT"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -140,7 +141,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution, TargetQualityReport:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}

@@ -958,6 +958,46 @@ func (q *Queries) LockLatestCode(ctx context.Context, addressHash string) (Accou
 	return i, err
 }
 
+const lockQualityAccount = `-- name: LockQualityAccount :one
+SELECT id, alias, status, created_at FROM accounts WHERE id = $1 FOR SHARE
+`
+
+// FQ-09: protect signed private commands against concurrent deletion/unbinding.
+func (q *Queries) LockQualityAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, lockQualityAccount, id)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Alias,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const lockQualityBinding = `-- name: LockQualityBinding :one
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = $1 AND contributor_id = $2 FOR SHARE
+`
+
+type LockQualityBindingParams struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	ContributorID string      `json:"contributor_id"`
+}
+
+func (q *Queries) LockQualityBinding(ctx context.Context, arg LockQualityBindingParams) (AccountContributorBinding, error) {
+	row := q.db.QueryRow(ctx, lockQualityBinding, arg.AccountID, arg.ContributorID)
+	var i AccountContributorBinding
+	err := row.Scan(
+		&i.AccountID,
+		&i.ContributorID,
+		&i.KeyFingerprint,
+		&i.BoundAt,
+	)
+	return i, err
+}
+
 const pruneKeyAccountAdmissions = `-- name: PruneKeyAccountAdmissions :execrows
 WITH expired AS (
  SELECT adm.id FROM account_key_admission_events adm WHERE adm.admitted_at < $1

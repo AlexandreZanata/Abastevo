@@ -72,7 +72,8 @@ const (
 	// keyQualityReadsEnabled gates the anonymous quality ledger reads
 	// (FQ-08). Enabled by default; setting it false answers 404 without
 	// touching storage, which is the documented read recovery.
-	keyQualityReadsEnabled = "ANPFUEL_QUALITY_READS_ENABLED"
+	keyQualityReadsEnabled   = "ANPFUEL_QUALITY_READS_ENABLED"
+	keyQualityReportsEnabled = "ANPFUEL_QUALITY_REPORTS_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -108,7 +109,8 @@ type Config struct {
 	MetricsAddr         string
 	ANPDiscoveryEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
-	QualityReadsEnabled bool
+	QualityReadsEnabled   bool
+	QualityReportsEnabled bool
 	// TrainingTermsDigest is the published digest fresh training
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
@@ -163,6 +165,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_ANP_DISCOVERY_ENABLED must be boolean")
 		}
 		cfg.ANPDiscoveryEnabled = enabled
+	}
+	cfg.QualityReportsEnabled = true
+	if raw, present := getenv(keyQualityReportsEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_REPORTS_ENABLED must be boolean")
+		}
+		cfg.QualityReportsEnabled = enabled
 	}
 	cfg.QualityReadsEnabled = true
 	if raw, present := getenv(keyQualityReadsEnabled); present {

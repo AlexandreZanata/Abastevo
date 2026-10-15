@@ -290,6 +290,8 @@ sql:
       - db/migrations/000093_quality_assay_ledger.sql
       - db/migrations/000094_quality_event_ledgers.sql
       - db/migrations/000095_quality_watermarks.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000096_quality_reports.sql
     gen:
       go:
         package: quality

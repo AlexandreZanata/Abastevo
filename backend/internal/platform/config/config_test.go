@@ -33,6 +33,18 @@ func TestLoadDevelopmentDefaults(t *testing.T) {
 	}
 }
 
+func TestQualityReportRecoverySwitch(t *testing.T) {
+	for _, raw := range []string{"true", "false"} {
+		cfg, err := load(envFunc(map[string]string{keyQualityReportsEnabled: raw}))
+		if err != nil || cfg.QualityReportsEnabled != (raw == "true") {
+			t.Fatal(raw, cfg.QualityReportsEnabled, err)
+		}
+	}
+	if _, err := load(envFunc(map[string]string{keyQualityReportsEnabled: "invalid"})); err == nil {
+		t.Fatal("invalid report switch accepted")
+	}
+}
+
 func TestLoadUnknownEnvironmentFails(t *testing.T) {
 	_, err := load(envFunc(map[string]string{keyEnv: "prod-east"}))
 	if err == nil {

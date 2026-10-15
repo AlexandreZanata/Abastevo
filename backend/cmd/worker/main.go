@@ -41,6 +41,7 @@ import (
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -50,6 +51,8 @@ import (
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
+	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -343,9 +346,18 @@ func run() error {
 		},
 	}
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
+			qualityDone, qualityErr := qualityReportStore.EraseAccountBatch(ctx, id)
+			if qualityErr != nil {
+				return qualityErr
+			}
+			if !qualityDone {
+				return accountapp.ErrErasurePending
+			}
+
 			done, err := feedbackStore.EraseAccountBatch(ctx, id, time.Now().Unix())
 			if err == nil && !done {
 				return accountapp.ErrErasurePending
@@ -748,6 +760,18 @@ func run() error {
 		// Owner erasure (P07-T04): durable deletion requests revoke and
 		// purge scope by scope with ledger rows; terminal replays
 		// converge and scope failures park for audited retry.
+		"quality-report-review": qualityjobs.ReportReview{Pool: raw, Open: func(ctx context.Context, tx pgx.Tx, id, kind string) error {
+			caseID, err := jobs.NewUUIDv4()
+			if err != nil {
+				return err
+			}
+			c, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{ID: caseID, TargetType: moderationdomain.TargetQualityReport, TargetID: id, Priority: moderationdomain.PriorityP2, Reason: kind, Detail: "private document-free quality report", OpenedAt: time.Now()})
+			if err != nil {
+				return err
+			}
+			_, _, err = modStore.OpenCaseTx(ctx, tx, c)
+			return err
+		}},
 		"account-erasure-reconcile": accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {

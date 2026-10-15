@@ -76,6 +76,7 @@ import (
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
@@ -650,6 +651,41 @@ func run() error {
 		},
 	}
 	premiumHTTP.RegisterRoutes(router)
+	// Free document-free quality participation; payment capabilities never enter.
+	qualityReportStore := &qualityadapters.ReportStore{Pool: pool.Underlying(), Now: time.Now, Station: func(ctx context.Context, id string) (bool, error) {
+		_, err := stations.Detail(ctx, id)
+		if errors.Is(err, directorydomain.ErrUnknownStation) {
+			return false, nil
+		}
+		return err == nil, err
+	}}
+	qualityhttp.ReportsHandler{
+		Service: qualityReportStore, Enabled: func() bool { return cfg.QualityReportsEnabled },
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := accountService.ValidateAccess(ctx, family, access)
+			if err != nil {
+				return "", qualityAuthError(err)
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				return "", "", qualityAuthError(err)
+			}
+			return contributor, key, nil
+		},
+		Guard: func(ctx context.Context, tx pgx.Tx, owner, family, access, contributor, key string) error {
+			if err := accountStore.RequireQualitySessionTx(ctx, tx, owner, family, access, contributor, accountService.Hasher, time.Now().Unix()); err != nil {
+				return qualityAuthError(err)
+			}
+			if err := identityadapters.RequireQualitySigningKeyTx(ctx, tx, contributor, key); err != nil {
+				return qualityAuthError(err)
+			}
+			return nil
+		},
+	}.RegisterRoutes(router)
+
 	cloudStore := cloudadapters.NewStore(pool.Underlying())
 	cloudStore.Origin = cfg.CanonicalHost
 	cloudStore.Station = stations.ActiveReference

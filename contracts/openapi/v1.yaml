@@ -1233,6 +1233,117 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/quality/reports/commands:
+    post:
+      tags:
+      - quality
+      summary: Private quality report commands
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsCommands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportCommandRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReportReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/reports/get:
+    post:
+      tags:
+      - quality
+      summary: Private quality report get
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsGet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportGetRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/reports/list:
+    post:
+      tags:
+      - quality
+      summary: Private quality report list
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportListRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReportPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/summary:
     get:
       summary: Station fuel conformity denominators from the published assay lease (anonymous).
@@ -6965,6 +7076,204 @@ components:
       type: string
       enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, GASOLINE_PREMIUM_GRADE]
       example: GASOLINE_ADDITIVED
+    QualityReportCommandRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: &id001
+          type: string
+          format: uuid
+        access_token: &id002
+          type: string
+          minLength: 1
+          maxLength: 512
+        command_id: *id001
+        report_id: *id001
+        action:
+          type: string
+          enum:
+          - SUBMIT
+          - EDIT
+          - WITHDRAW
+        expected_revision:
+          type: integer
+          format: int32
+          minimum: 0
+        kind: &id003
+          type: string
+          enum:
+          - EXPERIENCE
+          - LINK_REVIEW
+        station_id: *id001
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        occurred_on: &id004
+          type: string
+          format: date
+        symptom: &id005
+          type: string
+          enum:
+          - STARTING
+          - PERFORMANCE
+          - CONSUMPTION
+          - OTHER
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        official_revision_id: *id001
+        sample_ref: &id006
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - family_id
+      - access_token
+      - command_id
+      - report_id
+      - action
+      oneOf:
+      - properties:
+          action:
+            const: SUBMIT
+          expected_revision:
+            const: 0
+        required:
+        - kind
+        - station_id
+        - fuel
+        - occurred_on
+        - symptom
+        - text
+      - properties:
+          action:
+            const: EDIT
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - kind
+        - station_id
+        - fuel
+        - occurred_on
+        - symptom
+        - text
+        - expected_revision
+      - properties:
+          action:
+            const: WITHDRAW
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - expected_revision
+        not:
+          anyOf:
+          - required:
+            - kind
+          - required:
+            - station_id
+          - required:
+            - fuel
+          - required:
+            - occurred_on
+          - required:
+            - symptom
+          - required:
+            - text
+          - required:
+            - official_revision_id
+          - required:
+            - sample_ref
+      description: Free signed private command. User claims only; purchase documents and
+        verification are deferred. Server validates exact target revision, ownership and
+        dates.
+    QualityReportGetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id002
+        report_id: *id001
+      required:
+      - family_id
+      - access_token
+      - report_id
+    QualityReportListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *id001
+        access_token: *id002
+        after_id: *id001
+      required:
+      - family_id
+      - access_token
+    QualityReportReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        status: &id007
+          type: string
+          enum:
+          - PENDING_REVIEW
+          - WITHDRAWN
+          - HIDDEN
+          - REVIEWED
+      required:
+      - report_id
+      - revision
+      - status
+    QualityReport:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        revision:
+          type: integer
+          minimum: 1
+        kind: *id003
+        station_id: *id001
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        occurred_on: *id004
+        symptom: *id005
+        text:
+          type: string
+          maxLength: 1000
+        official_revision_id: *id001
+        sample_ref: *id006
+        status: *id007
+        evidence_level:
+          type: string
+          const: USER_CLAIM
+      required:
+      - id
+      - revision
+      - kind
+      - station_id
+      - fuel
+      - occurred_on
+      - symptom
+      - text
+      - status
+      - evidence_level
+    QualityReportPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/QualityReport'
+        next_after_id: *id001
+      required:
+      - items
     QualityLease:
       description: >
         Frozen read context served with every quality response. Stale
@@ -6977,7 +7286,7 @@ components:
         stream: {type: string, example: pmqc-assay-v1}
         edition: {type: string, example: '2026-09'}
         revision_id: {type: string, format: uuid}
-        published_at: {type: string, format: date-time, nullable: true}
+        published_at: {type: [string, 'null'], format: date-time}
         available: {type: boolean}
         stale: {type: boolean}
         stale_reason: {type: string}
@@ -7030,7 +7339,7 @@ components:
         items:
           type: array
           items: {$ref: '#/components/schemas/QualityAssay'}
-        next_cursor: {type: string, nullable: true}
+        next_cursor: {type: [string, 'null']}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualitySample:
@@ -7048,7 +7357,7 @@ components:
             type: object
             required: [station_id, automatic, reason, active]
             properties:
-              station_id: {type: string, format: uuid, nullable: true}
+              station_id: {type: [string, 'null'], format: uuid}
               automatic: {type: boolean}
               reason: {type: string}
               active: {type: boolean}
@@ -7063,7 +7372,7 @@ components:
         native_key: {type: string, example: AUTO-001}
         scope: {type: string}
         status: {type: string}
-        occurred_on: {type: string, format: date, nullable: true}
+        occurred_on: {type: [string, 'null'], format: date}
         as_of: {type: string, format: date}
         evidence_ref: {type: string}
         lease: {$ref: '#/components/schemas/QualityLease'}
@@ -7075,7 +7384,7 @@ components:
         items:
           type: array
           items: {$ref: '#/components/schemas/QualityAction'}
-        next_cursor: {type: string, nullable: true}
+        next_cursor: {type: [string, 'null']}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualitySanction:
@@ -7086,9 +7395,9 @@ components:
         id: {type: string, format: uuid}
         native_key: {type: string, example: MULTA-001}
         proceeding_ref: {type: string}
-        amount_minor: {type: integer, minimum: 0, nullable: true}
+        amount_minor: {type: [integer, 'null'], minimum: 0}
         status: {type: string}
-        decided_on: {type: string, format: date, nullable: true}
+        decided_on: {type: [string, 'null'], format: date}
         as_of: {type: string, format: date}
         evidence_ref: {type: string}
         lease: {$ref: '#/components/schemas/QualityLease'}
@@ -7100,7 +7409,7 @@ components:
         items:
           type: array
           items: {$ref: '#/components/schemas/QualitySanction'}
-        next_cursor: {type: string, nullable: true}
+        next_cursor: {type: [string, 'null']}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     PriceCondition:

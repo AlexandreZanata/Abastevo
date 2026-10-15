@@ -8,6 +8,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Account struct {
+	ID        pgtype.UUID        `json:"id"`
+	Alias     string             `json:"alias"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type AccountAddress struct {
+	AddressHash string             `json:"address_hash"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	LinkedAt    pgtype.Timestamptz `json:"linked_at"`
+}
+
+type AccountEmailCode struct {
+	ID          pgtype.UUID        `json:"id"`
+	AddressHash string             `json:"address_hash"`
+	Salt        string             `json:"salt"`
+	Hash        string             `json:"hash"`
+	IssuedAt    pgtype.Timestamptz `json:"issued_at"`
+	Attempts    int32              `json:"attempts"`
+	ConsumedAt  pgtype.Timestamptz `json:"consumed_at"`
+}
+
+type AccountSessionFamily struct {
+	ID            pgtype.UUID        `json:"id"`
+	AccountID     pgtype.UUID        `json:"account_id"`
+	RefreshSalt   string             `json:"refresh_salt"`
+	RefreshHash   string             `json:"refresh_hash"`
+	AccessSalt    string             `json:"access_salt"`
+	AccessHash    string             `json:"access_hash"`
+	AccessExpires pgtype.Timestamptz `json:"access_expires"`
+	IssuedAt      pgtype.Timestamptz `json:"issued_at"`
+	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type DirectoryIdentifier struct {
 	ID               pgtype.UUID        `json:"id"`
 	StationID        pgtype.UUID        `json:"station_id"`
@@ -110,6 +145,41 @@ type QualityPeriod struct {
 	PeriodLabel string      `json:"period_label"`
 	PeriodStart pgtype.Date `json:"period_start"`
 	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
+type QualityReport struct {
+	ID                 pgtype.UUID        `json:"id"`
+	AccountID          pgtype.UUID        `json:"account_id"`
+	Kind               string             `json:"kind"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	Fuel               string             `json:"fuel"`
+	OccurredOn         pgtype.Date        `json:"occurred_on"`
+	Symptom            string             `json:"symptom"`
+	Body               string             `json:"body"`
+	OfficialRevisionID pgtype.UUID        `json:"official_revision_id"`
+	SampleRef          string             `json:"sample_ref"`
+	Revision           int32              `json:"revision"`
+	Status             string             `json:"status"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+type QualityReportAudit struct {
+	ReportID      pgtype.UUID        `json:"report_id"`
+	Revision      int32              `json:"revision"`
+	Action        string             `json:"action"`
+	PolicyVersion string             `json:"policy_version"`
+	OccurredAt    pgtype.Timestamptz `json:"occurred_at"`
+}
+
+type QualityReportCommand struct {
+	AccountID   pgtype.UUID        `json:"account_id"`
+	CommandID   pgtype.UUID        `json:"command_id"`
+	PayloadHash string             `json:"payload_hash"`
+	ReportID    pgtype.UUID        `json:"report_id"`
+	Revision    int32              `json:"revision"`
+	Status      string             `json:"status"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type QualityResource struct {

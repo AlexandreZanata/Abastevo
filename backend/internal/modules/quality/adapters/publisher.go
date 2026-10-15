@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"strings"
@@ -42,18 +41,6 @@ type editionRequest struct {
 // stageFunc persists one revision's rows and asserts the staged counts.
 // Any error rolls the whole publication back.
 type stageFunc func(q *quality.Queries, editionID, revisionID pgtype.UUID) error
-
-func newUUIDv4() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	b[6] = b[6]&0x0f | 0x40
-	b[8] = b[8]&0x3f | 0x80
-	hexed := hex.EncodeToString(b[:])
-	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
-		hexed[16:20] + "-" + hexed[20:32], nil
-}
 
 func mustUUID(text string) (pgtype.UUID, error) {
 	clean := strings.ReplaceAll(text, "-", "")
