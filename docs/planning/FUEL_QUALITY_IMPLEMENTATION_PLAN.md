@@ -466,6 +466,8 @@ State amendment: **DEFERRED_FUTURE / D_GATE_REQUIRED**. No implementation or int
 
 ### FQ-11 — Community signal and moderation policy (M)
 
+Document-free review slice: LOCAL_DONE / INTEGRATION_PENDING; [actual evidence](../backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md). Purchase-supported independence, receipts and public promotion remain D-held; this is not full future acceptance.
+
 - Depends: FQ-09 for an explicitly frozen document-free review/signal slice; purchase-checked/document-supported clustering additionally requires FQ-10 and the D gate. BUC-FQ-07/08. Never label unverified reports as checked independent purchases; retain incomplete future acceptance.
 - Deliver: independently supported signal policy, review/appeal reasons,
   source-separated aggregation and abuse/resource ceilings.

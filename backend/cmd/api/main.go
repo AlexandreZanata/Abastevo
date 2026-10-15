@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -79,6 +80,7 @@ import (
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
+	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
@@ -652,7 +654,14 @@ func run() error {
 	}
 	premiumHTTP.RegisterRoutes(router)
 	// Free document-free quality participation; payment capabilities never enter.
-	qualityReportStore := &qualityadapters.ReportStore{Pool: pool.Underlying(), Now: time.Now, Station: func(ctx context.Context, id string) (bool, error) {
+	qualityReportStore := &qualityadapters.ReportStore{ConsumeBudget: func(ctx context.Context, tx pgx.Tx, owner string) error {
+		digest := sha256.Sum256([]byte("quality-reports:" + owner))
+		retry, err := identityLimiter.CheckTx(ctx, tx, hex.EncodeToString(digest[:]), identitydomain.OperationWrite)
+		if errors.Is(err, identitydomain.ErrQuotaExceeded) {
+			return &qualitydomain.ReportQuotaError{RetryAfterSeconds: int(math.Ceil(retry.Seconds()))}
+		}
+		return err
+	}, Pool: pool.Underlying(), Now: time.Now, Station: func(ctx context.Context, id string) (bool, error) {
 		_, err := stations.Detail(ctx, id)
 		if errors.Is(err, directorydomain.ErrUnknownStation) {
 			return false, nil

@@ -760,6 +760,7 @@ func run() error {
 		// Owner erasure (P07-T04): durable deletion requests revoke and
 		// purge scope by scope with ledger rows; terminal replays
 		// converge and scope failures park for audited retry.
+		"quality-report-reviewed": qualityjobs.ReportReviewed{Pool: raw},
 		"quality-report-review": qualityjobs.ReportReview{Pool: raw, Open: func(ctx context.Context, tx pgx.Tx, id, kind string) error {
 			caseID, err := jobs.NewUUIDv4()
 			if err != nil {

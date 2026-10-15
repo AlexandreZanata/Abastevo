@@ -69,3 +69,29 @@ never a silent drop.
   audited command mints a fresh one while the case stays actionable.
 - Export/erasure workflows (BUC-007) land in P07-T03…T05 and reuse this
   access model; losing the contributor key never discloses data.
+
+## Document-free fuel quality review (FQ-11)
+
+Only restricted operators may inspect private claim/appeal text. Run in a private
+terminal; never redirect inspection output into central logs or public artifacts.
+There is no business portal or anonymous admin endpoint.
+
+```sh
+# Bounded queue returns opaque case/target references; --after paginates cases.
+go run ./cmd/ops quality queue --operator op-7
+# Inspect exact revision, current claim and any current appeal.
+go run ./cmd/ops quality inspect --target <review-target-uuid> --operator op-7
+# Private date/fuel page; counts have scope PAGE and are never station totals.
+go run ./cmd/ops quality group --station <uuid> --fuel ETHANOL --day 2026-10-13 --operator op-7
+# Review a USER_CLAIM, never certify purchase or chemical quality.
+go run ./cmd/ops moderation act --case <uuid> --action RESOLVE --reason CLAIM_RECORDED --operator op-7
+```
+
+Closed quality reason pairs: REVIEW/TRIAGE; RESOLVE/CLAIM_RECORDED;
+DISMISS/DUPLICATE, INSUFFICIENT_EVIDENCE or UNSUPPORTED_LINK;
+INVALIDATE/ABUSE or PRIVACY. PRIVACY hides and clears body/appeal text.
+Stale, legacy-unbound or erased targets only accept DISMISS/SUPERSEDED without
+changing current reports. Owner appeals create a new revision and separate case;
+old decisions cannot affect it. Decisions, report changes, audit and durable intent
+commit together. Official facts and scores stay unchanged; account counts never
+prove independent purchases. Document-supported features remain future D-held.

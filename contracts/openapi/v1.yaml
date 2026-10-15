@@ -1268,6 +1268,18 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          description: Account write budget exhausted; acknowledged command replay is free.
+          headers:
+            Retry-After:
+              description: Seconds until a new command can be accepted.
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/quality/reports/get:
@@ -6828,10 +6840,10 @@ components:
       - family_id
       - access_token
       properties:
-        family_id: &id001
+        family_id: &premium_id001
           type: string
           format: uuid
-        access_token: &id002
+        access_token: &premium_id002
           type: string
           minLength: 1
           maxLength: 512
@@ -6844,9 +6856,9 @@ components:
       - operation_id
       - purchase_token
       properties:
-        family_id: *id001
-        access_token: *id002
-        operation_id: *id001
+        family_id: *premium_id001
+        access_token: *premium_id002
+        operation_id: *premium_id001
         purchase_token:
           type: string
           minLength: 1
@@ -6920,7 +6932,7 @@ components:
       - status
       - replayed
       properties:
-        operation_id: *id001
+        operation_id: *premium_id001
         status:
           $ref: '#/components/schemas/PremiumStatusResponse'
         replayed:
@@ -7080,37 +7092,38 @@ components:
       type: object
       additionalProperties: false
       properties:
-        family_id: &id001
+        family_id: &quality_report_id001
           type: string
           format: uuid
-        access_token: &id002
+        access_token: &quality_report_id002
           type: string
           minLength: 1
           maxLength: 512
-        command_id: *id001
-        report_id: *id001
+        command_id: *quality_report_id001
+        report_id: *quality_report_id001
         action:
           type: string
           enum:
           - SUBMIT
           - EDIT
           - WITHDRAW
+          - APPEAL
         expected_revision:
           type: integer
           format: int32
           minimum: 0
-        kind: &id003
+        kind: &quality_report_id003
           type: string
           enum:
           - EXPERIENCE
           - LINK_REVIEW
-        station_id: *id001
+        station_id: *quality_report_id001
         fuel:
           $ref: '#/components/schemas/FuelProduct'
-        occurred_on: &id004
+        occurred_on: &quality_report_id004
           type: string
           format: date
-        symptom: &id005
+        symptom: &quality_report_id005
           type: string
           enum:
           - STARTING
@@ -7121,8 +7134,8 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
-        official_revision_id: *id001
-        sample_ref: &id006
+        official_revision_id: *quality_report_id001
+        sample_ref: &quality_report_id006
           type: string
           minLength: 1
           maxLength: 128
@@ -7185,6 +7198,31 @@ components:
             - official_revision_id
           - required:
             - sample_ref
+      - properties:
+          action:
+            const: APPEAL
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - expected_revision
+        - text
+        not:
+          anyOf:
+          - required:
+            - kind
+          - required:
+            - station_id
+          - required:
+            - fuel
+          - required:
+            - occurred_on
+          - required:
+            - symptom
+          - required:
+            - official_revision_id
+          - required:
+            - sample_ref
       description: Free signed private command. User claims only; purchase documents and
         verification are deferred. Server validates exact target revision, ownership and
         dates.
@@ -7192,9 +7230,9 @@ components:
       type: object
       additionalProperties: false
       properties:
-        family_id: *id001
-        access_token: *id002
-        report_id: *id001
+        family_id: *quality_report_id001
+        access_token: *quality_report_id002
+        report_id: *quality_report_id001
       required:
       - family_id
       - access_token
@@ -7203,9 +7241,9 @@ components:
       type: object
       additionalProperties: false
       properties:
-        family_id: *id001
-        access_token: *id002
-        after_id: *id001
+        family_id: *quality_report_id001
+        access_token: *quality_report_id002
+        after_id: *quality_report_id001
       required:
       - family_id
       - access_token
@@ -7213,11 +7251,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        report_id: *id001
+        report_id: *quality_report_id001
         revision:
           type: integer
           minimum: 1
-        status: &id007
+        status: &quality_report_id007
           type: string
           enum:
           - PENDING_REVIEW
@@ -7232,22 +7270,25 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *id001
+        id: *quality_report_id001
         revision:
           type: integer
           minimum: 1
-        kind: *id003
-        station_id: *id001
+        kind: *quality_report_id003
+        station_id: *quality_report_id001
         fuel:
           $ref: '#/components/schemas/FuelProduct'
-        occurred_on: *id004
-        symptom: *id005
+        occurred_on: *quality_report_id004
+        symptom: *quality_report_id005
         text:
           type: string
           maxLength: 1000
-        official_revision_id: *id001
-        sample_ref: *id006
-        status: *id007
+        official_revision_id: *quality_report_id001
+        sample_ref: *quality_report_id006
+        status: *quality_report_id007
+        review_reason:
+          type: string
+          enum: [CLAIM_RECORDED, DUPLICATE, INSUFFICIENT_EVIDENCE, UNSUPPORTED_LINK, ABUSE, PRIVACY]
         evidence_level:
           type: string
           const: USER_CLAIM
@@ -7271,7 +7312,7 @@ components:
           maxItems: 50
           items:
             $ref: '#/components/schemas/QualityReport'
-        next_after_id: *id001
+        next_after_id: *quality_report_id001
       required:
       - items
     QualityLease:

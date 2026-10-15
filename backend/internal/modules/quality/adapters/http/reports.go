@@ -13,6 +13,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strconv"
 )
 
 type ReportService interface {
@@ -41,7 +42,11 @@ func (h ReportsHandler) RegisterRoutes(r chi.Router) {
 
 func reportFail(w http.ResponseWriter, r *http.Request, e error) {
 	status, code := 503, "unavailable"
+	var quota *domain.ReportQuotaError
 	switch {
+	case errors.As(e, &quota):
+		status, code = 429, "quota"
+		w.Header().Set("Retry-After", strconv.Itoa(quota.RetryAfterSeconds))
 	case errors.Is(e, domain.ErrReportInvalid):
 		status, code = 400, "invalid"
 	case errors.Is(e, domain.ErrReportUnauthorized):
@@ -104,7 +109,7 @@ func (h ReportsHandler) command(w http.ResponseWriter, r *http.Request) {
 		reportFail(w, r, e)
 		return
 	}
-	if dto.Action != "WITHDRAW" && h.Enabled != nil && !h.Enabled() {
+	if dto.Action != "WITHDRAW" && dto.Action != "APPEAL" && h.Enabled != nil && !h.Enabled() {
 		reportFail(w, r, domain.ErrReportUnavailable)
 		return
 	}

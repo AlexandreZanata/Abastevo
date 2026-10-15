@@ -24,10 +24,11 @@ type ReportAccess struct {
 }
 
 type ReportStore struct {
-	Pool    *pgxpool.Pool
-	Now     func() time.Time
-	Station func(context.Context, string) (bool, error)
-	Enqueue func(context.Context, pgx.Tx, []byte, string) error
+	Pool          *pgxpool.Pool
+	ConsumeBudget func(context.Context, pgx.Tx, string) error
+	Now           func() time.Time
+	Station       func(context.Context, string) (bool, error)
+	Enqueue       func(context.Context, pgx.Tx, []byte, string) error
 }
 
 func (s *ReportStore) now() time.Time {
@@ -86,9 +87,17 @@ func (s *ReportStore) Execute(ctx context.Context, a ReportAccess, c domain.Repo
 	if !errors.Is(e, pgx.ErrNoRows) {
 		return out, e
 	}
+	if c.Action != "WITHDRAW" {
+		if s.ConsumeBudget == nil {
+			return out, domain.ErrReportUnavailable
+		}
+		if err = s.ConsumeBudget(ctx, tx, a.Owner); err != nil {
+			return out, err
+		}
+	}
 	revision := int32(1)
 	status := "PENDING_REVIEW"
-	if c.Action != "WITHDRAW" {
+	if c.Action == "SUBMIT" || c.Action == "EDIT" {
 		if s.Station == nil {
 			return out, domain.ErrReportUnavailable
 		}
@@ -134,7 +143,7 @@ func (s *ReportStore) Execute(ctx context.Context, a ReportAccess, c domain.Repo
 		if e != nil {
 			return out, e
 		}
-		if old.Revision != c.ExpectedRevision || old.Revision == math.MaxInt32 || old.Status == "WITHDRAWN" || old.Status == "HIDDEN" {
+		if old.Revision != c.ExpectedRevision || old.Revision == math.MaxInt32 || old.Status == "WITHDRAWN" || (old.Status == "HIDDEN" && c.Action != "APPEAL" && c.Action != "WITHDRAW") {
 			return out, domain.ErrReportConflict
 		}
 		revision = old.Revision + 1
@@ -144,6 +153,20 @@ func (s *ReportStore) Execute(ctx context.Context, a ReportAccess, c domain.Repo
 		if c.Action == "WITHDRAW" {
 			status = "WITHDRAWN"
 			body = ""
+			if err = q.ClearReportAppeals(ctx, id); err != nil {
+				return out, err
+			}
+		} else if c.Action == "APPEAL" {
+			if old.Status != "HIDDEN" && old.Status != "REVIEWED" {
+				return out, domain.ErrReportConflict
+			}
+			body = old.Body
+			if err = q.ClearReportAppeals(ctx, id); err != nil {
+				return out, err
+			}
+			if err = q.InsertReportAppeal(ctx, quality.InsertReportAppealParams{ReportID: id, Revision: revision, Justification: c.Text, At: at}); err != nil {
+				return out, err
+			}
 		} else {
 			if c.Kind != old.Kind || c.StationID != uuidString(old.StationID) || c.Fuel != old.Fuel || c.RevisionID != uuidString(old.OfficialRevisionID) || c.SampleRef != old.SampleRef {
 				return out, domain.ErrReportInvalid
@@ -184,7 +207,7 @@ func isQualityUnique(err error) bool {
 }
 
 func reportView(r quality.QualityReport) domain.Report {
-	return domain.Report{ID: uuidString(r.ID), Revision: r.Revision, Kind: r.Kind, StationID: uuidString(r.StationID), Fuel: r.Fuel, OccurredOn: r.OccurredOn.Time.Format("2006-01-02"), Symptom: r.Symptom, Text: r.Body, OfficialRevisionID: uuidString(r.OfficialRevisionID), SampleRef: r.SampleRef, Status: r.Status, EvidenceLevel: "USER_CLAIM"}
+	return domain.Report{ID: uuidString(r.ID), Revision: r.Revision, Kind: r.Kind, StationID: uuidString(r.StationID), Fuel: r.Fuel, OccurredOn: r.OccurredOn.Time.Format("2006-01-02"), Symptom: r.Symptom, Text: r.Body, OfficialRevisionID: uuidString(r.OfficialRevisionID), SampleRef: r.SampleRef, Status: r.Status, EvidenceLevel: "USER_CLAIM", ReviewReason: r.ReviewReason}
 }
 
 func (s *ReportStore) Get(ctx context.Context, a ReportAccess, id string) (domain.Report, error) {

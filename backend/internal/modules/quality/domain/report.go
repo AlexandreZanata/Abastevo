@@ -19,6 +19,10 @@ var (
 	ErrReportUnavailable  = errors.New("quality: report unavailable")
 )
 
+type ReportQuotaError struct{ RetryAfterSeconds int }
+
+func (*ReportQuotaError) Error() string { return "quality: report quota exceeded" }
+
 // ReportCommand contains only document-free user claims. Ownership is derived
 // from current account and signing proof, never supplied in the command.
 type ReportCommand struct {
@@ -56,6 +60,12 @@ func (c ReportCommand) Validate(now time.Time) error {
 	if !reportUUID(c.CommandID) || !reportUUID(c.ReportID) {
 		return ErrReportInvalid
 	}
+	if c.Action == "APPEAL" {
+		if c.ExpectedRevision < 1 || c.Kind != "" || c.StationID != "" || c.Fuel != "" || c.OccurredOn != "" || c.Symptom != "" || c.RevisionID != "" || c.SampleRef != "" {
+			return ErrReportInvalid
+		}
+		return validateReportText(c.Text)
+	}
 	if c.Action == "WITHDRAW" {
 		if c.ExpectedRevision < 1 || c.Kind != "" || c.StationID != "" || c.Fuel != "" || c.OccurredOn != "" || c.Symptom != "" || c.Text != "" || c.RevisionID != "" || c.SampleRef != "" {
 			return ErrReportInvalid
@@ -86,19 +96,26 @@ func (c ReportCommand) Validate(now time.Time) error {
 	default:
 		return ErrReportInvalid
 	}
-	if !utf8.ValidString(c.Text) || strings.TrimSpace(c.Text) == "" || utf8.RuneCountInString(c.Text) > 1000 {
-		return ErrReportInvalid
-	}
-	for _, r := range c.Text {
-		if unicode.IsControl(r) && r != '\n' && r != '\t' {
-			return ErrReportInvalid
-		}
+	if err := validateReportText(c.Text); err != nil {
+		return err
 	}
 	if (c.RevisionID == "") != (c.SampleRef == "") || c.Kind == "LINK_REVIEW" && c.SampleRef == "" {
 		return ErrReportInvalid
 	}
 	if c.RevisionID != "" && (!reportUUID(c.RevisionID) || !utf8.ValidString(c.SampleRef) || len(c.SampleRef) > 128) {
 		return ErrReportInvalid
+	}
+	return nil
+}
+
+func validateReportText(text string) error {
+	if !utf8.ValidString(text) || strings.TrimSpace(text) == "" || utf8.RuneCountInString(text) > 1000 {
+		return ErrReportInvalid
+	}
+	for _, r := range text {
+		if unicode.IsControl(r) && r != '\n' && r != '\t' {
+			return ErrReportInvalid
+		}
 	}
 	return nil
 }
@@ -123,6 +140,7 @@ type Report struct {
 	SampleRef          string `json:"sample_ref,omitempty"`
 	Status             string `json:"status"`
 	EvidenceLevel      string `json:"evidence_level"`
+	ReviewReason       string `json:"review_reason,omitempty"`
 }
 
 type ReportReceipt struct {

@@ -53,7 +53,7 @@ func reportFixture(t *testing.T) (*ReportStore, ReportAccess, ReportAccess, doma
 	if _, e := p.Exec(context.Background(), "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic report station')", reportStation); e != nil {
 		t.Fatal(e)
 	}
-	s := &ReportStore{Pool: p, Now: func() time.Time { return now }, Station: func(_ context.Context, id string) (bool, error) { return id == reportStation, nil }}
+	s := &ReportStore{ConsumeBudget: func(context.Context, pgx.Tx, string) error { return nil }, Pool: p, Now: func() time.Time { return now }, Station: func(_ context.Context, id string) (bool, error) { return id == reportStation, nil }}
 	a := seedReportOwner(t, p, 1, now)
 	b := seedReportOwner(t, p, 2, now)
 	c := domain.ReportCommand{CommandID: reportUUID(101), ReportID: reportUUID(102), Action: "SUBMIT", Kind: "EXPERIENCE", StationID: reportStation, Fuel: "ETHANOL", OccurredOn: "2026-10-13", Symptom: "OTHER", Text: "Private synthetic experience."}

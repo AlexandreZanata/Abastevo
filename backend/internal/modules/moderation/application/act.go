@@ -22,6 +22,7 @@ type ActStore interface {
 // atomic store and the recompute enqueue threaded into the same
 // transaction.
 type ActPorts struct {
+	ApplyQualityReport    func(context.Context, pgx.Tx, string, string, string, string, time.Time) error
 	Clock                 func() time.Time
 	NewID                 func() (string, error)
 	Store                 ActStore
@@ -101,9 +102,18 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 	if blocks && p.BlockContributor == nil {
 		return ActResult{}, domain.ErrActionForbidden
 	}
+	qualityReport := c.TargetType == domain.TargetQualityReport
+	if qualityReport && p.ApplyQualityReport == nil {
+		return ActResult{}, domain.ErrActionForbidden
+	}
 	kind, payload := actionJob(c, probe)
 	storedID, err := p.Store.RecordAction(ctx, probe, toStatus, kind, payload, "moderation:"+c.ID+":"+probe.ID,
 		func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
+			if qualityReport {
+				if err := p.ApplyQualityReport(ctx, tx, c.TargetID, probe.ID, probe.Action, probe.Reason, now); err != nil {
+					return err
+				}
+			}
 			if invalidates {
 				if err := p.InvalidateObservation(ctx, tx, c.TargetID, c.ID, now); err != nil {
 					return err
@@ -132,6 +142,9 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 // closure record a moderation-applied intent for the audit trail.
 func actionJob(c domain.Case, a domain.Action) (string, []byte) {
 	switch {
+	case c.TargetType == domain.TargetQualityReport:
+		raw, _ := json.Marshal(map[string]any{"version": 1, "target_id": c.TargetID, "action_id": a.ID})
+		return "quality-report-reviewed", raw
 	case a.Action == domain.ActionInvalidate && (c.TargetType == domain.TargetObservation || c.TargetType == domain.TargetContribution):
 		raw, _ := json.Marshal(map[string]any{"version": 1, "observation_id": c.TargetID})
 		return "community-consensus", raw

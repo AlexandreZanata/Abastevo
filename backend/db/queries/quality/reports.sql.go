@@ -11,6 +11,60 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const applyReportReview = `-- name: ApplyReportReview :exec
+UPDATE quality_reports SET revision= $1,status= $2,review_reason= $3,
+ body=CASE WHEN $4::boolean THEN '' ELSE body END,updated_at= $5 WHERE id= $6
+`
+
+type ApplyReportReviewParams struct {
+	Revision  int32              `json:"revision"`
+	Status    string             `json:"status"`
+	Reason    string             `json:"reason"`
+	ClearText bool               `json:"clear_text"`
+	At        pgtype.Timestamptz `json:"at"`
+	ID        pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ApplyReportReview(ctx context.Context, arg ApplyReportReviewParams) error {
+	_, err := q.db.Exec(ctx, applyReportReview,
+		arg.Revision,
+		arg.Status,
+		arg.Reason,
+		arg.ClearText,
+		arg.At,
+		arg.ID,
+	)
+	return err
+}
+
+const clearReportAppeals = `-- name: ClearReportAppeals :exec
+DELETE FROM quality_report_appeals WHERE report_id= $1
+`
+
+func (q *Queries) ClearReportAppeals(ctx context.Context, reportID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearReportAppeals, reportID)
+	return err
+}
+
+const ensureReportReviewTarget = `-- name: EnsureReportReviewTarget :one
+INSERT INTO quality_report_review_targets(id,report_id,report_revision,binding_state)
+VALUES($1,$2,$3,'BOUND')
+ON CONFLICT(report_id,report_revision) DO UPDATE SET report_id=EXCLUDED.report_id RETURNING id
+`
+
+type EnsureReportReviewTargetParams struct {
+	ID             pgtype.UUID `json:"id"`
+	ReportID       pgtype.UUID `json:"report_id"`
+	ReportRevision pgtype.Int4 `json:"report_revision"`
+}
+
+func (q *Queries) EnsureReportReviewTarget(ctx context.Context, arg EnsureReportReviewTargetParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, ensureReportReviewTarget, arg.ID, arg.ReportID, arg.ReportRevision)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const eraseQualityReportCommands = `-- name: EraseQualityReportCommands :execrows
 DELETE FROM quality_report_commands r WHERE r.account_id= $1 AND r.command_id IN (SELECT p.command_id FROM quality_report_commands p WHERE p.account_id= $1 ORDER BY p.command_id LIMIT 100)
 `
@@ -36,7 +90,7 @@ func (q *Queries) EraseQualityReports(ctx context.Context, accountID pgtype.UUID
 }
 
 const getReport = `-- name: GetReport :one
-SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at FROM quality_reports WHERE id= $1 AND account_id= $2
+SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at, review_reason FROM quality_reports WHERE id= $1 AND account_id= $2
 `
 
 type GetReportParams struct {
@@ -63,8 +117,25 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (QualityRe
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReviewReason,
 	)
 	return i, err
+}
+
+const getReportAppeal = `-- name: GetReportAppeal :one
+SELECT justification FROM quality_report_appeals WHERE report_id= $1 AND revision= $2
+`
+
+type GetReportAppealParams struct {
+	ReportID pgtype.UUID `json:"report_id"`
+	Revision int32       `json:"revision"`
+}
+
+func (q *Queries) GetReportAppeal(ctx context.Context, arg GetReportAppealParams) (string, error) {
+	row := q.db.QueryRow(ctx, getReportAppeal, arg.ReportID, arg.Revision)
+	var justification string
+	err := row.Scan(&justification)
+	return justification, err
 }
 
 const getReportCommand = `-- name: GetReportCommand :one
@@ -89,6 +160,84 @@ func (q *Queries) GetReportCommand(ctx context.Context, arg GetReportCommandPara
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getReportReviewDecision = `-- name: GetReportReviewDecision :one
+SELECT action_id, target_id, report_revision, action, reason_code, occurred_at FROM quality_report_review_decisions WHERE action_id= $1 AND target_id= $2
+`
+
+type GetReportReviewDecisionParams struct {
+	ActionID pgtype.UUID `json:"action_id"`
+	TargetID pgtype.UUID `json:"target_id"`
+}
+
+func (q *Queries) GetReportReviewDecision(ctx context.Context, arg GetReportReviewDecisionParams) (QualityReportReviewDecision, error) {
+	row := q.db.QueryRow(ctx, getReportReviewDecision, arg.ActionID, arg.TargetID)
+	var i QualityReportReviewDecision
+	err := row.Scan(
+		&i.ActionID,
+		&i.TargetID,
+		&i.ReportRevision,
+		&i.Action,
+		&i.ReasonCode,
+		&i.OccurredAt,
+	)
+	return i, err
+}
+
+const getReportReviewTarget = `-- name: GetReportReviewTarget :one
+SELECT id, report_id, report_revision, binding_state FROM quality_report_review_targets WHERE id= $1
+`
+
+func (q *Queries) GetReportReviewTarget(ctx context.Context, id pgtype.UUID) (QualityReportReviewTarget, error) {
+	row := q.db.QueryRow(ctx, getReportReviewTarget, id)
+	var i QualityReportReviewTarget
+	err := row.Scan(
+		&i.ID,
+		&i.ReportID,
+		&i.ReportRevision,
+		&i.BindingState,
+	)
+	return i, err
+}
+
+const getReviewReport = `-- name: GetReviewReport :one
+SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at, review_reason FROM quality_reports WHERE id= $1
+`
+
+// Restricted operator read, never used by the public/owner handlers.
+func (q *Queries) GetReviewReport(ctx context.Context, id pgtype.UUID) (QualityReport, error) {
+	row := q.db.QueryRow(ctx, getReviewReport, id)
+	var i QualityReport
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Kind,
+		&i.StationID,
+		&i.Fuel,
+		&i.OccurredOn,
+		&i.Symptom,
+		&i.Body,
+		&i.OfficialRevisionID,
+		&i.SampleRef,
+		&i.Revision,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReviewReason,
+	)
+	return i, err
+}
+
+const hasReportTriage = `-- name: HasReportTriage :one
+SELECT EXISTS(SELECT 1 FROM quality_report_review_decisions WHERE target_id= $1 AND action='REVIEW')
+`
+
+func (q *Queries) HasReportTriage(ctx context.Context, targetID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasReportTriage, targetID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const insertReport = `-- name: InsertReport :exec
@@ -122,6 +271,27 @@ func (q *Queries) InsertReport(ctx context.Context, arg InsertReportParams) erro
 		arg.Body,
 		arg.OfficialRevisionID,
 		arg.SampleRef,
+		arg.At,
+	)
+	return err
+}
+
+const insertReportAppeal = `-- name: InsertReportAppeal :exec
+INSERT INTO quality_report_appeals(report_id,revision,justification,created_at) VALUES($1,$2,$3,$4)
+`
+
+type InsertReportAppealParams struct {
+	ReportID      pgtype.UUID        `json:"report_id"`
+	Revision      int32              `json:"revision"`
+	Justification string             `json:"justification"`
+	At            pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) InsertReportAppeal(ctx context.Context, arg InsertReportAppealParams) error {
+	_, err := q.db.Exec(ctx, insertReportAppeal,
+		arg.ReportID,
+		arg.Revision,
+		arg.Justification,
 		arg.At,
 	)
 	return err
@@ -179,8 +349,34 @@ func (q *Queries) InsertReportCommand(ctx context.Context, arg InsertReportComma
 	return err
 }
 
+const insertReportReviewDecision = `-- name: InsertReportReviewDecision :exec
+INSERT INTO quality_report_review_decisions(action_id,target_id,report_revision,action,reason_code,occurred_at)
+VALUES($1,$2,$3,$4,$5,$6)
+`
+
+type InsertReportReviewDecisionParams struct {
+	ActionID       pgtype.UUID        `json:"action_id"`
+	TargetID       pgtype.UUID        `json:"target_id"`
+	ReportRevision pgtype.Int4        `json:"report_revision"`
+	Action         string             `json:"action"`
+	ReasonCode     string             `json:"reason_code"`
+	At             pgtype.Timestamptz `json:"at"`
+}
+
+func (q *Queries) InsertReportReviewDecision(ctx context.Context, arg InsertReportReviewDecisionParams) error {
+	_, err := q.db.Exec(ctx, insertReportReviewDecision,
+		arg.ActionID,
+		arg.TargetID,
+		arg.ReportRevision,
+		arg.Action,
+		arg.ReasonCode,
+		arg.At,
+	)
+	return err
+}
+
 const listOwnerReports = `-- name: ListOwnerReports :many
-SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at FROM quality_reports WHERE account_id= $1 AND id> $2 ORDER BY id LIMIT $3
+SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at, review_reason FROM quality_reports WHERE account_id= $1 AND id> $2 ORDER BY id LIMIT $3
 `
 
 type ListOwnerReportsParams struct {
@@ -213,6 +409,60 @@ func (q *Queries) ListOwnerReports(ctx context.Context, arg ListOwnerReportsPara
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReviewReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReportGroup = `-- name: ListReportGroup :many
+SELECT r.account_id,r.status,r.id,
+ (r.official_revision_id IS NOT NULL AND NOT EXISTS (
+ SELECT 1 FROM quality_revisions v WHERE v.id=r.official_revision_id AND v.status='published'
+ ))::boolean AS superseded
+FROM quality_reports r WHERE r.station_id= $1 AND r.fuel= $2 AND r.occurred_on= $3
+AND r.id> $4 ORDER BY r.id LIMIT 101
+`
+
+type ListReportGroupParams struct {
+	StationID pgtype.UUID `json:"station_id"`
+	Fuel      string      `json:"fuel"`
+	Day       pgtype.Date `json:"day"`
+	AfterID   pgtype.UUID `json:"after_id"`
+}
+
+type ListReportGroupRow struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	Status     string      `json:"status"`
+	ID         pgtype.UUID `json:"id"`
+	Superseded bool        `json:"superseded"`
+}
+
+func (q *Queries) ListReportGroup(ctx context.Context, arg ListReportGroupParams) ([]ListReportGroupRow, error) {
+	rows, err := q.db.Query(ctx, listReportGroup,
+		arg.StationID,
+		arg.Fuel,
+		arg.Day,
+		arg.AfterID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReportGroupRow
+	for rows.Next() {
+		var i ListReportGroupRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.Status,
+			&i.ID,
+			&i.Superseded,
 		); err != nil {
 			return nil, err
 		}
@@ -225,7 +475,7 @@ func (q *Queries) ListOwnerReports(ctx context.Context, arg ListOwnerReportsPara
 }
 
 const lockQualityReportReview = `-- name: LockQualityReportReview :one
-SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at FROM quality_reports WHERE id= $1 FOR UPDATE
+SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at, review_reason FROM quality_reports WHERE id= $1 FOR UPDATE
 `
 
 func (q *Queries) LockQualityReportReview(ctx context.Context, id pgtype.UUID) (QualityReport, error) {
@@ -246,12 +496,13 @@ func (q *Queries) LockQualityReportReview(ctx context.Context, id pgtype.UUID) (
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReviewReason,
 	)
 	return i, err
 }
 
 const lockReport = `-- name: LockReport :one
-SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at FROM quality_reports WHERE id= $1 AND account_id= $2 FOR UPDATE
+SELECT id, account_id, kind, station_id, fuel, occurred_on, symptom, body, official_revision_id, sample_ref, revision, status, created_at, updated_at, review_reason FROM quality_reports WHERE id= $1 AND account_id= $2 FOR UPDATE
 `
 
 type LockReportParams struct {
@@ -277,6 +528,7 @@ func (q *Queries) LockReport(ctx context.Context, arg LockReportParams) (Quality
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReviewReason,
 	)
 	return i, err
 }
@@ -325,7 +577,7 @@ func (q *Queries) LockReportSampleTarget(ctx context.Context, arg LockReportSamp
 }
 
 const updateReport = `-- name: UpdateReport :exec
-UPDATE quality_reports SET body= $1,occurred_on= $2,symptom= $3,revision= $4,status= $5,updated_at= $6
+UPDATE quality_reports SET body= $1,occurred_on= $2,symptom= $3,revision= $4,status= $5,review_reason='',updated_at= $6
 WHERE id= $7 AND account_id= $8
 `
 

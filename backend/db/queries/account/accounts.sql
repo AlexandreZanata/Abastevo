@@ -328,3 +328,6 @@ SELECT account_id, contributor_id, created_at
 FROM account_erasure_intents
 WHERE account_id = @account_id
 ORDER BY contributor_id;
+
+-- name: ActiveQualityOwners :many
+SELECT id FROM accounts WHERE id=ANY(@ids::uuid[]) AND status='active';

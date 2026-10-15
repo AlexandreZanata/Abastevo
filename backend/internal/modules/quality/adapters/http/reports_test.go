@@ -54,6 +54,7 @@ func TestReportsHTTPAuthBodyBindingAndRecovery(t *testing.T) {
 		{"forged owner", strings.TrimSuffix(raw, "}") + `,"account_id":"forged"}`, nil, nil, true, 400, 0},
 		{"document field", strings.TrimSuffix(raw, "}") + `,"receipt_url":"private"}`, nil, nil, true, 400, 0},
 		{"closed intake", raw, nil, nil, false, 503, 0},
+		{"appeal while closed", `{"family_id":"` + family + `","access_token":"fixture","command_id":"22222222-2222-4222-8222-222222222222","report_id":"33333333-3333-4333-8333-333333333333","action":"APPEAL","expected_revision":2,"text":"Synthetic appeal"}`, nil, nil, false, 200, 1},
 		{"withdraw while closed", `{"family_id":"` + family + `","access_token":"fixture","command_id":"22222222-2222-4222-8222-222222222222","report_id":"33333333-3333-4333-8333-333333333333","action":"WITHDRAW","expected_revision":1}`, nil, nil, false, 200, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -100,5 +101,14 @@ func TestReportsHTTPOwnerReadsStaySignedAndNoStore(t *testing.T) {
 		if w.Code != 401 || f.calls != 0 {
 			t.Fatal(path, w.Code)
 		}
+	}
+}
+
+func TestReportQuotaHTTPPrivateRetry(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/v1/quality/reports/commands", nil)
+	reportFail(w, r, &domain.ReportQuotaError{RetryAfterSeconds: 42})
+	if w.Code != 429 || w.Header().Get("Retry-After") != "42" || w.Header().Get("Cache-Control") != "no-store" || strings.Contains(w.Body.String(), "owner") {
+		t.Fatal(w.Code, w.Header(), w.Body.String())
 	}
 }

@@ -48,7 +48,19 @@ func (h ReportReview) Handle(ctx context.Context, job platformjobs.Job) error {
 	if r.Revision != p.Revision || r.Status != "PENDING_REVIEW" {
 		return nil
 	}
-	if e = h.Open(ctx, tx, p.ReportID, r.Kind); e != nil {
+	targetID, e := platformjobs.NewUUIDv4()
+	if e != nil {
+		return e
+	}
+	var target pgtype.UUID
+	if e = target.Scan(targetID); e != nil {
+		return e
+	}
+	target, e = quality.New(tx).EnsureReportReviewTarget(ctx, quality.EnsureReportReviewTargetParams{ID: target, ReportID: id, ReportRevision: pgtype.Int4{Int32: p.Revision, Valid: true}})
+	if e != nil {
+		return e
+	}
+	if e = h.Open(ctx, tx, adapters.ReviewTargetString(target), r.Kind); e != nil {
 		return e
 	}
 	return tx.Commit(ctx)

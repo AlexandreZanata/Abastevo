@@ -11,6 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activeQualityOwners = `-- name: ActiveQualityOwners :many
+SELECT id FROM accounts WHERE id=ANY($1::uuid[]) AND status='active'
+`
+
+func (q *Queries) ActiveQualityOwners(ctx context.Context, ids []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, activeQualityOwners, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const bumpCodeAttempts = `-- name: BumpCodeAttempts :exec
 UPDATE account_email_codes SET attempts = attempts + 1 WHERE id = $1
 `

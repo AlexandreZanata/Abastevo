@@ -3652,7 +3652,7 @@ Execution index; task details/tests/recovery are canonical in the linked plan:
 - [FQ-16 — Offline, privacy and compatibility](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-16--offline-privacy-and-end-to-end-compatibility-m).
 - [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
 
-Next implementation candidate: document-free FQ-11 (FQ-10 D-held) after FQ-02B sequencing, with explicit task selection and current-head prerequisite reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
+Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)); purchase-supported independence remains D-held. Next: complete-history read/native importer composition prerequisites, then FQ-12 with current-head reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
 
 ## A–D app consolidation planning
 

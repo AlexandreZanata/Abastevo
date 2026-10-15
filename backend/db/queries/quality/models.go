@@ -162,6 +162,14 @@ type QualityReport struct {
 	Status             string             `json:"status"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ReviewReason       string             `json:"review_reason"`
+}
+
+type QualityReportAppeal struct {
+	ReportID      pgtype.UUID        `json:"report_id"`
+	Revision      int32              `json:"revision"`
+	Justification string             `json:"justification"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type QualityReportAudit struct {
@@ -180,6 +188,22 @@ type QualityReportCommand struct {
 	Revision    int32              `json:"revision"`
 	Status      string             `json:"status"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type QualityReportReviewDecision struct {
+	ActionID       pgtype.UUID        `json:"action_id"`
+	TargetID       pgtype.UUID        `json:"target_id"`
+	ReportRevision pgtype.Int4        `json:"report_revision"`
+	Action         string             `json:"action"`
+	ReasonCode     string             `json:"reason_code"`
+	OccurredAt     pgtype.Timestamptz `json:"occurred_at"`
+}
+
+type QualityReportReviewTarget struct {
+	ID             pgtype.UUID `json:"id"`
+	ReportID       pgtype.UUID `json:"report_id"`
+	ReportRevision pgtype.Int4 `json:"report_revision"`
+	BindingState   string      `json:"binding_state"`
 }
 
 type QualityResource struct {
