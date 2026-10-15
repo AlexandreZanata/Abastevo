@@ -7,10 +7,10 @@
 //! multiset. Unknown fuels or conformity quarantine the row for review;
 //! nothing is coerced into a false canonical value.
 //!
-//! FQ-02 input contract (frozen here; raw ANP assay columns remain
-//! unverified upstream, so this preparation shape is synthetic until FQ-05
-//! binds a verified edition):
+//! FQ-02 prepared input contract (kept for compatibility):
 //! `AMOSTRAID;CNPJPOSTO;DATACOLETA;PRODUTO;ENSAIO;RESULTADO;UNIDADE;CONFORMIDADE`
+//! FQ-02B also accepts the verified native 19-column October-2026 layout.
+//! Raw source results are preserved; assay status never judges a sample.
 
 use crate::cnpj::normalize_cnpj;
 use crate::types::{reason, sha256_hex, Counts, Limits, QuarantineRow, RunState};
@@ -30,6 +30,28 @@ const QUALITY_HEADER: [&str; 8] = [
     "RESULTADO",
     "UNIDADE",
     "CONFORMIDADE",
+];
+
+const NATIVE_HEADER: [&str; 19] = [
+    "DATACOLETA",
+    "IDNUMERIC",
+    "GRUPOPRODUTO",
+    "PRODUTO",
+    "RAZAOSOCIALPOSTO",
+    "CNPJPOSTO",
+    "DISTRIBUIDORA",
+    "ENDEREÇO",
+    "COMPLEMENTO",
+    "BAIRRO",
+    "MUNICÍPIO",
+    "LATITUDE",
+    "LONGITUDE",
+    "UF",
+    "REGIAOPOLITICA",
+    "ENSAIO",
+    "RESULTADO",
+    "UNIDADEENSAIO",
+    "CONFORME",
 ];
 
 /// Transport-level failures. `Err` carries no partial output.
@@ -97,15 +119,19 @@ impl QualityBatch {
 }
 
 /// ANP source fuel label to wire product. Mirrors the kernel vocabulary
-/// pinned by FQ-01; premium gasoline stays unmapped until assay-side
-/// product text is verified (FQ-02 records, never guesses).
+/// pinned by FQ-01, extended only with the verified FQ-02B native labels.
 fn map_fuel(label: &str) -> Option<&'static str> {
     match fold_label(label).as_str() {
-        "ETANOL" => Some("ETHANOL"),
-        "GASOLINA COMUM" => Some("GASOLINE_REGULAR"),
-        "GASOLINA ADITIVADA" => Some("GASOLINE_ADDITIVED"),
-        "OLEO DIESEL S500" => Some("DIESEL_S500"),
-        "OLEO DIESEL S10" => Some("DIESEL_S10"),
+        "ETANOL" | "ETANOL HIDRATADO COMUM" | "ETANOL HIDRATADO ADITIVADO" => Some("ETHANOL"),
+        "GASOLINA COMUM" | "GASOLINA C COMUM" => Some("GASOLINE_REGULAR"),
+        "GASOLINA ADITIVADA" | "GASOLINA C COMUM ADITIVADA" => Some("GASOLINE_ADDITIVED"),
+        "GASOLINA C PREMIUM" => Some("GASOLINE_PREMIUM_GRADE"),
+        "OLEO DIESEL S500" | "OLEO DIESEL B S500 - COMUM" | "OLEO DIESEL B S500 - ADITIVADO" => {
+            Some("DIESEL_S500")
+        }
+        "OLEO DIESEL S10" | "OLEO DIESEL B S10 - COMUM" | "OLEO DIESEL B S10 - ADITIVADO" => {
+            Some("DIESEL_S10")
+        }
         "GNV" => Some("CNG"),
         "GLP P13" => Some("LPG_P13"),
         _ => None,
@@ -116,8 +142,8 @@ fn map_fuel(label: &str) -> Option<&'static str> {
 /// `None` so the caller quarantines with the reason instead of guessing.
 fn map_conformity(text: &str) -> Option<&'static str> {
     match fold_label(text).as_str() {
-        "CONFORME" => Some("CONFORMING"),
-        "NAO CONFORME" => Some("NONCONFORMING"),
+        "CONFORME" | "SIM" => Some("CONFORMING"),
+        "NAO CONFORME" | "NAO" => Some("NONCONFORMING"),
         "INCONCLUSIVO" => Some("INCONCLUSIVE"),
         _ => None,
     }
@@ -180,15 +206,21 @@ pub fn parse_quality_assays(
         .iter()
         .map(|name| name.trim().to_uppercase())
         .collect();
+    let native = names.iter().any(|name| name == "IDNUMERIC");
+    let expected: &[&str] = if native {
+        &NATIVE_HEADER
+    } else {
+        &QUALITY_HEADER
+    };
     let position = |wanted: &str| names.iter().position(|name| name == wanted);
-    let missing: Vec<&str> = QUALITY_HEADER
+    let missing: Vec<&str> = expected
         .iter()
         .filter(|wanted| position(wanted).is_none())
         .copied()
         .collect();
     let unknown: Vec<String> = names
         .iter()
-        .filter(|name| !QUALITY_HEADER.contains(&name.as_str()))
+        .filter(|name| !expected.contains(&name.as_str()))
         .cloned()
         .collect();
     let unique_names: HashSet<&str> = names.iter().map(String::as_str).collect();
@@ -209,9 +241,18 @@ pub fn parse_quality_assays(
             }],
         });
     }
+    let mapped = |wanted: &str| {
+        match (native, wanted) {
+            (true, "AMOSTRAID") => "IDNUMERIC",
+            (true, "UNIDADE") => "UNIDADEENSAIO",
+            (true, "CONFORMIDADE") => "CONFORME",
+            _ => wanted,
+        }
+        .to_string()
+    };
     let at = |record: &csv::StringRecord, wanted: &str| -> String {
         record
-            .get(position(wanted).expect("checked"))
+            .get(position(&mapped(wanted)).expect("checked"))
             .unwrap_or("")
             .trim()
             .to_string()
@@ -268,13 +309,27 @@ pub fn parse_quality_assays(
             ));
             continue;
         }
-        let sample = at(&record, "AMOSTRAID");
+        let mut sample = at(&record, "AMOSTRAID");
         let cnpj_raw = at(&record, "CNPJPOSTO");
         let observed = at(&record, "DATACOLETA");
         let fuel_raw = at(&record, "PRODUTO");
         let assay_ref = at(&record, "ENSAIO");
-        let result = at(&record, "RESULTADO");
-        let unit = at(&record, "UNIDADE");
+        let result = if native {
+            record
+                .get(position("RESULTADO").expect("checked"))
+                .unwrap_or("")
+                .to_string()
+        } else {
+            at(&record, "RESULTADO")
+        };
+        let unit = if native {
+            record
+                .get(position("UNIDADEENSAIO").expect("checked"))
+                .unwrap_or("")
+                .to_string()
+        } else {
+            at(&record, "UNIDADE")
+        };
         let conformity_raw = at(&record, "CONFORMIDADE");
 
         let cnpj = match normalize_cnpj(&cnpj_raw) {
@@ -290,7 +345,12 @@ pub fn parse_quality_assays(
                 continue;
             }
         };
-        if sample.is_empty() || observed.is_empty() {
+        if sample.is_empty()
+            || observed.is_empty()
+            || (native
+                && (!sample.bytes().all(|b| b.is_ascii_digit())
+                    || !valid_collection_date(&observed)))
+        {
             counts.quarantined += 1;
             quarantine.push(quarantine_row(
                 logical_row,
@@ -300,7 +360,7 @@ pub fn parse_quality_assays(
             ));
             continue;
         }
-        if assay_ref.is_empty() || result.is_empty() {
+        if assay_ref.is_empty() || (!native && result.is_empty()) {
             counts.quarantined += 1;
             quarantine.push(quarantine_row(
                 logical_row,
@@ -336,6 +396,9 @@ pub fn parse_quality_assays(
                 continue;
             }
         };
+        if native {
+            sample = format!("{sample}|{fuel_raw}");
+        }
         let checksum = assay_checksum(&[
             &sample, &cnpj, &observed, fuel, &assay_ref, &result, &unit, conformity,
         ]);
@@ -408,4 +471,34 @@ pub fn parse_quality_assays(
         duplicates,
         quarantine,
     })
+}
+
+fn valid_collection_date(s: &str) -> bool {
+    let b = s.as_bytes();
+    if b.len() != 10
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || !b
+            .iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+    {
+        return false;
+    }
+    let y = s[..4].parse::<u32>().unwrap_or(0);
+    let m = s[5..7].parse::<u32>().unwrap_or(0);
+    let d = s[8..].parse::<u32>().unwrap_or(0);
+    let max = match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 0,
+    };
+    y > 0 && d > 0 && d <= max
 }

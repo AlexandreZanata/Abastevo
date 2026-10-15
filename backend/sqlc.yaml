@@ -292,6 +292,7 @@ sql:
       - db/migrations/000095_quality_watermarks.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000096_quality_reports.sql
+      - db/migrations/000097_quality_native_empty_result.sql
     gen:
       go:
         package: quality

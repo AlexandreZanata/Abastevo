@@ -87,6 +87,8 @@ func TestFuelParityWithKernel(t *testing.T) {
 func TestParseConformity(t *testing.T) {
 	for text, want := range map[string]Conformity{
 		"Conforme":     Conforming,
+		"Sim":          Conforming,
+		"Não":          Nonconforming,
 		"CONFORME":     Conforming,
 		"Não Conforme": Nonconforming,
 		"NAO CONFORME": Nonconforming,

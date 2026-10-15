@@ -5,6 +5,7 @@ package adapters
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"strings"
@@ -40,6 +41,10 @@ func testDSN(t *testing.T) string {
 }
 
 func freshPool(t *testing.T) *pgxpool.Pool {
+	return freshPoolWithMigrations(t, dbmigrations.Files)
+}
+
+func freshPoolWithMigrations(t *testing.T, files fs.FS) *pgxpool.Pool {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -71,7 +76,7 @@ func freshPool(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("parse dsn: %v", err)
 	}
 	u.Path = "/" + name
-	applied, err := migrate.Apply(ctx, u.String(), dbmigrations.Files)
+	applied, err := migrate.Apply(ctx, u.String(), files)
 	if err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

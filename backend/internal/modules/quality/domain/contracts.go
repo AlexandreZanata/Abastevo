@@ -94,9 +94,9 @@ const (
 // caller records the reason instead of guessing.
 func ParseConformity(text string) (Conformity, error) {
 	switch normalizeConformity(text) {
-	case "CONFORME":
+	case "CONFORME", "SIM":
 		return Conforming, nil
-	case "NAO CONFORME":
+	case "NAO CONFORME", "NAO":
 		return Nonconforming, nil
 	case "INCONCLUSIVO":
 		return Inconclusive, nil
