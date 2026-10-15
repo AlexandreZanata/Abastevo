@@ -240,12 +240,22 @@ func (r *Reader) Summary(ctx context.Context, now time.Time, source, stream, sta
 // Assays pages linked determinations for one station, keyed by
 // observed date plus row id. nextCursor is empty at the frozen end.
 func (r *Reader) Assays(ctx context.Context, now time.Time, source, stream, stationID, fuel, afterObserved, afterID string, limit int) ([]Assay, string, Lease, error) {
-	lease, revisionID, err := r.lease(ctx, source, stream, now)
+	lease, _, err := r.lease(ctx, source, stream, now)
 	if err != nil && !errors.Is(err, ErrNoLease) {
 		return nil, "", lease, err
 	}
-	if errors.Is(err, ErrNoLease) {
+	return r.AssaysAtLease(ctx, lease, stationID, fuel, afterObserved, afterID, limit)
+}
+
+// AssaysAtLease consumes the already resolved lease used to validate the
+// cursor. A concurrent publication cannot substitute a second revision.
+func (r *Reader) AssaysAtLease(ctx context.Context, lease Lease, stationID, fuel, afterObserved, afterID string, limit int) ([]Assay, string, Lease, error) {
+	if !lease.HasPublished {
 		return nil, "", lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return nil, "", lease, err
 	}
 	station, err := mustUUID(stationID)
 	if err != nil {
@@ -260,7 +270,7 @@ func (r *Reader) Assays(ctx context.Context, now time.Time, source, stream, stat
 		afterDate = pgtype.Date{Time: day, Valid: true}
 	}
 	rows, err := quality.New(r.pool).AssayPageByRevision(ctx, quality.AssayPageByRevisionParams{
-		RevisionID: revisionID, StationID: station, Stream: pgText(stream), Fuel: fuel,
+		RevisionID: revisionID, StationID: station, Stream: pgText(lease.Stream), Fuel: fuel,
 		AfterDate: afterDate, AfterID: afterID, LimitPlusOne: int32(limit + 1),
 	})
 	if err != nil {
@@ -327,12 +337,22 @@ func (r *Reader) Sample(ctx context.Context, now time.Time, source, stream, samp
 // Enforcement pages one stream's published actions, keyed by native key
 // plus row id for complete frozen-edition traversal.
 func (r *Reader) Enforcement(ctx context.Context, now time.Time, source, stream, status, scope, afterNative, afterID string, limit int) ([]EnforcementEvent, string, Lease, error) {
-	lease, revisionID, err := r.lease(ctx, source, stream, now)
+	lease, _, err := r.lease(ctx, source, stream, now)
 	if err != nil && !errors.Is(err, ErrNoLease) {
 		return nil, "", lease, err
 	}
-	if errors.Is(err, ErrNoLease) {
+	return r.EnforcementAtLease(ctx, lease, status, scope, afterNative, afterID, limit)
+}
+
+// EnforcementAtLease consumes the already resolved lease used to validate the
+// cursor. A concurrent publication cannot substitute a second revision.
+func (r *Reader) EnforcementAtLease(ctx context.Context, lease Lease, status, scope, afterNative, afterID string, limit int) ([]EnforcementEvent, string, Lease, error) {
+	if !lease.HasPublished {
 		return nil, "", lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return nil, "", lease, err
 	}
 	rows, err := quality.New(r.pool).ActionPageByRevision(ctx, quality.ActionPageByRevisionParams{
 		RevisionID: revisionID, Status: status, Scope: scope,
@@ -359,12 +379,22 @@ func (r *Reader) Enforcement(ctx context.Context, now time.Time, source, stream,
 
 // Sanctions pages one stream's published snapshots with the same keyset.
 func (r *Reader) Sanctions(ctx context.Context, now time.Time, source, stream, status, afterNative, afterID string, limit int) ([]SanctionEvent, string, Lease, error) {
-	lease, revisionID, err := r.lease(ctx, source, stream, now)
+	lease, _, err := r.lease(ctx, source, stream, now)
 	if err != nil && !errors.Is(err, ErrNoLease) {
 		return nil, "", lease, err
 	}
-	if errors.Is(err, ErrNoLease) {
+	return r.SanctionsAtLease(ctx, lease, status, afterNative, afterID, limit)
+}
+
+// SanctionsAtLease consumes the already resolved lease used to validate the
+// cursor. A concurrent publication cannot substitute a second revision.
+func (r *Reader) SanctionsAtLease(ctx context.Context, lease Lease, status, afterNative, afterID string, limit int) ([]SanctionEvent, string, Lease, error) {
+	if !lease.HasPublished {
 		return nil, "", lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return nil, "", lease, err
 	}
 	rows, err := quality.New(r.pool).SanctionPageByRevision(ctx, quality.SanctionPageByRevisionParams{
 		RevisionID: revisionID, Status: status,

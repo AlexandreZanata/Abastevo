@@ -132,3 +132,37 @@ running source. Register local digest references before selecting imported k3s
 images. A rollback binary must still support the applied append-only chain;
 restore the previous specification only with a compatible executable, never
 blindly return to the stale mounted binaries.
+
+## Read contract hardening (2026-10-14, after FQ-09)
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING on maintained dev.
+
+Actual HTTP→PostGIS→OpenAPI tests exposed empty event pages encoded as null and
+unknown lease timestamps/IDs encoded as invalid empty strings. Empty collections
+now encode as arrays; missing identifiers/dates use explicit JSON null under the
+OpenAPI 3.1 unions. Optional action/sanction dates and unmatched station links
+follow the same rule. Prior published nonempty values retain their wire types.
+
+A deterministic concurrent-publication regression reproduced a mixed response:
+the handler validated its cursor against the old lease, then the reader resolved
+a new revision for rows. `AssaysAtLease`, `EnforcementAtLease` and
+`SanctionsAtLease` now consume the handler's one resolved lease. Old revisions
+remain immutable during that request; a subsequent request refuses its obsolete
+cursor. No second resolution can mix payload, envelope and sealed cursor.
+
+ETags now include the complete lease for assay/action/sanction pages and sample
+detail, so a staleness transition cannot receive 304 and conceal changed metadata.
+Native event keys containing `|` decode at the final separator before UUID;
+existing opaque cursor serialization remains compatible.
+
+Validation: the prior source `371983ca` reproduced both the mixed-revision
+failure and stale-data 304 in a Go overlay without modifying the checkout.
+The corrected source passes real-PostGIS race read/HTTP suites, actual response
+schema validation (published/empty/missing-source states), deterministic
+publication-between-cursor-and-query, obsolete-cursor refusal and cache age
+regressions. Affected vet/staticcheck, OpenAPI lint/contracts, formatting,
+whitespace and scoped secret review PASS. This proves one frozen edition's
+reads; full historical-edition coverage and native-source import acceptance
+remain required by FQ-17 and are not inferred from this repair.

@@ -7285,7 +7285,7 @@ components:
         source: {type: string, example: pmqc}
         stream: {type: string, example: pmqc-assay-v1}
         edition: {type: string, example: '2026-09'}
-        revision_id: {type: string, format: uuid}
+        revision_id: {type: [string, 'null'], format: uuid}
         published_at: {type: [string, 'null'], format: date-time}
         available: {type: boolean}
         stale: {type: boolean}

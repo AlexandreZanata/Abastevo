@@ -70,8 +70,8 @@ type wireLease struct {
 	Source       string       `json:"source"`
 	Stream       string       `json:"stream"`
 	Edition      string       `json:"edition"`
-	RevisionID   string       `json:"revision_id"`
-	PublishedAt  string       `json:"published_at"`
+	RevisionID   *string      `json:"revision_id"`
+	PublishedAt  *string      `json:"published_at"`
 	Available    bool         `json:"available"`
 	Stale        bool         `json:"stale"`
 	StaleReason  string       `json:"stale_reason"`
@@ -82,12 +82,12 @@ type wireLease struct {
 func wireLeaseOf(l read.Lease) wireLease {
 	out := wireLease{
 		Source: l.Source, Stream: l.Stream, Edition: l.Edition,
-		RevisionID: l.RevisionID, Available: l.HasPublished,
+		RevisionID: nullableString(l.RevisionID), Available: l.HasPublished,
 		Stale: l.Stale, StaleReason: l.StaleReason,
 		CoverageNote: l.CoverageNote, Periods: []wirePeriod{},
 	}
 	if !l.PublishedAt.IsZero() {
-		out.PublishedAt = l.PublishedAt.UTC().Format(time.RFC3339)
+		out.PublishedAt = nullableString(l.PublishedAt.UTC().Format(time.RFC3339))
 	}
 	for _, p := range l.Periods {
 		out.Periods = append(out.Periods, wirePeriod{Label: p.Label, Start: p.Start, End: p.End})
@@ -201,7 +201,7 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	afterObserved, afterID := splitCursor(lastKey)
-	rows, nextKey, _, err := h.Read.Assays(r.Context(), h.now(), assaySource, assayStream, id, fuel, afterObserved, afterID, limit)
+	rows, nextKey, _, err := h.Read.AssaysAtLease(r.Context(), lease, id, fuel, afterObserved, afterID, limit)
 	if err != nil {
 		sourceDown(w, r)
 		return
@@ -225,18 +225,18 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey})))
+		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey, "lease": wireLeaseOf(lease)})))
 }
 
 func splitCursor(lastKey string) (string, string) {
 	if lastKey == "" {
 		return "", ""
 	}
-	parts := strings.SplitN(lastKey, "|", 2)
-	if len(parts) != 2 {
+	i := strings.LastIndex(lastKey, "|")
+	if i < 0 {
 		return "", ""
 	}
-	return parts[0], parts[1]
+	return lastKey[:i], lastKey[i+1:]
 }
 
 func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
@@ -265,7 +265,7 @@ func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
 	links := make([]map[string]any, 0, len(detail.Links))
 	for _, l := range detail.Links {
 		links = append(links, map[string]any{
-			"station_id": l.StationID, "automatic": l.Automatic,
+			"station_id": nullableString(l.StationID), "automatic": l.Automatic,
 			"reason": l.Reason, "active": l.Active,
 		})
 	}
@@ -274,7 +274,7 @@ func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
 		"lease": wireLeaseOf(detail.Lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"sample_ref": ref, "assays": wire, "links": links})))
+		httpapi.ETag(mustMarshal(map[string]any{"sample_ref": ref, "assays": wire, "links": links, "lease": wireLeaseOf(detail.Lease)})))
 }
 
 func (h Handler) actions(w http.ResponseWriter, r *http.Request) {
@@ -321,10 +321,10 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		return
 	}
 	afterNative, afterID := splitCursor(lastKey)
-	var wire []map[string]any
+	wire := make([]map[string]any, 0)
 	var nextKey string
 	if name == "actions" {
-		rows, next, _, err := h.Read.Enforcement(r.Context(), h.now(), source, stream, status, scope, afterNative, afterID, limit)
+		rows, next, _, err := h.Read.EnforcementAtLease(r.Context(), lease, status, scope, afterNative, afterID, limit)
 		if err != nil {
 			sourceDown(w, r)
 			return
@@ -333,12 +333,12 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		for _, e := range rows {
 			wire = append(wire, map[string]any{
 				"id": e.ID, "native_key": e.NativeKey, "scope": e.Scope,
-				"status": e.Status, "occurred_on": e.OccurredOn,
+				"status": e.Status, "occurred_on": nullableString(e.OccurredOn),
 				"as_of": e.AsOf, "evidence_ref": e.EvidenceRef,
 			})
 		}
 	} else {
-		rows, next, _, err := h.Read.Sanctions(r.Context(), h.now(), source, stream, status, afterNative, afterID, limit)
+		rows, next, _, err := h.Read.SanctionsAtLease(r.Context(), lease, status, afterNative, afterID, limit)
 		if err != nil {
 			sourceDown(w, r)
 			return
@@ -348,7 +348,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 			wire = append(wire, map[string]any{
 				"id": e.ID, "native_key": e.NativeKey,
 				"proceeding_ref": e.ProceedingRef, "amount_minor": e.AmountMinor,
-				"status": e.Status, "decided_on": e.DecidedOn,
+				"status": e.Status, "decided_on": nullableString(e.DecidedOn),
 				"as_of": e.AsOf, "evidence_ref": e.EvidenceRef,
 			})
 		}
@@ -363,7 +363,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey})))
+		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey, "lease": wireLeaseOf(lease)})))
 }
 
 func (h Handler) leaseOf(r *http.Request, source, stream string) (read.Lease, error) {
@@ -396,7 +396,7 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 		}
 		body, _ := json.Marshal(map[string]any{
 			"id": event.ID, "native_key": event.NativeKey, "scope": event.Scope,
-			"status": event.Status, "occurred_on": event.OccurredOn,
+			"status": event.Status, "occurred_on": nullableString(event.OccurredOn),
 			"as_of": event.AsOf, "evidence_ref": event.EvidenceRef,
 			"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 		})
@@ -411,7 +411,7 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 	body, _ := json.Marshal(map[string]any{
 		"id": event.ID, "native_key": event.NativeKey,
 		"proceeding_ref": event.ProceedingRef, "amount_minor": event.AmountMinor,
-		"status": event.Status, "decided_on": event.DecidedOn,
+		"status": event.Status, "decided_on": nullableString(event.DecidedOn),
 		"as_of": event.AsOf, "evidence_ref": event.EvidenceRef,
 		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
@@ -429,4 +429,11 @@ func (h Handler) readErr(w http.ResponseWriter, r *http.Request, err error) {
 func mustMarshal(v any) []byte {
 	body, _ := json.Marshal(v)
 	return body
+}
+
+func nullableString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
