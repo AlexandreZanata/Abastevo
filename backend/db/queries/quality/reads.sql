@@ -8,11 +8,13 @@
 -- name: LeaseByStream :one
 SELECT r.id AS revision_id, r.status, r.published_at,
     e.id AS edition_id, e.source, e.stream, e.edition, e.predecessor,
-    m.input, m.accepted, m.duplicates, m.quarantined, m.manifest_hash
+    COALESCE(m.input,0)::bigint AS input, COALESCE(m.accepted,0)::bigint AS accepted,
+    COALESCE(m.duplicates,0)::bigint AS duplicates, COALESCE(m.quarantined,0)::bigint AS quarantined,
+    COALESCE(m.manifest_hash,'')::text AS manifest_hash, m.provenance_state
 FROM quality_current_revisions AS c
 JOIN quality_revisions AS r ON r.id = c.revision_id
 JOIN quality_editions AS e ON e.id = r.edition_id
-JOIN quality_manifests AS m ON m.edition_id = e.id
+JOIN quality_revision_provenance AS m ON m.revision_id = r.id
 WHERE c.source = @source AND c.stream = @stream;
 
 -- name: SummaryByRevision :many

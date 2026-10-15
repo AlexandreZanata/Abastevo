@@ -7,6 +7,10 @@ import (
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 )
 
+// ErrSupersededPublication refuses late retries that would resurrect a corrected
+// or withdrawn source publication. Consumers acknowledge without watermark drift.
+var ErrSupersededPublication = errors.New("quality: publication already superseded")
+
 // Resource binds one raw artifact of a source edition.
 type Resource struct {
 	URL    string

@@ -2,8 +2,11 @@ package adapters
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,6 +39,8 @@ type editionRequest struct {
 	Resources    []application.Resource
 	Counts       domain.Counts
 	ManifestHash string
+	Periods      []application.PeriodInput
+	Links        []application.LinkInput
 }
 
 // stageFunc persists one revision's rows and asserts the staged counts.
@@ -99,7 +104,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 	req := editionRequest{
 		Source: in.Source, Stream: in.Stream, Edition: in.Edition,
 		Predecessor: in.Predecessor, Resources: in.Resources,
-		Counts: in.Counts, ManifestHash: in.ManifestHash,
+		Counts: in.Counts, ManifestHash: in.ManifestHash, Links: in.Links,
 	}
 	stage := func(q *quality.Queries, editionID, revisionID pgtype.UUID) error {
 		for _, a := range in.Assays {
@@ -180,25 +185,24 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 	if err != nil {
 		return "", false, err
 	}
-	existing, err := q.GetEditionByKey(ctx, quality.GetEditionByKeyParams{
+	existing, err := q.LockEditionByKey(ctx, quality.LockEditionByKeyParams{
 		Source: req.Source, Stream: req.Stream, Edition: req.Edition,
 	})
 	if err == nil {
 		editionID = existing.ID
-		manifest, merr := q.GetManifest(ctx, existing.ID)
-		if merr != nil {
-			return "", false, merr
-		}
-		if manifest.ManifestHash == req.ManifestHash {
-			published, perr := q.GetPublishedRevisionByEdition(ctx, existing.ID)
-			if perr != nil {
-				return "", false, perr
+		known, kerr := q.GetRevisionByPublicationKey(ctx, pgText(req.publicationKey()))
+		if kerr == nil {
+			if known.Status != "published" {
+				return "", false, application.ErrSupersededPublication
 			}
-			if cerr := tx.Commit(ctx); cerr != nil {
-				return "", false, cerr
+			if err := tx.Commit(ctx); err != nil {
+				return "", false, err
 			}
 			committed = true
-			return uuidString(published.ID), false, nil
+			return uuidString(known.ID), false, nil
+		}
+		if !errors.Is(kerr, pgx.ErrNoRows) {
+			return "", false, kerr
 		}
 		if uerr := q.UpdateManifest(ctx, quality.UpdateManifestParams{
 			EditionID:    existing.ID,
@@ -220,14 +224,6 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 			}
 			return "", false, cerr
 		}
-		for _, r := range req.Resources {
-			if rerr := q.AddResource(ctx, quality.AddResourceParams{
-				EditionID: editionID, Url: r.URL, Sha256: r.SHA256,
-				Bytes: int64(r.Bytes),
-			}); rerr != nil {
-				return "", false, rerr
-			}
-		}
 		if _, merr := q.RecordManifest(ctx, quality.RecordManifestParams{
 			EditionID:    editionID,
 			Input:        int64(req.Counts.Input),
@@ -242,6 +238,12 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 		return "", false, err
 	}
 
+	for _, resource := range req.Resources {
+		if err := q.AddResource(ctx, quality.AddResourceParams{EditionID: editionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes)}); err != nil {
+			return "", false, err
+		}
+	}
+
 	var supersedes pgtype.UUID
 	if prev, perr := q.GetPublishedRevisionByEdition(ctx, editionID); perr == nil {
 		supersedes = prev.ID
@@ -253,6 +255,29 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 	}); cerr != nil {
 		return "", false, cerr
 	}
+	n := func(v int) pgtype.Int8 { return pgtype.Int8{Int64: int64(v), Valid: true} }
+	if err := q.RecordRevisionProvenance(ctx, quality.RecordRevisionProvenanceParams{RevisionID: revisionID, Input: n(req.Counts.Input), Accepted: n(req.Counts.Accepted), Duplicates: n(req.Counts.Duplicates), Quarantined: n(req.Counts.Quarantined), ManifestHash: pgText(req.ManifestHash), PublicationKey: pgText(req.publicationKey())}); err != nil {
+		return "", false, err
+	}
+	for _, resource := range req.Resources {
+		if err := q.RecordRevisionResource(ctx, quality.RecordRevisionResourceParams{RevisionID: revisionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes)}); err != nil {
+			return "", false, err
+		}
+	}
+	for _, period := range req.Periods {
+		start, err := pgDate(period.Start)
+		if err != nil {
+			return "", false, err
+		}
+		end, err := pgDate(period.End)
+		if err != nil {
+			return "", false, err
+		}
+		if err = q.RecordRevisionPeriod(ctx, quality.RecordRevisionPeriodParams{RevisionID: revisionID, PeriodLabel: period.Label, PeriodStart: start, PeriodEnd: end}); err != nil {
+			return "", false, err
+		}
+	}
+
 	if serr := stage(q, editionID, revisionID); serr != nil {
 		return "", false, serr
 	}
@@ -308,4 +333,47 @@ func uuidString(id pgtype.UUID) string {
 	hexed := hex.EncodeToString(id.Bytes[:])
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32]
+}
+
+// publicationKey includes declared resources, periods and station associations.
+// Operational discovery predecessor/watermark is deliberately excluded so a
+// replay cannot change identity merely because the import cursor advanced.
+func (r editionRequest) publicationKey() string {
+	resources := append([]application.Resource(nil), r.Resources...)
+	sort.Slice(resources, func(i, j int) bool {
+		a, b := resources[i], resources[j]
+		if a.SHA256 != b.SHA256 {
+			return a.SHA256 < b.SHA256
+		}
+		if a.URL != b.URL {
+			return a.URL < b.URL
+		}
+		return a.Bytes < b.Bytes
+	})
+	periods := append([]application.PeriodInput(nil), r.Periods...)
+	sort.Slice(periods, func(i, j int) bool {
+		a, b := periods[i], periods[j]
+		if a.Label != b.Label {
+			return a.Label < b.Label
+		}
+		if a.Start != b.Start {
+			return a.Start < b.Start
+		}
+		return a.End < b.End
+	})
+	links := append([]application.LinkInput(nil), r.Links...)
+	sort.Slice(links, func(i, j int) bool {
+		a, _ := json.Marshal(links[i])
+		b, _ := json.Marshal(links[j])
+		return string(a) < string(b)
+	})
+	raw, _ := json.Marshal(struct {
+		Source, Stream, Edition, Manifest string
+		Counts                            domain.Counts
+		Resources                         []application.Resource
+		Periods                           []application.PeriodInput
+		Links                             []application.LinkInput
+	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links})
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }

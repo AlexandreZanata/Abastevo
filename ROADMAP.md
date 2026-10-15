@@ -3622,7 +3622,7 @@ ranked consumer GME-05 remain deferred; no leaderboard or backend change.
 
 ### FQ-PLAN — Professional quality implementation planning
 
-- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-08 LOCAL_DONE, FQ-09–FQ-17 implementation PLANNED.
+- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-09, FQ-02B and FQ-04c LOCAL_DONE, FQ-10–FQ-17 implementation PLANNED (FQ-10 D-held per FQ-09/FQ-02B sequencing).
 - **Goal:** Define a source-auditable quality history, safe canonical station linkage, consumer case responses and an explainable score without conflating official findings, personal ratings or community signals.
 - **Inputs:** Maintainer request/attachment 2026-10-14; current PROGRESS and actual dev code; existing RST/ING-AUDIT evidence; verified ANP PMQC, enforcement, fines, retailer registry and complaint guidance.
 - **Canonical scope:** [Implementation plan](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md), [target B-BR-FQ-01–16 / BUC-FQ-01–09](docs/product/FUEL_QUALITY_TARGET_CONTRACT.md) and [continuation prompt](docs/planning/FUEL_QUALITY_EXECUTION_PROMPT.md).
@@ -3652,7 +3652,7 @@ Execution index; task details/tests/recovery are canonical in the linked plan:
 - [FQ-16 — Offline, privacy and compatibility](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-16--offline-privacy-and-end-to-end-compatibility-m).
 - [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
 
-Next implementation candidate: FQ-09, after explicit task selection and current-head prerequisite reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
+Next implementation candidate: document-free FQ-11 (FQ-10 D-held) after FQ-02B sequencing, with explicit task selection and current-head prerequisite reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
 
 ## A–D app consolidation planning
 

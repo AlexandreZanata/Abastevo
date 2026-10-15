@@ -36,7 +36,7 @@ func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInpu
 	req := editionRequest{
 		Source: in.Source, Stream: in.Stream, Edition: in.Edition,
 		Predecessor: in.Predecessor, Resources: in.Resources,
-		Counts: in.Counts, ManifestHash: in.ManifestHash,
+		Counts: in.Counts, ManifestHash: in.ManifestHash, Periods: in.Periods,
 	}
 	stage := func(q *quality.Queries, editionID, revisionID pgtype.UUID) error {
 		for _, period := range in.Periods {

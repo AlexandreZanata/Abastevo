@@ -198,6 +198,32 @@ type QualityRevision struct {
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 }
 
+type QualityRevisionPeriod struct {
+	RevisionID  pgtype.UUID `json:"revision_id"`
+	PeriodLabel string      `json:"period_label"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
+type QualityRevisionProvenance struct {
+	RevisionID      pgtype.UUID        `json:"revision_id"`
+	ProvenanceState string             `json:"provenance_state"`
+	Input           pgtype.Int8        `json:"input"`
+	Accepted        pgtype.Int8        `json:"accepted"`
+	Duplicates      pgtype.Int8        `json:"duplicates"`
+	Quarantined     pgtype.Int8        `json:"quarantined"`
+	ManifestHash    pgtype.Text        `json:"manifest_hash"`
+	PublicationKey  pgtype.Text        `json:"publication_key"`
+	RecordedAt      pgtype.Timestamptz `json:"recorded_at"`
+}
+
+type QualityRevisionResource struct {
+	RevisionID pgtype.UUID `json:"revision_id"`
+	Url        string      `json:"url"`
+	Sha256     string      `json:"sha256"`
+	Bytes      int64       `json:"bytes"`
+}
+
 type QualitySanctionEvent struct {
 	ID            pgtype.UUID `json:"id"`
 	RevisionID    pgtype.UUID `json:"revision_id"`

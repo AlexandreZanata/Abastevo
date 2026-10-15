@@ -216,6 +216,9 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
 			ManifestHash: prepared.ManifestHash, Assays: prepared.Assays, Links: prepared.Links,
 		}, platformjobs.NewUUIDv4); perr != nil {
+			if errors.Is(perr, application.ErrSupersededPublication) {
+				return nil
+			}
 			return perr
 		}
 	case "enforcement", "sanctions":
@@ -225,6 +228,9 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 			ManifestHash: prepared.ManifestHash, Periods: prepared.Periods,
 			Enforcement: prepared.Enforcement, Sanctions: prepared.Sanctions,
 		}, platformjobs.NewUUIDv4); perr != nil {
+			if errors.Is(perr, application.ErrSupersededPublication) {
+				return nil
+			}
 			return perr
 		}
 	default:

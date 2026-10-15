@@ -5,11 +5,14 @@ package adapters
 import (
 	"context"
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	quality "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/quality"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"io/fs"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 )
 
 func TestNativePMQCEmptyResultIsRetained(t *testing.T) {
@@ -35,7 +38,7 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 		t.Fatal(e)
 	}
 	for _, entry := range entries {
-		if entry.Name() == "000097_quality_native_empty_result.sql" || entry.IsDir() {
+		if entry.Name() >= "000097" || entry.IsDir() {
 			continue
 		}
 		b, e := fs.ReadFile(dbmigrations.Files, entry.Name())
@@ -47,16 +50,13 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 	p := freshPoolWithMigrations(t, prior)
 	m := &idMaker{}
 	input := sampleInput("b")
-	previous, e := NewPublisher(p).Publish(ctx, input, m.next)
-	if e != nil {
-		t.Fatal(e)
-	}
+	previous := seedLegacyAssayRevision(t, p, input, m)
 	dsn := p.Config().ConnConfig.ConnString()
 	if e = migrate.Check(ctx, p, dbmigrations.Files); e == nil {
 		t.Fatal("old chain marked compatible")
 	}
 	applied, e := migrate.Apply(ctx, dsn, dbmigrations.Files)
-	if e != nil || len(applied) != 1 || applied[0] != "000097" {
+	if e != nil || len(applied) < 1 || applied[0] != "000097" {
 		t.Fatal(applied, e)
 	}
 	applied, e = migrate.Apply(ctx, dsn, dbmigrations.Files)
@@ -65,6 +65,21 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 	}
 	if e = migrate.Check(ctx, p, dbmigrations.Files); e != nil {
 		t.Fatal(e)
+	}
+	legacyID, e := mustUUID(previous)
+	if e != nil {
+		t.Fatal(e)
+	}
+	legacyProv, e := quality.New(p).GetRevisionProvenance(ctx, legacyID)
+	if e != nil || legacyProv.ProvenanceState != "LEGACY_UNVERIFIED" {
+		t.Fatal("legacy provenance fabricated", legacyProv, e)
+	}
+	if legacyProv.ManifestHash.Valid {
+		t.Fatal("legacy provenance invented a hash")
+	}
+	legacyLease, e := qualityread.NewReader(p).LeaseBlock(ctx, time.Now(), "pmqc", "pmqc-assay-v1")
+	if e != nil || legacyLease.HasPublished || !legacyLease.Stale {
+		t.Fatal("unverified legacy served as available lease", legacyLease, e)
 	}
 	var original string
 	if e = p.QueryRow(ctx, "SELECT result_text FROM quality_assays WHERE revision_id=$1 AND assay_ref='ASPECTO'", previous).Scan(&original); e != nil || original != "Límpido" {
@@ -84,5 +99,13 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 	var actual string
 	if e = p.QueryRow(ctx, "SELECT revision_id::text FROM quality_current_revisions WHERE source='pmqc'").Scan(&actual); e != nil || actual != current {
 		t.Fatal("failed publication replaced current", actual, e)
+	}
+	currentID, e := mustUUID(current)
+	if e != nil {
+		t.Fatal(e)
+	}
+	currentProv, e := quality.New(p).GetRevisionProvenance(ctx, currentID)
+	if e != nil || currentProv.ProvenanceState != "VERIFIED" || !currentProv.ManifestHash.Valid || currentProv.ManifestHash.String != strings.Repeat("c", 64) {
+		t.Fatal("failed correction touched frozen provenance", currentProv, e)
 	}
 }

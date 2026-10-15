@@ -240,6 +240,44 @@ func (q *Queries) GetRevision(ctx context.Context, id pgtype.UUID) (QualityRevis
 	return i, err
 }
 
+const getRevisionByPublicationKey = `-- name: GetRevisionByPublicationKey :one
+SELECT r.id,r.status FROM quality_revisions r JOIN quality_revision_provenance p ON p.revision_id=r.id
+WHERE p.publication_key = $1 AND p.provenance_state='VERIFIED'
+`
+
+type GetRevisionByPublicationKeyRow struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) GetRevisionByPublicationKey(ctx context.Context, publicationKey pgtype.Text) (GetRevisionByPublicationKeyRow, error) {
+	row := q.db.QueryRow(ctx, getRevisionByPublicationKey, publicationKey)
+	var i GetRevisionByPublicationKeyRow
+	err := row.Scan(&i.ID, &i.Status)
+	return i, err
+}
+
+const getRevisionProvenance = `-- name: GetRevisionProvenance :one
+SELECT revision_id, provenance_state, input, accepted, duplicates, quarantined, manifest_hash, publication_key, recorded_at FROM quality_revision_provenance WHERE revision_id = $1
+`
+
+func (q *Queries) GetRevisionProvenance(ctx context.Context, revisionID pgtype.UUID) (QualityRevisionProvenance, error) {
+	row := q.db.QueryRow(ctx, getRevisionProvenance, revisionID)
+	var i QualityRevisionProvenance
+	err := row.Scan(
+		&i.RevisionID,
+		&i.ProvenanceState,
+		&i.Input,
+		&i.Accepted,
+		&i.Duplicates,
+		&i.Quarantined,
+		&i.ManifestHash,
+		&i.PublicationKey,
+		&i.RecordedAt,
+	)
+	return i, err
+}
+
 const getWatermark = `-- name: GetWatermark :one
 SELECT source, stream, last_edition, last_hash, updated_at
 FROM quality_watermarks
@@ -375,6 +413,36 @@ func (q *Queries) ListRevisionEnforcement(ctx context.Context, revisionID pgtype
 	return items, nil
 }
 
+const listRevisionPeriods = `-- name: ListRevisionPeriods :many
+SELECT revision_id,period_label,period_start,period_end FROM quality_revision_periods
+WHERE revision_id = $1 ORDER BY period_start,period_label
+`
+
+func (q *Queries) ListRevisionPeriods(ctx context.Context, revisionID pgtype.UUID) ([]QualityRevisionPeriod, error) {
+	rows, err := q.db.Query(ctx, listRevisionPeriods, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QualityRevisionPeriod
+	for rows.Next() {
+		var i QualityRevisionPeriod
+		if err := rows.Scan(
+			&i.RevisionID,
+			&i.PeriodLabel,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRevisionSanctions = `-- name: ListRevisionSanctions :many
 SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
     status, decided_on, as_of, evidence_ref
@@ -452,6 +520,31 @@ func (q *Queries) ListStreamResourceHashes(ctx context.Context, arg ListStreamRe
 	return items, nil
 }
 
+const lockEditionByKey = `-- name: LockEditionByKey :one
+SELECT id,source,stream,edition,predecessor,created_at FROM quality_editions
+WHERE source = $1 AND stream = $2 AND edition = $3 FOR UPDATE
+`
+
+type LockEditionByKeyParams struct {
+	Source  string `json:"source"`
+	Stream  string `json:"stream"`
+	Edition string `json:"edition"`
+}
+
+func (q *Queries) LockEditionByKey(ctx context.Context, arg LockEditionByKeyParams) (QualityEdition, error) {
+	row := q.db.QueryRow(ctx, lockEditionByKey, arg.Source, arg.Stream, arg.Edition)
+	var i QualityEdition
+	err := row.Scan(
+		&i.ID,
+		&i.Source,
+		&i.Stream,
+		&i.Edition,
+		&i.Predecessor,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const recordManifest = `-- name: RecordManifest :one
 INSERT INTO quality_manifests (edition_id, input, accepted, duplicates, quarantined, manifest_hash)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -480,6 +573,78 @@ func (q *Queries) RecordManifest(ctx context.Context, arg RecordManifestParams) 
 	var edition_id pgtype.UUID
 	err := row.Scan(&edition_id)
 	return edition_id, err
+}
+
+const recordRevisionPeriod = `-- name: RecordRevisionPeriod :exec
+INSERT INTO quality_revision_periods(revision_id,period_label,period_start,period_end)
+VALUES($1,$2,$3,$4)
+`
+
+type RecordRevisionPeriodParams struct {
+	RevisionID  pgtype.UUID `json:"revision_id"`
+	PeriodLabel string      `json:"period_label"`
+	PeriodStart pgtype.Date `json:"period_start"`
+	PeriodEnd   pgtype.Date `json:"period_end"`
+}
+
+func (q *Queries) RecordRevisionPeriod(ctx context.Context, arg RecordRevisionPeriodParams) error {
+	_, err := q.db.Exec(ctx, recordRevisionPeriod,
+		arg.RevisionID,
+		arg.PeriodLabel,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+	)
+	return err
+}
+
+const recordRevisionProvenance = `-- name: RecordRevisionProvenance :exec
+INSERT INTO quality_revision_provenance(revision_id,provenance_state,input,accepted,duplicates,quarantined,manifest_hash,publication_key)
+VALUES($1,'VERIFIED',$2,$3,$4,$5,$6,$7)
+`
+
+type RecordRevisionProvenanceParams struct {
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	Input          pgtype.Int8 `json:"input"`
+	Accepted       pgtype.Int8 `json:"accepted"`
+	Duplicates     pgtype.Int8 `json:"duplicates"`
+	Quarantined    pgtype.Int8 `json:"quarantined"`
+	ManifestHash   pgtype.Text `json:"manifest_hash"`
+	PublicationKey pgtype.Text `json:"publication_key"`
+}
+
+func (q *Queries) RecordRevisionProvenance(ctx context.Context, arg RecordRevisionProvenanceParams) error {
+	_, err := q.db.Exec(ctx, recordRevisionProvenance,
+		arg.RevisionID,
+		arg.Input,
+		arg.Accepted,
+		arg.Duplicates,
+		arg.Quarantined,
+		arg.ManifestHash,
+		arg.PublicationKey,
+	)
+	return err
+}
+
+const recordRevisionResource = `-- name: RecordRevisionResource :exec
+INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes)
+VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING
+`
+
+type RecordRevisionResourceParams struct {
+	RevisionID pgtype.UUID `json:"revision_id"`
+	Url        string      `json:"url"`
+	Sha256     string      `json:"sha256"`
+	Bytes      int64       `json:"bytes"`
+}
+
+func (q *Queries) RecordRevisionResource(ctx context.Context, arg RecordRevisionResourceParams) error {
+	_, err := q.db.Exec(ctx, recordRevisionResource,
+		arg.RevisionID,
+		arg.Url,
+		arg.Sha256,
+		arg.Bytes,
+	)
+	return err
 }
 
 const setCurrentRevision = `-- name: SetCurrentRevision :exec

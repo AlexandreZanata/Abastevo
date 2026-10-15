@@ -13,6 +13,33 @@ INSERT INTO quality_editions (id, source, stream, edition, predecessor)
 VALUES (@id, @source, @stream, @edition, @predecessor)
 RETURNING id;
 
+-- name: LockEditionByKey :one
+SELECT id,source,stream,edition,predecessor,created_at FROM quality_editions
+WHERE source = @source AND stream = @stream AND edition = @edition FOR UPDATE;
+
+-- name: GetRevisionProvenance :one
+SELECT * FROM quality_revision_provenance WHERE revision_id = @revision_id;
+
+-- name: RecordRevisionProvenance :exec
+INSERT INTO quality_revision_provenance(revision_id,provenance_state,input,accepted,duplicates,quarantined,manifest_hash,publication_key)
+VALUES(@revision_id,'VERIFIED',@input,@accepted,@duplicates,@quarantined,@manifest_hash,@publication_key);
+
+-- name: GetRevisionByPublicationKey :one
+SELECT r.id,r.status FROM quality_revisions r JOIN quality_revision_provenance p ON p.revision_id=r.id
+WHERE p.publication_key = @publication_key AND p.provenance_state='VERIFIED';
+
+-- name: RecordRevisionResource :exec
+INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes)
+VALUES(@revision_id,@url,@sha256,@bytes) ON CONFLICT DO NOTHING;
+
+-- name: RecordRevisionPeriod :exec
+INSERT INTO quality_revision_periods(revision_id,period_label,period_start,period_end)
+VALUES(@revision_id,@period_label,@period_start,@period_end);
+
+-- name: ListRevisionPeriods :many
+SELECT revision_id,period_label,period_start,period_end FROM quality_revision_periods
+WHERE revision_id = @revision_id ORDER BY period_start,period_label;
+
 -- name: AddResource :exec
 INSERT INTO quality_resources (edition_id, url, sha256, bytes)
 VALUES (@edition_id, @url, @sha256, @bytes)

@@ -78,6 +78,7 @@ func TestQualityHTTPFreezeBeforeConcurrentPublication(t *testing.T) {
 			for _, q := range []string{
 				"UPDATE quality_revisions SET status='superseded' WHERE id='" + old + "'",
 				"INSERT INTO quality_revisions(id,edition_id,status,published_at) SELECT '99999999-9999-4999-8999-999999999999',edition_id,'published',now() FROM quality_revisions WHERE id='" + old + "'",
+				"INSERT INTO quality_revision_provenance(revision_id,provenance_state,input,accepted,duplicates,quarantined,manifest_hash,publication_key) SELECT '99999999-9999-4999-8999-999999999999','VERIFIED',input,accepted,duplicates,quarantined,repeat('f',64),repeat('e',64) FROM quality_revision_provenance WHERE revision_id='" + old + "'",
 				"INSERT INTO quality_assays SELECT gen_random_uuid(),'99999999-9999-4999-8999-999999999999',sample_ref,assay_ref,source_cnpj,observed_on,fuel,'later revision',unit,conformity,evidence_ref,fingerprint FROM quality_assays WHERE revision_id='" + old + "'",
 				"INSERT INTO quality_links SELECT gen_random_uuid(),'99999999-9999-4999-8999-999999999999',record_key,station_id,automatic,reason,active FROM quality_links WHERE revision_id='" + old + "'",
 				"UPDATE quality_current_revisions SET revision_id='99999999-9999-4999-8999-999999999999' WHERE source='pmqc'",

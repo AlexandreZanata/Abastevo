@@ -166,6 +166,9 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		}
 		return Lease{}, pgtype.UUID{}, err
 	}
+	if row.ProvenanceState != "VERIFIED" {
+		return Lease{Source: source, Stream: stream, Edition: row.Edition, RevisionID: uuidString(row.RevisionID), HasPublished: false, Stale: true, StaleReason: "revision provenance unverified", CoverageNote: "Frozen source provenance unavailable; verified reimport required."}, pgtype.UUID{}, ErrNoLease
+	}
 	publishedAt, hasPublished := timeString(row.PublishedAt)
 	stale, reason := application.Stale(hasLease(row), publishedAt, now)
 	lease := Lease{
@@ -180,18 +183,20 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		Stale:        stale, StaleReason: reason,
 	}
 	lease.CoverageNote = application.CoverageNote(row.Edition, lease.Counts)
-	if periods, perr := q.ListEditionPeriods(ctx, row.EditionID); perr == nil {
+	if periods, perr := q.ListRevisionPeriods(ctx, row.RevisionID); perr == nil {
 		for _, p := range periods {
 			lease.Periods = append(lease.Periods, Period{
 				Label: p.PeriodLabel, Start: dateString(p.PeriodStart), End: dateString(p.PeriodEnd),
 			})
 		}
+	} else {
+		return Lease{}, pgtype.UUID{}, perr
 	}
 	return lease, row.RevisionID, nil
 }
 
 func hasLease(row quality.LeaseByStreamRow) bool {
-	return row.Status == "published"
+	return row.Status == "published" && row.ProvenanceState == "VERIFIED"
 }
 
 // LeaseBlock returns the servable lease envelope for a stream: unavailable

@@ -187,11 +187,13 @@ const leaseByStream = `-- name: LeaseByStream :one
 
 SELECT r.id AS revision_id, r.status, r.published_at,
     e.id AS edition_id, e.source, e.stream, e.edition, e.predecessor,
-    m.input, m.accepted, m.duplicates, m.quarantined, m.manifest_hash
+    COALESCE(m.input,0)::bigint AS input, COALESCE(m.accepted,0)::bigint AS accepted,
+    COALESCE(m.duplicates,0)::bigint AS duplicates, COALESCE(m.quarantined,0)::bigint AS quarantined,
+    COALESCE(m.manifest_hash,'')::text AS manifest_hash, m.provenance_state
 FROM quality_current_revisions AS c
 JOIN quality_revisions AS r ON r.id = c.revision_id
 JOIN quality_editions AS e ON e.id = r.edition_id
-JOIN quality_manifests AS m ON m.edition_id = e.id
+JOIN quality_revision_provenance AS m ON m.revision_id = r.id
 WHERE c.source = $1 AND c.stream = $2
 `
 
@@ -201,19 +203,20 @@ type LeaseByStreamParams struct {
 }
 
 type LeaseByStreamRow struct {
-	RevisionID   pgtype.UUID        `json:"revision_id"`
-	Status       string             `json:"status"`
-	PublishedAt  pgtype.Timestamptz `json:"published_at"`
-	EditionID    pgtype.UUID        `json:"edition_id"`
-	Source       string             `json:"source"`
-	Stream       string             `json:"stream"`
-	Edition      string             `json:"edition"`
-	Predecessor  pgtype.Text        `json:"predecessor"`
-	Input        int64              `json:"input"`
-	Accepted     int64              `json:"accepted"`
-	Duplicates   int64              `json:"duplicates"`
-	Quarantined  int64              `json:"quarantined"`
-	ManifestHash string             `json:"manifest_hash"`
+	RevisionID      pgtype.UUID        `json:"revision_id"`
+	Status          string             `json:"status"`
+	PublishedAt     pgtype.Timestamptz `json:"published_at"`
+	EditionID       pgtype.UUID        `json:"edition_id"`
+	Source          string             `json:"source"`
+	Stream          string             `json:"stream"`
+	Edition         string             `json:"edition"`
+	Predecessor     pgtype.Text        `json:"predecessor"`
+	Input           int64              `json:"input"`
+	Accepted        int64              `json:"accepted"`
+	Duplicates      int64              `json:"duplicates"`
+	Quarantined     int64              `json:"quarantined"`
+	ManifestHash    string             `json:"manifest_hash"`
+	ProvenanceState string             `json:"provenance_state"`
 }
 
 // Owned by quality (FQ-08 official reads). All reads resolve the current
@@ -239,6 +242,7 @@ func (q *Queries) LeaseByStream(ctx context.Context, arg LeaseByStreamParams) (L
 		&i.Duplicates,
 		&i.Quarantined,
 		&i.ManifestHash,
+		&i.ProvenanceState,
 	)
 	return i, err
 }
