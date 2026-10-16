@@ -295,6 +295,7 @@ sql:
       - db/migrations/000097_quality_native_empty_result.sql
       - db/migrations/000098_quality_revision_provenance.sql
       - db/migrations/000099_quality_report_review.sql
+      - db/migrations/000100_quality_resource_members.sql
     gen:
       go:
         package: quality

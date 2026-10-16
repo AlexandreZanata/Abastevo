@@ -253,13 +253,16 @@ func (q *Queries) LeaseByStream(ctx context.Context, arg LeaseByStreamParams) (L
 }
 
 const readRevisionResources = `-- name: ReadRevisionResources :many
-SELECT url,sha256,bytes FROM quality_revision_resources WHERE revision_id= $1 ORDER BY url
+SELECT url,sha256,bytes,member_name,member_sha256,member_bytes FROM quality_revision_resources WHERE revision_id= $1 ORDER BY url
 `
 
 type ReadRevisionResourcesRow struct {
-	Url    string `json:"url"`
-	Sha256 string `json:"sha256"`
-	Bytes  int64  `json:"bytes"`
+	Url          string      `json:"url"`
+	Sha256       string      `json:"sha256"`
+	Bytes        int64       `json:"bytes"`
+	MemberName   string      `json:"member_name"`
+	MemberSha256 pgtype.Text `json:"member_sha256"`
+	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
 func (q *Queries) ReadRevisionResources(ctx context.Context, revisionID pgtype.UUID) ([]ReadRevisionResourcesRow, error) {
@@ -271,7 +274,14 @@ func (q *Queries) ReadRevisionResources(ctx context.Context, revisionID pgtype.U
 	var items []ReadRevisionResourcesRow
 	for rows.Next() {
 		var i ReadRevisionResourcesRow
-		if err := rows.Scan(&i.Url, &i.Sha256, &i.Bytes); err != nil {
+		if err := rows.Scan(
+			&i.Url,
+			&i.Sha256,
+			&i.Bytes,
+			&i.MemberName,
+			&i.MemberSha256,
+			&i.MemberBytes,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

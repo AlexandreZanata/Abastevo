@@ -6,6 +6,7 @@ import (
 	"context"
 	quality "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/quality"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"testing"
 )
@@ -28,7 +29,7 @@ func seedLegacyAssayRevision(t *testing.T, p *pgxpool.Pool, in application.Input
 		t.Fatal(e)
 	}
 	for _, r := range in.Resources {
-		if e = q.AddResource(ctx, quality.AddResourceParams{EditionID: eid, Url: r.URL, Sha256: r.SHA256, Bytes: int64(r.Bytes)}); e != nil {
+		if e = legacyAddResource(ctx, p, eid, r); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -54,8 +55,17 @@ func seedLegacyAssayRevision(t *testing.T, p *pgxpool.Pool, in application.Input
 	if e = q.SetRevisionPublished(ctx, rid); e != nil {
 		t.Fatal(e)
 	}
-	if e = q.SetCurrentRevision(ctx, quality.SetCurrentRevisionParams{Source: in.Source, Stream: in.Stream, RevisionID: rid}); e != nil {
+	if e = legacySetCurrent(ctx, p, in, rid); e != nil {
 		t.Fatal(e)
 	}
 	return uuidString(rid)
+}
+
+func legacyAddResource(ctx context.Context, p *pgxpool.Pool, eid pgtype.UUID, r application.Resource) error {
+	_, err := p.Exec(ctx, "INSERT INTO quality_resources(edition_id,url,sha256,bytes) VALUES($1,$2,$3,$4)", eid, r.URL, r.SHA256, int64(r.Bytes))
+	return err
+}
+func legacySetCurrent(ctx context.Context, p *pgxpool.Pool, in application.Input, rid pgtype.UUID) error {
+	_, err := p.Exec(ctx, "INSERT INTO quality_current_revisions(source,stream,revision_id) VALUES($1,$2,$3)", in.Source, in.Stream, rid)
+	return err
 }

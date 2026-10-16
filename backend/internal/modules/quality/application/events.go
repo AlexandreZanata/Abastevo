@@ -75,6 +75,9 @@ func (in EventsInput) Validate() error {
 		Counts: in.Counts, Predecessor: in.Predecessor,
 	}
 	for _, r := range in.Resources {
+		if err := r.ValidateMember(); err != nil {
+			return err
+		}
 		manifest.Resources = append(manifest.Resources, domain.Resource{
 			URL: r.URL, SHA256: r.SHA256, Bytes: r.Bytes,
 		})
@@ -85,10 +88,8 @@ func (in EventsInput) Validate() error {
 	if len(in.ManifestHash) != 64 || !isHex(in.ManifestHash) {
 		return ErrHashShape
 	}
-	for _, p := range in.Periods {
-		if strings.TrimSpace(p.Label) == "" || !domain.ValidDay(p.Start) || !domain.ValidDay(p.End) || p.End < p.Start {
-			return errors.New("quality: malformed edition period")
-		}
+	if err := ValidatePeriods(in.Periods); err != nil {
+		return err
 	}
 	for _, e := range in.Enforcement {
 		if strings.TrimSpace(e.NativeKey) == "" {
@@ -99,6 +100,18 @@ func (in EventsInput) Validate() error {
 		if strings.TrimSpace(s.NativeKey) == "" {
 			return domain.ErrMissingIdentifier
 		}
+	}
+	return nil
+}
+
+// ValidatePeriods checks real calendar dates and distinct frozen coverage labels.
+func ValidatePeriods(periods []PeriodInput) error {
+	seen := make(map[string]bool, len(periods))
+	for _, p := range periods {
+		if strings.TrimSpace(p.Label) == "" || seen[p.Label] || !domain.ValidDay(p.Start) || !domain.ValidDay(p.End) || p.End < p.Start {
+			return errors.New("quality: malformed edition period")
+		}
+		seen[p.Label] = true
 	}
 	return nil
 }

@@ -22,6 +22,7 @@ import (
 // ImportPayload is the versioned import job envelope. The content hash
 // pins the bytes the discovery planned; a mismatch fails the job.
 type ImportPayload struct {
+	Member  string `json:"member,omitempty"`
 	Version int    `json:"version"`
 	Source  string `json:"source"`
 	Stream  string `json:"stream"`
@@ -81,8 +82,10 @@ func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 		return err
 	}
 	byEdition := map[string][]string{}
+	byEditionMembers := map[string][]string{}
 	for _, h := range hashes {
 		byEdition[h.Edition] = append(byEdition[h.Edition], h.Sha256)
+		byEditionMembers[h.Edition] = append(byEditionMembers[h.Edition], h.MemberName)
 	}
 	for _, e := range entries {
 		rec := application.RecordedEdition{Label: e.Label}
@@ -93,6 +96,7 @@ func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 				rec.ManifestHash = manifest.ManifestHash
 			}
 			rec.ResourceHashes = byEdition[e.Label]
+			rec.ResourceMembers = byEditionMembers[e.Label]
 		} else if !errors.Is(gerr, pgx.ErrNoRows) {
 			return gerr
 		}
@@ -109,8 +113,8 @@ func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 		entry := findEntry(entries, p.Label)
 		if _, eerr := d.Enqueue(ctx, ImportPayload{
 			Version: 1, Source: d.Source, Stream: d.Stream,
-			Edition: p.Label, URL: entry.URL, SHA256: entry.SHA256,
-		}, strings.Join([]string{d.Source, d.Stream, p.Label, entry.SHA256}, "\x1f")); eerr != nil {
+			Edition: p.Label, URL: entry.URL, SHA256: entry.SHA256, Member: entry.Member,
+		}, strings.Join([]string{d.Source, d.Stream, p.Label, application.ResourceIdentity(entry.SHA256, entry.Member)}, "\x1f")); eerr != nil {
 			return eerr
 		}
 		enqueued++
@@ -138,6 +142,8 @@ type PreparedBatch struct {
 	Periods      []application.PeriodInput
 	Counts       domain.Counts
 	ManifestHash string
+	MemberSHA256 string
+	MemberBytes  uint64
 }
 
 // Import fetches, prepares and publishes a single edition, then advances
@@ -174,7 +180,7 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 	}
 	if payload.Version != 1 || payload.Source == "" || payload.Stream == "" ||
 		payload.Edition == "" || payload.URL == "" || payload.SHA256 == "" {
-		return fmt.Errorf("import: malformed payload %+v", payload)
+		return errors.New("import: malformed payload")
 	}
 	if im.Fetch == nil {
 		return errors.New("import: no fetcher configured")
@@ -207,14 +213,14 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 		return gerr
 	}
 	resources := []application.Resource{{
-		URL: payload.URL, SHA256: payload.SHA256, Bytes: uint64(len(raw)),
+		URL: payload.URL, SHA256: payload.SHA256, Bytes: uint64(len(raw)), Member: payload.Member, MemberSHA256: prepared.MemberSHA256, MemberBytes: prepared.MemberBytes,
 	}}
 	switch payload.Source {
 	case "pmqc":
 		if _, perr := im.Publish.Publish(ctx, application.Input{
 			Source: payload.Source, Stream: payload.Stream, Edition: payload.Edition,
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
-			ManifestHash: prepared.ManifestHash, Assays: prepared.Assays, Links: prepared.Links,
+			ManifestHash: prepared.ManifestHash, Assays: prepared.Assays, Links: prepared.Links, Periods: prepared.Periods,
 		}, platformjobs.NewUUIDv4); perr != nil {
 			if errors.Is(perr, application.ErrSupersededPublication) {
 				return nil

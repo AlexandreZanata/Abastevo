@@ -104,7 +104,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 	req := editionRequest{
 		Source: in.Source, Stream: in.Stream, Edition: in.Edition,
 		Predecessor: in.Predecessor, Resources: in.Resources,
-		Counts: in.Counts, ManifestHash: in.ManifestHash, Links: in.Links,
+		Counts: in.Counts, ManifestHash: in.ManifestHash, Links: in.Links, Periods: in.Periods,
 	}
 	stage := func(q *quality.Queries, editionID, revisionID pgtype.UUID) error {
 		for _, a := range in.Assays {
@@ -239,7 +239,7 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 	}
 
 	for _, resource := range req.Resources {
-		if err := q.AddResource(ctx, quality.AddResourceParams{EditionID: editionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes)}); err != nil {
+		if err := q.AddResource(ctx, quality.AddResourceParams{EditionID: editionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes), MemberName: resource.Member, MemberSha256: memberHash(resource), MemberBytes: memberBytes(resource)}); err != nil {
 			return "", false, err
 		}
 	}
@@ -260,7 +260,7 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 		return "", false, err
 	}
 	for _, resource := range req.Resources {
-		if err := q.RecordRevisionResource(ctx, quality.RecordRevisionResourceParams{RevisionID: revisionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes)}); err != nil {
+		if err := q.RecordRevisionResource(ctx, quality.RecordRevisionResourceParams{RevisionID: revisionID, Url: resource.URL, Sha256: resource.SHA256, Bytes: int64(resource.Bytes), MemberName: resource.Member, MemberSha256: memberHash(resource), MemberBytes: memberBytes(resource)}); err != nil {
 			return "", false, err
 		}
 	}
@@ -271,6 +271,9 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 		}
 		end, err := pgDate(period.End)
 		if err != nil {
+			return "", false, err
+		}
+		if err = q.UpsertPeriod(ctx, quality.UpsertPeriodParams{EditionID: editionID, PeriodLabel: period.Label, PeriodStart: start, PeriodEnd: end}); err != nil {
 			return "", false, err
 		}
 		if err = q.RecordRevisionPeriod(ctx, quality.RecordRevisionPeriodParams{RevisionID: revisionID, PeriodLabel: period.Label, PeriodStart: start, PeriodEnd: end}); err != nil {
@@ -348,6 +351,15 @@ func (r editionRequest) publicationKey() string {
 		if a.URL != b.URL {
 			return a.URL < b.URL
 		}
+		if a.Member != b.Member {
+			return a.Member < b.Member
+		}
+		if a.MemberSHA256 != b.MemberSHA256 {
+			return a.MemberSHA256 < b.MemberSHA256
+		}
+		if a.MemberBytes != b.MemberBytes {
+			return a.MemberBytes < b.MemberBytes
+		}
 		return a.Bytes < b.Bytes
 	})
 	periods := append([]application.PeriodInput(nil), r.Periods...)
@@ -376,4 +388,11 @@ func (r editionRequest) publicationKey() string {
 	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
+}
+
+func memberHash(r application.Resource) pgtype.Text {
+	return pgtype.Text{String: r.MemberSHA256, Valid: r.Member != ""}
+}
+func memberBytes(r application.Resource) pgtype.Int8 {
+	return pgtype.Int8{Int64: int64(r.MemberBytes), Valid: r.Member != ""}
 }

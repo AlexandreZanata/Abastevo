@@ -22,6 +22,7 @@ const (
 // (empty while unpublished) and the observed content hash (empty while
 // unfetched). Labels are zero-padded so lexical order is chronological.
 type InventoryEntry struct {
+	Member string
 	Label  string
 	URL    string
 	SHA256 string
@@ -30,9 +31,10 @@ type InventoryEntry struct {
 
 // RecordedEdition is one ledger-known edition with its resource hashes.
 type RecordedEdition struct {
-	Label          string
-	ManifestHash   string
-	ResourceHashes []string
+	ResourceMembers []string
+	Label           string
+	ManifestHash    string
+	ResourceHashes  []string
 }
 
 // Planned is one decided edition with its reason. AliasOf names the
@@ -57,12 +59,17 @@ func PlanBackfill(entries []InventoryEntry, recorded []RecordedEdition) []Planne
 	hashLabels := map[string]string{}
 	for _, r := range recorded {
 		byLabel[r.Label] = r
-		for _, h := range r.ResourceHashes {
+		for i, h := range r.ResourceHashes {
+			member := ""
+			if i < len(r.ResourceMembers) {
+				member = r.ResourceMembers[i]
+			}
+			h = ResourceIdentity(h, member)
 			if h == "" {
 				continue
 			}
-			if _, ok := hashLabels[strings.ToLower(h)]; !ok {
-				hashLabels[strings.ToLower(h)] = r.Label
+			if _, ok := hashLabels[h]; !ok {
+				hashLabels[h] = r.Label
 			}
 		}
 	}
@@ -79,7 +86,7 @@ func PlanBackfill(entries []InventoryEntry, recorded []RecordedEdition) []Planne
 			continue
 		}
 		rec, known := byLabel[label]
-		hash := strings.ToLower(strings.TrimSpace(e.SHA256))
+		hash := ResourceIdentity(e.SHA256, e.Member)
 		switch {
 		case !known:
 			if owner, dup := hashLabels[hash]; dup && hash != "" {
@@ -94,7 +101,7 @@ func PlanBackfill(entries []InventoryEntry, recorded []RecordedEdition) []Planne
 					Reason: "label unrecorded; late resources import, never skip",
 				})
 			}
-		case hash == "" || sameHash(rec.ResourceHashes, e.SHA256):
+		case hash == "" || sameResource(rec, e):
 			planned = append(planned, Planned{
 				Label: label, URL: e.URL, Action: PlanReplayStable,
 				Reason: "content matches the recorded edition; publisher converges",
@@ -117,9 +124,24 @@ func PlanBackfill(entries []InventoryEntry, recorded []RecordedEdition) []Planne
 	return planned
 }
 
-func sameHash(hashes []string, want string) bool {
-	for _, h := range hashes {
-		if h != "" && strings.EqualFold(h, want) {
+// ResourceIdentity distinguishes monthly members of the same annual archive.
+func ResourceIdentity(hash, member string) string {
+	hash = strings.ToLower(strings.TrimSpace(hash))
+	if hash == "" {
+		return ""
+	}
+	if member != "" {
+		return hash + "\x1f" + member
+	}
+	return hash
+}
+func sameResource(record RecordedEdition, entry InventoryEntry) bool {
+	for i, hash := range record.ResourceHashes {
+		member := ""
+		if i < len(record.ResourceMembers) {
+			member = record.ResourceMembers[i]
+		}
+		if ResourceIdentity(hash, member) == ResourceIdentity(entry.SHA256, entry.Member) {
 			return true
 		}
 	}

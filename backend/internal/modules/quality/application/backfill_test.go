@@ -63,3 +63,13 @@ func TestPlanBackfillEmpty(t *testing.T) {
 		t.Fatalf("empty inventory planned %+v", got)
 	}
 }
+
+func TestBackfillAnnualArchiveMembersAreDifferentEditions(t *testing.T) {
+	hash := strings.Repeat("a", 64)
+	entries := []InventoryEntry{{Label: "2025-01", URL: "annual.zip", SHA256: hash, Member: "2025/PMQC_2025_01.csv"}, {Label: "2025-02", URL: "annual.zip", SHA256: hash, Member: "2025/PMQC_2025_02.csv"}}
+	recorded := []RecordedEdition{{Label: "2025-01", ResourceHashes: []string{hash}, ResourceMembers: []string{"2025/PMQC_2025_01.csv"}}}
+	got := PlanBackfill(entries, recorded)
+	if len(got) != 2 || got[0].Action != PlanReplayStable || got[1].Action != PlanImportNew {
+		t.Fatal("months collapsed as archive aliases", got)
+	}
+}

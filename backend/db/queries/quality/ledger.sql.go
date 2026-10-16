@@ -12,16 +12,19 @@ import (
 )
 
 const addResource = `-- name: AddResource :exec
-INSERT INTO quality_resources (edition_id, url, sha256, bytes)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (edition_id, sha256) DO NOTHING
+INSERT INTO quality_resources(edition_id,url,sha256,bytes,member_name,member_sha256,member_bytes)
+VALUES($1,$2,$3,$4,$5,$6,$7)
+ON CONFLICT(edition_id,sha256,member_name) DO UPDATE SET url=EXCLUDED.url,member_name=EXCLUDED.member_name,member_sha256=EXCLUDED.member_sha256,member_bytes=EXCLUDED.member_bytes
 `
 
 type AddResourceParams struct {
-	EditionID pgtype.UUID `json:"edition_id"`
-	Url       string      `json:"url"`
-	Sha256    string      `json:"sha256"`
-	Bytes     int64       `json:"bytes"`
+	EditionID    pgtype.UUID `json:"edition_id"`
+	Url          string      `json:"url"`
+	Sha256       string      `json:"sha256"`
+	Bytes        int64       `json:"bytes"`
+	MemberName   string      `json:"member_name"`
+	MemberSha256 pgtype.Text `json:"member_sha256"`
+	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
 func (q *Queries) AddResource(ctx context.Context, arg AddResourceParams) error {
@@ -30,6 +33,9 @@ func (q *Queries) AddResource(ctx context.Context, arg AddResourceParams) error 
 		arg.Url,
 		arg.Sha256,
 		arg.Bytes,
+		arg.MemberName,
+		arg.MemberSha256,
+		arg.MemberBytes,
 	)
 	return err
 }
@@ -483,7 +489,7 @@ func (q *Queries) ListRevisionSanctions(ctx context.Context, revisionID pgtype.U
 }
 
 const listStreamResourceHashes = `-- name: ListStreamResourceHashes :many
-SELECT e.edition, r.sha256
+SELECT e.edition, r.sha256, r.member_name
 FROM quality_resources AS r
 JOIN quality_editions AS e ON e.id = r.edition_id
 WHERE e.source = $1 AND e.stream = $2
@@ -496,8 +502,9 @@ type ListStreamResourceHashesParams struct {
 }
 
 type ListStreamResourceHashesRow struct {
-	Edition string `json:"edition"`
-	Sha256  string `json:"sha256"`
+	Edition    string `json:"edition"`
+	Sha256     string `json:"sha256"`
+	MemberName string `json:"member_name"`
 }
 
 func (q *Queries) ListStreamResourceHashes(ctx context.Context, arg ListStreamResourceHashesParams) ([]ListStreamResourceHashesRow, error) {
@@ -509,7 +516,7 @@ func (q *Queries) ListStreamResourceHashes(ctx context.Context, arg ListStreamRe
 	var items []ListStreamResourceHashesRow
 	for rows.Next() {
 		var i ListStreamResourceHashesRow
-		if err := rows.Scan(&i.Edition, &i.Sha256); err != nil {
+		if err := rows.Scan(&i.Edition, &i.Sha256, &i.MemberName); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -626,15 +633,18 @@ func (q *Queries) RecordRevisionProvenance(ctx context.Context, arg RecordRevisi
 }
 
 const recordRevisionResource = `-- name: RecordRevisionResource :exec
-INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes)
-VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING
+INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes,member_name,member_sha256,member_bytes)
+VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING
 `
 
 type RecordRevisionResourceParams struct {
-	RevisionID pgtype.UUID `json:"revision_id"`
-	Url        string      `json:"url"`
-	Sha256     string      `json:"sha256"`
-	Bytes      int64       `json:"bytes"`
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	Url          string      `json:"url"`
+	Sha256       string      `json:"sha256"`
+	Bytes        int64       `json:"bytes"`
+	MemberName   string      `json:"member_name"`
+	MemberSha256 pgtype.Text `json:"member_sha256"`
+	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
 func (q *Queries) RecordRevisionResource(ctx context.Context, arg RecordRevisionResourceParams) error {
@@ -643,15 +653,21 @@ func (q *Queries) RecordRevisionResource(ctx context.Context, arg RecordRevision
 		arg.Url,
 		arg.Sha256,
 		arg.Bytes,
+		arg.MemberName,
+		arg.MemberSha256,
+		arg.MemberBytes,
 	)
 	return err
 }
 
 const setCurrentRevision = `-- name: SetCurrentRevision :exec
-INSERT INTO quality_current_revisions (source, stream, revision_id)
-VALUES ($1, $2, $3)
+INSERT INTO quality_current_revisions (source, stream, revision_id, edition)
+SELECT $1, $2, r.id, e.edition
+FROM quality_revisions r JOIN quality_editions e ON e.id=r.edition_id
+WHERE r.id = $3
 ON CONFLICT (source, stream)
-DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now()
+DO UPDATE SET revision_id = EXCLUDED.revision_id, edition = EXCLUDED.edition, switched_at = now()
+WHERE EXCLUDED.edition >= quality_current_revisions.edition
 `
 
 type SetCurrentRevisionParams struct {
@@ -692,7 +708,7 @@ INSERT INTO quality_watermarks (source, stream, last_edition, last_hash)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (source, stream)
 DO UPDATE SET last_edition = EXCLUDED.last_edition, last_hash = EXCLUDED.last_hash,
-    updated_at = now()
+    updated_at = now() WHERE EXCLUDED.last_edition>=quality_watermarks.last_edition
 `
 
 type SetWatermarkParams struct {

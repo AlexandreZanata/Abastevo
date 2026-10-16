@@ -7543,6 +7543,17 @@ components:
             - sha256
             - bytes
             properties:
+              member_name:
+                type: string
+                minLength: 1
+                maxLength: 256
+              member_sha256:
+                type: string
+                pattern: ^[0-9a-f]{64}$
+              member_bytes:
+                type: integer
+                format: int64
+                minimum: 1
               url:
                 type: string
                 format: uri

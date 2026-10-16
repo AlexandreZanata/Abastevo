@@ -397,7 +397,7 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-05 — Historical backfill and incremental discovery (M)
 
-Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Native worker/archive/Directory composition remains FQ-05W; tested injected jobs and artifact integrity do not certify deployed imports.
+Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Monthly provenance/current-pointer prerequisite: [FQ-05W1](../backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE. Native worker/archive/Directory composition remains FQ-05W; tested injected jobs and artifact integrity do not certify deployed imports.
 
 - Depends: FQ-04. BUC-FQ-01/03. Critical download/jobs.
 - Deliver: explicit dry-run/verify/load stages, edition registry, bounded fetch/

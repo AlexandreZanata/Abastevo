@@ -5,7 +5,10 @@ package http
 import (
 	"context"
 	"encoding/json"
+	parentadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"net/http/httptest"
@@ -158,5 +161,34 @@ func TestQualityNativeDelimiterCursor(t *testing.T) {
 	native, id := splitCursor("native|record|11111111-1111-4111-8111-111111111111")
 	if native != "native|record" || id != "11111111-1111-4111-8111-111111111111" {
 		t.Fatal(native, id)
+	}
+}
+
+func TestQualityMemberProvenanceActualWire(t *testing.T) {
+	r, p := freshRouter(t, true)
+	ctx := context.Background()
+	id, e := parentadapters.NewPublisher(p).Publish(ctx, application.Input{Source: assaySource, Stream: assayStream, Edition: "2026-10", Resources: []application.Resource{{URL: "https://www.gov.br/anp/pmqc_2026.zip", SHA256: strings.Repeat("a", 64), Bytes: 30, Member: "2026/PMQC_2026_10.csv", MemberSHA256: strings.Repeat("b", 64), MemberBytes: 40}}, ManifestHash: strings.Repeat("c", 64)}, jobs.NewUUIDv4)
+	if e != nil {
+		t.Fatal(e)
+	}
+	code, body, _ := get(t, r, "/v1/quality/revisions/"+id+"?stream="+assayStream)
+	if code != 200 {
+		t.Fatal(code, body)
+	}
+	resources := body["resources"].([]any)
+	if len(resources) != 1 {
+		t.Fatal(body)
+	}
+	member := resources[0].(map[string]any)
+	if member["member_name"] != "2026/PMQC_2026_10.csv" || member["member_sha256"] != strings.Repeat("b", 64) || member["member_bytes"] != float64(40) {
+		t.Fatal("member not served", member)
+	}
+	_, file, _, _ := runtime.Caller(0)
+	spec, e := openapi3.NewLoader().LoadFromFile(filepath.Join(filepath.Dir(file), "../../../../../../contracts/openapi/v1.yaml"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = spec.Components.Schemas["QualityRevisionDetail"].Value.VisitJSON(body); e != nil {
+		t.Fatal("member contract", e)
 	}
 }

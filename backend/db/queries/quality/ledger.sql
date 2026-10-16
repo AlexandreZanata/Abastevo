@@ -29,8 +29,8 @@ SELECT r.id,r.status FROM quality_revisions r JOIN quality_revision_provenance p
 WHERE p.publication_key = @publication_key AND p.provenance_state='VERIFIED';
 
 -- name: RecordRevisionResource :exec
-INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes)
-VALUES(@revision_id,@url,@sha256,@bytes) ON CONFLICT DO NOTHING;
+INSERT INTO quality_revision_resources(revision_id,url,sha256,bytes,member_name,member_sha256,member_bytes)
+VALUES(@revision_id,@url,@sha256,@bytes,@member_name,@member_sha256,@member_bytes) ON CONFLICT DO NOTHING;
 
 -- name: RecordRevisionPeriod :exec
 INSERT INTO quality_revision_periods(revision_id,period_label,period_start,period_end)
@@ -41,9 +41,9 @@ SELECT revision_id,period_label,period_start,period_end FROM quality_revision_pe
 WHERE revision_id = @revision_id ORDER BY period_start,period_label;
 
 -- name: AddResource :exec
-INSERT INTO quality_resources (edition_id, url, sha256, bytes)
-VALUES (@edition_id, @url, @sha256, @bytes)
-ON CONFLICT (edition_id, sha256) DO NOTHING;
+INSERT INTO quality_resources(edition_id,url,sha256,bytes,member_name,member_sha256,member_bytes)
+VALUES(@edition_id,@url,@sha256,@bytes,@member_name,@member_sha256,@member_bytes)
+ON CONFLICT(edition_id,sha256,member_name) DO UPDATE SET url=EXCLUDED.url,member_name=EXCLUDED.member_name,member_sha256=EXCLUDED.member_sha256,member_bytes=EXCLUDED.member_bytes;
 
 -- name: GetManifest :one
 SELECT edition_id, input, accepted, duplicates, quarantined, manifest_hash, recorded_at
@@ -121,10 +121,13 @@ ORDER BY published_at DESC, created_at DESC
 LIMIT 1;
 
 -- name: SetCurrentRevision :exec
-INSERT INTO quality_current_revisions (source, stream, revision_id)
-VALUES (@source, @stream, @revision_id)
+INSERT INTO quality_current_revisions (source, stream, revision_id, edition)
+SELECT @source, @stream, r.id, e.edition
+FROM quality_revisions r JOIN quality_editions e ON e.id=r.edition_id
+WHERE r.id = @revision_id
 ON CONFLICT (source, stream)
-DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now();
+DO UPDATE SET revision_id = EXCLUDED.revision_id, edition = EXCLUDED.edition, switched_at = now()
+WHERE EXCLUDED.edition >= quality_current_revisions.edition;
 
 -- name: GetCurrentRevision :one
 SELECT revision_id FROM quality_current_revisions
@@ -181,7 +184,7 @@ WHERE edition_id = @edition_id
 ORDER BY period_start ASC, period_label ASC;
 
 -- name: ListStreamResourceHashes :many
-SELECT e.edition, r.sha256
+SELECT e.edition, r.sha256, r.member_name
 FROM quality_resources AS r
 JOIN quality_editions AS e ON e.id = r.edition_id
 WHERE e.source = @source AND e.stream = @stream
@@ -197,4 +200,4 @@ INSERT INTO quality_watermarks (source, stream, last_edition, last_hash)
 VALUES (@source, @stream, @last_edition, @last_hash)
 ON CONFLICT (source, stream)
 DO UPDATE SET last_edition = EXCLUDED.last_edition, last_hash = EXCLUDED.last_hash,
-    updated_at = now();
+    updated_at = now() WHERE EXCLUDED.last_edition>=quality_watermarks.last_edition;

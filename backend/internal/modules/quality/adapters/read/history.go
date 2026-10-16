@@ -69,9 +69,12 @@ func (r *Reader) Revisions(ctx context.Context, source, stream, after string, li
 }
 
 type RevisionResource struct {
-	URL    string `json:"url"`
-	SHA256 string `json:"sha256"`
-	Bytes  int64  `json:"bytes"`
+	Member       string `json:"member_name,omitempty"`
+	MemberSHA256 string `json:"member_sha256,omitempty"`
+	MemberBytes  int64  `json:"member_bytes,omitempty"`
+	URL          string `json:"url"`
+	SHA256       string `json:"sha256"`
+	Bytes        int64  `json:"bytes"`
 }
 
 func (r *Reader) RevisionResources(ctx context.Context, lease Lease) ([]RevisionResource, error) {
@@ -88,7 +91,7 @@ func (r *Reader) RevisionResources(ctx context.Context, lease Lease) ([]Revision
 		return nil, e
 	}
 	for _, row := range rows {
-		out = append(out, RevisionResource{URL: row.Url, SHA256: row.Sha256, Bytes: row.Bytes})
+		out = append(out, RevisionResource{URL: row.Url, SHA256: row.Sha256, Bytes: row.Bytes, Member: row.MemberName, MemberSHA256: row.MemberSha256.String, MemberBytes: row.MemberBytes.Int64})
 	}
 	return out, nil
 }

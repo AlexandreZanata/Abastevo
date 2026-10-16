@@ -39,22 +39,6 @@ func (p *Publisher) PublishEvents(ctx context.Context, in application.EventsInpu
 		Counts: in.Counts, ManifestHash: in.ManifestHash, Periods: in.Periods,
 	}
 	stage := func(q *quality.Queries, editionID, revisionID pgtype.UUID) error {
-		for _, period := range in.Periods {
-			start, derr := pgDate(period.Start)
-			if derr != nil {
-				return derr
-			}
-			end, derr := pgDate(period.End)
-			if derr != nil {
-				return derr
-			}
-			if uerr := q.UpsertPeriod(ctx, quality.UpsertPeriodParams{
-				EditionID: editionID, PeriodLabel: period.Label,
-				PeriodStart: start, PeriodEnd: end,
-			}); uerr != nil {
-				return uerr
-			}
-		}
 		for _, e := range in.Enforcement {
 			occurred, derr := pgDateOrNull(e.OccurredOn)
 			if derr != nil {

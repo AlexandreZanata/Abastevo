@@ -112,4 +112,4 @@ AND r.status IN ('published','superseded','withdrawn') AND r.id> @after_id
 ORDER BY r.id LIMIT @limit_plus_one::int;
 
 -- name: ReadRevisionResources :many
-SELECT url,sha256,bytes FROM quality_revision_resources WHERE revision_id= @revision_id ORDER BY url;
+SELECT url,sha256,bytes,member_name,member_sha256,member_bytes FROM quality_revision_resources WHERE revision_id= @revision_id ORDER BY url;

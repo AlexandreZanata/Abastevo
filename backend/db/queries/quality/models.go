@@ -97,6 +97,7 @@ type QualityCurrentRevision struct {
 	Stream     string             `json:"stream"`
 	RevisionID pgtype.UUID        `json:"revision_id"`
 	SwitchedAt pgtype.Timestamptz `json:"switched_at"`
+	Edition    string             `json:"edition"`
 }
 
 type QualityEdition struct {
@@ -207,10 +208,13 @@ type QualityReportReviewTarget struct {
 }
 
 type QualityResource struct {
-	EditionID pgtype.UUID `json:"edition_id"`
-	Url       string      `json:"url"`
-	Sha256    string      `json:"sha256"`
-	Bytes     int64       `json:"bytes"`
+	EditionID    pgtype.UUID `json:"edition_id"`
+	Url          string      `json:"url"`
+	Sha256       string      `json:"sha256"`
+	Bytes        int64       `json:"bytes"`
+	MemberName   string      `json:"member_name"`
+	MemberSha256 pgtype.Text `json:"member_sha256"`
+	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
 type QualityRevision struct {
@@ -242,10 +246,13 @@ type QualityRevisionProvenance struct {
 }
 
 type QualityRevisionResource struct {
-	RevisionID pgtype.UUID `json:"revision_id"`
-	Url        string      `json:"url"`
-	Sha256     string      `json:"sha256"`
-	Bytes      int64       `json:"bytes"`
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	Url          string      `json:"url"`
+	Sha256       string      `json:"sha256"`
+	Bytes        int64       `json:"bytes"`
+	MemberName   string      `json:"member_name"`
+	MemberSha256 pgtype.Text `json:"member_sha256"`
+	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
 type QualitySanctionEvent struct {

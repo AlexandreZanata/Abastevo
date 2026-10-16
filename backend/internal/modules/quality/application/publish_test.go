@@ -54,3 +54,33 @@ func TestValidateRefusals(t *testing.T) {
 		t.Error("malformed fingerprint accepted")
 	}
 }
+
+func TestPublicationMemberIdentityAndPeriods(t *testing.T) {
+	good := Resource{Member: "2025/PMQC_2025_01.csv", MemberSHA256: strings.Repeat("a", 64), MemberBytes: 3}
+	if e := good.ValidateMember(); e != nil {
+		t.Fatal(e)
+	}
+	for _, name := range []string{"../escape.csv", "/root.csv", "2025/../file.csv", "a\\b.csv", "a\x00b.csv", "."} {
+		bad := good
+		bad.Member = name
+		if e := bad.ValidateMember(); e == nil {
+			t.Errorf("unsafe member accepted: %q", name)
+		}
+	}
+	for _, change := range []func(*Resource){func(r *Resource) { r.Member = "" }, func(r *Resource) { r.MemberSHA256 = strings.Repeat("A", 64) }, func(r *Resource) { r.MemberBytes = 0 }, func(r *Resource) { r.MemberBytes = (100 << 20) + 1 }} {
+		bad := good
+		change(&bad)
+		if e := bad.ValidateMember(); e == nil {
+			t.Fatal("bad member identity accepted")
+		}
+	}
+	in := validInput()
+	in.Periods = []PeriodInput{{Label: "2026-02", Start: "2026-02-01", End: "2026-02-30"}}
+	if e := in.Validate(); e == nil {
+		t.Fatal("noncalendar PMQC period accepted")
+	}
+	in.Periods = []PeriodInput{{Label: "a", Start: "2026-02-01", End: "2026-02-28"}, {Label: "a", Start: "2026-02-01", End: "2026-02-28"}}
+	if e := in.Validate(); e == nil {
+		t.Fatal("duplicate period accepted")
+	}
+}

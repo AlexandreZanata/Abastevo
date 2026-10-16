@@ -411,3 +411,29 @@ func testUUIDString(t *testing.T, id pgtype.UUID) string {
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32]
 }
+
+func TestDiscoveryAnnualMembersAreSeparateAndReplayStable(t *testing.T) {
+	p := freshJobsDB(t)
+	ctx := context.Background()
+	hash := strings.Repeat("a", 64)
+	maker := &jobsIDMaker{}
+	in := application.Input{Source: "pmqc", Stream: "pmqc-assay-v1", Edition: "2025-01", Resources: []application.Resource{{URL: "https://example.invalid/pmqc_2025.zip", SHA256: hash, Bytes: 10, Member: "2025/PMQC_2025_01.csv", MemberSHA256: strings.Repeat("b", 64), MemberBytes: 20}}, Counts: domain.Counts{}, ManifestHash: strings.Repeat("c", 64)}
+	if _, e := adapters.NewPublisher(p).Publish(ctx, in, maker.next); e != nil {
+		t.Fatal(e)
+	}
+	var got []ImportPayload
+	var keys []string
+	d := Discovery{Pool: p, Source: "pmqc", Stream: "pmqc-assay-v1", List: func(context.Context) ([]application.InventoryEntry, error) {
+		return []application.InventoryEntry{{Label: "2025-01", URL: in.Resources[0].URL, SHA256: hash, Member: "2025/PMQC_2025_01.csv"}, {Label: "2025-02", URL: in.Resources[0].URL, SHA256: hash, Member: "2025/PMQC_2025_02.csv"}}, nil
+	}, Enqueue: func(ctx context.Context, payload ImportPayload, key string) (string, error) {
+		got = append(got, payload)
+		keys = append(keys, key)
+		return "job", nil
+	}}
+	if e := d.Handle(ctx, platformjobs.Job{}); e != nil {
+		t.Fatal(e)
+	}
+	if len(got) != 1 || got[0].Edition != "2025-02" || got[0].Member != "2025/PMQC_2025_02.csv" || !strings.Contains(keys[0], got[0].Member) {
+		t.Fatal("monthly member aliased or lost", got, keys)
+	}
+}
