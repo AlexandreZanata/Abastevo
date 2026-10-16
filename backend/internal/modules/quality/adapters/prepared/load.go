@@ -253,6 +253,15 @@ func scan(ctx context.Context, open OpenStream, o output, expectedRows int64, co
 // returned batch is safe to pass to the existing atomic publisher; no partial
 // batch is returned on failure. The caller must trust the preparer provenance.
 func Load(ctx context.Context, raw []byte, open OpenStream, expected InputIdentity, resolve ResolveSample) (Batch, error) {
+	return load(ctx, raw, open, expected, resolve, false)
+}
+
+// LoadNative refuses the internal eight-column compatibility contract before
+// resolution. A real official archive must carry the verified native contract.
+func LoadNative(ctx context.Context, raw []byte, open OpenStream, expected InputIdentity, resolve ResolveSample) (Batch, error) {
+	return load(ctx, raw, open, expected, resolve, true)
+}
+func load(ctx context.Context, raw []byte, open OpenStream, expected InputIdentity, resolve ResolveSample, nativeOnly bool) (Batch, error) {
 	var out Batch
 	if e := ctx.Err(); e != nil {
 		return out, e
@@ -260,6 +269,9 @@ func Load(ctx context.Context, raw []byte, open OpenStream, expected InputIdenti
 	m, e := parseManifest(raw, expected)
 	if e != nil {
 		return out, e
+	}
+	if nativeOnly && m.Contract != "pmqc-native-19-v2026-10" {
+		return out, refused("native contract required")
 	}
 	if open == nil || resolve == nil {
 		return out, refused("ports unavailable")

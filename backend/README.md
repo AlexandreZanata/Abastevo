@@ -57,6 +57,7 @@ Integration gate, real disposable PostGIS (from the repository root):
 ```sh
 cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
 docker compose -f infra/compose.dev.yml up -d db
 (
@@ -170,3 +171,26 @@ locked crate. Prepared input is integrity-checked before any read-only station
 resolution, and public sample keys include full source/sample/CNPJ/date/fuel scope.
 See [FQ-05C bridge evidence](../docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md).
 This checkpoint does not enable native discovery/import in the deployed worker.
+
+
+The native PMQC archive adapter (FQ-05W2) is file-backed and source-bound. It
+checks bounded ZIP metadata before allocating entries, preserves each monthly
+CSV as a separate edition, and runs only the configured trusted preparer in a
+private workspace. Unsupported source contracts fail before Directory resolution.
+Native worker composition/activation is still pending; this adapter alone does
+not import anything into a deployed database.
+
+For explicit offline source evidence, acquire the official archives separately
+into a private directory and run from backend/ (paths are local, never committed):
+
+```sh
+ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality \
+ANPFUEL_TEST_QUALITY_SEPTEMBER_ZIP=/private/pmqc_2026_09.zip \
+ANPFUEL_TEST_QUALITY_ANNUAL_ZIP=/private/pmqc_2025.zip \
+go test -count=1 -v -tags=integration,qualitysource ./internal/modules/quality/adapters/native -run TestOfficialArchivePreparationManual
+```
+
+The manual source test pins exact acquisition hashes, logs counts only and
+publishes nothing. January 2025 includes ISO date-time fields currently held in
+quarantine; dated source compatibility must be completed before historical
+activation. See [FQ-05W2](../docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md).

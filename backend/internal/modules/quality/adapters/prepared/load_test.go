@@ -294,3 +294,13 @@ func TestPreparedReviewDecisionsNeverActivateCandidates(t *testing.T) {
 		t.Fatal("cancelled preparation did work", e, opens)
 	}
 }
+
+func TestNativeIntakeRefusesInternalContractBeforeOpeningStreams(t *testing.T) {
+	f := fixtureRows(t)
+	f.raw = []byte(strings.Replace(string(f.raw), "pmqc-native-19-v2026-10", "pmqc-prepared-8-v1", 1))
+	calls := 0
+	_, e := LoadNative(context.Background(), f.raw, func(string) (io.ReadCloser, error) { calls++; return nil, errors.New("unreachable") }, f.identity, nil)
+	if e == nil || calls != 0 {
+		t.Fatal("internal contract reached native stream", calls, e)
+	}
+}
