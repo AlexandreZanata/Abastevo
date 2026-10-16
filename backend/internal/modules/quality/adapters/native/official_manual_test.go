@@ -39,6 +39,16 @@ func TestOfficialArchivePreparationManual(t *testing.T) {
 			if result.Batch.Counts.Accepted == 0 || len(result.Periods) != 1 {
 				t.Fatal("empty official preparation")
 			}
+			counts := result.Batch.Counts
+			if counts.Quarantined != 0 {
+				t.Fatal("verified source compatibility regression", counts)
+			}
+			if tc.edition == "2026-09" && (counts.Input != 66225 || counts.Accepted != 34158 || counts.Duplicates != 32067 || result.Batch.ManifestHash != "4cfde2093b610127112880c79c0dd82e2c79876ea7564e994441035bb82119ba") {
+				t.Fatal("date-only source manifest drift", counts, result.Batch.ManifestHash)
+			}
+			if tc.edition == "2025-01" && (counts.Input != 96239 || counts.Accepted != 44544 || counts.Duplicates != 51695) {
+				t.Fatal("historical clock accounting drift", counts)
+			}
 			t.Logf("editions=%d input=%d accepted=%d duplicate=%d quarantine=%d member_sha256=%s member_bytes=%d", len(entries), result.Batch.Counts.Input, result.Batch.Counts.Accepted, result.Batch.Counts.Duplicates, result.Batch.Counts.Quarantined, result.Resource.MemberSHA256, result.Resource.MemberBytes)
 		})
 	}

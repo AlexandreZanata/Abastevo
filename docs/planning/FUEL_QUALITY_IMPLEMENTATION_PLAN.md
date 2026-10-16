@@ -374,6 +374,8 @@ change. All dependencies below are source checkpoints unless explicitly live.
   outputs. Existing coordinate outputs/registry tests stay compatible.
 - Recovery: disable new adapter/output; no change to existing loader artifacts.
 
+Native historical source clocks: [FQ-02C](../backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md), LOCAL_DONE / INTEGRATION_PENDING. The versioned native contract preserves verified original unzoned clocks and derives calendar days without truncating source provenance.
+
 ### FQ-03 — Identity resolution and review policy (S)
 
 - Depends: FQ-01; Directory audit reconciled. BUC-FQ-02.

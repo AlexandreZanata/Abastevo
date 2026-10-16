@@ -27,16 +27,17 @@ type Resource struct {
 // AssayInput is one staged determination. Identity and grouping follow the
 // domain contracts; the publisher persists them verbatim.
 type AssayInput struct {
-	SampleRef   string
-	AssayRef    string
-	SourceCNPJ  string
-	ObservedOn  string
-	Fuel        string
-	ResultText  string
-	Unit        string
-	Conformity  string
-	EvidenceRef string
-	Fingerprint string
+	SampleRef        string
+	AssayRef         string
+	SourceCNPJ       string
+	ObservedOn       string
+	SourceObservedAt string
+	Fuel             string
+	ResultText       string
+	Unit             string
+	Conformity       string
+	EvidenceRef      string
+	Fingerprint      string
 }
 
 // LinkInput is one staged station association. StationID is empty for
@@ -100,6 +101,12 @@ func (in Input) Validate() error {
 		return err
 	}
 	for _, a := range in.Assays {
+		if a.SourceObservedAt != "" {
+			day, ok := domain.SourceCollectionDay(a.SourceObservedAt)
+			if !ok || len(a.SourceObservedAt) != 19 || day != a.ObservedOn {
+				return errors.New("quality: invalid source collection clock")
+			}
+		}
 		if strings.TrimSpace(a.SampleRef) == "" || strings.TrimSpace(a.AssayRef) == "" {
 			return domain.ErrMissingIdentifier
 		}

@@ -237,6 +237,9 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 			"result_text": a.ResultText, "unit": a.Unit,
 			"conformity": a.Conformity, "evidence_ref": a.EvidenceRef,
 		})
+		if a.SourceObservedAt != "" {
+			wire[len(wire)-1]["source_observed_at"] = a.SourceObservedAt
+		}
 	}
 	body, _ := json.Marshal(map[string]any{
 		"items": wire, "next_cursor": next,
@@ -278,10 +281,13 @@ func (h Handler) sample(w http.ResponseWriter, r *http.Request) {
 	wire := make([]map[string]any, 0, len(detail.Assays))
 	for _, a := range detail.Assays {
 		wire = append(wire, map[string]any{
-			"id": a.ID, "assay_ref": a.AssayRef, "observed_on": a.ObservedOn,
+			"id": a.ID, "sample_ref": a.SampleRef, "assay_ref": a.AssayRef, "observed_on": a.ObservedOn,
 			"fuel_product": a.Fuel, "result_text": a.ResultText, "unit": a.Unit,
 			"conformity": a.Conformity, "evidence_ref": a.EvidenceRef,
 		})
+		if a.SourceObservedAt != "" {
+			wire[len(wire)-1]["source_observed_at"] = a.SourceObservedAt
+		}
 	}
 	links := make([]map[string]any, 0, len(detail.Links))
 	for _, l := range detail.Links {

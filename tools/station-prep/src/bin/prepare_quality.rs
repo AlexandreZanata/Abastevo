@@ -58,7 +58,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let assays = emit(&out.join("assays.jsonl"), &batch.assays)?;
     let duplicates = emit(&out.join("duplicates.jsonl"), &batch.duplicates)?;
     let quarantine = emit(&out.join("quarantine.jsonl"), &batch.quarantine)?;
-    let manifest = serde_json::json!({"schema_version":"quality-prepared-v1","input_contract":if native{"pmqc-native-19-v2026-10"}else{"pmqc-prepared-8-v1"},"source_file":name,"input_bytes":input_bytes,"input_sha256":input_hash,"manifest_hash":batch.manifest_hash(),"counts":{"input":batch.counts.input,"accepted":batch.counts.accepted,"duplicates":batch.counts.duplicates,"quarantined":batch.counts.quarantined},"outputs":[{"file":"assays.jsonl","bytes":assays.0,"sha256":assays.1},{"file":"duplicates.jsonl","bytes":duplicates.0,"sha256":duplicates.1},{"file":"quarantine.jsonl","bytes":quarantine.0,"sha256":quarantine.1}]});
+    let manifest = serde_json::json!({"schema_version":"quality-prepared-v1","input_contract":if native{"pmqc-native-19-v2026-10b"}else{"pmqc-prepared-8-v1"},"source_file":name,"input_bytes":input_bytes,"input_sha256":input_hash,"manifest_hash":batch.manifest_hash(),"counts":{"input":batch.counts.input,"accepted":batch.counts.accepted,"duplicates":batch.counts.duplicates,"quarantined":batch.counts.quarantined},"outputs":[{"file":"assays.jsonl","bytes":assays.0,"sha256":assays.1},{"file":"duplicates.jsonl","bytes":duplicates.0,"sha256":duplicates.1},{"file":"quarantine.jsonl","bytes":quarantine.0,"sha256":quarantine.1}]});
     let mut f = std::fs::File::create_new(out.join("manifest.partial"))?;
     serde_json::to_writer_pretty(&mut f, &manifest)?;
     f.write_all(b"\n")?;

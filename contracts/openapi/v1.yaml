@@ -7624,6 +7624,10 @@ components:
         sample_ref: {type: string, example: S-001}
         assay_ref: {type: string, example: ASPECTO}
         observed_on: {type: string, format: date}
+        source_observed_at:
+          type: string
+          description: Original unzoned official collection clock, when supplied; no timezone inferred.
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2} (0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
         result_text: {type: string, example: '181,5'}
         unit: {type: string, example: '°C'}

@@ -81,7 +81,7 @@ func (q *Queries) ActionPageByRevision(ctx context.Context, arg ActionPageByRevi
 
 const assayPageByRevision = `-- name: AssayPageByRevision :many
 SELECT a.id, a.sample_ref, a.assay_ref, a.observed_on, a.fuel,
-    a.result_text, a.unit, a.conformity, a.evidence_ref
+    a.result_text, a.unit, a.conformity, a.evidence_ref, a.source_observed_at
 FROM quality_assays AS a
 JOIN quality_links AS l ON l.revision_id = a.revision_id
     AND l.active AND l.station_id = $1
@@ -105,15 +105,16 @@ type AssayPageByRevisionParams struct {
 }
 
 type AssayPageByRevisionRow struct {
-	ID          pgtype.UUID `json:"id"`
-	SampleRef   string      `json:"sample_ref"`
-	AssayRef    string      `json:"assay_ref"`
-	ObservedOn  pgtype.Date `json:"observed_on"`
-	Fuel        string      `json:"fuel"`
-	ResultText  string      `json:"result_text"`
-	Unit        string      `json:"unit"`
-	Conformity  string      `json:"conformity"`
-	EvidenceRef string      `json:"evidence_ref"`
+	ID               pgtype.UUID `json:"id"`
+	SampleRef        string      `json:"sample_ref"`
+	AssayRef         string      `json:"assay_ref"`
+	ObservedOn       pgtype.Date `json:"observed_on"`
+	Fuel             string      `json:"fuel"`
+	ResultText       string      `json:"result_text"`
+	Unit             string      `json:"unit"`
+	Conformity       string      `json:"conformity"`
+	EvidenceRef      string      `json:"evidence_ref"`
+	SourceObservedAt pgtype.Text `json:"source_observed_at"`
 }
 
 func (q *Queries) AssayPageByRevision(ctx context.Context, arg AssayPageByRevisionParams) ([]AssayPageByRevisionRow, error) {
@@ -143,6 +144,7 @@ func (q *Queries) AssayPageByRevision(ctx context.Context, arg AssayPageByRevisi
 			&i.Unit,
 			&i.Conformity,
 			&i.EvidenceRef,
+			&i.SourceObservedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -416,7 +418,7 @@ func (q *Queries) RevisionLeaseByStream(ctx context.Context, arg RevisionLeaseBy
 
 const sampleAssaysByRevision = `-- name: SampleAssaysByRevision :many
 SELECT a.id, a.sample_ref, a.assay_ref, a.observed_on, a.fuel,
-    a.result_text, a.unit, a.conformity, a.evidence_ref
+    a.result_text, a.unit, a.conformity, a.evidence_ref, a.source_observed_at
 FROM quality_assays AS a
 WHERE a.revision_id = $1 AND a.sample_ref = $2
 ORDER BY a.assay_ref ASC, a.id::text ASC
@@ -428,15 +430,16 @@ type SampleAssaysByRevisionParams struct {
 }
 
 type SampleAssaysByRevisionRow struct {
-	ID          pgtype.UUID `json:"id"`
-	SampleRef   string      `json:"sample_ref"`
-	AssayRef    string      `json:"assay_ref"`
-	ObservedOn  pgtype.Date `json:"observed_on"`
-	Fuel        string      `json:"fuel"`
-	ResultText  string      `json:"result_text"`
-	Unit        string      `json:"unit"`
-	Conformity  string      `json:"conformity"`
-	EvidenceRef string      `json:"evidence_ref"`
+	ID               pgtype.UUID `json:"id"`
+	SampleRef        string      `json:"sample_ref"`
+	AssayRef         string      `json:"assay_ref"`
+	ObservedOn       pgtype.Date `json:"observed_on"`
+	Fuel             string      `json:"fuel"`
+	ResultText       string      `json:"result_text"`
+	Unit             string      `json:"unit"`
+	Conformity       string      `json:"conformity"`
+	EvidenceRef      string      `json:"evidence_ref"`
+	SourceObservedAt pgtype.Text `json:"source_observed_at"`
 }
 
 func (q *Queries) SampleAssaysByRevision(ctx context.Context, arg SampleAssaysByRevisionParams) ([]SampleAssaysByRevisionRow, error) {
@@ -458,6 +461,7 @@ func (q *Queries) SampleAssaysByRevision(ctx context.Context, arg SampleAssaysBy
 			&i.Unit,
 			&i.Conformity,
 			&i.EvidenceRef,
+			&i.SourceObservedAt,
 		); err != nil {
 			return nil, err
 		}

@@ -349,7 +349,7 @@ pub fn parse_quality_assays(
             || observed.is_empty()
             || (native
                 && (!sample.bytes().all(|b| b.is_ascii_digit())
-                    || !valid_collection_date(&observed)))
+                    || !valid_collection_clock(&observed)))
         {
             counts.quarantined += 1;
             quarantine.push(quarantine_row(
@@ -471,6 +471,37 @@ pub fn parse_quality_assays(
         duplicates,
         quarantine,
     })
+}
+
+fn valid_collection_clock(s: &str) -> bool {
+    if s.len() == 10 {
+        return valid_collection_date(s);
+    }
+    let b = s.as_bytes();
+    if b.len() != 19
+        || b[10] != b' '
+        || b[13] != b':'
+        || b[16] != b':'
+        || ![11, 12, 14, 15, 17, 18]
+            .iter()
+            .all(|i| b[*i].is_ascii_digit())
+    {
+        return false;
+    }
+    // Validate ASCII date bytes before slicing; never panic on UTF-8 input.
+    if !b[..10].iter().enumerate().all(|(i, c)| {
+        if i == 4 || i == 7 {
+            *c == b'-'
+        } else {
+            c.is_ascii_digit()
+        }
+    }) {
+        return false;
+    }
+    valid_collection_date(&s[..10])
+        && &s[11..13] <= "23"
+        && &s[14..16] <= "59"
+        && &s[17..19] <= "59"
 }
 
 fn valid_collection_date(s: &str) -> bool {

@@ -78,18 +78,19 @@ type DirectoryStation struct {
 }
 
 type QualityAssay struct {
-	ID          pgtype.UUID `json:"id"`
-	RevisionID  pgtype.UUID `json:"revision_id"`
-	SampleRef   string      `json:"sample_ref"`
-	AssayRef    string      `json:"assay_ref"`
-	SourceCnpj  string      `json:"source_cnpj"`
-	ObservedOn  pgtype.Date `json:"observed_on"`
-	Fuel        string      `json:"fuel"`
-	ResultText  string      `json:"result_text"`
-	Unit        string      `json:"unit"`
-	Conformity  string      `json:"conformity"`
-	EvidenceRef string      `json:"evidence_ref"`
-	Fingerprint string      `json:"fingerprint"`
+	ID               pgtype.UUID `json:"id"`
+	RevisionID       pgtype.UUID `json:"revision_id"`
+	SampleRef        string      `json:"sample_ref"`
+	AssayRef         string      `json:"assay_ref"`
+	SourceCnpj       string      `json:"source_cnpj"`
+	ObservedOn       pgtype.Date `json:"observed_on"`
+	Fuel             string      `json:"fuel"`
+	ResultText       string      `json:"result_text"`
+	Unit             string      `json:"unit"`
+	Conformity       string      `json:"conformity"`
+	EvidenceRef      string      `json:"evidence_ref"`
+	Fingerprint      string      `json:"fingerprint"`
+	SourceObservedAt pgtype.Text `json:"source_observed_at"`
 }
 
 type QualityCurrentRevision struct {

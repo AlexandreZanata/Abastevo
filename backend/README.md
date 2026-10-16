@@ -191,6 +191,4 @@ go test -count=1 -v -tags=integration,qualitysource ./internal/modules/quality/a
 ```
 
 The manual source test pins exact acquisition hashes, logs counts only and
-publishes nothing. January 2025 includes ISO date-time fields currently held in
-quarantine; dated source compatibility must be completed before historical
-activation. See [FQ-05W2](../docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md).
+publishes nothing. January 2025 source clocks are preserved by [FQ-02C](../docs/backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md), with zero date-format quarantine and unchanged September manifest. Native Directory/fetch/worker composition is still required before historical activation. See [FQ-05W2](../docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md).

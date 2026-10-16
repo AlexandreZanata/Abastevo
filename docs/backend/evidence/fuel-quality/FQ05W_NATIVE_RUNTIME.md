@@ -3,7 +3,7 @@
 Status: IN_PROGRESS / INTEGRATION_PENDING. Opened 2026-10-16.
 
 Persistence prerequisite: [FQ-05W1](FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE.
-[FQ-05W2 archive/process](FQ05W2_ARCHIVE_PROCESS.md) is LOCAL_DONE; discovered historical date-time compatibility is FQ-02C before activation. Directory/fetch/worker/image acceptance below remains IN_PROGRESS.
+[FQ-05W2 archive/process](FQ05W2_ARCHIVE_PROCESS.md) is LOCAL_DONE; historical date-time compatibility is now LOCAL_DONE in [FQ-02C](FQ02C_SOURCE_CLOCKS.md). Directory/fetch/worker/image acceptance below remains IN_PROGRESS.
 
 Before behavior: B-BR-FQ-01/02/03/04/05/07/12/13/16, BUC-FQ-01/02/03/04.
 Compose the real pinned Rust preparer, bounded official fetch/archive handling,

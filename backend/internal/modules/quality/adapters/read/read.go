@@ -112,15 +112,16 @@ type FuelCell struct {
 
 // Assay is one published determination without source identifiers.
 type Assay struct {
-	ID          string
-	SampleRef   string
-	AssayRef    string
-	ObservedOn  string
-	Fuel        string
-	ResultText  string
-	Unit        string
-	Conformity  string
-	EvidenceRef string
+	ID               string
+	SampleRef        string
+	AssayRef         string
+	ObservedOn       string
+	SourceObservedAt string
+	Fuel             string
+	ResultText       string
+	Unit             string
+	Conformity       string
+	EvidenceRef      string
 }
 
 // SampleLink is one persisted station association of a sample.
@@ -311,15 +312,15 @@ func (r *Reader) AssaysAtLease(ctx context.Context, lease Lease, stationID, fuel
 			return out, dateString(last.ObservedOn) + "|" + uuidString(last.ID), lease, nil
 		}
 		out = append(out, wireAssay(row.SampleRef, row.AssayRef, row.ObservedOn, row.Fuel,
-			row.ResultText, row.Unit, row.Conformity, row.EvidenceRef, uuidString(row.ID)))
+			row.ResultText, row.Unit, row.Conformity, row.EvidenceRef, uuidString(row.ID), row.SourceObservedAt.String))
 	}
 	return out, "", lease, nil
 }
 
-func wireAssay(sampleRef, assayRef string, observed pgtype.Date, fuel, result, unit, conformity, evidence, id string) Assay {
+func wireAssay(sampleRef, assayRef string, observed pgtype.Date, fuel, result, unit, conformity, evidence, id, sourceObservedAt string) Assay {
 	return Assay{
 		ID: id, SampleRef: sampleRef, AssayRef: assayRef,
-		ObservedOn: dateString(observed), Fuel: fuel, ResultText: result,
+		ObservedOn: dateString(observed), SourceObservedAt: sourceObservedAt, Fuel: fuel, ResultText: result,
 		Unit: unit, Conformity: conformity, EvidenceRef: evidence,
 	}
 }
@@ -345,7 +346,7 @@ func (r *Reader) Sample(ctx context.Context, now time.Time, source, stream, samp
 	for _, row := range rows {
 		detail.Assays = append(detail.Assays, wireAssay(row.SampleRef, row.AssayRef,
 			row.ObservedOn, row.Fuel, row.ResultText, row.Unit, row.Conformity,
-			row.EvidenceRef, uuidString(row.ID)))
+			row.EvidenceRef, uuidString(row.ID), row.SourceObservedAt.String))
 	}
 	links, err := q.SampleLinksByRevision(ctx, quality.SampleLinksByRevisionParams{
 		RevisionID: revisionID, RecordKey: stream + ":" + sampleRef,

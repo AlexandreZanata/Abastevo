@@ -304,3 +304,25 @@ func TestNativeIntakeRefusesInternalContractBeforeOpeningStreams(t *testing.T) {
 		t.Fatal("internal contract reached native stream", calls, e)
 	}
 }
+
+func TestPreparedSourceClockRequiresVersionAndPreservesDay(t *testing.T) {
+	source := row()
+	source["observed_at"] = "2026-09-04 12:34:56"
+	f := fixtureRows(t, source)
+	calls := 0
+	resolve := func(ctx context.Context, r domain.SourceRecord) (domain.Decision, error) {
+		calls++
+		if r.ObservedAt != "2026-09-04" {
+			t.Fatal("source day changed", r.ObservedAt)
+		}
+		return unbound(ctx, r)
+	}
+	if _, e := LoadNative(context.Background(), f.raw, f.open, f.identity, resolve); e == nil || calls != 0 {
+		t.Fatal("old native contract accepted extended clock", calls, e)
+	}
+	f.raw = []byte(strings.Replace(string(f.raw), "pmqc-native-19-v2026-10", "pmqc-native-19-v2026-10b", 1))
+	batch, e := LoadNative(context.Background(), f.raw, f.open, f.identity, resolve)
+	if e != nil || calls != 1 || len(batch.Assays) != 1 || batch.Assays[0].ObservedOn != "2026-09-04" || batch.Assays[0].SourceObservedAt != "2026-09-04 12:34:56" {
+		t.Fatal("source clock lost", calls, e)
+	}
+}

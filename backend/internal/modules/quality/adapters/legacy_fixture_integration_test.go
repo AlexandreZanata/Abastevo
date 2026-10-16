@@ -48,7 +48,7 @@ func seedLegacyAssayRevision(t *testing.T, p *pgxpool.Pool, in application.Input
 		if e != nil {
 			t.Fatal(e)
 		}
-		if _, e = q.StageAssay(ctx, quality.StageAssayParams{ID: id, RevisionID: rid, SampleRef: a.SampleRef, AssayRef: a.AssayRef, SourceCnpj: a.SourceCNPJ, ObservedOn: date, Fuel: a.Fuel, ResultText: a.ResultText, Unit: a.Unit, Conformity: a.Conformity, EvidenceRef: a.EvidenceRef, Fingerprint: a.Fingerprint}); e != nil {
+		if _, e = legacyStageAssay(ctx, p, quality.StageAssayParams{ID: id, RevisionID: rid, SampleRef: a.SampleRef, AssayRef: a.AssayRef, SourceCnpj: a.SourceCNPJ, ObservedOn: date, Fuel: a.Fuel, ResultText: a.ResultText, Unit: a.Unit, Conformity: a.Conformity, EvidenceRef: a.EvidenceRef, Fingerprint: a.Fingerprint}); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -66,6 +66,20 @@ func legacyAddResource(ctx context.Context, p *pgxpool.Pool, eid pgtype.UUID, r 
 	return err
 }
 func legacySetCurrent(ctx context.Context, p *pgxpool.Pool, in application.Input, rid pgtype.UUID) error {
+	var hasEdition bool
+	if e := p.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='quality_current_revisions' AND column_name='edition')").Scan(&hasEdition); e != nil {
+		return e
+	}
+	if hasEdition {
+		_, e := p.Exec(ctx, "INSERT INTO quality_current_revisions(source,stream,revision_id,edition) VALUES($1,$2,$3,$4)", in.Source, in.Stream, rid, in.Edition)
+		return e
+	}
 	_, err := p.Exec(ctx, "INSERT INTO quality_current_revisions(source,stream,revision_id) VALUES($1,$2,$3)", in.Source, in.Stream, rid)
 	return err
+}
+
+func legacyStageAssay(ctx context.Context, p *pgxpool.Pool, a quality.StageAssayParams) (pgtype.UUID, error) {
+	var id pgtype.UUID
+	err := p.QueryRow(ctx, "INSERT INTO quality_assays(id,revision_id,sample_ref,assay_ref,source_cnpj,observed_on,fuel,result_text,unit,conformity,evidence_ref,fingerprint) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id", a.ID, a.RevisionID, a.SampleRef, a.AssayRef, a.SourceCnpj, a.ObservedOn, a.Fuel, a.ResultText, a.Unit, a.Conformity, a.EvidenceRef, a.Fingerprint).Scan(&id)
+	return id, err
 }

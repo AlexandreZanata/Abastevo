@@ -3622,7 +3622,7 @@ ranked consumer GME-05 remain deferred; no leaderboard or backend change.
 
 ### FQ-PLAN — Professional quality implementation planning
 
-- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-09, FQ-02B and FQ-04c LOCAL_DONE, FQ-10–FQ-17 implementation PLANNED (FQ-10 D-held per FQ-09/FQ-02B sequencing).
+- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-09, FQ-02B/C, FQ-04c, FQ-08H and document-free FQ-11 LOCAL_DONE; FQ-05W native runtime composition IN_PROGRESS; FQ-12–FQ-17 implementation PLANNED, FQ-10/document scope D-held.
 - **Goal:** Define a source-auditable quality history, safe canonical station linkage, consumer case responses and an explainable score without conflating official findings, personal ratings or community signals.
 - **Inputs:** Maintainer request/attachment 2026-10-14; current PROGRESS and actual dev code; existing RST/ING-AUDIT evidence; verified ANP PMQC, enforcement, fines, retailer registry and complaint guidance.
 - **Canonical scope:** [Implementation plan](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md), [target B-BR-FQ-01–16 / BUC-FQ-01–09](docs/product/FUEL_QUALITY_TARGET_CONTRACT.md) and [continuation prompt](docs/planning/FUEL_QUALITY_EXECUTION_PROMPT.md).
@@ -3652,7 +3652,7 @@ Execution index; task details/tests/recovery are canonical in the linked plan:
 - [FQ-16 — Offline, privacy and compatibility](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-16--offline-privacy-and-end-to-end-compatibility-m).
 - [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
 
-Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)); purchase-supported independence remains D-held. Historical read completion is LOCAL_DONE ([FQ-08H](docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md)). Prepared bridge is LOCAL_DONE ([FQ-05C](docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md)); native archive/Directory/worker composition remains the next prerequisite, then FQ-12 with current-head reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
+Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)); purchase-supported independence remains D-held. Historical read completion is LOCAL_DONE ([FQ-08H](docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md)). Prepared bridge is LOCAL_DONE ([FQ-05C](docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md)); [monthly provenance FQ-05W1](docs/backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), [bounded archive/process FQ-05W2](docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md) and [historical source clocks FQ-02C](docs/backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md) are LOCAL_DONE. Remaining native Directory/fetch/worker/image composition is the next prerequisite, then FQ-12 with current-head reconciliation. "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
 
 ## A–D app consolidation planning
 

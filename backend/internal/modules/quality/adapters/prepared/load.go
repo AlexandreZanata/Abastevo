@@ -106,7 +106,7 @@ func parseManifest(raw []byte, expected InputIdentity) (manifest, error) {
 	if len(raw) > 1<<20 || !utf8.Valid(raw) || httpapi.DecodeJSON(raw, &m) != nil {
 		return m, refused("invalid manifest")
 	}
-	if m.Schema != "quality-prepared-v1" || (m.Contract != "pmqc-native-19-v2026-10" && m.Contract != "pmqc-prepared-8-v1") || !field(m.SourceFile, 1, 255) || path.Base(m.SourceFile) != m.SourceFile || strings.Contains(m.SourceFile, "\\") || m.SourceFile == "." || m.SourceFile == ".." || strings.IndexFunc(m.SourceFile, unicode.IsControl) >= 0 {
+	if m.Schema != "quality-prepared-v1" || (m.Contract != "pmqc-native-19-v2026-10" && m.Contract != "pmqc-native-19-v2026-10b" && m.Contract != "pmqc-prepared-8-v1") || !field(m.SourceFile, 1, 255) || path.Base(m.SourceFile) != m.SourceFile || strings.Contains(m.SourceFile, "\\") || m.SourceFile == "." || m.SourceFile == ".." || strings.IndexFunc(m.SourceFile, unicode.IsControl) >= 0 {
 		return m, refused("unknown preparation contract")
 	}
 	if !validHash(expected.SHA256) || expected.Bytes <= 0 || expected.Bytes > MaxBytes || m.InputHash != expected.SHA256 || m.InputBytes != expected.Bytes || !validHash(m.ManifestHash) {
@@ -150,7 +150,8 @@ func validateAssay(raw []byte, contract string) (assay, error) {
 	if e != nil || id.Normalized() != a.SourceKey {
 		return a, refused("assay identifier")
 	}
-	if !field(a.SampleRef, 1, 128) || !domain.ValidDay(a.ObservedAt) || !field(a.AssayRef, 1, 128) || !field(*a.Result, 0, 1024) || !field(*a.Unit, 0, 64) || !field(a.Evidence, 1, 512) || (contract == "pmqc-prepared-8-v1" && *a.Result == "") {
+	_, validClock := domain.SourceCollectionDay(a.ObservedAt)
+	if !field(a.SampleRef, 1, 128) || !validClock || (len(a.ObservedAt) != 10 && contract != "pmqc-native-19-v2026-10b") || !field(a.AssayRef, 1, 128) || !field(*a.Result, 0, 1024) || !field(*a.Unit, 0, 64) || !field(a.Evidence, 1, 512) || (contract == "pmqc-prepared-8-v1" && *a.Result == "") {
 		return a, refused("assay field")
 	}
 	fuel := false
@@ -270,7 +271,7 @@ func load(ctx context.Context, raw []byte, open OpenStream, expected InputIdenti
 	if e != nil {
 		return out, e
 	}
-	if nativeOnly && m.Contract != "pmqc-native-19-v2026-10" {
+	if nativeOnly && m.Contract != "pmqc-native-19-v2026-10" && m.Contract != "pmqc-native-19-v2026-10b" {
 		return out, refused("native contract required")
 	}
 	if open == nil || resolve == nil {
@@ -308,10 +309,10 @@ func load(ctx context.Context, raw []byte, open OpenStream, expected InputIdenti
 		havePrevious = true
 		sample := sampleID(a)
 		if _, ok := groups[sample]; !ok {
-			groups[sample] = domain.SourceRecord{RecordKey: "pmqc-assay-v1:" + sample, CNPJ: a.SourceKey, ObservedAt: a.ObservedAt}
+			groups[sample] = domain.SourceRecord{RecordKey: "pmqc-assay-v1:" + sample, CNPJ: a.SourceKey, ObservedAt: sourceDay(a.ObservedAt)}
 			order = append(order, sample)
 		}
-		out.Assays = append(out.Assays, application.AssayInput{SampleRef: sample, AssayRef: a.AssayRef, SourceCNPJ: a.SourceKey, ObservedOn: a.ObservedAt, Fuel: a.Fuel, ResultText: *a.Result, Unit: *a.Unit, Conformity: a.Conformity, EvidenceRef: a.Evidence, Fingerprint: fp})
+		out.Assays = append(out.Assays, application.AssayInput{SampleRef: sample, AssayRef: a.AssayRef, SourceCNPJ: a.SourceKey, ObservedOn: sourceDay(a.ObservedAt), SourceObservedAt: sourceClock(a.ObservedAt), Fuel: a.Fuel, ResultText: *a.Result, Unit: *a.Unit, Conformity: a.Conformity, EvidenceRef: a.Evidence, Fingerprint: fp})
 		return nil
 	})
 	if e != nil {
@@ -379,4 +380,12 @@ func load(ctx context.Context, raw []byte, open OpenStream, expected InputIdenti
 	out.Counts = domain.Counts{Input: int(*m.Counts.Input), Accepted: int(*m.Counts.Accepted), Duplicates: int(*m.Counts.Duplicates), Quarantined: int(*m.Counts.Quarantined)}
 	out.ManifestHash = m.ManifestHash
 	return out, nil
+}
+
+func sourceDay(raw string) string { day, _ := domain.SourceCollectionDay(raw); return day }
+func sourceClock(raw string) string {
+	if len(raw) == 19 {
+		return raw
+	}
+	return ""
 }

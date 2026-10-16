@@ -43,7 +43,7 @@ ORDER BY a.fuel ASC, a.conformity ASC;
 
 -- name: AssayPageByRevision :many
 SELECT a.id, a.sample_ref, a.assay_ref, a.observed_on, a.fuel,
-    a.result_text, a.unit, a.conformity, a.evidence_ref
+    a.result_text, a.unit, a.conformity, a.evidence_ref, a.source_observed_at
 FROM quality_assays AS a
 JOIN quality_links AS l ON l.revision_id = a.revision_id
     AND l.active AND l.station_id = @station_id
@@ -57,7 +57,7 @@ LIMIT @limit_plus_one::int;
 
 -- name: SampleAssaysByRevision :many
 SELECT a.id, a.sample_ref, a.assay_ref, a.observed_on, a.fuel,
-    a.result_text, a.unit, a.conformity, a.evidence_ref
+    a.result_text, a.unit, a.conformity, a.evidence_ref, a.source_observed_at
 FROM quality_assays AS a
 WHERE a.revision_id = @revision_id AND a.sample_ref = @sample_ref
 ORDER BY a.assay_ref ASC, a.id::text ASC;

@@ -8,6 +8,7 @@ import (
 	parentadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
@@ -100,7 +101,7 @@ func TestQualityHTTPFreezeBeforeConcurrentPublication(t *testing.T) {
 				"UPDATE quality_revisions SET status='superseded' WHERE id='" + old + "'",
 				"INSERT INTO quality_revisions(id,edition_id,status,published_at) SELECT '99999999-9999-4999-8999-999999999999',edition_id,'published',now() FROM quality_revisions WHERE id='" + old + "'",
 				"INSERT INTO quality_revision_provenance(revision_id,provenance_state,input,accepted,duplicates,quarantined,manifest_hash,publication_key) SELECT '99999999-9999-4999-8999-999999999999','VERIFIED',input,accepted,duplicates,quarantined,repeat('f',64),repeat('e',64) FROM quality_revision_provenance WHERE revision_id='" + old + "'",
-				"INSERT INTO quality_assays SELECT gen_random_uuid(),'99999999-9999-4999-8999-999999999999',sample_ref,assay_ref,source_cnpj,observed_on,fuel,'later revision',unit,conformity,evidence_ref,fingerprint FROM quality_assays WHERE revision_id='" + old + "'",
+				"INSERT INTO quality_assays(id,revision_id,sample_ref,assay_ref,source_cnpj,observed_on,fuel,result_text,unit,conformity,evidence_ref,fingerprint) SELECT gen_random_uuid(),'99999999-9999-4999-8999-999999999999',sample_ref,assay_ref,source_cnpj,observed_on,fuel,'later revision',unit,conformity,evidence_ref,fingerprint FROM quality_assays WHERE revision_id='" + old + "'",
 				"INSERT INTO quality_links SELECT gen_random_uuid(),'99999999-9999-4999-8999-999999999999',record_key,station_id,automatic,reason,active FROM quality_links WHERE revision_id='" + old + "'",
 				"UPDATE quality_current_revisions SET revision_id='99999999-9999-4999-8999-999999999999' WHERE source='pmqc'",
 			} {
@@ -190,5 +191,36 @@ func TestQualityMemberProvenanceActualWire(t *testing.T) {
 	}
 	if e = spec.Components.Schemas["QualityRevisionDetail"].Value.VisitJSON(body); e != nil {
 		t.Fatal("member contract", e)
+	}
+}
+
+func TestQualitySourceClockActualWire(t *testing.T) {
+	r, p := freshRouter(t, true)
+	clock := "2026-10-02 12:34:56"
+	in := application.Input{Source: assaySource, Stream: assayStream, Edition: "2026-10", Resources: []application.Resource{{URL: "https://example.invalid/source.zip", SHA256: strings.Repeat("a", 64), Bytes: 30}}, ManifestHash: strings.Repeat("b", 64), Counts: domain.Counts{Input: 1, Accepted: 1}, Assays: []application.AssayInput{{SampleRef: "CLOCK-S", AssayRef: "ASPECTO", SourceCNPJ: "11222333000181", ObservedOn: "2026-10-02", SourceObservedAt: clock, Fuel: "ETHANOL", ResultText: "LII", Conformity: "CONFORMING", EvidenceRef: "source#clock", Fingerprint: strings.Repeat("c", 64)}}, Links: []application.LinkInput{{RecordKey: assayStream + ":CLOCK-S", StationID: httpStation, Automatic: true, Active: true, Reason: "exact cnpj"}}}
+	if _, e := parentadapters.NewPublisher(p).Publish(context.Background(), in, jobs.NewUUIDv4); e != nil {
+		t.Fatal(e)
+	}
+	_, file, _, _ := runtime.Caller(0)
+	spec, e := openapi3.NewLoader().LoadFromFile(filepath.Join(filepath.Dir(file), "../../../../../../contracts/openapi/v1.yaml"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, tc := range []struct{ path, schema, field string }{{"/v1/quality/assays?station_id=" + httpStation, "QualityAssayPage", "items"}, {"/v1/quality/samples/CLOCK-S", "QualitySample", "assays"}} {
+		code, body, _ := get(t, r, tc.path)
+		if code != 200 {
+			t.Fatal(code, body)
+		}
+		rows := body[tc.field].([]any)
+		if len(rows) != 1 {
+			t.Fatal(body)
+		}
+		row := rows[0].(map[string]any)
+		if row["source_observed_at"] != clock || row["observed_on"] != "2026-10-02" {
+			t.Fatal("wire clock truncated or zoned", row)
+		}
+		if e := spec.Components.Schemas[tc.schema].Value.VisitJSON(body); e != nil {
+			t.Fatal(tc.path, e)
+		}
 	}
 }

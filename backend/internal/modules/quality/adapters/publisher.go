@@ -122,7 +122,7 @@ func (p *Publisher) Publish(ctx context.Context, in application.Input, newID fun
 				SourceCnpj: a.SourceCNPJ, ObservedOn: observed,
 				Fuel: a.Fuel, ResultText: a.ResultText, Unit: a.Unit,
 				Conformity: a.Conformity, EvidenceRef: a.EvidenceRef,
-				Fingerprint: a.Fingerprint,
+				Fingerprint: a.Fingerprint, SourceObservedAt: pgtype.Text{String: a.SourceObservedAt, Valid: a.SourceObservedAt != ""},
 			}); serr != nil {
 				return serr
 			}

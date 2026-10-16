@@ -100,3 +100,26 @@ func TestRealRustFailureAndResolverOutageAreContained(t *testing.T) {
 		t.Fatal("failed workspace retained", e)
 	}
 }
+
+func TestRealRustSourceClocksStayDistinct(t *testing.T) {
+	runner := realRunner(t)
+	first := strings.Replace(nativeRow, "2025-01-04", "2025-01-04 12:34:56", 1)
+	second := strings.Replace(nativeRow, "2025-01-04", "2025-01-04 12:34:57", 1)
+	p, id := nativeArchive(t, nativeHeader+first+second+first)
+	result, e := runner.Prepare(context.Background(), Request{Path: p, URL: annualURL, Identity: id, Member: "2025/PMQC_2025_01.csv", Edition: "2025-01"}, func(ctx context.Context, r domain.SourceRecord) (domain.Decision, error) {
+		if r.ObservedAt != "2025-01-04" {
+			t.Fatal("Directory received guessed clock", r.ObservedAt)
+		}
+		return unbound(ctx, r)
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	b := result.Batch
+	if b.Counts.Input != 3 || b.Counts.Accepted != 2 || b.Counts.Duplicates != 1 || len(b.Links) != 2 || len(b.Assays) != 2 {
+		t.Fatal("source clocks collapsed", b.Counts, len(b.Links))
+	}
+	if b.Assays[0].SourceObservedAt != "2025-01-04 12:34:56" || b.Assays[1].SourceObservedAt != "2025-01-04 12:34:57" || b.Assays[0].SampleRef == b.Assays[1].SampleRef || b.Assays[0].Fingerprint == b.Assays[1].Fingerprint {
+		t.Fatal("native clock identity lost")
+	}
+}

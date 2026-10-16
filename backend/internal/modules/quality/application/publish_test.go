@@ -84,3 +84,18 @@ func TestPublicationMemberIdentityAndPeriods(t *testing.T) {
 		t.Fatal("duplicate period accepted")
 	}
 }
+
+func TestPublicationRejectsMismatchedSourceClock(t *testing.T) {
+	for _, clock := range []string{"2026-09-05 12:00:00", "2026-09-04", "2026-09-04 24:00:00"} {
+		in := validInput()
+		in.Assays[0].SourceObservedAt = clock
+		if e := in.Validate(); e == nil {
+			t.Fatal("bad source clock accepted", clock)
+		}
+	}
+	in := validInput()
+	in.Assays[0].SourceObservedAt = "2026-09-04 12:00:00"
+	if e := in.Validate(); e != nil {
+		t.Fatal(e)
+	}
+}

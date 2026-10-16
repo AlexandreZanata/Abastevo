@@ -128,3 +128,45 @@ fn native_reorder_and_exact_replay_preserve_sample_support() {
     assert_eq!(x.manifest_hash(), y.manifest_hash());
     assert_eq!(x.assays[0].sample_ref, x.assays[1].sample_ref);
 }
+
+#[test]
+fn native_source_clocks_are_verbatim_and_distinct() {
+    let base = row("ETANOL HIDRATADO COMUM", "Aspecto", "LII", "", "Sim");
+    let first = base.replace("2026-09-04", "2026-09-04 12:34:56");
+    let second = base.replace("2026-09-04", "2026-09-04 12:34:57");
+    let b = parse_quality_assays(
+        "clocks.csv",
+        format!("{HEADER}{first}{second}{first}").into_bytes(),
+        &Limits::default(),
+    )
+    .unwrap();
+    assert_eq!(b.counts.accepted, 2);
+    assert_eq!(b.counts.duplicates, 1);
+    assert_eq!(b.counts.quarantined, 0);
+    assert_eq!(b.assays[0].observed_at, "2026-09-04 12:34:56");
+    assert_eq!(b.assays[1].observed_at, "2026-09-04 12:34:57");
+}
+
+#[test]
+fn native_source_clock_failures_stay_quarantined() {
+    for clock in [
+        "2026-02-30 12:00:00",
+        "2026-09-04 24:00:00",
+        "2026-09-04 12:60:00",
+        "2026-09-04 12:00:60",
+        "2026-09-04T12:00:00",
+        "2026-09-04 12:00:00Z",
+        "2026-09-04 12:00:00.1",
+    ] {
+        let raw =
+            row("ETANOL HIDRATADO COMUM", "Aspecto", "LII", "", "Sim").replace("2026-09-04", clock);
+        let b = parse_quality_assays(
+            "invalid-clock.csv",
+            format!("{HEADER}{raw}").into_bytes(),
+            &Limits::default(),
+        )
+        .unwrap();
+        assert_eq!(b.counts.quarantined, 1, "clock: {clock}");
+        assert!(b.assays.is_empty());
+    }
+}

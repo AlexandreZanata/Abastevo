@@ -342,7 +342,7 @@ func (q *Queries) ListEditionPeriods(ctx context.Context, editionID pgtype.UUID)
 
 const listRevisionAssays = `-- name: ListRevisionAssays :many
 SELECT id, revision_id, sample_ref, assay_ref, source_cnpj, observed_on, fuel,
-    result_text, unit, conformity, evidence_ref, fingerprint
+    result_text, unit, conformity, evidence_ref, fingerprint, source_observed_at
 FROM quality_assays
 WHERE revision_id = $1
 ORDER BY sample_ref ASC, assay_ref ASC, id ASC
@@ -370,6 +370,7 @@ func (q *Queries) ListRevisionAssays(ctx context.Context, revisionID pgtype.UUID
 			&i.Conformity,
 			&i.EvidenceRef,
 			&i.Fingerprint,
+			&i.SourceObservedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -731,26 +732,27 @@ func (q *Queries) SetWatermark(ctx context.Context, arg SetWatermarkParams) erro
 const stageAssay = `-- name: StageAssay :one
 INSERT INTO quality_assays
     (id, revision_id, sample_ref, assay_ref, source_cnpj, observed_on, fuel,
-     result_text, unit, conformity, evidence_ref, fingerprint)
+     result_text, unit, conformity, evidence_ref, fingerprint, source_observed_at)
 VALUES ($1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10, $11, $12)
+    $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (revision_id, fingerprint) DO NOTHING
 RETURNING id
 `
 
 type StageAssayParams struct {
-	ID          pgtype.UUID `json:"id"`
-	RevisionID  pgtype.UUID `json:"revision_id"`
-	SampleRef   string      `json:"sample_ref"`
-	AssayRef    string      `json:"assay_ref"`
-	SourceCnpj  string      `json:"source_cnpj"`
-	ObservedOn  pgtype.Date `json:"observed_on"`
-	Fuel        string      `json:"fuel"`
-	ResultText  string      `json:"result_text"`
-	Unit        string      `json:"unit"`
-	Conformity  string      `json:"conformity"`
-	EvidenceRef string      `json:"evidence_ref"`
-	Fingerprint string      `json:"fingerprint"`
+	ID               pgtype.UUID `json:"id"`
+	RevisionID       pgtype.UUID `json:"revision_id"`
+	SampleRef        string      `json:"sample_ref"`
+	AssayRef         string      `json:"assay_ref"`
+	SourceCnpj       string      `json:"source_cnpj"`
+	ObservedOn       pgtype.Date `json:"observed_on"`
+	Fuel             string      `json:"fuel"`
+	ResultText       string      `json:"result_text"`
+	Unit             string      `json:"unit"`
+	Conformity       string      `json:"conformity"`
+	EvidenceRef      string      `json:"evidence_ref"`
+	Fingerprint      string      `json:"fingerprint"`
+	SourceObservedAt pgtype.Text `json:"source_observed_at"`
 }
 
 func (q *Queries) StageAssay(ctx context.Context, arg StageAssayParams) (pgtype.UUID, error) {
@@ -767,6 +769,7 @@ func (q *Queries) StageAssay(ctx context.Context, arg StageAssayParams) (pgtype.
 		arg.Conformity,
 		arg.EvidenceRef,
 		arg.Fingerprint,
+		arg.SourceObservedAt,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

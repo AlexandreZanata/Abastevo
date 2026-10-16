@@ -86,9 +86,9 @@ WHERE id = @id AND status = 'published';
 -- name: StageAssay :one
 INSERT INTO quality_assays
     (id, revision_id, sample_ref, assay_ref, source_cnpj, observed_on, fuel,
-     result_text, unit, conformity, evidence_ref, fingerprint)
+     result_text, unit, conformity, evidence_ref, fingerprint, source_observed_at)
 VALUES (@id, @revision_id, @sample_ref, @assay_ref, @source_cnpj, @observed_on,
-    @fuel, @result_text, @unit, @conformity, @evidence_ref, @fingerprint)
+    @fuel, @result_text, @unit, @conformity, @evidence_ref, @fingerprint, @source_observed_at)
 ON CONFLICT (revision_id, fingerprint) DO NOTHING
 RETURNING id;
 
@@ -97,7 +97,7 @@ SELECT count(*) FROM quality_assays WHERE revision_id = @revision_id;
 
 -- name: ListRevisionAssays :many
 SELECT id, revision_id, sample_ref, assay_ref, source_cnpj, observed_on, fuel,
-    result_text, unit, conformity, evidence_ref, fingerprint
+    result_text, unit, conformity, evidence_ref, fingerprint, source_observed_at
 FROM quality_assays
 WHERE revision_id = @revision_id
 ORDER BY sample_ref ASC, assay_ref ASC, id ASC;
