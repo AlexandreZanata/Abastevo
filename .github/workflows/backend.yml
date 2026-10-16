@@ -95,11 +95,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: backend/go.sum
-      - name: Build locked Rust registry preparer
+      - name: Build locked Rust source preparers
         run: |
           rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal
-          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --target-dir "$RUNNER_TEMP/station-prep-target"
+          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --target-dir "$RUNNER_TEMP/station-prep-target"
           echo "ANPFUEL_TEST_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_registry" >> "$GITHUB_ENV"
+          echo "ANPFUEL_TEST_QUALITY_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_quality" >> "$GITHUB_ENV"
       - name: Enable PostGIS via the migrator
         run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
       - name: Integration tests (real PostGIS, race detector)

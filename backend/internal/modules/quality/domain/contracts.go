@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
+	"time"
 )
 
 // Source streams. The five-column coordinate extract stays a separate
@@ -162,18 +163,11 @@ func (a Assay) Fingerprint() (string, error) {
 // ValidDay reports whether s is a date-only YYYY-MM-DD value. Source and
 // review clocks use date-only precision; no midnight time is invented.
 func ValidDay(s string) bool {
-	if len(s) != 10 || s[4] != '-' || s[7] != '-' {
+	if len(s) != 10 || s[:4] == "0000" {
 		return false
 	}
-	for i, c := range s {
-		if i == 4 || i == 7 {
-			continue
-		}
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
+	day, err := time.Parse("2006-01-02", s)
+	return err == nil && day.Format("2006-01-02") == s
 }
 
 // Quarantine records one refused input with its reason.

@@ -55,8 +55,9 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --target-dir /tmp/abastevo-integration-rust
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
+export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
@@ -155,10 +156,17 @@ Critical quality persistence/read/job checks, from backend/ against disposable
 local PostGIS (never the staging database):
 
 ```sh
-go test -race -tags=integration ./internal/modules/quality/... -count=1
+ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality go test -race -tags=integration ./internal/modules/quality/... -count=1
 go test ./internal/platform/apicontract -count=1
 ```
 
 Explicit `-count=1` is required after changing external OpenAPI/vector inputs;
 Go test cache does not track those files. Local source acceptance does not imply
 live native imports, score calibration, mobile/device or production acceptance.
+
+The quality prepared bridge additionally checks the real Rust CLI and atomic SQL
+publication; the integration workflow builds both source preparers from the same
+locked crate. Prepared input is integrity-checked before any read-only station
+resolution, and public sample keys include full source/sample/CNPJ/date/fuel scope.
+See [FQ-05C bridge evidence](../docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md).
+This checkpoint does not enable native discovery/import in the deployed worker.

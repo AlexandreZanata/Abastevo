@@ -397,6 +397,8 @@ change. All dependencies below are source checkpoints unless explicitly live.
 
 ### FQ-05 — Historical backfill and incremental discovery (M)
 
+Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Native worker/archive/Directory composition remains FQ-05W; tested injected jobs and artifact integrity do not certify deployed imports.
+
 - Depends: FQ-04. BUC-FQ-01/03. Critical download/jobs.
 - Deliver: explicit dry-run/verify/load stages, edition registry, bounded fetch/
   archive handling, resume/retry and per-source budgets on existing worker.

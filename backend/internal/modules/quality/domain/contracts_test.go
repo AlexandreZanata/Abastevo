@@ -316,3 +316,16 @@ func TestManifestRefusals(t *testing.T) {
 		t.Error("mismatched counts accepted")
 	}
 }
+
+func TestValidDayUsesGregorianCalendar(t *testing.T) {
+	for _, day := range []string{"2024-02-29", "2000-02-29", "2026-09-30"} {
+		if !ValidDay(day) {
+			t.Fatal("valid calendar day refused", day)
+		}
+	}
+	for _, day := range []string{"2026-02-30", "2026-02-29", "1900-02-29", "2026-13-01", "2026-00-01", "2026-09-00", "2026-9-01", "0000-01-01"} {
+		if ValidDay(day) {
+			t.Fatal("invalid calendar day accepted", day)
+		}
+	}
+}
