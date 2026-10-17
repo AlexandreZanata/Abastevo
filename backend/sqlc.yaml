@@ -30,6 +30,7 @@ sql:
       - db/migrations/000034_station_suggestions.sql
       - db/migrations/000035_suggestion_decisions.sql
       - db/migrations/000053_prepared_run_membership.sql
+      - db/migrations/000102_directory_source_identity_history_index.sql
     gen:
       go:
         package: directory

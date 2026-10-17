@@ -4,6 +4,14 @@ Status: proposed, no production migrations in this delivery. One PostgreSQL/Post
 
 ## Directory ownership
 
+Source matching stays behind Directory-owned `source_identity.sql` queries and
+read-only application values. Exact history returns at most two canonical IDs;
+base-prefix evidence can only route to review. Operational identifier timestamps
+are not business validity windows. Migration102 indexes retained full-CNPJ/base
+history. Source publication guards lock expected active identifier/station rows
+and recheck canonical continuity through the publication transaction, including
+replay; they never create or reassign a station.
+
 - `directory_stations(id,display_name,address,municipality_code,state,status,created_at)`; canonical ID independent of source identity.
 - `directory_identifiers(id,station_id,kind,normalized_value,valid_from,valid_to,source_revision_id)`; unique active `(kind,normalized_value)`; ASCII normalized CNPJ with format/checksum validated by domain. Historical identifier changes remain recorded.
 - `directory_location_revisions(id,station_id,point geography(Point,4326),quality,provider,source_reference,obtained_at,supersedes_id)`; append-only; current station location projection stores one reviewed point/quality and revision reference. GiST on current point, B-tree municipality/state; nullable/unverified location must remain explicit.
@@ -67,3 +75,19 @@ Migrations are SQL and append-only after application. Every migration includes f
 ## City feed read boundary (P23-CITY-FEED)
 
 Community owns `CityFeed` in its existing sqlc package. Its read-only join to directory_stations selects only public canonical id/name and exact municipality/state/active status. Existing declared directory schema and city index are reused. Append-only migration 000041 adds rebuildable partial recent/cheapest projection indexes; no private observation/media/identity fields enter the feed, and no write ownership changes. Current AVAILABLE STANDARD prices expire at query time; each filter compares one canonical fuel/unit. HMAC keyset cursors and bounded pages remain live under concurrent projection updates.
+
+
+## Quality source provenance
+
+Quality owns its editions, published/corrected revisions, frozen resources,
+manifest counts, period claims, assays, associations and private reports. Public
+reads carry a selected frozen revision lease. Archive parent and exact monthly
+member hashes/bytes are distinct provenance (migration100); legacy members stay
+absent. The stream current pointer/watermark cannot regress on late history.
+
+`quality_assays.source_observed_at` (migration101) preserves the optional original
+unzoned native clock; `observed_on` is its validated calendar day. Old/date-only
+rows keep NULL. Native fingerprints/sample scopes retain the full clock. Quality
+publication consumes Directory-owned read/guard ports through composition; it
+never imports Directory generated SQL or writes canonical identities. Native
+worker activation is a separate scoped acceptance obligation.

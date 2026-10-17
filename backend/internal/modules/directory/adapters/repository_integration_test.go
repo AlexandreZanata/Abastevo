@@ -5,6 +5,7 @@ package adapters
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"sync"
@@ -38,7 +39,7 @@ func testDSN(t *testing.T) string {
 
 // freshRepo migrates an empty disposable database and returns a repository
 // on it. The database is dropped during cleanup.
-func freshRepo(t *testing.T) *Repository {
+func freshRepo(t *testing.T, chains ...fs.FS) *Repository {
 	t.Helper()
 	adminDSN := testDSN(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -71,7 +72,11 @@ func freshRepo(t *testing.T) *Repository {
 	}
 	u.Path = "/" + name
 	dsn := u.String()
-	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	files := fs.FS(dbmigrations.Files)
+	if len(chains) > 0 {
+		files = chains[0]
+	}
+	applied, err := migrate.Apply(ctx, dsn, files)
 	if err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

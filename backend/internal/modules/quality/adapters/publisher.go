@@ -21,12 +21,19 @@ import (
 
 // Publisher stages and publishes quality assay revisions.
 type Publisher struct {
-	pool *pgxpool.Pool
+	pool  *pgxpool.Pool
+	guard func(context.Context, pgx.Tx) error
 }
 
 // NewPublisher wires the owned generated queries to a pool.
 func NewPublisher(pool *pgxpool.Pool) *Publisher {
 	return &Publisher{pool: pool}
+}
+
+// WithGuard returns an immutable publisher bound to a per-attempt live guard.
+// The guard executes inside every publication/replay transaction before writes.
+func (p *Publisher) WithGuard(guard func(context.Context, pgx.Tx) error) *Publisher {
+	return &Publisher{pool: p.pool, guard: guard}
 }
 
 // editionRequest is the shared edition/manifest envelope for assay and
@@ -175,6 +182,11 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 			_ = tx.Rollback(ctx)
 		}
 	}()
+	if p.guard != nil {
+		if err := p.guard(ctx, tx); err != nil {
+			return "", false, err
+		}
+	}
 	q := quality.New(p.pool).WithTx(tx)
 
 	editionID, err := nextID(newID)
