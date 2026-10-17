@@ -106,8 +106,9 @@ type Config struct {
 	CursorSecret    []byte
 	CanonicalHost   string
 	// MetricsAddr is the private metrics listener; empty disables it.
-	MetricsAddr         string
-	ANPDiscoveryEnabled bool
+	MetricsAddr           string
+	ANPDiscoveryEnabled   bool
+	QualityImportsEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled   bool
 	QualityReportsEnabled bool
@@ -165,6 +166,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_ANP_DISCOVERY_ENABLED must be boolean")
 		}
 		cfg.ANPDiscoveryEnabled = enabled
+	}
+	if raw, present := getenv("ANPFUEL_QUALITY_IMPORTS_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_IMPORTS_ENABLED must be boolean")
+		}
+		cfg.QualityImportsEnabled = enabled
 	}
 	cfg.QualityReportsEnabled = true
 	if raw, present := getenv(keyQualityReportsEnabled); present {

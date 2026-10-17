@@ -399,7 +399,7 @@ Native historical source clocks: [FQ-02C](../backend/evidence/fuel-quality/FQ02C
 
 ### FQ-05 — Historical backfill and incremental discovery (M)
 
-Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Monthly provenance/current-pointer prerequisite: [FQ-05W1](../backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE. Native worker/archive/Directory composition remains FQ-05W; tested injected jobs and artifact integrity do not certify deployed imports.
+Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Monthly provenance/current-pointer prerequisite: [FQ-05W1](../backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE. [Native worker composition FQ-05W5](../backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md) is LOCAL_DONE with imports default-off, after archive, Directory and file-job checkpoints. FQ-05W remains IN_PROGRESS for post-publication Directory revalidation, bounded live discovery/non-starving enqueue and static worker image proof. Local composition does not certify deployed imports; see the [remaining-work handoff](FUEL_QUALITY_REMAINING_HANDOFF.md).
 
 - Depends: FQ-04. BUC-FQ-01/03. Critical download/jobs.
 - Deliver: explicit dry-run/verify/load stages, edition registry, bounded fetch/

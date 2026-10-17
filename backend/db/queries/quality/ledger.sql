@@ -201,3 +201,6 @@ VALUES (@source, @stream, @last_edition, @last_hash)
 ON CONFLICT (source, stream)
 DO UPDATE SET last_edition = EXCLUDED.last_edition, last_hash = EXCLUDED.last_hash,
     updated_at = now() WHERE EXCLUDED.last_edition>=quality_watermarks.last_edition;
+
+-- name: LockNativeImport :exec
+SELECT pg_advisory_lock(hashtextextended('quality:pmqc:native-import:v1',0));

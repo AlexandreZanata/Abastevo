@@ -9,14 +9,25 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
-func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler) ([]*jobs.Dispatcher, error) {
+func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nativeKinds ...string) ([]*jobs.Dispatcher, error) {
 	// Fixed serial slots in this process: no per-job concurrency expansion.
 	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"}
-	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: kinds}
+	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: append(append([]string(nil), kinds...), "quality-import", "quality-discovery")}
 	dispatchers := []*jobs.Dispatcher{general}
 	for _, kind := range kinds {
 		if handler := handlers[kind]; handler == nil || handler.Kind() != kind {
 			return nil, fmt.Errorf("worker: required safety handler unavailable: %s", kind)
+		}
+		dispatchers = append(dispatchers, &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-" + kind, Kind: kind, LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute})
+	}
+	seen := map[string]bool{}
+	for _, kind := range nativeKinds {
+		if (kind != "quality-import" && kind != "quality-discovery") || seen[kind] {
+			return nil, errors.New("worker: invalid native serial slot")
+		}
+		seen[kind] = true
+		if h := handlers[kind]; h == nil || h.Kind() != kind {
+			return nil, errors.New("worker: native handler unavailable")
 		}
 		dispatchers = append(dispatchers, &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-" + kind, Kind: kind, LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute})
 	}

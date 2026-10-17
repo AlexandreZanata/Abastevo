@@ -553,6 +553,15 @@ func (q *Queries) LockEditionByKey(ctx context.Context, arg LockEditionByKeyPara
 	return i, err
 }
 
+const lockNativeImport = `-- name: LockNativeImport :exec
+SELECT pg_advisory_lock(hashtextextended('quality:pmqc:native-import:v1',0))
+`
+
+func (q *Queries) LockNativeImport(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockNativeImport)
+	return err
+}
+
 const recordManifest = `-- name: RecordManifest :one
 INSERT INTO quality_manifests (edition_id, input, accepted, duplicates, quarantined, manifest_hash)
 VALUES ($1, $2, $3, $4, $5, $6)

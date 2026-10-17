@@ -838,7 +838,12 @@ func run() error {
 			},
 		},
 	}
-	dispatchers, err := workerDispatchers(queue, handlers)
+	nativeKinds := []string{}
+	if cfg.QualityImportsEnabled {
+		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
+		nativeKinds = append(nativeKinds, "quality-import")
+	}
+	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {
 		return err
 	}
