@@ -144,6 +144,7 @@ type PreparedBatch struct {
 	ManifestHash string
 	MemberSHA256 string
 	MemberBytes  uint64
+	Guard        func(context.Context, pgx.Tx) error `json:"-"`
 }
 
 // Import fetches, prepares and publishes a single edition, then advances
@@ -203,6 +204,14 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 	if err != nil {
 		return err
 	}
+	return im.publishPrepared(ctx, payload, prepared, uint64(len(raw)))
+}
+
+func (im Import) publishPrepared(ctx context.Context, payload ImportPayload, prepared PreparedBatch, rawBytes uint64) error {
+	publisher := im.Publish
+	if prepared.Guard != nil {
+		publisher = publisher.WithGuard(prepared.Guard)
+	}
 	q := quality.New(im.Pool)
 	predecessor := ""
 	if mark, gerr := q.GetWatermark(ctx, quality.GetWatermarkParams{
@@ -213,11 +222,11 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 		return gerr
 	}
 	resources := []application.Resource{{
-		URL: payload.URL, SHA256: payload.SHA256, Bytes: uint64(len(raw)), Member: payload.Member, MemberSHA256: prepared.MemberSHA256, MemberBytes: prepared.MemberBytes,
+		URL: payload.URL, SHA256: payload.SHA256, Bytes: rawBytes, Member: payload.Member, MemberSHA256: prepared.MemberSHA256, MemberBytes: prepared.MemberBytes,
 	}}
 	switch payload.Source {
 	case "pmqc":
-		if _, perr := im.Publish.Publish(ctx, application.Input{
+		if _, perr := publisher.Publish(ctx, application.Input{
 			Source: payload.Source, Stream: payload.Stream, Edition: payload.Edition,
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
 			ManifestHash: prepared.ManifestHash, Assays: prepared.Assays, Links: prepared.Links, Periods: prepared.Periods,
@@ -228,7 +237,7 @@ func (im Import) Handle(ctx context.Context, job platformjobs.Job) error {
 			return perr
 		}
 	case "enforcement", "sanctions":
-		if _, perr := im.Publish.PublishEvents(ctx, application.EventsInput{
+		if _, perr := publisher.PublishEvents(ctx, application.EventsInput{
 			Source: payload.Source, Stream: payload.Stream, Edition: payload.Edition,
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
 			ManifestHash: prepared.ManifestHash, Periods: prepared.Periods,

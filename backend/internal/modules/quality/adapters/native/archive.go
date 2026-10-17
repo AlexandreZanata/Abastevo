@@ -232,3 +232,16 @@ func (a *archive) extract(ctx context.Context, name, edition, destination string
 	}
 	return prepared.InputIdentity{SHA256: hex.EncodeToString(h.Sum(nil)), Bytes: n}, nil
 }
+
+// ValidateSelection checks a native monthly member before any source I/O.
+func ValidateSelection(resource, member, edition string) error {
+	year, month, e := archivePeriod(resource)
+	if e != nil {
+		return e
+	}
+	parts := memberName.FindStringSubmatch(member)
+	if len(member) > 256 || parts == nil || parts[4] != "csv" || (parts[1] != "" && parts[1] != year) || parts[2] != year || parts[3] < "01" || parts[3] > "12" || (month != "" && parts[3] != month) || edition != year+"-"+parts[3] {
+		return refused("selected source period")
+	}
+	return nil
+}
