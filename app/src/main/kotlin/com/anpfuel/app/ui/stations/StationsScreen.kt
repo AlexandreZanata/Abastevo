@@ -168,6 +168,7 @@ fun StationsScreen(
         onSuggestStation = onSuggestStation,
         onStationProfile = onStationProfile,
         onLoadMoreServerStations = viewModel::loadMoreServerStations,
+        onLoadMoreAnpStations = viewModel::loadMoreAnpStations,
         modifier = modifier,
     )
 }
@@ -194,6 +195,7 @@ private fun StationsContent(
     onSuggestStation: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
     onLoadMoreServerStations: () -> Unit = {},
+    onLoadMoreAnpStations: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -404,6 +406,43 @@ private fun StationsContent(
                             onNavigate = { onStationSelected(station.cnpjDigits) },
                         )
                     }
+                    if (uiState.isAnpLoadingMore) {
+                        item(key = StationsListKeys.ANP_MORE_LOADING) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .wrapContentWidth(Alignment.CenterHorizontally)
+                                    .size(24.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    } else if (uiState.anpMoreError != null) {
+                        item(key = StationsListKeys.ANP_MORE_ERROR) {
+                            Text(
+                                text = stringResource(R.string.server_stations_load_more_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        item(key = StationsListKeys.ANP_MORE_RETRY) {
+                            OutlinedButton(
+                                onClick = onLoadMoreAnpStations,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.action_retry))
+                            }
+                        }
+                    } else if (uiState.anpHasMore) {
+                        item(key = StationsListKeys.ANP_MORE) {
+                            OutlinedButton(
+                                onClick = onLoadMoreAnpStations,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.feed_load_more))
+                            }
+                        }
+                    }
                     item(key = StationsListKeys.ATTRIBUTION) {
                         Text(
                             text = stringResource(R.string.geocoding_osm_attribution),
@@ -522,6 +561,10 @@ internal object StationsListKeys {
     const val NAVIGATE_HINT = "navigate-hint"
     const val ATTRIBUTION = "attribution"
     const val DIRECTORY_TITLE = "directory-title"
+    const val ANP_MORE = "anp-more"
+    const val ANP_MORE_LOADING = "anp-more-loading"
+    const val ANP_MORE_ERROR = "anp-more-error"
+    const val ANP_MORE_RETRY = "anp-more-retry"
     const val DIRECTORY_MORE = "directory-more"
     const val DIRECTORY_MORE_LOADING = "directory-more-loading"
     const val DIRECTORY_MORE_ERROR = "directory-more-error"

@@ -246,6 +246,30 @@ class SyncWorkerTest {
             municipality: String,
         ): Boolean = false
 
+        override suspend fun getStationPricesPage(
+            state: com.anpfuel.domain.valueobject.BrazilianState,
+            municipality: String,
+            fuelProduct: FuelProduct,
+            surveyWeek: SurveyWeek,
+            search: String?,
+            sort: com.anpfuel.domain.discovery.DiscoverySort,
+            page: Int,
+            pageSize: Int,
+        ): com.anpfuel.domain.discovery.DiscoveryStationsRule.DiscoveryPage =
+            com.anpfuel.domain.discovery.DiscoveryStationsRule.DiscoveryPage(
+                items = emptyList(),
+                hasMore = false,
+                totalCount = 0,
+            )
+
+        override suspend fun findStationPrice(
+            state: com.anpfuel.domain.valueobject.BrazilianState,
+            municipality: String,
+            fuelProduct: FuelProduct,
+            surveyWeek: SurveyWeek,
+            cnpjDigits: String,
+        ): StationPrice? = null
+
         override suspend fun deleteStationPricesOlderThanRetention(retentionWeeks: Int) = Unit
     }
 

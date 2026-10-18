@@ -7,7 +7,7 @@ import com.anpfuel.application.error.AppErrorResolver
 import com.anpfuel.application.usecase.location.SelectLocationUseCase
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
-import com.anpfuel.application.usecase.price.StationPricesOutcome
+import com.anpfuel.application.usecase.price.StationPricesPageOutcome
 import com.anpfuel.app.location.LocationPermissionHandler
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.directory.GetNearbyServerStationsUseCase
@@ -31,7 +31,6 @@ import com.anpfuel.domain.discovery.StationDetailState
 import com.anpfuel.domain.discovery.StationRowFreshness
 import com.anpfuel.domain.event.SyncJobOutcome
 import com.anpfuel.domain.valueobject.BrazilianState
-import com.anpfuel.domain.model.RetailStation
 import com.anpfuel.domain.valueobject.DeviceLocation
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.domain.valueobject.SurveyWeek
@@ -66,6 +65,14 @@ data class StationsUiState(
     val stations: List<StationPriceUiModel> = emptyList(),
     val searchQuery: String = "",
     val searchNoMatch: String? = null,
+    /**
+     * ANP list continuation. The visible rows come from bounded local
+     * queries; a failed continuation never wipes them and retries from
+     * the same offset.
+     */
+    val anpHasMore: Boolean = false,
+    val isAnpLoadingMore: Boolean = false,
+    val anpMoreError: String? = null,
     val selectedDetail: StationDetailUiModel? = null,
     val showDownloadPrompt: Boolean = false,
     val showEmpty: Boolean = false,
@@ -172,13 +179,12 @@ class StationsViewModel @Inject constructor(
     private val _locationPermissionRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val locationPermissionRequest: SharedFlow<Unit> = _locationPermissionRequest.asSharedFlow()
 
-    private val stationByCnpj = mutableMapOf<String, RetailStation>()
-
     /**
-     * P20-T02 — last good domain list for local search and failed-refresh
-     * cache recovery. Never cleared on load start; replaced only on success.
+     * Next ANP page index for continuation; reset on fuel, search or
+     * reload. Displayed rows accumulate per loaded page and are replaced
+     * only by a fresh first page, never wiped by a failed continuation.
      */
-    private var lastStations: List<com.anpfuel.domain.model.StationPrice> = emptyList()
+    private var anpNextPage = 0
     private var lastLocale: Locale? = null
 
     private val connectivity = MutableStateFlow<Boolean?>(null)
@@ -200,28 +206,42 @@ class StationsViewModel @Inject constructor(
         if (_uiState.value.selectedFuelProduct == fuelProduct) {
             return
         }
-        // Explicit filter change: drop the previous fuel's cache so stale
+        // Explicit filter change: drop the previous fuel's rows so stale
         // prices are never shown under the new fuel chip.
-        lastStations = emptyList()
+        anpNextPage = 0
         _uiState.update {
             it.copy(
                 selectedFuelProduct = fuelProduct,
                 stations = emptyList(),
                 searchNoMatch = null,
                 selectedDetail = null,
+                anpHasMore = false,
+                anpMoreError = null,
             )
         }
         loadForFuel(fuelProduct, locale)
     }
 
     /**
-     * P20-T02 — local station-name search over the cached domain list.
-     * No reload: filter state survives rotation via [SavedStateHandle].
+     * P20-T02 — local station-name search answered by a bounded query.
+     * Each keystroke restarts from the first page; filter state survives
+     * rotation via [SavedStateHandle].
      */
     fun onSearchQueryChanged(query: String, locale: Locale) {
         lastLocale = locale
         savedStateHandleRef[ARG_SEARCH_QUERY] = query
-        renderStations(query)
+        anpNextPage = 0
+        anpMoreJob?.cancel()
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                anpHasMore = false,
+                anpMoreError = null,
+            )
+        }
+        viewModelScope.launch {
+            loadAnpPage(_uiState.value.selectedFuelProduct, query, locale, append = false)
+        }
     }
 
     /**
@@ -301,44 +321,60 @@ class StationsViewModel @Inject constructor(
     }
 
     /**
-     * P20-T03 — opens the station detail sheet from the cached domain list.
-     * Unknown CNPJ (or no survey week yet) yields no detail, never an
-     * invented card.
+     * P20-T03 — opens the station detail sheet from a targeted local
+     * read. Unknown CNPJ (or no survey week yet) yields no detail, never
+     * an invented card.
      */
     fun onStationSelected(cnpjDigits: String) {
         val locale = lastLocale ?: return
         val state = _uiState.value
-        val domain = lastStations.firstOrNull { it.station.cnpj.digits == cnpjDigits }
         val week = state.surveyWeek
-        if (domain == null || week == null) {
+        val fuel = state.selectedFuelProduct
+        val locationState = state.state
+        val municipality = state.municipality
+        if (week == null || locationState == null || municipality == null) {
             _uiState.update { it.copy(selectedDetail = null) }
             return
         }
-        when (val detail = StationDetailRule.resolve(
-            rows = listOf(domain),
-            surveyWeek = week,
-            today = LocalDate.now(),
-            staleCache = false,
-        )) {
-            is StationDetailState.NoCoverage ->
+        viewModelScope.launch {
+            val domain = getStationPricesUseCase.findStationPrice(
+                state = locationState,
+                municipality = municipality,
+                fuelProduct = fuel,
+                surveyWeek = week,
+                cnpjDigits = cnpjDigits,
+            )
+            currentCoroutineContext().ensureActive()
+            if (domain == null) {
                 _uiState.update { it.copy(selectedDetail = null) }
-            is StationDetailState.AnpReference -> {
-                val row = detail.rows.first()
-                _uiState.update {
-                    it.copy(
-                        selectedDetail = StationDetailUiModel(
-                            station = StationPriceUiMapper.toUiModel(
-                                stationPrice = domain,
-                                locale = locale,
-                                preferredState = state.state,
-                                preferredMunicipality = state.municipality,
+                return@launch
+            }
+            when (val detail = StationDetailRule.resolve(
+                rows = listOf(domain),
+                surveyWeek = week,
+                today = LocalDate.now(),
+                staleCache = false,
+            )) {
+                is StationDetailState.NoCoverage ->
+                    _uiState.update { it.copy(selectedDetail = null) }
+                is StationDetailState.AnpReference -> {
+                    val row = detail.rows.first()
+                    _uiState.update {
+                        it.copy(
+                            selectedDetail = StationDetailUiModel(
+                                station = StationPriceUiMapper.toUiModel(
+                                    stationPrice = domain,
+                                    locale = locale,
+                                    preferredState = state.state,
+                                    preferredMunicipality = state.municipality,
+                                ),
+                                surveyWeekLabel = SurveyWeekFormatter.formatRange(week, locale),
+                                isStale = row.freshness == StationRowFreshness.STALE,
+                                dateUnknown = row.freshness == StationRowFreshness.UNKNOWN,
+                                communityDisputed = detail.communityDisputed,
                             ),
-                            surveyWeekLabel = SurveyWeekFormatter.formatRange(week, locale),
-                            isStale = row.freshness == StationRowFreshness.STALE,
-                            dateUnknown = row.freshness == StationRowFreshness.UNKNOWN,
-                            communityDisputed = detail.communityDisputed,
-                        ),
-                    )
+                        )
+                    }
                 }
             }
         }
@@ -645,10 +681,22 @@ class StationsViewModel @Inject constructor(
     }
 
     fun onNavigateToStation(cnpjDigits: String) {
-        val station = stationByCnpj[cnpjDigits] ?: return
+        val state = _uiState.value
+        val week = state.surveyWeek
+        val locationState = state.state
+        val municipality = state.municipality
+        if (week == null || locationState == null || municipality == null) return
 
         viewModelScope.launch {
-            val result = buildStationNavigationQueryUseCase(station)
+            val domain = getStationPricesUseCase.findStationPrice(
+                state = locationState,
+                municipality = municipality,
+                fuelProduct = state.selectedFuelProduct,
+                surveyWeek = week,
+                cnpjDigits = cnpjDigits,
+            ) ?: return@launch
+            currentCoroutineContext().ensureActive()
+            val result = buildStationNavigationQueryUseCase(domain.station)
             _navigationEffects.emit(
                 StationsNavigationEffect.LaunchMaps(result.navigationQuery),
             )
@@ -715,59 +763,108 @@ class StationsViewModel @Inject constructor(
                     showDownloadPrompt = false,
                     showEmpty = false,
                     showNoLocation = false,
+                    anpHasMore = false,
+                    isAnpLoadingMore = false,
+                    anpMoreError = null,
                 )
             }
 
-            runCatching {
-                val preferred = selectLocationUseCase.getPreferredLocation()
-                if (preferred == null) {
+            anpNextPage = 0
+            anpMoreJob?.cancel()
+            loadAnpPage(fuelProduct, _uiState.value.searchQuery, locale, append = false)
+            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    /**
+     * Bounded ANP discovery window. Filtering, ordering and pagination
+     * run in the local query; the full-list read stays reserved for
+     * cheapest/nearest computation over the complete eligible set.
+     * Displayed rows are replaced by a fresh first page and extended by
+     * continuations; a failed read never wipes them.
+     */
+    private var anpMoreJob: kotlinx.coroutines.Job? = null
+
+    private suspend fun loadAnpPage(
+        fuelProduct: FuelProduct,
+        query: String,
+        locale: Locale,
+        append: Boolean,
+    ) {
+        val pageIndex = if (append) anpNextPage else 0
+        if (append) {
+            _uiState.update { it.copy(isAnpLoadingMore = true, anpMoreError = null) }
+        }
+        runCatching {
+            val preferred = selectLocationUseCase.getPreferredLocation()
+            if (preferred == null) {
+                _uiState.update { it.copy(showNoLocation = true) }
+                return
+            }
+
+            when (
+                val outcome = getStationPricesUseCase.page(
+                    fuelProduct = fuelProduct,
+                    search = query,
+                    page = pageIndex,
+                )
+            ) {
+                is StationPricesPageOutcome.StationDetailMissing -> {
                     _uiState.update {
                         it.copy(
-                            isLoading = false,
-                            showNoLocation = true,
+                            showDownloadPrompt = true,
+                            municipality = preferred.municipality,
+                            state = preferred.state,
+                            selectedFuelProduct = fuelProduct,
                         )
                     }
-                    return@launch
                 }
 
-                when (val outcome = getStationPricesUseCase(fuelProduct = fuelProduct)) {
-                    is StationPricesOutcome.StationDetailMissing -> {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                showDownloadPrompt = true,
-                                municipality = preferred.municipality,
-                                state = preferred.state,
-                                selectedFuelProduct = fuelProduct,
-                            )
-                        }
-                    }
-
-                    is StationPricesOutcome.Success -> {
-                        stationByCnpj.clear()
-                        outcome.stations.forEach { stationPrice ->
-                            stationByCnpj[stationPrice.station.cnpj.digits] = stationPrice.station
-                        }
-                        lastStations = outcome.stations
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                municipality = outcome.municipality,
-                                state = outcome.state,
-                                surveyWeek = outcome.surveyWeek,
-                                selectedFuelProduct = outcome.fuelProduct,
-                                showEmpty = outcome.isEmpty,
-                            )
-                        }
-                        renderStations(_uiState.value.searchQuery)
+                is StationPricesPageOutcome.Success -> {
+                    currentCoroutineContext().ensureActive()
+                    anpNextPage = pageIndex + 1
+                    val mapped = StationPriceUiMapper.toUiModels(
+                        stations = outcome.page.items,
+                        locale = locale,
+                        preferredState = outcome.state,
+                        preferredMunicipality = outcome.municipality,
+                    )
+                    val trimmed = query.trim()
+                    val noMatch = trimmed.length >=
+                        com.anpfuel.domain.rule.MinimumSearchLengthRule.MIN_LENGTH &&
+                        outcome.page.totalCount == 0
+                    _uiState.update {
+                        it.copy(
+                            municipality = outcome.municipality,
+                            state = outcome.state,
+                            surveyWeek = outcome.surveyWeek,
+                            selectedFuelProduct = outcome.fuelProduct,
+                            searchQuery = query,
+                            searchNoMatch = if (noMatch) trimmed else null,
+                            showEmpty = outcome.page.totalCount == 0 && !noMatch,
+                            stations = if (append) it.stations + mapped else mapped,
+                            anpHasMore = outcome.page.hasMore,
+                            isAnpLoadingMore = false,
+                            anpMoreError = null,
+                        )
                     }
                 }
-            }.onFailure { error ->
-                // P20-T02: failed refresh keeps cached stations; the error is
-                // shown above the list instead of replacing it.
+            }
+        }.onFailure { error ->
+            if (append) {
+                // A failed continuation keeps every displayed row; retry
+                // resumes from the same offset.
                 _uiState.update {
                     it.copy(
-                        isLoading = false,
+                        isAnpLoadingMore = false,
+                        anpMoreError = error.message ?: error.javaClass.simpleName,
+                    )
+                }
+            } else {
+                // P20-T02: failed refresh keeps cached stations; the error
+                // is shown above the list instead of replacing it.
+                _uiState.update {
+                    it.copy(
                         error = AppErrorResolver.fromThrowable(error),
                         errorMessage = error.message ?: error.javaClass.simpleName,
                     )
@@ -776,30 +873,28 @@ class StationsViewModel @Inject constructor(
         }
     }
 
-    private fun renderStations(query: String) {
+    /**
+     * Appends the next ANP window to the displayed list. A reload, fuel
+     * change or new search supersedes a pending continuation; concurrent
+     * taps do not start parallel continuations.
+     */
+    fun loadMoreAnpStations() {
+        if (_uiState.value.isAnpLoadingMore || !_uiState.value.anpHasMore) return
+        if (anpMoreJob?.isActive == true) return
         val locale = lastLocale ?: return
-        val state = _uiState.value
-        val filtered = com.anpfuel.domain.discovery.DiscoveryStationsRule.filterAndSort(
-            stations = lastStations,
-            search = query,
-            sort = com.anpfuel.domain.discovery.DiscoverySort.PRICE_ASC,
-        )
-        val trimmed = query.trim()
-        val noMatch = trimmed.length >=
-            com.anpfuel.domain.rule.MinimumSearchLengthRule.MIN_LENGTH &&
-            filtered.isEmpty()
-        _uiState.update {
-            it.copy(
-                searchQuery = query,
-                searchNoMatch = if (noMatch) trimmed else null,
-                stations = StationPriceUiMapper.toUiModels(
-                    stations = filtered,
-                    locale = locale,
-                    preferredState = state.state,
-                    preferredMunicipality = state.municipality,
-                ),
+        anpMoreJob = viewModelScope.launch {
+            loadAnpPage(
+                fuelProduct = _uiState.value.selectedFuelProduct,
+                query = _uiState.value.searchQuery,
+                locale = locale,
+                append = true,
             )
         }
+    }
+
+    /** Test seam: cancels the in-flight ANP continuation, mirroring screen stops. */
+    internal fun cancelAnpMoreForTest() {
+        anpMoreJob?.cancel()
     }
 
     companion object {
