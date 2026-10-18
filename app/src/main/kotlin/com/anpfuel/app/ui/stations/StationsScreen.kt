@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -166,6 +167,7 @@ fun StationsScreen(
         },
         onSuggestStation = onSuggestStation,
         onStationProfile = onStationProfile,
+        onLoadMoreServerStations = viewModel::loadMoreServerStations,
         modifier = modifier,
     )
 }
@@ -191,6 +193,7 @@ private fun StationsContent(
     onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
+    onLoadMoreServerStations: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -440,6 +443,43 @@ private fun StationsContent(
                         onSelect = onServerStationSelected,
                     )
                 }
+                if (uiState.isServerLoadingMore) {
+                    item(key = StationsListKeys.DIRECTORY_MORE_LOADING) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                } else if (uiState.serverMoreError != null) {
+                    item(key = StationsListKeys.DIRECTORY_MORE_ERROR) {
+                        Text(
+                            text = stringResource(R.string.server_stations_load_more_failed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    item(key = StationsListKeys.DIRECTORY_MORE_RETRY) {
+                        OutlinedButton(
+                            onClick = onLoadMoreServerStations,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.action_retry))
+                        }
+                    }
+                } else if (uiState.serverNextCursor != null) {
+                    item(key = StationsListKeys.DIRECTORY_MORE) {
+                        OutlinedButton(
+                            onClick = onLoadMoreServerStations,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.server_stations_load_more))
+                        }
+                    }
+                }
                 item(key = StationsListKeys.SUGGEST_ACTION) {
                     OutlinedButton(
                         onClick = onSuggestStation,
@@ -482,6 +522,10 @@ internal object StationsListKeys {
     const val NAVIGATE_HINT = "navigate-hint"
     const val ATTRIBUTION = "attribution"
     const val DIRECTORY_TITLE = "directory-title"
+    const val DIRECTORY_MORE = "directory-more"
+    const val DIRECTORY_MORE_LOADING = "directory-more-loading"
+    const val DIRECTORY_MORE_ERROR = "directory-more-error"
+    const val DIRECTORY_MORE_RETRY = "directory-more-retry"
     const val DIRECTORY_CACHE_NOTE = "directory-cache-note"
     const val SUGGEST_ACTION = "suggest"
     const val SERVER_ERROR = "server-error"

@@ -47,6 +47,10 @@ class StationsListKeysTest {
             StationsListKeys.ATTRIBUTION,
             StationsListKeys.DIRECTORY_TITLE,
             StationsListKeys.DIRECTORY_CACHE_NOTE,
+            StationsListKeys.DIRECTORY_MORE,
+            StationsListKeys.DIRECTORY_MORE_LOADING,
+            StationsListKeys.DIRECTORY_MORE_ERROR,
+            StationsListKeys.DIRECTORY_MORE_RETRY,
             StationsListKeys.SUGGEST_ACTION,
             StationsListKeys.SERVER_ERROR,
         )

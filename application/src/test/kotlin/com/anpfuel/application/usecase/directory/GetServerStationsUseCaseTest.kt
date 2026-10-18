@@ -194,6 +194,147 @@ class GetServerStationsUseCaseTest {
         org.junit.jupiter.api.Assertions.assertNull(cache.loadPage())
     }
 
+    private fun secondStation() = ServerStation.create(
+        stationId = "e7d85d34-74ec-5d35-b3f6-519dc34ce370",
+        displayName = "[P34-TEST] Posto Gama",
+        locationQuality = StationLocationQuality.REVIEWED,
+        latitude = -23.56,
+        longitude = -46.64,
+        cnpjNormalized = "12ABC34501DE35",
+        municipalityCode = "3550308",
+        state = "SP",
+        currentRevisionId = null,
+    )
+
+    @Test
+    fun `load more appends deduplicated items and advances the cursor`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), "cursor-1")
+        coEvery { gateway.list(20, "cursor-1") } returns
+            ServerStationPage(listOf(station(), secondStation()), "cursor-2")
+
+        listUseCase()
+        val outcome = listUseCase.loadMore()
+
+        val page = (outcome as ServerStationsOutcome.Fresh).page
+        org.junit.jupiter.api.Assertions.assertEquals(
+            listOf(stationId, "e7d85d34-74ec-5d35-b3f6-519dc34ce370"),
+            page.items.map { it.stationId },
+        )
+        org.junit.jupiter.api.Assertions.assertEquals("cursor-2", page.nextCursor)
+        org.junit.jupiter.api.Assertions.assertEquals(2, cache.loadPage()?.items?.size)
+    }
+
+    @Test
+    fun `load more without cursor replays the stored page`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), null)
+
+        listUseCase()
+        val outcome = listUseCase.loadMore()
+
+        assertInstanceOf(ServerStationsOutcome.Fresh::class.java, outcome)
+        coVerify(exactly = 1) { gateway.list(any(), any()) }
+    }
+
+    @Test
+    fun `load more without cache starts from the first page`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), "cursor-1")
+
+        val outcome = listUseCase.loadMore()
+
+        assertInstanceOf(ServerStationsOutcome.Fresh::class.java, outcome)
+        coVerify { gateway.list(20, null) }
+    }
+
+    @Test
+    fun `expired cursor restarts from the first page`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returnsMany listOf(
+            ServerStationPage(listOf(station()), "cursor-1"),
+            ServerStationPage(listOf(secondStation()), null),
+        )
+        coEvery { gateway.list(20, "cursor-1") } throws
+            com.anpfuel.domain.discovery.DirectoryCursorExpiredException()
+
+        listUseCase()
+        val outcome = listUseCase.loadMore()
+
+        val page = (outcome as ServerStationsOutcome.Fresh).page
+        org.junit.jupiter.api.Assertions.assertEquals(
+            listOf("e7d85d34-74ec-5d35-b3f6-519dc34ce370"),
+            page.items.map { it.stationId },
+        )
+        org.junit.jupiter.api.Assertions.assertNull(page.nextCursor)
+    }
+
+    @Test
+    fun `load more failure replays last good without wiping cache`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), "cursor-1")
+        coEvery { gateway.list(20, "cursor-1") } throws IOException("down")
+
+        listUseCase()
+        val outcome = listUseCase.loadMore()
+
+        val stale = outcome as ServerStationsOutcome.StaleCache
+        org.junit.jupiter.api.Assertions.assertEquals(1, stale.page.items.size)
+        org.junit.jupiter.api.Assertions.assertEquals("cursor-1", stale.page.nextCursor)
+        org.junit.jupiter.api.Assertions.assertEquals(1, cache.loadPage()?.items?.size)
+    }
+
+    @Test
+    fun `load more cancellation propagates instead of appending`() = runTest {
+        every { flag.isEnabled() } returns true
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), "cursor-1")
+        coEvery { gateway.list(20, "cursor-1") } throws
+            kotlinx.coroutines.CancellationException("screen stopped")
+
+        listUseCase()
+        org.junit.jupiter.api.assertThrows<kotlinx.coroutines.CancellationException> { listUseCase.loadMore() }
+        org.junit.jupiter.api.Assertions.assertEquals(1, cache.loadPage()?.items?.size)
+    }
+
+    @Test
+    fun `concurrent continuations run one at a time`() = runTest {
+        every { flag.isEnabled() } returns true
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val third = ServerStation.create(
+            stationId = "f3a5b6c7-89ab-4cde-8f01-23456789abcd",
+            displayName = "[P34-TEST] Posto Terceiro",
+            locationQuality = StationLocationQuality.REVIEWED,
+            latitude = -23.57,
+            longitude = -46.65,
+            cnpjNormalized = "99999999000191",
+            municipalityCode = "3550308",
+            state = "SP",
+            currentRevisionId = null,
+        )
+        coEvery { gateway.list(20, null) } returns ServerStationPage(listOf(station()), "cursor-1")
+        var continuations = 0
+        coEvery { gateway.list(20, "cursor-1") } coAnswers {
+            continuations++
+            release.await()
+            ServerStationPage(listOf(secondStation()), "cursor-2")
+        }
+        coEvery { gateway.list(20, "cursor-2") } returns ServerStationPage(listOf(third), null)
+        listUseCase()
+        val first = async { listUseCase.loadMore() }
+        runCurrent()
+        val second = async { listUseCase.loadMore() }
+        runCurrent()
+        org.junit.jupiter.api.Assertions.assertEquals(1, continuations)
+        release.complete(Unit)
+        first.await()
+        second.await()
+        org.junit.jupiter.api.Assertions.assertEquals(1, continuations)
+        org.junit.jupiter.api.Assertions.assertEquals(
+            listOf(stationId, secondStation().stationId, third.stationId),
+            cache.loadPage()?.items?.map { it.stationId },
+        )
+    }
+
     @Test
     fun `selected city never queries national page or replays another city cache`() = runTest {
         every { flag.isEnabled() } returns true

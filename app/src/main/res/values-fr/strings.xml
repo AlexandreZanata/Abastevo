@@ -445,6 +445,8 @@
     <string name="server_station_unknown_location">Emplacement non vérifié · affiché sans coordonnées.</string>
     <string name="server_station_cached">Dernières données connues du cache hors ligne.</string>
     <string name="server_stations_unavailable">Répertoire serveur indisponible. La consultation officielle ANP reste accessible.</string>
+    <string name="server_stations_load_more">Charger plus de stations</string>
+    <string name="server_stations_load_more_failed">Impossible de charger plus de stations. La liste ci-dessus est inchangée.</string>
     <string name="station_feedback_title">Discussion de la station</string>
     <string name="station_feedback_guest">Connectez-vous pour noter, commenter ou voter. La lecture est ouverte à tous.</string>
     <string name="station_feedback_rate">Noter cette station (1–5)</string>

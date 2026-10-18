@@ -445,6 +445,8 @@
     <string name="server_station_unknown_location">位置未验证，不显示坐标。</string>
     <string name="server_station_cached">正在显示离线缓存中的最后已知数据。</string>
     <string name="server_stations_unavailable">服务器目录不可用，仍可浏览ANP官方数据。</string>
+    <string name="server_stations_load_more">加载更多站点</string>
+    <string name="server_stations_load_more_failed">无法加载更多站点，上面的列表未更改。</string>
     <string name="station_feedback_title">加油站讨论</string>
     <string name="station_feedback_guest">登录后可评分、评论或投票。所有人均可阅读。</string>
     <string name="station_feedback_rate">为此加油站评分（1–5）</string>

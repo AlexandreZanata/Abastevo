@@ -63,17 +63,77 @@ class GetServerStationsUseCase(
 
     suspend operator fun invoke(limit: Int = 20, cursor: String? = null): ServerStationsOutcome = refreshLock.withLock {
         if (!flagProvider.isEnabled()) return@withLock ServerStationsOutcome.Disabled
-        val scope = try {
-            scopeProvider?.municipalityCode()
+        return@withLock when (val resolution = resolveScope()) {
+            is ScopeResolution.Missing -> ServerStationsOutcome.Unavailable(
+                java.io.IOException("directory city unavailable"),
+            )
+            is ScopeResolution.Failed -> ServerStationsOutcome.Unavailable(resolution.error)
+            is ScopeResolution.Present -> fresh(limit, cursor, resolution.scope)
+        }
+    }
+
+    /**
+     * Appends the next page to the displayed list. One continuation at a
+     * time (shared [refreshLock]); repeats are deduplicated by stable
+     * UUID; the accumulated list is cached so offline replay and process
+     * death keep every loaded page. An expired/invalid cursor (HTTP 400)
+     * restarts from the first page instead of stranding the list; any
+     * other failure replays the last good snapshot so displayed data is
+     * never wiped by a retry.
+     */
+    suspend fun loadMore(limit: Int = 20): ServerStationsOutcome = refreshLock.withLock {
+        if (!flagProvider.isEnabled()) return@withLock ServerStationsOutcome.Disabled
+        val scope = when (val resolution = resolveScope()) {
+            is ScopeResolution.Missing -> return@withLock ServerStationsOutcome.Unavailable(
+                java.io.IOException("directory city unavailable"),
+            )
+            is ScopeResolution.Failed -> return@withLock ServerStationsOutcome.Unavailable(resolution.error)
+            is ScopeResolution.Present -> resolution.scope
+        }
+        val cached = loadCache(scope) ?: return@withLock fresh(limit, null, scope)
+        val cursor = cached.nextCursor ?: return@withLock ServerStationsOutcome.Fresh(cached)
+        try {
+            val page = if (scope == null) gateway.list(limit, cursor)
+                else gateway.listInMunicipality(scope, limit, cursor)
+            require(scope == null || page.items.all { it.municipalityCode == scope }) { "directory city mismatch" }
+            currentCoroutineContext().ensureActive()
+            val merged = ServerStationPage(
+                items = (cached.items + page.items).distinctBy { it.stationId },
+                nextCursor = page.nextCursor,
+            )
+            if (scope == null) cache.savePage(merged) else cache.saveScopedPage(scope, merged)
+            ServerStationsOutcome.Fresh(merged)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: com.anpfuel.domain.discovery.DirectoryCursorExpiredException) {
+            fresh(limit, null, scope)
+        } catch (error: Exception) {
+            ServerStationsOutcome.StaleCache(cached, error)
+        }
+    }
+
+    private sealed interface ScopeResolution {
+        data object Missing : ScopeResolution
+        data class Failed(val error: Exception) : ScopeResolution
+        data class Present(val scope: String?) : ScopeResolution
+    }
+
+    /** City scope, distinguishing a missing required binding from a national read. */
+    private suspend fun resolveScope(): ScopeResolution {
+        return try {
+            val scope = scopeProvider?.municipalityCode()
+            if (scopeProvider != null && scope == null) ScopeResolution.Missing
+            else ScopeResolution.Present(scope)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            return@withLock ServerStationsOutcome.Unavailable(error)
+            ScopeResolution.Failed(error)
         }
-        if (scopeProvider != null && scope == null) {
-            return@withLock ServerStationsOutcome.Unavailable(java.io.IOException("directory city unavailable"))
-        }
-        try {
+    }
+
+    /** First-page fetch with last-good fallback. Callers hold [refreshLock]. */
+    private suspend fun fresh(limit: Int, cursor: String?, scope: String?): ServerStationsOutcome {
+        return try {
             val page = if (scope == null) gateway.list(limit, cursor)
                 else gateway.listInMunicipality(scope, limit, cursor)
             require(scope == null || page.items.all { it.municipalityCode == scope }) { "directory city mismatch" }

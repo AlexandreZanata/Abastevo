@@ -88,6 +88,21 @@ class DirectoryStationRepositoryTest {
     }
 
     @Test
+    fun `gateway maps rejected cursor to cursor expiry`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(400).setBody("bad cursor"))
+            assertThrows(com.anpfuel.domain.discovery.DirectoryCursorExpiredException::class.java) {
+                kotlinx.coroutines.runBlocking {
+                    gateway(server).list(20, "stale")
+                }
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun `gateway search failure propagates without inventing stations`() = runTest {
         val server = MockWebServer()
         try {

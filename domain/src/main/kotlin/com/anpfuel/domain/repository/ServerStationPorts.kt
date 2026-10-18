@@ -21,8 +21,12 @@ interface ServerStationGateway {
         return search(municipalityCode, "", limit)
     }
 
-    suspend fun search(municipalityCode: String, query: String, limit: Int = 20): ServerStationPage =
-        throw UnsupportedOperationException("station search unavailable")
+    suspend fun search(
+        municipalityCode: String,
+        query: String,
+        limit: Int = 20,
+        cursor: String? = null,
+    ): ServerStationPage = throw UnsupportedOperationException("station search unavailable")
 
     suspend fun nearby(
         lat: Double,

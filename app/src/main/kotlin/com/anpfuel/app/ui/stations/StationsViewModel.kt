@@ -82,6 +82,15 @@ data class StationsUiState(
     val isServerLoading: Boolean = false,
     val serverFromCache: Boolean = false,
     val serverError: String? = null,
+    /**
+     * Directory continuation state. The next cursor belongs to the last
+     * stored page; a null cursor ends traversal. A failed continuation
+     * never wipes displayed stations: the error lands in
+     * [serverMoreError] with a retry that resumes the same cursor.
+     */
+    val serverNextCursor: String? = null,
+    val isServerLoadingMore: Boolean = false,
+    val serverMoreError: String? = null,
     val selectedServerStation: ServerStation? = null,
     val serverDetailFromCache: Boolean = false,
     /**
@@ -377,15 +386,24 @@ class StationsViewModel @Inject constructor(
         } finally {
             serverLoadJob?.cancel()
             serverDetailJob?.cancel()
-            _uiState.update { it.copy(isServerLoading = false) }
+            serverMoreJob?.cancel()
+            _uiState.update { it.copy(isServerLoading = false, isServerLoadingMore = false) }
         }
     }
 
-    fun loadServerStations(limit: Int = 100, cachedOnly: Boolean = false) {
+    fun loadServerStations(limit: Int = 20, cachedOnly: Boolean = false) {
         val useCase = getServerStationsUseCase ?: return
         serverLoadJob?.cancel()
+        serverMoreJob?.cancel()
         serverLoadJob = viewModelScope.launch {
-            _uiState.update { it.copy(isServerLoading = true, serverError = null) }
+            _uiState.update {
+                it.copy(
+                    isServerLoading = true,
+                    isServerLoadingMore = false,
+                    serverError = null,
+                    serverMoreError = null,
+                )
+            }
             val outcome = if (cachedOnly) useCase.cached() else useCase(limit, null)
             currentCoroutineContext().ensureActive()
             when (outcome) {
@@ -396,6 +414,7 @@ class StationsViewModel @Inject constructor(
                         it.copy(
                             isServerLoading = false,
                             serverStations = outcome.page.items,
+                            serverNextCursor = outcome.page.nextCursor,
                             serverFromCache = false,
                             serverError = null,
                         )
@@ -405,6 +424,7 @@ class StationsViewModel @Inject constructor(
                         it.copy(
                             isServerLoading = false,
                             serverStations = outcome.page.items,
+                            serverNextCursor = outcome.page.nextCursor,
                             serverFromCache = true,
                             serverError = null,
                         )
@@ -426,12 +446,71 @@ class StationsViewModel @Inject constructor(
      * detail when it is still present; a failed refresh keeps cached
      * stations exactly like the legacy P20-T02 recovery.
      */
-    fun refreshServerStations(limit: Int = 100) {
+    fun refreshServerStations(limit: Int = 20) {
         val selected = _uiState.value.selectedServerStation?.stationId
         loadServerStations(limit)
         if (selected != null) {
             onServerStationSelected(selected)
         }
+    }
+
+    /**
+     * Appends the next directory page to the displayed list. A fresh
+     * load supersedes a pending continuation; concurrent taps do not
+     * start parallel continuations. Displayed stations are never wiped
+     * here: failures only set [StationsUiState.serverMoreError] for
+     * retry, and an expired cursor restarts from the first page through
+     * the use case.
+     */
+    private var serverMoreJob: kotlinx.coroutines.Job? = null
+
+    fun loadMoreServerStations() {
+        val useCase = getServerStationsUseCase ?: return
+        if (_uiState.value.isServerLoadingMore || _uiState.value.serverNextCursor == null) return
+        if (serverMoreJob?.isActive == true) return
+        serverMoreJob = viewModelScope.launch {
+            _uiState.update { it.copy(isServerLoadingMore = true, serverMoreError = null) }
+            val outcome = useCase.loadMore()
+            currentCoroutineContext().ensureActive()
+            when (outcome) {
+                is ServerStationsOutcome.Disabled ->
+                    _uiState.update { it.copy(isServerLoadingMore = false) }
+                is ServerStationsOutcome.Fresh ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoadingMore = false,
+                            serverStations = outcome.page.items,
+                            serverNextCursor = outcome.page.nextCursor,
+                            serverFromCache = false,
+                            serverMoreError = null,
+                        )
+                    }
+                is ServerStationsOutcome.StaleCache ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoadingMore = false,
+                            serverStations = outcome.page.items,
+                            serverNextCursor = outcome.page.nextCursor,
+                            serverFromCache = true,
+                            serverMoreError = outcome.cause.message
+                                ?: outcome.cause.javaClass.simpleName,
+                        )
+                    }
+                is ServerStationsOutcome.Unavailable ->
+                    _uiState.update {
+                        it.copy(
+                            isServerLoadingMore = false,
+                            serverMoreError = outcome.cause.message
+                                ?: outcome.cause.javaClass.simpleName,
+                        )
+                    }
+            }
+        }
+    }
+
+    /** Test seam: cancels the in-flight continuation, mirroring screen stops. */
+    internal fun cancelServerMoreForTest() {
+        serverMoreJob?.cancel()
     }
 
     /**

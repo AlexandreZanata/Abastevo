@@ -454,6 +454,8 @@
     <string name="server_station_unknown_location">Local não verificado — exibido sem coordenadas.</string>
     <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
     <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>
+    <string name="server_stations_load_more">Carregar mais postos</string>
+    <string name="server_stations_load_more_failed">Não foi possível carregar mais postos. A lista acima não mudou.</string>
 
     <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
     <string name="station_feedback_title">Discussão do posto</string>

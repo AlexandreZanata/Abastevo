@@ -445,6 +445,8 @@
     <string name="server_station_unknown_location">Местоположение не проверено · показано без координат.</string>
     <string name="server_station_cached">Показаны последние известные данные из офлайн-кэша.</string>
     <string name="server_stations_unavailable">Серверный каталог недоступен. Просмотр официальных данных ANP работает.</string>
+    <string name="server_stations_load_more">Показать больше станций</string>
+    <string name="server_stations_load_more_failed">Не удалось загрузить больше станций. Список выше не изменился.</string>
     <string name="station_feedback_title">Обсуждение АЗС</string>
     <string name="station_feedback_guest">Войдите, чтобы оценивать, комментировать и голосовать. Чтение открыто всем.</string>
     <string name="station_feedback_rate">Оцените эту АЗС (1–5)</string>

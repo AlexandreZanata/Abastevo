@@ -445,6 +445,8 @@
     <string name="server_station_unknown_location">場所未確認のため、座標を表示しません。</string>
     <string name="server_station_cached">オフライン保存された最後の情報を表示しています。</string>
     <string name="server_stations_unavailable">サーバーの一覧は利用できません。公式ANPデータの閲覧は引き続き可能です。</string>
+    <string name="server_stations_load_more">さらにスタンドを表示</string>
+    <string name="server_stations_load_more_failed">さらにスタンドを読み込めませんでした。上のリストは変更されていません。</string>
     <string name="station_feedback_title">給油所のディスカッション</string>
     <string name="station_feedback_guest">評価、コメント、投票にはログインしてください。閲覧は誰でもできます。</string>
     <string name="station_feedback_rate">給油所を評価（1～5）</string>

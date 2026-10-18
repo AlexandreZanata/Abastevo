@@ -445,6 +445,8 @@
     <string name="server_station_unknown_location">Ubicación sin verificar; se muestra sin coordenadas.</string>
     <string name="server_station_cached">Se muestran los últimos datos de la caché sin conexión.</string>
     <string name="server_stations_unavailable">Directorio del servidor no disponible. La consulta oficial ANP sigue funcionando.</string>
+    <string name="server_stations_load_more">Cargar más estaciones</string>
+    <string name="server_stations_load_more_failed">No se pudieron cargar más estaciones. La lista anterior no cambió.</string>
     <string name="station_feedback_title">Conversación de la estación</string>
     <string name="station_feedback_guest">Entra para valorar, comentar o votar. Cualquiera puede leer.</string>
     <string name="station_feedback_rate">Valora esta estación (1–5)</string>

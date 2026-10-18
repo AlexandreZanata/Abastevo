@@ -108,6 +108,34 @@ class DirectoryStationHttpClientTest {
     }
 
     @Test
+    fun `search carries an encoded continuation cursor`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": []}"""))
+            client(server).search("5107925", "Posto", 20, "cursor&next")
+            val url = server.takeRequest().requestUrl!!
+            assertEquals("cursor&next", url.queryParameter("cursor"))
+            assertThrows(IllegalArgumentException::class.java) {
+                client(server).search("5107925", "Posto", 20, "x".repeat(5000))
+            }
+            assertEquals(1, server.requestCount)
+        } finally { server.shutdown() }
+    }
+
+    @Test
+    fun `rejected cursor surfaces as typed http error`() = kotlinx.coroutines.test.runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(400).setBody("bad cursor"))
+            val error = assertThrows(DirectoryStationHttpClient.DirectoryHttpException::class.java) {
+                kotlinx.coroutines.runBlocking { client(server).awaitList(20, "stale") }
+            }
+            assertEquals(400, error.code)
+            assertTrue(error is IOException)
+        } finally { server.shutdown() }
+    }
+
+    @Test
     fun `blank query lists every city station without q param`() {
         val server = MockWebServer()
         try {

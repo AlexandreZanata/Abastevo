@@ -34,7 +34,17 @@ class DirectoryStationHttpClient(
     companion object {
         /** 100-item pages stay under ~200 KiB; 512 KiB refuses abuse with headroom. */
         const val MAX_BODY_BYTES = 512 * 1024L
+        /** Sealed cursors stay tiny; mirrors the codec cap. */
+        const val MAX_CURSOR_CHARS = 4096
     }
+
+    /**
+     * Non-2xx HTTP failure with its status code. A subtype of
+     * [IOException] so existing transport handling keeps working; the
+     * code lets continuation reads distinguish an expired/invalid
+     * cursor (400) from outages without parsing messages.
+     */
+    class DirectoryHttpException(val code: Int, message: String) : IOException(message)
 
     fun list(limit: Int, cursor: String?): String = get(listUrl(limit, cursor))
 
@@ -62,8 +72,8 @@ class DirectoryStationHttpClient(
      * the city (the `q` parameter is omitted); a non-blank query needs
      * at least 2 characters and filters `display_name` server-side.
      */
-    fun search(municipalityCode: String, query: String, limit: Int): String =
-        get(searchUrl(municipalityCode, query, limit))
+    fun search(municipalityCode: String, query: String, limit: Int, cursor: String? = null): String =
+        get(searchUrl(municipalityCode, query, limit, cursor))
 
     fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String =
         get(nearbyUrl(lat, lon, radiusMeters, limit))
@@ -71,8 +81,12 @@ class DirectoryStationHttpClient(
     suspend fun awaitNearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String =
         await(nearbyUrl(lat, lon, radiusMeters, limit))
 
-    suspend fun awaitSearch(municipalityCode: String, query: String, limit: Int): String =
-        await(searchUrl(municipalityCode, query, limit))
+    suspend fun awaitSearch(
+        municipalityCode: String,
+        query: String,
+        limit: Int,
+        cursor: String? = null,
+    ): String = await(searchUrl(municipalityCode, query, limit, cursor))
 
     private fun nearbyUrl(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {
         require(lat in -90.0..90.0) { "lat out of range" }
@@ -88,15 +102,19 @@ class DirectoryStationHttpClient(
         }
     }
 
-    private fun searchUrl(municipalityCode: String, query: String, limit: Int): String {
+    private fun searchUrl(municipalityCode: String, query: String, limit: Int, cursor: String?): String {
         val trimmed = query.trim()
         require(municipalityCode.matches(Regex("[0-9]{7}")) && (trimmed.isEmpty() || trimmed.length in 2..100) && limit in 1..100)
+        require(cursor == null || cursor.length in 1..MAX_CURSOR_CHARS) { "cursor out of bounds" }
         return buildString {
             append(baseUrl.trimEnd('/'))
             append("/v1/stations?limit=").append(limit)
             append("&municipality_code=").append(municipalityCode)
             if (trimmed.isNotEmpty()) {
                 append("&q=").append(URLEncoder.encode(trimmed, Charsets.UTF_8.name()))
+            }
+            if (cursor != null) {
+                append("&cursor=").append(URLEncoder.encode(cursor, Charsets.UTF_8.name()))
             }
         }
     }
@@ -154,7 +172,7 @@ class DirectoryStationHttpClient(
 
     private fun readBody(response: Response): String {
         if (response.code == 404) throw StationNotFound()
-        if (!response.isSuccessful) throw IOException("directory read failed: HTTP ${response.code}")
+        if (!response.isSuccessful) throw DirectoryHttpException(response.code, "directory read failed: HTTP ${response.code}")
         val body = response.body ?: throw IOException("directory read failed: empty body")
         // Bound memory even when the server/proxy sends an invalid response.
         val source = body.source()
