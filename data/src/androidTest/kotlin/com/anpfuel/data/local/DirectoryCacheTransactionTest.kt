@@ -68,7 +68,7 @@ class DirectoryCacheTransactionTest {
         assertEquals(listOf(row.stationId), cache.loadPage()!!.items.map { it.stationId })
     }
 
-    @Test fun cityCacheCannotReplayNationalOrPreviousMunicipalitySnapshot() = runBlocking {
+    @Test fun scopedPagesAreIsolatedAcrossScopes() = runBlocking {
         val dao = database.serverStationCacheDao()
         val cache = DirectoryStationRoomCache(dao)
         dao.replacePage(listOf(row), meta(null))
@@ -77,10 +77,42 @@ class DirectoryCacheTransactionTest {
         cache.saveScopedPage("3550308", com.anpfuel.domain.discovery.ServerStationPage(listOf(station), null))
         assertNotNull(cache.loadScopedPage("3550308"))
         assertNull(cache.loadScopedPage("5107925"))
-        assertNull(cache.loadPage())
+        assertNotNull(cache.loadPage())
         cache.saveScopedPage("5107925", com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null))
-        assertNull(cache.loadScopedPage("3550308"))
+        assertNotNull(cache.loadScopedPage("3550308"))
+        assertNotNull(cache.loadPage())
         assertTrue(cache.loadScopedPage("5107925")!!.items.isEmpty())
+    }
+
+    @Test fun scopedReplacementFailureKeepsItsOwnAndOtherScopes() = runBlocking {
+        val dao = database.serverStationCacheDao()
+        val cache = DirectoryStationRoomCache(dao)
+        dao.replacePage(listOf(row), meta("national"), ServerCatalogMetaEntity.PAGE_KEY)
+        cache.saveScopedPage("3550308", com.anpfuel.domain.discovery.ServerStationPage(
+            listOf(cache.loadPage()!!.items.single()), "city-cursor"))
+        database.openHelper.writableDatabase.execSQL(
+            "CREATE TRIGGER reject_scoped_page BEFORE INSERT ON server_catalog_meta BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+        )
+        try {
+            cache.saveScopedPage("3550308", com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null))
+            fail("scoped metadata failure must abort page replacement")
+        } catch (_: android.database.sqlite.SQLiteException) { }
+        assertEquals("city-cursor", cache.loadScopedPage("3550308")?.nextCursor)
+        assertEquals("national", cache.loadPage()?.nextCursor)
+    }
+
+    @Test fun pagedReadsWindowTheStoredServerOrder() = runBlocking {
+        val dao = database.serverStationCacheDao()
+        val cache = DirectoryStationRoomCache(dao)
+        val rows = (0 until 5).map { index -> row.copy(stationId = "station-$index", displayName = "Station $index", position = index) }
+        dao.replacePage(rows, meta("cursor-5"))
+        val first = cache.loadPage(2, 0)
+        val second = cache.loadPage(2, 2)
+        val tail = cache.loadPage(2, 4)
+        assertEquals(listOf("Station 0", "Station 1"), first?.items?.map { it.displayName })
+        assertEquals(listOf("Station 2", "Station 3"), second?.items?.map { it.displayName })
+        assertEquals(listOf("Station 4"), tail?.items?.map { it.displayName })
+        assertEquals("cursor-5", tail?.nextCursor)
     }
 
     @Test fun concurrentReadersNeverObserveMixedPageAndMetadata() = runBlocking {

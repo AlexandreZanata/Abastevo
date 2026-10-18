@@ -47,7 +47,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         PremiumOutboxEntity::class,
         PremiumCursorEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

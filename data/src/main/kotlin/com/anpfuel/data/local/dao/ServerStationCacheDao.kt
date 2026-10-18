@@ -11,25 +11,50 @@ import com.anpfuel.data.local.entity.ServerStationCacheEntity
 /**
  * P27-T03 canonical catalog DAO.
  *
- * Stations upsert by stable UUID (replay converges); the page set is
- * replaced per fresh traversal (stale rows from a previous scope never
- * linger beside new ones). Details upsert singly so owner status and
- * discussion targets resolve offline.
+ * Stations upsert by stable (UUID, scope) identity (replay converges);
+ * each fresh traversal replaces **only its own scope**, so a city page
+ * never wipes the national page, another municipality, or unscoped
+ * detail records. Reads are scope-keyed with `LIMIT/OFFSET` windows
+ * over the server `position` order; a stored meta row marks a valid
+ * snapshot (an empty item set is a valid empty page, not a miss).
+ * Details upsert singly so owner status and discussion targets resolve
+ * offline. ANP tables are never referenced here.
  */
 @Dao
 interface ServerStationCacheDao {
 
     @Transaction
-    suspend fun replacePage(entities: List<ServerStationCacheEntity>, meta: ServerCatalogMetaEntity) {
-        clearPageRows()
-        upsertAll(entities)
-        clearMeta()
+    suspend fun replacePage(
+        entities: List<ServerStationCacheEntity>,
+        meta: ServerCatalogMetaEntity,
+        scopeKey: String = ServerCatalogMetaEntity.PAGE_KEY,
+    ) {
+        clearScopePageRows(scopeKey)
+        upsertAll(entities.map { it.copy(scopeKey = scopeKey) })
+        clearScopeMeta(scopeKey)
         upsertMeta(meta)
     }
 
     @Transaction
     suspend fun pageSnapshot(key: String = ServerCatalogMetaEntity.PAGE_KEY): Pair<List<ServerStationCacheEntity>, ServerCatalogMetaEntity?> =
-        loadPage() to findMeta(key)
+        loadScopePage(key) to findMeta(key)
+
+    @Transaction
+    suspend fun pagedSnapshot(
+        key: String = ServerCatalogMetaEntity.PAGE_KEY,
+        limit: Int,
+        offset: Int,
+    ): Pair<List<ServerStationCacheEntity>, ServerCatalogMetaEntity?> =
+        loadScopePageWindow(key, limit, offset) to findMeta(key)
+
+    @Query("SELECT * FROM server_station_cache WHERE scope_key = :scopeKey AND position != 2147483647 ORDER BY position ASC")
+    suspend fun loadScopePage(scopeKey: String): List<ServerStationCacheEntity>
+
+    @Query("SELECT * FROM server_station_cache WHERE scope_key = :scopeKey AND position != 2147483647 ORDER BY position ASC LIMIT :limit OFFSET :offset")
+    suspend fun loadScopePageWindow(scopeKey: String, limit: Int, offset: Int): List<ServerStationCacheEntity>
+
+    @Query("SELECT COUNT(*) FROM server_station_cache WHERE scope_key = :scopeKey AND position != 2147483647")
+    suspend fun countScopePageRows(scopeKey: String): Int
 
     @Query("SELECT * FROM server_station_cache ORDER BY position ASC")
     suspend fun loadPage(): List<ServerStationCacheEntity>
@@ -43,6 +68,9 @@ interface ServerStationCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ServerStationCacheEntity)
 
+    @Query("DELETE FROM server_station_cache WHERE scope_key = :scopeKey AND position != 2147483647")
+    suspend fun clearScopePageRows(scopeKey: String)
+
     @Query("DELETE FROM server_station_cache WHERE position != 2147483647")
     suspend fun clearPageRows()
 
@@ -54,6 +82,9 @@ interface ServerStationCacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMeta(meta: ServerCatalogMetaEntity)
+
+    @Query("DELETE FROM server_catalog_meta WHERE `key` = :scopeKey")
+    suspend fun clearScopeMeta(scopeKey: String)
 
     @Query("DELETE FROM server_catalog_meta")
     suspend fun clearMeta()

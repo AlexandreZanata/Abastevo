@@ -15,9 +15,13 @@ import javax.inject.Singleton
  *
  * Survives process death (offline compatibility): the last good page
  * and details replay without network, exactly like the legacy
- * failed-refresh recovery. Fresh traversals replace the page set so
- * stale scopes never linger; details upsert singly. Nearby stays
- * transient (never persisted, B-BR-011).
+ * failed-refresh recovery. Each scope (national page,
+ * `city:<ibge>`) owns its rows and cursor: saving one scope never
+ * deletes another scope, unscoped details, or ANP tables, and a
+ * missing meta row means "never fetched" while a stored meta with
+ * zero rows is an honest empty page. Paged reads window the server
+ * `position` order for virtualized lists. Nearby stays transient
+ * (never persisted, B-BR-011).
  */
 @Singleton
 class DirectoryStationRoomCache @Inject constructor(
@@ -27,26 +31,46 @@ class DirectoryStationRoomCache @Inject constructor(
     override suspend fun savePage(page: ServerStationPage) = savePage(page, ServerCatalogMetaEntity.PAGE_KEY)
 
     override suspend fun saveScopedPage(municipalityCode: String, page: ServerStationPage) =
-        savePage(page, "city:$municipalityCode")
+        savePage(page, scopeKey(municipalityCode))
 
     private suspend fun savePage(page: ServerStationPage, key: String) {
         dao.replacePage(
-            page.items.mapIndexed { index, station -> station.toEntity(index) },
+            page.items.mapIndexed { index, station -> station.toEntity(index, key) },
             ServerCatalogMetaEntity(
                 key = key,
                 nextCursor = page.nextCursor,
                 savedAtMillis = System.currentTimeMillis(),
             ),
+            key,
         )
     }
 
     override suspend fun loadPage(): ServerStationPage? = loadPage(ServerCatalogMetaEntity.PAGE_KEY)
 
     override suspend fun loadScopedPage(municipalityCode: String): ServerStationPage? =
-        loadPage("city:$municipalityCode")?.takeIf { page -> page.items.all { it.municipalityCode == municipalityCode } }
+        loadPage(scopeKey(municipalityCode))
+
+    override suspend fun loadPage(limit: Int, offset: Int): ServerStationPage? =
+        loadPage(ServerCatalogMetaEntity.PAGE_KEY, limit, offset)
+
+    override suspend fun loadScopedPage(municipalityCode: String, limit: Int, offset: Int): ServerStationPage? =
+        loadPage(scopeKey(municipalityCode), limit, offset)
 
     private suspend fun loadPage(key: String): ServerStationPage? {
         val (entities, meta) = dao.pageSnapshot(key)
+        return snapshot(entities, meta)
+    }
+
+    private suspend fun loadPage(key: String, limit: Int, offset: Int): ServerStationPage? {
+        require(limit in 1..MAX_PAGE_READ && offset >= 0) { "page window out of bounds" }
+        val (entities, meta) = dao.pagedSnapshot(key, limit, offset)
+        return snapshot(entities, meta)
+    }
+
+    private fun snapshot(
+        entities: List<ServerStationCacheEntity>,
+        meta: ServerCatalogMetaEntity?,
+    ): ServerStationPage? {
         if (meta == null) return null
         return ServerStationPage(
             items = entities.filter { it.position != Int.MAX_VALUE }.map { it.toDomain() },
@@ -56,7 +80,7 @@ class DirectoryStationRoomCache @Inject constructor(
 
     override suspend fun saveDetail(station: ServerStation) {
         val existing = dao.findById(station.stationId)
-        dao.upsert(station.toEntity(existing?.position ?: Int.MAX_VALUE))
+        dao.upsert(station.toEntity(existing?.position ?: Int.MAX_VALUE, ServerStationCacheEntity.DETAIL_SCOPE))
     }
 
     override suspend fun loadDetail(stationId: String): ServerStation? =
@@ -67,7 +91,14 @@ class DirectoryStationRoomCache @Inject constructor(
         dao.clearMeta()
     }
 
-    private fun ServerStation.toEntity(position: Int) = ServerStationCacheEntity(
+    private fun scopeKey(municipalityCode: String) = "city:$municipalityCode"
+
+    companion object {
+        /** Largest window a virtualized list may read; full snapshots bypass it internally. */
+        const val MAX_PAGE_READ = 100
+    }
+
+    private fun ServerStation.toEntity(position: Int, scopeKey: String) = ServerStationCacheEntity(
         stationId = stationId,
         displayName = displayName,
         locationQuality = locationQuality.wire,
@@ -80,6 +111,7 @@ class DirectoryStationRoomCache @Inject constructor(
         position = position,
         savedAtMillis = System.currentTimeMillis(),
         addressJson = org.json.JSONObject(address).toString(),
+        scopeKey = scopeKey,
     )
 
     private fun ServerStationCacheEntity.toDomain() = ServerStation.create(

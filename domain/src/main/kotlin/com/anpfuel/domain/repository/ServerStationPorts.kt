@@ -10,8 +10,9 @@ import com.anpfuel.domain.discovery.ServerStationPage
  * HTTP is network-only (throws on transport/parse failure, never returns
  * cache); the memory cache keeps the last good page/detail for
  * failed-refresh recovery. Legacy CNPJ/offline rows are never rewritten
- * here; callers resolve old full-CNPJ identities explicitly. No Room
- * migration is introduced by this slice.
+ * here; callers resolve old full-CNPJ identities explicitly. Page rows
+ * are scope-keyed (national page vs `city:<ibge>`); see the Room cache
+ * for the scoped persistence contract.
  */
 interface ServerStationGateway {
     suspend fun list(limit: Int, cursor: String?): ServerStationPage
@@ -46,6 +47,14 @@ interface ServerStationCache {
     suspend fun savePage(page: ServerStationPage)
 
     suspend fun loadPage(): ServerStationPage?
+
+    /** Windowed read over the stored server order for virtualized lists. */
+    suspend fun loadPage(limit: Int, offset: Int): ServerStationPage? =
+        throw UnsupportedOperationException("paged directory cache unavailable")
+
+    /** Windowed read over the stored city order for virtualized lists. */
+    suspend fun loadScopedPage(municipalityCode: String, limit: Int, offset: Int): ServerStationPage? =
+        throw UnsupportedOperationException("paged directory cache unavailable")
 
     suspend fun saveDetail(station: ServerStation)
 
