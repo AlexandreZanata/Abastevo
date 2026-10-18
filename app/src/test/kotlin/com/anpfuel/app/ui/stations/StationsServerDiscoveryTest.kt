@@ -341,6 +341,44 @@ class StationsServerDiscoveryTest {
     }
 
     @Test
+    fun `restarted nearby lookup cancels the stale one`() = runTest(dispatcher) {
+        val latest = ServerStation.create(
+            stationId = "e7d85d34-74ec-5d35-b3f6-519dc34ce370",
+            displayName = "[P34-TEST] Posto Gama",
+            locationQuality = StationLocationQuality.REVIEWED,
+            latitude = -23.56,
+            longitude = -46.64,
+            cnpjNormalized = "12ABC34501DE35",
+            municipalityCode = "3550308",
+            state = "SP",
+            currentRevisionId = null,
+        )
+        every { locationPermissionHandler.hasLocationPermission() } returns true
+        coEvery { locationPermissionHandler.getCurrentLocation() } returns
+            com.anpfuel.domain.valueobject.DeviceLocation.of(-23.55, -46.63)
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var calls = 0
+        coEvery { getNearbyServerStationsUseCase(-23.55, -46.63, 2000, 20) } coAnswers {
+            calls++
+            if (calls == 1) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { release.await() }
+                NearbyServerStationsOutcome.Fresh(listOf(NearbyServerStation(station, 120.5)))
+            } else {
+                NearbyServerStationsOutcome.Fresh(listOf(NearbyServerStation(latest, 60.0)))
+            }
+        }
+
+        viewModel.loadNearbyServerStations()
+        runCurrent()
+        viewModel.loadNearbyServerStations()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.nearbyStations.size)
+        assertEquals(latest.stationId, viewModel.uiState.value.nearbyStations.single().station.stationId)
+    }
+
+    @Test
     fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {        coEvery { getServerStationsUseCase(100, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
         coEvery { getServerStationDetailUseCase(stationId) } returns

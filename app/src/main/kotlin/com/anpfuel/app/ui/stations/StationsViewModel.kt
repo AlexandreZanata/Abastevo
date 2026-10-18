@@ -510,14 +510,20 @@ class StationsViewModel @Inject constructor(
      * nothing; manual city browsing keeps working. A granted fix runs
      * the transient lookup (never cached); no fix or transport failure
      * reports an honest error without stale positions.
+     *
+     * A new lookup cancels the in-flight one so only the latest result
+     * lands, mirroring the server page/detail jobs.
      */
+    private var nearbyJob: kotlinx.coroutines.Job? = null
+
     fun loadNearbyServerStations(radiusMeters: Int = 2000, limit: Int = 20) {
         val useCase = getNearbyServerStationsUseCase ?: return
         if (!locationPermissionHandler.hasLocationPermission()) {
             _locationPermissionRequest.tryEmit(Unit)
             return
         }
-        viewModelScope.launch {
+        nearbyJob?.cancel()
+        nearbyJob = viewModelScope.launch {
             val fix = locationPermissionHandler.getCurrentLocation()
             if (fix == null) {
                 _uiState.update {
@@ -532,7 +538,8 @@ class StationsViewModel @Inject constructor(
             when (val outcome = useCase(fix.latitude, fix.longitude, radiusMeters, limit)) {
                 is NearbyServerStationsOutcome.Disabled ->
                     _uiState.update { it.copy(isNearbyLoading = false) }
-                is NearbyServerStationsOutcome.Fresh ->
+                is NearbyServerStationsOutcome.Fresh -> {
+                    currentCoroutineContext().ensureActive()
                     _uiState.update {
                         it.copy(
                             isNearbyLoading = false,
@@ -540,6 +547,7 @@ class StationsViewModel @Inject constructor(
                             serverError = null,
                         )
                     }
+                }
                 is NearbyServerStationsOutcome.Unavailable ->
                     _uiState.update {
                         it.copy(
@@ -550,6 +558,11 @@ class StationsViewModel @Inject constructor(
                     }
             }
         }
+    }
+
+    /** Test seam: cancels the in-flight nearby lookup, mirroring screen stops. */
+    internal fun cancelNearbyForTest() {
+        nearbyJob?.cancel()
     }
 
     fun onNavigateToStation(cnpjDigits: String) {

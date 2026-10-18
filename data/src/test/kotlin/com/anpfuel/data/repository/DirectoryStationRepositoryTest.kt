@@ -68,4 +68,37 @@ class DirectoryStationRepositoryTest {
             server.shutdown()
         }
     }
+
+    @Test
+    fun `gateway decodes search and nearby through cancellable reads`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": [$stationJson]}"""))
+            val page = gateway(server).search("3550308", "Central", 20)
+            assertEquals(1, page.items.size)
+            assertEquals("Posto Central", page.items[0].displayName)
+
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"items": [${stationJson.trim().dropLast(1)}, "distance_m": 120.5}]}"""))
+            val nearby = gateway(server).nearby(-23.55, -46.63, 2000, 20)
+            assertEquals(1, nearby.size)
+            assertEquals(120.5, nearby[0].distanceMeters)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `gateway search failure propagates without inventing stations`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(500).setBody("down"))
+            assertThrows(java.io.IOException::class.java) {
+                kotlinx.coroutines.runBlocking {
+                    gateway(server).search("3550308", "Central", 20)
+                }
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
 }

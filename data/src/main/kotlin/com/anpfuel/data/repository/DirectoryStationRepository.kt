@@ -46,7 +46,18 @@ class DirectoryStationGatewayImpl @Inject constructor(
         }
 
     override suspend fun search(municipalityCode: String, query: String, limit: Int): ServerStationPage =
-        withContext(Dispatchers.IO) { DirectoryStationJsonCodec.decodeList(httpClient.search(municipalityCode, query, limit)) }
+        withContext(Dispatchers.IO) {
+            val raw = try {
+                httpClient.awaitSearch(municipalityCode, query, limit)
+            } catch (error: IOException) {
+                throw error
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                throw IOException("directory search failed", error)
+            }
+            DirectoryStationJsonCodec.decodeList(raw)
+        }
 
     override suspend fun nearby(
         lat: Double,
@@ -55,7 +66,7 @@ class DirectoryStationGatewayImpl @Inject constructor(
         limit: Int,
     ): List<NearbyServerStation> = withContext(Dispatchers.IO) {
         val raw = try {
-            httpClient.nearby(lat, lon, radiusMeters, limit)
+            httpClient.awaitNearby(lat, lon, radiusMeters, limit)
         } catch (error: IOException) {
             throw error
         } catch (error: CancellationException) {
@@ -67,7 +78,7 @@ class DirectoryStationGatewayImpl @Inject constructor(
     }
 
     override suspend fun byCnpj(cnpj: String): ServerStation? =
-        withContext(Dispatchers.IO) { httpClient.byCnpj(cnpj)?.let(DirectoryStationJsonCodec::decodeStation) }
+        withContext(Dispatchers.IO) { httpClient.awaitByCnpj(cnpj)?.let(DirectoryStationJsonCodec::decodeStation) }
 
     override suspend fun detail(stationId: String): ServerStation = withContext(Dispatchers.IO) {
         val raw = try {

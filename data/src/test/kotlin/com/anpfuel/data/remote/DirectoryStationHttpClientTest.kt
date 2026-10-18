@@ -57,6 +57,41 @@ class DirectoryStationHttpClientTest {
     }
 
     @Test
+    fun `cancelling nearby and search cancels the actual HTTP call`() = kotlinx.coroutines.test.runTest {
+        val server = MockWebServer()
+        val failed = java.util.concurrent.CountDownLatch(2)
+        try {
+            repeat(2) { server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE)) }
+            val http = OkHttpClient.Builder().eventListener(object : okhttp3.EventListener() {
+                override fun callFailed(call: okhttp3.Call, ioe: IOException) { failed.countDown() }
+            }).build()
+            val reader = DirectoryStationHttpClient(http, server.url("/").toString())
+            val nearby = launch { reader.awaitNearby(-23.55, -46.63, 2000, 20) }
+            runCurrent()
+            org.junit.jupiter.api.Assertions.assertNotNull(server.takeRequest(3, TimeUnit.SECONDS))
+            nearby.cancel()
+            nearby.join()
+            val search = launch { reader.awaitSearch("3550308", "Posto", 20) }
+            runCurrent()
+            org.junit.jupiter.api.Assertions.assertNotNull(server.takeRequest(3, TimeUnit.SECONDS))
+            search.cancel()
+            search.join()
+            assertTrue(failed.await(3, TimeUnit.SECONDS), "cancel must close both HTTP calls")
+        } finally { server.shutdown() }
+    }
+
+    @Test
+    fun `oversized body is refused before parsing`() = kotlinx.coroutines.test.runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{\"items\":[" + "0".repeat(600 * 1024) + "]}"))
+            assertThrows(IOException::class.java) {
+                kotlinx.coroutines.runBlocking { client(server).awaitList(20, null) }
+            }
+        } finally { server.shutdown() }
+    }
+
+    @Test
     fun `city scoped station name search encodes input and rejects malformed bounds`() {
         val server = MockWebServer()
         try {
