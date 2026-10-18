@@ -299,6 +299,7 @@ sql:
       - db/migrations/000100_quality_resource_members.sql
       - db/migrations/000101_quality_source_collection_clock.sql
       - db/migrations/000103_quality_revalidation_cursor.sql
+      - db/migrations/000104_quality_discovery_cursor.sql
     gen:
       go:
         package: quality

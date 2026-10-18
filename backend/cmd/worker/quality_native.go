@@ -105,6 +105,19 @@ func qualityInputIdentity(hash string, bytes int64) prepared.InputIdentity {
 	return prepared.InputIdentity{SHA256: strings.TrimPrefix(hash, "sha256:"), Bytes: bytes}
 }
 
+// qualityImportEnqueue is the shared platform enqueue for every native
+// quality source producer (discovery, revalidation). Created/existing is
+// preserved so callers can budget only fresh work.
+func qualityImportEnqueue(pool *pgxpool.Pool) func(context.Context, qualityjobs.ImportPayload, string) (platformjobs.EnqueueResult, error) {
+	return func(ctx context.Context, payload qualityjobs.ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return platformjobs.EnqueueResult{}, err
+		}
+		return platformjobs.Enqueue(ctx, pool, (qualityjobs.FileImport{}).Kind(), encoded, dedupe, 3, time.Time{})
+	}
+}
+
 // nativeQualityRevalidate composes the bounded Directory revalidation sweep:
 // read-only Directory evidence, platform enqueue of fresh imports and an
 // audited replay of converged dead refresh jobs. The sweep performs no
@@ -124,13 +137,7 @@ func nativeQualityRevalidate(pool *pgxpool.Pool) qualityjobs.Revalidate {
 			}
 			return out, nil
 		},
-		Enqueue: func(ctx context.Context, payload qualityjobs.ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
-			encoded, err := json.Marshal(payload)
-			if err != nil {
-				return platformjobs.EnqueueResult{}, err
-			}
-			return platformjobs.Enqueue(ctx, pool, (qualityjobs.FileImport{}).Kind(), encoded, dedupe, 3, time.Time{})
-		},
+		Enqueue: qualityImportEnqueue(pool),
 		Replay: func(ctx context.Context, id, reason string) error {
 			return platformjobs.NewQueue(pool).ReplayDead(ctx, id, reason)
 		},

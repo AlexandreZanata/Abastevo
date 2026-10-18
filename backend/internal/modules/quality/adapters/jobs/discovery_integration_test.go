@@ -139,11 +139,11 @@ func TestDiscoveryEnqueuesBoundedChunk(t *testing.T) {
 		List: func(ctx context.Context) ([]application.InventoryEntry, error) {
 			return inventoryFixture(), nil
 		},
-		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (string, error) {
+		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			got = append(got, payload)
-			return fmt.Sprintf("job-%d", len(got)), nil
+			return platformjobs.EnqueueResult{ID: fmt.Sprintf("job-%d", len(got)), Created: true}, nil
 		},
 		MaxEditions: 2,
 	}
@@ -168,13 +168,12 @@ func TestDiscoveryConcurrentConverges(t *testing.T) {
 		List: func(ctx context.Context) ([]application.InventoryEntry, error) {
 			return inventoryFixture(), nil
 		},
-		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (string, error) {
+		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
 			raw, err := json.Marshal(payload)
 			if err != nil {
-				return "", err
+				return platformjobs.EnqueueResult{}, err
 			}
-			result, err := platformjobs.Enqueue(ctx, pool, "quality-import", raw, dedupe, 3, time.Now())
-			return result.ID, err
+			return platformjobs.Enqueue(ctx, pool, "quality-import", raw, dedupe, 3, time.Now())
 		},
 		MaxEditions: 10,
 	}
@@ -235,9 +234,9 @@ func TestDiscoveryLateResourceImports(t *testing.T) {
 				{Label: "2026-07", URL: "u/07.zip", SHA256: strings.Repeat("7", 64)},
 			}, nil
 		},
-		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (string, error) {
+		Enqueue: func(ctx context.Context, payload ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
 			got = append(got, payload)
-			return "job-1", nil
+			return platformjobs.EnqueueResult{ID: "job-1", Created: true}, nil
 		},
 		MaxEditions: 4,
 	}
@@ -426,10 +425,10 @@ func TestDiscoveryAnnualMembersAreSeparateAndReplayStable(t *testing.T) {
 	var keys []string
 	d := Discovery{Pool: p, Source: "pmqc", Stream: "pmqc-assay-v1", List: func(context.Context) ([]application.InventoryEntry, error) {
 		return []application.InventoryEntry{{Label: "2025-01", URL: in.Resources[0].URL, SHA256: hash, Member: "2025/PMQC_2025_01.csv"}, {Label: "2025-02", URL: in.Resources[0].URL, SHA256: hash, Member: "2025/PMQC_2025_02.csv"}}, nil
-	}, Enqueue: func(ctx context.Context, payload ImportPayload, key string) (string, error) {
+	}, Enqueue: func(ctx context.Context, payload ImportPayload, key string) (platformjobs.EnqueueResult, error) {
 		got = append(got, payload)
 		keys = append(keys, key)
-		return "job", nil
+		return platformjobs.EnqueueResult{ID: "job", Created: true}, nil
 	}}
 	if e := d.Handle(ctx, platformjobs.Job{}); e != nil {
 		t.Fatal(e)

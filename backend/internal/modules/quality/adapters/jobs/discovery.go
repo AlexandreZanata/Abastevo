@@ -33,14 +33,18 @@ type ImportPayload struct {
 
 // Discovery plans one bounded chunk of editions and enqueues imports.
 // Listing and enqueueing are injected; production wires the ANP page
-// lister and the platform queue. Guardrails: at most MaxEditions import
-// jobs per run, oldest labels first, watermark cursor honored.
+// lister and the platform queue. Guardrails: at most MaxEditions created
+// import jobs per run, oldest labels first, watermark cursor honored.
+// Converged dedupe replays never charge the budget, so repeated runs make
+// forward progress through later members instead of re-charging the same
+// already-enqueued editions; a dead converged job is left for the audited
+// operator replay path and never forks duplicate work.
 type Discovery struct {
 	Source      string
 	Stream      string
 	Pool        *pgxpool.Pool
 	List        func(ctx context.Context) ([]application.InventoryEntry, error)
-	Enqueue     func(ctx context.Context, payload ImportPayload, dedupe string) (string, error)
+	Enqueue     func(ctx context.Context, payload ImportPayload, dedupe string) (platformjobs.EnqueueResult, error)
 	MaxEditions int
 }
 
@@ -61,7 +65,8 @@ func (d Discovery) maxEditions() int {
 // aliases and missing resources enqueue nothing; the ledger itself is the
 // resume state, so late or republished labels always flow while recorded
 // content never double-imports. The watermark records completed imports
-// on the Import side and stays untouched here.
+// on the Import side and stays untouched here. Only created jobs charge
+// the budget; converged repeats leave room for later members.
 func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 	if d.List == nil {
 		return errors.New("discovery: no lister configured")
@@ -74,33 +79,9 @@ func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 		return err
 	}
 	q := quality.New(d.Pool)
-	recorded := make([]application.RecordedEdition, 0, len(entries))
-	hashes, err := q.ListStreamResourceHashes(ctx, quality.ListStreamResourceHashesParams{
-		Source: d.Source, Stream: d.Stream,
-	})
+	recorded, err := recordedEditions(ctx, q, d.Source, d.Stream)
 	if err != nil {
 		return err
-	}
-	byEdition := map[string][]string{}
-	byEditionMembers := map[string][]string{}
-	for _, h := range hashes {
-		byEdition[h.Edition] = append(byEdition[h.Edition], h.Sha256)
-		byEditionMembers[h.Edition] = append(byEditionMembers[h.Edition], h.MemberName)
-	}
-	for _, e := range entries {
-		rec := application.RecordedEdition{Label: e.Label}
-		if edition, gerr := q.GetEditionByKey(ctx, quality.GetEditionByKeyParams{
-			Source: d.Source, Stream: d.Stream, Edition: e.Label,
-		}); gerr == nil {
-			if manifest, merr := q.GetManifest(ctx, edition.ID); merr == nil {
-				rec.ManifestHash = manifest.ManifestHash
-			}
-			rec.ResourceHashes = byEdition[e.Label]
-			rec.ResourceMembers = byEditionMembers[e.Label]
-		} else if !errors.Is(gerr, pgx.ErrNoRows) {
-			return gerr
-		}
-		recorded = append(recorded, rec)
 	}
 	enqueued := 0
 	for _, p := range application.PlanBackfill(entries, recorded) {
@@ -111,15 +92,57 @@ func (d Discovery) Handle(ctx context.Context, job platformjobs.Job) error {
 			break
 		}
 		entry := findEntry(entries, p.Label)
-		if _, eerr := d.Enqueue(ctx, ImportPayload{
+		result, eerr := d.Enqueue(ctx, ImportPayload{
 			Version: 1, Source: d.Source, Stream: d.Stream,
 			Edition: p.Label, URL: entry.URL, SHA256: entry.SHA256, Member: entry.Member,
-		}, strings.Join([]string{d.Source, d.Stream, p.Label, application.ResourceIdentity(entry.SHA256, entry.Member)}, "\x1f")); eerr != nil {
+		}, discoveryDedupe(d.Source, d.Stream, p.Label, entry))
+		if eerr != nil {
 			return eerr
+		}
+		if !result.Created {
+			continue
 		}
 		enqueued++
 	}
 	return nil
+}
+
+// recordedEditions loads the ledger side of the plan: recorded labels,
+// manifests, and resource hashes/members per source and stream.
+func recordedEditions(ctx context.Context, q *quality.Queries, source, stream string) ([]application.RecordedEdition, error) {
+	entries, err := q.ListStreamResourceHashes(ctx, quality.ListStreamResourceHashesParams{
+		Source: source, Stream: stream,
+	})
+	if err != nil {
+		return nil, err
+	}
+	byEdition := map[string][]string{}
+	byEditionMembers := map[string][]string{}
+	labels := []string{}
+	seen := map[string]bool{}
+	for _, h := range entries {
+		if !seen[h.Edition] {
+			seen[h.Edition] = true
+			labels = append(labels, h.Edition)
+		}
+		byEdition[h.Edition] = append(byEdition[h.Edition], h.Sha256)
+		byEditionMembers[h.Edition] = append(byEditionMembers[h.Edition], h.MemberName)
+	}
+	recorded := make([]application.RecordedEdition, 0, len(labels))
+	for _, label := range labels {
+		rec := application.RecordedEdition{Label: label, ResourceHashes: byEdition[label], ResourceMembers: byEditionMembers[label]}
+		if edition, gerr := q.GetEditionByKey(ctx, quality.GetEditionByKeyParams{
+			Source: source, Stream: stream, Edition: label,
+		}); gerr == nil {
+			if manifest, merr := q.GetManifest(ctx, edition.ID); merr == nil {
+				rec.ManifestHash = manifest.ManifestHash
+			}
+		} else if !errors.Is(gerr, pgx.ErrNoRows) {
+			return nil, gerr
+		}
+		recorded = append(recorded, rec)
+	}
+	return recorded, nil
 }
 
 func findEntry(entries []application.InventoryEntry, label string) application.InventoryEntry {

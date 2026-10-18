@@ -101,6 +101,12 @@ type QualityCurrentRevision struct {
 	Edition    string             `json:"edition"`
 }
 
+type QualityDiscoveryCursor struct {
+	Kind      string             `json:"kind"`
+	CursorUrl string             `json:"cursor_url"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type QualityEdition struct {
 	ID          pgtype.UUID        `json:"id"`
 	Source      string             `json:"source"`

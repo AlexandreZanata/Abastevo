@@ -842,7 +842,8 @@ func run() error {
 	if cfg.QualityImportsEnabled {
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
-		nativeKinds = append(nativeKinds, "quality-import", qualityjobs.RevalidationKind)
+		handlers["quality-discovery"] = nativeQualityLiveDiscovery(raw)
+		nativeKinds = append(nativeKinds, "quality-import", qualityjobs.RevalidationKind, "quality-discovery")
 	}
 	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {

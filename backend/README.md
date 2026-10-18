@@ -149,14 +149,18 @@ catalog traversal after imports to include newly inserted revisions.
 
 Native PMQC worker imports have a separate default-off switch,
 `ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
-`quality-import` and `quality-discovery`; disabled source jobs retain zero claim
-attempts. Explicit import enablement adds one fixed slot, using the trusted
-`/prepare_quality` executable and a separate PostgreSQL advisory-lock connection
-across fetch, preparation and publication (210-second attempt, five-minute job
-lease). Safety slots remain independent. No live discovery schedule is installed
-by this switch. Keep it disabled until image packaging, bounded live discovery
-and post-publication Directory revalidation are accepted; see
-[FQ-05W5](../docs/backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md).
+`quality-import`, `quality-discovery` and `quality-revalidate`; disabled source
+jobs retain zero claim attempts. Enablement adds fixed slots for the native
+import (trusted `/prepare_quality` executable and a separate PostgreSQL
+advisory-lock connection across fetch, preparation and publication, 210-second
+attempt, five-minute job lease), the bounded Directory revalidation sweep and
+bounded live discovery (verified official listing page, one archive inspection
+per run, durable cursor, created-only enqueue budget). Safety slots remain
+independent, and no schedule is installed by this switch. Keep it disabled
+until image packaging and explicit source scheduling are accepted; see
+[FQ-05W5](../docs/backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md),
+[FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md)
+and [FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account
