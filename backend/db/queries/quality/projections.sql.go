@@ -81,6 +81,73 @@ func (q *Queries) LockProjectionBasis(ctx context.Context, arg LockProjectionBas
 	return revision_id, err
 }
 
+const readStationDimensions = `-- name: ReadStationDimensions :many
+SELECT fuel, policy, input_digest, samples, visits, conforming, nonconforming,
+ unresolved, oldest_observed_on, newest_observed_on, computed_at
+FROM quality_station_fuel_projections
+WHERE station_id = $1 AND basis_revision = $2
+ AND methodology = $3 AND ($4::text = '' OR fuel = $4)
+ORDER BY fuel LIMIT 8
+`
+
+type ReadStationDimensionsParams struct {
+	StationID   pgtype.UUID `json:"station_id"`
+	RevisionID  pgtype.UUID `json:"revision_id"`
+	Methodology string      `json:"methodology"`
+	Fuel        string      `json:"fuel"`
+}
+
+type ReadStationDimensionsRow struct {
+	Fuel             string             `json:"fuel"`
+	Policy           string             `json:"policy"`
+	InputDigest      string             `json:"input_digest"`
+	Samples          int64              `json:"samples"`
+	Visits           int64              `json:"visits"`
+	Conforming       int64              `json:"conforming"`
+	Nonconforming    int64              `json:"nonconforming"`
+	Unresolved       int64              `json:"unresolved"`
+	OldestObservedOn pgtype.Date        `json:"oldest_observed_on"`
+	NewestObservedOn pgtype.Date        `json:"newest_observed_on"`
+	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
+}
+
+func (q *Queries) ReadStationDimensions(ctx context.Context, arg ReadStationDimensionsParams) ([]ReadStationDimensionsRow, error) {
+	rows, err := q.db.Query(ctx, readStationDimensions,
+		arg.StationID,
+		arg.RevisionID,
+		arg.Methodology,
+		arg.Fuel,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadStationDimensionsRow
+	for rows.Next() {
+		var i ReadStationDimensionsRow
+		if err := rows.Scan(
+			&i.Fuel,
+			&i.Policy,
+			&i.InputDigest,
+			&i.Samples,
+			&i.Visits,
+			&i.Conforming,
+			&i.Nonconforming,
+			&i.Unresolved,
+			&i.OldestObservedOn,
+			&i.NewestObservedOn,
+			&i.ComputedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readStationFuelProjections = `-- name: ReadStationFuelProjections :many
 SELECT station_id, fuel, methodology, policy, basis_source, basis_stream,
        basis_revision, input_digest, samples, visits, conforming, nonconforming,

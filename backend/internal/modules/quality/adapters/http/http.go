@@ -167,12 +167,18 @@ func (h Handler) summary(w http.ResponseWriter, r *http.Request) {
 			"count": c.Count, "last_observed": c.LastObserved,
 		})
 	}
+	dimensions, err := h.Read.DimensionsAtLease(r.Context(), lease, id, fuel)
+	if err != nil {
+		sourceDown(w, r)
+		return
+	}
 	body, _ := json.Marshal(map[string]any{
 		"station_id": id, "fuel_cells": wire,
-		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
+		"sample_dimensions": dimensions,
+		"lease":             wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"station_id": id, "cells": wire, "lease": wireLeaseOf(lease)})))
+		httpapi.ETag(mustMarshal(map[string]any{"station_id": id, "cells": wire, "sample_dimensions": dimensions, "lease": wireLeaseOf(lease)})))
 }
 
 func (h Handler) assays(w http.ResponseWriter, r *http.Request) {

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
@@ -46,14 +47,15 @@ func (Recompute) Kind() string { return RecomputeKind }
 func (Recompute) Version() int { return 1 }
 
 // EnqueueRecompute records the recomputation intent for one published
-// revision. The dedupe identity is the revision itself: replays and retries
-// converge instead of forking, and a correction revision always gets its own.
+// revision and method/policy. Replays converge, while a new method can rebuild
+// the same frozen source without resetting a completed job's state or budget.
 func EnqueueRecompute(ctx context.Context, pool *pgxpool.Pool, source, stream, revisionID string) error {
 	payload, err := json.Marshal(RecomputePayload{Version: 1, Source: source, Stream: stream, RevisionID: revisionID})
 	if err != nil {
 		return err
 	}
-	_, err = platformjobs.Enqueue(ctx, pool, RecomputeKind, payload, "quality-recompute:"+revisionID, 5, time.Time{})
+	key := "quality-recompute:" + revisionID + ":" + domain.MethodologyVersion + ":" + adapters.ProjectionPolicy
+	_, err = platformjobs.Enqueue(ctx, pool, RecomputeKind, payload, key, 5, time.Time{})
 	return err
 }
 

@@ -7598,11 +7598,13 @@ components:
               start: {type: string, format: date, example: '2026-09-01'}
               end: {type: string, format: date, example: '2026-09-30'}
     QualitySummary:
-      description: Per-fuel conformity denominators with the read lease.
+      description: Raw assay conformity counts and separately judged sample dimensions, bound to the selected read lease. Numeric scores remain unavailable.
       type: object
       required: [station_id, fuel_cells, lease, generated_at]
       properties:
         station_id: {type: string, format: uuid}
+        sample_dimensions:
+          $ref: '#/components/schemas/QualitySampleDimensions'
         fuel_cells:
           type: array
           items:
@@ -7615,6 +7617,34 @@ components:
               last_observed: {type: string, format: date}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
+    QualitySampleDimensions:
+      description: Matching derived rows only. Missing projections do not establish a zero denominator; historical raw facts remain independently accessible.
+      type: object
+      required: [available, methodology, limitation, items]
+      properties:
+        available: {type: boolean}
+        methodology: {type: string}
+        limitation: {type: string}
+        items:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            required: [fuel_product, policy, input_digest, samples, visits, conforming, nonconforming, unresolved, oldest_observed_on, newest_observed_on, computed_at, score_state, score]
+            properties:
+              fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+              policy: {type: string}
+              input_digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+              samples: {type: integer, minimum: 0}
+              visits: {type: integer, minimum: 0}
+              conforming: {type: integer, minimum: 0}
+              nonconforming: {type: integer, minimum: 0}
+              unresolved: {type: integer, minimum: 0}
+              oldest_observed_on: {type: string}
+              newest_observed_on: {type: string}
+              computed_at: {type: string, format: date-time}
+              score_state: {type: string, enum: [UNSCORED]}
+              score: {type: integer, nullable: true}
     QualityAssay:
       description: One published determination without source identifiers.
       type: object

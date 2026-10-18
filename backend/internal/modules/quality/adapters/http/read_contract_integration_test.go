@@ -32,6 +32,9 @@ func TestQualityActualReadResponsesMatchOpenAPI(t *testing.T) {
 	if e := p.QueryRow(context.Background(), "SELECT revision_id::text FROM quality_current_revisions WHERE source='pmqc'").Scan(&revision); e != nil {
 		t.Fatal(e)
 	}
+	if _, e := parentadapters.NewProjectionStore(p).RecomputeRevision(context.Background(), assaySource, assayStream, revision); e != nil {
+		t.Fatal(e)
+	}
 	for _, tc := range []struct{ path, schema string }{
 		{"/v1/quality/revisions?stream=" + assayStream, "QualityRevisionPage"},
 		{"/v1/quality/revisions/" + revision + "?stream=" + assayStream, "QualityRevisionDetail"},

@@ -62,3 +62,11 @@ SELECT station_id, fuel, methodology, policy, basis_source, basis_stream,
 FROM quality_station_fuel_projections
 WHERE basis_revision = @revision_id
 ORDER BY station_id, fuel;
+
+-- name: ReadStationDimensions :many
+SELECT fuel, policy, input_digest, samples, visits, conforming, nonconforming,
+ unresolved, oldest_observed_on, newest_observed_on, computed_at
+FROM quality_station_fuel_projections
+WHERE station_id = @station_id AND basis_revision = @revision_id
+ AND methodology = @methodology AND (@fuel::text = '' OR fuel = @fuel)
+ORDER BY fuel LIMIT 8;
