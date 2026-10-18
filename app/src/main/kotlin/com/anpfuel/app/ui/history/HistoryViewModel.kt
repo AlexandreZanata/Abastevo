@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 data class HistoryUiState(
@@ -59,8 +61,15 @@ class HistoryViewModel @Inject constructor(
         loadForFuel(fuelProduct, locale)
     }
 
+    /**
+     * A fuel switch supersedes the in-flight load so only the latest
+     * fuel's entries land, mirroring the stations screen guard.
+     */
+    private var loadJob: kotlinx.coroutines.Job? = null
+
     private fun loadForFuel(fuelProduct: FuelProduct, locale: Locale) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -74,6 +83,7 @@ class HistoryViewModel @Inject constructor(
             runCatching {
                 when (val outcome = getPriceHistoryUseCase(fuelProduct = fuelProduct)) {
                     PriceHistoryOutcome.HistoryDisabled -> {
+                        currentCoroutineContext().ensureActive()
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -83,6 +93,7 @@ class HistoryViewModel @Inject constructor(
                     }
 
                     PriceHistoryOutcome.InsufficientData -> {
+                        currentCoroutineContext().ensureActive()
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -92,6 +103,7 @@ class HistoryViewModel @Inject constructor(
                     }
 
                     is PriceHistoryOutcome.Success -> {
+                        currentCoroutineContext().ensureActive()
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -115,5 +127,10 @@ class HistoryViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Test seam: cancels the in-flight history load, mirroring screen stops. */
+    internal fun cancelLoadForTest() {
+        loadJob?.cancel()
     }
 }
