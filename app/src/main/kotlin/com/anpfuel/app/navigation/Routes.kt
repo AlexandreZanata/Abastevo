@@ -42,6 +42,15 @@ object Routes {
         return "station-quality/$stationId?fuelProduct=${fuel.name}"
     }
 
+    const val QUALITY_REPORTS="quality-reports/{stationId}?fuelProduct={fuelProduct}&revisionId={revisionId}&sampleRef={sampleRef}"
+    fun qualityReports(stationId:String,fuel:FuelProduct,revisionId:String?=null,sampleRef:String?=null):String {
+        require(com.anpfuel.domain.quality.qualityReportId(stationId))
+        require((revisionId==null)==(sampleRef==null))
+        require(revisionId==null || com.anpfuel.domain.quality.qualityReportId(revisionId))
+        val sample=sampleRef?.let {java.net.URLEncoder.encode(it,"UTF-8").replace("+","%20")}.orEmpty()
+        return "quality-reports/$stationId?fuelProduct=${fuel.name}&revisionId=${revisionId.orEmpty()}&sampleRef=$sample"
+    }
+
     fun stationProfile(stationId: String): String = "station-profile/$stationId"
 
     const val SUGGEST = "suggest"

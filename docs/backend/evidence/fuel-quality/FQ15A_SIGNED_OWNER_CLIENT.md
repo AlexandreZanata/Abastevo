@@ -4,7 +4,7 @@ Status: LOCAL_DONE
 Validation: PASS
 
 Parent 6c470b15, maintained dev. B-BR-FQ-07/08/09/14/15;
-BUC-FQ-05/06/07/08. Implement typed document-free report commands and owner-only
+BUC-FQ-05/07/08 (BUC-FQ-06 documents remain D-held). Implement typed document-free report commands and owner-only
 read port over the existing exact-body device proof and free account session.
 Credentials/nonces/signatures remain ephemeral; stable command IDs survive a
 retry with fresh authority. Pin origin/account/device before and after every

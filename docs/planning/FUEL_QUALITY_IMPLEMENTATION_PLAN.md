@@ -528,6 +528,8 @@ Engine and fenced recomputation: [FQ-13](../backend/evidence/fuel-quality/FQ13_P
 
 ### FQ-15 — Android report, document and official case response (M)
 
+Document-free source slices [signed owner client](../backend/evidence/fuel-quality/FQ15A_SIGNED_OWNER_CLIENT.md) and [Android form/recovery](../backend/evidence/fuel-quality/FQ15B_ANDROID_OWNER_REPORTS.md) are LOCAL_DONE / INTEGRATION_PENDING. Durable offline intent remains FQ-16; native execution OWED. Document attachment/verification remains D-held.
+
 Scope amendment: document-free reporting/case response can be selected separately. Private document attachment/verification is **DEFERRED_FUTURE / D_GATE_REQUIRED**. Record accepted versus deferred slices; do not claim full original FQ-15 acceptance from the document-free slice.
 
 - Depends: FQ-09/FQ-14 and any displayed accepted document-free FQ-11 slice; private-document features additionally require FQ-10 and the D gate.

@@ -32,7 +32,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
 @Composable
-fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel()) {
+fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel(),onReports:(String,FuelProduct,String?,String?)->Unit={_,_,_,_->}) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val locale=LocalConfiguration.current.locales[0]
     val uri=LocalUriHandler.current
@@ -44,6 +44,9 @@ fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel()) {
         LazyColumn(state=list,modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
             item {
                 Text(stringResource(R.string.quality_note),style=MaterialTheme.typography.bodyMedium)
+                state.selection?.let {selection ->
+                    OutlinedButton(onClick={onReports(selection.stationId,state.fuel,null,null)}){Text(stringResource(R.string.quality_reports_entry))}
+                }
                 if(state.loading || state.detailLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if(state.unavailable) {
                     Text(stringResource(R.string.quality_unavailable))
@@ -71,7 +74,10 @@ fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel()) {
                             Text(stringResource(R.string.quality_verdicts,dim.conforming,dim.nonconforming,dim.unresolved))
                             Text(stringResource(R.string.quality_sample_range,formatQualityDate(dim.oldestObserved,locale),formatQualityDate(dim.newestObserved,locale)))
                         }
-                        summary.cells.forEach {cell -> Text(stringResource(R.string.quality_assay_count,cell.count,formatQualityDate(cell.lastObserved,locale))) }
+                        summary.cells.forEach {cell ->
+                            Text(stringResource(when(cell.conformity){"CONFORMING"->R.string.quality_conforming;"NONCONFORMING"->R.string.quality_nonconforming;else->R.string.quality_unknown}))
+                            Text(stringResource(R.string.quality_assay_count,cell.count,formatQualityDate(cell.lastObserved,locale)))
+                        }
                         TextButton(onClick=viewModel::openSources,enabled=!state.detailLoading){Text(stringResource(R.string.quality_source))}
                     }
                 }
@@ -111,7 +117,12 @@ fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel()) {
     state.sample?.let {sample ->
         AlertDialog(onDismissRequest=viewModel::dismissDetail,title={Text(stringResource(R.string.quality_sample_title))},text={
             LazyColumn(Modifier.heightIn(max=440.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                item {Text(stringResource(R.string.quality_aspect_note))}
+                item {
+                    Text(stringResource(R.string.quality_aspect_note))
+                    state.selection?.let {selection ->
+                        TextButton(onClick={onReports(selection.stationId,state.fuel,sample.lease.revisionId,sample.sampleRef)}){Text(stringResource(R.string.quality_reports_link))}
+                    }
+                }
                 items(sample.assays,key={it.id}) {row -> QualityAssayText(row,locale)}
             }
         },confirmButton={TextButton(onClick=viewModel::dismissDetail){Text(stringResource(R.string.action_back))}})
