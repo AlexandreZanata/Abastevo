@@ -843,7 +843,8 @@ func run() error {
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
 		handlers["quality-discovery"] = nativeQualityLiveDiscovery(raw)
-		nativeKinds = append(nativeKinds, "quality-import", qualityjobs.RevalidationKind, "quality-discovery")
+		handlers[qualityjobs.RecomputeKind] = qualityjobs.Recompute{Store: qualityadapters.NewProjectionStore(raw)}
+		nativeKinds = append(nativeKinds, "quality-import", qualityjobs.RevalidationKind, "quality-discovery", qualityjobs.RecomputeKind)
 	}
 	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {

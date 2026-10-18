@@ -278,7 +278,7 @@ func TestSourceIdentityHistoricalIndexPlan(t *testing.T) {
 	}
 	t.Log("Before migration102: generated lookup scans 20,001 retained rows")
 	applied, e := migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000102", "000103", "000104"}) {
+	if e != nil || !slices.Equal(applied, []string{"000102", "000103", "000104", "000105"}) {
 		t.Fatal("retained history index upgrade", applied, e)
 	}
 	applied, e = migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)

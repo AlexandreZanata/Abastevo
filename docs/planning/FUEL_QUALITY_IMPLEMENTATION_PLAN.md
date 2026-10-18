@@ -502,6 +502,8 @@ Frozen judgment methodology and independent oracle: [FQ-12](../backend/evidence/
 
 ### FQ-13 — Deterministic score engine and projections (M)
 
+Engine and fenced recomputation: [FQ-13](../backend/evidence/fuel-quality/FQ13_PROJECTIONS.md), LOCAL_DONE / INTEGRATION_PENDING. Versioned per-station/fuel dimension rows bound to the frozen basis and input digest; stale bases can never overwrite newer ones and no numeric score exists before calibration.
+
 - Depends: accepted FQ-12 methodology; FQ-04 jobs. BUC-FQ-03/09.
 - Deliver: pure versioned calculator, reproducible input snapshot, nullable
   per-fuel score/coverage, as-of/expiry and existing-worker recomputation.

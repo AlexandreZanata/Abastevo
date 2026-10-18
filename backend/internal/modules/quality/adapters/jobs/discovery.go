@@ -247,35 +247,47 @@ func (im Import) publishPrepared(ctx context.Context, payload ImportPayload, pre
 	resources := []application.Resource{{
 		URL: payload.URL, SHA256: payload.SHA256, Bytes: rawBytes, Member: payload.Member, MemberSHA256: prepared.MemberSHA256, MemberBytes: prepared.MemberBytes,
 	}}
+	var revision string
 	switch payload.Source {
 	case "pmqc":
-		if _, perr := publisher.Publish(ctx, application.Input{
+		rev, perr := publisher.Publish(ctx, application.Input{
 			Source: payload.Source, Stream: payload.Stream, Edition: payload.Edition,
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
 			ManifestHash: prepared.ManifestHash, Assays: prepared.Assays, Links: prepared.Links, Periods: prepared.Periods,
-		}, platformjobs.NewUUIDv4); perr != nil {
+		}, platformjobs.NewUUIDv4)
+		if perr != nil {
 			if errors.Is(perr, application.ErrSupersededPublication) {
 				return nil
 			}
 			return perr
 		}
+		revision = rev
 	case "enforcement", "sanctions":
-		if _, perr := publisher.PublishEvents(ctx, application.EventsInput{
+		rev, perr := publisher.PublishEvents(ctx, application.EventsInput{
 			Source: payload.Source, Stream: payload.Stream, Edition: payload.Edition,
 			Predecessor: predecessor, Resources: resources, Counts: prepared.Counts,
 			ManifestHash: prepared.ManifestHash, Periods: prepared.Periods,
 			Enforcement: prepared.Enforcement, Sanctions: prepared.Sanctions,
-		}, platformjobs.NewUUIDv4); perr != nil {
+		}, platformjobs.NewUUIDv4)
+		if perr != nil {
 			if errors.Is(perr, application.ErrSupersededPublication) {
 				return nil
 			}
 			return perr
 		}
+		revision = rev
 	default:
 		return fmt.Errorf("import: unknown source %q", payload.Source)
 	}
-	return q.SetWatermark(ctx, quality.SetWatermarkParams{
+	if err := q.SetWatermark(ctx, quality.SetWatermarkParams{
 		Source: payload.Source, Stream: payload.Stream,
 		LastEdition: payload.Edition, LastHash: prepared.ManifestHash,
-	})
+	}); err != nil {
+		return err
+	}
+	// Derived official dimensions follow every successful publication. The
+	// dedupe identity is the revision, so retries converge and corrections
+	// recompute on their own basis; a failure here fails the job and replays
+	// the acknowledged publish harmlessly.
+	return EnqueueRecompute(ctx, im.Pool, payload.Source, payload.Stream, revision)
 }

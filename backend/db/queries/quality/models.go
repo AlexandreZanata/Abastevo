@@ -282,6 +282,29 @@ type QualitySanctionEvent struct {
 	EvidenceRef   string      `json:"evidence_ref"`
 }
 
+type QualityStationFuelProjection struct {
+	StationID        pgtype.UUID        `json:"station_id"`
+	Fuel             string             `json:"fuel"`
+	Methodology      string             `json:"methodology"`
+	Policy           string             `json:"policy"`
+	BasisSource      string             `json:"basis_source"`
+	BasisStream      string             `json:"basis_stream"`
+	BasisRevision    pgtype.UUID        `json:"basis_revision"`
+	BasisPublishedAt pgtype.Timestamptz `json:"basis_published_at"`
+	InputDigest      string             `json:"input_digest"`
+	Samples          int64              `json:"samples"`
+	Visits           int64              `json:"visits"`
+	Conforming       int64              `json:"conforming"`
+	Nonconforming    int64              `json:"nonconforming"`
+	Unresolved       int64              `json:"unresolved"`
+	OldestObservedOn pgtype.Date        `json:"oldest_observed_on"`
+	NewestObservedOn pgtype.Date        `json:"newest_observed_on"`
+	ScoreState       string             `json:"score_state"`
+	Score            pgtype.Int4        `json:"score"`
+	Generation       int64              `json:"generation"`
+	ComputedAt       pgtype.Timestamptz `json:"computed_at"`
+}
+
 type QualityWatermark struct {
 	Source      string             `json:"source"`
 	Stream      string             `json:"stream"`

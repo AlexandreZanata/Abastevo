@@ -290,7 +290,7 @@ func TestDocumentFreeReviewUpgradeLegacyUnbound(t *testing.T) {
 		t.Fatal(e)
 	}
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000099", "000100", "000101", "000102", "000103", "000104"}) {
+	if e != nil || !slices.Equal(applied, []string{"000099", "000100", "000101", "000102", "000103", "000104", "000105"}) {
 		t.Fatal(applied, e)
 	}
 	applied, e = migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
