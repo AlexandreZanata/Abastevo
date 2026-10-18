@@ -545,6 +545,16 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideSyncPublicCatalogUseCase(
+        getServerStations: GetServerStationsUseCase,
+        userPreferencesRepository: UserPreferencesRepository,
+    ) = com.anpfuel.application.usecase.directory.SyncPublicCatalogUseCase(
+        getServerStations = getServerStations,
+        userPreferencesRepository = userPreferencesRepository,
+    )
+
+    @Provides
+    @Singleton
     fun provideGetServerStationDetailUseCase(
         flagProvider: CommunityReadsFlagProvider,
         gateway: ServerStationGateway,

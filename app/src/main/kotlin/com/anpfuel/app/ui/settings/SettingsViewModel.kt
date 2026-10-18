@@ -131,8 +131,19 @@ class SettingsViewModel @Inject constructor(
      * preventive directory downloads; manual navigation, manual
      * refresh, contributions and privacy tasks keep working.
      */
-    fun onSyncPublicCityCatalogChanged(enabled: Boolean) {
-        updatePreferences(_uiState.value.preferences.copy(syncPublicCityCatalog = enabled))
+    fun onSyncPublicCityCatalogChanged(enabled: Boolean, context: android.content.Context) {
+        updatePreferences(_uiState.value.preferences.copy(syncPublicCityCatalog = enabled)) {
+            val preferences = _uiState.value.preferences
+            if (enabled && preferences.preferredMunicipality != null) {
+                com.anpfuel.data.worker.DirectorySyncWorker.schedule(
+                    context,
+                    preferences.preferredMunicipality,
+                    preferences.autoSyncOnWifi,
+                )
+            } else {
+                com.anpfuel.data.worker.DirectorySyncWorker.cancel(context)
+            }
+        }
     }
 
     fun clearPublicCatalog() {

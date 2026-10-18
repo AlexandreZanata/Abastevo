@@ -99,7 +99,7 @@ fun SettingsScreen(
         onNavigateBack = onNavigateBack,
         onLocaleSelected = viewModel::onLocaleSelected,
         onSyncStationDetailChanged = viewModel::onSyncStationDetailChanged,
-        onSyncPublicCityCatalogChanged = viewModel::onSyncPublicCityCatalogChanged,
+        onSyncPublicCityCatalogChanged = { viewModel.onSyncPublicCityCatalogChanged(it, context) },
         onClearPublicCatalog = viewModel::clearPublicCatalog,
         onAutoDownloadLatestWeekChanged = viewModel::onAutoDownloadLatestWeekChanged,
         onAutoSyncOnWifiChanged = viewModel::onAutoSyncOnWifiChanged,

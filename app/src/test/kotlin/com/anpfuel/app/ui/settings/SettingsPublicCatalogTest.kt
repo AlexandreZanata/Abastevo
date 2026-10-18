@@ -91,7 +91,7 @@ class SettingsPublicCatalogTest {
             ),
         )
 
-        viewModel.onSyncPublicCityCatalogChanged(true)
+        viewModel.onSyncPublicCityCatalogChanged(true, mockk(relaxed = true))
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.preferences.syncPublicCityCatalog)

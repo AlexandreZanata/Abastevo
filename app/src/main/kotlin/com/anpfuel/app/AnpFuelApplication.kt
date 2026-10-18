@@ -31,7 +31,7 @@ class AnpFuelApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        runBlocking(Dispatchers.IO) {
+        val preferences = runBlocking(Dispatchers.IO) {
             val preferences = userPreferencesRepository.getPreferences()
             val resolvedTag = if (!preferences.localeUserSelected) {
                 val deviceTag = AppLocales.resolveDeviceLocaleTag(this@AnpFuelApplication)
@@ -46,9 +46,18 @@ class AnpFuelApplication : Application(), Configuration.Provider {
                 AppLocales.normalizeLocaleTag(preferences.localeTag)
             }
             AppLocaleHolder.localeTag = resolvedTag
+            userPreferencesRepository.getPreferences()
         }
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
-        com.anpfuel.data.worker.DirectorySyncWorker.schedule(this)
+        // The public catalog sync stays dormant unless explicitly opted in;
+        // the worker itself revalidates the preference on every run.
+        if (preferences.syncPublicCityCatalog && preferences.preferredMunicipality != null) {
+            com.anpfuel.data.worker.DirectorySyncWorker.schedule(
+                this,
+                preferences.preferredMunicipality,
+                preferences.autoSyncOnWifi,
+            )
+        }
         applicationScope.launch {
             syncWorkScheduler.schedulePeriodicSync()
         }
