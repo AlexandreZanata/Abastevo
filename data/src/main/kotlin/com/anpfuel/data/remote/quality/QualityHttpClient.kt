@@ -1,6 +1,10 @@
 package com.anpfuel.data.remote.quality
 
 import com.anpfuel.domain.quality.*
+import com.anpfuel.data.local.quality.QualityPublicCache
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.anpfuel.domain.repository.QualityGateway
 import java.io.IOException
 import java.time.Instant
@@ -15,14 +19,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Bounded, anonymous and origin-fixed official reads. No raw server errors escape. */
-class QualityHttpClient(http: OkHttpClient, baseUrl: String) : QualityGateway {
+class QualityHttpClient(http: OkHttpClient, baseUrl: String, private val cache:QualityPublicCache?=null) : QualityGateway {
     private val origin = baseUrl.toHttpUrl()
     private val client = http.newBuilder().followRedirects(false).followSslRedirects(false)
         .retryOnConnectionFailure(false).callTimeout(20, TimeUnit.SECONDS).build()
 
     override suspend fun summary(stationId: String, fuel: String, revisionId: String?): QualitySummary {
         val selection = QualitySelection(stationId, fuel, revisionId)
-        val root = read("summary", query(selection))
+        val response = read("summary", query(selection))
+        val root=response.body
         if (root.text("station_id") != stationId) invalid()
         val lease = root.lease(revisionId)
         val cells = root.array("fuel_cells", 32).map { cell ->
@@ -45,40 +50,52 @@ class QualityHttpClient(http: OkHttpClient, baseUrl: String) : QualityGateway {
         }.orEmpty()
         val available=derived?.bool("available") ?: false
         if (available != dimensions.isNotEmpty() || (!lease.available && (cells.isNotEmpty() || available))) invalid()
-        return QualitySummary(stationId,lease,cells,dimensions,available,derived?.text("methodology").orEmpty(),root.text("generated_at"))
+        val result=QualitySummary(stationId,lease,cells,dimensions,available,derived?.text("methodology").orEmpty(),root.text("generated_at"))
+        response.accept()
+        return result
     }
 
     override suspend fun assays(stationId: String, fuel: String, revisionId: String, cursor: String?): QualityPage<QualityAssay> {
-        val root=read("assays",query(QualitySelection(stationId,fuel,revisionId))+mapOf("limit" to "50","cursor" to cursor))
+        val response=read("assays",query(QualitySelection(stationId,fuel,revisionId))+mapOf("limit" to "50","cursor" to cursor))
+        val root=response.body
         if (root.text("station_id")!=stationId) invalid()
         val lease=root.lease(revisionId)
         val items=root.array("items",50).map(::assay)
         if (items.any { it.fuel!=fuel } || items.map {it.id}.distinct().size!=items.size) invalid()
-        return QualityPage(items,root.cursor(cursor),lease)
+        val result=QualityPage(items,root.cursor(cursor),lease)
+        response.accept()
+        return result
     }
 
     override suspend fun revisions(cursor: String?): QualityPage<QualityRevision> {
-        val root=read("revisions",mapOf("stream" to "pmqc-assay-v1","limit" to "20","cursor" to cursor))
+        val response=read("revisions",mapOf("stream" to "pmqc-assay-v1","limit" to "20","cursor" to cursor))
+        val root=response.body
         if(root.text("source")!="pmqc" || root.text("stream")!="pmqc-assay-v1") invalid()
         val items=root.array("items",20).map { row ->
             QualityRevision(row.uuid("revision_id"),row.text("edition"),row.text("revision_status"),row.text("provenance_state"),row.bool("is_current_stream"))
         }
         if(items.map {it.id}.distinct().size!=items.size) invalid()
-        return QualityPage(items,root.cursor(cursor))
+        val result=QualityPage(items,root.cursor(cursor))
+        response.accept()
+        return result
     }
 
     override suspend fun sample(sampleRef: String, revisionId: String): QualitySample {
         require(sampleRef.length in 1..128)
-        val root=read("samples",mapOf("revision_id" to revisionId),sampleRef)
+        val response=read("samples",mapOf("revision_id" to revisionId),sampleRef)
+        val root=response.body
         if(root.text("sample_ref")!=sampleRef) invalid()
         val lease=root.lease(revisionId)
         val items=root.array("assays",1000).map(::assay)
         if(!lease.available || items.isEmpty() || items.any {it.sampleRef!=sampleRef}) invalid()
-        return QualitySample(sampleRef,items,lease)
+        val result=QualitySample(sampleRef,items,lease)
+        response.accept()
+        return result
     }
 
     override suspend fun provenance(revisionId: String): QualityProvenance {
-        val root=read("revisions",mapOf("stream" to "pmqc-assay-v1"),revisionId)
+        val response=read("revisions",mapOf("stream" to "pmqc-assay-v1"),revisionId)
+        val root=response.body
         val lease=root.lease(revisionId)
         val resources=root.array("resources",32).map { row ->
             val url=row.text("url")
@@ -89,42 +106,68 @@ class QualityHttpClient(http: OkHttpClient, baseUrl: String) : QualityGateway {
             QualityResource(url,hash,row.optionalText("member_name").orEmpty())
         }
         if(lease.available && resources.isEmpty())invalid()
-        return QualityProvenance(lease,resources)
+        val result=QualityProvenance(lease,resources)
+        response.accept()
+        return result
     }
 
     private fun assay(row:JSONObject):QualityAssay=QualityAssay(row.uuid("id"),row.text("sample_ref"),row.text("assay_ref"),row.day("observed_on"),row.text("fuel_product"),row.text("result_text"),row.text("unit"),row.text("conformity"),row.optionalText("source_observed_at"))
 
     private fun query(selection:QualitySelection)=mapOf("station_id" to selection.stationId,"fuel" to selection.fuel,"revision_id" to selection.revisionId)
 
-    private suspend fun read(route:String, params:Map<String,String?>, detail:String?=null):JSONObject {
+    private data class PublicRead(val body:JSONObject,val accept:suspend ()->Unit)
+    private class TransportFailure:IOException()
+    private suspend fun read(route:String, params:Map<String,String?>, detail:String?=null):PublicRead {
         val url=origin.newBuilder().addPathSegments("v1/quality/$route").apply {
             detail?.let(::addPathSegment)
             params.forEach {(key,value)->value?.let {addQueryParameter(key,it)}}
         }.build()
-        return suspendCancellableCoroutine { continuation ->
-            val call=client.newCall(Request.Builder().url(url).header("Accept","application/json").header("Cache-Control","no-cache").get().build())
+        val cached=if(cache==null)null else withContext(Dispatchers.IO){runCatching {cache.load(url.toString())}.getOrNull()}
+        var etag:String?=null
+        var cacheable=true
+        val body=try { suspendCancellableCoroutine<JSONObject> { continuation ->
+            val request=Request.Builder().url(url).header("Accept","application/json").header("Cache-Control","no-cache")
+            cached?.etag?.let {request.header("If-None-Match",it)}
+            val call=client.newCall(request.get().build())
             continuation.invokeOnCancellation {call.cancel()}
             call.enqueue(object:Callback {
                 override fun onFailure(call:Call,e:IOException) {
-                    if(continuation.isActive) continuation.resumeWithException(QualityReadUnavailable())
+                    if(continuation.isActive) continuation.resumeWithException(TransportFailure())
                 }
                 override fun onResponse(call:Call,response:Response) {
                     response.use {
                         if(!continuation.isActive) return
                         val body=try {
+                            cacheable=!response.cacheControl.noStore
+                            etag=if(response.code==304)response.header("ETag") ?: cached?.etag else response.header("ETag")
+                            if(response.code==304 && cached!=null) {
+                                continuation.resume(JSONObject(cached.body))
+                                return
+                            }
+                            if(response.code>=500)throw TransportFailure()
                             if(!response.isSuccessful) throw QualityReadUnavailable(response.code==404)
                             val source=response.body?.source() ?: invalid()
                             if(source.request(1024L*1024L+1)) invalid()
                             JSONObject(source.readUtf8())
                         } catch(e:Exception) {
-                            if(continuation.isActive) continuation.resumeWithException(if(e is QualityReadUnavailable)e else QualityReadUnavailable())
+                            if(continuation.isActive) continuation.resumeWithException(when(e){is QualityReadUnavailable->e;is IOException->TransportFailure();else->QualityReadUnavailable()})
                             return
                         }
                         continuation.resume(body)
                     }
                 }
             })
+        } } catch(e:CancellationException){throw e}
+        catch(e:QualityReadUnavailable) {
+            if(e.disabled)withContext(Dispatchers.IO){runCatching {cache?.clearOrigin(origin.toString())}}
+            throw e
+        } catch(_:TransportFailure) {
+            val fallback=withContext(Dispatchers.IO){runCatching {cache?.load(url.toString())}.getOrNull()} ?: throw QualityReadUnavailable()
+            val stale=try {JSONObject(fallback.body)}catch(_:Exception){throw QualityReadUnavailable()}
+            stale.optJSONObject("lease")?.put("stale",true)
+            return PublicRead(stale,{})
         }
+        return PublicRead(body,{withContext(Dispatchers.IO){runCatching {if(cacheable)cache?.save(url.toString(),body.toString(),etag) else cache?.clearOrigin(origin.toString())}};Unit})
     }
 
     private fun JSONObject.lease(expected:String?):QualityLease {

@@ -118,6 +118,7 @@ fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel(),onR
         AlertDialog(onDismissRequest=viewModel::dismissDetail,title={Text(stringResource(R.string.quality_sample_title))},text={
             LazyColumn(Modifier.heightIn(max=440.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                 item {
+                    if(sample.lease.stale)Text(stringResource(R.string.quality_stale))
                     Text(stringResource(R.string.quality_aspect_note))
                     state.selection?.let {selection ->
                         TextButton(onClick={onReports(selection.stationId,state.fuel,sample.lease.revisionId,sample.sampleRef)}){Text(stringResource(R.string.quality_reports_link))}
@@ -130,6 +131,7 @@ fun QualityScreen(onBack:()->Unit,viewModel:QualityViewModel=hiltViewModel(),onR
     state.provenance?.let {provenance ->
         AlertDialog(onDismissRequest=viewModel::dismissDetail,title={Text(stringResource(R.string.quality_source))},text={
             LazyColumn(Modifier.heightIn(max=440.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                if(provenance.lease.stale)item {Text(stringResource(R.string.quality_stale))}
                 items(provenance.resources) {resource ->
                     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         if(resource.member.isNotEmpty()) Text(stringResource(R.string.quality_provenance,resource.member))

@@ -76,7 +76,7 @@ class QualityHttpClientTest {
             val api=QualityHttpClient(http,server.url("/").toString())
             val pending=launch {api.summary(station,"ETHANOL",null)}
             runCurrent()
-            assertNotNull(server.takeRequest(3,TimeUnit.SECONDS))
+            assertNotNull(kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){server.takeRequest(3,TimeUnit.SECONDS)})
             pending.cancel();pending.join()
             assertTrue(failed.await(3,TimeUnit.SECONDS))
         } finally {server.shutdown()}

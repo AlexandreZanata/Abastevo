@@ -39,4 +39,11 @@ class ReadQualityTest {
         coEvery { gateway.assays(station,"ETHANOL",revision,null) } returns QualityPage(emptyList(),null,lease.copy(revisionId=station))
         assertThrows(IllegalStateException::class.java) { kotlinx.coroutines.runBlocking { ReadQuality(gateway).invoke(QualitySelection(station,"ETHANOL")) } }
     }
+    @Test fun `offline assay fallback marks the whole pinned snapshot stale`()=runTest {
+        val lease=QualityLease("pmqc","pmqc-assay-v1","2026-09",revision,true,false)
+        coEvery {gateway.summary(station,"ETHANOL",null)} returns QualitySummary(station,lease)
+        coEvery {gateway.assays(station,"ETHANOL",revision,null)} returns QualityPage(emptyList(),null,lease.copy(stale=true))
+        assertTrue(ReadQuality(gateway)(QualitySelection(station,"ETHANOL")).summary.lease.stale)
+    }
+
 }

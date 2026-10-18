@@ -16,8 +16,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object QualityModule {
     @Provides @Singleton
-    fun gateway(@Named("apiOrigin") origin:ApiEnvironment):QualityGateway =
-        QualityHttpClient(OkHttpClientFactory.create(maxRetries=0),origin.origin)
+    fun gateway(@Named("apiOrigin") origin:ApiEnvironment,@dagger.hilt.android.qualifiers.ApplicationContext context:android.content.Context):QualityGateway =
+        QualityHttpClient(OkHttpClientFactory.create(maxRetries=0),origin.origin,
+            if(com.anpfuel.data.BuildConfig.QUALITY_CACHE_ENABLED)com.anpfuel.data.local.quality.QualityPublicCache(java.io.File(context.cacheDir,"quality-public-v1")) else null)
 
     @Provides @Singleton
     fun reports(proof:com.anpfuel.data.remote.PhotoProofTransport,auth:com.anpfuel.application.portable.AuthFlow):com.anpfuel.domain.repository.QualityReportGateway =

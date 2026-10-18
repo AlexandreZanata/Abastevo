@@ -15,6 +15,6 @@ class ReadQuality(private val gateway: QualityGateway) {
         val page = gateway.assays(selection.stationId, selection.fuel, revision, cursor)
         check(page.lease?.revisionId == revision)
         check(page.items.all { it.fuel == selection.fuel })
-        return QualitySnapshot(summary, page)
+        return QualitySnapshot(summary.copy(lease=lease.copy(stale=lease.stale || page.lease?.stale==true)), page)
     }
 }
