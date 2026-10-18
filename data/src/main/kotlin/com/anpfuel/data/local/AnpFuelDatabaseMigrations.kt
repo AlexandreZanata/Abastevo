@@ -403,4 +403,13 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_13_14: Migration = object : Migration(13,14) {
+        override fun migrate(db:SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `quality_owner_gate` (`owner_key` TEXT NOT NULL, `owner_local` TEXT NOT NULL, `origin` TEXT NOT NULL, `blocked` INTEGER NOT NULL, `last_seen` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, PRIMARY KEY(`owner_key`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_quality_owner_gate_owner_local` ON `quality_owner_gate` (`owner_local`)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `quality_report_outbox` (`owner_key` TEXT NOT NULL, `command_id` TEXT NOT NULL, `payload_hash` TEXT NOT NULL, `sealed_command` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `retry_at` INTEGER NOT NULL, `claim_id` TEXT NOT NULL, `lease_until` INTEGER NOT NULL, PRIMARY KEY(`owner_key`))")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_quality_report_outbox_command_id` ON `quality_report_outbox` (`command_id`)")
+        }
+    }
+
 }
