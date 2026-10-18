@@ -9,7 +9,7 @@ import (
 // 2026-10 method mirrors the official ANP PMQC open-data guidance: the file
 // unit is the assay, the judgment unit is the sample, and the Aspecto
 // exception is fuel-specific. Version bumps are required before any change.
-const MethodologyVersion = "pmqc-sample-judgment-v2026-10a"
+const MethodologyVersion = "pmqc-sample-judgment-v2026-10b"
 
 // MethodologyLimitation is the frozen calibration boundary: dimensions are
 // exposed, but no numeric weights or sufficiency thresholds exist yet, so
@@ -183,7 +183,9 @@ func collapseReplicas(assays []AssayObservation) ([]AssayObservation, bool) {
 		status := rows[0].Conformity
 		conflict := false
 		for _, row := range rows[1:] {
-			if row.Conformity != status {
+			// Aspecto defect text selects a fuel-specific rule. Equal status
+			// with conflicting defect text cannot safely select one replica.
+			if row.Conformity != status || (name == assayAspecto && row.Result != rows[0].Result) {
 				conflict = true
 			}
 		}

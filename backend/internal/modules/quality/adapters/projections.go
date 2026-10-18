@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -68,7 +69,7 @@ func (s *ProjectionStore) RecomputeRevision(ctx context.Context, source, stream,
 		}
 	}()
 	q := quality.New(tx)
-	current, err := q.GetCurrentRevision(ctx, quality.GetCurrentRevisionParams{Source: source, Stream: stream})
+	current, err := q.LockProjectionBasis(ctx, quality.LockProjectionBasisParams{Source: source, Stream: stream})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return report, ErrProjectionBasisStale
@@ -131,7 +132,11 @@ func (s *ProjectionStore) RecomputeRevision(ctx context.Context, source, stream,
 		return report, err
 	}
 	committed = true
-	report.Stations = len(keys)
+	stations := map[string]bool{}
+	for _, key := range keys {
+		stations[key.station] = true
+	}
+	report.Stations = len(stations)
 	report.Fuels = len(fuels)
 	return report, nil
 }
@@ -190,17 +195,20 @@ func digestSamples(samples []linkedSample) string {
 	for _, sample := range samples {
 		assays := make([]string, 0, len(sample.assays))
 		for _, assay := range sample.assays {
-			assays = append(assays, strings.Join([]string{assay.Ensaio, assay.Result, string(assay.Conformity)}, "\x1e"))
+			encoded, _ := json.Marshal([]string{assay.Ensaio, assay.Result, string(assay.Conformity)})
+			assays = append(assays, string(encoded))
 		}
 		sort.Strings(assays)
-		lines = append(lines, strings.Join([]string{
+		encoded, _ := json.Marshal([]any{
 			sample.facts.StationID, sample.facts.SampleKey, sample.facts.ObservedOn,
 			string(sample.facts.Fuel), string(sample.facts.Judgment.Verdict),
-			strings.Join(assays, "\x1d"),
-		}, "\x1f"))
+			assays,
+		})
+		lines = append(lines, string(encoded))
 	}
 	sort.Strings(lines)
-	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	encoded, _ := json.Marshal(lines)
+	sum := sha256.Sum256(encoded)
 	return hex.EncodeToString(sum[:])
 }
 

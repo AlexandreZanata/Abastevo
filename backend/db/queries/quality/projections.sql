@@ -2,6 +2,11 @@
 -- current published revision of a stream and only when the basis or digest
 -- actually changed; stale bases are refused by the current-pointer fence.
 
+-- name: LockProjectionBasis :one
+SELECT revision_id FROM quality_current_revisions
+WHERE source = @source AND stream = @stream
+FOR SHARE;
+
 -- name: ListLinkedAssayRows :many
 SELECT l.station_id, a.sample_ref, a.assay_ref, a.result_text, a.conformity,
        a.observed_on, a.fuel

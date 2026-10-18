@@ -1,9 +1,21 @@
 package domain
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestAspectoReplicaDefectsAreOrderIndependent(t *testing.T) {
+	facts := SampleFacts{SampleKey: "synthetic-replicas", ObservedOn: "2026-09-01", Fuel: FuelDieselS10}
+	a := assay("Aspecto", "Heterogêneo", Nonconforming)
+	b := assay("Aspecto", "Turvo", Nonconforming)
+	first := JudgeSample(facts, []AssayObservation{a, b})
+	second := JudgeSample(facts, []AssayObservation{b, a})
+	if !reflect.DeepEqual(first, second) || first.Verdict != SampleUnresolved || !contains(first.Reasons, ReasonReplicaConflict) {
+		t.Fatalf("conflicting defect text selected by order: %+v / %+v", first, second)
+	}
+}
 
 func assay(ensaio, result string, conformity Conformity) AssayObservation {
 	return AssayObservation{Ensaio: ensaio, Result: result, Conformity: conformity}

@@ -1,13 +1,45 @@
 package domain
 
 import (
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestMethodologyOracleKeepsFullSourceSampleScope(t *testing.T) {
+	path := t.TempDir() + "/synthetic.csv"
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := csv.NewWriter(f)
+	w.Comma = ';'
+	header := strings.Split("DataColeta;IdNumeric;GrupoProduto;Produto;RazaoSocialPosto;CnpjPosto;Distribuidora;Endereço;Complemento;Bairro;Município;Latitude;Longitude;Uf;RegiaoPolitica;Ensaio;Resultado;UnidadeEnsaio;Conforme", ";")
+	if err = w.Write(header); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range [][2]string{{"2025-01-01 01:00:00", "11222333000181"}, {"2025-01-01 02:00:00", "11222333000181"}, {"2025-01-01 01:00:00", "11222333000262"}} {
+		row := make([]string, 19)
+		row[0], row[1], row[3], row[5], row[15], row[16], row[18] = scope[0], "1", "ETANOL HIDRATADO COMUM", scope[1], "Aspecto", "LII", "Sim"
+		if err = w.Write(row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w.Flush()
+	if err = w.Error(); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := readPMQCSamples(t, path); len(got) != 3 {
+		t.Fatalf("full CNPJ/clock sample scopes collapsed: %d", len(got))
+	}
+}
 
 // TestPMQCMethodologyAgainstRealOpenData reconciles the domain judgment with
 // the independent Python oracle over the official September 2026 open file
@@ -46,8 +78,20 @@ func TestPMQCMethodologyAgainstRealOpenData(t *testing.T) {
 		t.Logf("%s conforming=%d nonconforming=%d unresolved=%d", family, c.conforming, c.nonconforming, c.unresolved)
 	}
 	t.Logf("samples=%d reasons=%v", total, reasons)
-	if filepath.Base(path) != "PMQC_2026_09.csv" {
-		return
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.New()
+	_, err = io.Copy(hash, f)
+	_ = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := hex.EncodeToString(hash.Sum(nil))
+	january := digest == "de013f3d7455236ec0c2846426e4beee072d3a0dc7f38c5c3a421da69302cafd"
+	if !january && digest != "cecf8ac7d4eadddc65c7238f19c7a63498af3fc0273abbfc9828803a2cf67b7d" {
+		t.Fatal("unrecognized official fixture hash")
 	}
 	want := map[string]counters{
 		"gasoline":    {1457, 129, 0},
@@ -55,14 +99,25 @@ func TestPMQCMethodologyAgainstRealOpenData(t *testing.T) {
 		"diesel_s10":  {1018, 39, 3},
 		"diesel_s500": {424, 15, 0},
 	}
-	if total != 4164 {
-		t.Fatalf("sample total = %d, want 4164", total)
+	wantTotal := 4164
+	if january {
+		wantTotal = 5776
+		want = map[string]counters{"gasoline": {2068, 51, 0}, "ethanol": {1621, 44, 0}, "diesel_s10": {1312, 109, 2}, "diesel_s500": {522, 47, 0}}
+	}
+	if total != wantTotal {
+		t.Fatalf("sample total = %d, want %d", total, wantTotal)
 	}
 	for family, w := range want {
 		got := families[family]
 		if got == nil || *got != w {
 			t.Fatalf("%s = %+v, want %+v", family, got, w)
 		}
+	}
+	if january {
+		if reasons[ReasonReplicaConflict] != 2 || reasons[ReasonAspectoUnconfirmed] != 2 {
+			t.Fatalf("January reason histogram diverged: %v", reasons)
+		}
+		return
 	}
 	if reasons[ReasonReplicaConflict] != 3 || reasons[ReasonDieselAspectoCleared] != 5 || reasons[ReasonDefectUnclassified] != 1 {
 		t.Fatalf("reason histogram diverged: %v", reasons)
@@ -111,7 +166,7 @@ func readPMQCSamples(t *testing.T, path string) []realSample {
 	for i, name := range header {
 		index[strings.TrimSpace(name)] = i
 	}
-	type key struct{ id, product string }
+	type key struct{ id, product, cnpj, clock string }
 	grouped := map[key]*realSample{}
 	order := []key{}
 	for {
@@ -126,11 +181,11 @@ func readPMQCSamples(t *testing.T, path string) []realSample {
 		if !ok {
 			t.Fatalf("unknown source product %q", row[index["Produto"]])
 		}
-		k := key{row[index["IdNumeric"]], row[index["Produto"]]}
+		k := key{row[index["IdNumeric"]], row[index["Produto"]], row[index["CnpjPosto"]], row[index["DataColeta"]]}
 		sample := grouped[k]
 		if sample == nil {
 			sample = &realSample{facts: SampleFacts{
-				SampleKey:  "pmqc-assay-v1:" + k.id,
+				SampleKey:  "pmqc-assay-v1:" + strings.Join([]string{k.cnpj, k.clock, k.product, k.id}, "\x1f"),
 				SourceCNPJ: row[index["CnpjPosto"]],
 				ObservedOn: row[index["DataColeta"]],
 				Fuel:       fuel,

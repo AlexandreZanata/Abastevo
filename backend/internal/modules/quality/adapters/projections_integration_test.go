@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	quality "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/quality"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
@@ -15,8 +16,125 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+func TestProjectionCommitFencesConcurrentPublication(t *testing.T) {
+	pool := freshPool(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	seedProjectionStations(t, pool)
+	maker := &idMaker{}
+	first, err := NewPublisher(pool).Publish(ctx, projectionInput("b"), maker.next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = NewProjectionStore(pool).RecomputeRevision(ctx, "pmqc", "pmqc-assay-v1", first); err != nil {
+		t.Fatal(err)
+	}
+	block, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer block.Rollback(context.Background())
+	if _, err = block.Exec(ctx, "SELECT 1 FROM quality_station_fuel_projections FOR UPDATE"); err != nil {
+		t.Fatal(err)
+	}
+	open := func(name string) *pgxpool.Pool {
+		cfg := pool.Config()
+		cfg.ConnConfig.RuntimeParams["application_name"] = name
+		p, err := pgxpool.NewWithConfig(ctx, cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(p.Close)
+		return p
+	}
+	recomputing := open("fq-review-projection")
+	publishing := open("fq-review-publication")
+	done := make(chan error, 1)
+	go func() {
+		_, err := NewProjectionStore(recomputing).RecomputeRevision(ctx, "pmqc", "pmqc-assay-v1", first)
+		done <- err
+	}()
+	waitLock := func(name string) bool {
+		for ctx.Err() == nil {
+			var waiting bool
+			if err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name=$1 AND wait_event_type='Lock')", name).Scan(&waiting); err != nil {
+				return false
+			}
+			if waiting {
+				return true
+			}
+		}
+		return false
+	}
+	if !waitLock("fq-review-projection") {
+		t.Fatal("recompute never reached projection-row barrier")
+	}
+	type outcome struct {
+		revision string
+		err      error
+	}
+	published := make(chan outcome, 1)
+	go func() {
+		revision, err := NewPublisher(publishing).Publish(ctx, projectionInput("d"), maker.next)
+		published <- outcome{revision, err}
+	}()
+	blocked := false
+	for ctx.Err() == nil && !blocked {
+		select {
+		case result := <-published:
+			_ = block.Rollback(ctx)
+			<-done
+			t.Fatalf("publication escaped the in-flight projection fence: %+v", result)
+		default:
+			if err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='fq-review-publication' AND wait_event_type='Lock')").Scan(&blocked); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !blocked {
+		t.Fatal("publication never waited for projection commit")
+	}
+	if err = block.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err = <-done; err != nil {
+		t.Fatal(err)
+	}
+	result := <-published
+	if result.err != nil {
+		t.Fatal(result.err)
+	}
+	if _, err = NewProjectionStore(pool).RecomputeRevision(ctx, "pmqc", "pmqc-assay-v1", first); !errors.Is(err, ErrProjectionBasisStale) {
+		t.Fatal("old basis accepted after publication", err)
+	}
+	if _, err = NewProjectionStore(pool).RecomputeRevision(ctx, "pmqc", "pmqc-assay-v1", result.revision); err != nil {
+		t.Fatal(err)
+	}
+	if rows := readProjections(t, pool, result.revision); len(rows) != 2 {
+		t.Fatal("new basis lost", rows)
+	}
+}
+
 const projectionStationA = "cccccccc-3333-4333-8333-000000000001"
 const projectionStationB = "cccccccc-3333-4333-8333-000000000002"
+
+func TestProjectionReportCountsDistinctStationsAcrossFuels(t *testing.T) {
+	pool := freshPool(t)
+	seedProjectionStations(t, pool)
+	in := projectionInput("b")
+	in.Assays = append(in.Assays, projectionAssay("s-a3", "Aspecto", "ETHANOL", "2026-09-05", "LII", "CONFORMING", "0"))
+	in.Links = append(in.Links, application.LinkInput{RecordKey: "pmqc-assay-v1:s-a3", StationID: projectionStationA, Automatic: true, Reason: "exact cnpj", Active: true})
+	in.Counts.Input++
+	in.Counts.Accepted++
+	rev, err := NewPublisher(pool).Publish(context.Background(), in, (&idMaker{}).next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := NewProjectionStore(pool).RecomputeRevision(context.Background(), "pmqc", "pmqc-assay-v1", rev)
+	if err != nil || report.Stations != 2 || report.Fuels != 3 || report.Applied != 3 {
+		t.Fatal("station/fuel denominators conflated", report, err)
+	}
+}
 
 func projectionAssay(sample, assay, fuel, day, result, conformity, fingerprint string) application.AssayInput {
 	return application.AssayInput{

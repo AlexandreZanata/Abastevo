@@ -12,7 +12,6 @@ import (
 )
 
 const listLinkedAssayRows = `-- name: ListLinkedAssayRows :many
-
 SELECT l.station_id, a.sample_ref, a.assay_ref, a.result_text, a.conformity,
        a.observed_on, a.fuel
 FROM quality_links l
@@ -32,9 +31,6 @@ type ListLinkedAssayRowsRow struct {
 	Fuel       string      `json:"fuel"`
 }
 
-// FQ-13 deterministic projections. Derived rows are written only for the
-// current published revision of a stream and only when the basis or digest
-// actually changed; stale bases are refused by the current-pointer fence.
 func (q *Queries) ListLinkedAssayRows(ctx context.Context, revisionID pgtype.UUID) ([]ListLinkedAssayRowsRow, error) {
 	rows, err := q.db.Query(ctx, listLinkedAssayRows, revisionID)
 	if err != nil {
@@ -61,6 +57,28 @@ func (q *Queries) ListLinkedAssayRows(ctx context.Context, revisionID pgtype.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockProjectionBasis = `-- name: LockProjectionBasis :one
+
+SELECT revision_id FROM quality_current_revisions
+WHERE source = $1 AND stream = $2
+FOR SHARE
+`
+
+type LockProjectionBasisParams struct {
+	Source string `json:"source"`
+	Stream string `json:"stream"`
+}
+
+// FQ-13 deterministic projections. Derived rows are written only for the
+// current published revision of a stream and only when the basis or digest
+// actually changed; stale bases are refused by the current-pointer fence.
+func (q *Queries) LockProjectionBasis(ctx context.Context, arg LockProjectionBasisParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockProjectionBasis, arg.Source, arg.Stream)
+	var revision_id pgtype.UUID
+	err := row.Scan(&revision_id)
+	return revision_id, err
 }
 
 const readStationFuelProjections = `-- name: ReadStationFuelProjections :many

@@ -1,5 +1,9 @@
 # FQ-13 — Deterministic projection engine and fenced recomputation
 
+2026-10-18 review addendum: affected acceptance claims are superseded by
+[the independent review](FQ_REVIEW_20261018.md), including full sample scope,
+methodology version, projection fencing and operator-only dead-letter recovery.
+
 Status: LOCAL_DONE
 Validation: PASS
 

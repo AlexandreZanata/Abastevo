@@ -24,7 +24,7 @@ const RevalidationKind = "quality-revalidate"
 
 // Revalidate sweeps published station links and compares them with live
 // Directory evidence. A divergence (binding retired/moved, station not
-// active, or a previously unbound record now bindable) enqueues one bounded
+// active) enqueues one bounded
 // fresh import for the affected edition. The fresh attempt re-resolves
 // identity and publishes a correction revision through the existing atomic
 // publisher; superseded revisions remain frozen and reachable, and no
@@ -35,7 +35,6 @@ type Revalidate struct {
 	Pool        *pgxpool.Pool
 	Evidence    func(ctx context.Context, cnpjs []string) ([]domain.IdentityEvidence, error)
 	Enqueue     func(ctx context.Context, payload ImportPayload, dedupe string) (platformjobs.EnqueueResult, error)
-	Replay      func(ctx context.Context, id, reason string) error
 	Now         func() time.Time
 	Batch       int
 	MaxEditions int
@@ -207,17 +206,14 @@ func (r Revalidate) refresh(ctx context.Context, q *quality.Queries, edition qua
 	}
 	res := resources[0]
 	dedupe := strings.Join([]string{"quality-revalidate", edition.Source, edition.Stream, edition.Edition, uuidText(edition.RevisionID), fingerprint}, "\x1f")
-	result, err := r.Enqueue(ctx, ImportPayload{
+	_, err = r.Enqueue(ctx, ImportPayload{
 		Version: 1, Source: edition.Source, Stream: edition.Stream, Edition: edition.Edition,
 		URL: res.Url, SHA256: res.Sha256, Member: res.MemberName,
 	}, dedupe)
 	if err != nil {
 		return err
 	}
-	if !result.Created && result.Status == "dead" && r.Replay != nil {
-		// The divergence is still present and the previous attempt exhausted
-		// its budget; request one audited fresh attempt instead of forking.
-		return r.Replay(ctx, result.ID, "directory divergence persists; fresh source retry requested")
-	}
+	// An exhausted job stays dead. Only explicit operator replay may renew
+	// its budget; repeated automatic sweeps must never bypass that ceiling.
 	return nil
 }

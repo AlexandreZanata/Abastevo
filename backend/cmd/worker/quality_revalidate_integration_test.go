@@ -169,10 +169,12 @@ func TestNativeWorkerDirectoryRevalidation(t *testing.T) {
 	}
 
 	// Repeating the sweep converges on the same queued job; after the job
-	// exhausts its attempts, the sweep replays the dead job once with an
-	// audited reason instead of forking duplicate work.
-	if e = reval.Handle(ctx, platformjobs.Job{}); e != nil {
-		t.Fatal(e)
+	// exhausts its attempts, repeated automatic sweeps preserve the dead
+	// letter and budget until an explicit operator replay.
+	for i := 0; i < 2; i++ {
+		if e = reval.Handle(ctx, platformjobs.Job{}); e != nil {
+			t.Fatal(e)
+		}
 	}
 	if jobs = qualityImportJobs(t, p); len(jobs) != 1 {
 		t.Fatal("repeated sweep forked refresh work", jobs)
@@ -198,8 +200,15 @@ func TestNativeWorkerDirectoryRevalidation(t *testing.T) {
 	if e = p.QueryRow(ctx, "SELECT status,attempts,last_error FROM job_queue WHERE kind='quality-import'").Scan(&status, &attempts, &lastError); e != nil {
 		t.Fatal(e)
 	}
-	if status != "queued" || attempts != 0 || lastError == "" {
-		t.Fatal("dead refresh not replayed with audit reason", status, attempts, lastError)
+	if status != "dead" || attempts != 3 || lastError != "synthetic outage" {
+		t.Fatal("automatic sweep renewed exhausted work", status, attempts, lastError)
+	}
+	var deadID string
+	if e = p.QueryRow(ctx, "SELECT id::text FROM job_queue WHERE kind='quality-import'").Scan(&deadID); e != nil {
+		t.Fatal(e)
+	}
+	if e = queue.ReplayDead(ctx, deadID, "operator reviewed source outage; retry authorized"); e != nil {
+		t.Fatal(e)
 	}
 
 	// Execute the queued refresh through the same native path: the retired

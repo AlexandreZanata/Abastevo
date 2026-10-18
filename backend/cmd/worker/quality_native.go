@@ -120,7 +120,7 @@ func qualityImportEnqueue(pool *pgxpool.Pool) func(context.Context, qualityjobs.
 
 // nativeQualityRevalidate composes the bounded Directory revalidation sweep:
 // read-only Directory evidence, platform enqueue of fresh imports and an
-// audited replay of converged dead refresh jobs. The sweep performs no
+// converged dead refresh jobs retained for operator recovery. The sweep performs no
 // source I/O; the enqueued import does, through the composed native path.
 func nativeQualityRevalidate(pool *pgxpool.Pool) qualityjobs.Revalidate {
 	identities := directory.NewSourceIdentityReader(pool)
@@ -138,9 +138,6 @@ func nativeQualityRevalidate(pool *pgxpool.Pool) qualityjobs.Revalidate {
 			return out, nil
 		},
 		Enqueue: qualityImportEnqueue(pool),
-		Replay: func(ctx context.Context, id, reason string) error {
-			return platformjobs.NewQueue(pool).ReplayDead(ctx, id, reason)
-		},
-		Now: time.Now,
+		Now:     time.Now,
 	}
 }
