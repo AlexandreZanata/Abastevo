@@ -298,6 +298,7 @@ sql:
       - db/migrations/000099_quality_report_review.sql
       - db/migrations/000100_quality_resource_members.sql
       - db/migrations/000101_quality_source_collection_clock.sql
+      - db/migrations/000103_quality_revalidation_cursor.sql
     gen:
       go:
         package: quality

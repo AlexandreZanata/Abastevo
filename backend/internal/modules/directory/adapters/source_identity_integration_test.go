@@ -76,6 +76,39 @@ func TestSourceIdentityLookupAndHistoricalAmbiguity(t *testing.T) {
 		t.Fatal("branch evidence missing", branch, e)
 	}
 }
+func TestSourceEvidenceBatchMirrorsExactLookup(t *testing.T) {
+	repo, r, b := sourceBindingFixture(t)
+	ctx := context.Background()
+	if out, e := r.Evidence(ctx, nil); e != nil || len(out) != 0 {
+		t.Fatal("empty batch", out, e)
+	}
+	if _, e := r.Evidence(ctx, []string{sourceCNPJ, "invalid%identifier"}); !errors.Is(e, ErrSourceIdentityUnavailable) {
+		t.Fatal("invalid batch identifier accepted", e)
+	}
+	rows, e := r.Evidence(ctx, []string{"04218406000104", sourceCNPJ})
+	if e != nil || len(rows) != 1 || rows[0].CNPJ != sourceCNPJ || !rows[0].Current || !rows[0].StationActive || rows[0].StationID != b.StationID {
+		t.Fatal(rows, e)
+	}
+	if e = repo.RetireIdentifier(ctx, "CNPJ", sourceCNPJ); e != nil {
+		t.Fatal(e)
+	}
+	successor, e := repo.ResolveCNPJ(ctx, sourceCNPJ, "Synthetic successor", nil)
+	if e != nil {
+		t.Fatal(e)
+	}
+	rows, e = r.Evidence(ctx, []string{sourceCNPJ})
+	if e != nil || len(rows) != 2 {
+		t.Fatal("historical ambiguity lost", rows, e)
+	}
+	byStation := map[string]application.SourceEvidence{}
+	for _, row := range rows {
+		byStation[row.StationID] = row
+	}
+	if byStation[successor.ID].Current != true || byStation[successor.ID].StationActive != true || byStation[b.StationID].Current {
+		t.Fatal("batch evidence diverged from exact semantics", rows)
+	}
+}
+
 func TestSourceBindingGuardRejectsRetirementAndStatus(t *testing.T) {
 	for _, change := range []string{"retire", "status"} {
 		t.Run(change, func(t *testing.T) {
@@ -245,7 +278,7 @@ func TestSourceIdentityHistoricalIndexPlan(t *testing.T) {
 	}
 	t.Log("Before migration102: generated lookup scans 20,001 retained rows")
 	applied, e := migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000102"}) {
+	if e != nil || !slices.Equal(applied, []string{"000102", "000103"}) {
 		t.Fatal("retained history index upgrade", applied, e)
 	}
 	applied, e = migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)

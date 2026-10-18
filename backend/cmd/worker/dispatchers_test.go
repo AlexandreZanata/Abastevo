@@ -24,7 +24,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		t.Fatal(dispatchers, err)
 	}
 	general := dispatchers[0]
-	if general.Kind != "" || len(general.ExcludedKinds) != 6 {
+	if general.Kind != "" || len(general.ExcludedKinds) != 7 {
 		t.Fatal("general dispatcher can steal safety work", general)
 	}
 	seen := map[string]bool{}
@@ -35,7 +35,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		seen[d.Kind] = true
 	}
 	for _, kind := range general.ExcludedKinds {
-		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" {
+		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" {
 			t.Fatal("safety work lost its slot", kind)
 		}
 	}
@@ -67,18 +67,18 @@ func TestWorkerDispatcherCancellationJoinsEveryLoop(t *testing.T) {
 
 func TestWorkerNativeSlotsAreExplicitAndIndependent(t *testing.T) {
 	handlers := map[string]jobs.Handler{}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "quality-import", "quality-discovery"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "quality-import", "quality-discovery", "quality-revalidate"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	disabled, e := workerDispatchers(nil, handlers)
 	if e != nil || len(disabled) != 5 {
 		t.Fatal("source handler implicitly claimed work", disabled, e)
 	}
-	enabled, e := workerDispatchers(nil, handlers, "quality-import")
-	if e != nil || len(enabled) != 6 || enabled[5].Kind != "quality-import" {
+	enabled, e := workerDispatchers(nil, handlers, "quality-import", "quality-revalidate")
+	if e != nil || len(enabled) != 7 || enabled[5].Kind != "quality-import" || enabled[6].Kind != "quality-revalidate" {
 		t.Fatal("native slot", enabled, e)
 	}
-	if len(enabled[0].ExcludedKinds) != 6 {
+	if len(enabled[0].ExcludedKinds) != 7 {
 		t.Fatal("general worker can claim source jobs")
 	}
 	for _, kinds := range [][]string{{"foreign"}, {"quality-import", "quality-import"}} {

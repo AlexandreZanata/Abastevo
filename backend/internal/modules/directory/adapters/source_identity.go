@@ -53,6 +53,30 @@ func (r *SourceIdentityReader) OtherBranch(ctx context.Context, cnpj string) (bo
 	return found, nil
 }
 
+// Evidence returns bounded current evidence for a whole CNPJ set, chunked so
+// revalidation sweeps do not issue one round trip per record. Inputs are
+// validated before any query; invalid or empty identifiers refuse the batch.
+func (r *SourceIdentityReader) Evidence(ctx context.Context, cnpjs []string) ([]application.SourceEvidence, error) {
+	const chunk = 512
+	out := make([]application.SourceEvidence, 0, len(cnpjs))
+	for _, cnpj := range cnpjs {
+		if !normalizedSourceCNPJ(cnpj) {
+			return nil, ErrSourceIdentityUnavailable
+		}
+	}
+	for offset := 0; offset < len(cnpjs); offset += chunk {
+		part := cnpjs[offset:min(offset+chunk, len(cnpjs))]
+		rows, e := directory.New(r.pool).SourceEvidenceBatch(ctx, part)
+		if e != nil {
+			return nil, ErrSourceIdentityUnavailable
+		}
+		for _, row := range rows {
+			out = append(out, application.SourceEvidence{CNPJ: row.Cnpj, StationID: uuidString(row.StationID), Current: row.IsCurrent, StationActive: row.StationActive})
+		}
+	}
+	return out, nil
+}
+
 // Guard locks live expected bindings through the caller's publication commit,
 // then rechecks retained canonical history. Owned identifier retirement/new
 // binding and station status changes conflict with these row locks. It also

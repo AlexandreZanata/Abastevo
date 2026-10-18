@@ -26,3 +26,17 @@ FROM unnest(@cnpjs::text[]) expected(cnpj)
 CROSS JOIN LATERAL(SELECT DISTINCT station_id FROM directory_identifiers
  WHERE kind='CNPJ' AND normalized_value=expected.cnpj ORDER BY station_id LIMIT 2) candidates
 ORDER BY expected.cnpj,candidates.station_id;
+
+-- name: SourceEvidenceBatch :many
+-- Bounded set-based evidence for revalidation sweeps: same two-candidate
+-- policy as SourceExactIdentities, one round trip per chunk.
+SELECT expected.cnpj::text AS cnpj, candidates.station_id,
+ s.status='active' AS station_active,
+ EXISTS(SELECT 1 FROM directory_identifiers active
+   WHERE active.kind='CNPJ' AND active.normalized_value=expected.cnpj
+     AND active.station_id=candidates.station_id AND active.valid_to IS NULL) AS is_current
+FROM unnest(@cnpjs::text[]) expected(cnpj)
+JOIN LATERAL(SELECT DISTINCT station_id FROM directory_identifiers
+  WHERE kind='CNPJ' AND normalized_value=expected.cnpj ORDER BY station_id LIMIT 2) candidates ON TRUE
+JOIN directory_stations s ON s.id=candidates.station_id
+ORDER BY expected.cnpj,candidates.station_id;

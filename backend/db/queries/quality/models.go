@@ -218,6 +218,13 @@ type QualityResource struct {
 	MemberBytes  pgtype.Int8 `json:"member_bytes"`
 }
 
+type QualityRevalidationCursor struct {
+	Kind          string             `json:"kind"`
+	CursorEdition pgtype.UUID        `json:"cursor_edition"`
+	CursorKey     pgtype.Text        `json:"cursor_key"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
 type QualityRevision struct {
 	ID                   pgtype.UUID        `json:"id"`
 	EditionID            pgtype.UUID        `json:"edition_id"`

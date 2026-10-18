@@ -173,7 +173,8 @@ func TestDiscoveryConcurrentConverges(t *testing.T) {
 			if err != nil {
 				return "", err
 			}
-			return platformjobs.Enqueue(ctx, pool, "quality-import", raw, dedupe, 3, time.Now())
+			result, err := platformjobs.Enqueue(ctx, pool, "quality-import", raw, dedupe, 3, time.Now())
+			return result.ID, err
 		},
 		MaxEditions: 10,
 	}

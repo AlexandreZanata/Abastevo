@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	native "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/native"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
+	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -101,4 +103,37 @@ func nativeQualityFetch(tempRoot string) func(context.Context, string) (qualityj
 
 func qualityInputIdentity(hash string, bytes int64) prepared.InputIdentity {
 	return prepared.InputIdentity{SHA256: strings.TrimPrefix(hash, "sha256:"), Bytes: bytes}
+}
+
+// nativeQualityRevalidate composes the bounded Directory revalidation sweep:
+// read-only Directory evidence, platform enqueue of fresh imports and an
+// audited replay of converged dead refresh jobs. The sweep performs no
+// source I/O; the enqueued import does, through the composed native path.
+func nativeQualityRevalidate(pool *pgxpool.Pool) qualityjobs.Revalidate {
+	identities := directory.NewSourceIdentityReader(pool)
+	return qualityjobs.Revalidate{
+		Pool: pool,
+		Evidence: func(ctx context.Context, cnpjs []string) ([]domain.IdentityEvidence, error) {
+			rows, err := identities.Evidence(ctx, cnpjs)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]domain.IdentityEvidence, 0, len(rows))
+			for _, row := range rows {
+				out = append(out, domain.IdentityEvidence{CNPJ: row.CNPJ, StationID: row.StationID, Current: row.Current, StationActive: row.StationActive})
+			}
+			return out, nil
+		},
+		Enqueue: func(ctx context.Context, payload qualityjobs.ImportPayload, dedupe string) (platformjobs.EnqueueResult, error) {
+			encoded, err := json.Marshal(payload)
+			if err != nil {
+				return platformjobs.EnqueueResult{}, err
+			}
+			return platformjobs.Enqueue(ctx, pool, (qualityjobs.FileImport{}).Kind(), encoded, dedupe, 3, time.Time{})
+		},
+		Replay: func(ctx context.Context, id, reason string) error {
+			return platformjobs.NewQueue(pool).ReplayDead(ctx, id, reason)
+		},
+		Now: time.Now,
+	}
 }

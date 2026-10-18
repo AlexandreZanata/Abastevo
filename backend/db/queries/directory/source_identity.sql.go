@@ -83,6 +83,53 @@ func (q *Queries) SourceBoundHistory(ctx context.Context, cnpjs []string) ([]Sou
 	return items, nil
 }
 
+const sourceEvidenceBatch = `-- name: SourceEvidenceBatch :many
+SELECT expected.cnpj::text AS cnpj, candidates.station_id,
+ s.status='active' AS station_active,
+ EXISTS(SELECT 1 FROM directory_identifiers active
+   WHERE active.kind='CNPJ' AND active.normalized_value=expected.cnpj
+     AND active.station_id=candidates.station_id AND active.valid_to IS NULL) AS is_current
+FROM unnest($1::text[]) expected(cnpj)
+JOIN LATERAL(SELECT DISTINCT station_id FROM directory_identifiers
+  WHERE kind='CNPJ' AND normalized_value=expected.cnpj ORDER BY station_id LIMIT 2) candidates ON TRUE
+JOIN directory_stations s ON s.id=candidates.station_id
+ORDER BY expected.cnpj,candidates.station_id
+`
+
+type SourceEvidenceBatchRow struct {
+	Cnpj          string      `json:"cnpj"`
+	StationID     pgtype.UUID `json:"station_id"`
+	StationActive bool        `json:"station_active"`
+	IsCurrent     bool        `json:"is_current"`
+}
+
+// Bounded set-based evidence for revalidation sweeps: same two-candidate
+// policy as SourceExactIdentities, one round trip per chunk.
+func (q *Queries) SourceEvidenceBatch(ctx context.Context, cnpjs []string) ([]SourceEvidenceBatchRow, error) {
+	rows, err := q.db.Query(ctx, sourceEvidenceBatch, cnpjs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SourceEvidenceBatchRow
+	for rows.Next() {
+		var i SourceEvidenceBatchRow
+		if err := rows.Scan(
+			&i.Cnpj,
+			&i.StationID,
+			&i.StationActive,
+			&i.IsCurrent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sourceExactIdentities = `-- name: SourceExactIdentities :many
 SELECT s.id AS station_id, s.status='active' AS station_active,
  EXISTS(SELECT 1 FROM directory_identifiers active
