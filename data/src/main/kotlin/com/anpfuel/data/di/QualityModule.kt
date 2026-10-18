@@ -19,6 +19,10 @@ object QualityModule {
     fun gateway(@Named("apiOrigin") origin:ApiEnvironment):QualityGateway =
         QualityHttpClient(OkHttpClientFactory.create(maxRetries=0),origin.origin)
 
+    @Provides @Singleton
+    fun reports(proof:com.anpfuel.data.remote.PhotoProofTransport,auth:com.anpfuel.application.portable.AuthFlow):com.anpfuel.domain.repository.QualityReportGateway =
+        com.anpfuel.data.remote.quality.QualityReportHttpClient.signed(proof,auth)
+
     @Provides
     fun read(gateway:QualityGateway)=ReadQuality(gateway)
 }
