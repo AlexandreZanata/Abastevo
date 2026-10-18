@@ -165,7 +165,14 @@ fun AnpNavGraph(
                 onBack = { navController.popBackStack() },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+                onQuality = {stationId,fuel -> navController.navigate(Routes.stationQuality(stationId,fuel))},
             )
+        }
+        composable(Routes.STATION_QUALITY,arguments=listOf(
+            navArgument("stationId"){type=NavType.StringType},
+            navArgument("fuelProduct"){type=NavType.StringType;defaultValue="GASOLINE_REGULAR"},
+        )) {
+            com.anpfuel.app.ui.quality.QualityScreen(onBack={navController.popBackStack()})
         }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(

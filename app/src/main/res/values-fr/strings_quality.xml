@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">Qualité du carburant</string>
+    <string name="quality_entry">Consulter les analyses de qualité</string>
+    <string name="quality_note">Résultats des prélèvements ANP. Ils ne garantissent pas la qualité actuelle de la station.</string>
+    <string name="quality_score_unavailable">Note indisponible : aucune méthode numérique calibrée.</string>
+    <string name="quality_unavailable">Impossible de consulter les données de qualité.</string>
+    <string name="quality_no_source">Aucune donnée officielle disponible pour cette révision.</string>
+    <string name="quality_empty">Aucun essai publié pour ce carburant dans cette révision.</string>
+    <string name="quality_stale">Données anciennes ou actualité non confirmée. Vérifiez la date du prélèvement.</string>
+    <string name="quality_historical">Révision historique. Consultez aussi la version actuelle.</string>
+    <string name="quality_edition">Édition %1$s • publiée le %2$s</string>
+    <string name="quality_periods">Choisir une édition</string>
+    <string name="quality_current">Suivre la version actuelle</string>
+    <string name="quality_more_periods">Autres éditions</string>
+    <string name="quality_more_assays">Page suivante des essais</string>
+    <string name="quality_first_page">Revenir à la première page</string>
+    <string name="quality_samples">Échantillons : %1$d • Visites : %2$d</string>
+    <string name="quality_verdicts">Conformes : %1$d • Non conformes : %2$d • Indéterminés : %3$d</string>
+    <string name="quality_sample_range">Prélèvements du %1$s au %2$s</string>
+    <string name="quality_pending_dimensions">Nombre d’échantillons indisponible. Les essais ci-dessous sont des enregistrements individuels.</string>
+    <string name="quality_assay_count">Essais : %1$d • Dernier prélèvement : %2$s</string>
+    <string name="quality_sample_title">Détails de l’échantillon</string>
+    <string name="quality_aspect_note">Le jugement tient compte du carburant et des essais complémentaires. Un résultat isolé ne classe pas toute la station.</string>
+    <string name="quality_observed">Prélèvement indiqué par la source : %1$s</string>
+    <string name="quality_conforming">Essai conforme</string>
+    <string name="quality_nonconforming">Essai non conforme</string>
+    <string name="quality_unknown">Résultat non classé</string>
+    <string name="quality_source">Voir la source officielle</string>
+    <string name="quality_source_unavailable">Impossible d’ouvrir les détails de la source.</string>
+    <string name="quality_blank_result">Résultat non indiqué</string>
+    <string name="quality_revisions_unavailable">Impossible de lister les éditions. Les analyses disponibles restent ci-dessous.</string>
+    <string name="quality_provenance">Fichier : %1$s</string>
+    <string name="quality_hash">SHA-256 : %1$s</string>
+</resources>

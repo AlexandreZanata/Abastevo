@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">Calidad del combustible</string>
+    <string name="quality_entry">Consultar análisis de calidad</string>
+    <string name="quality_note">Resultados de muestras de la ANP. No garantizan la calidad actual de la estación.</string>
+    <string name="quality_score_unavailable">Puntuación no disponible: no hay metodología numérica calibrada.</string>
+    <string name="quality_unavailable">No se pudieron consultar los datos de calidad.</string>
+    <string name="quality_no_source">No hay datos oficiales disponibles para esta revisión.</string>
+    <string name="quality_empty">No hay ensayos publicados para este combustible en esta revisión.</string>
+    <string name="quality_stale">Datos antiguos o sin actualización confirmada. Revise la fecha de muestreo.</string>
+    <string name="quality_historical">Revisión histórica. Consulte también la edición actual.</string>
+    <string name="quality_edition">Edición %1$s • publicada el %2$s</string>
+    <string name="quality_periods">Elegir edición</string>
+    <string name="quality_current">Seguir la edición actual</string>
+    <string name="quality_more_periods">Más ediciones</string>
+    <string name="quality_more_assays">Siguiente página de ensayos</string>
+    <string name="quality_first_page">Volver a la primera página</string>
+    <string name="quality_samples">Muestras: %1$d • Visitas: %2$d</string>
+    <string name="quality_verdicts">Conformes: %1$d • No conformes: %2$d • Sin conclusión: %3$d</string>
+    <string name="quality_sample_range">Muestreos del %1$s al %2$s</string>
+    <string name="quality_pending_dimensions">Recuento de muestras aún no disponible. Los ensayos siguientes son registros individuales.</string>
+    <string name="quality_assay_count">Ensayos: %1$d • Último muestreo: %2$s</string>
+    <string name="quality_sample_title">Detalles de la muestra</string>
+    <string name="quality_aspect_note">La evaluación considera el combustible y los ensayos complementarios. Un resultado aislado no clasifica toda la estación.</string>
+    <string name="quality_observed">Muestreo indicado por la fuente: %1$s</string>
+    <string name="quality_conforming">Ensayo conforme</string>
+    <string name="quality_nonconforming">Ensayo no conforme</string>
+    <string name="quality_unknown">Resultado sin clasificar</string>
+    <string name="quality_source">Ver fuente oficial</string>
+    <string name="quality_source_unavailable">No se pudieron abrir los detalles de la fuente.</string>
+    <string name="quality_blank_result">Resultado no indicado</string>
+    <string name="quality_revisions_unavailable">No se pudieron listar las ediciones. Los análisis disponibles continúan abajo.</string>
+    <string name="quality_provenance">Archivo: %1$s</string>
+    <string name="quality_hash">SHA-256: %1$s</string>
+</resources>

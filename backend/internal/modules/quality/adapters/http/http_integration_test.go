@@ -201,6 +201,9 @@ func TestAssayTraversal(t *testing.T) {
 		t.Fatalf("page1 = %d %v", code, page1)
 	}
 	items, _ := page1["items"].([]any)
+	if page1["station_id"] != httpStation {
+		t.Fatal("assay page lost station identity", page1)
+	}
 	cursor, _ := page1["next_cursor"].(string)
 	if len(items) != 1 || cursor == "" {
 		t.Fatalf("page1 = %v", page1)

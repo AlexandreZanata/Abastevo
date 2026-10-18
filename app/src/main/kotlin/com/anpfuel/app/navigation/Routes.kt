@@ -36,6 +36,12 @@ object Routes {
 
     const val STATION_PROFILE = "station-profile/{stationId}"
 
+    const val STATION_QUALITY = "station-quality/{stationId}?fuelProduct={fuelProduct}"
+    fun stationQuality(stationId:String,fuel:FuelProduct):String {
+        require(java.util.UUID.fromString(stationId).toString()==stationId)
+        return "station-quality/$stationId?fuelProduct=${fuel.name}"
+    }
+
     fun stationProfile(stationId: String): String = "station-profile/$stationId"
 
     const val SUGGEST = "suggest"

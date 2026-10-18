@@ -249,7 +249,8 @@ func (h Handler) assays(w http.ResponseWriter, r *http.Request) {
 	}
 	body, _ := json.Marshal(map[string]any{
 		"items": wire, "next_cursor": next,
-		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
+		"station_id": id,
+		"lease":      wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
 		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": nextKey, "lease": wireLeaseOf(lease)})))

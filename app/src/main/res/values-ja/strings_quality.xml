@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">燃料の品質</string>
+    <string name="quality_entry">品質検査を見る</string>
+    <string name="quality_note">ANPの採取試料の結果です。給油所の現在の品質を保証するものではありません。</string>
+    <string name="quality_score_unavailable">数値評価の方法が検証されていないため、スコアは表示できません。</string>
+    <string name="quality_unavailable">品質データを取得できませんでした。</string>
+    <string name="quality_no_source">この版には利用できる公式データがありません。</string>
+    <string name="quality_empty">この版には選択した燃料の検査結果がありません。</string>
+    <string name="quality_stale">古いデータ、または更新を確認できないデータです。採取日をご確認ください。</string>
+    <string name="quality_historical">過去の版です。最新版もご確認ください。</string>
+    <string name="quality_edition">版 %1$s • 公開日 %2$s</string>
+    <string name="quality_periods">版を選ぶ</string>
+    <string name="quality_current">最新版を見る</string>
+    <string name="quality_more_periods">他の版</string>
+    <string name="quality_more_assays">検査結果の次のページ</string>
+    <string name="quality_first_page">最初のページに戻る</string>
+    <string name="quality_samples">試料数：%1$d • 訪問回数：%2$d</string>
+    <string name="quality_verdicts">適合：%1$d • 不適合：%2$d • 判定不能：%3$d</string>
+    <string name="quality_sample_range">採取期間：%1$s〜%2$s</string>
+    <string name="quality_pending_dimensions">試料数はまだ利用できません。以下の検査は個別の記録です。</string>
+    <string name="quality_assay_count">検査数：%1$d • 最終採取日：%2$s</string>
+    <string name="quality_sample_title">試料の詳細</string>
+    <string name="quality_aspect_note">試料の判定は燃料と補足検査に基づきます。単独の結果で給油所全体を評価することはできません。</string>
+    <string name="quality_observed">出典に記載された採取日時：%1$s</string>
+    <string name="quality_conforming">検査適合</string>
+    <string name="quality_nonconforming">検査不適合</string>
+    <string name="quality_unknown">未分類の結果</string>
+    <string name="quality_source">公式の出典を見る</string>
+    <string name="quality_source_unavailable">出典の詳細を開けませんでした。</string>
+    <string name="quality_blank_result">結果の記載なし</string>
+    <string name="quality_revisions_unavailable">版の一覧を取得できませんでした。利用可能な検査は以下に表示されます。</string>
+    <string name="quality_provenance">ファイル：%1$s</string>
+    <string name="quality_hash">SHA-256：%1$s</string>
+</resources>

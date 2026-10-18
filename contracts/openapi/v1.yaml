@@ -7644,7 +7644,7 @@ components:
               newest_observed_on: {type: string}
               computed_at: {type: string, format: date-time}
               score_state: {type: string, enum: [UNSCORED]}
-              score: {type: integer, nullable: true}
+              score: {type: [integer, 'null']}
     QualityAssay:
       description: One published determination without source identifiers.
       type: object
@@ -7667,6 +7667,7 @@ components:
       type: object
       required: [items, next_cursor, lease, generated_at]
       properties:
+        station_id: {type: string, format: uuid}
         items:
           type: array
           items: {$ref: '#/components/schemas/QualityAssay'}

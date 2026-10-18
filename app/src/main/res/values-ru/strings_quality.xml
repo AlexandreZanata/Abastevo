@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">Качество топлива</string>
+    <string name="quality_entry">Посмотреть анализы качества</string>
+    <string name="quality_note">Результаты проб ANP. Они не гарантируют текущее качество на АЗС.</string>
+    <string name="quality_score_unavailable">Оценка недоступна: числовая методика не откалибрована.</string>
+    <string name="quality_unavailable">Не удалось получить данные о качестве.</string>
+    <string name="quality_no_source">Для этой версии нет доступных официальных данных.</string>
+    <string name="quality_empty">Для этого топлива в данной версии нет опубликованных испытаний.</string>
+    <string name="quality_stale">Данные устарели или их обновление не подтверждено. Проверьте дату отбора проб.</string>
+    <string name="quality_historical">Историческая версия. Проверьте также текущий выпуск.</string>
+    <string name="quality_edition">Выпуск %1$s • опубликован %2$s</string>
+    <string name="quality_periods">Выбрать выпуск</string>
+    <string name="quality_current">Следить за текущим выпуском</string>
+    <string name="quality_more_periods">Другие выпуски</string>
+    <string name="quality_more_assays">Следующая страница испытаний</string>
+    <string name="quality_first_page">Вернуться к первой странице</string>
+    <string name="quality_samples">Проб: %1$d • Посещений: %2$d</string>
+    <string name="quality_verdicts">Соответствуют: %1$d • Не соответствуют: %2$d • Не определено: %3$d</string>
+    <string name="quality_sample_range">Отбор проб с %1$s по %2$s</string>
+    <string name="quality_pending_dimensions">Число проб пока недоступно. Ниже показаны отдельные записи испытаний.</string>
+    <string name="quality_assay_count">Испытаний: %1$d • Последний отбор: %2$s</string>
+    <string name="quality_sample_title">Сведения о пробе</string>
+    <string name="quality_aspect_note">Оценка пробы учитывает топливо и дополнительные испытания. Один результат не оценивает всю АЗС.</string>
+    <string name="quality_observed">Отбор по данным источника: %1$s</string>
+    <string name="quality_conforming">Испытание соответствует нормам</string>
+    <string name="quality_nonconforming">Испытание не соответствует нормам</string>
+    <string name="quality_unknown">Результат не классифицирован</string>
+    <string name="quality_source">Открыть официальный источник</string>
+    <string name="quality_source_unavailable">Не удалось открыть сведения об источнике.</string>
+    <string name="quality_blank_result">Результат не указан</string>
+    <string name="quality_revisions_unavailable">Не удалось получить выпуски. Доступные анализы показаны ниже.</string>
+    <string name="quality_provenance">Файл: %1$s</string>
+    <string name="quality_hash">SHA-256: %1$s</string>
+</resources>
