@@ -488,6 +488,8 @@ Document-free review slice: LOCAL_DONE / INTEGRATION_PENDING; [actual evidence](
 
 ### FQ-12 — Calibrate and freeze score methodology (M)
 
+Frozen judgment methodology and independent oracle: [FQ-12](../backend/evidence/fuel-quality/FQ12_METHODOLOGY.md), LOCAL_DONE / INTEGRATION_PENDING. Eligible sample semantics, Aspecto exceptions, replica/unknown conservatism and dimensions-only `UNSCORED` states are frozen; numeric weights and sufficiency thresholds remain deliberately unfrozen, so no numeric score is published.
+
 - Depends: FQ-05/FQ-08 and reviewed representative evidence. BUC-FQ-09.
 - Deliver: versioned methodology, eligible sample semantics, W/minimum counts/
   visits/freshness, fuel/station coverage, rounding, reason codes and bias report.
