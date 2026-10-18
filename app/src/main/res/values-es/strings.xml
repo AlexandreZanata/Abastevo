@@ -456,6 +456,8 @@
     <string name="server_stations_load_more">Cargar más estaciones</string>
     <string name="server_stations_load_more_failed">No se pudieron cargar más estaciones. La lista anterior no cambió.</string>
     <string name="station_feedback_title">Conversación de la estación</string>
+    <string name="station_feedback_show_more">Ver más comentarios</string>
+    <string name="station_feedback_show_more_failed">No se pudieron cargar más comentarios. La lista anterior no cambió.</string>
     <string name="station_feedback_guest">Entra para valorar, comentar o votar. Cualquiera puede leer.</string>
     <string name="station_feedback_rate">Valora esta estación (1–5)</string>
     <string name="station_feedback_comment_hint">Comparte una nota (280 caracteres)</string>

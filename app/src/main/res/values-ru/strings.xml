@@ -456,6 +456,8 @@
     <string name="server_stations_load_more">Показать больше станций</string>
     <string name="server_stations_load_more_failed">Не удалось загрузить больше станций. Список выше не изменился.</string>
     <string name="station_feedback_title">Обсуждение АЗС</string>
+    <string name="station_feedback_show_more">Показать больше комментариев</string>
+    <string name="station_feedback_show_more_failed">Не удалось загрузить больше комментариев. Список выше не изменился.</string>
     <string name="station_feedback_guest">Войдите, чтобы оценивать, комментировать и голосовать. Чтение открыто всем.</string>
     <string name="station_feedback_rate">Оцените эту АЗС (1–5)</string>
     <string name="station_feedback_comment_hint">Поделитесь заметкой (280 символов)</string>

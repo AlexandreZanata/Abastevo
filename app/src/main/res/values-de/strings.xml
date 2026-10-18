@@ -456,6 +456,8 @@
     <string name="server_stations_load_more">Weitere Stationen laden</string>
     <string name="server_stations_load_more_failed">Weitere Stationen konnten nicht geladen werden. Die obige Liste ist unverändert.</string>
     <string name="station_feedback_title">Tankstellendiskussion</string>
+    <string name="station_feedback_show_more">Weitere Kommentare anzeigen</string>
+    <string name="station_feedback_show_more_failed">Weitere Kommentare konnten nicht geladen werden. Die obige Liste ist unverändert.</string>
     <string name="station_feedback_guest">Zum Bewerten, Kommentieren oder Abstimmen anmelden. Lesen ist für alle offen.</string>
     <string name="station_feedback_rate">Tankstelle bewerten (1–5)</string>
     <string name="station_feedback_comment_hint">Hinweis teilen (280 Zeichen)</string>

@@ -468,6 +468,8 @@
 
     <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
     <string name="station_feedback_title">Station discussion</string>
+    <string name="station_feedback_show_more">Show more comments</string>
+    <string name="station_feedback_show_more_failed">Could not load more comments. The list above is unchanged.</string>
     <string name="station_feedback_guest">Sign in to rate, comment or vote. Reading is open to everyone.</string>
     <string name="station_feedback_rate">Rate this station (1–5)</string>
     <string name="station_feedback_comment_hint">Share a note (280 characters)</string>

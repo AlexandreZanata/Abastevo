@@ -456,6 +456,8 @@
     <string name="server_stations_load_more">加载更多站点</string>
     <string name="server_stations_load_more_failed">无法加载更多站点，上面的列表未更改。</string>
     <string name="station_feedback_title">加油站讨论</string>
+    <string name="station_feedback_show_more">查看更多评论</string>
+    <string name="station_feedback_show_more_failed">无法加载更多评论，上面的列表未更改。</string>
     <string name="station_feedback_guest">登录后可评分、评论或投票。所有人均可阅读。</string>
     <string name="station_feedback_rate">为此加油站评分（1–5）</string>
     <string name="station_feedback_comment_hint">分享留言（280字）</string>

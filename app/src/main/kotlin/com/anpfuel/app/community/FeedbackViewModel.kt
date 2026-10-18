@@ -49,6 +49,8 @@ sealed interface FeedbackUiState {
         val items: List<FeedbackCommentView>,
         val nextCursor: String?,
         val stale: Boolean,
+        val isLoadingMore: Boolean = false,
+        val moreError: String? = null,
     ) : FeedbackUiState
     data object Submitting : FeedbackUiState
     data class Saved(val commentId: String, val revision: Int) : FeedbackUiState
@@ -99,16 +101,25 @@ class FeedbackViewModel @Inject constructor(
     private var cursor: String = ""
     private var lastWrite: LastWrite? = null
 
+    /**
+     * Read generation: [prepare] retires every in-flight load so a late
+     * response from a previous station/product never lands on the new
+     * target (the dismissed-detail stale-response guard, applied here).
+     */
+    private var generation = 0L
+
     fun prepare(stationId: String, product: String, accountId: String) {
         if (!flagProvider.isEnabled()) {
             target = null
             lastWrite = null
+            generation++
             _state.value = FeedbackUiState.Disabled
             return
         }
         target = Target(stationId, product, accountId)
         cursor = ""
         lastWrite = null
+        generation++
         _state.value = FeedbackUiState.Idle
     }
 
@@ -120,13 +131,75 @@ class FeedbackViewModel @Inject constructor(
         }
         if (_state.value is FeedbackUiState.Submitting) return
         _state.value = FeedbackUiState.Submitting
+        val readGeneration = generation
         viewModelScope.launch {
-            _state.value = when (val outcome = runReads { reads.comments(current.stationId, current.product, "", FIRST_PAGE_LIMIT) }) {
+            val outcome = runReads { reads.comments(current.stationId, current.product, "", FIRST_PAGE_LIMIT) }
+            if (readGeneration != generation) return@launch
+            _state.value = when (outcome) {
                 is FeedbackPageOutcome.Disabled -> FeedbackUiState.Disabled
                 is FeedbackPageOutcome.Fresh -> loaded(outcome.page.items, outcome.page.nextCursor, stale = false)
                 is FeedbackPageOutcome.StaleCache -> loaded(outcome.page.items, outcome.page.nextCursor, stale = true)
                 is FeedbackPageOutcome.Unavailable ->
                     FeedbackUiState.Rejected(FeedbackDisplay.rejectKindLabel(FeedbackRejectKind.TRANSPORT), "feedback unavailable")
+            }
+        }
+    }
+
+    /**
+     * Appends the next comment window to the displayed list. One
+     * continuation at a time; repeats are deduplicated by stable id
+     * and obsolete contexts (station, product, signed account) are
+     * dropped, never shown. A failed continuation keeps every displayed
+     * comment; retry resumes from the same cursor.
+     */
+    fun loadMore() {
+        val current = target ?: return
+        val shown = _state.value as? FeedbackUiState.Loaded ?: return
+        if (!flagProvider.isEnabled()) {
+            _state.value = FeedbackUiState.Disabled
+            return
+        }
+        val next = shown.nextCursor ?: return
+        if (shown.isLoadingMore) return
+        _state.value = shown.copy(isLoadingMore = true, moreError = null)
+        val readGeneration = generation
+        val snapshot = shown.items
+        viewModelScope.launch {
+            val outcome = try {
+                runReads { reads.comments(current.stationId, current.product, next, FIRST_PAGE_LIMIT) }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                null
+            }
+            if (readGeneration != generation) return@launch
+            // A write that landed meanwhile owns the state; dropping the
+            // continuation keeps the newer result and the retry cursor.
+            if (_state.value !is FeedbackUiState.Loaded) return@launch
+            if (outcome == null) {
+                _state.value = (_state.value as FeedbackUiState.Loaded).copy(
+                    isLoadingMore = false,
+                    moreError = "feedback unavailable",
+                )
+                return@launch
+            }
+            _state.value = when (outcome) {
+                is FeedbackPageOutcome.Disabled -> FeedbackUiState.Disabled
+                is FeedbackPageOutcome.Fresh -> loaded(
+                    (snapshot + outcome.page.items).distinctBy { it.id },
+                    outcome.page.nextCursor,
+                    stale = false,
+                )
+                is FeedbackPageOutcome.StaleCache -> loaded(
+                    (snapshot + outcome.page.items).distinctBy { it.id },
+                    outcome.page.nextCursor,
+                    stale = true,
+                )
+                is FeedbackPageOutcome.Unavailable ->
+                    (_state.value as FeedbackUiState.Loaded).copy(
+                        isLoadingMore = false,
+                        moreError = "feedback unavailable",
+                    )
             }
         }
     }

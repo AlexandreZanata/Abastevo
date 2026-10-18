@@ -456,6 +456,8 @@
     <string name="server_stations_load_more">さらにスタンドを表示</string>
     <string name="server_stations_load_more_failed">さらにスタンドを読み込めませんでした。上のリストは変更されていません。</string>
     <string name="station_feedback_title">給油所のディスカッション</string>
+    <string name="station_feedback_show_more">さらにコメントを表示</string>
+    <string name="station_feedback_show_more_failed">さらにコメントを読み込めませんでした。上のリストは変更されていません。</string>
     <string name="station_feedback_guest">評価、コメント、投票にはログインしてください。閲覧は誰でもできます。</string>
     <string name="station_feedback_rate">給油所を評価（1～5）</string>
     <string name="station_feedback_comment_hint">コメントを投稿（280文字）</string>

@@ -54,7 +54,26 @@ class GetFeedbackPageUseCase(
         val want = clampLimit(limit)
         return try {
             val page = gateway.listComments(stationId.trim(), product.trim(), cursor, want)
-            cache.saveComments(stationId.trim(), product.trim(), page)
+            // Continuations merge into the stored snapshot so offline
+            // replay keeps every loaded page, never just the last one.
+            val stored = if (cursor.isNotEmpty()) {
+                val previous = try {
+                    cache.loadComments(stationId.trim(), product.trim())
+                } catch (_: Exception) {
+                    null
+                }
+                if (previous != null) {
+                    FeedbackPage(
+                        items = (previous.items + page.items).distinctBy { it.id },
+                        nextCursor = page.nextCursor,
+                    )
+                } else {
+                    page
+                }
+            } else {
+                page
+            }
+            cache.saveComments(stationId.trim(), product.trim(), stored)
             FeedbackPageOutcome.Fresh(page)
         } catch (refused: FeedbackException) {
             FeedbackPageOutcome.Unavailable(refused)
