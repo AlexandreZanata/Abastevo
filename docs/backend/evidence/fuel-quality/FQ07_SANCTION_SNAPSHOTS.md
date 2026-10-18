@@ -64,3 +64,14 @@ Disable the new adapter/output (`sanction` module + event emission);
 withdraw offending rows through revision supersession and re-derive
 snapshots without mutating source history. Raw-schema drift blocks only
 the FQ-05 edition binding. Next: FQ-08 official read API.
+
+## Runtime reconciliation 2026-10-17 (FQ-05W8)
+
+As with FQ-06, this checkpoint certifies the Rust snapshot contract and
+fixtures only. No `prepare_sanction` CLI binary, no Go file-import or
+discovery handler for the `sanctions` source, and no verified live
+resource inventory exist yet; the Go typed publication path is proven
+separately with real PostGIS (FQ-04b). A live Go source stream and
+complete enforcement/sanction history remain owed before any runtime or
+coverage claim; the plan's FQ-07 acceptance is not met by the adapter
+checkpoint alone.

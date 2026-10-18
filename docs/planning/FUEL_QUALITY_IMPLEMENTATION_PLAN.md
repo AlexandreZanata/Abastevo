@@ -399,7 +399,7 @@ Native historical source clocks: [FQ-02C](../backend/evidence/fuel-quality/FQ02C
 
 ### FQ-05 — Historical backfill and incremental discovery (M)
 
-Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Monthly provenance/current-pointer prerequisite: [FQ-05W1](../backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE. [Native worker composition FQ-05W5](../backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md) is LOCAL_DONE with imports default-off, after archive, Directory and file-job checkpoints. [Durable Directory revalidation FQ-05W6](../backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md) closes the completed-job refresh prerequisite, and [bounded live discovery FQ-05W7](../backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) walks the verified official listing one archive per run with a durable cursor and created-only budget. FQ-05W remains IN_PROGRESS for the static worker image and explicit bounded source scheduling. Local composition does not certify deployed imports; see the [remaining-work handoff](FUEL_QUALITY_REMAINING_HANDOFF.md).
+Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md), LOCAL_DONE / INTEGRATION_PENDING. Monthly provenance/current-pointer prerequisite: [FQ-05W1](../backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), LOCAL_DONE. [Native worker composition FQ-05W5](../backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md) is LOCAL_DONE with imports default-off, after archive, Directory and file-job checkpoints. [Durable Directory revalidation FQ-05W6](../backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md) closes the completed-job refresh prerequisite, [bounded live discovery FQ-05W7](../backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) walks the verified official listing one archive per run, and [static worker image/schedules FQ-05W8](../backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md) ships the pinned preparer in the distroless worker with explicit default-off schedules. FQ-06/07 live Go streams remain OWED. Local composition does not certify deployed imports; see the [remaining-work handoff](FUEL_QUALITY_REMAINING_HANDOFF.md).
 
 - Depends: FQ-04. BUC-FQ-01/03. Critical download/jobs.
 - Deliver: explicit dry-run/verify/load stages, edition registry, bounded fetch/
@@ -413,6 +413,8 @@ Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE
 
 ### FQ-06 — Enforcement adapter and legally accurate events (M)
 
+Rust adapter contract: [FQ-06](../backend/evidence/fuel-quality/FQ06_ENFORCEMENT_ADAPTER.md), LOCAL_DONE / INTEGRATION_PENDING. Runtime reconciliation (FQ-05W8): no live Go source stream exists — no prepare CLI, no composed import/discovery handler, no verified live resource inventory. Go typed publication is proven separately with real PostGIS.
+
 - Depends: FQ-04; verified S-FQ-02 contract. BUC-FQ-01/04.
 - Deliver: separate Rust adapter and Go typed publication for actions/infractions,
   exact station links, category/date and source-provided proceeding references.
@@ -422,6 +424,8 @@ Prepared bridge: [FQ-05C](../backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE
 - Recovery: disable this stream and rebuild affected timeline projection.
 
 ### FQ-07 — Sanction snapshots, corrections and case correlation (M)
+
+Rust adapter contract: [FQ-07](../backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md), LOCAL_DONE / INTEGRATION_PENDING. Runtime reconciliation (FQ-05W8): as with FQ-06, the live Go source stream, prepare CLI and discovery remain OWED; adapter fixtures alone do not certify runtime history.
 
 - Depends: FQ-06; verified S-FQ-03 contract. BUC-FQ-03/04.
 - Deliver: extraction-time status revisions, exact case linkage, monetary source

@@ -65,3 +65,17 @@ Disable the new adapter/output (`enforcement` module + event emission);
 withdraw offending rows through revision supersession while retaining
 the prior publication. Raw-schema drift blocks only the FQ-05 edition
 binding. Next: FQ-07 sanction snapshots and extraction-time status.
+
+## Runtime reconciliation 2026-10-17 (FQ-05W8)
+
+This checkpoint certifies the Rust adapter contract and fixtures only: no
+Go runtime stream exists yet for enforcement content. There is no
+`prepare_enforcement` CLI binary in `tools/station-prep/src/bin`, no
+file-import/discovery handler composed for the `enforcement` source (the
+native worker registers only `pmqc`), and no verified live resource
+inventory beyond the S-FQ-02 page returning 200. The Go typed publication
+path is proven separately with real PostGIS (`event_publisher_integration_test.go`,
+FQ-04b) but the plan's FQ-06 acceptance is not met: a live Go source
+stream and complete enforcement history remain owed before any runtime or
+coverage claim. No score, coverage or public enforcement history follows
+from this adapter checkpoint.

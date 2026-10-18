@@ -881,6 +881,21 @@ func run() error {
 				return map[string]any{"version": 1, "batch": 25}
 			},
 		},
+		{
+			// Bounded PMQC discovery and Directory revalidation schedules
+			// (FQ-05W8). Independent explicit switches; neither activates
+			// unrelated ANP/registry imports. Handlers exist only with the
+			// native imports switch, so queued jobs wait undrained without
+			// charging attempts.
+			Name: "quality-discovery-daily", Kind: "quality-discovery", Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualityDiscoveryEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "quality-revalidate-daily", Kind: qualityjobs.RevalidationKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualityRevalidationEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
 		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{

@@ -151,16 +151,20 @@ Native PMQC worker imports have a separate default-off switch,
 `ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
 `quality-import`, `quality-discovery` and `quality-revalidate`; disabled source
 jobs retain zero claim attempts. Enablement adds fixed slots for the native
-import (trusted `/prepare_quality` executable and a separate PostgreSQL
-advisory-lock connection across fetch, preparation and publication, 210-second
-attempt, five-minute job lease), the bounded Directory revalidation sweep and
-bounded live discovery (verified official listing page, one archive inspection
-per run, durable cursor, created-only enqueue budget). Safety slots remain
-independent, and no schedule is installed by this switch. Keep it disabled
-until image packaging and explicit source scheduling are accepted; see
+import (trusted `/prepare_quality` executable shipped in the worker image and a
+separate PostgreSQL advisory-lock connection across fetch, preparation and
+publication, 210-second attempt, five-minute job lease), the bounded Directory
+revalidation sweep and bounded live discovery (verified official listing page,
+one archive inspection per run, durable cursor, created-only enqueue budget).
+Safety slots remain independent. Bounded daily schedules are separate explicit
+default-off switches (`ANPFUEL_QUALITY_DISCOVERY_ENABLED`,
+`ANPFUEL_QUALITY_REVALIDATION_ENABLED`); they only enqueue work and never
+activate unrelated ANP/registry imports. Keep everything disabled until
+deployment selection; see
 [FQ-05W5](../docs/backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md),
-[FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md)
-and [FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md).
+[FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md),
+[FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and
+[FQ-05W8](../docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account
