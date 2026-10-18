@@ -68,8 +68,18 @@ interface ServerStationCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ServerStationCacheEntity)
 
+    @Transaction
+    suspend fun clearPublicCatalog() {
+        clearPublicPageRows()
+        clearMeta()
+    }
+
     @Query("DELETE FROM server_station_cache WHERE scope_key = :scopeKey AND position != 2147483647")
     suspend fun clearScopePageRows(scopeKey: String)
+
+    /** Drops every page row in every scope; unscoped detail records survive. */
+    @Query("DELETE FROM server_station_cache WHERE scope_key != ''")
+    suspend fun clearPublicPageRows()
 
     @Query("DELETE FROM server_station_cache WHERE position != 2147483647")
     suspend fun clearPageRows()

@@ -14,6 +14,15 @@ data class UserPreferences(
     val localeTag: String = "",
     val localeUserSelected: Boolean = false,
     val syncStationDetail: Boolean = true,
+    /**
+     * Public city catalog background sync (directory pages only, never
+     * details, contributions or precise location). Off by default:
+     * enabling it is an explicit opt-in distinct from the ANP station
+     * detail download above.
+     */
+    val syncPublicCityCatalog: Boolean = false,
+    /** Wall-clock millis of the last successful public catalog sync, if any. */
+    val publicCityCatalogLastSyncedAtMillis: Long? = null,
     val autoDownloadLatestWeek: Boolean = true,
     val stationDetailRetentionWeeks: Int = DEFAULT_RETENTION_WEEKS,
     val nearestStationRadiusKm: Int = DEFAULT_NEAREST_STATION_RADIUS_KM,

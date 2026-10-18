@@ -258,6 +258,14 @@
     <string name="a11y_language_russian">ロシア語</string>
     <string name="settings_preferences_section">環境設定</string>
     <string name="settings_sync_station_detail">バックグラウンドでスタンド詳細を同期</string>
+    <string name="settings_public_catalog_section">公開されている市のスタンド一覧</string>
+    <string name="settings_public_catalog_description">あなたの市の公開スタンド一覧のオフラインコピーを保持します。詳細、投稿、位置情報をダウンロードすることはありません。</string>
+    <string name="settings_public_catalog_toggle">公開一覧を最新の状態に保つ</string>
+    <string name="settings_public_catalog_last_sync">最終更新：%1$s</string>
+    <string name="settings_public_catalog_never_synced">この端末ではまだ更新されていません。</string>
+    <string name="settings_public_catalog_off_note">バックグラウンド更新はオフです。閲覧、手動更新、投稿は引き続き利用できます。</string>
+    <string name="settings_clear_public_catalog">公開一覧を削除</string>
+    <string name="public_catalog_cleared">公開一覧を削除しました。</string>
     <string name="settings_auto_download_latest_week">最新の調査週を自動的にダウンロード</string>
     <string name="settings_sync_wifi_only">Wi‑Fi接続時のみ自動同期</string>
     <string name="settings_show_price_history">価格履歴を表示</string>

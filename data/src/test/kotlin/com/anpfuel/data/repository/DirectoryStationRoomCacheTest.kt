@@ -176,6 +176,17 @@ class DirectoryStationRoomCacheTest {
     }
 
     @Test
+    fun `clearing the public catalog drops pages but keeps details`() = runTest {
+        val repo = DirectoryStationRoomCache(dao)
+        coEvery { dao.clearPublicCatalog() } returns Unit
+
+        repo.clearPublicPages()
+
+        coVerify { dao.clearPublicCatalog() }
+        coVerify(exactly = 0) { dao.clearStations() }
+    }
+
+    @Test
     fun `detail resolves case-insensitively and clear wipes page`() = runTest {
         coEvery { dao.findById("d6c74c23-63db-4c24-a2e5-408cb23bad26") } returns entity()
 

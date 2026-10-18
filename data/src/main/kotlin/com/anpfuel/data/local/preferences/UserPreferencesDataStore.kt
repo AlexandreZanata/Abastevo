@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.anpfuel.domain.model.UserPreferences
@@ -38,6 +39,13 @@ class UserPreferencesDataStore @Inject constructor(
             stored[Keys.LOCALE_TAG] = preferences.localeTag
             stored[Keys.LOCALE_USER_SELECTED] = preferences.localeUserSelected
             stored[Keys.SYNC_STATION_DETAIL] = preferences.syncStationDetail
+            stored[Keys.SYNC_PUBLIC_CITY_CATALOG] = preferences.syncPublicCityCatalog
+            val lastSynced = preferences.publicCityCatalogLastSyncedAtMillis
+            if (lastSynced != null) {
+                stored[Keys.PUBLIC_CITY_CATALOG_LAST_SYNCED_AT] = lastSynced
+            } else {
+                stored.remove(Keys.PUBLIC_CITY_CATALOG_LAST_SYNCED_AT)
+            }
             stored[Keys.AUTO_DOWNLOAD_LATEST_WEEK] = preferences.autoDownloadLatestWeek
             stored[Keys.STATION_DETAIL_RETENTION_WEEKS] = preferences.stationDetailRetentionWeeks
             stored[Keys.NEAREST_STATION_RADIUS_KM] = preferences.nearestStationRadiusKm
@@ -70,6 +78,8 @@ class UserPreferencesDataStore @Inject constructor(
             localeTag = preferences[Keys.LOCALE_TAG].orEmpty(),
             localeUserSelected = preferences[Keys.LOCALE_USER_SELECTED] ?: false,
             syncStationDetail = preferences[Keys.SYNC_STATION_DETAIL] ?: true,
+            syncPublicCityCatalog = preferences[Keys.SYNC_PUBLIC_CITY_CATALOG] ?: false,
+            publicCityCatalogLastSyncedAtMillis = preferences[Keys.PUBLIC_CITY_CATALOG_LAST_SYNCED_AT],
             autoDownloadLatestWeek = preferences[Keys.AUTO_DOWNLOAD_LATEST_WEEK] ?: true,
             stationDetailRetentionWeeks = preferences[Keys.STATION_DETAIL_RETENTION_WEEKS]
                 ?: UserPreferences.DEFAULT_RETENTION_WEEKS,
@@ -94,6 +104,8 @@ class UserPreferencesDataStore @Inject constructor(
         val LOCALE_TAG = stringPreferencesKey("locale_tag")
         val LOCALE_USER_SELECTED = booleanPreferencesKey("locale_user_selected")
         val SYNC_STATION_DETAIL = booleanPreferencesKey("sync_station_detail")
+        val SYNC_PUBLIC_CITY_CATALOG = booleanPreferencesKey("sync_public_city_catalog")
+        val PUBLIC_CITY_CATALOG_LAST_SYNCED_AT = longPreferencesKey("public_city_catalog_last_synced_at")
         val AUTO_DOWNLOAD_LATEST_WEEK = booleanPreferencesKey("auto_download_latest_week")
         val STATION_DETAIL_RETENTION_WEEKS = intPreferencesKey("station_detail_retention_weeks")
         val NEAREST_STATION_RADIUS_KM = intPreferencesKey("nearest_station_radius_km")

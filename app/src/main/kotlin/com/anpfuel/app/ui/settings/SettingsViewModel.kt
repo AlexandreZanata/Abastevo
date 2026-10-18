@@ -7,6 +7,7 @@ import com.anpfuel.app.locale.AppLocales
 import com.anpfuel.application.error.AppError
 import com.anpfuel.application.error.AppErrorResolver
 import com.anpfuel.app.notification.NotificationPermissionHandler
+import com.anpfuel.application.usecase.directory.ClearPublicCatalogUseCase
 import com.anpfuel.application.usecase.settings.ClearCacheUseCase
 import com.anpfuel.application.usecase.settings.GetSettingsUseCase
 import com.anpfuel.application.usecase.settings.GetStorageUsageUseCase
@@ -43,6 +44,7 @@ data class SettingsUiState(
     ),
     val isSyncing: Boolean = false,
     val isClearingCache: Boolean = false,
+    val isClearingPublicCatalog: Boolean = false,
     val showClearAllDialog: Boolean = false,
     val syncMessage: String? = null,
     val showNotificationPermissionHint: Boolean = false,
@@ -60,6 +62,7 @@ class SettingsViewModel @Inject constructor(
     private val getStorageUsageUseCase: GetStorageUsageUseCase,
     private val updatePreferencesUseCase: UpdatePreferencesUseCase,
     private val clearCacheUseCase: ClearCacheUseCase,
+    private val clearPublicCatalogUseCase: ClearPublicCatalogUseCase,
     private val syncPriceTablesUseCase: SyncPriceTablesUseCase,
     private val autoDownloadLatestWeekUseCase: AutoDownloadLatestWeekUseCase,
     private val syncWorkScheduler: SyncWorkScheduler,
@@ -121,6 +124,45 @@ class SettingsViewModel @Inject constructor(
 
     fun onSyncStationDetailChanged(enabled: Boolean) {
         updatePreferences(_uiState.value.preferences.copy(syncStationDetail = enabled))
+    }
+
+    /**
+     * Public city catalog opt-in (off by default). Disabling stops
+     * preventive directory downloads; manual navigation, manual
+     * refresh, contributions and privacy tasks keep working.
+     */
+    fun onSyncPublicCityCatalogChanged(enabled: Boolean) {
+        updatePreferences(_uiState.value.preferences.copy(syncPublicCityCatalog = enabled))
+    }
+
+    fun clearPublicCatalog() {
+        if (_uiState.value.isClearingPublicCatalog) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isClearingPublicCatalog = true, error = null, syncMessage = null) }
+            runCatching {
+                clearPublicCatalogUseCase()
+                val preferences = getSettingsUseCase()
+                val storageUsage = getStorageUsageUseCase()
+                _uiState.update {
+                    it.copy(
+                        isClearingPublicCatalog = false,
+                        preferences = preferences,
+                        storageUsage = storageUsage,
+                        syncMessage = PUBLIC_CATALOG_CLEARED_MESSAGE,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isClearingPublicCatalog = false,
+                        error = AppErrorResolver.fromThrowable(error),
+                    )
+                }
+            }
+        }
     }
 
     fun onAutoDownloadLatestWeekChanged(enabled: Boolean) {
@@ -281,6 +323,7 @@ class SettingsViewModel @Inject constructor(
 
     companion object {
         const val SYNC_COMPLETED_MESSAGE = "sync_completed"
+        const val PUBLIC_CATALOG_CLEARED_MESSAGE = "public_catalog_cleared"
         val retentionWeekOptions: List<Int> = listOf(4, 8, 12, 24)
     }
 }

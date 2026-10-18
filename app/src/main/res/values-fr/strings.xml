@@ -258,6 +258,14 @@
     <string name="a11y_language_japanese">Japonais</string>
     <string name="settings_preferences_section">Préférences</string>
     <string name="settings_sync_station_detail">Synchroniser le détail des stations en arrière-plan</string>
+    <string name="settings_public_catalog_section">Répertoire public de la ville</string>
+    <string name="settings_public_catalog_description">Conserver une copie hors ligne du répertoire public des stations de ta ville. Ne télécharge jamais les détails, les contributions ni la position.</string>
+    <string name="settings_public_catalog_toggle">Garder le répertoire public à jour</string>
+    <string name="settings_public_catalog_last_sync">Dernière mise à jour : %1$s</string>
+    <string name="settings_public_catalog_never_synced">Jamais mis à jour sur cet appareil.</string>
+    <string name="settings_public_catalog_off_note">Les mises à jour en arrière-plan sont désactivées. La navigation, l’actualisation manuelle et les contributions continuent de fonctionner.</string>
+    <string name="settings_clear_public_catalog">Effacer le répertoire public</string>
+    <string name="public_catalog_cleared">Répertoire public effacé.</string>
     <string name="settings_auto_download_latest_week">Télécharger automatiquement la semaine la plus récente</string>
     <string name="settings_sync_wifi_only">Synchronisation automatique en Wi‑Fi uniquement</string>
     <string name="settings_show_price_history">Afficher l\'historique des prix</string>

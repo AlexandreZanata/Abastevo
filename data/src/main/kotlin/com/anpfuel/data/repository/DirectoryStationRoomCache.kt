@@ -86,6 +86,10 @@ class DirectoryStationRoomCache @Inject constructor(
     override suspend fun loadDetail(stationId: String): ServerStation? =
         dao.findById(stationId.lowercase())?.toDomain()
 
+    override suspend fun clearPublicPages() {
+        dao.clearPublicCatalog()
+    }
+
     override suspend fun clear() {
         dao.clearStations()
         dao.clearMeta()

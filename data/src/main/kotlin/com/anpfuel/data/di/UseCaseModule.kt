@@ -108,6 +108,13 @@ object UseCaseModule {
         flags: CommunityReadsFlagProvider, gateway: ServerStationGateway, cache: ServerStationCache,
     ) = com.anpfuel.application.usecase.directory.ResolveStationByCnpjUseCase(flags, gateway, cache)
 
+    @Provides
+    @Singleton
+    fun provideClearPublicCatalogUseCase(
+        cache: ServerStationCache,
+        userPreferencesRepository: UserPreferencesRepository,
+    ) = com.anpfuel.application.usecase.directory.ClearPublicCatalogUseCase(cache, userPreferencesRepository)
+
 
     @Provides
     @Singleton

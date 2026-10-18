@@ -60,6 +60,10 @@ interface ServerStationCache {
     suspend fun loadScopedPage(municipalityCode: String, limit: Int, offset: Int): ServerStationPage? =
         throw UnsupportedOperationException("paged directory cache unavailable")
 
+    /** Drops stored directory pages (every scope) while keeping details. */
+    suspend fun clearPublicPages(): Unit =
+        throw UnsupportedOperationException("public catalog clearing unavailable")
+
     suspend fun saveDetail(station: ServerStation)
 
     suspend fun loadDetail(stationId: String): ServerStation?

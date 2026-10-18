@@ -258,6 +258,14 @@
     <string name="a11y_language_japanese">日语</string>
     <string name="settings_preferences_section">偏好设置</string>
     <string name="settings_sync_station_detail">在后台同步加油站详情</string>
+    <string name="settings_public_catalog_section">城市公共目录</string>
+    <string name="settings_public_catalog_description">保留您所在城市公共站点目录的离线副本。从不下载详情、贡献或位置。</string>
+    <string name="settings_public_catalog_toggle">保持公共目录更新</string>
+    <string name="settings_public_catalog_last_sync">上次更新：%1$s</string>
+    <string name="settings_public_catalog_never_synced">此设备上从未更新。</string>
+    <string name="settings_public_catalog_off_note">后台更新已关闭。浏览、手动刷新和贡献不受影响。</string>
+    <string name="settings_clear_public_catalog">清除公共目录</string>
+    <string name="public_catalog_cleared">公共目录已清除。</string>
     <string name="settings_auto_download_latest_week">自动下载最新调查周</string>
     <string name="settings_sync_wifi_only">仅在 Wi‑Fi 下自动同步</string>
     <string name="settings_show_price_history">显示价格历史</string>

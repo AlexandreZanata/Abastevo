@@ -8,8 +8,10 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import com.anpfuel.application.port.CommunityReadsFlagProvider
 import com.anpfuel.application.usecase.directory.GetServerStationsUseCase
 import com.anpfuel.domain.discovery.*
+import com.anpfuel.domain.model.UserPreferences
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
+import com.anpfuel.domain.repository.UserPreferencesRepository
 import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -23,10 +25,17 @@ class DirectorySyncWorkerTest {
     private var requests = 0
     private var fail = false
     private var page: ServerStationPage? = null
+    private var preferences = UserPreferences(syncPublicCityCatalog = true)
+    private val preferencesRepository = object : UserPreferencesRepository {
+        override suspend fun getPreferences(): UserPreferences = preferences
+        override suspend fun savePreferences(updated: UserPreferences) {
+            preferences = updated
+        }
+    }
     private val gateway = object : ServerStationGateway {
         override suspend fun list(limit: Int, cursor: String?): ServerStationPage {
             requests++
-            assertEquals(100, limit)
+            assertEquals(20, limit)
             assertNull(cursor)
             if (fail) throw IOException("offline")
             return ServerStationPage(emptyList(), null)
@@ -50,7 +59,7 @@ class DirectorySyncWorkerTest {
             .setRunAttemptCount(attempt)
             .setWorkerFactory(object : WorkerFactory() {
                 override fun createWorker(appContext: Context, workerClassName: String, params: WorkerParameters) =
-                    DirectorySyncWorker(appContext, params, useCase)
+                    DirectorySyncWorker(appContext, params, useCase, preferencesRepository)
             }).build()
     }
 
@@ -58,6 +67,14 @@ class DirectorySyncWorkerTest {
         assertEquals(ListenableWorker.Result.success(), worker().doWork())
         assertNotNull(page)
         assertEquals(1, requests)
+        assertNotNull(preferences.publicCityCatalogLastSyncedAtMillis)
+    }
+    @Test fun publicCatalogOptOutPerformsNoNetwork() = runBlocking {
+        preferences = UserPreferences(syncPublicCityCatalog = false)
+        assertEquals(ListenableWorker.Result.success(), worker().doWork())
+        assertEquals(0, requests)
+        assertNull(page)
+        assertNull(preferences.publicCityCatalogLastSyncedAtMillis)
     }
     @Test fun disabledDoesNotReadNetwork() = runBlocking {
         enabled = false
