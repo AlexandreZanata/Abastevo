@@ -23,6 +23,7 @@ pub mod quality;
 pub mod registry;
 pub mod replay;
 pub mod sanction;
+pub mod sanction_anp;
 pub mod types;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
