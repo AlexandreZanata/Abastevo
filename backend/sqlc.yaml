@@ -301,6 +301,7 @@ sql:
       - db/migrations/000103_quality_revalidation_cursor.sql
       - db/migrations/000104_quality_discovery_cursor.sql
       - db/migrations/000105_quality_station_projections.sql
+      - db/migrations/000106_quality_native_fine_precision.sql
     gen:
       go:
         package: quality

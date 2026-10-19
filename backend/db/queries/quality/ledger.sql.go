@@ -458,15 +458,28 @@ WHERE revision_id = $1
 ORDER BY native_key ASC, id ASC
 `
 
-func (q *Queries) ListRevisionSanctions(ctx context.Context, revisionID pgtype.UUID) ([]QualitySanctionEvent, error) {
+type ListRevisionSanctionsRow struct {
+	ID            pgtype.UUID `json:"id"`
+	RevisionID    pgtype.UUID `json:"revision_id"`
+	NativeKey     string      `json:"native_key"`
+	ProceedingRef string      `json:"proceeding_ref"`
+	PartyCnpj     string      `json:"party_cnpj"`
+	AmountMinor   pgtype.Int8 `json:"amount_minor"`
+	Status        string      `json:"status"`
+	DecidedOn     pgtype.Date `json:"decided_on"`
+	AsOf          pgtype.Date `json:"as_of"`
+	EvidenceRef   string      `json:"evidence_ref"`
+}
+
+func (q *Queries) ListRevisionSanctions(ctx context.Context, revisionID pgtype.UUID) ([]ListRevisionSanctionsRow, error) {
 	rows, err := q.db.Query(ctx, listRevisionSanctions, revisionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []QualitySanctionEvent
+	var items []ListRevisionSanctionsRow
 	for rows.Next() {
-		var i QualitySanctionEvent
+		var i ListRevisionSanctionsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.RevisionID,
