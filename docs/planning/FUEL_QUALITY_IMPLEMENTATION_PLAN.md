@@ -425,7 +425,7 @@ Rust adapter contract: [FQ-06](../backend/evidence/fuel-quality/FQ06_ENFORCEMENT
 
 ### FQ-07 — Sanction snapshots, corrections and case correlation (M)
 
-[Official SICOM fine preparer FQ-07R1](../backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md) is LOCAL_DONE / INTEGRATION_PENDING with exact2025 source reconciliation and CPF minimization. It uses a separate native observation contract: due date is not decision date, extraction month is not an invented day, content observation identity is not a fine number. Typed Go bridge, compatible ledger fields, live discovery/composition and safe station links remain OWED.
+[Official SICOM fine preparer FQ-07R1](../backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md) is LOCAL_DONE / INTEGRATION_PENDING with exact2025 source reconciliation and CPF minimization. It uses a separate native observation contract: due date is not decision date, extraction month is not an invented day, content observation identity is not a fine number. [Typed native Go boundary FQ-07R2](../backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md) is LOCAL_DONE with real Rust→Go2025 reconciliation; compatible ledger/read fields, live discovery/composition and safe station links remain OWED.
 
 Rust adapter contract: [FQ-07](../backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md), LOCAL_DONE / INTEGRATION_PENDING. Runtime reconciliation (FQ-05W8): as with FQ-06, the live Go source stream, prepare CLI and discovery remain OWED; adapter fixtures alone do not certify runtime history.
 
