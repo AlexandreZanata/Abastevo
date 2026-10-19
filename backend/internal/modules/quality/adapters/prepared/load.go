@@ -205,6 +205,9 @@ func (c *census) Write(p []byte) (int, error) {
 func scan(ctx context.Context, open OpenStream, o output, expectedRows int64, consume func([]byte) error) (err error) {
 	stream, e := open(o.File)
 	if e != nil || stream == nil {
+		if stream != nil {
+			_ = stream.Close()
+		}
 		return refused("stream unavailable")
 	}
 	defer func() {

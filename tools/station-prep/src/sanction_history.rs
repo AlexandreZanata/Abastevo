@@ -462,11 +462,11 @@ pub fn parse_fine_history(
             Some(reason::INVALID_CNPJ)
         } else if footer {
             return Err(FineError::Contract);
-        } else if row
-            .iter()
-            .enumerate()
-            .any(|(i, v)| i != 5 && v.chars().any(char::is_control))
-            || [0, 2, 3].iter().any(|i| row[*i].trim().is_empty())
+        } else if row.iter().enumerate().any(|(i, v)| {
+            i != 5
+                && v.chars()
+                    .any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
+        }) || [0, 2, 3].iter().any(|i| row[*i].trim().is_empty())
             || due(&row[due_index]).is_none()
             || value_money(&row[amount_index]).is_none()
             || (value_money(&row[paid_index]).is_none()

@@ -493,3 +493,18 @@ fn unfinished_quoted_record_with_a_final_newline_is_not_a_complete_snapshot() {
         1
     );
 }
+
+#[test]
+fn unicode_line_separators_are_quarantined_for_the_canonical_rust_go_contract() {
+    for separator in ['\u{2028}', '\u{2029}'] {
+        let row = ROW.replace("Synthetic status", &format!("Synthetic{separator}status"));
+        let batch = parse_fine_history(
+            "multas-aplicadas-2024.csv",
+            source_2024(&[&row]),
+            "2024",
+            &Limits::default(),
+        )
+        .unwrap();
+        assert_eq!(batch.counts.quarantined, 1);
+    }
+}
