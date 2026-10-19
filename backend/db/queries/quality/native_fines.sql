@@ -21,3 +21,15 @@ SELECT @id, staging.id, @native_key, @proceeding_ref, @party_cnpj,
 FROM staging
 ON CONFLICT (revision_id, native_key) DO NOTHING
 RETURNING id;
+
+-- name: RecordNativeFineClock :execrows
+INSERT INTO quality_native_fine_revisions(revision_id,report_year,extraction_month)
+SELECT r.id,@report_year::int,@extraction_month::text
+FROM quality_revisions r JOIN quality_editions e ON e.id = r.edition_id
+WHERE r.id= @revision_id AND r.status = 'staging'
+ AND e.source = 'sanctions' AND e.stream = 'sanction-v1'
+FOR SHARE OF r;
+
+-- name: NativeFineRevisionClock :one
+SELECT report_year,extraction_month FROM quality_native_fine_revisions
+WHERE revision_id= @revision_id;

@@ -519,7 +519,7 @@ func (q *Queries) SampleLinksByRevision(ctx context.Context, arg SampleLinksByRe
 
 const sanctionByID = `-- name: SanctionByID :one
 SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
-    status, decided_on, as_of, evidence_ref
+    status, decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor
 FROM quality_sanction_events
 WHERE id = $1 AND revision_id = $2
 `
@@ -529,22 +529,9 @@ type SanctionByIDParams struct {
 	RevisionID pgtype.UUID `json:"revision_id"`
 }
 
-type SanctionByIDRow struct {
-	ID            pgtype.UUID `json:"id"`
-	RevisionID    pgtype.UUID `json:"revision_id"`
-	NativeKey     string      `json:"native_key"`
-	ProceedingRef string      `json:"proceeding_ref"`
-	PartyCnpj     string      `json:"party_cnpj"`
-	AmountMinor   pgtype.Int8 `json:"amount_minor"`
-	Status        string      `json:"status"`
-	DecidedOn     pgtype.Date `json:"decided_on"`
-	AsOf          pgtype.Date `json:"as_of"`
-	EvidenceRef   string      `json:"evidence_ref"`
-}
-
-func (q *Queries) SanctionByID(ctx context.Context, arg SanctionByIDParams) (SanctionByIDRow, error) {
+func (q *Queries) SanctionByID(ctx context.Context, arg SanctionByIDParams) (QualitySanctionEvent, error) {
 	row := q.db.QueryRow(ctx, sanctionByID, arg.ID, arg.RevisionID)
-	var i SanctionByIDRow
+	var i QualitySanctionEvent
 	err := row.Scan(
 		&i.ID,
 		&i.RevisionID,
@@ -556,13 +543,22 @@ func (q *Queries) SanctionByID(ctx context.Context, arg SanctionByIDParams) (San
 		&i.DecidedOn,
 		&i.AsOf,
 		&i.EvidenceRef,
+		&i.SourceContract,
+		&i.ExtractionMonth,
+		&i.ReportYear,
+		&i.DufRef,
+		&i.Department,
+		&i.DueOn,
+		&i.AmountText,
+		&i.PaidText,
+		&i.PaidMinor,
 	)
 	return i, err
 }
 
 const sanctionPageByRevision = `-- name: SanctionPageByRevision :many
 SELECT id, native_key, proceeding_ref, party_cnpj, amount_minor, status,
-    decided_on, as_of, evidence_ref
+    decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor
 FROM quality_sanction_events
 WHERE revision_id = $1
     AND ($2::text = '' OR status = $2)
@@ -581,15 +577,24 @@ type SanctionPageByRevisionParams struct {
 }
 
 type SanctionPageByRevisionRow struct {
-	ID            pgtype.UUID `json:"id"`
-	NativeKey     string      `json:"native_key"`
-	ProceedingRef string      `json:"proceeding_ref"`
-	PartyCnpj     string      `json:"party_cnpj"`
-	AmountMinor   pgtype.Int8 `json:"amount_minor"`
-	Status        string      `json:"status"`
-	DecidedOn     pgtype.Date `json:"decided_on"`
-	AsOf          pgtype.Date `json:"as_of"`
-	EvidenceRef   string      `json:"evidence_ref"`
+	ID              pgtype.UUID `json:"id"`
+	NativeKey       string      `json:"native_key"`
+	ProceedingRef   string      `json:"proceeding_ref"`
+	PartyCnpj       string      `json:"party_cnpj"`
+	AmountMinor     pgtype.Int8 `json:"amount_minor"`
+	Status          string      `json:"status"`
+	DecidedOn       pgtype.Date `json:"decided_on"`
+	AsOf            pgtype.Date `json:"as_of"`
+	EvidenceRef     string      `json:"evidence_ref"`
+	SourceContract  string      `json:"source_contract"`
+	ExtractionMonth pgtype.Text `json:"extraction_month"`
+	ReportYear      pgtype.Int4 `json:"report_year"`
+	DufRef          pgtype.Text `json:"duf_ref"`
+	Department      pgtype.Text `json:"department"`
+	DueOn           pgtype.Date `json:"due_on"`
+	AmountText      pgtype.Text `json:"amount_text"`
+	PaidText        pgtype.Text `json:"paid_text"`
+	PaidMinor       pgtype.Int8 `json:"paid_minor"`
 }
 
 func (q *Queries) SanctionPageByRevision(ctx context.Context, arg SanctionPageByRevisionParams) ([]SanctionPageByRevisionRow, error) {
@@ -617,6 +622,15 @@ func (q *Queries) SanctionPageByRevision(ctx context.Context, arg SanctionPageBy
 			&i.DecidedOn,
 			&i.AsOf,
 			&i.EvidenceRef,
+			&i.SourceContract,
+			&i.ExtractionMonth,
+			&i.ReportYear,
+			&i.DufRef,
+			&i.Department,
+			&i.DueOn,
+			&i.AmountText,
+			&i.PaidText,
+			&i.PaidMinor,
 		); err != nil {
 			return nil, err
 		}

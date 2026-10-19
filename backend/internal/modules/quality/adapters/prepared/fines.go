@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -67,15 +66,7 @@ func fineText(s string) bool {
 		strings.IndexFunc(s, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' }) < 0
 }
 
-var fineMoneyShape = regexp.MustCompile(`^(0|[1-9][0-9]*|[1-9][0-9]{0,2}(\.[0-9]{3})+),[0-9]{2}$`)
-
-func fineMoney(s string) (int64, bool) {
-	if !fineMoneyShape.MatchString(s) {
-		return 0, false
-	}
-	value, e := strconv.ParseInt(strings.NewReplacer(".", "", ",", "").Replace(s), 10, 64)
-	return value, e == nil && value >= 0
-}
+func fineMoney(s string) (int64, bool) { return domain.ParseFineAmount(s) }
 func validFineMonth(s string, year int) bool {
 	m, e := time.Parse("2006-01", s)
 	return e == nil && m.Format("2006-01") == s && m.Year() >= year

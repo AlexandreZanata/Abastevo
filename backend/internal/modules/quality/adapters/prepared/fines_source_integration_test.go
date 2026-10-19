@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
 	"io"
 	"os"
 	"os/exec"
@@ -56,9 +57,13 @@ func TestOfficialFineRustGoBoundary(t *testing.T) {
 		t.Fatal("real loss/precision reconciliation differs", batch.Counts)
 	}
 	for _, row := range batch.Observations {
-		if len(row.SourceCNPJ) != 14 || len(row.ObservationKey) != 76 || row.ReportYear != 2025 || row.ExtractionMonth != "2026-01" || row.DueOn == "" {
+		if row.ObservationIdentity() != row.ObservationKey || len(row.SourceCNPJ) != 14 || len(row.ObservationKey) != 76 || row.ReportYear != 2025 || row.ExtractionMonth != "2026-01" || row.DueOn == "" {
 			t.Fatal("source observation field mismatch")
 		}
+	}
+	native := application.NativeFineInput{Edition: "2025", Clock: application.NativeFineClock{ReportYear: batch.ReportYear, ExtractionMonth: batch.ExtractionMonth}, Resources: []application.Resource{{URL: "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.csv", SHA256: hash, Bytes: uint64(len(raw))}}, Counts: batch.Counts, ManifestHash: batch.ManifestHash, Observations: batch.Observations}
+	if err := native.Validate(); err != nil {
+		t.Fatal("verified actual source refused native publication contract", err)
 	}
 	t.Log("3395 input = 3375 accepted + 0 duplicate + 20 CPF quarantine; Rust/Go artifact, money, dates and row census verified")
 }

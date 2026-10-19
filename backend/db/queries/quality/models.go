@@ -148,6 +148,12 @@ type QualityManifest struct {
 	RecordedAt   pgtype.Timestamptz `json:"recorded_at"`
 }
 
+type QualityNativeFineRevision struct {
+	RevisionID      pgtype.UUID `json:"revision_id"`
+	ReportYear      int32       `json:"report_year"`
+	ExtractionMonth string      `json:"extraction_month"`
+}
+
 type QualityPeriod struct {
 	EditionID   pgtype.UUID `json:"edition_id"`
 	PeriodLabel string      `json:"period_label"`

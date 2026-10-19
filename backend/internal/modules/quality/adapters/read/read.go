@@ -84,22 +84,25 @@ type Period struct {
 // identity, edition, revision, reconciled denominators, claimed periods
 // and the staleness flag with its reason.
 type Lease struct {
-	SupersedesRevisionID string
-	Status               string
-	ProvenanceState      string
-	IsCurrentStream      bool
-	Source               string
-	Stream               string
-	Edition              string
-	RevisionID           string
-	PublishedAt          time.Time
-	HasPublished         bool
-	Counts               domain.Counts
-	ManifestHash         string
-	Periods              []Period
-	Stale                bool
-	StaleReason          string
-	CoverageNote         string
+	SourceClockPrecision  string
+	SourceExtractionMonth string
+	SourceReportYear      *int32
+	SupersedesRevisionID  string
+	Status                string
+	ProvenanceState       string
+	IsCurrentStream       bool
+	Source                string
+	Stream                string
+	Edition               string
+	RevisionID            string
+	PublishedAt           time.Time
+	HasPublished          bool
+	Counts                domain.Counts
+	ManifestHash          string
+	Periods               []Period
+	Stale                 bool
+	StaleReason           string
+	CoverageNote          string
 }
 
 // FuelCell is one fuel/conformity denominator of a station summary.
@@ -153,14 +156,24 @@ type EnforcementEvent struct {
 
 // SanctionEvent is one published snapshot without party identifiers.
 type SanctionEvent struct {
-	ID            string
-	NativeKey     string
-	ProceedingRef string
-	AmountMinor   *int64
-	Status        string
-	DecidedOn     string
-	AsOf          string
-	EvidenceRef   string
+	IdentityKind    string
+	ClockPrecision  string
+	ExtractionMonth string
+	ReportYear      *int32
+	DUFRef          string
+	Department      string
+	DueOn           string
+	AmountText      string
+	PaidText        string
+	PaidMinor       *int64
+	ID              string
+	NativeKey       string
+	ProceedingRef   string
+	AmountMinor     *int64
+	Status          string
+	DecidedOn       string
+	AsOf            string
+	EvidenceRef     string
 }
 
 func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time) (Lease, pgtype.UUID, error) {
@@ -206,6 +219,21 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		},
 		ManifestHash: row.ManifestHash,
 		Stale:        stale, StaleReason: reason,
+	}
+	if source == "sanctions" && stream == domain.StreamSanction {
+		clock, cerr := q.NativeFineRevisionClock(ctx, row.RevisionID)
+		if cerr == nil {
+			lease.SourceClockPrecision = "MONTH"
+			lease.SourceExtractionMonth = clock.ExtractionMonth
+			year := clock.ReportYear
+			lease.SourceReportYear = &year
+			if old, why := domain.FineMonthStale(clock.ExtractionMonth, now); old {
+				lease.Stale = true
+				lease.StaleReason = why
+			}
+		} else if !errors.Is(cerr, pgx.ErrNoRows) {
+			return Lease{}, pgtype.UUID{}, cerr
+		}
 	}
 	lease.CoverageNote = application.CoverageNote(row.Edition, lease.Counts)
 	if row.Status == "superseded" {
@@ -443,12 +471,8 @@ func (r *Reader) SanctionsAtLease(ctx context.Context, lease Lease, status, afte
 			v := row.AmountMinor.Int64
 			amount = &v
 		}
-		out = append(out, SanctionEvent{
-			ID: uuidString(row.ID), NativeKey: row.NativeKey,
-			ProceedingRef: row.ProceedingRef, AmountMinor: amount,
-			Status: row.Status, DecidedOn: dateString(row.DecidedOn),
-			AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef,
-		})
+		event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
+		out = append(out, fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor))
 	}
 	return out, "", lease, nil
 }
@@ -504,10 +528,30 @@ func (r *Reader) SanctionOne(ctx context.Context, now time.Time, source, stream,
 		v := row.AmountMinor.Int64
 		amount = &v
 	}
-	return SanctionEvent{
-		ID: uuidString(row.ID), NativeKey: row.NativeKey,
-		ProceedingRef: row.ProceedingRef, AmountMinor: amount,
-		Status: row.Status, DecidedOn: dateString(row.DecidedOn),
-		AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef,
-	}, lease, nil
+	event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
+	return fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor), lease, nil
+}
+
+func fineFacts(event SanctionEvent, contract string, month pgtype.Text, year pgtype.Int4, duf, department pgtype.Text, due pgtype.Date, amount, paid pgtype.Text, paidMinor pgtype.Int8) SanctionEvent {
+	event.IdentityKind = "LEGACY_REFERENCE"
+	event.ClockPrecision = "DAY"
+	if contract == "anp-sicom-cp850-9-v1" {
+		event.IdentityKind = "CONTENT_OBSERVATION"
+		event.ClockPrecision = "MONTH"
+		event.ExtractionMonth = month.String
+		if year.Valid {
+			value := year.Int32
+			event.ReportYear = &value
+		}
+		event.DUFRef = duf.String
+		event.Department = department.String
+		event.DueOn = dateString(due)
+		event.AmountText = amount.String
+		event.PaidText = paid.String
+		if paidMinor.Valid {
+			value := paidMinor.Int64
+			event.PaidMinor = &value
+		}
+	}
+	return event
 }

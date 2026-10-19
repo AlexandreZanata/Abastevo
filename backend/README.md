@@ -172,6 +172,22 @@ transactionally; acknowledged replay costs no second unit. No payment/GPS/docume
 or business portal requirement is introduced. See [review](../docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)
 and [historical validation](../docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md).
 
+Native SICOM fine observations have a separate source contract and typed publisher.
+The native CSV carries a GRM due day and month-only extraction precision: public
+sanction responses expose `as_of: null`, `as_of_precision: MONTH`,
+`extraction_month`, `due_on`, raw amount/payment text and minor units separately.
+`identity_kind: CONTENT_OBSERVATION` identifies a minimized-content digest, not a
+source-issued fine number. Exact-day legacy snapshots stay readable. Source age
+uses the existing180-day policy independently of local import publication time;
+a fresh import of old source data remains stale, including empty revisions.
+Company names/CPF are discarded; company identifiers stay out of public responses.
+See [native preparation](../docs/backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md),
+[typed boundary](../docs/backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md),
+[storage](../docs/backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) and
+[atomic publication/read clocks](../docs/backend/evidence/fuel-quality/FQ07R3B_NATIVE_FINE_PUBLICATION.md).
+This source publication boundary is not yet a composed import/discovery handler;
+no full fine history, station association or runtime activation is certified.
+
 Critical quality persistence/read/job checks, from backend/ against disposable
 local PostGIS (never the staging database):
 

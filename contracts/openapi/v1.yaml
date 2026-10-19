@@ -7575,6 +7575,9 @@ components:
       type: object
       required: [source, stream, edition, revision_id, available, stale, coverage_note]
       properties:
+        source_clock_precision: {type: string, enum: [MONTH]}
+        source_extraction_month: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        source_report_year: {type: integer, minimum: 2016, maximum: 9999}
         supersedes_revision_id: {type: [string, 'null'], format: uuid}
         revision_status: {type: string, enum: [published, superseded, withdrawn, unavailable]}
         provenance_state: {type: string, enum: [VERIFIED, LEGACY_UNVERIFIED, UNAVAILABLE]}
@@ -7720,7 +7723,7 @@ components:
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualitySanction:
-      description: One published snapshot, extraction-time status only. Page items omit lease and generated_at; detail responses include them.
+      description: One published snapshot, source-time status only; native SICOM reports have month-only extraction precision, due date is never a decision date, and content observation keys are not source-issued fine numbers. Page items omit lease and generated_at; detail responses include them.
       type: object
       required: [id, native_key, proceeding_ref, status, as_of, evidence_ref]
       properties:
@@ -7730,7 +7733,17 @@ components:
         amount_minor: {type: [integer, 'null'], minimum: 0}
         status: {type: string}
         decided_on: {type: [string, 'null'], format: date}
-        as_of: {type: string, format: date}
+        as_of: {type: [string, 'null'], format: date}
+        as_of_precision: {type: string, enum: [DAY, MONTH]}
+        identity_kind: {type: string, enum: [LEGACY_REFERENCE, CONTENT_OBSERVATION]}
+        extraction_month: {type: [string, 'null'], pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        report_year: {type: [integer, 'null'], minimum: 2016, maximum: 9999}
+        duf_ref: {type: [string, 'null']}
+        department: {type: [string, 'null']}
+        due_on: {type: [string, 'null'], format: date}
+        amount_text: {type: [string, 'null']}
+        paid_text: {type: [string, 'null']}
+        paid_minor: {type: [integer, 'null'], minimum: 0}
         evidence_ref: {type: string}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
