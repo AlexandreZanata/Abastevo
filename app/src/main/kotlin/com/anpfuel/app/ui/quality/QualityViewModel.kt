@@ -56,6 +56,7 @@ class QualityViewModel @Inject constructor(
 
     fun refresh() { mutable.value.selection?.let { load(it,null,false) } }
     fun selectFuel(fuel:FuelProduct) {
+        if(!com.anpfuel.app.BuildConfig.QUALITY_UI_ENABLED)return
         val selection=runCatching { QualitySelection(stationId,WireFuelMapper.toWire(fuel),mutable.value.selection?.revisionId) }.getOrNull() ?: return
         mutable.update {it.copy(fuel=fuel,selection=selection,snapshot=null,sample=null,provenance=null)}
         load(selection,null,true)
@@ -100,6 +101,7 @@ class QualityViewModel @Inject constructor(
     }
 
     fun loadRevisions(next:Boolean=false) {
+        if(!com.anpfuel.app.BuildConfig.QUALITY_UI_ENABLED)return
         val cursor=if(next)mutable.value.catalogCursor ?: return else null
         val own=++catalogGeneration
         catalogJob?.cancel()

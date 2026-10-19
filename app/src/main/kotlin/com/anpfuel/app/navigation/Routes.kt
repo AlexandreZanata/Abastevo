@@ -43,6 +43,7 @@ object Routes {
     }
 
     const val QUALITY_REPORTS="quality-reports/{stationId}?fuelProduct={fuelProduct}&revisionId={revisionId}&sampleRef={sampleRef}"
+    fun qualityReportHistory():String="quality-reports/own?fuelProduct=GASOLINE_REGULAR&revisionId=&sampleRef="
     fun qualityReports(stationId:String,fuel:FuelProduct,revisionId:String?=null,sampleRef:String?=null):String {
         require(com.anpfuel.domain.quality.qualityReportId(stationId))
         require((revisionId==null)==(sampleRef==null))

@@ -1,7 +1,6 @@
 package com.anpfuel.data.local
 
 import androidx.room.testing.MigrationTestHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
@@ -12,7 +11,7 @@ import org.junit.runner.RunWith
 /** Compiled here; execution remains part of the deferred native batch. */
 @RunWith(AndroidJUnit4::class)
 class V13ToV14QualityOutboxMigrationTest {
-    @get:Rule val helper=MigrationTestHelper(InstrumentationRegistry.getInstrumentation(),AnpFuelDatabase::class.java.canonicalName,FrameworkSQLiteOpenHelperFactory())
+    @get:Rule val helper=MigrationTestHelper(InstrumentationRegistry.getInstrumentation(),AnpFuelDatabase::class.java)
     @Test fun priorCatalogSurvivesAndPrivateQueueStartsEmpty() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val name="quality-v13-v14"

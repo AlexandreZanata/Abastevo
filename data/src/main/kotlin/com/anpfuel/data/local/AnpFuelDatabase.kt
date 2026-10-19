@@ -49,7 +49,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.QualityOwnerGateEntity::class,
         com.anpfuel.data.local.entity.QualityReportOutboxEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

@@ -22,6 +22,22 @@ def schema(db, version):
         db.execute(entity['createSql'].replace('${TABLE_NAME}', entity['tableName']))
         for index in entity['indices']:
             db.execute(index['createSql'].replace('${TABLE_NAME}', entity['tableName']))
+    db.execute(f'PRAGMA user_version={version}')
+
+
+def upgrade(db):
+    # Room owns version selection; this harness uses SQLite's real version ledger.
+    for source, target, statements in [(13, 14, UPGRADE[:-1]), (14, 15, UPGRADE[-1:])]:
+        if db.execute('PRAGMA user_version').fetchone()[0] == source:
+            db.execute('BEGIN IMMEDIATE')
+            try:
+                for sql in statements:
+                    db.execute(sql)
+                db.execute(f'PRAGMA user_version={target}')
+                db.commit()
+            except BaseException:
+                db.rollback()
+                raise
 
 
 class QualityOutboxSQL(unittest.TestCase):
@@ -31,8 +47,7 @@ class QualityOutboxSQL(unittest.TestCase):
         self.db = self.connect()
         schema(self.db, 13)
         self.db.execute("INSERT INTO survey_week VALUES ('synthetic-week','2026-10-01','2026-10-07',123,NULL)")
-        for sql in UPGRADE:
-            self.db.execute(sql)
+        upgrade(self.db)
 
     def tearDown(self):
         self.db.close()
@@ -42,7 +57,7 @@ class QualityOutboxSQL(unittest.TestCase):
         return sqlite3.connect(self.path, isolation_level=None, timeout=5)
 
     def gate(self, key='a', local='owner-a', blocked=0, last=100, expiry=10000):
-        self.db.execute('INSERT INTO quality_owner_gate VALUES (?,?,?,?,?,?)', (key, local, 'https://synthetic.invalid', blocked, last, expiry))
+        self.db.execute('INSERT INTO quality_owner_gate VALUES (?,?,?,?,?,?,0)', (key, local, 'https://synthetic.invalid', blocked, last, expiry))
 
     def pending(self, key='a', command='command-a', expiry=9000):
         self.db.execute('INSERT INTO quality_report_outbox VALUES (?,?,?,?,?,?,?,?,?,?,?)', (key, command, 'a'*64, 'synthetic-ciphertext', 100, expiry, 'QUEUED', 0, 100, '', 0))
@@ -51,20 +66,38 @@ class QualityOutboxSQL(unittest.TestCase):
         return self.db.execute(QUERIES[name], params)
 
     def test_upgrade_matches_exported_fresh_schema_preserves_prior_data_and_replays(self):
-        self.assertEqual(4, len(UPGRADE))
+        self.assertEqual(5, len(UPGRADE))
         self.assertEqual(('synthetic-week',), self.db.execute('SELECT id FROM survey_week').fetchone())
         fresh = sqlite3.connect(':memory:')
         try:
-            schema(fresh, 14)
-            for entity in json.loads((SCHEMAS / '14.json').read_text())['database']['entities']:
+            schema(fresh, 15)
+            for entity in json.loads((SCHEMAS / '15.json').read_text())['database']['entities']:
                 name = entity['tableName']
                 self.assertEqual(fresh.execute(f'PRAGMA table_info(`{name}`)').fetchall(), self.db.execute(f'PRAGMA table_info(`{name}`)').fetchall(), name)
                 self.assertEqual(fresh.execute(f'PRAGMA index_list(`{name}`)').fetchall(), self.db.execute(f'PRAGMA index_list(`{name}`)').fetchall(), name)
-            for sql in UPGRADE:
-                self.db.execute(sql)
+            upgrade(self.db)
+            self.assertEqual(15, self.db.execute('PRAGMA user_version').fetchone()[0])
             self.assertEqual(0, self.q('pendingCount').fetchone()[0])
         finally:
             fresh.close()
+
+    def test_schema14_upgrade_preserves_live_ciphertext_until_confirmed_key_erasure(self):
+        prior = sqlite3.connect(':memory:')
+        try:
+            schema(prior, 14)
+            prior.execute("INSERT INTO quality_owner_gate VALUES ('a','owner-a','https://synthetic.invalid',0,100,10000)")
+            prior.execute("INSERT INTO quality_report_outbox VALUES ('a','command-a',?,'synthetic-ciphertext',100,9000,'QUEUED',0,100,'',0)", ('a'*64,))
+            prior.execute(UPGRADE[-1])
+            self.assertEqual(0, prior.execute('SELECT key_erased FROM quality_owner_gate').fetchone()[0])
+            self.assertEqual('synthetic-ciphertext', prior.execute('SELECT sealed_command FROM quality_report_outbox').fetchone()[0])
+            self.assertEqual(0, prior.execute(QUERIES['keyErased'], dict(key='a', now=200)).rowcount)
+            prior.execute(QUERIES['blockOwner'], dict(local='owner-a', now=200, until=20000))
+            self.assertEqual([('a',)], prior.execute(QUERIES['keysToErase'], dict(now=201)).fetchall())
+            prior.execute(QUERIES['keyErased'], dict(key='a', now=201))
+            self.assertEqual([], prior.execute(QUERIES['keysToErase'], dict(now=201)).fetchall())
+            self.assertEqual(0, prior.execute(QUERIES['touch'], dict(key='a', now=202)).rowcount)
+        finally:
+            prior.close()
 
     def test_twelve_way_claim_restart_and_stale_ack_are_fenced(self):
         self.gate(); self.pending()
@@ -122,6 +155,8 @@ class QualityOutboxSQL(unittest.TestCase):
         self.assertEqual(1, self.q('claimRow', key='a', command='command-a', claim='two', now=500, until=600).rowcount)
         self.assertEqual(0, self.q('pruneGates', now=10000).rowcount)
         self.q('pruneExpired', now=10000)
+        self.assertEqual(0, self.q('pruneGates', now=10000).rowcount)
+        self.assertEqual(1, self.q('keyErased', key='a', now=10000).rowcount)
         self.assertEqual(1, self.q('pruneGates', now=10000).rowcount)
 
 

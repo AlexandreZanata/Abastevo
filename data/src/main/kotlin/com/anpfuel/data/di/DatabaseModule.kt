@@ -52,6 +52,7 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_11_12,
                 AnpFuelDatabaseMigrations.MIGRATION_12_13,
                 AnpFuelDatabaseMigrations.MIGRATION_13_14,
+                AnpFuelDatabaseMigrations.MIGRATION_14_15,
             )
             .build()
 

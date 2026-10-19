@@ -83,16 +83,34 @@ class QualityReportHttpClient internal constructor(
     private suspend fun <T> safe(block:suspend ()->T):T=try {block()}
         catch(e:CancellationException){throw e}
         catch(e:QualityReportException){throw e}
-        catch(_:ContributionRateLimited){fail(QualityReportFailure.QUOTA)}
-        catch(e:PhotoOperationRefused){fail(when(e.status){401,403->QualityReportFailure.AUTH_REQUIRED;409->QualityReportFailure.CONFLICT;404->QualityReportFailure.NOT_FOUND;429->QualityReportFailure.QUOTA;else->QualityReportFailure.UNAVAILABLE})}
+        catch(e:ContributionRateLimited){throw QualityReportException(QualityReportFailure.QUOTA,e.retryAfterSeconds)}
+        catch(e:PhotoOperationRefused){throw QualityReportException(when(e.status){401,403->QualityReportFailure.AUTH_REQUIRED;409->QualityReportFailure.CONFLICT;404->QualityReportFailure.NOT_FOUND;429->QualityReportFailure.QUOTA;else->QualityReportFailure.UNAVAILABLE},e.retryAfterSeconds)}
         catch(_:Exception){fail(QualityReportFailure.UNAVAILABLE)}
     private fun fail(kind:QualityReportFailure):Nothing=throw QualityReportException(kind)
 
     companion object {
         fun signed(proof:PhotoProofTransport,auth:AuthFlow):QualityReportHttpClient {
-            fun scope():String?=proof.ownerScope()?.takeIf {it.startsWith("account:")}?.let {proof.origin+"|"+it}
+            fun scope():String? {
+                val session=when(val state=auth.rehydrate()) {
+                    is AuthFlow.AuthState.Active->state.session
+                    is AuthFlow.AuthState.NeedsRefresh->state.session
+                    else->return null
+                }
+                val local=proof.ownerScope()?.takeIf {it.startsWith("account:${session.accountId}:")} ?: return null
+                val family=java.security.MessageDigest.getInstance("SHA-256").digest(session.familyId.toByteArray()).joinToString(""){"%02x".format(it)}
+                return proof.origin+"|"+local+"|family:"+family
+            }
             suspend fun session(expected:String?):PortableAuth.Session=withContext(Dispatchers.IO) {
-                val live=(auth.refreshSession() as? AuthApiResult.Ok)?.value ?: throw QualityReportException(QualityReportFailure.AUTH_REQUIRED)
+                val result=auth.refreshSession()
+                if(result is AuthApiResult.Err) {
+                    val retained=scope()
+                    throw QualityReportException(when {
+                        retained==null->QualityReportFailure.AUTH_REQUIRED
+                        expected!=null && retained!=expected->QualityReportFailure.OWNER_CHANGED
+                        else->QualityReportFailure.UNAVAILABLE
+                    })
+                }
+                val live=(result as AuthApiResult.Ok).value ?: throw QualityReportException(QualityReportFailure.AUTH_REQUIRED)
                 if(!PortableAuth.isAccessLive(live,System.currentTimeMillis()/1000))throw QualityReportException(QualityReportFailure.AUTH_REQUIRED)
                 val actual=scope() ?: throw QualityReportException(QualityReportFailure.AUTH_REQUIRED)
                 val local=proof.ownerScope().orEmpty()

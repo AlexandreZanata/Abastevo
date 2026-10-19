@@ -33,11 +33,14 @@ class QualityReportsViewModel @Inject constructor(
     saved:SavedStateHandle,private val gateway:QualityReportGateway,
 ):ViewModel() {
     val stationId=saved.get<String>("stationId").orEmpty()
+    val historyOnly=stationId=="own"
+    val canSubmit=com.anpfuel.app.BuildConfig.QUALITY_UI_ENABLED && com.anpfuel.data.BuildConfig.QUALITY_OUTBOX_ENABLED
+    val canEdit=com.anpfuel.data.BuildConfig.QUALITY_OUTBOX_ENABLED
     val fuel=runCatching {WireFuelMapper.toWire(FuelProduct.valueOf(saved.get<String>("fuelProduct") ?: "GASOLINE_REGULAR"))}.getOrDefault("")
     private val revision=saved.get<String>("revisionId").orEmpty()
     private val sample=saved.get<String>("sampleRef").orEmpty()
     val linkageReview=revision.isNotEmpty() && sample.isNotEmpty()
-    private val valid=qualityReportId(stationId) && fuel in QUALITY_FUELS &&
+    private val valid=(historyOnly || qualityReportId(stationId)) && fuel in QUALITY_FUELS &&
         (revision.isEmpty()==sample.isEmpty()) && (revision.isEmpty() || qualityReportId(revision)) && sample.toByteArray().size<=128
     private val mutable=MutableStateFlow(QualityReportsState(day=today()))
     val state=mutable.asStateFlow()
@@ -50,11 +53,19 @@ class QualityReportsViewModel @Inject constructor(
         mutable.update {it.copy(visible=false,busy=true,confirmation=null)}
         job=viewModelScope.launch {
             try {
-                if(!valid || !com.anpfuel.app.BuildConfig.QUALITY_UI_ENABLED)throw QualityReportException(QualityReportFailure.INVALID)
+                if(!valid)throw QualityReportException(QualityReportFailure.INVALID)
                 val owner=gateway.owner()
                 if(ticket!=generation)return@launch
                 if(mutable.value.owner!=owner)mutable.value=QualityReportsState(owner=owner,day=today(),busy=true)
-                mutable.update {it.copy(visible=true,error=null)}
+                val pending=gateway.pending(owner)
+                if(!current(ticket,owner))return@launch
+                mutable.update {
+                    val completed=it.pending!=null && pending==null
+                    it.copy(visible=true,error=null,pending=pending,
+                        text=pending?.text ?: if(completed)"" else it.text,
+                        day=pending?.occurredOn?.takeIf {value->value.isNotEmpty()} ?: it.day,
+                        symptom=pending?.symptom?.takeIf {value->value.isNotEmpty()} ?: it.symptom)
+                }
                 val page=gateway.list(owner)
                 if(current(ticket,owner))mutable.update {it.copy(reports=page.items,nextAfterId=page.nextAfterId,busy=false)}
             }catch(e:CancellationException){throw e}
@@ -76,7 +87,7 @@ class QualityReportsViewModel @Inject constructor(
     private fun failure(e:Exception) {
         val kind=(e as? QualityReportException)?.kind ?: QualityReportFailure.UNAVAILABLE
         if(kind==QualityReportFailure.OWNER_CHANGED || kind==QualityReportFailure.AUTH_REQUIRED)clear(kind)
-        else mutable.update {it.copy(busy=false,visible=true,error=kind,confirmation=null,pending=if(kind==QualityReportFailure.UNAVAILABLE)it.pending else null)}
+        else mutable.update {it.copy(busy=false,visible=true,error=kind,confirmation=null,pending=if(kind in setOf(QualityReportFailure.UNAVAILABLE,QualityReportFailure.QUOTA))it.pending else null)}
     }
     fun text(value:String) {if(editable())mutable.update {it.copy(text=value.take(2001),error=null)}}
     fun day(value:String) {if(editable())mutable.update {it.copy(day=value.take(10),error=null)}}
@@ -89,6 +100,7 @@ class QualityReportsViewModel @Inject constructor(
     }
     fun request(action:String) {
         if(!editable() || owner()==null)return
+        if(action=="SUBMIT" && (historyOnly || !canSubmit) || action=="EDIT" && !canEdit)return
         val s=mutable.value
         val report=s.selected
         val id=UUID.randomUUID().toString()

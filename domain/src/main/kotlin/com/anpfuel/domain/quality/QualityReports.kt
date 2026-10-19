@@ -45,7 +45,7 @@ data class QualityReport(
 )
 data class QualityReportPage(val items:List<QualityReport>,val nextAfterId:String?)
 enum class QualityReportFailure { AUTH_REQUIRED, OWNER_CHANGED, INVALID, CONFLICT, NOT_FOUND, QUOTA, UNAVAILABLE }
-class QualityReportException(val kind:QualityReportFailure):Exception("quality report unavailable or refused")
+class QualityReportException(val kind:QualityReportFailure,val retryAfterSeconds:Long?=null):Exception("quality report unavailable or refused")
 
 fun qualityReportId(value:String):Boolean=Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").matches(value)
 private fun validUnicode(value:String):Boolean {

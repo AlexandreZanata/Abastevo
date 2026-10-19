@@ -234,6 +234,10 @@ fun ProfileScreen(
                 }
             }
 
+            OutlinedButton(onClick={onNavigate(Routes.qualityReportHistory())},modifier=Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.quality_reports_own))
+            }
+
             // Preserved Expert Tools section (contributions now live here
             // as a dedicated page instead of an inline card).
             Text(

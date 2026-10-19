@@ -56,7 +56,7 @@ fun QualityReportsScreen(onBack:()->Unit,onSignIn:()->Unit,viewModel:QualityRepo
             if(state.owner!=null && state.visible) {
                 val selected=state.selected
                 val editable=!state.busy && state.pending==null && state.confirmation==null
-                item {
+                if(selected!=null || !viewModel.historyOnly)item {
                     Text(stringResource(if(selected==null && viewModel.linkageReview)R.string.quality_reports_link else R.string.quality_reports_experience),style=MaterialTheme.typography.titleMedium)
                     if(selected!=null) {
                         Text(stringResource(reportStatus(selected.status)))
@@ -70,10 +70,10 @@ fun QualityReportsScreen(onBack:()->Unit,onSignIn:()->Unit,viewModel:QualityRepo
                         }
                     }
                     OutlinedTextField(value=state.text,onValueChange=viewModel::text,label={Text(stringResource(R.string.quality_reports_text))},supportingText={Text(stringResource(R.string.quality_reports_text_limit))},enabled=editable,modifier=Modifier.fillMaxWidth(),minLines=3,maxLines=8)
-                    if(selected==null || selected.status in setOf("PENDING_REVIEW","REVIEWED"))Button(onClick={viewModel.request(if(selected==null)"SUBMIT" else "EDIT")},enabled=editable){Text(stringResource(if(selected==null)R.string.quality_reports_submit else R.string.quality_reports_edit))}
+                    if(selected==null && viewModel.canSubmit || selected!=null && viewModel.canEdit && selected.status in setOf("PENDING_REVIEW","REVIEWED"))Button(onClick={viewModel.request(if(selected==null)"SUBMIT" else "EDIT")},enabled=editable){Text(stringResource(if(selected==null)R.string.quality_reports_submit else R.string.quality_reports_edit))}
                     if(selected!=null && selected.status in setOf("HIDDEN","REVIEWED"))OutlinedButton(onClick={viewModel.request("APPEAL")},enabled=editable){Text(stringResource(R.string.quality_reports_appeal))}
                     if(selected!=null && selected.status in setOf("PENDING_REVIEW","REVIEWED","HIDDEN"))OutlinedButton(onClick={viewModel.request("WITHDRAW")},enabled=editable){Text(stringResource(R.string.quality_reports_withdraw))}
-                    TextButton(onClick=viewModel::newReport,enabled=editable){Text(stringResource(R.string.quality_reports_new))}
+                    TextButton(onClick=viewModel::newReport,enabled=editable && !viewModel.historyOnly && viewModel.canSubmit){Text(stringResource(R.string.quality_reports_new))}
                 }
                 item {
                     Text(stringResource(R.string.quality_reports_own),style=MaterialTheme.typography.titleMedium)

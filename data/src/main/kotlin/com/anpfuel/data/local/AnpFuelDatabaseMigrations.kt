@@ -412,4 +412,10 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_14_15: Migration = object : Migration(14,15) {
+        override fun migrate(db:SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `quality_owner_gate` ADD COLUMN `key_erased` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
 }

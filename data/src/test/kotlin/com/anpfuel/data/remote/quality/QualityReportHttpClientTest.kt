@@ -71,6 +71,7 @@ class QualityReportHttpClientTest {
         val origin="https://teste.abastevo.com.br"
         val local="account:synthetic:device"
         val session=PortableAuth.Session(id,"synthetic","synthetic-access-1","synthetic-refresh",Instant.now().epochSecond+3600,Instant.now().epochSecond+7200)
+        every {auth.rehydrate()} returns AuthFlow.AuthState.Active(session)
         every {proof.origin} returns origin
         every {proof.ownerScope()} returns local
         coEvery {proof.localScope()} returns local
@@ -78,7 +79,8 @@ class QualityReportHttpClientTest {
         val bodies=mutableListOf<JSONObject>();val keys=mutableListOf<String>()
         coEvery {proof.post("/v1/quality/reports/commands",capture(keys),capture(bodies),local)} answers {receipt()}
         val api=QualityReportHttpClient.signed(proof,auth)
-        api.execute(owner,command());api.execute(owner,command())
+        val signedOwner=api.currentOwner()!!
+        api.execute(signedOwner,command());api.execute(signedOwner,command())
         assertEquals(listOf(id,id),keys)
         assertEquals(listOf("synthetic-access-1","synthetic-access-2"),bodies.map {it.getString("access_token")})
         val canonical=bodies.map {JSONObject(it.toString()).apply {remove("access_token");remove("family_id")}.toString()}
@@ -89,11 +91,40 @@ class QualityReportHttpClientTest {
         val proof=mockk<PhotoProofTransport>();val auth=mockk<AuthFlow>()
         every {proof.origin} returns "https://teste.abastevo.com.br"
         every {proof.ownerScope()} returns "account:synthetic:device"
+        every {auth.rehydrate()} returns AuthFlow.AuthState.Active(PortableAuth.Session(id,"synthetic","synthetic-access","synthetic-refresh",Instant.now().epochSecond+3600,Instant.now().epochSecond+7200))
         val api=QualityReportHttpClient.signed(proof,auth)
+        val signedOwner=api.currentOwner()!!
         every {auth.refreshSession()} returns AuthApiResult.Ok(null)
-        assertThrows(QualityReportException::class.java){runBlocking {api.get(owner,id)}}
+        assertThrows(QualityReportException::class.java){runBlocking {api.get(signedOwner,id)}}
         every {auth.refreshSession()} returns AuthApiResult.Ok(PortableAuth.Session(id,"other","synthetic-access","synthetic-refresh",Instant.now().epochSecond+3600,Instant.now().epochSecond+7200))
-        assertThrows(QualityReportException::class.java){runBlocking {api.get(owner,id)}}
+        assertThrows(QualityReportException::class.java){runBlocking {api.get(signedOwner,id)}}
         coVerify(exactly=0){proof.post(any(),any(),any(),any())}
     }
+    @Test fun `refresh that replaces the login family cannot dispatch the previous familys intent`()=runTest {
+        val proof=mockk<PhotoProofTransport>();val auth=mockk<AuthFlow>()
+        var session=PortableAuth.Session(id,"synthetic","synthetic-access","synthetic-refresh",Instant.now().epochSecond+3600,Instant.now().epochSecond+7200)
+        every {proof.origin} returns "https://teste.abastevo.com.br"
+        every {proof.ownerScope()} returns "account:synthetic:device"
+        every {auth.rehydrate()} answers {AuthFlow.AuthState.Active(session)}
+        every {auth.refreshSession()} answers {session=session.copy(familyId=station);AuthApiResult.Ok(session)}
+        val api=QualityReportHttpClient.signed(proof,auth);val previous=api.currentOwner()!!
+        val e=assertThrows(QualityReportException::class.java){runBlocking {api.execute(previous,command())}}
+        assertEquals(QualityReportFailure.OWNER_CHANGED,e.kind)
+        coVerify(exactly=0){proof.post(any(),any(),any(),any())}
+    }
+
+    @Test fun `offline refresh keeps retained owner recoverable without pretending there is live authority`()=runTest {
+        val proof=mockk<PhotoProofTransport>();val auth=mockk<AuthFlow>()
+        val expired=PortableAuth.Session(id,"synthetic","synthetic-expired-access","synthetic-refresh",1,Instant.now().epochSecond+7200)
+        every {proof.origin} returns "https://teste.abastevo.com.br"
+        every {proof.ownerScope()} returns "account:synthetic:device"
+        every {auth.rehydrate()} returns AuthFlow.AuthState.NeedsRefresh(expired)
+        every {auth.refreshSession()} returns AuthApiResult.Err("synthetic-offline")
+        val api=QualityReportHttpClient.signed(proof,auth);val owner=api.currentOwner()!!
+        val error=assertThrows(QualityReportException::class.java){runBlocking {api.get(owner,id)}}
+        assertEquals(QualityReportFailure.UNAVAILABLE,error.kind)
+        assertEquals(owner,api.currentOwner())
+        coVerify(exactly=0){proof.post(any(),any(),any(),any())}
+    }
+
 }

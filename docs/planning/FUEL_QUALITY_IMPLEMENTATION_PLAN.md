@@ -542,6 +542,8 @@ Scope amendment: document-free reporting/case response can be selected separatel
 
 ### FQ-16 — Offline, privacy and end-to-end compatibility (M)
 
+Local source slices [public offline cache](../backend/evidence/fuel-quality/FQ16A_PUBLIC_OFFLINE_CACHE.md), [encrypted intent journal](../backend/evidence/fuel-quality/FQ16B1_ENCRYPTED_JOURNAL.md) and [durable dispatch/erasure](../backend/evidence/fuel-quality/FQ16B2_DURABLE_DISPATCH.md) are LOCAL_DONE / INTEGRATION_PENDING. Actual SQLite/JVM acceptance and APK/lint compilation pass; deferred native execution and full live-source end-to-end acceptance remain OWED. Neither this status nor queued commands certify server receipt or complete FQ-17.
+
 - Depends: FQ-14 and the selected accepted FQ-15 slice plus affected existing offline/privacy checkpoints; unselected D document features do not block document-free acceptance.
 - Deliver: bounded public history cache and owner-scoped stable command outbox
   only where backend deadlines permit; stale labels, migration/expiry/erase.

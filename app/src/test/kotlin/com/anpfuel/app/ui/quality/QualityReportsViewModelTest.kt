@@ -20,6 +20,7 @@ class QualityReportsViewModelTest {
         Dispatchers.setMain(dispatcher)
         every {gateway.currentOwner()} answers {current}
         coEvery {gateway.owner()} coAnswers {current ?: throw QualityReportException(QualityReportFailure.AUTH_REQUIRED)}
+        coEvery {gateway.pending(any())} returns null
         coEvery {gateway.list(any(),any())} returns QualityReportPage(emptyList(),null)
         coEvery {gateway.execute(any(),any())} coAnswers {secondArg<QualityReportCommand>().let {QualityReportReceipt(it.reportId,it.expectedRevision+1,"PENDING_REVIEW")}}
     }
@@ -97,4 +98,26 @@ class QualityReportsViewModelTest {
         }
     }
     private fun report()=QualityReport(revision,1,"EXPERIENCE",station,"ETHANOL","2020-01-01","OTHER","Synthetic claim","","","PENDING_REVIEW","USER_CLAIM","")
+    @Test fun `recreated screen restores only the current owners frozen pending intent`()=runTest(dispatcher) {
+        val pending=QualityReportCommand(revision,revision,"SUBMIT",0,"EXPERIENCE",station,"ETHANOL","2020-01-01","OTHER","Synthetic queued claim")
+        coEvery {gateway.pending("synthetic-owner")} returns pending
+        val restored=vm();restored.resume();advanceUntilIdle()
+        assertEquals(pending,restored.state.value.pending)
+        assertEquals("Synthetic queued claim",restored.state.value.text)
+        restored.text("must not fork");assertEquals("Synthetic queued claim",restored.state.value.text)
+        current="other-owner";restored.resume();advanceUntilIdle()
+        assertNull(restored.state.value.pending);assertTrue(restored.state.value.text.isEmpty())
+        coVerify(exactly=0){gateway.execute(any(),any())}
+    }
+
+    @Test fun `account history retains owner reads without a station and cannot submit a fake station`()=runTest(dispatcher) {
+        val history=QualityReportsViewModel(SavedStateHandle(mapOf("stationId" to "own")),gateway)
+        history.resume();advanceUntilIdle()
+        assertTrue(history.historyOnly);assertEquals("synthetic-owner",history.state.value.owner)
+        history.day("2020-01-01");history.text("Synthetic claim");history.request("SUBMIT")
+        assertNull(history.state.value.confirmation)
+        coVerify(exactly=1){gateway.list("synthetic-owner",null)}
+        coVerify(exactly=0){gateway.execute(any(),any())}
+    }
+
 }

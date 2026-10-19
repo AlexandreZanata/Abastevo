@@ -24,15 +24,15 @@ abstract class QualityReportOutboxDao {
     abstract suspend fun insertPending(row:QualityReportOutboxEntity)
     @Query("DELETE FROM quality_report_outbox WHERE expires_at<=:now AND lease_until<=:now")
     abstract suspend fun pruneExpired(now:Long):Int
-    @Query("DELETE FROM quality_owner_gate WHERE expires_at<=:now AND owner_key NOT IN (SELECT owner_key FROM quality_report_outbox)")
+    @Query("DELETE FROM quality_owner_gate WHERE expires_at<=:now AND key_erased=1 AND owner_key NOT IN (SELECT owner_key FROM quality_report_outbox)")
     abstract suspend fun pruneGates(now:Long):Int
-    @Query("UPDATE quality_owner_gate SET last_seen=:now WHERE owner_key=:key AND blocked=0 AND last_seen<=:now AND expires_at>:now")
+    @Query("UPDATE quality_owner_gate SET last_seen=:now WHERE owner_key=:key AND blocked=0 AND last_seen<=:now AND expires_at>:now AND key_erased=0")
     abstract suspend fun touch(key:String,now:Long):Int
-    @Query("UPDATE quality_report_outbox SET state='IN_FLIGHT',attempts=attempts+1,claim_id=:claim,lease_until=:until WHERE owner_key=:key AND command_id=:command AND attempts<25 AND created_at<=:now AND expires_at>:now AND :until<=expires_at AND :until>:now AND ((state='QUEUED' OR state='FAILED') AND retry_at<=:now OR state='IN_FLIGHT' AND lease_until<=:now) AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.last_seen<=:now AND g.expires_at>:now)")
+    @Query("UPDATE quality_report_outbox SET state='IN_FLIGHT',attempts=attempts+1,claim_id=:claim,lease_until=:until WHERE owner_key=:key AND command_id=:command AND attempts<25 AND created_at<=:now AND expires_at>:now AND :until<=expires_at AND :until>:now AND ((state='QUEUED' OR state='FAILED') AND retry_at<=:now OR state='IN_FLIGHT' AND lease_until<=:now) AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.key_erased=0 AND g.last_seen<=:now AND g.expires_at>:now)")
     abstract suspend fun claimRow(key:String,command:String,claim:String,now:Long,until:Long):Int
-    @Query("DELETE FROM quality_report_outbox WHERE owner_key=:key AND command_id=:command AND claim_id=:claim AND state='IN_FLIGHT' AND lease_until>:now AND expires_at>:now AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.last_seen<=:now AND g.expires_at>:now)")
+    @Query("DELETE FROM quality_report_outbox WHERE owner_key=:key AND command_id=:command AND claim_id=:claim AND state='IN_FLIGHT' AND lease_until>:now AND expires_at>:now AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.key_erased=0 AND g.last_seen<=:now AND g.expires_at>:now)")
     abstract suspend fun acknowledge(key:String,command:String,claim:String,now:Long):Int
-    @Query("UPDATE quality_report_outbox SET state='FAILED',retry_at=:retry,claim_id='',lease_until=0 WHERE owner_key=:key AND command_id=:command AND claim_id=:claim AND state='IN_FLIGHT' AND lease_until>:now AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.last_seen<=:now AND g.expires_at>:now)")
+    @Query("UPDATE quality_report_outbox SET state='FAILED',retry_at=:retry,claim_id='',lease_until=0 WHERE owner_key=:key AND command_id=:command AND claim_id=:claim AND state='IN_FLIGHT' AND lease_until>:now AND EXISTS (SELECT 1 FROM quality_owner_gate g WHERE g.owner_key=:key AND g.blocked=0 AND g.key_erased=0 AND g.last_seen<=:now AND g.expires_at>:now)")
     abstract suspend fun failClaim(key:String,command:String,claim:String,now:Long,retry:Long):Int
     @Query("DELETE FROM quality_report_outbox WHERE owner_key=:key AND command_id=:command AND claim_id=:claim AND state='IN_FLIGHT'")
     abstract suspend fun refuseClaim(key:String,command:String,claim:String):Int
@@ -42,6 +42,11 @@ abstract class QualityReportOutboxDao {
     abstract suspend fun blockOwner(local:String,now:Long,until:Long):Int
     @Query("DELETE FROM quality_report_outbox WHERE owner_key IN (SELECT owner_key FROM quality_owner_gate WHERE owner_local=:local)")
     abstract suspend fun eraseRows(local:String):Int
+
+    @Query("SELECT owner_key FROM quality_owner_gate WHERE key_erased=0 AND (blocked=1 OR expires_at<=:now) ORDER BY owner_key LIMIT 64")
+    abstract suspend fun keysToErase(now:Long):List<String>
+    @Query("UPDATE quality_owner_gate SET key_erased=1 WHERE owner_key=:key AND (blocked=1 OR expires_at<=:now)")
+    abstract suspend fun keyErased(key:String,now:Long):Int
 
     @Transaction
     open suspend fun activate(row:QualityOwnerGateEntity,now:Long):Boolean {

@@ -27,6 +27,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
+    @Inject
+    lateinit var qualityReportScheduler:com.anpfuel.data.worker.QualityReportWorkScheduler
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -49,6 +52,7 @@ class AnpFuelApplication : Application(), Configuration.Provider {
         }
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
         com.anpfuel.data.worker.DirectorySyncWorker.schedule(this)
+        qualityReportScheduler.maintain()
         applicationScope.launch {
             syncWorkScheduler.schedulePeriodicSync()
         }

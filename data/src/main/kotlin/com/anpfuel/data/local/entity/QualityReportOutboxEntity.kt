@@ -13,6 +13,7 @@ data class QualityOwnerGateEntity(
     @ColumnInfo(name="blocked") val blocked:Boolean,
     @ColumnInfo(name="last_seen") val lastSeen:Long,
     @ColumnInfo(name="expires_at") val expiresAt:Long,
+    @ColumnInfo(name="key_erased",defaultValue="0") val keyErased:Boolean=false,
 )
 
 /** Ciphertext only; no auth session, proof nonce or raw claim appears in this row. */

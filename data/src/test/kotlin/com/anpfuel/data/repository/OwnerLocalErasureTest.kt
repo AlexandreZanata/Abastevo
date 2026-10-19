@@ -11,7 +11,7 @@ import com.anpfuel.domain.repository.OwnedContribution
 import com.anpfuel.domain.repository.PendingContribution
 import com.anpfuel.domain.repository.QueuedContribution
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 private class FakeOutbox : ContributionOutboxRepository {
@@ -67,11 +67,12 @@ private class FakeCache : PhotoCache {
 
 class OwnerLocalErasureTest {
 
-    private fun erasure(scope: ContributionScope?, outbox: FakeOutbox = FakeOutbox(), sessions: FakeSessions = FakeSessions(), cache: FakeCache = FakeCache()) =
+    private fun erasure(scope: ContributionScope?, outbox: FakeOutbox = FakeOutbox(), sessions: FakeSessions = FakeSessions(), cache: FakeCache = FakeCache(), quality:com.anpfuel.application.port.QualityReportLocalErasure=com.anpfuel.application.port.QualityReportLocalErasure {true}) =
         OwnerLocalErasure(
             outbox = outbox,
             photoSessions = sessions,
             photoCache = cache,
+            quality=quality,
             scopeProvider = ContributionScopeProvider {
                 scope ?: throw IllegalStateException("identity-unavailable")
             },
@@ -95,7 +96,7 @@ class OwnerLocalErasureTest {
     fun `purge without identity purges nothing`() = runTest {
         val outbox = FakeOutbox()
         val report = erasure(null, outbox).purgeCurrentOwner()
-        assertEquals(OwnerLocalErasure.Report(0, 0, 0), report)
+        assertEquals(OwnerLocalErasure.Report(0, 0, 0,qualityErased=false), report)
         assertEquals(0, outbox.purged.size)
     }
 
@@ -107,4 +108,15 @@ class OwnerLocalErasureTest {
         assertEquals(1, report.sessionsPurged)
         assertEquals(listOf("cap-1"), sessions.rows.map { it.captureId })
     }
+    @Test fun `failed quality key erasure remains pending while other private copies are purged`()=runTest {
+        val called=mutableListOf<String>()
+        val quality=com.anpfuel.application.port.QualityReportLocalErasure {called+=it;false}
+        val report=erasure(ContributionScope("scope-a","https://teste.abastevo.com.br"),quality=quality).purgeCurrentOwner()
+        assertFalse(report.qualityErased);assertEquals(listOf("scope-a"),called)
+        assertEquals(2,report.outboxPurged);assertEquals(1,report.sessionsPurged)
+    }
+    @Test fun `missing identity never certifies quality erasure`()=runTest {
+        assertFalse(erasure(null).purgeCurrentOwner().qualityErased)
+    }
+
 }
