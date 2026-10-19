@@ -12,7 +12,7 @@ import (
 func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nativeKinds ...string) ([]*jobs.Dispatcher, error) {
 	// Fixed serial slots in this process: no per-job concurrency expansion.
 	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"}
-	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: append(append([]string(nil), kinds...), "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute")}
+	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: append(append([]string(nil), kinds...), "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery")}
 	dispatchers := []*jobs.Dispatcher{general}
 	for _, kind := range kinds {
 		if handler := handlers[kind]; handler == nil || handler.Kind() != kind {
@@ -22,7 +22,7 @@ func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nati
 	}
 	seen := map[string]bool{}
 	for _, kind := range nativeKinds {
-		if (kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute") || seen[kind] {
+		if (kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery") || seen[kind] {
 			return nil, errors.New("worker: invalid native serial slot")
 		}
 		seen[kind] = true

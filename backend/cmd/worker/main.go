@@ -840,11 +840,13 @@ func run() error {
 	}
 	nativeKinds := []string{}
 	if cfg.QualityImportsEnabled {
+		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, "")
+		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
 		handlers["quality-discovery"] = nativeQualityLiveDiscovery(raw)
 		handlers[qualityjobs.RecomputeKind] = qualityjobs.Recompute{Store: qualityadapters.NewProjectionStore(raw)}
-		nativeKinds = append(nativeKinds, "quality-import", qualityjobs.RevalidationKind, "quality-discovery", qualityjobs.RecomputeKind)
+		nativeKinds = append(nativeKinds, qualityjobs.NativeFineImportKind, qualityjobs.NativeFineDiscoveryKind, "quality-import", qualityjobs.RevalidationKind, "quality-discovery", qualityjobs.RecomputeKind)
 	}
 	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {
@@ -895,6 +897,11 @@ func run() error {
 		{
 			Name: "quality-revalidate-daily", Kind: qualityjobs.RevalidationKind, Version: 1,
 			Interval: 24 * time.Hour, Enabled: cfg.QualityRevalidationEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "quality-sanctions-discovery-daily", Kind: qualityjobs.NativeFineDiscoveryKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualitySanctionsDiscoveryEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
 		},
 		evidenceSweepSchedule(),

@@ -149,9 +149,10 @@ catalog traversal after imports to include newly inserted revisions.
 
 `ANPFUEL_QUALITY_READS_ENABLED=false` contains all official quality routes.
 
-Native PMQC worker imports have a separate default-off switch,
+Native quality worker imports have a separate default-off switch,
 `ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
-`quality-import`, `quality-discovery` and `quality-revalidate`; disabled source
+`quality-import`, `quality-discovery`, `quality-revalidate`, `quality-recompute`,
+`quality-sanctions-import` and `quality-sanctions-discovery`; disabled source
 jobs retain zero claim attempts. Enablement adds fixed slots for the native
 import (trusted `/prepare_quality` executable shipped in the worker image and a
 separate PostgreSQL advisory-lock connection across fetch, preparation and
@@ -167,6 +168,14 @@ deployment selection; see
 [FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md),
 [FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and
 [FQ-05W8](../docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md).
+Native fine jobs use trusted `/prepare_sanctions`, the same whole-attempt source
+lease and verified/minimized typed publication. Fine discovery inspects one
+actual annual CSV href per run with its own persistent cursor; the independent
+`ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stays off.
+Grouped2016–2019 and2021 XLSX are not claimed as supported annual CSVs. Only2025
+has live source reconciliation at this checkpoint; other source profiles, safe
+station association and complete history remain owed. See
+[FQ-07R4B](../docs/backend/evidence/fuel-quality/FQ07R4B_NATIVE_FINE_WORKER.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account

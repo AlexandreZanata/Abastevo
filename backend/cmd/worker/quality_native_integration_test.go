@@ -180,11 +180,11 @@ func TestNativeWorkerDisabledQueueDoesNotChargeAttempts(t *testing.T) {
 	ctx := context.Background()
 	q := platformjobs.NewQueue(p)
 	handlers := map[string]platformjobs.Handler{}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "ordinary", "quality-import", "quality-discovery", "quality-revalidate"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "ordinary", "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	ids := map[string]string{}
-	for _, kind := range []string{"quality-import", "quality-discovery", "quality-revalidate", "evidence-sweep", "ordinary"} {
+	for _, kind := range []string{"quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "evidence-sweep", "ordinary"} {
 		id, e := platformjobs.Enqueue(ctx, p, kind, []byte(`{"version":1}`), kind, 3, time.Time{})
 		if e != nil {
 			t.Fatal(e)
@@ -206,7 +206,7 @@ func TestNativeWorkerDisabledQueueDoesNotChargeAttempts(t *testing.T) {
 		if e = p.QueryRow(ctx, "SELECT status,attempts FROM job_queue WHERE id=$1", id).Scan(&status, &attempts); e != nil {
 			t.Fatal(e)
 		}
-		if kind == "quality-import" || kind == "quality-discovery" || kind == "quality-revalidate" {
+		if kind == "quality-import" || kind == "quality-discovery" || kind == "quality-revalidate" || kind == "quality-recompute" || kind == "quality-sanctions-import" || kind == "quality-sanctions-discovery" {
 			if status != "queued" || attempts != 0 {
 				t.Fatal("disabled native job charged", kind, status, attempts)
 			}
@@ -221,7 +221,7 @@ func TestNativeWorkerDisabledQueueDoesNotChargeAttempts(t *testing.T) {
 	if found, e := enabled[len(enabled)-1].RunOnce(ctx); e != nil || !found {
 		t.Fatal("enabled source slot did not claim", found, e)
 	}
-	for _, kind := range []string{"quality-discovery", "quality-revalidate"} {
+	for _, kind := range []string{"quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery"} {
 		var attempts int
 		if e = p.QueryRow(ctx, "SELECT attempts FROM job_queue WHERE id=$1", ids[kind]).Scan(&attempts); e != nil || attempts != 0 {
 			t.Fatal("reserved native job charged without enable", kind, attempts, e)
