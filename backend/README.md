@@ -55,10 +55,12 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --target-dir /tmp/abastevo-integration-rust
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_sanctions
+export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
@@ -192,7 +194,7 @@ Critical quality persistence/read/job checks, from backend/ against disposable
 local PostGIS (never the staging database):
 
 ```sh
-ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality go test -race -tags=integration ./internal/modules/quality/... -count=1
+ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions go test -race -tags=integration ./internal/modules/quality/... -count=1
 go test ./internal/platform/apicontract -count=1
 ```
 

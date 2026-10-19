@@ -116,7 +116,7 @@ func (r Runner) Prepare(ctx context.Context, req Request, resolve prepared.Resol
 }
 func openArtifact(dir, name string, maxBytes int64) (*os.File, error) {
 	switch name {
-	case "manifest.json", "assays.jsonl", "duplicates.jsonl", "quarantine.jsonl":
+	case "manifest.json", "assays.jsonl", "sanctions.jsonl", "duplicates.jsonl", "quarantine.jsonl":
 	default:
 		return nil, refused("artifact name")
 	}
