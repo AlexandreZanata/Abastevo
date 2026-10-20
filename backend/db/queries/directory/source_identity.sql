@@ -40,3 +40,17 @@ JOIN LATERAL(SELECT DISTINCT station_id FROM directory_identifiers
   WHERE kind='CNPJ' AND normalized_value=expected.cnpj ORDER BY station_id LIMIT 2) candidates ON TRUE
 JOIN directory_stations s ON s.id=candidates.station_id
 ORDER BY expected.cnpj,candidates.station_id;
+
+-- name: SourceOtherBranchesBatch :many
+-- Explicit bytewise pattern_ops bounds keep each correlated prefix indexed.
+-- CNPJs are validated canonical ASCII; DEL is above every admitted suffix byte.
+-- The LIKE predicate retains the exact scalar branch-review semantics.
+SELECT DISTINCT expected.cnpj::text AS cnpj
+FROM unnest(@cnpjs::text[]) expected(cnpj)
+WHERE EXISTS(SELECT 1 FROM directory_identifiers i
+ WHERE i.kind='CNPJ'
+  AND i.normalized_value ~>=~ left(expected.cnpj,8)
+  AND i.normalized_value ~<~ (left(expected.cnpj,8) || chr(127))
+  AND i.normalized_value LIKE left(expected.cnpj,8) || '%'
+  AND i.normalized_value<>expected.cnpj LIMIT 1)
+ORDER BY cnpj;

@@ -138,3 +138,40 @@ func (r *SourceIdentityReader) Guard(ctx context.Context, tx pgx.Tx, bindings []
 	}
 	return nil
 }
+
+// OtherBranches returns only requested full CNPJs with foreign-branch evidence.
+// It never returns or assigns the foreign station. The complete input validates
+// before storage, duplicate requests share one lookup, and each query has at most
+// 512 identifiers. Historical identities remain eligible only as review evidence.
+func (r *SourceIdentityReader) OtherBranches(ctx context.Context, cnpjs []string) ([]string, error) {
+	if ctx.Err() != nil {
+		return nil, ErrSourceIdentityUnavailable
+	}
+	seen := make(map[string]bool, len(cnpjs))
+	for _, cnpj := range cnpjs {
+		if !normalizedSourceCNPJ(cnpj) {
+			return nil, ErrSourceIdentityUnavailable
+		}
+		seen[cnpj] = true
+	}
+	keys := make([]string, 0, len(seen))
+	for cnpj := range seen {
+		keys = append(keys, cnpj)
+	}
+	sort.Strings(keys)
+	out := make([]string, 0)
+	if len(keys) > 0 && (r == nil || r.pool == nil) {
+		return nil, ErrSourceIdentityUnavailable
+	}
+	for offset := 0; offset < len(keys); offset += 512 {
+		rows, e := directory.New(r.pool).SourceOtherBranchesBatch(ctx, keys[offset:min(offset+512, len(keys))])
+		if e != nil {
+			return nil, ErrSourceIdentityUnavailable
+		}
+		out = append(out, rows...)
+	}
+	if ctx.Err() != nil {
+		return nil, ErrSourceIdentityUnavailable
+	}
+	return out, nil
+}

@@ -278,7 +278,7 @@ func TestSourceIdentityHistoricalIndexPlan(t *testing.T) {
 	}
 	t.Log("Before migration102: generated lookup scans 20,001 retained rows")
 	applied, e := migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000102", "000103", "000104", "000105"}) {
+	if e != nil || !slices.Equal(applied, []string{"000102", "000103", "000104", "000105", "000106", "000107", "000108", "000109"}) {
 		t.Fatal("retained history index upgrade", applied, e)
 	}
 	applied, e = migrate.Apply(ctx, repo.pool.Config().ConnConfig.ConnString(), dbmigrations.Files)
@@ -372,5 +372,128 @@ func TestSourceBindingGuardSpansBoundedChunks(t *testing.T) {
 	defer stale.Rollback(ctx)
 	if e = r.Guard(ctx, stale, bindings); !errors.Is(e, ErrSourceIdentityChanged) {
 		t.Fatal("later-chunk mismatch accepted", e)
+	}
+}
+
+func TestSourceOtherBranchesBatchMatchesExactAndPreservesWholeIdentifiers(t *testing.T) {
+	repo, r, _ := sourceBindingFixture(t)
+	ctx := context.Background()
+	if _, e := repo.ResolveCNPJ(ctx, "04218406000104", "Synthetic zero-prefixed company", nil); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := repo.ResolveCNPJ(ctx, "12ABC34501DE35", "Synthetic alphanumeric company", nil); e != nil {
+		t.Fatal(e)
+	}
+	branch := func(base string) string {
+		for n := 0; n < 100; n++ {
+			value := fmt.Sprintf("%s%02d", base, n)
+			if normalizedSourceCNPJ(value) {
+				return value
+			}
+		}
+		t.Fatal("synthetic branch checksum failed")
+		return ""
+	}
+	zeroBranch, alphaBranch := branch("042184060002"), branch("12ABC34501DF")
+	input := []string{"11222333000262", sourceCNPJ, "04218406000104", "12ABC34501DE35", "11222333000262", zeroBranch, alphaBranch}
+	result, e := r.OtherBranches(ctx, input)
+	if e != nil {
+		t.Fatal(e)
+	}
+	expected := []string{}
+	seen := map[string]bool{}
+	for _, cnpj := range input {
+		found, e := r.OtherBranch(ctx, cnpj)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if found && !seen[cnpj] {
+			expected = append(expected, cnpj)
+			seen[cnpj] = true
+		}
+	}
+	slices.Sort(expected)
+	if !slices.Equal(result, expected) || len(result) != 3 {
+		t.Fatal("batch foreign-branch semantics changed", result, e)
+	}
+	if out, e := r.OtherBranches(ctx, nil); e != nil || len(out) != 0 {
+		t.Fatal("empty foreign-branch query", e)
+	}
+	// Invalid input must be rejected before touching even a deliberately absent pool.
+	if _, e := NewSourceIdentityReader(nil).OtherBranches(ctx, []string{sourceCNPJ, "invalid%identifier"}); !errors.Is(e, ErrSourceIdentityUnavailable) {
+		t.Fatal("bad batch reached storage", e)
+	}
+	repo.pool.Close()
+	if _, e := r.OtherBranches(ctx, []string{sourceCNPJ}); !errors.Is(e, ErrSourceIdentityUnavailable) {
+		t.Fatal("closed branch batch leaked/accepted", e)
+	}
+}
+
+type sourceBranchBatchTrace struct {
+	calls, maxIDs int
+	firstSQL      string
+	firstArgs     []any
+}
+
+func (t *sourceBranchBatchTrace) TraceQueryStart(ctx context.Context, _ *pgx.Conn, d pgx.TraceQueryStartData) context.Context {
+	if strings.Contains(d.SQL, "-- name: SourceOtherBranchesBatch") {
+		t.calls++
+		if len(d.Args) == 1 {
+			if ids, ok := d.Args[0].([]string); ok {
+				t.maxIDs = max(t.maxIDs, len(ids))
+			}
+		}
+		if t.calls == 1 {
+			t.firstSQL = d.SQL
+			t.firstArgs = append([]any(nil), d.Args...)
+		}
+	}
+	return ctx
+}
+func (*sourceBranchBatchTrace) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func TestSourceOtherBranchesBatchChunksAndUsesRetainedIndex(t *testing.T) {
+	repo, _, b := sourceBindingFixture(t)
+	ctx := context.Background()
+	if _, e := repo.pool.Exec(ctx, `INSERT INTO directory_identifiers(id,station_id,kind,normalized_value,valid_to)
+ SELECT md5('company-branch-retained-'||g)::uuid,$1,'CNPJ',lpad(g::text,14,'0'),now() FROM generate_series(1,20000) g`, b.StationID); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := repo.pool.Exec(ctx, `ANALYZE directory_identifiers`); e != nil {
+		t.Fatal(e)
+	}
+	trace := &sourceBranchBatchTrace{}
+	cfg := repo.pool.Config()
+	cfg.ConnConfig.Tracer = trace
+	p, e := pgxpool.NewWithConfig(ctx, cfg)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer p.Close()
+	input := make([]string, 0, 516)
+	for i := 0; i < 513; i++ {
+		input = append(input, syntheticSourceCNPJ(i))
+	}
+	input = append(input, "11222333000262", input[0], input[1])
+	rows, e := NewSourceIdentityReader(p).OtherBranches(ctx, input)
+	if e != nil || len(rows) != 1 || rows[0] != "11222333000262" || trace.calls != 2 || trace.maxIDs != 512 {
+		t.Fatal("branch batch budget or denominator changed", trace.calls, trace.maxIDs, e)
+	}
+	var raw []byte
+	if e := repo.pool.QueryRow(ctx, "EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON)\n"+trace.firstSQL, trace.firstArgs...).Scan(&raw); e != nil {
+		t.Fatal(e)
+	}
+	var plan any
+	if e := json.Unmarshal(raw, &plan); e != nil {
+		t.Fatal(e)
+	}
+	if sourceHasSequentialIdentifierScan(plan) || !strings.Contains(string(raw), "directory_identifiers_source_history_idx") {
+		t.Fatal("correlated branch batch scans retained universe")
+	}
+	t.Log("PASS:514 distinct full CNPJs use512+2 queries;512-prefix EXPLAIN uses existing historical index across20001 retained identities")
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, e := NewSourceIdentityReader(nil).OtherBranches(cancelled, []string{sourceCNPJ}); !errors.Is(e, ErrSourceIdentityUnavailable) {
+		t.Fatal("cancelled batch accessed storage", e)
 	}
 }

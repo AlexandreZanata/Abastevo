@@ -14,6 +14,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -59,7 +60,7 @@ func TestFineImportPrepublicationFailuresCleanAndRedact(t *testing.T) {
 	}
 }
 func testFineImportPrepublicationFailuresCleanAndRedact(t *testing.T, period string) {
-	for _, mode := range []string{"fetch", "prepare", "tamper", "cancel", "cleanup"} {
+	for _, mode := range []string{"fetch", "prepare", "tamper", "cancel", "cleanup", "association failure", "association nil", "association partial"} {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()
 			file := filepath.Join(root, "source.csv")
@@ -102,6 +103,17 @@ func testFineImportPrepublicationFailuresCleanAndRedact(t *testing.T, period str
 			im.PrepareHistory = func(ctx context.Context, payload ImportPayload, f FileArtifact) (prepared.FineHistoryBatch, error) {
 				_, e := im.Prepare(ctx, payload, f)
 				return prepared.FineHistoryBatch{SourcePeriod: period, InputContract: "anp-sicom-utf8bom-2024-v1", SourceFile: "multas-aplicadas-2024.csv", HeaderRecord: 7, Clock: application.FineHistoryClock{Precision: "MONTH", Value: "2025-03"}, ManifestHash: strings.Repeat("b", 64)}, e
+			}
+			if strings.HasPrefix(mode, "association") {
+				im.Associate = func(context.Context, []domain.CompanyObservationRecord) (*application.CompanyAssociationInput, error) {
+					if mode == "association failure" {
+						return nil, errors.New("private company lookup")
+					}
+					if mode == "association nil" {
+						return nil, nil
+					}
+					return &application.CompanyAssociationInput{PolicyVersion: domain.CompanyObservationPolicyVersion, DecisionDay: "2026-10-20", Decisions: []domain.CompanyObservationDecision{{RecordKey: "foreign"}}}, nil
+				}
 			}
 			payload := fineJobPayload(t, func(p *ImportPayload) {
 				p.SHA256 = hash
