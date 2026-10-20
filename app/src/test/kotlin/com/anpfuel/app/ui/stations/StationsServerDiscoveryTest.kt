@@ -84,6 +84,7 @@ class StationsServerDiscoveryTest {
         Dispatchers.setMain(dispatcher)
         every { observeNetworkConnectivityUseCase.invoke() } returns connectivity
         every { sessionStore.load() } returns null
+        coEvery { getServerStationsUseCase.cached(any()) } returns ServerStationsOutcome.Unavailable(IOException("empty cache"))
         viewModel = StationsViewModel(
             getStationPricesUseCase = getStationPricesUseCase,
             buildStationNavigationQueryUseCase = buildStationNavigationQueryUseCase,
@@ -107,11 +108,11 @@ class StationsServerDiscoveryTest {
 
     @Test
     fun `internet return automatically replaces offline cache without changing filters`() = runTest(dispatcher) {
-        coEvery { getServerStationsUseCase(100, null) } returnsMany listOf(
+        coEvery { getServerStationsUseCase(20, null, "Central") } returnsMany listOf(
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null)),
             ServerStationsOutcome.Fresh(ServerStationPage(emptyList(), null)),
         )
-        coEvery { getServerStationsUseCase.cached() } returns
+        coEvery { getServerStationsUseCase.cached("Central") } returns
             ServerStationsOutcome.StaleCache(ServerStationPage(listOf(station), null), IOException("offline"))
         viewModel.onSearchQueryChanged("Central", java.util.Locale.US)
         backgroundScope.launch { viewModel.syncServerStationsWhileVisible() }
@@ -126,33 +127,33 @@ class StationsServerDiscoveryTest {
         assertFalse(viewModel.uiState.value.serverFromCache)
         assertEquals("Central", viewModel.uiState.value.searchQuery)
         assertEquals(FuelProduct.GASOLINE_REGULAR, viewModel.uiState.value.selectedFuelProduct)
-        coVerify(exactly = 2) { getServerStationsUseCase(100, null) }
-        coVerify(exactly = 1) { getServerStationsUseCase.cached() }
+        coVerify(exactly = 2) { getServerStationsUseCase(20, null, "Central") }
+        coVerify(exactly = 2) { getServerStationsUseCase.cached("Central") }
     }
 
     @Test
     fun `visible periodic refresh stops on pause and resumes immediately`() = runTest(dispatcher) {
-        coEvery { getServerStationsUseCase(100, null) } returns
+        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
         val visible = backgroundScope.launch { viewModel.syncServerStationsWhileVisible() }
         runCurrent()
         advanceTimeBy(60_000)
         runCurrent()
-        coVerify(exactly = 2) { getServerStationsUseCase(100, null) }
+        coVerify(exactly = 2) { getServerStationsUseCase(20, null) }
         visible.cancel()
         runCurrent()
         advanceTimeBy(180_000)
         runCurrent()
-        coVerify(exactly = 2) { getServerStationsUseCase(100, null) }
+        coVerify(exactly = 2) { getServerStationsUseCase(20, null) }
         backgroundScope.launch { viewModel.syncServerStationsWhileVisible() }
         runCurrent()
-        coVerify(exactly = 3) { getServerStationsUseCase(100, null) }
+        coVerify(exactly = 3) { getServerStationsUseCase(20, null) }
     }
 
     @Test
     fun `automatic refresh never overlaps a pending request`() = runTest(dispatcher) {
         val release = kotlinx.coroutines.CompletableDeferred<Unit>()
-        coEvery { getServerStationsUseCase(100, null) } coAnswers {
+        coEvery { getServerStationsUseCase(20, null) } coAnswers {
             release.await()
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
         }
@@ -160,7 +161,7 @@ class StationsServerDiscoveryTest {
         runCurrent()
         advanceTimeBy(180_000)
         runCurrent()
-        coVerify(exactly = 1) { getServerStationsUseCase(100, null) }
+        coVerify(exactly = 1) { getServerStationsUseCase(20, null) }
         release.complete(Unit)
         runCurrent()
         assertFalse(viewModel.uiState.value.isServerLoading)
@@ -189,7 +190,7 @@ class StationsServerDiscoveryTest {
         coEvery { getServerStationDetailUseCase(stationId) } returnsMany listOf(
             ServerStationDetailOutcome.Fresh(station), ServerStationDetailOutcome.Fresh(revised),
         )
-        coEvery { getServerStationsUseCase(100, null) } returns
+        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(revised), null))
         viewModel.onServerStationSelected(stationId)
         runCurrent()
@@ -216,7 +217,7 @@ class StationsServerDiscoveryTest {
 
     @Test
     fun `fresh server page populates list without error`() = runTest(dispatcher) {
-        coEvery { getServerStationsUseCase(100, null) } returns
+        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
 
         viewModel.loadServerStations()
@@ -229,7 +230,7 @@ class StationsServerDiscoveryTest {
 
     @Test
     fun `stale cache is labelled and first failure stays honest`() = runTest(dispatcher) {
-        coEvery { getServerStationsUseCase(100, null) } returns
+        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.StaleCache(ServerStationPage(listOf(station), null), IOException("down"))
 
         viewModel.loadServerStations()
@@ -238,7 +239,7 @@ class StationsServerDiscoveryTest {
         assertEquals(1, viewModel.uiState.value.serverStations.size)
         assertTrue(viewModel.uiState.value.serverFromCache)
 
-        coEvery { getServerStationsUseCase(100, null) } returns
+        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Unavailable(IOException("down"))
         val freshViewModel = StationsViewModel(
             getStationPricesUseCase = getStationPricesUseCase,
@@ -341,7 +342,45 @@ class StationsServerDiscoveryTest {
     }
 
     @Test
-    fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {        coEvery { getServerStationsUseCase(100, null) } returns
+    fun `restarted nearby lookup cancels the stale one`() = runTest(dispatcher) {
+        val latest = ServerStation.create(
+            stationId = "e7d85d34-74ec-5d35-b3f6-519dc34ce370",
+            displayName = "[P34-TEST] Posto Gama",
+            locationQuality = StationLocationQuality.REVIEWED,
+            latitude = -23.56,
+            longitude = -46.64,
+            cnpjNormalized = "12ABC34501DE35",
+            municipalityCode = "3550308",
+            state = "SP",
+            currentRevisionId = null,
+        )
+        every { locationPermissionHandler.hasLocationPermission() } returns true
+        coEvery { locationPermissionHandler.getCurrentLocation() } returns
+            com.anpfuel.domain.valueobject.DeviceLocation.of(-23.55, -46.63)
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var calls = 0
+        coEvery { getNearbyServerStationsUseCase(-23.55, -46.63, 2000, 20) } coAnswers {
+            calls++
+            if (calls == 1) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { release.await() }
+                NearbyServerStationsOutcome.Fresh(listOf(NearbyServerStation(station, 120.5)))
+            } else {
+                NearbyServerStationsOutcome.Fresh(listOf(NearbyServerStation(latest, 60.0)))
+            }
+        }
+
+        viewModel.loadNearbyServerStations()
+        runCurrent()
+        viewModel.loadNearbyServerStations()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.nearbyStations.size)
+        assertEquals(latest.stationId, viewModel.uiState.value.nearbyStations.single().station.stationId)
+    }
+
+    @Test
+    fun `refresh keeps selected detail when still present`() = runTest(dispatcher) {        coEvery { getServerStationsUseCase(20, null) } returns
             ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
         coEvery { getServerStationDetailUseCase(stationId) } returns
             ServerStationDetailOutcome.Fresh(station)
@@ -377,6 +416,7 @@ class StationsServerDiscoveryTest {
         assertEquals("acc-123", viewModel.uiState.value.serverAccountId)
 
         every { sessionStore.load() } returns null
+        coEvery { getServerStationsUseCase.cached(any()) } returns ServerStationsOutcome.Unavailable(IOException("empty cache"))
         viewModel.onServerStationSelected(stationId)
         advanceUntilIdle()
 
@@ -395,4 +435,150 @@ class StationsServerDiscoveryTest {
         assertEquals("", viewModel.uiState.value.serverAccountId)
         assertEquals(stationId, viewModel.uiState.value.selectedServerStation?.stationId)
     }
+
+    private fun secondServerStation() = ServerStation.create(
+        stationId = "e7d85d34-74ec-5d35-b3f6-519dc34ce370",
+        displayName = "[P34-TEST] Posto Gama",
+        locationQuality = StationLocationQuality.REVIEWED,
+        latitude = -23.56,
+        longitude = -46.64,
+        cnpjNormalized = "12ABC34501DE35",
+        municipalityCode = "3550308",
+        state = "SP",
+        currentRevisionId = null,
+    )
+
+    @Test
+    fun `load more appends and advances the cursor`() = runTest(dispatcher) {
+        coEvery { getServerStationsUseCase(20, null) } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), "cursor-1"))
+        coEvery { getServerStationsUseCase.loadMore() } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station, secondServerStation()), null))
+
+        viewModel.loadServerStations()
+        advanceUntilIdle()
+        assertEquals("cursor-1", viewModel.uiState.value.serverNextCursor)
+
+        viewModel.loadMoreServerStations()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.serverStations.size)
+        assertNull(viewModel.uiState.value.serverNextCursor)
+        assertFalse(viewModel.uiState.value.isServerLoadingMore)
+        assertNull(viewModel.uiState.value.serverMoreError)
+    }
+
+    @Test
+    fun `load more without cursor is a no-op`() = runTest(dispatcher) {
+        coEvery { getServerStationsUseCase(20, null) } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), null))
+
+        viewModel.loadServerStations()
+        advanceUntilIdle()
+        viewModel.loadMoreServerStations()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { getServerStationsUseCase.loadMore() }
+        assertEquals(1, viewModel.uiState.value.serverStations.size)
+    }
+
+    @Test
+    fun `failed continuation keeps displayed stations and offers retry`() = runTest(dispatcher) {
+        coEvery { getServerStationsUseCase(20, null) } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), "cursor-1"))
+        coEvery { getServerStationsUseCase.loadMore() } returnsMany listOf(
+            ServerStationsOutcome.Unavailable(IOException("down")),
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station, secondServerStation()), null)),
+        )
+
+        viewModel.loadServerStations()
+        advanceUntilIdle()
+        viewModel.loadMoreServerStations()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.serverStations.size)
+        assertEquals("cursor-1", viewModel.uiState.value.serverNextCursor)
+        assertNotNull(viewModel.uiState.value.serverMoreError)
+
+        viewModel.loadMoreServerStations()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.serverStations.size)
+        assertNull(viewModel.uiState.value.serverNextCursor)
+        assertNull(viewModel.uiState.value.serverMoreError)
+    }
+
+    @Test
+    fun `fresh load supersedes a pending continuation`() = runTest(dispatcher) {
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { getServerStationsUseCase(20, null) } returns
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), "cursor-1"))
+        coEvery { getServerStationsUseCase.loadMore() } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { release.await() }
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station, secondServerStation()), null))
+        }
+        coEvery { getServerStationsUseCase(20, null) } returnsMany listOf(
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(station), "cursor-1")),
+            ServerStationsOutcome.Fresh(ServerStationPage(listOf(secondServerStation()), null)),
+        )
+
+        viewModel.loadServerStations()
+        advanceUntilIdle()
+        viewModel.loadMoreServerStations()
+        runCurrent()
+        viewModel.loadServerStations()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.serverStations.size)
+        assertEquals(
+            secondServerStation().stationId,
+            viewModel.uiState.value.serverStations.single().stationId,
+        )
+    }
+
+    @Test
+    fun `cached snapshot seeds the continuation cursor`() = runTest(dispatcher) {
+        coEvery { getServerStationsUseCase.cached() } returns
+            ServerStationsOutcome.StaleCache(ServerStationPage(listOf(station), "cursor-9"), IOException("offline"))
+        coEvery { getServerStationsUseCase.loadMore() } returns
+            ServerStationsOutcome.StaleCache(
+                ServerStationPage(listOf(station), "cursor-9"),
+                IOException("still offline"),
+            )
+
+        viewModel.loadServerStations(cachedOnly = true)
+        advanceUntilIdle()
+
+        assertEquals("cursor-9", viewModel.uiState.value.serverNextCursor)
+        viewModel.loadMoreServerStations()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.serverStations.size)
+        assertEquals("cursor-9", viewModel.uiState.value.serverNextCursor)
+        assertNotNull(viewModel.uiState.value.serverMoreError)
+    }
+    @Test
+    fun `periodic refresh preserves browsed pages and continuation`() = runTest(dispatcher) {
+        val first = (0..19).map { index -> ServerStation.create(
+            stationId = "00000000-0000-4000-8000-%012d".format(index), displayName = "Station $index",
+            locationQuality = StationLocationQuality.UNKNOWN, latitude = null, longitude = null,
+            cnpjNormalized = null, municipalityCode = "3550308", state = "SP", currentRevisionId = null,
+        ) }
+        val extra = ServerStation.create(stationId = "00000000-0000-4000-8000-000000000020", displayName = "Station 20",
+            locationQuality = StationLocationQuality.UNKNOWN, latitude = null, longitude = null,
+            cnpjNormalized = null, municipalityCode = "3550308", state = "SP", currentRevisionId = null)
+        coEvery { getServerStationsUseCase(20, null) } returns ServerStationsOutcome.Fresh(ServerStationPage(first, "c1"))
+        coEvery { getServerStationsUseCase.loadMore(20) } returns ServerStationsOutcome.Fresh(ServerStationPage(first + extra, "c2"))
+        backgroundScope.launch { viewModel.syncServerStationsWhileVisible() }
+        runCurrent()
+        viewModel.loadMoreServerStations()
+        runCurrent()
+        advanceTimeBy(120_000)
+        runCurrent()
+        assertEquals(21, viewModel.uiState.value.serverStations.size)
+        assertEquals("c2", viewModel.uiState.value.serverNextCursor)
+        coVerify(exactly = 1) { getServerStationsUseCase(20, null) }
+    }
+
 }

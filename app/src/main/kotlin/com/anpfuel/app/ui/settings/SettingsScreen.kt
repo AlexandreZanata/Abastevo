@@ -99,6 +99,8 @@ fun SettingsScreen(
         onNavigateBack = onNavigateBack,
         onLocaleSelected = viewModel::onLocaleSelected,
         onSyncStationDetailChanged = viewModel::onSyncStationDetailChanged,
+        onSyncPublicCityCatalogChanged = { viewModel.onSyncPublicCityCatalogChanged(it, context) },
+        onClearPublicCatalog = viewModel::clearPublicCatalog,
         onAutoDownloadLatestWeekChanged = viewModel::onAutoDownloadLatestWeekChanged,
         onAutoSyncOnWifiChanged = viewModel::onAutoSyncOnWifiChanged,
         onShowPriceHistoryChanged = viewModel::onShowPriceHistoryChanged,
@@ -125,6 +127,8 @@ private fun SettingsContent(
     onNavigateBack: (() -> Unit)? = null,
     onLocaleSelected: (String) -> Unit,
     onSyncStationDetailChanged: (Boolean) -> Unit,
+    onSyncPublicCityCatalogChanged: (Boolean) -> Unit,
+    onClearPublicCatalog: () -> Unit,
     onAutoDownloadLatestWeekChanged: (Boolean) -> Unit,
     onAutoSyncOnWifiChanged: (Boolean) -> Unit,
     onShowPriceHistoryChanged: (Boolean) -> Unit,
@@ -239,6 +243,68 @@ private fun SettingsContent(
                             checked = uiState.preferences.showPriceHistory,
                             onCheckedChange = onShowPriceHistoryChanged,
                         )
+                    }
+
+                    SettingsSection(title = stringResource(R.string.settings_public_catalog_section)) {
+                        Text(
+                            text = stringResource(R.string.settings_public_catalog_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        SettingsToggleRow(
+                            label = stringResource(R.string.settings_public_catalog_toggle),
+                            checked = uiState.preferences.syncPublicCityCatalog,
+                            onCheckedChange = onSyncPublicCityCatalogChanged,
+                        )
+                        val lastSynced = uiState.preferences.publicCityCatalogLastSyncedAtMillis
+                        if (uiState.preferences.syncPublicCityCatalog && lastSynced != null) {
+                            val formatted = remember(lastSynced) {
+                                java.text.DateFormat.getDateTimeInstance()
+                                    .format(java.util.Date(lastSynced))
+                            }
+                            Text(
+                                text = stringResource(
+                                    R.string.settings_public_catalog_last_sync,
+                                    formatted,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (uiState.preferences.syncPublicCityCatalog) {
+                            Text(
+                                text = stringResource(R.string.settings_public_catalog_never_synced),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.settings_public_catalog_off_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.settings_public_catalog_size,
+                                android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current,
+                                    uiState.storageUsage.publicCatalogEstimatedBytes)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        ActionCardButton(
+                            label = stringResource(R.string.settings_clear_public_catalog),
+                            icon = Icons.Default.Storage,
+                            onClick = onClearPublicCatalog,
+                            enabled = !uiState.isClearingPublicCatalog,
+                        )
+                        uiState.syncMessage?.let { messageKey ->
+                            if (messageKey == SettingsViewModel.PUBLIC_CATALOG_CLEARED_MESSAGE) {
+                                Text(
+                                    text = stringResource(R.string.public_catalog_cleared),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
                     }
 
                     if (uiState.showNotificationPermissionHint) {
@@ -569,6 +635,8 @@ private fun SettingsScreenPreview() {
             onNavigateBack = {},
             onLocaleSelected = {},
             onSyncStationDetailChanged = {},
+            onSyncPublicCityCatalogChanged = {},
+            onClearPublicCatalog = {},
             onAutoDownloadLatestWeekChanged = {},
             onAutoSyncOnWifiChanged = {},
             onShowPriceHistoryChanged = {},

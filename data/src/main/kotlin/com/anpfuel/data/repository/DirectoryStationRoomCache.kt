@@ -15,38 +15,80 @@ import javax.inject.Singleton
  *
  * Survives process death (offline compatibility): the last good page
  * and details replay without network, exactly like the legacy
- * failed-refresh recovery. Fresh traversals replace the page set so
- * stale scopes never linger; details upsert singly. Nearby stays
- * transient (never persisted, B-BR-011).
+ * failed-refresh recovery. Each scope (national page,
+ * `city:<ibge>`) owns its rows and cursor: saving one scope never
+ * deletes another scope, unscoped details, or ANP tables, and a
+ * missing meta row means "never fetched" while a stored meta with
+ * zero rows is an honest empty page. Paged reads window the server
+ * `position` order for virtualized lists. Nearby stays transient
+ * (never persisted, B-BR-011).
  */
 @Singleton
-class DirectoryStationRoomCache @Inject constructor(
+class DirectoryStationRoomCache(
     private val dao: ServerStationCacheDao,
+    origin: String = "",
 ) : ServerStationCache {
+    private val namespace = if (origin.isEmpty()) "" else
+        "origin:" + java.security.MessageDigest.getInstance("SHA-256").digest(origin.toByteArray())
+            .joinToString("") { "%02x".format(it) } + ":"
 
-    override suspend fun savePage(page: ServerStationPage) = savePage(page, ServerCatalogMetaEntity.PAGE_KEY)
+    private val nationalKey get() = namespace + ServerCatalogMetaEntity.PAGE_KEY
+
+
+    override suspend fun savePage(page: ServerStationPage) = savePage(page, nationalKey)
 
     override suspend fun saveScopedPage(municipalityCode: String, page: ServerStationPage) =
-        savePage(page, "city:$municipalityCode")
+        savePage(page, scopeKey(municipalityCode))
 
     private suspend fun savePage(page: ServerStationPage, key: String) {
         dao.replacePage(
-            page.items.mapIndexed { index, station -> station.toEntity(index) },
+            page.items.mapIndexed { index, station -> station.toEntity(index, key) },
             ServerCatalogMetaEntity(
                 key = key,
                 nextCursor = page.nextCursor,
                 savedAtMillis = System.currentTimeMillis(),
             ),
+            key,
         )
     }
 
-    override suspend fun loadPage(): ServerStationPage? = loadPage(ServerCatalogMetaEntity.PAGE_KEY)
+    override suspend fun appendPage(page: ServerStationPage) = append(page, nationalKey)
+
+    override suspend fun appendScopedPage(scope: String, page: ServerStationPage) = append(page, scopeKey(scope))
+
+    private suspend fun append(page: ServerStationPage, key: String) {
+        dao.appendPage(page.items.map { it.toEntity(0, key) },
+            ServerCatalogMetaEntity(key, page.nextCursor, System.currentTimeMillis()), key)
+    }
+
+    override suspend fun removeScopedPage(scope: String) = dao.removeScope(scopeKey(scope))
+
+    override suspend fun loadPage(): ServerStationPage? = loadPage(nationalKey)
 
     override suspend fun loadScopedPage(municipalityCode: String): ServerStationPage? =
-        loadPage("city:$municipalityCode")?.takeIf { page -> page.items.all { it.municipalityCode == municipalityCode } }
+        loadPage(scopeKey(municipalityCode))
 
-    private suspend fun loadPage(key: String): ServerStationPage? {
+    override suspend fun loadPage(limit: Int, offset: Int): ServerStationPage? =
+        loadPage(nationalKey, limit, offset)
+
+    override suspend fun loadScopedPage(municipalityCode: String, limit: Int, offset: Int): ServerStationPage? =
+        loadPage(scopeKey(municipalityCode), limit, offset)
+
+    private suspend fun loadPage(key: String): ServerStationPage? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val (entities, meta) = dao.pageSnapshot(key)
+        snapshot(entities, meta)
+    }
+
+    private suspend fun loadPage(key: String, limit: Int, offset: Int): ServerStationPage? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        require(limit in 1..MAX_PAGE_READ && offset >= 0) { "page window out of bounds" }
+        val (entities, meta) = dao.pagedSnapshot(key, limit + 1, offset)
+        snapshot(entities.take(limit), meta)?.copy(cachedNextOffset = if (entities.size > limit) offset + limit else null)
+    }
+
+    private fun snapshot(
+        entities: List<ServerStationCacheEntity>,
+        meta: ServerCatalogMetaEntity?,
+    ): ServerStationPage? {
         if (meta == null) return null
         return ServerStationPage(
             items = entities.filter { it.position != Int.MAX_VALUE }.map { it.toDomain() },
@@ -55,19 +97,30 @@ class DirectoryStationRoomCache @Inject constructor(
     }
 
     override suspend fun saveDetail(station: ServerStation) {
-        val existing = dao.findById(station.stationId)
-        dao.upsert(station.toEntity(existing?.position ?: Int.MAX_VALUE))
+        dao.saveDetailBounded(station.toEntity(Int.MAX_VALUE, namespace + ServerStationCacheEntity.DETAIL_SCOPE))
     }
 
     override suspend fun loadDetail(stationId: String): ServerStation? =
-        dao.findById(stationId.lowercase())?.toDomain()
+        (if (namespace.isEmpty()) dao.findById(stationId.lowercase())
+        else dao.findByIdInNamespace(stationId.lowercase(), namespace))?.toDomain()
+
+    override suspend fun clearPublicPages() {
+        dao.clearPublicCatalog()
+    }
 
     override suspend fun clear() {
         dao.clearStations()
         dao.clearMeta()
     }
 
-    private fun ServerStation.toEntity(position: Int) = ServerStationCacheEntity(
+    private fun scopeKey(municipalityCode: String) = namespace + "city:$municipalityCode"
+
+    companion object {
+        /** Largest window a virtualized list may read; full snapshots bypass it internally. */
+        const val MAX_PAGE_READ = 100
+    }
+
+    private fun ServerStation.toEntity(position: Int, scopeKey: String) = ServerStationCacheEntity(
         stationId = stationId,
         displayName = displayName,
         locationQuality = locationQuality.wire,
@@ -80,6 +133,7 @@ class DirectoryStationRoomCache @Inject constructor(
         position = position,
         savedAtMillis = System.currentTimeMillis(),
         addressJson = org.json.JSONObject(address).toString(),
+        scopeKey = scopeKey,
     )
 
     private fun ServerStationCacheEntity.toDomain() = ServerStation.create(

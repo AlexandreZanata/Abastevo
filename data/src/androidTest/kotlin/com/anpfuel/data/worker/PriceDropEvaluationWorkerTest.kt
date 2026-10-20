@@ -164,6 +164,33 @@ class PriceDropEvaluationWorkerTest {
             municipality: String,
         ): Boolean = true
 
+        override suspend fun getStationPricesPage(
+            state: BrazilianState,
+            municipality: String,
+            fuelProduct: FuelProduct,
+            surveyWeek: SurveyWeek,
+            search: String?,
+            sort: com.anpfuel.domain.discovery.DiscoverySort,
+            page: Int,
+            pageSize: Int,
+        ): com.anpfuel.domain.discovery.DiscoveryStationsRule.DiscoveryPage {
+            val price = if (surveyWeek == currentWeek) "5.40" else "5.60"
+            val items = listOf(station(price, surveyWeek))
+            return com.anpfuel.domain.discovery.DiscoveryStationsRule.DiscoveryPage(
+                items = items,
+                hasMore = false,
+                totalCount = items.size,
+            )
+        }
+
+        override suspend fun findStationPrice(
+            state: BrazilianState,
+            municipality: String,
+            fuelProduct: FuelProduct,
+            surveyWeek: SurveyWeek,
+            cnpjDigits: String,
+        ): StationPrice? = null
+
         override suspend fun deleteStationPricesOlderThanRetention(retentionWeeks: Int) = Unit
     }
 

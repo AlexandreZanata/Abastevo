@@ -15,6 +15,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +34,7 @@ data class CommunityFeedUiState(
     val nextCursor: String? = null,
     val lastUpdated: Instant? = null,
     val newUpdates: Boolean = false,
+    val earlierItemsTrimmed: Boolean = false,
 )
 
 /** Foreground-only refresh. Filters and city changes cancel obsolete HTTP work. */
@@ -43,6 +46,7 @@ class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommun
     private var refreshJob: Job? = null
     private var pageJob: Job? = null
     private var resetPagination = false
+    private var initialHead: List<CommunityFeedItem> = emptyList()
     internal var now: () -> Instant = { Instant.now() }
 
     fun setForeground(value: Boolean) {
@@ -56,12 +60,12 @@ class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommun
     }
     fun selectFuel(fuel: FuelProduct) {
         if (fuel == mutable.value.fuel) return
-        mutable.update { it.copy(fuel = fuel, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false) }
+        mutable.update { it.copy(fuel = fuel, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false, earlierItemsTrimmed = false) }
         startRefresh()
     }
     fun selectSort(sort: FeedSort) {
         if (sort == mutable.value.sort) return
-        mutable.update { it.copy(sort = sort, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false) }
+        mutable.update { it.copy(sort = sort, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false, earlierItemsTrimmed = false) }
         startRefresh()
     }
     fun refresh() {
@@ -80,29 +84,31 @@ class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommun
         }
     }
     private suspend fun refreshFirstPage() {
-        mutable.update { it.copy(loading = it.items.isEmpty(), loadingMore = false, items = it.items.filter { row -> row.expiresAt > now() }) }
+        mutable.update { it.copy(loading = it.items.isEmpty(), items = it.items.filter { row -> row.expiresAt > now() }) }
         try {
             val city = feed.city()
             if (city == null) {
-                mutable.update { it.copy(city = null, items = emptyList(), loading = false, noCity = true, failed = false, nextCursor = null, lastUpdated = null, newUpdates = false) }
+                mutable.update { it.copy(city = null, items = emptyList(), loading = false, noCity = true, failed = false, nextCursor = null, lastUpdated = null, newUpdates = false, earlierItemsTrimmed = false) }
                 return
             }
             if (city != mutable.value.city) { pageJob?.cancel() }
             if (city != mutable.value.city) mutable.update {
-                it.copy(city = city, items = emptyList(), nextCursor = null, lastUpdated = null, newUpdates = false, noCity = false)
+                it.copy(city = city, items = emptyList(), nextCursor = null, lastUpdated = null, newUpdates = false, earlierItemsTrimmed = false, noCity = false)
             }
             val query = FeedQuery(city, mutable.value.fuel, mutable.value.sort)
             val page = feed(query)
+            currentCoroutineContext().ensureActive()
             val items = page.items.filter { it.expiresAt > now() }.distinctBy { it.stationId }
             mutable.update {
                 // Preserve scroll/pagination while browsing older rows. Advertise new
                 // first-page facts instead of moving cards underneath the reader.
-                if (it.items.size > 20 && !resetPagination) it.copy(loading = false, failed = false, noCity = false,
-                    items = it.items.filter { row -> row.expiresAt > now() }, newUpdates = items != it.items.take(20),
+                if ((it.items.size > 20 || it.loadingMore || it.earlierItemsTrimmed) && !resetPagination) it.copy(loading = false, failed = false, noCity = false,
+                    items = it.items.filter { row -> row.expiresAt > now() }, newUpdates = items != initialHead,
                     lastUpdated = page.generatedAt)
-                else it.copy(city = city, items = items, nextCursor = page.nextCursor, loading = false,
-                    failed = false, noCity = false, lastUpdated = page.generatedAt, newUpdates = false)
+                else it.copy(city = city, items = items, nextCursor = page.nextCursor, loading = false, loadingMore = false,
+                    failed = false, noCity = false, lastUpdated = page.generatedAt, newUpdates = false, earlierItemsTrimmed = false)
             }
+            if (!mutable.value.earlierItemsTrimmed && mutable.value.items.size <= 20) initialHead = items
             resetPagination = false
         } catch (error: CancellationException) {
             throw error
@@ -114,14 +120,17 @@ class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommun
         val snapshot = mutable.value
         val cursor = snapshot.nextCursor ?: return
         val city = snapshot.city ?: return
-        if (!foreground || snapshot.loadingMore || snapshot.loading || snapshot.items.size >= 200) return
+        if (!foreground || snapshot.loadingMore || snapshot.loading || pageJob?.isActive == true) return
         pageJob = viewModelScope.launch {
             mutable.update { it.copy(loadingMore = true) }
             try {
                 val page = feed(FeedQuery(city, snapshot.fuel, snapshot.sort), cursor)
+                currentCoroutineContext().ensureActive()
+                require(page.nextCursor != cursor) { "feed cursor did not advance" }
                 mutable.update {
                     if (it.city != city || it.fuel != snapshot.fuel || it.sort != snapshot.sort) return@update it
-                    it.copy(items = (it.items + page.items).distinctBy { row -> row.stationId }.filter { row -> row.expiresAt > now() },
+                    val merged = (it.items + page.items).distinctBy { row -> row.stationId }.filter { row -> row.expiresAt > now() }
+                    it.copy(items = merged.takeLast(200), earlierItemsTrimmed = it.earlierItemsTrimmed || merged.size > 200,
                         nextCursor = page.nextCursor, loadingMore = false, failed = false)
                 }
             } catch (error: CancellationException) { throw error

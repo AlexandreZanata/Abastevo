@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -78,49 +81,37 @@ fun MyContributionsScreen(
             )
         },
     ) { padding ->
-        Column(
-            Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+        val uiState = state
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val uiState = state
-            ContributionsHero(uiState, onContribute, Modifier.fillMaxWidth())
+            item(key = "hero") { ContributionsHero(uiState, onContribute, Modifier.fillMaxWidth()) }
             when (uiState) {
-                ContributionStatusUiState.Loading -> Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SkeletonGroup(Modifier.fillMaxWidth()) {
-                            SkeletonLine()
-                            SkeletonLine(width = 160.dp)
-                        }
-                    }
+                ContributionStatusUiState.Loading -> item(key = "loading") {
+                    SkeletonGroup(Modifier.fillMaxWidth()) { SkeletonLine(); SkeletonLine(width = 160.dp) }
                 }
-                ContributionStatusUiState.Empty -> Card(
-                    Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                ) {
-                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.profile_contributions_empty),
-                            style = MaterialTheme.typography.bodyMedium)
+                ContributionStatusUiState.Empty -> item(key = "empty") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.profile_contributions_empty))
                         OutlinedButton(onClick = onContribute, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                            Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.community_action_contribute))
                         }
                     }
                 }
-                ContributionStatusUiState.Error -> Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.profile_contributions_error))
-                        Button(onClick = viewModel::load, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.action_retry))
-                        }
-                    }
+                ContributionStatusUiState.Error -> item(key = "error") {
+                    Text(stringResource(R.string.profile_contributions_error))
+                    Button(onClick = viewModel::load, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_retry)) }
                 }
                 is ContributionStatusUiState.Content -> {
-                    uiState.items.forEach { item ->
-                        ContributionLedgerRow(item, onCancel = { viewModel.onCancel(item.commandId) },
-                            modifier = Modifier.fillMaxWidth())
+                    items(uiState.items, key = { "contribution:${it.commandId}" }) { item ->
+                        ContributionLedgerRow(item, onCancel = { viewModel.onCancel(item.commandId) }, modifier = Modifier.fillMaxWidth())
+                    }
+                    if (uiState.hasMore) item(key = "more") {
+                        OutlinedButton(onClick = viewModel::loadMore, enabled = !uiState.loadingMore, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(if (uiState.moreFailed) R.string.action_retry else R.string.feed_load_more))
+                        }
                     }
                 }
             }

@@ -5,15 +5,17 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
@@ -37,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -163,6 +167,8 @@ fun StationsScreen(
         },
         onSuggestStation = onSuggestStation,
         onStationProfile = onStationProfile,
+        onLoadMoreServerStations = viewModel::loadMoreServerStations,
+        onLoadMoreAnpStations = viewModel::loadMoreAnpStations,
         modifier = modifier,
     )
 }
@@ -188,6 +194,8 @@ private fun StationsContent(
     onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
+    onLoadMoreServerStations: () -> Unit = {},
+    onLoadMoreAnpStations: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -209,205 +217,364 @@ private fun StationsContent(
             )
         },
     ) { innerPadding ->
-        Column(
+        // Single virtualized list for headers and rows: ANP rows keyed by
+        // origin ("anp:") and directory rows by origin ("dir:") so item
+        // identity survives recomposition, filtering and refresh. No nested
+        // scrollable lives inside this list.
+        val anpStations = uiState.stations
+        val directoryStations = uiState.directoryOnlyStations
+        LazyColumn(
+            state = rememberLazyListState(),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (uiState.isOffline) {
-                OfflineBanner()
+                item(key = StationsListKeys.OFFLINE_BANNER) {
+                    OfflineBanner()
+                }
             }
 
-            var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
-            Text(
-                text = stringResource(R.string.history_fuel_product_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FuelProductSelectorButton(
-                selected = uiState.selectedFuelProduct,
-                onClick = { fuelPickerOpen = true },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isDownloading,
-            )
-            if (fuelPickerOpen) {
-                FuelProductSelectorDialog(
-                    selected = uiState.selectedFuelProduct,
-                    onSelect = { product ->
-                        fuelPickerOpen = false
-                        onFuelProductSelected(product)
-                    },
-                    onDismiss = { fuelPickerOpen = false },
+            item(key = StationsListKeys.FUEL_LABEL) {
+                Text(
+                    text = stringResource(R.string.history_fuel_product_label),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            item(key = StationsListKeys.FUEL_SELECTOR) {
+                var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
+                FuelProductSelectorButton(
+                    selected = uiState.selectedFuelProduct,
+                    onClick = { fuelPickerOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isDownloading,
+                )
+                if (fuelPickerOpen) {
+                    FuelProductSelectorDialog(
+                        selected = uiState.selectedFuelProduct,
+                        onSelect = { product ->
+                            fuelPickerOpen = false
+                            onFuelProductSelected(product)
+                        },
+                        onDismiss = { fuelPickerOpen = false },
+                    )
+                }
             }
 
             if (!uiState.showNoLocation && !uiState.showDownloadPrompt) {
-                androidx.compose.material3.OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = onSearchQueryChanged,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(text = stringResource(R.string.stations_search_placeholder)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                        )
-                    },
-                    singleLine = true,
-                )
+                item(key = StationsListKeys.SEARCH) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = uiState.searchQuery,
+                        onValueChange = onSearchQueryChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(text = stringResource(R.string.stations_search_placeholder)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                            )
+                        },
+                        singleLine = true,
+                    )
+                }
             }
 
             if (uiState.municipality != null && uiState.state != null) {
-                StationsListSummary(
-                    municipality = uiState.municipality,
-                    state = uiState.state,
-                    fuelProduct = uiState.selectedFuelProduct,
-                )
+                item(key = StationsListKeys.SUMMARY) {
+                    StationsListSummary(
+                        municipality = uiState.municipality,
+                        state = uiState.state,
+                        fuelProduct = uiState.selectedFuelProduct,
+                    )
+                }
             }
 
             when {
                 // P20-T02: a failed refresh keeps cached stations, so loading
                 // and error replace the list only when there is nothing cached.
-                (uiState.isLoading || uiState.isDownloading) && uiState.stations.isEmpty() -> {
-                    StationsLoadingSkeleton()
-                }
-
-                uiState.error != null && uiState.stations.isEmpty() -> {
-                    ErrorState(
-                        message = stringResource(AppErrorMapper.toStringRes(uiState.error)),
-                        modifier = Modifier.fillMaxWidth(),
-                        onRetry = onRetry,
-                    )
-                }
-
-                uiState.errorMessage != null && uiState.stations.isEmpty() -> {
-                    ErrorState(
-                        message = uiState.errorMessage,
-                        modifier = Modifier.fillMaxWidth(),
-                        onRetry = onRetry,
-                    )
-                }
-
-                uiState.showNoLocation -> {
-                    EmptyState(
-                        message = stringResource(R.string.home_no_location_message),
-                        hint = stringResource(R.string.home_no_location_hint),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                uiState.showDownloadPrompt -> {
-                    EmptyState(
-                        message = stringResource(R.string.stations_download_prompt),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Button(
-                        onClick = onDownloadStationDetail,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isOffline,
-                    ) {
-                        Text(text = stringResource(R.string.stations_download_action))
+                (uiState.isLoading || uiState.isDownloading) && anpStations.isEmpty() -> {
+                    item(key = StationsListKeys.LOADING) {
+                        StationsLoadingSkeleton()
                     }
                 }
 
-                uiState.searchNoMatch != null -> {
-                    EmptyState(
-                        message = stringResource(
-                            R.string.stations_search_no_match,
-                            uiState.searchNoMatch,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                uiState.showEmpty -> {
-                    EmptyState(
-                        message = stringResource(R.string.stations_empty),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                uiState.stations.isNotEmpty() -> {
-                    if (uiState.error != null) {
+                uiState.error != null && anpStations.isEmpty() -> {
+                    item(key = StationsListKeys.ERROR) {
                         ErrorState(
                             message = stringResource(AppErrorMapper.toStringRes(uiState.error)),
                             modifier = Modifier.fillMaxWidth(),
                             onRetry = onRetry,
                         )
-                    } else if (uiState.errorMessage != null) {
+                    }
+                }
+
+                uiState.errorMessage != null && anpStations.isEmpty() -> {
+                    item(key = StationsListKeys.ERROR) {
                         ErrorState(
                             message = uiState.errorMessage,
                             modifier = Modifier.fillMaxWidth(),
                             onRetry = onRetry,
                         )
                     }
-                    NearestStationButton(
-                        isFindingNearest = uiState.isFindingNearest,
-                        onClick = onFindNearestStation,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    StationsNavigateHintBanner(
-                        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-                    )
-                    uiState.stations.forEach { station ->
+                }
+
+                uiState.showNoLocation -> {
+                    item(key = StationsListKeys.EMPTY_STATE) {
+                        EmptyState(
+                            message = stringResource(R.string.home_no_location_message),
+                            hint = stringResource(R.string.home_no_location_hint),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                uiState.showDownloadPrompt -> {
+                    item(key = StationsListKeys.EMPTY_STATE) {
+                        EmptyState(
+                            message = stringResource(R.string.stations_download_prompt),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    item(key = StationsListKeys.DOWNLOAD_ACTION) {
+                        Button(
+                            onClick = onDownloadStationDetail,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isOffline,
+                        ) {
+                            Text(text = stringResource(R.string.stations_download_action))
+                        }
+                    }
+                }
+
+                uiState.searchNoMatch != null -> {
+                    item(key = StationsListKeys.EMPTY_STATE) {
+                        EmptyState(
+                            message = stringResource(
+                                R.string.stations_search_no_match,
+                                uiState.searchNoMatch,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                uiState.showEmpty -> {
+                    item(key = StationsListKeys.EMPTY_STATE) {
+                        EmptyState(
+                            message = stringResource(R.string.stations_empty),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                anpStations.isNotEmpty() -> {
+                    if (uiState.error != null) {
+                        item(key = StationsListKeys.LIST_ERROR) {
+                            ErrorState(
+                                message = stringResource(AppErrorMapper.toStringRes(uiState.error)),
+                                modifier = Modifier.fillMaxWidth(),
+                                onRetry = onRetry,
+                            )
+                        }
+                    } else if (uiState.errorMessage != null) {
+                        item(key = StationsListKeys.LIST_ERROR) {
+                            ErrorState(
+                                message = uiState.errorMessage,
+                                modifier = Modifier.fillMaxWidth(),
+                                onRetry = onRetry,
+                            )
+                        }
+                    }
+                    item(key = StationsListKeys.NEAREST_BUTTON) {
+                        NearestStationButton(
+                            isFindingNearest = uiState.isFindingNearest,
+                            onClick = onFindNearestStation,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    item(key = StationsListKeys.NAVIGATE_HINT) {
+                        StationsNavigateHintBanner(
+                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                        )
+                    }
+                    items(anpStations, key = { StationsListKeys.anpRow(it.cnpjDigits) }) { station ->
                         StationPriceRow(
                             station = station,
                             onNavigate = { onStationSelected(station.cnpjDigits) },
                         )
                     }
-                    Text(
-                        text = stringResource(R.string.geocoding_osm_attribution),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                    )
+                    if (uiState.isAnpLoadingMore) {
+                        item(key = StationsListKeys.ANP_MORE_LOADING) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .wrapContentWidth(Alignment.CenterHorizontally)
+                                    .size(24.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                    } else if (uiState.anpMoreError != null) {
+                        item(key = StationsListKeys.ANP_MORE_ERROR) {
+                            Text(
+                                text = stringResource(R.string.server_stations_load_more_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        item(key = StationsListKeys.ANP_MORE_RETRY) {
+                            OutlinedButton(
+                                onClick = onLoadMoreAnpStations,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.action_retry))
+                            }
+                        }
+                    } else if (uiState.anpHasMore) {
+                        item(key = StationsListKeys.ANP_MORE) {
+                            OutlinedButton(
+                                onClick = onLoadMoreAnpStations,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.feed_load_more))
+                            }
+                        }
+                    }
+                    item(key = StationsListKeys.ATTRIBUTION) {
+                        Text(
+                            text = stringResource(R.string.geocoding_osm_attribution),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                        )
+                    }
                 }
             }
 
             // Supplement the visible weekly price rows using full CNPJ identity.
             // Keep the complete cached directory in state; filtering is presentation only.
-            if (uiState.directoryOnlyStations.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.server_stations_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                if (uiState.serverFromCache) {
+            if (directoryStations.isNotEmpty() || uiState.serverNextCursor != null || uiState.serverNextCacheOffset != null || uiState.isServerLoadingMore || uiState.serverMoreError != null) {
+                item(key = StationsListKeys.DIRECTORY_TITLE) {
                     Text(
-                        text = stringResource(R.string.server_station_cached),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        text = stringResource(R.string.server_stations_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
-                uiState.directoryOnlyStations.forEach { station ->
+                if (uiState.serverFromCache) {
+                    item(key = StationsListKeys.DIRECTORY_CACHE_NOTE) {
+                        Text(
+                            text = stringResource(R.string.server_station_cached),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                items(directoryStations, key = { StationsListKeys.directoryRow(it.stationId) }) { station ->
                     ServerStationRow(
                         station = station,
                         onSelect = onServerStationSelected,
                     )
                 }
-                OutlinedButton(
-                    onClick = onSuggestStation,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(text = stringResource(R.string.suggest_open_action))
+                if (uiState.isServerLoadingMore) {
+                    item(key = StationsListKeys.DIRECTORY_MORE_LOADING) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                } else if (uiState.serverMoreError != null) {
+                    item(key = StationsListKeys.DIRECTORY_MORE_ERROR) {
+                        Text(
+                            text = stringResource(R.string.server_stations_load_more_failed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    item(key = StationsListKeys.DIRECTORY_MORE_RETRY) {
+                        OutlinedButton(
+                            onClick = onLoadMoreServerStations,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.action_retry))
+                        }
+                    }
+                } else if (uiState.serverNextCursor != null || uiState.serverNextCacheOffset != null) {
+                    item(key = StationsListKeys.DIRECTORY_MORE) {
+                        OutlinedButton(
+                            onClick = onLoadMoreServerStations,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.server_stations_load_more))
+                        }
+                    }
+                }
+                item(key = StationsListKeys.SUGGEST_ACTION) {
+                    OutlinedButton(
+                        onClick = onSuggestStation,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.suggest_open_action))
+                    }
                 }
             }
             if (uiState.serverError != null && uiState.serverStations.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.server_stations_unavailable),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                item(key = StationsListKeys.SERVER_ERROR) {
+                    Text(
+                        text = stringResource(R.string.server_stations_unavailable),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
-
-
     }
+}
+
+/**
+ * Stable list keys for the stations screen: headers use fixed slots and
+ * rows are namespaced by origin, so an ANP row and a directory row never
+ * share identity even for the same physical station.
+ */
+internal object StationsListKeys {
+    const val OFFLINE_BANNER = "offline"
+    const val FUEL_LABEL = "fuel-label"
+    const val FUEL_SELECTOR = "fuel-selector"
+    const val SEARCH = "search"
+    const val SUMMARY = "summary"
+    const val LOADING = "loading"
+    const val ERROR = "error"
+    const val EMPTY_STATE = "state"
+    const val DOWNLOAD_ACTION = "download-action"
+    const val LIST_ERROR = "list-error"
+    const val NEAREST_BUTTON = "nearest"
+    const val NAVIGATE_HINT = "navigate-hint"
+    const val ATTRIBUTION = "attribution"
+    const val DIRECTORY_TITLE = "directory-title"
+    const val ANP_MORE = "anp-more"
+    const val ANP_MORE_LOADING = "anp-more-loading"
+    const val ANP_MORE_ERROR = "anp-more-error"
+    const val ANP_MORE_RETRY = "anp-more-retry"
+    const val DIRECTORY_MORE = "directory-more"
+    const val DIRECTORY_MORE_LOADING = "directory-more-loading"
+    const val DIRECTORY_MORE_ERROR = "directory-more-error"
+    const val DIRECTORY_MORE_RETRY = "directory-more-retry"
+    const val DIRECTORY_CACHE_NOTE = "directory-cache-note"
+    const val SUGGEST_ACTION = "suggest"
+    const val SERVER_ERROR = "server-error"
+
+    fun anpRow(cnpjDigits: String) = "anp:$cnpjDigits"
+    fun directoryRow(stationId: String) = "dir:$stationId"
 }
 
 @Composable

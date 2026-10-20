@@ -91,4 +91,27 @@ class DirectoryStationJsonCodecTest {
             DirectoryStationJsonCodec.decodeStation(payload)
         }
     }
+
+    @Test
+    fun `oversized pages cannot expand in memory`() {
+        val item = """{"station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26","display_name": "X","location_quality": "unknown"}"""
+        val listPayload = """{"items": [${(1..101).joinToString(",") { item }}]}"""
+        assertThrows(Exception::class.java) {
+            DirectoryStationJsonCodec.decodeList(listPayload)
+        }
+        val nearbyItem = """{"station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26","display_name": "X","location_quality": "unknown","distance_m": 1.0}"""
+        val nearbyPayload = """{"items": [${(1..101).joinToString(",") { nearbyItem }}]}"""
+        assertThrows(Exception::class.java) {
+            DirectoryStationJsonCodec.decodeNearby(nearbyPayload)
+        }
+    }
+
+    @Test
+    fun `oversized cursor is rejected`() {
+        val item = """{"station_id": "d6c74c23-63db-4c24-a2e5-408cb23bad26","display_name": "X","location_quality": "unknown"}"""
+        val payload = """{"items": [$item],"next_cursor": "${"c".repeat(5000)}"}"""
+        assertThrows(Exception::class.java) {
+            DirectoryStationJsonCodec.decodeList(payload)
+        }
+    }
 }

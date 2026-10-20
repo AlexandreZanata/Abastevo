@@ -2,6 +2,9 @@ package com.anpfuel.application.usecase.feedback
 
 import com.anpfuel.application.port.FeedbackFlagProvider
 import com.anpfuel.domain.exception.DomainException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import com.anpfuel.domain.repository.FeedbackCacheRepository
 import com.anpfuel.domain.repository.FeedbackException
 import com.anpfuel.domain.repository.FeedbackGateway
@@ -54,13 +57,40 @@ class GetFeedbackPageUseCase(
         val want = clampLimit(limit)
         return try {
             val page = gateway.listComments(stationId.trim(), product.trim(), cursor, want)
-            cache.saveComments(stationId.trim(), product.trim(), page)
+            currentCoroutineContext().ensureActive()
+            require(cursor.isEmpty() || page.nextCursor != cursor) { "feedback cursor did not advance" }
+            // Continuations merge into the stored snapshot so offline
+            // replay keeps every loaded page, never just the last one.
+            val stored = if (cursor.isNotEmpty()) {
+                val previous = try {
+                    cache.loadComments(stationId.trim(), product.trim())
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    null
+                }
+                if (previous != null) {
+                    FeedbackPage(
+                        items = (previous.items + page.items).distinctBy { it.id },
+                        nextCursor = page.nextCursor,
+                    )
+                } else {
+                    page
+                }
+            } else {
+                page
+            }
+            cache.saveComments(stationId.trim(), product.trim(), stored)
             FeedbackPageOutcome.Fresh(page)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (refused: FeedbackException) {
             FeedbackPageOutcome.Unavailable(refused)
         } catch (transport: Exception) {
             val cached = try {
                 cache.loadComments(stationId.trim(), product.trim())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 null
             }
@@ -78,7 +108,12 @@ class GetFeedbackPageUseCase(
         if (parentId.isBlank()) throw DomainException("parent_id is blank")
         val want = clampLimit(limit)
         return try {
-            FeedbackPageOutcome.Fresh(gateway.listReplies(parentId.trim(), cursor, want))
+            val page = gateway.listReplies(parentId.trim(), cursor, want)
+            currentCoroutineContext().ensureActive()
+            require(cursor.isEmpty() || page.nextCursor != cursor) { "feedback cursor did not advance" }
+            FeedbackPageOutcome.Fresh(page)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (refused: FeedbackException) {
             FeedbackPageOutcome.Unavailable(refused)
         } catch (transport: Exception) {
@@ -97,6 +132,8 @@ class GetFeedbackPageUseCase(
         if (stationId.isBlank() || product.isBlank()) throw DomainException("station/product target is blank")
         return try {
             FeedbackStatsOutcome.Fresh(gateway.stats(stationId.trim(), product.trim()))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
             FeedbackStatsOutcome.Unavailable(error)
         }

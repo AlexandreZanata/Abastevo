@@ -13,11 +13,13 @@ class StorageStatsRepositoryImpl @Inject constructor(
     private val averagePriceDao: AveragePriceDao,
     private val stationPriceDao: StationPriceDao,
     private val surveyWeekDao: SurveyWeekDao,
+    private val serverStationCacheDao: com.anpfuel.data.local.dao.ServerStationCacheDao,
 ) : StorageStatsRepository {
 
     override suspend fun getStorageUsage(): StorageUsage = StorageUsage(
         summaryRowCount = averagePriceDao.count(),
         stationRowCount = stationPriceDao.count(),
         importedWeekCount = surveyWeekDao.count(),
+        publicCatalogEstimatedBytes = serverStationCacheDao.estimatedBytes(),
     )
 }

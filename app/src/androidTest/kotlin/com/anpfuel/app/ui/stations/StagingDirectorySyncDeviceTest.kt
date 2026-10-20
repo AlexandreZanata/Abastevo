@@ -30,8 +30,8 @@ import org.junit.runner.RunWith
 class StagingDirectorySyncDeviceTest {
     @Test fun backgroundDirectorySyncIsRegisteredExactlyOnce() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        DirectorySyncWorker.schedule(context)
-        DirectorySyncWorker.schedule(context)
+        DirectorySyncWorker.schedule(context, "Synthetic City", true, "SP")
+        DirectorySyncWorker.schedule(context, "Synthetic City", true, "SP")
         val work = WorkManager.getInstance(context)
             .getWorkInfosForUniqueWork(DirectorySyncWorker.WORK_NAME).get(10, TimeUnit.SECONDS)
         assertEquals(1, work.size)

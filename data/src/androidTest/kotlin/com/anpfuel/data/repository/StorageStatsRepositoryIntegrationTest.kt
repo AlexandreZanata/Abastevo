@@ -45,6 +45,7 @@ class StorageStatsRepositoryIntegrationTest {
             averagePriceDao = database.averagePriceDao(),
             stationPriceDao = database.stationPriceDao(),
             surveyWeekDao = database.surveyWeekDao(),
+            serverStationCacheDao = database.serverStationCacheDao(),
         )
     }
 

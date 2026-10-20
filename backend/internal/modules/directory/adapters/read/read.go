@@ -225,6 +225,9 @@ func (r *Reader) Search(ctx context.Context, f application.SearchFilter) ([]appl
 }
 
 // Nearby walks reviewed positions by distance with keyset pagination.
+// References resolve in one bounded batch, like Search: a page costs at
+// most two round trips, never one identifier plus one official lookup per
+// row. Single-station reads keep the per-row helper.
 func (r *Reader) Nearby(ctx context.Context, f application.NearbyFilter) ([]application.NearbyStation, string, error) {
 	q := directory.New(r.pool)
 	rows, err := q.NearbyStations(ctx, directory.NearbyStationsParams{
@@ -239,10 +242,44 @@ func (r *Reader) Nearby(ctx context.Context, f application.NearbyFilter) ([]appl
 	if err != nil {
 		return nil, "", err
 	}
+	ids := make([]pgtype.UUID, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	references := map[pgtype.UUID]directory.SearchPageReferencesRow{}
+	if len(ids) > 0 {
+		refs, err := q.SearchPageReferences(ctx, ids)
+		if err != nil {
+			return nil, "", err
+		}
+		for _, ref := range refs {
+			references[ref.StationID] = ref
+		}
+	}
 	var out []application.NearbyStation
 	for _, row := range rows {
-		st, err := r.station(ctx, q, row.ID, row.DisplayName, row.MunicipalityCode, row.State,
-			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address)
+		ref, ok := references[row.ID]
+		if !ok {
+			return nil, "", errors.New("read: incomplete page references")
+		}
+		var cnpj *string
+		if ref.Cnpj != "" {
+			value := ref.Cnpj
+			cnpj = &value
+		}
+		var official *application.OfficialAnchor
+		if ref.OfficialSource != "" {
+			official = &application.OfficialAnchor{
+				Source: ref.OfficialSource, DisplayName: ref.OfficialDisplayName,
+				MunicipalityCode: textPtr(ref.OfficialMunicipality), State: textPtr(ref.OfficialState),
+			}
+			if ref.OfficialFinishedAt.Valid {
+				finished := ref.OfficialFinishedAt.Time
+				official.FinishedAt = &finished
+			}
+		}
+		st, err := stationView(row.ID, row.DisplayName, row.MunicipalityCode, row.State,
+			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address, cnpj, official)
 		if err != nil {
 			return nil, "", err
 		}

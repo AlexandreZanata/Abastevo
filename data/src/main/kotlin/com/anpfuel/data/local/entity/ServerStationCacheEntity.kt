@@ -7,15 +7,24 @@ import androidx.room.PrimaryKey
 /**
  * P27-T03 canonical server catalog cache.
  *
- * One row per canonical Directory UUID from `GET /v1/stations`
- * traversal; zero-price stations stay visible offline. Coordinates
- * appear only when the server supplied them (honest unknown stays
- * null); no centroid is ever fabricated here. `position` preserves the
- * server page order so pagination/refresh stay deterministic.
+ * Identity is the Directory UUID **plus** the owning scope: page
+ * membership rows carry their scope (`"page"` nationally,
+ * `"city:<ibge>"` per municipality) and `position` preserves the
+ * server order so pagination/refresh stay deterministic, while
+ * individually fetched details live under the unscoped detail scope
+ * with `position = Int.MAX_VALUE` and are never cleared by page
+ * replacement. Station records therefore survive beside — never
+ * inside — page participation. Coordinates appear only when the
+ * server supplied them (honest unknown stays null); no centroid is
+ * ever fabricated here. Zero-price stations stay visible offline.
  */
-@Entity(tableName = "server_station_cache")
+@Entity(
+    tableName = "server_station_cache",
+    primaryKeys = ["station_id", "scope_key"],
+    indices = [androidx.room.Index(value = ["scope_key", "position"])],
+)
 data class ServerStationCacheEntity(
-    @PrimaryKey @ColumnInfo(name = "station_id") val stationId: String,
+    @ColumnInfo(name = "station_id") val stationId: String,
     @ColumnInfo(name = "display_name") val displayName: String,
     @ColumnInfo(name = "location_quality") val locationQuality: String,
     @ColumnInfo(name = "latitude") val latitude: Double?,
@@ -27,7 +36,13 @@ data class ServerStationCacheEntity(
     @ColumnInfo(name = "position") val position: Int,
     @ColumnInfo(name = "saved_at_millis") val savedAtMillis: Long,
     @ColumnInfo(name = "address_json", defaultValue = "'{}'") val addressJson: String = "{}",
-)
+    @ColumnInfo(name = "scope_key", defaultValue = "''") val scopeKey: String = "",
+) {
+    companion object {
+        /** Unscoped identity records (details); page replacement never deletes them. */
+        const val DETAIL_SCOPE = ""
+    }
+}
 
 /**
  * P27-T03 single-row page cursor for the cached catalog (`key` is

@@ -10,6 +10,7 @@ import com.anpfuel.domain.repository.FeedbackException
 import com.anpfuel.domain.repository.FeedbackRejectKind
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -283,6 +284,27 @@ class FeedbackHttpClientTest {
                 assertEquals(0, server.requestCount)
             } finally { server.shutdown() }
         }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `public comment cancellation cancels the actual socket`() = runTest {
+        val server = MockWebServer()
+        val cancelled = java.util.concurrent.CountDownLatch(1)
+        val http = OkHttpClient.Builder().eventListener(object : okhttp3.EventListener() {
+            override fun canceled(call: okhttp3.Call) { cancelled.countDown() }
+        }).build()
+        try {
+            server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
+            val gateway = FeedbackHttpClient(http, server.url("/").toString(), FakeSessions(null))
+            val pending = launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+                gateway.listComments("s-1", "GASOLINE", "", 20)
+            }
+            org.junit.jupiter.api.Assertions.assertNotNull(server.takeRequest(2, TimeUnit.SECONDS))
+            pending.cancel()
+            pending.join()
+            assertTrue(cancelled.await(2, TimeUnit.SECONDS))
+        } finally { server.shutdown(); http.connectionPool.evictAll(); http.dispatcher.executorService.shutdown() }
     }
 
 }
