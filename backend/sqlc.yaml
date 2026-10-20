@@ -303,6 +303,7 @@ sql:
       - db/migrations/000105_quality_station_projections.sql
       - db/migrations/000106_quality_native_fine_precision.sql
       - db/migrations/000107_quality_native_fine_revision_clock.sql
+      - db/migrations/000108_quality_historical_fine_profiles.sql
     gen:
       go:
         package: quality

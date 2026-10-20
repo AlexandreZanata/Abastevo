@@ -19,7 +19,10 @@ SELECT @id, staging.id, @native_key, @proceeding_ref, @party_cnpj,
  @department::text, @due_on::date, @amount_text::text, @paid_text::text,
  @paid_minor::bigint
 FROM staging
-ON CONFLICT (revision_id, native_key) DO NOTHING
+-- Refuse both content and generated-ID collisions. With two unique indexes,
+-- arbitrating only content can still raise a concurrent primary-key conflict.
+-- No returned row is a refusal; the publisher rolls its transaction back.
+ON CONFLICT DO NOTHING
 RETURNING id;
 
 -- name: RecordNativeFineClock :execrows

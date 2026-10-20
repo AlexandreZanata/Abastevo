@@ -529,9 +529,31 @@ type SanctionByIDParams struct {
 	RevisionID pgtype.UUID `json:"revision_id"`
 }
 
-func (q *Queries) SanctionByID(ctx context.Context, arg SanctionByIDParams) (QualitySanctionEvent, error) {
+type SanctionByIDRow struct {
+	ID              pgtype.UUID `json:"id"`
+	RevisionID      pgtype.UUID `json:"revision_id"`
+	NativeKey       string      `json:"native_key"`
+	ProceedingRef   string      `json:"proceeding_ref"`
+	PartyCnpj       string      `json:"party_cnpj"`
+	AmountMinor     pgtype.Int8 `json:"amount_minor"`
+	Status          string      `json:"status"`
+	DecidedOn       pgtype.Date `json:"decided_on"`
+	AsOf            pgtype.Date `json:"as_of"`
+	EvidenceRef     string      `json:"evidence_ref"`
+	SourceContract  string      `json:"source_contract"`
+	ExtractionMonth pgtype.Text `json:"extraction_month"`
+	ReportYear      pgtype.Int4 `json:"report_year"`
+	DufRef          pgtype.Text `json:"duf_ref"`
+	Department      pgtype.Text `json:"department"`
+	DueOn           pgtype.Date `json:"due_on"`
+	AmountText      pgtype.Text `json:"amount_text"`
+	PaidText        pgtype.Text `json:"paid_text"`
+	PaidMinor       pgtype.Int8 `json:"paid_minor"`
+}
+
+func (q *Queries) SanctionByID(ctx context.Context, arg SanctionByIDParams) (SanctionByIDRow, error) {
 	row := q.db.QueryRow(ctx, sanctionByID, arg.ID, arg.RevisionID)
-	var i QualitySanctionEvent
+	var i SanctionByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.RevisionID,

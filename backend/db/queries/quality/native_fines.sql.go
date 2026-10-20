@@ -69,7 +69,7 @@ SELECT $1, staging.id, $2, $3, $4,
  $11::text, $12::date, $13::text, $14::text,
  $15::bigint
 FROM staging
-ON CONFLICT (revision_id, native_key) DO NOTHING
+ON CONFLICT DO NOTHING
 RETURNING id
 `
 
@@ -95,6 +95,9 @@ type StageNativeFineObservationParams struct {
 // Native observations have their own staging operation. A shared revision lock
 // fences the staging-state check against publication; no published/foreign stream
 // can gain new facts through this operation. Runtime composition follows separately.
+// Refuse both content and generated-ID collisions. With two unique indexes,
+// arbitrating only content can still raise a concurrent primary-key conflict.
+// No returned row is a refusal; the publisher rolls its transaction back.
 func (q *Queries) StageNativeFineObservation(ctx context.Context, arg StageNativeFineObservationParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, stageNativeFineObservation,
 		arg.ID,
