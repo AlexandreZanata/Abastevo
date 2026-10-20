@@ -93,6 +93,23 @@ type QualityAssay struct {
 	SourceObservedAt pgtype.Text `json:"source_observed_at"`
 }
 
+type QualityCompanyAssociation struct {
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	RecordKey      string      `json:"record_key"`
+	ResolutionKind string      `json:"resolution_kind"`
+	Reason         string      `json:"reason"`
+	StationID      pgtype.UUID `json:"station_id"`
+}
+
+type QualityCompanyAssociationRevision struct {
+	RevisionID                    pgtype.UUID `json:"revision_id"`
+	PolicyVersion                 string      `json:"policy_version"`
+	AssociationScope              string      `json:"association_scope"`
+	DecisionDay                   pgtype.Date `json:"decision_day"`
+	HistoricalBusinessWindowKnown bool        `json:"historical_business_window_known"`
+	ObservationCount              int32       `json:"observation_count"`
+}
+
 type QualityCurrentRevision struct {
 	Source     string             `json:"source"`
 	Stream     string             `json:"stream"`

@@ -185,7 +185,7 @@ func TestMemberProvenanceUpgradePreservesPublishedReplay(t *testing.T) {
 		t.Fatal(e)
 	}
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000100", "000101", "000102", "000103", "000104", "000105", "000106", "000107", "000108"}) {
+	if e != nil || !slices.Equal(applied, []string{"000100", "000101", "000102", "000103", "000104", "000105", "000106", "000107", "000108", "000109"}) {
 		t.Fatal("upgrade", applied, e)
 	}
 	replay, e := NewPublisher(p).Publish(ctx, in, m.next)

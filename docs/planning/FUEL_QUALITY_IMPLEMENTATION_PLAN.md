@@ -250,8 +250,10 @@ it does not establish historical operation at that site, a fuel finding or score
 eligibility. Vencimento/source extraction cannot substitute for incident dates.
 Ambiguous, retired-only, missing and wrong-branch records remain unassociated.
 [Current-company policy FQ-07R6A](../backend/evidence/fuel-quality/FQ07R6A_COMPANY_ASSOCIATION_POLICY.md)
-is LOCAL_DONE; compatible scoped storage, live publication/read fences and actual
-runtime association remain OWED. Existing dated PMQC resolution is unchanged.
+is LOCAL_DONE; [compatible scoped storage FQ-07R6B](../backend/evidence/fuel-quality/FQ07R6B_COMPANY_ASSOCIATION_STORAGE.md)
+is LOCAL_DONE with108→109/negative/concurrency/rollback acceptance. Atomic
+publication identity, live publication/read fences and actual runtime association
+remain OWED. Existing dated PMQC resolution is unchanged.
 
 ## 5. Reliability score proposal and publication gate
 
