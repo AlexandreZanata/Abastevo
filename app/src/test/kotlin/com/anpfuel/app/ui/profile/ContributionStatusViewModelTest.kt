@@ -101,4 +101,16 @@ class ContributionStatusViewModelTest {
         assertTrue(viewModel.uiState.value is ContributionStatusUiState.Content)
     }
 
+    @Test fun continuationAppendsHistoryAndFailedPageKeepsExistingRows() = runTest(dispatcher) {
+        coEvery { outbox.listOwnedPage(20, 0) } returns (0..19).map { OwnedContribution("cmd-$it", 1, 0, OwnedContributionPhase.QUEUED) }
+        coEvery { outbox.listOwnedPage(20, 20) } throws RuntimeException("outage") andThen
+            listOf(OwnedContribution("cmd-20", 1, 0, OwnedContributionPhase.QUEUED))
+        viewModel.load(); advanceUntilIdle()
+        viewModel.loadMore(); advanceUntilIdle()
+        assertEquals(20, (viewModel.uiState.value as ContributionStatusUiState.Content).items.size)
+        assertTrue((viewModel.uiState.value as ContributionStatusUiState.Content).moreFailed)
+        viewModel.loadMore(); advanceUntilIdle()
+        assertEquals(21, (viewModel.uiState.value as ContributionStatusUiState.Content).items.size)
+    }
+
 }

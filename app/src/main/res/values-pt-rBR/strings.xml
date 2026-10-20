@@ -351,6 +351,14 @@
     <string name="a11y_language_japanese">Japonês</string>
     <string name="settings_preferences_section">Preferências</string>
     <string name="settings_sync_station_detail">Sincronizar detalhe de postos em segundo plano</string>
+    <string name="settings_public_catalog_section">Diretório público da cidade</string>
+    <string name="settings_public_catalog_description">Manter uma cópia offline do diretório público de postos da sua cidade. Nunca baixa detalhes, contribuições ou localização.</string>
+    <string name="settings_public_catalog_toggle">Manter diretório público atualizado</string>
+    <string name="settings_public_catalog_last_sync">Última atualização: %1$s</string>
+    <string name="settings_public_catalog_never_synced">Nunca atualizado neste aparelho.</string>
+    <string name="settings_public_catalog_off_note">Atualizações em segundo plano desativadas. Navegação, atualização manual e contribuições continuam funcionando.</string>
+    <string name="settings_clear_public_catalog">Limpar diretório público</string>
+    <string name="public_catalog_cleared">Diretório público limpo.</string>
     <string name="settings_auto_download_latest_week">Baixar automaticamente a semana mais recente</string>
     <string name="settings_sync_wifi_only">Sincronização automática apenas no Wi‑Fi</string>
     <string name="settings_show_price_history">Exibir histórico de preços</string>
@@ -454,9 +462,13 @@
     <string name="server_station_unknown_location">Local não verificado — exibido sem coordenadas.</string>
     <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
     <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>
+    <string name="server_stations_load_more">Carregar mais postos</string>
+    <string name="server_stations_load_more_failed">Não foi possível carregar mais postos. A lista acima não mudou.</string>
 
     <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
     <string name="station_feedback_title">Discussão do posto</string>
+    <string name="station_feedback_show_more">Ver mais comentários</string>
+    <string name="station_feedback_show_more_failed">Não foi possível carregar mais comentários. A lista acima não mudou.</string>
     <string name="station_feedback_guest">Entre para avaliar, comentar ou votar. A leitura é aberta a todos.</string>
     <string name="station_feedback_rate">Avalie este posto (1–5)</string>
     <string name="station_feedback_comment_hint">Compartilhe uma nota (280 caracteres)</string>
@@ -815,4 +827,6 @@
     <string name="home_community_empty_hint">Contribua com um preço para iniciar a comparação na sua cidade.</string>
     <string name="home_community_unavailable">Preços da comunidade indisponíveis no momento. Tente novamente.</string>
     <string name="home_community_updated">Comunidade · atualizado em %1$s</string>
+    <string name="feed_restart_list">Voltar ao início da lista</string>
+    <string name="settings_public_catalog_size">Cache público estimado: %1$s</string>
 </resources>

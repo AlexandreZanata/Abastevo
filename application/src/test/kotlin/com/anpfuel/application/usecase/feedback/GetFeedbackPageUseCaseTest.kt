@@ -15,6 +15,7 @@ import com.anpfuel.domain.repository.VoteTallySnapshot
 import com.anpfuel.domain.repository.VoteWriteReceipt
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -137,6 +138,35 @@ class GetFeedbackPageUseCaseTest {
         assertTrue(outcome is FeedbackPageOutcome.Fresh)
         assertEquals(1, (outcome as FeedbackPageOutcome.Fresh).page.items.size)
         assertEquals(1, cache.stored?.items?.size)
+    }
+
+    @Test
+    fun `continuation merges into the cached snapshot`() = runTest {
+        val first = FeedbackPage(
+            listOf(
+                FeedbackCommentView("c-0", "alias-0", "s-1", "GASOLINE", "", 0, "cached", 1, 5L, 5L),
+            ),
+            "next-1",
+        )
+        val second = FeedbackPage(
+            listOf(
+                FeedbackCommentView("c-0", "alias-0", "s-1", "GASOLINE", "", 0, "cached", 1, 5L, 5L),
+                FeedbackCommentView("c-1", "alias-1", "s-1", "GASOLINE", "", 0, "fresh", 1, 6L, 6L),
+            ),
+            null,
+        )
+        val gateway = FakeGateway(page = Result.success(second))
+        val cache = FakeCache(first)
+        val useCase = GetFeedbackPageUseCase(FakeFlags(true), gateway, cache)
+
+        val outcome = useCase.comments("s-1", "GASOLINE", "next-1", 20)
+
+        assertTrue(outcome is FeedbackPageOutcome.Fresh)
+        assertEquals(
+            listOf("c-0", "c-1"),
+            cache.stored?.items?.map { it.id },
+        )
+        assertNull(cache.stored?.nextCursor)
     }
 
     @Test

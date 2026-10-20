@@ -4,6 +4,8 @@ package http
 
 import (
 	"context"
+	"encoding/hex"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -55,7 +57,15 @@ func TestLocalCaddyForwardsObservedClient(t *testing.T) {
 	apiPort := strings.TrimPrefix(api.URL, "http://127.0.0.1:")
 
 	dir := t.TempDir()
-	caddyfile := "{\n\tadmin off\n}\n\n:18081 {\n" +
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edgeAddress := listener.Addr().String()
+	if err = listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	caddyfile := "{\n\tadmin off\n}\n\nhttp://" + edgeAddress + " {\n" +
 		"\treverse_proxy 127.0.0.1:" + apiPort + " {\n" +
 		"\t\ttrusted_proxies private_ranges\n" +
 		"\t\theader_up Host {host}\n" +
@@ -68,17 +78,32 @@ func TestLocalCaddyForwardsObservedClient(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	edge := exec.CommandContext(ctx, "docker", "run", "--rm", "--network", "host",
-		"-v", dir+":/etc/caddy:ro", testCaddyImage)
-	edge.Stdout = os.Stderr
-	edge.Stderr = os.Stderr
-	if err := edge.Start(); err != nil {
-		t.Fatalf("start caddy edge: %v", err)
-	}
+	// A detached container has an explicit owned receipt: killing only the
+	// docker CLI leaves the edge alive and a later test can hit its old API.
+	cidFile := filepath.Join(dir, "edge.cid")
 	defer func() {
-		_ = edge.Process.Kill()
-		_ = edge.Wait()
+		raw, readErr := os.ReadFile(cidFile)
+		if readErr != nil {
+			return
+		}
+		cid := strings.TrimSpace(string(raw))
+		decoded, decodeErr := hex.DecodeString(cid)
+		if decodeErr != nil || len(decoded) != 32 {
+			t.Error("invalid owned edge receipt")
+			return
+		}
+		cleanupCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
+		defer stop()
+		out, removeErr := exec.CommandContext(cleanupCtx, "docker", "rm", "-f", cid).CombinedOutput()
+		if removeErr != nil && !strings.Contains(string(out), "No such container") {
+			t.Errorf("remove owned edge: %v %s", removeErr, out)
+		}
 	}()
+	edge := exec.CommandContext(ctx, "docker", "run", "-d", "--rm", "--cidfile", cidFile, "--network", "host",
+		"--label", "anpfuel.test=identity-edge", "-v", dir+":/etc/caddy:ro", testCaddyImage)
+	if out, err := edge.CombinedOutput(); err != nil {
+		t.Fatalf("start caddy edge: %v %s", err, out)
+	}
 
 	fp := "fp:" + strings.Repeat("a", 64)
 	post := func(url, xff string) int {
@@ -107,7 +132,7 @@ func TestLocalCaddyForwardsObservedClient(t *testing.T) {
 	// the API bills exactly that address — never the forgery, never
 	// the edge container as an opaque shared identity without a
 	// forwarding address.
-	if code := post("http://127.0.0.1:18081", "198.51.100.7"); code != 503 {
+	if code := post("http://"+edgeAddress, "198.51.100.7"); code != 503 {
 		t.Fatalf("edge challenge status = %d, want 503 (registrar offline, quota admitted)", code)
 	}
 	mu.Lock()

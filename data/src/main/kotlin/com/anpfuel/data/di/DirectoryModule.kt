@@ -30,4 +30,12 @@ object DirectoryModule {
             client = OkHttpClientFactory.create(),
             baseUrl = environment.origin,
         )
+    @Provides
+    @Singleton
+    fun provideServerStationCache(
+        dao: com.anpfuel.data.local.dao.ServerStationCacheDao,
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): com.anpfuel.domain.repository.ServerStationCache =
+        com.anpfuel.data.repository.DirectoryStationRoomCache(dao, environment.origin)
+
 }

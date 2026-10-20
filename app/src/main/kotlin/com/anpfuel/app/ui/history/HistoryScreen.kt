@@ -5,8 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -101,96 +102,100 @@ private fun HistoryContent(
             )
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (uiState.isOffline) {
-                OfflineBanner()
-            }
+            item(key = "summary") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (uiState.isOffline) {
+                        OfflineBanner()
+                    }
 
-            var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
-            Text(
-                text = stringResource(R.string.history_fuel_product_label),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FuelProductSelectorButton(
-                selected = uiState.selectedFuelProduct,
-                onClick = { fuelPickerOpen = true },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (fuelPickerOpen) {
-                FuelProductSelectorDialog(
-                    selected = uiState.selectedFuelProduct,
-                    onSelect = { product ->
-                        fuelPickerOpen = false
-                        onFuelProductSelected(product)
-                    },
-                    onDismiss = { fuelPickerOpen = false },
-                )
-            }
-
-            when {
-                uiState.isLoading -> HistoryLoadingSkeleton()
-
-                uiState.errorMessage != null -> {
-                    ErrorState(
-                        message = uiState.errorMessage,
-                        modifier = Modifier.fillMaxWidth(),
-                        onRetry = onRetry,
+                    var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
+                    Text(
+                        text = stringResource(R.string.history_fuel_product_label),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-
-                uiState.showHistoryDisabled -> {
-                    EmptyState(
-                        message = stringResource(R.string.history_disabled),
+                    FuelProductSelectorButton(
+                        selected = uiState.selectedFuelProduct,
+                        onClick = { fuelPickerOpen = true },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
-
-                uiState.showInsufficientData -> {
-                    EmptyState(
-                        message = stringResource(R.string.history_insufficient_data),
-                        hint = stringResource(R.string.history_insufficient_data_hint),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                uiState.entries.isNotEmpty() -> {
-                    if (uiState.municipality != null && uiState.state != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_location_format,
-                                uiState.municipality,
-                                uiState.state.abbreviation,
-                            ),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
+                    if (fuelPickerOpen) {
+                        FuelProductSelectorDialog(
+                            selected = uiState.selectedFuelProduct,
+                            onSelect = { product ->
+                                fuelPickerOpen = false
+                                onFuelProductSelected(product)
+                            },
+                            onDismiss = { fuelPickerOpen = false },
                         )
                     }
 
-                    FuelProductLabel(
-                        product = uiState.selectedFuelProduct,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
+                    when {
+                        uiState.isLoading -> HistoryLoadingSkeleton()
 
-                    PriceHistoryTrendChart(entries = uiState.entries)
+                        uiState.errorMessage != null -> {
+                            ErrorState(
+                                message = uiState.errorMessage,
+                                modifier = Modifier.fillMaxWidth(),
+                                onRetry = onRetry,
+                            )
+                        }
 
-                    uiState.entries.forEach { entry ->
-                        PriceHistoryEntryRow(
-                            weekLabel = stringResource(
-                                R.string.history_week_label,
-                                SurveyWeekFormatter.formatRangeCompact(entry.surveyWeek, locale),
-                            ),
-                            averageFormatted = entry.averageFormatted
-                                ?: stringResource(R.string.prices_not_available),
-                        )
+                        uiState.showHistoryDisabled -> {
+                            EmptyState(
+                                message = stringResource(R.string.history_disabled),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        uiState.showInsufficientData -> {
+                            EmptyState(
+                                message = stringResource(R.string.history_insufficient_data),
+                                hint = stringResource(R.string.history_insufficient_data_hint),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        uiState.entries.isNotEmpty() -> {
+                            if (uiState.municipality != null && uiState.state != null) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.home_location_format,
+                                        uiState.municipality,
+                                        uiState.state.abbreviation,
+                                    ),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                            }
+
+                            FuelProductLabel(
+                                product = uiState.selectedFuelProduct,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+
+                            PriceHistoryTrendChart(entries = uiState.entries)
+                        }
                     }
+                }
+            }
+            if (!uiState.isLoading && uiState.errorMessage == null &&
+                !uiState.showHistoryDisabled && !uiState.showInsufficientData
+            ) {
+                items(uiState.entries, key = { it.surveyWeek.startDate.toString() }) { entry ->
+                    PriceHistoryEntryRow(
+                        weekLabel = stringResource(
+                            R.string.history_week_label,
+                            SurveyWeekFormatter.formatRangeCompact(entry.surveyWeek, locale),
+                        ),
+                        averageFormatted = entry.averageFormatted
+                            ?: stringResource(R.string.prices_not_available),
+                    )
                 }
             }
         }

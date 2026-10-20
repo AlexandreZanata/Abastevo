@@ -28,6 +28,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
     @Inject
+    lateinit var preferenceStore: com.anpfuel.data.local.preferences.UserPreferencesDataStore
+
+    @Inject
     lateinit var qualityReportScheduler:com.anpfuel.data.worker.QualityReportWorkScheduler
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -51,8 +54,11 @@ class AnpFuelApplication : Application(), Configuration.Provider {
             AppLocaleHolder.localeTag = resolvedTag
         }
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
-        com.anpfuel.data.worker.DirectorySyncWorker.schedule(this)
+        applicationScope.launch {
+            com.anpfuel.data.worker.DirectorySyncWorker.maintainSchedule(this@AnpFuelApplication, preferenceStore)
+        }
         qualityReportScheduler.maintain()
+
         applicationScope.launch {
             syncWorkScheduler.schedulePeriodicSync()
         }

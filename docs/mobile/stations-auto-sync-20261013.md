@@ -1,5 +1,7 @@
 # Station directory auto sync and list summary
 
+Historical checkpoint. The unconditional sync and single-page behavior below are superseded by the [2026-10-20 pagination/optional-sync review](pagination-sync-review-20261019.md); its candidate still owes native execution. The earlier device results do not certify the new candidate.
+
 Task: P35-T03 follow-up / MOBILE-SYNC-01. Status: LOCAL_DONE.
 Validation: PASS.
 

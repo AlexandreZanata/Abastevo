@@ -141,6 +141,9 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 Text(stringResource(R.string.feed_cached_hint), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (state.earlierItemsTrimmed) item {
+                OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.feed_restart_list)) }
+            }
             if (state.newUpdates) item {
                 OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.feed_new_updates)) }
             }
@@ -166,7 +169,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
             items(state.items, key = { it.stationId }) { item ->
                 FeedPriceCard(item, darkTheme, onOpen = { onNavigate(Routes.stationPage(item.stationId, state.fuel)) }, onSignIn={onNavigate(Routes.PROFILE)})
             }
-            if (state.nextCursor != null && state.items.size < 200 && !state.loading) item {
+            if (state.nextCursor != null && !state.loading) item {
                 OutlinedButton(onClick = onMore, enabled = !state.loadingMore, modifier = Modifier.fillMaxWidth()) {
                     if (state.loadingMore) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     else Text(stringResource(R.string.feed_load_more))

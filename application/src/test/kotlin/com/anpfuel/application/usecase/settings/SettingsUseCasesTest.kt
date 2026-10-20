@@ -112,6 +112,18 @@ class SettingsUseCasesTest {
     }
 
     @Test
+    fun publicCatalogOptInIsTrackedSeparatelyFromAnp() = runTest {
+        val updated = defaultPreferences.copy(syncPublicCityCatalog = true)
+        coEvery { userPreferencesRepository.getPreferences() } returns defaultPreferences
+        coEvery { userPreferencesRepository.savePreferences(updated) } returns Unit
+
+        val result = updatePreferencesUseCase.invoke(updated)
+
+        assertTrue(result.event.payload.changedKeys.contains(UpdatePreferencesUseCase.KEY_SYNC_PUBLIC_CITY_CATALOG))
+        assertEquals(1, result.event.payload.changedKeys.size)
+    }
+
+    @Test
     fun clearAllImportedDataAndResetsOnboarding() = runTest {
         val savedPreferences = slot<UserPreferences>()
         coEvery { cacheRepository.clearAllImportedData() } returns Unit

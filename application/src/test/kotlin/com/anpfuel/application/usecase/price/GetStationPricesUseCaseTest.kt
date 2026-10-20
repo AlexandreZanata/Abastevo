@@ -1,6 +1,8 @@
 package com.anpfuel.application.usecase.price
 
 import com.anpfuel.application.error.AppError
+import com.anpfuel.domain.discovery.DiscoverySort
+import com.anpfuel.domain.discovery.DiscoveryStationsRule
 import com.anpfuel.domain.model.PriceSurvey
 import com.anpfuel.domain.model.RetailStation
 import com.anpfuel.domain.model.StationPrice
@@ -169,4 +171,77 @@ class GetStationPricesUseCaseTest {
         fuelProduct = fuelProduct,
         price = PriceAmount.of(value),
     )
+
+    private fun pageOf(vararg prices: String, total: Int = prices.size, hasMore: Boolean = false) =
+        DiscoveryStationsRule.DiscoveryPage(
+            items = prices.map { stationPrice(it) },
+            hasMore = hasMore,
+            totalCount = total,
+        )
+
+    @Test
+    fun pageReturnsWindowWithContext() = runTest {
+        coEvery {
+            stationPriceRepository.hasStationData(surveyWeek, state, municipality)
+        } returns true
+        coEvery {
+            stationPriceRepository.getStationPricesPage(state, municipality, fuelProduct, surveyWeek, null, DiscoverySort.PRICE_ASC, 0, 20)
+        } returns pageOf("5.19", "5.29", total = 2)
+
+        val outcome = useCase.page() as StationPricesPageOutcome.Success
+
+        assertEquals(DiscoverySort.PRICE_ASC, DiscoverySort.PRICE_ASC)
+        assertEquals(2, outcome.page.items.size)
+        assertEquals(2, outcome.page.totalCount)
+        assertTrue(!outcome.page.hasMore)
+        assertEquals(municipality, outcome.municipality)
+    }
+
+    @Test
+    fun pageWithoutDataIsStationDetailMissing() = runTest {
+        coEvery { userPreferencesRepository.getPreferences() } returns UserPreferences(
+            preferredState = state,
+            preferredMunicipality = municipality,
+            preferredFuelProduct = fuelProduct,
+            syncStationDetail = false,
+        )
+        coEvery {
+            stationPriceRepository.hasStationData(surveyWeek, state, municipality)
+        } returns false
+
+        val outcome = useCase.page() as StationPricesPageOutcome.StationDetailMissing
+
+        assertTrue(outcome.requiresOnDemandDownload)
+    }
+
+    @Test
+    fun pageWithImportedDetailButNoRowsIsEmptySuccess() = runTest {
+        coEvery { priceTableRepository.findPriceSurveyByWeek(surveyWeek) } returns PriceSurvey.restore(
+            id = DomainId.forSurveyWeek(surveyWeek),
+            surveyWeek = surveyWeek,
+            summaryImportedAt = java.time.Instant.parse("2026-06-14T10:00:00Z"),
+            stationImportedAt = java.time.Instant.parse("2026-06-14T10:05:00Z"),
+        )
+        coEvery {
+            stationPriceRepository.hasStationData(surveyWeek, state, municipality)
+        } returns false
+
+        val outcome = useCase.page() as StationPricesPageOutcome.Success
+
+        assertTrue(outcome.isEmpty)
+        coVerify(exactly = 0) {
+            stationPriceRepository.getStationPricesPage(any(), any(), any(), any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun findStationPriceDelegatesTargetedLookup() = runTest {
+        coEvery {
+            stationPriceRepository.findStationPrice(state, municipality, fuelProduct, surveyWeek, "61602199002409")
+        } returns stationPrice("5.19")
+
+        val found = useCase.findStationPrice(state, municipality, fuelProduct, surveyWeek, "61602199002409")
+
+        assertEquals("5.19", found?.price?.value?.toPlainString())
+    }
 }

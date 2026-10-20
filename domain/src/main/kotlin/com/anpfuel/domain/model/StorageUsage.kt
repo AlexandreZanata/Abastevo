@@ -7,4 +7,5 @@ data class StorageUsage(
     val summaryRowCount: Int,
     val stationRowCount: Int,
     val importedWeekCount: Int,
+    val publicCatalogEstimatedBytes: Long = 0,
 )

@@ -418,4 +418,76 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_15_16: Migration = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Kotlin Unicode folding preserves the original case-insensitive name/address semantics;
+            // SQLite NOCASE/LIKE only fold ASCII. Walk the cursor without loading the table into memory.
+            db.execSQL("ALTER TABLE `station_price` ADD COLUMN `legal_name_search` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `station_price` ADD COLUMN `trade_name_search` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `station_price` ADD COLUMN `brand_search` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `station_price` ADD COLUMN `address_search` TEXT NOT NULL DEFAULT ''")
+            db.query("SELECT id, legal_name, trade_name, brand, address FROM station_price").use { rows ->
+                while (rows.moveToNext()) {
+                    db.execSQL(
+                        "UPDATE station_price SET legal_name_search=?, trade_name_search=?, brand_search=?, address_search=? WHERE id=?",
+                        arrayOf(
+                            com.anpfuel.data.local.entity.foldStationSearch(rows.getString(1)),
+                            com.anpfuel.data.local.entity.foldStationSearch(rows.getString(2)),
+                            com.anpfuel.data.local.entity.foldStationSearch(rows.getString(3)),
+                            com.anpfuel.data.local.entity.foldStationSearch(rows.getString(4)), rows.getString(0),
+                        ),
+                    )
+                }
+            }
+            db.execSQL("CREATE INDEX IF NOT EXISTS `idx_station_discovery_price` ON `station_price` (`survey_week_id`, `state`, `municipality`, `fuel_product`, `price`, `id`)")
+            // Scoped page participation: the primary key becomes
+            // (station_id, scope_key) so the same station can belong to
+            // the national page and a city page with independent
+            // positions, while unscoped detail records survive page
+            // replacement. Surviving page rows inherit the stored cursor
+            // scope; detail rows keep the unscoped identity scope. ANP
+            // and every other table are untouched: no data movement
+            // outside server_station_cache, no drops elsewhere.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `server_station_cache_new` (
+                    `station_id` TEXT NOT NULL,
+                    `display_name` TEXT NOT NULL,
+                    `location_quality` TEXT NOT NULL,
+                    `latitude` REAL,
+                    `longitude` REAL,
+                    `cnpj_normalized` TEXT,
+                    `municipality_code` TEXT,
+                    `state` TEXT,
+                    `current_revision_id` TEXT,
+                    `position` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    `address_json` TEXT NOT NULL DEFAULT '{}',
+                    `scope_key` TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY(`station_id`, `scope_key`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO `server_station_cache_new` (
+                    `station_id`, `display_name`, `location_quality`, `latitude`, `longitude`,
+                    `cnpj_normalized`, `municipality_code`, `state`, `current_revision_id`,
+                    `position`, `saved_at_millis`, `address_json`, `scope_key`
+                )
+                SELECT `station_id`, `display_name`, `location_quality`, `latitude`, `longitude`,
+                    `cnpj_normalized`, `municipality_code`, `state`, `current_revision_id`,
+                    `position`, `saved_at_millis`, `address_json`,
+                    CASE WHEN `position` != 2147483647
+                        THEN COALESCE((SELECT `key` FROM `server_catalog_meta` LIMIT 1), 'page')
+                        ELSE '' END
+                FROM `server_station_cache`
+                """.trimIndent(),
+            )
+            db.execSQL("DROP TABLE `server_station_cache`")
+            db.execSQL("ALTER TABLE `server_station_cache_new` RENAME TO `server_station_cache`")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_server_station_cache_scope_key_position` ON `server_station_cache` (`scope_key`, `position`)")
+        }
+    }
+
 }

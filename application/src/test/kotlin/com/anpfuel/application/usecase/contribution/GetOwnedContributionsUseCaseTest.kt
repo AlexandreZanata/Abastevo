@@ -124,4 +124,24 @@ class GetOwnedContributionsUseCaseTest {
         assertTrue(outbox.cancelled.isEmpty())
     }
 
+    @Test fun `unavailable owner proof cannot read or cancel local history`() = runTest {
+        val outbox = FakeOutbox(listOf(owned("legacy", OwnedContributionPhase.QUEUED)))
+        val scope = com.anpfuel.application.port.ContributionScopeProvider { throw DomainException("owner proof unavailable") }
+        org.junit.jupiter.api.assertThrows<DomainException> { GetOwnedContributionsUseCase(outbox, scope).page() }
+        org.junit.jupiter.api.assertThrows<DomainException> { CancelOwnedContributionUseCase(outbox, scope).invoke("legacy") }
+        assertTrue(outbox.cancelled.isEmpty())
+    }
+
+    @Test fun `foreign rows do not strand own history beyond the first window`() = runTest {
+        val own = com.anpfuel.domain.model.ContributionScope("owner-a", "https://synthetic.invalid")
+        val foreign = com.anpfuel.domain.model.ContributionScope("owner-b", "https://synthetic.invalid")
+        val outbox = FakeOutbox((0..19).map { owned("foreign-$it", OwnedContributionPhase.QUEUED).copy(scope = foreign) } +
+            owned("mine", OwnedContributionPhase.QUEUED).copy(scope = own))
+        val useCase = GetOwnedContributionsUseCase(outbox, com.anpfuel.application.port.ContributionScopeProvider { own })
+        val first = useCase.page()
+        assertTrue(first.items.isEmpty())
+        assertEquals(20, first.nextOffset)
+        assertEquals("mine", useCase.page(offset = first.nextOffset!!).items.single().commandId)
+    }
+
 }

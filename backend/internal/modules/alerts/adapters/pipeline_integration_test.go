@@ -34,7 +34,7 @@ func TestPipelineCombinedWindowsOutageRestartRotation(t *testing.T) {
 	fake := &fakeProvider{}
 	store.Sender = fake
 	ctx := context.Background()
-	now := time.Now().UTC().Truncate(time.Second)
+	now := alertEvaluationTime()
 	ruleID := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{OperationID: newid(t), RuleID: ruleID, Payload: combinedPayload(t, stations)}}}); err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestPipelineTimezoneMassExpiryBasicAndCleanup(t *testing.T) {
 	fake := &fakeProvider{}
 	store.Sender = fake
 	ctx := context.Background()
-	now := time.Now().UTC().Truncate(time.Second)
+	now := alertEvaluationTime()
 	stations := make([]string, 0, 5)
 	for i := 0; i < 5; i++ {
 		stations = append(stations, newStation(t, pool))

@@ -17,6 +17,7 @@ import androidx.room.PrimaryKey
         ),
     ],
     indices = [
+        Index(name = "idx_station_discovery_price", value = ["survey_week_id", "state", "municipality", "fuel_product", "price", "id"]),
         Index(
             name = "idx_station_survey_muni_product",
             value = ["survey_week_id", "municipality", "fuel_product"],
@@ -40,4 +41,10 @@ data class StationPriceEntity(
     @ColumnInfo(name = "fuel_product") val fuelProduct: String,
     val price: Double,
     @ColumnInfo(name = "collected_at") val collectedAt: String?,
+    @ColumnInfo(name = "legal_name_search", defaultValue = "''") val legalNameSearch: String = foldStationSearch(legalName),
+    @ColumnInfo(name = "trade_name_search", defaultValue = "''") val tradeNameSearch: String = foldStationSearch(tradeName),
+    @ColumnInfo(name = "brand_search", defaultValue = "''") val brandSearch: String = foldStationSearch(brand),
+    @ColumnInfo(name = "address_search", defaultValue = "''") val addressSearch: String = foldStationSearch(address),
 )
+
+internal fun foldStationSearch(value: String?): String = value?.lowercase(java.util.Locale.ROOT).orEmpty()

@@ -108,6 +108,14 @@ object UseCaseModule {
         flags: CommunityReadsFlagProvider, gateway: ServerStationGateway, cache: ServerStationCache,
     ) = com.anpfuel.application.usecase.directory.ResolveStationByCnpjUseCase(flags, gateway, cache)
 
+    @Provides
+    @Singleton
+    fun provideClearPublicCatalogUseCase(
+        cache: ServerStationCache,
+        userPreferencesRepository: UserPreferencesRepository,
+        directory: GetServerStationsUseCase,
+    ) = com.anpfuel.application.usecase.directory.ClearPublicCatalogUseCase(cache, userPreferencesRepository, directory)
+
 
     @Provides
     @Singleton
@@ -534,6 +542,16 @@ object UseCaseModule {
         gateway = gateway,
         cache = cache,
         scopeProvider = scopeProvider,
+    )
+
+    @Provides
+    @Singleton
+    fun provideSyncPublicCatalogUseCase(
+        getServerStations: GetServerStationsUseCase,
+        userPreferencesRepository: UserPreferencesRepository,
+    ) = com.anpfuel.application.usecase.directory.SyncPublicCatalogUseCase(
+        getServerStations = getServerStations,
+        userPreferencesRepository = userPreferencesRepository,
     )
 
     @Provides

@@ -14,7 +14,7 @@ DAO = ROOT / 'data/src/main/kotlin/com/anpfuel/data/local/dao/QualityReportOutbo
 MIGRATION = ROOT / 'data/src/main/kotlin/com/anpfuel/data/local/AnpFuelDatabaseMigrations.kt'
 SCHEMAS = ROOT / 'data/schemas/com.anpfuel.data.local.AnpFuelDatabase'
 QUERIES = dict((name, sql) for sql, name in re.findall(r'@Query\("([^"\n]+)"\)\s*abstract suspend fun (\w+)', DAO.read_text()))
-UPGRADE = re.findall(r'db.execSQL\("([^"\n]+)"\)', MIGRATION.read_text().split('val MIGRATION_13_14:', 1)[1])
+UPGRADE = re.findall(r'db.execSQL\("([^"\n]+)"\)', MIGRATION.read_text().split('val MIGRATION_13_14:', 1)[1].split('val MIGRATION_15_16:', 1)[0])
 
 
 def schema(db, version):

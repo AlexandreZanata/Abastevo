@@ -242,11 +242,6 @@ abstract class RepositoryModule {
         impl: DirectoryStationGatewayImpl,
     ): ServerStationGateway
 
-    @Binds
-    @Singleton
-    abstract fun bindServerStationCache(
-        impl: DirectoryStationRoomCache,
-    ): ServerStationCache
 
     @Binds
     @Singleton

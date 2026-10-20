@@ -15,6 +15,9 @@ import com.anpfuel.domain.repository.RatingWriteReceipt
 import com.anpfuel.domain.repository.VoteTallySnapshot
 import com.anpfuel.domain.repository.VoteWriteReceipt
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.net.URLEncoder
 import java.time.Instant
 import okhttp3.MediaType.Companion.toMediaType
@@ -120,7 +123,7 @@ class FeedbackHttpClient(
             .get()
             .header("Accept", "application/json")
             .build()
-        val raw = execute(request, expected = 200)
+        val raw = awaitRead(request)
         val root = try {
             JSONObject(raw)
         } catch (_: Exception) {
@@ -231,7 +234,7 @@ class FeedbackHttpClient(
             .get()
             .header("Accept", "application/json")
             .build()
-        val raw = execute(request, expected = 200)
+        val raw = awaitRead(request)
         return tallyOf(raw)
     }
 
@@ -257,6 +260,50 @@ class FeedbackHttpClient(
             .header("Accept", "application/json")
             .build()
         return execute(request, expected)
+    }
+
+    /** Public reads are cancellable at the socket and bound memory before JSON decoding. */
+    private suspend fun awaitRead(request: Request): String = suspendCancellableCoroutine { continuation ->
+        val call = client.newCall(request)
+        call.timeout().timeout(20, java.util.concurrent.TimeUnit.SECONDS)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, error: IOException) {
+                if (continuation.isActive) continuation.resumeWithException(
+                    FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback read unavailable"))
+            }
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                response.use {
+                    try {
+                        val source = response.body?.source() ?: throw IOException("empty feedback body")
+                        source.request(256 * 1024 + 1L)
+                        require(source.buffer.size <= 256 * 1024) { "oversized feedback body" }
+                        val payload = source.buffer.readUtf8()
+                        if (response.code != 200) throw mapFeedbackError(response.code, payload)
+                        require(payload.isNotBlank())
+                        var depth = 0
+                        var quoted = false
+                        var escaped = false
+                        for (character in payload) {
+                            if (quoted) when {
+                                escaped -> escaped = false
+                                character == '\\' -> escaped = true
+                                character == '"' -> quoted = false
+                            } else when (character) {
+                                '"' -> quoted = true
+                                '{', '[' -> { depth++; require(depth <= 12) }
+                                '}', ']' -> { depth--; require(depth >= 0) }
+                            }
+                        }
+                        require(depth == 0 && !quoted)
+                        if (continuation.isActive) continuation.resume(payload)
+                    } catch (error: Exception) {
+                        if (continuation.isActive) continuation.resumeWithException(
+                            if (error is FeedbackException) error else FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback read unavailable"))
+                    }
+                }
+            }
+        })
     }
 
     private fun execute(request: Request, expected: Int): String {
@@ -359,13 +406,13 @@ class FeedbackHttpClient(
         return VoteTallySnapshot(commentId, revision, valid, invalid)
     }
 
-    private fun getPage(path: String): FeedbackPage {
+    private suspend fun getPage(path: String): FeedbackPage {
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + path)
             .get()
             .header("Accept", "application/json")
             .build()
-        val raw = execute(request, expected = 200)
+        val raw = awaitRead(request)
         val root = try {
             JSONObject(raw)
         } catch (_: Exception) {
@@ -373,11 +420,13 @@ class FeedbackHttpClient(
         }
         val items = root.optJSONArray("comments")
             ?: throw FeedbackException(FeedbackRejectKind.TRANSPORT, "feedback request failed: bad page")
+        require(items.length() <= 100) { "feedback page exceeds limit" }
         val out = ArrayList<FeedbackCommentView>(items.length())
         for (index in 0 until items.length()) {
             out += viewOf(items.getJSONObject(index))
         }
         val cursor = if (root.isNull("next_cursor")) null else root.optString("next_cursor", "").ifBlank { null }
+        require(cursor == null || cursor.length <= 4096) { "feedback cursor exceeds limit" }
         return FeedbackPage(out, cursor)
     }
 

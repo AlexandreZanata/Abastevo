@@ -34,7 +34,7 @@ func TestEvaluateThresholdChangeCoverageFanoutRollback(t *testing.T) {
 	other := newStation(t, pool)
 	store := NewStore(pool)
 	ctx := context.Background()
-	now := time.Now().UTC().Truncate(time.Second)
+	now := alertEvaluationTime()
 	ruleID := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{OperationID: newid(t), RuleID: ruleID, Payload: rulePayload(t, station)}}}); err != nil {
 		t.Fatal(err)
@@ -97,5 +97,33 @@ func TestEvaluateThresholdChangeCoverageFanoutRollback(t *testing.T) {
 	plan.Close()
 	if len(text) == 0 {
 		t.Fatal("empty plan")
+	}
+}
+
+func TestAlertScheduleClockIndependentOfCIRunDay(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		{"allowed-Tuesday", alertEvaluationTime(), 1},
+		{"excluded-Sunday", alertEvaluationTime().AddDate(0, 0, -2), 0},
+		{"outside-window", alertEvaluationTime().Add(-10 * time.Hour), 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := freshDB(t)
+			owner, station := newAccount(t, pool), newStation(t, pool)
+			ruleID := newid(t)
+			store := NewStore(pool)
+			ctx := context.Background()
+			if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{OperationID: newid(t), RuleID: ruleID, Payload: rulePayload(t, station)}}}); err != nil {
+				t.Fatal(err)
+			}
+			insertCommunityPrice(t, pool, station, "ETHANOL", "L", 6000, "STANDARD", tc.now.Add(-time.Hour), true)
+			got, err := store.Evaluate(ctx, owner, ruleID, "", 100, tc.now)
+			if err != nil || got.Candidates != tc.want {
+				t.Fatalf("schedule %+v %v; want %d", got, err, tc.want)
+			}
+		})
 	}
 }

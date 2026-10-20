@@ -23,7 +23,11 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
+import kotlinx.coroutines.test.runCurrent
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -169,6 +173,125 @@ class FeedbackViewModelTest {
         assertTrue(vm.state.value is FeedbackUiState.Queued)
         assertEquals(2, seen.size)
         assertEquals(seen[0], seen[1])
+    }
+
+    private fun comment(id: String, text: String = "comment $id") =
+        com.anpfuel.domain.repository.FeedbackCommentView(
+            id = id,
+            alias = "anon",
+            stationId = "s-1",
+            product = "GASOLINE",
+            parentId = "",
+            depth = 0,
+            text = text,
+            revision = 1,
+            createdAt = 1L,
+            updatedAt = 1L,
+        )
+
+    @Test
+    fun `continuation appends deduplicated comments and advances`() = runTest {
+        enabled = true
+        coEvery { reads.comments(any(), any(), eq(""), any()) } returns
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-1"), comment("c-2")), "next-1"),
+            )
+        coEvery { reads.comments(any(), any(), eq("next-1"), any()) } returns
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-2"), comment("c-3")), null),
+            )
+        val vm = preparedVm()
+
+        vm.loadFirstPage()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertTrue(state is FeedbackUiState.Loaded)
+        assertEquals(listOf("c-1", "c-2", "c-3"), (state as FeedbackUiState.Loaded).items.map { it.id })
+        assertNull(state.nextCursor)
+        assertFalse(state.isLoadingMore)
+        assertNull(state.moreError)
+    }
+
+    @Test
+    fun `continuation without cursor is a no-op`() = runTest {
+        enabled = true
+        coEvery { reads.comments(any(), any(), any(), any()) } returns
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-1")), null),
+            )
+        val vm = preparedVm()
+
+        vm.loadFirstPage()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { reads.comments(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `failed continuation keeps comments and retries from the same cursor`() = runTest {
+        enabled = true
+        coEvery { reads.comments(any(), any(), eq(""), any()) } returns
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-1")), "next-1"),
+            )
+        coEvery { reads.comments(any(), any(), eq("next-1"), any()) } throws
+            java.io.IOException("down") andThen
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-2")), null),
+            )
+        val vm = preparedVm()
+
+        vm.loadFirstPage()
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+
+        var state = vm.state.value
+        assertTrue(state is FeedbackUiState.Loaded)
+        assertEquals(listOf("c-1"), (state as FeedbackUiState.Loaded).items.map { it.id })
+        assertEquals("next-1", state.nextCursor)
+        assertNotNull(state.moreError)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        state = vm.state.value
+        assertTrue(state is FeedbackUiState.Loaded)
+        assertEquals(listOf("c-1", "c-2"), (state as FeedbackUiState.Loaded).items.map { it.id })
+        assertNull((state as FeedbackUiState.Loaded).moreError)
+    }
+
+    @Test
+    fun `late response from a previous target never lands`() = runTest {
+        enabled = true
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { reads.comments(eq("s-1"), any(), any(), any()) } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { release.await() }
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-1")), null),
+            )
+        }
+        coEvery { reads.comments(eq("s-2"), any(), any(), any()) } returns
+            FeedbackPageOutcome.Fresh(
+                com.anpfuel.domain.repository.FeedbackPage(listOf(comment("c-9")), null),
+            )
+        val vm = preparedVm()
+
+        vm.loadFirstPage()
+        runCurrent()
+        vm.prepare(stationId = "s-2", product = "GASOLINE", accountId = "acc-1")
+        vm.loadFirstPage()
+        release.complete(Unit)
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertTrue(state is FeedbackUiState.Loaded)
+        assertEquals(listOf("c-9"), (state as FeedbackUiState.Loaded).items.map { it.id })
     }
 
     @Test
