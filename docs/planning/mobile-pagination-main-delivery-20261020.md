@@ -1,7 +1,7 @@
 # Mobile pagination and maintained-dev delivery reconciliation
 
-Status: IN_PROGRESS
-Validation: PENDING
+Status: LOCAL_DONE
+Validation: PASS
 Integration: INTEGRATION_PENDING
 
 User authorized reconciliation and protected main integration on 2026-10-20. Reuse PR138 (dev→main), preserving its quality batch and both histories. Main base08a54dc4, published dev901c432c, committed local quality tip9737b22f (advanced from the initial91ad38c0 during reconciliation), mobile/native review tipd0918d03. An independent local clone with a private dev ref avoids taking over the dirty maintained-dev checkout. The uncommitted quality109 work and the original evidence-store edit stay in their original directories; no stash/reset/force update is used.
@@ -30,3 +30,13 @@ Final test counts, CI head/base/check URLs and integration/wiki outcome belong i
 - Both actual SQLite harnesses PASS (six cases each). Android/build inputs remain identical to d0918d03, so prior1,726 JVM and38 native executions are retained as exact-source evidence.
 
 The initial broad backend matrix executed2,715 passing cases plus13 failing nested cases across four packages (all repaired/environment causes above), four explicit optional case skips and26 packages without tests. Its passing package evidence is not a claim of an all-green aggregate. The final combined109 matrix is recorded only after it actually completes. The occupied other front advanced to its committed9737b22f checkpoint; it was normally merged before publication. Its subsequent uncommitted FQ-07R6C remains outside this candidate and untouched.
+
+## Final local acceptance and publication
+
+Combined migration109 matrix:112 packages PASS, one failing package solely from the old fixed-port Caddy fixture;2,756 passing nested Go cases, one failed case, four explicit optional case skips,26 packages with no tests. Repaired the edge fixture to bind an ephemeral loopback port and run detached with a CID receipt; cleanup removes only the64-hex container ID created by this test, including failure paths. Retained observed-client/forged-header/503 assertions. Two real Docker/Caddy/race executions PASS afterward; no test-labeled edge container remains. This is an affected rerun after a concrete harness correction, not a retry hiding an unexplained failure. The union covers113 backend packages; it is not represented as a single unbroken aggregate run.
+
+Classifier3, SQLite12, affected alert/index/worker/native packages, full cloud ownership/consent/recovery/race regression, source compilation through the Go matrix, scoped vet/staticcheck, gofmt, whitespace and secret-surface checks PASS. Android source/build comparison against d0918d03 is empty, preserving the exact-source JVM/native evidence. The final bounded local quick gate is reserved for git-flow finish after remote acceptance, per CI_PLAN.
+
+Published dev normally from901c432c to the reconciled candidate through c422b2b3; final edge/acceptance commit follows. PR138 was reused and retitled to the cumulative Android/quality scope. GitHub CLI edit encountered an obsolete projectCards GraphQL field; the same title/body update succeeded through REST. No new PR or tracker closure was created. Wiki alias was independently reachable at HEAD0100fe7d; actual mirror publication waits for the merged source SHA.
+
+At this checkpoint remote checks are not yet accepted. Required Quick verification and applicable Android/backend fast/integration must complete successfully on the final candidate and verified head/base mapping before merge. Any new failure or moved input requires repair/revalidation. The dirty local dev checkout and its later FQ-07R6C changes stay untouched and must reconcile the remote result before its own future push. Remote dev is retained/synchronized by guarded finish; source publication does not assert full FQ-17/G24/G09 acceptance.
