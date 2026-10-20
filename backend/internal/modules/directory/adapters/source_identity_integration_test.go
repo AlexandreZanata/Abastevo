@@ -10,6 +10,7 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"io/fs"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
