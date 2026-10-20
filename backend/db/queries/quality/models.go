@@ -128,6 +128,26 @@ type QualityEnforcementEvent struct {
 	EvidenceRef string      `json:"evidence_ref"`
 }
 
+type QualityHistoricalFineNote struct {
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	SourcePeriod string      `json:"source_period"`
+	EvidenceRef  string      `json:"evidence_ref"`
+	Kind         string      `json:"kind"`
+	NoteText     string      `json:"note_text"`
+}
+
+type QualityHistoricalFineRevision struct {
+	RevisionID           pgtype.UUID `json:"revision_id"`
+	InputContract        string      `json:"input_contract"`
+	SourcePeriod         string      `json:"source_period"`
+	SourceFile           string      `json:"source_file"`
+	HeaderRecord         int32       `json:"header_record"`
+	SourceClockPrecision string      `json:"source_clock_precision"`
+	SourceClockValue     string      `json:"source_clock_value"`
+	SourceRecordCount    int32       `json:"source_record_count"`
+	MetadataCount        int32       `json:"metadata_count"`
+}
+
 type QualityLink struct {
 	ID         pgtype.UUID `json:"id"`
 	RevisionID pgtype.UUID `json:"revision_id"`
@@ -146,6 +166,12 @@ type QualityManifest struct {
 	Quarantined  int64              `json:"quarantined"`
 	ManifestHash string             `json:"manifest_hash"`
 	RecordedAt   pgtype.Timestamptz `json:"recorded_at"`
+}
+
+type QualityNativeFineRevision struct {
+	RevisionID      pgtype.UUID `json:"revision_id"`
+	ReportYear      int32       `json:"report_year"`
+	ExtractionMonth string      `json:"extraction_month"`
 }
 
 type QualityPeriod struct {
@@ -270,25 +296,30 @@ type QualityRevisionResource struct {
 }
 
 type QualitySanctionEvent struct {
-	ID              pgtype.UUID `json:"id"`
-	RevisionID      pgtype.UUID `json:"revision_id"`
-	NativeKey       string      `json:"native_key"`
-	ProceedingRef   string      `json:"proceeding_ref"`
-	PartyCnpj       string      `json:"party_cnpj"`
-	AmountMinor     pgtype.Int8 `json:"amount_minor"`
-	Status          string      `json:"status"`
-	DecidedOn       pgtype.Date `json:"decided_on"`
-	AsOf            pgtype.Date `json:"as_of"`
-	EvidenceRef     string      `json:"evidence_ref"`
-	SourceContract  string      `json:"source_contract"`
-	ExtractionMonth pgtype.Text `json:"extraction_month"`
-	ReportYear      pgtype.Int4 `json:"report_year"`
-	DufRef          pgtype.Text `json:"duf_ref"`
-	Department      pgtype.Text `json:"department"`
-	DueOn           pgtype.Date `json:"due_on"`
-	AmountText      pgtype.Text `json:"amount_text"`
-	PaidText        pgtype.Text `json:"paid_text"`
-	PaidMinor       pgtype.Int8 `json:"paid_minor"`
+	ID                pgtype.UUID `json:"id"`
+	RevisionID        pgtype.UUID `json:"revision_id"`
+	NativeKey         string      `json:"native_key"`
+	ProceedingRef     string      `json:"proceeding_ref"`
+	PartyCnpj         string      `json:"party_cnpj"`
+	AmountMinor       pgtype.Int8 `json:"amount_minor"`
+	Status            string      `json:"status"`
+	DecidedOn         pgtype.Date `json:"decided_on"`
+	AsOf              pgtype.Date `json:"as_of"`
+	EvidenceRef       string      `json:"evidence_ref"`
+	SourceContract    string      `json:"source_contract"`
+	ExtractionMonth   pgtype.Text `json:"extraction_month"`
+	ReportYear        pgtype.Int4 `json:"report_year"`
+	DufRef            pgtype.Text `json:"duf_ref"`
+	Department        pgtype.Text `json:"department"`
+	DueOn             pgtype.Date `json:"due_on"`
+	AmountText        pgtype.Text `json:"amount_text"`
+	PaidText          pgtype.Text `json:"paid_text"`
+	PaidMinor         pgtype.Int8 `json:"paid_minor"`
+	HistoryRevisionID pgtype.UUID `json:"history_revision_id"`
+	ReferenceLabel    pgtype.Text `json:"reference_label"`
+	ReferenceRef      pgtype.Text `json:"reference_ref"`
+	SourceTransitOn   pgtype.Date `json:"source_transit_on"`
+	UnlabelledField   pgtype.Text `json:"unlabelled_field"`
 }
 
 type QualityStationFuelProjection struct {

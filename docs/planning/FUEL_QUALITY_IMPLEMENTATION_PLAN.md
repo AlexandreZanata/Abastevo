@@ -243,6 +243,16 @@ event to a station. Unknown CNPJ, duplicate active binding, incompatible dates
 or unresolved succession goes to review with a reason and replayable source.
 Quality import never creates a station or approves its coordinates implicitly.
 
+Fine snapshots without an incident/business-validity date may establish only a
+separately typed CURRENT_COMPANY_ONLY relationship to one exact current active
+Directory identity. This identifies an observation about the current company;
+it does not establish historical operation at that site, a fuel finding or score
+eligibility. Vencimento/source extraction cannot substitute for incident dates.
+Ambiguous, retired-only, missing and wrong-branch records remain unassociated.
+[Current-company policy FQ-07R6A](../backend/evidence/fuel-quality/FQ07R6A_COMPANY_ASSOCIATION_POLICY.md)
+is LOCAL_DONE; compatible scoped storage, live publication/read fences and actual
+runtime association remain OWED. Existing dated PMQC resolution is unchanged.
+
 ## 5. Reliability score proposal and publication gate
 
 A score is in scope, but an arbitrary weighted mix is not an implementation
@@ -425,9 +435,9 @@ Rust adapter contract: [FQ-06](../backend/evidence/fuel-quality/FQ06_ENFORCEMENT
 
 ### FQ-07 — Sanction snapshots, corrections and case correlation (M)
 
-[Official SICOM fine preparer FQ-07R1](../backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md) is LOCAL_DONE / INTEGRATION_PENDING with exact2025 source reconciliation and CPF minimization. It uses a separate native observation contract: due date is not decision date, extraction month is not an invented day, content observation identity is not a fine number. [Typed native Go boundary FQ-07R2](../backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md) is LOCAL_DONE with real Rust→Go2025 reconciliation; [Native storage prerequisite FQ-07R3A](../backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) is LOCAL_DONE with actual105→106/clock/money/transaction guards; typed native publication and explicit clock read contracts, live discovery/composition and safe station links remain OWED.
+[Official SICOM fine preparer FQ-07R1](../backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md) is LOCAL_DONE / INTEGRATION_PENDING with exact2025 source reconciliation and CPF minimization. It uses a separate native observation contract: due date is not decision date, extraction month is not an invented day, content observation identity is not a fine number. [Typed native Go boundary FQ-07R2](../backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md) is LOCAL_DONE with real Rust→Go2025 reconciliation; [Native storage prerequisite FQ-07R3A](../backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) is LOCAL_DONE with actual105→106/clock/money/transaction guards; [Native publication and clock read contracts FQ-07R3B](../backend/evidence/fuel-quality/FQ07R3B_NATIVE_FINE_PUBLICATION.md) are LOCAL_DONE with empty/correction/history/actual-wire acceptance; [Native file/process/job boundary FQ-07R4A](../backend/evidence/fuel-quality/FQ07R4A_NATIVE_FINE_FILE_IMPORT.md) is LOCAL_DONE with actual Rust→PostGIS recovery; [Native fine worker/discovery/image FQ-07R4B](../backend/evidence/fuel-quality/FQ07R4B_NATIVE_FINE_WORKER.md) is LOCAL_DONE with imports/schedule off and real2025 reconciliation; [Historical native fine profiles FQ-07R5A](../backend/evidence/fuel-quality/FQ07R5A_HISTORICAL_FINE_PREPARER.md) are LOCAL_DONE with complete independent native reconciliation; [Verified historical Rust→Go boundary FQ-07R5B](../backend/evidence/fuel-quality/FQ07R5B_HISTORICAL_FINE_BRIDGE.md) is LOCAL_DONE; [Compatible historical storage FQ-07R5C](../backend/evidence/fuel-quality/FQ07R5C_HISTORICAL_FINE_STORAGE.md) is LOCAL_DONE with real107→108/negative/concurrency acceptance; [Historical atomic publication/public contracts FQ-07R5D](../backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md) are LOCAL_DONE with complete seven-resource Rust→Go→PostGIS/all-page acceptance; [Seven-resource historical worker/image FQ-07R5E](../backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md) is LOCAL_DONE with whole-source worker/queue/image acceptance; runtime activation, complete station history and safe station links remain OWED.
 
-Rust adapter contract: [FQ-07](../backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md), LOCAL_DONE / INTEGRATION_PENDING. Runtime reconciliation (FQ-05W8): as with FQ-06, the live Go source stream, prepare CLI and discovery remain OWED; adapter fixtures alone do not certify runtime history.
+Rust adapter contract: [FQ-07](../backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md), LOCAL_DONE / INTEGRATION_PENDING. Historical runtime reconciliation (FQ-05W8): adapter fixtures alone did not certify runtime history. Native2025 and six historical profiles have CLI/typed Go/storage/publication/worker/discovery/image LOCAL_DONE through FQ-07R5E with complete seven-file source acceptance; safe station links and deployment acceptance remain OWED.
 
 - Depends: FQ-06; verified S-FQ-03 contract. BUC-FQ-03/04.
 - Deliver: extraction-time status revisions, exact case linkage, monetary source

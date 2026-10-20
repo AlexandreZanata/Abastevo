@@ -32,3 +32,27 @@ func TestMemberlessPublicationKeyRemainsByteCompatible(t *testing.T) {
 		t.Fatal("member excluded from key")
 	}
 }
+
+func TestNativeClockPublicationKeyRemainsCompatibleBeforeHistory(t *testing.T) {
+	clock := &application.NativeFineClock{ReportYear: 2025, ExtractionMonth: "2026-01"}
+	req := editionRequest{Source: "sanctions", Stream: "sanction-v1", Edition: "2025", ManifestHash: "source-manifest", Counts: domain.Counts{Input: 1, Accepted: 1}, Resources: []application.Resource{{URL: "https://example.invalid/f.csv", SHA256: "hash", Bytes: 100}}, NativeFineClock: clock}
+	old, _ := json.Marshal(struct {
+		Source, Stream, Edition, Manifest string
+		Counts                            domain.Counts
+		Resources                         []application.Resource
+		Periods                           []application.PeriodInput
+		Links                             []application.LinkInput
+		NativeFineClock                   *application.NativeFineClock `json:",omitempty"`
+	}{req.Source, req.Stream, req.Edition, req.ManifestHash, req.Counts, req.Resources, nil, nil, clock})
+	sum := sha256.Sum256(old)
+	if req.publicationKey() != hex.EncodeToString(sum[:]) {
+		t.Fatal("native2025 publication key changed")
+	}
+	req.NativeFineClock = nil
+	req.HistoricalFineContext = &application.FineHistoryContext{SourcePeriod: "2023", Clock: application.FineHistoryClock{Precision: "MONTH", Value: "2024-06"}}
+	before := req.publicationKey()
+	req.HistoricalFineContext.Clock.Value = "2024-07"
+	if req.publicationKey() == before {
+		t.Fatal("historical source clock omitted from frozen identity")
+	}
+}

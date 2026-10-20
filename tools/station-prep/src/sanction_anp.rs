@@ -5,7 +5,7 @@ use crate::types::{reason, sha256_hex, Counts, Limits, QuarantineRow};
 use serde::Serialize;
 use std::collections::HashSet;
 
-const CP850: &str = "\u{c7}\u{fc}\u{e9}\u{e2}\u{e4}\u{e0}\u{e5}\u{e7}\u{ea}\u{eb}\u{e8}\u{ef}\u{ee}\u{ec}\u{c4}\u{c5}\u{c9}\u{e6}\u{c6}\u{f4}\u{f6}\u{f2}\u{fb}\u{f9}\u{ff}\u{d6}\u{dc}\u{f8}\u{a3}\u{d8}\u{d7}\u{192}\u{e1}\u{ed}\u{f3}\u{fa}\u{f1}\u{d1}\u{aa}\u{ba}\u{bf}\u{ae}\u{ac}\u{bd}\u{bc}\u{a1}\u{ab}\u{bb}\u{2591}\u{2592}\u{2593}\u{2502}\u{2524}\u{c1}\u{c2}\u{c0}\u{a9}\u{2563}\u{2551}\u{2557}\u{255d}\u{a2}\u{a5}\u{2510}\u{2514}\u{2534}\u{252c}\u{251c}\u{2500}\u{253c}\u{e3}\u{c3}\u{255a}\u{2554}\u{2569}\u{2566}\u{2560}\u{2550}\u{256c}\u{a4}\u{f0}\u{d0}\u{ca}\u{cb}\u{c8}\u{131}\u{cd}\u{ce}\u{cf}\u{2518}\u{250c}\u{2588}\u{2584}\u{a6}\u{cc}\u{2580}\u{d3}\u{df}\u{d4}\u{d2}\u{f5}\u{d5}\u{b5}\u{fe}\u{de}\u{da}\u{db}\u{d9}\u{fd}\u{dd}\u{af}\u{b4}\u{ad}\u{b1}\u{2017}\u{be}\u{b6}\u{a7}\u{f7}\u{b8}\u{b0}\u{a8}\u{b7}\u{b9}\u{b3}\u{b2}\u{25a0}\u{a0}";
+pub(crate) const CP850: &str = "\u{c7}\u{fc}\u{e9}\u{e2}\u{e4}\u{e0}\u{e5}\u{e7}\u{ea}\u{eb}\u{e8}\u{ef}\u{ee}\u{ec}\u{c4}\u{c5}\u{c9}\u{e6}\u{c6}\u{f4}\u{f6}\u{f2}\u{fb}\u{f9}\u{ff}\u{d6}\u{dc}\u{f8}\u{a3}\u{d8}\u{d7}\u{192}\u{e1}\u{ed}\u{f3}\u{fa}\u{f1}\u{d1}\u{aa}\u{ba}\u{bf}\u{ae}\u{ac}\u{bd}\u{bc}\u{a1}\u{ab}\u{bb}\u{2591}\u{2592}\u{2593}\u{2502}\u{2524}\u{c1}\u{c2}\u{c0}\u{a9}\u{2563}\u{2551}\u{2557}\u{255d}\u{a2}\u{a5}\u{2510}\u{2514}\u{2534}\u{252c}\u{251c}\u{2500}\u{253c}\u{e3}\u{c3}\u{255a}\u{2554}\u{2569}\u{2566}\u{2560}\u{2550}\u{256c}\u{a4}\u{f0}\u{d0}\u{ca}\u{cb}\u{c8}\u{131}\u{cd}\u{ce}\u{cf}\u{2518}\u{250c}\u{2588}\u{2584}\u{a6}\u{cc}\u{2580}\u{d3}\u{df}\u{d4}\u{d2}\u{f5}\u{d5}\u{b5}\u{fe}\u{de}\u{da}\u{db}\u{d9}\u{fd}\u{dd}\u{af}\u{b4}\u{ad}\u{b1}\u{2017}\u{be}\u{b6}\u{a7}\u{f7}\u{b8}\u{b0}\u{a8}\u{b7}\u{b9}\u{b3}\u{b2}\u{25a0}\u{a0}";
 const HEADER: [&str; 9] = [
     "Status Processo",
     "Superintendência",
@@ -93,7 +93,7 @@ fn month(label: &str) -> Option<u8> {
     .position(|v| *v == label)
     .map(|n| n as u8 + 1)
 }
-fn extraction(preamble: &str, report_year: u16) -> Option<String> {
+pub(crate) fn extraction(preamble: &str, report_year: u16) -> Option<String> {
     let prefix = format!("RELAÇÃO DE MULTAS APLICADAS EM {report_year}  (Relatório extraído em ");
     let text = preamble.strip_prefix(&prefix)?.strip_suffix(')')?;
     let (m, y) = text.split_once('/')?;
@@ -106,7 +106,7 @@ fn extraction(preamble: &str, report_year: u16) -> Option<String> {
     }
     Some(format!("{year:04}-{:02}", month(m)?))
 }
-fn money(value: &str) -> Option<i64> {
+pub(crate) fn money(value: &str) -> Option<i64> {
     let (units, cents) = value.split_once(',')?;
     if cents.len() != 2 || !cents.bytes().all(|b| b.is_ascii_digit()) {
         return None;
@@ -131,7 +131,7 @@ fn money(value: &str) -> Option<i64> {
         .checked_mul(100)?
         .checked_add(cents.parse::<i64>().ok()?)
 }
-fn due(value: &str) -> Option<String> {
+pub(crate) fn due(value: &str) -> Option<String> {
     let b = value.as_bytes();
     if b.len() != 10
         || b[2] != b'/'

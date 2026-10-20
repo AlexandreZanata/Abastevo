@@ -55,3 +55,27 @@ func TestQualitySourceSchedulesDefaultOffAndIndependent(t *testing.T) {
 		t.Fatal("invalid schedule boolean accepted")
 	}
 }
+
+func TestFineDiscoveryScheduleIsIndependentAndDefaultOff(t *testing.T) {
+	base, e := load(func(string) (string, bool) { return "", false })
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, value := range []string{"", "false", "true", "invalid"} {
+		cfg, e := load(func(key string) (string, bool) {
+			if key == "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED" {
+				return value, value != ""
+			}
+			return "", false
+		})
+		if value == "invalid" {
+			if e == nil {
+				t.Fatal("bad flag accepted")
+			}
+			continue
+		}
+		if e != nil || cfg.QualitySanctionsDiscoveryEnabled != (value == "true") || cfg.QualityImportsEnabled || cfg.QualityDiscoveryEnabled || cfg.QualityRevalidationEnabled || cfg.ANPDiscoveryEnabled != base.ANPDiscoveryEnabled {
+			t.Fatal("fine schedule activated another source", e)
+		}
+	}
+}

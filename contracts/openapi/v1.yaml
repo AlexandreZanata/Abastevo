@@ -7575,6 +7575,32 @@ components:
       type: object
       required: [source, stream, edition, revision_id, available, stale, coverage_note]
       properties:
+        source_clock_precision: {type: string, enum: [DAY, MONTH]}
+        source_input_contract: {type: string, maxLength: 128}
+        source_period: {type: string, maxLength: 32}
+        source_clock_value:
+          description: Original extraction day or month, according to source_clock_precision; never a decision date or invented extraction instant.
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])(-[0-9]{2})?$'
+        source_record_count: {type: integer, minimum: 0, maximum: 500000}
+        source_metadata_records:
+          description: Source footer/separator records already included in input/quarantine counts; never additional fines.
+          type: integer
+          minimum: 0
+          maximum: 500000
+        source_notes:
+          description: Distinct allowlisted source payment caveats. Blank separators retain counts without display text.
+          type: array
+          maxItems: 2
+          items:
+            type: object
+            required: [kind, text, evidence_ref]
+            properties:
+              kind: {type: string, enum: [PUBLIC_PAYMENT_NOTE]}
+              text: {type: string}
+              evidence_ref: {type: string}
+        source_extraction_month: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        source_report_year: {type: integer, minimum: 2016, maximum: 9999}
         supersedes_revision_id: {type: [string, 'null'], format: uuid}
         revision_status: {type: string, enum: [published, superseded, withdrawn, unavailable]}
         provenance_state: {type: string, enum: [VERIFIED, LEGACY_UNVERIFIED, UNAVAILABLE]}
@@ -7720,7 +7746,7 @@ components:
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualitySanction:
-      description: One published snapshot, extraction-time status only. Page items omit lease and generated_at; detail responses include them.
+      description: One published snapshot with source-time facts only; extraction retains the actual day/month precision and grouped period. Due and source-declared transit dates never become decided_on. Unknown paid remains null; raw unlabelled data has no inferred meaning. Content observation keys are not source-issued fine numbers. Page items omit lease and generated_at; detail responses include them.
       type: object
       required: [id, native_key, proceeding_ref, status, as_of, evidence_ref]
       properties:
@@ -7730,7 +7756,31 @@ components:
         amount_minor: {type: [integer, 'null'], minimum: 0}
         status: {type: string}
         decided_on: {type: [string, 'null'], format: date}
-        as_of: {type: string, format: date}
+        as_of: {type: [string, 'null'], format: date}
+        as_of_precision: {type: string, enum: [DAY, MONTH]}
+        identity_kind: {type: string, enum: [LEGACY_REFERENCE, CONTENT_OBSERVATION]}
+        extraction_month: {type: [string, 'null'], pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        report_year: {type: [integer, 'null'], minimum: 2016, maximum: 9999}
+        duf_ref: {type: [string, 'null']}
+        department: {type: [string, 'null']}
+        due_on: {type: [string, 'null'], format: date}
+        amount_text: {type: [string, 'null']}
+        paid_text: {type: [string, 'null']}
+        paid_minor: {type: [integer, 'null'], minimum: 0}
+        input_contract: {type: [string, 'null']}
+        source_period: {type: [string, 'null']}
+        source_clock_value:
+          type: [string, 'null']
+          description: Exact extraction value paired with as_of_precision; does not populate as_of or decided_on.
+        reference_label: {type: [string, 'null']}
+        reference_ref: {type: [string, 'null']}
+        source_transit_on:
+          description: Verbatim source-declared Data Transito Julgado, when present; no legal outcome is inferred.
+          type: [string, 'null']
+          format: date
+        unlabelled_field:
+          description: Verbatim value from an empty source header; no business meaning is inferred.
+          type: [string, 'null']
         evidence_ref: {type: string}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}

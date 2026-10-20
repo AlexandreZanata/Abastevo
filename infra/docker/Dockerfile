@@ -15,7 +15,7 @@ ARG REVISION=dev
 
 FROM ${RUST_IMAGE} AS rust-builder
 # Static musl build so the distroless/static runtime needs no glibc. The
-# musl toolchain is build-only; only the pinned prepare_quality binary is
+# musl toolchain is build-only; only the pinned native preparer binaries are
 # copied into the worker image. The locked crate dependency set is reused
 # unchanged (MIT crate licenses already reviewed for station-prep).
 RUN apt-get update \
@@ -25,8 +25,8 @@ RUN apt-get update \
 WORKDIR /src
 COPY tools/station-prep/Cargo.toml tools/station-prep/Cargo.lock ./
 COPY tools/station-prep/src ./src
-RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin prepare_quality \
- && chmod 755 target/x86_64-unknown-linux-musl/release/prepare_quality
+RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history \
+ && chmod 755 target/x86_64-unknown-linux-musl/release/prepare_quality target/x86_64-unknown-linux-musl/release/prepare_sanctions target/x86_64-unknown-linux-musl/release/prepare_fine_history
 
 FROM ${GOLANG_IMAGE} AS builder
 ENV CGO_ENABLED=0 GOOS=linux GOTOOLCHAIN=local
@@ -58,6 +58,8 @@ COPY --from=builder --chown=65532:65532 /out/worker /worker
 # Trusted native quality preparer: immutable image path, mode 755, static
 # musl build, never a hostPath or job-provided executable.
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_quality /prepare_quality
+COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_sanctions /prepare_sanctions
+COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_fine_history /prepare_fine_history
 USER 65532:65532
 ENTRYPOINT ["/worker"]
 

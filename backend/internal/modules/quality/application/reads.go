@@ -12,7 +12,7 @@ import (
 // StaleAfterDays freezes when a published lease reads stale: twice the
 // slowest routine source rhythm plus margin. Older leases stay served
 // with the flag set, never silently dropped or refreshed.
-const StaleAfterDays = 180
+const StaleAfterDays = domain.SourceStaleAfterDays
 
 var (
 	ErrBadStationID = errors.New("quality: station id must be a UUID")

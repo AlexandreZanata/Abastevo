@@ -55,10 +55,14 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --target-dir /tmp/abastevo-integration-rust
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_sanctions
+export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_fine_history
+export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
@@ -147,9 +151,10 @@ catalog traversal after imports to include newly inserted revisions.
 
 `ANPFUEL_QUALITY_READS_ENABLED=false` contains all official quality routes.
 
-Native PMQC worker imports have a separate default-off switch,
+Native quality worker imports have a separate default-off switch,
 `ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
-`quality-import`, `quality-discovery` and `quality-revalidate`; disabled source
+`quality-import`, `quality-discovery`, `quality-revalidate`, `quality-recompute`,
+`quality-sanctions-import` and `quality-sanctions-discovery`; disabled source
 jobs retain zero claim attempts. Enablement adds fixed slots for the native
 import (trusted `/prepare_quality` executable shipped in the worker image and a
 separate PostgreSQL advisory-lock connection across fetch, preparation and
@@ -165,6 +170,20 @@ deployment selection; see
 [FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md),
 [FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and
 [FQ-05W8](../docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md).
+Native fine jobs use trusted `/prepare_sanctions` for2025 and
+`/prepare_fine_history` for the six separately verified historical profiles, under
+one whole-attempt source lease and verified/minimized typed publication. Discovery
+inspects one of seven actual supported hrefs per persistent cursor step. Grouped
+2016–2019 remains one resource;2021 is verified CSV despite its .xlsx filename.
+Strict resource/profile admission precedes fetch, and raw private files are
+removed before publication. Both import activation and the independent
+`ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stay off until
+runtime acceptance. The seven files reconcile35,911 source records into35,612
+accepted observations,293 CPF quarantines and six source metadata records; these
+counts do not establish national case coverage or station association. Safe
+station association and enforcement XLSX remain owed. See
+[FQ-07R5D](../docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md)
+and [FQ-07R5E](../docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account
@@ -172,11 +191,27 @@ transactionally; acknowledged replay costs no second unit. No payment/GPS/docume
 or business portal requirement is introduced. See [review](../docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)
 and [historical validation](../docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md).
 
+Native SICOM fine observations have a separate source contract and typed publisher.
+The native CSV carries a GRM due day and month-only extraction precision: public
+sanction responses expose `as_of: null`, `as_of_precision: MONTH`,
+`extraction_month`, `due_on`, raw amount/payment text and minor units separately.
+`identity_kind: CONTENT_OBSERVATION` identifies a minimized-content digest, not a
+source-issued fine number. Exact-day legacy snapshots stay readable. Source age
+uses the existing180-day policy independently of local import publication time;
+a fresh import of old source data remains stale, including empty revisions.
+Company names/CPF are discarded; company identifiers stay out of public responses.
+See [native preparation](../docs/backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md),
+[typed boundary](../docs/backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md),
+[storage](../docs/backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) and
+[atomic publication/read clocks](../docs/backend/evidence/fuel-quality/FQ07R3B_NATIVE_FINE_PUBLICATION.md).
+This source publication boundary is not yet a composed import/discovery handler;
+no full fine history, station association or runtime activation is certified.
+
 Critical quality persistence/read/job checks, from backend/ against disposable
 local PostGIS (never the staging database):
 
 ```sh
-ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality go test -race -tags=integration ./internal/modules/quality/... -count=1
+ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history go test -race -tags=integration ./internal/modules/quality/... -count=1
 go test ./internal/platform/apicontract -count=1
 ```
 

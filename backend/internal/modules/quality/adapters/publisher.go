@@ -39,15 +39,17 @@ func (p *Publisher) WithGuard(guard func(context.Context, pgx.Tx) error) *Publis
 // editionRequest is the shared edition/manifest envelope for assay and
 // event publications. Row staging differs per stream and arrives as stage.
 type editionRequest struct {
-	Source       string
-	Stream       string
-	Edition      string
-	Predecessor  string
-	Resources    []application.Resource
-	Counts       domain.Counts
-	ManifestHash string
-	Periods      []application.PeriodInput
-	Links        []application.LinkInput
+	NativeFineClock       *application.NativeFineClock
+	HistoricalFineContext *application.FineHistoryContext
+	Source                string
+	Stream                string
+	Edition               string
+	Predecessor           string
+	Resources             []application.Resource
+	Counts                domain.Counts
+	ManifestHash          string
+	Periods               []application.PeriodInput
+	Links                 []application.LinkInput
 }
 
 // stageFunc persists one revision's rows and asserts the staged counts.
@@ -397,7 +399,9 @@ func (r editionRequest) publicationKey() string {
 		Resources                         []application.Resource
 		Periods                           []application.PeriodInput
 		Links                             []application.LinkInput
-	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links})
+		NativeFineClock                   *application.NativeFineClock    `json:",omitempty"`
+		HistoricalFineContext             *application.FineHistoryContext `json:",omitempty"`
+	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links, r.NativeFineClock, r.HistoricalFineContext})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
