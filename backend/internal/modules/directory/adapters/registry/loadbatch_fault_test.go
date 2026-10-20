@@ -226,30 +226,25 @@ func TestFaultWorkerKillMidLoad(t *testing.T) {
 	assertDurability(t, fs.pool)
 	runID := "aaaaaaaa-1111-4111-8111-111111111111"
 	manifestJSON, streams := faultBatch(t, 1500, runID)
+	// Park the loader before row 51 so the cancel lands with no
+	// statement in flight. An abandoned single-statement INSERT may
+	// still commit server-side after the client gives up, which let an
+	// orphan row land between the pre-retry count and the retry on
+	// loaded runners (live 1 -> 2, backend main push 39444163286).
+	// Parking keeps every fail-closed assertion while making the
+	// pre/post counts exact; the retry path itself stages nothing.
+	gate := &disconnectGateStore{Store: fs.store, entered: make(chan struct{}), release: make(chan struct{})}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { _, err := LoadBatch(ctx, fs.store, manifestJSON, streams); done <- err }()
-	// Cancel once staging is visibly underway (partial, never whole).
-	deadline := time.Now().Add(30 * time.Second)
-	for {
-		if faultLiveTotal(fs) > 0 {
-			break
-		}
-		if err := func() error {
-			select {
-			case err := <-done:
-				return err
-			default:
-				return nil
-			}
-		}(); err != nil {
-			t.Fatalf("load finished before kill window: %v", err)
-		}
-		if time.Now().After(deadline) {
-			cancel()
-			t.Fatal("staging never started")
-		}
-		time.Sleep(5 * time.Millisecond)
+	go func() { _, err := LoadBatch(ctx, gate, manifestJSON, streams); done <- err }()
+	// Staging is visibly underway (50 rows staged) and parked, never whole.
+	select {
+	case <-gate.entered:
+	case err := <-done:
+		t.Fatalf("load settled before kill window: %v", err)
+	case <-time.After(60 * time.Second):
+		cancel()
+		t.Fatal("staging never reached kill window")
 	}
 	cancel()
 	if err := <-done; err == nil {
