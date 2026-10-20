@@ -91,6 +91,12 @@ func newStation(t *testing.T, pool *pgxpool.Pool) string {
 	return stationID
 }
 
+// alertEvaluationTime is Tuesday 10:00 in Sao Paulo, inside rulePayload's
+// allowed days/window. Integration evidence must not depend on CI wall time.
+func alertEvaluationTime() time.Time {
+	return time.Date(2026, time.October, 20, 13, 0, 0, 0, time.UTC)
+}
+
 func rulePayload(t *testing.T, station string) json.RawMessage {
 	t.Helper()
 	raw, _ := json.Marshal(map[string]any{

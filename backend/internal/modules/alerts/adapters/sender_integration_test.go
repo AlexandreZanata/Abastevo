@@ -45,7 +45,7 @@ func TestSenderInvalidTokenFaultsCrossAccount(t *testing.T) {
 	fake := &fakeProvider{}
 	store.Sender = fake
 	ctx := context.Background()
-	now := time.Now().UTC().Truncate(time.Second)
+	now := alertEvaluationTime()
 	ruleID := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{OperationID: newid(t), RuleID: ruleID, Payload: rulePayload(t, station)}}}); err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestSenderSwitchRevokeStaleLeakageIdempotent(t *testing.T) {
 	fake := &fakeProvider{}
 	store.Sender = fake
 	ctx := context.Background()
-	now := time.Now().UTC().Truncate(time.Second)
+	now := alertEvaluationTime()
 	ruleID := newid(t)
 	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{OperationID: newid(t), RuleID: ruleID, Payload: rulePayload(t, station)}}}); err != nil {
 		t.Fatal(err)
