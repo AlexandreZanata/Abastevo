@@ -243,6 +243,16 @@ event to a station. Unknown CNPJ, duplicate active binding, incompatible dates
 or unresolved succession goes to review with a reason and replayable source.
 Quality import never creates a station or approves its coordinates implicitly.
 
+Fine snapshots without an incident/business-validity date may establish only a
+separately typed CURRENT_COMPANY_ONLY relationship to one exact current active
+Directory identity. This identifies an observation about the current company;
+it does not establish historical operation at that site, a fuel finding or score
+eligibility. Vencimento/source extraction cannot substitute for incident dates.
+Ambiguous, retired-only, missing and wrong-branch records remain unassociated.
+[Current-company policy FQ-07R6A](../backend/evidence/fuel-quality/FQ07R6A_COMPANY_ASSOCIATION_POLICY.md)
+is LOCAL_DONE; compatible scoped storage, live publication/read fences and actual
+runtime association remain OWED. Existing dated PMQC resolution is unchanged.
+
 ## 5. Reliability score proposal and publication gate
 
 A score is in scope, but an arbitrary weighted mix is not an implementation
