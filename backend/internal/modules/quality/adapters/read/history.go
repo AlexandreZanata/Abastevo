@@ -9,7 +9,7 @@ import (
 
 // AtRevision returns an immutable request-local reader. Shared Reader instances
 // remain safe under concurrent requests selecting different revisions.
-func (r *Reader) AtRevision(id string) *Reader { return &Reader{pool: r.pool, revisionID: id} }
+func (r *Reader) AtRevision(id string) *Reader { clone := *r; clone.revisionID = id; return &clone }
 func (r *Reader) RevisionLease(ctx context.Context, now time.Time, source, stream, id string) (Lease, error) {
 	if id == "" {
 		return Lease{}, ErrNotFound
