@@ -124,4 +124,23 @@ class CommunityFeedViewModelTest {
         assertFalse(vm.state.value.newUpdates); vm.setForeground(false)
     }
 
+    @Test fun `continuation reaches beyond two hundred rows with bounded memory and explicit restart`() = runTest(dispatcher) {
+        coEvery { useCase(any(), any()) } answers {
+            val index = (secondArg<String?>()?.removePrefix("p")?.toInt() ?: 0)
+            val rows = (index * 20 until index * 20 + 20).map { number -> item().copy(
+                stationId = "00000000-0000-4000-8000-%012d".format(number)) }
+            CommunityFeedPage(rows, if (index < 11) "p${index + 1}" else null, at)
+        }
+        val vm = model(); vm.setForeground(true); runCurrent()
+        repeat(11) { vm.loadMore(); runCurrent() }
+        assertEquals(200, vm.state.value.items.size)
+        assertTrue(vm.state.value.earlierItemsTrimmed)
+        assertEquals("00000000-0000-4000-8000-000000000239", vm.state.value.items.last().stationId)
+        assertNull(vm.state.value.nextCursor)
+        vm.refresh(); runCurrent()
+        assertEquals(20, vm.state.value.items.size)
+        assertFalse(vm.state.value.earlierItemsTrimmed)
+        vm.setForeground(false)
+    }
+
 }

@@ -1233,6 +1233,463 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/quality/reports/commands:
+    post:
+      tags:
+      - quality
+      summary: Private quality report commands
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsCommands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportCommandRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReportReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Account write budget exhausted; acknowledged command replay is free.
+          headers:
+            Retry-After:
+              description: Seconds until a new command can be accepted.
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/reports/get:
+    post:
+      tags:
+      - quality
+      summary: Private quality report get
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsGet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportGetRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/reports/list:
+    post:
+      tags:
+      - quality
+      summary: Private quality report list
+      description: Live free account session plus exact-body signed current contributor
+        binding required. All responses no-store; no owner, media or document fields
+        accepted. Intake switch preserves withdrawal and owner reads.
+      operationId: qualityReportsList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportListRequest'
+      responses:
+        '200':
+          description: Private owner result.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReportPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/revisions:
+    get:
+      summary: List retained official source revisions (anonymous, live catalog).
+      operationId: qualityRevisions
+      tags:
+      - quality
+      security: []
+      parameters:
+      - name: stream
+        in: query
+        required: true
+        description: Exact official source stream.
+        schema:
+          $ref: '#/components/schemas/QualityStream'
+      - name: limit
+        in: query
+        description: Maximum entries.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: cursor
+        in: query
+        description: Sealed live-catalog UUID keyset cursor; restart after concurrent
+          imports to enumerate newly inserted revisions.
+        schema:
+          type: string
+          maxLength: 2048
+      responses:
+        '200':
+          description: Bounded official revision metadata.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRevisionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/revisions/{id}:
+    get:
+      summary: Inspect frozen revision provenance and availability (anonymous).
+      operationId: qualityRevisionDetail
+      tags:
+      - quality
+      security: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Retained official revision UUID.
+        schema:
+          type: string
+          format: uuid
+      - name: stream
+        in: query
+        required: true
+        description: Exact official source stream.
+        schema:
+          $ref: '#/components/schemas/QualityStream'
+      responses:
+        '200':
+          description: Bounded official revision metadata.
+          headers:
+            ETag:
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRevisionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/summary:
+    get:
+      summary: Station fuel conformity denominators from the published assay lease (anonymous).
+      operationId: qualitySummary
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: station_id
+          in: query
+          required: true
+          description: Summary station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel
+          in: query
+          description: Optional closed-vocabulary product filter.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+          example: ETHANOL
+      responses:
+        '200':
+          description: Per-fuel denominators with the frozen read lease. No source identifiers.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/assays:
+    get:
+      summary: Keyset assay page for one station from the published lease (anonymous).
+      operationId: qualityAssays
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: station_id
+          in: query
+          required: true
+          description: Page station identifier.
+          schema: {type: string, format: uuid}
+          example: d6c74c23-63db-4c24-a2e5-408cb23bad26
+        - name: fuel
+          in: query
+          description: Optional closed-vocabulary product filter.
+          schema: {$ref: '#/components/schemas/FuelProduct'}
+        - name: limit
+          in: query
+          description: Assay page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Complete frozen-edition traversal, oldest first. Cursors bind one revision.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityAssayPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/samples/{sample_ref}:
+    get:
+      summary: Sample detail with assays, links and lease (anonymous).
+      operationId: qualitySample
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: sample_ref
+          in: path
+          required: true
+          description: Source-native sample reference.
+          schema: {type: string, maxLength: 128}
+          example: S-001
+      responses:
+        '200':
+          description: Sample assays with link state. Unknown samples return empty rows with the live lease.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/actions:
+    get:
+      summary: Keyset enforcement-action page from the published lease (anonymous).
+      operationId: qualityActions
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: status
+          in: query
+          description: Optional verbatim procedural status filter.
+          schema: {type: string, maxLength: 64}
+        - name: scope
+          in: query
+          description: Optional verbatim scope filter.
+          schema: {type: string, maxLength: 64}
+        - name: limit
+          in: query
+          description: Action page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Source-verbatim actions with no guilt semantics.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityActionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/actions/{id}:
+    get:
+      summary: One enforcement action within the current lease (anonymous).
+      operationId: qualityAction
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: id
+          in: path
+          required: true
+          description: Action identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: The action with its lease.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityAction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/sanctions:
+    get:
+      summary: Keyset sanction-snapshot page from the published lease (anonymous).
+      operationId: qualitySanctions
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: status
+          in: query
+          description: Optional verbatim extraction-time status filter.
+          schema: {type: string, maxLength: 64}
+        - name: limit
+          in: query
+          description: Snapshot page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Extraction-time snapshots with no finality inference.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySanctionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/sanctions/{id}:
+    get:
+      summary: One sanction snapshot within the current lease (anonymous).
+      operationId: qualitySanction
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: id
+          in: path
+          required: true
+          description: Snapshot identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: The snapshot with its lease.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualitySanction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/stations/{station_id}/profile:
     get:
       summary: Read a station public profile (anonymous).
@@ -4781,6 +5238,16 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
 components:
+  parameters:
+    QualityRevisionSelector:
+      name: revision_id
+      in: query
+      description: Optional exact revision of this source/stream; omission selects the
+        current stream. Verified superseded history is explicitly labeled; withdrawn/legacy
+        revisions remain unavailable.
+      schema:
+        type: string
+        format: uuid
   schemas:
     CloudVehicle:
       type: object
@@ -6480,10 +6947,10 @@ components:
       - family_id
       - access_token
       properties:
-        family_id: &id001
+        family_id: &premium_id001
           type: string
           format: uuid
-        access_token: &id002
+        access_token: &premium_id002
           type: string
           minLength: 1
           maxLength: 512
@@ -6496,9 +6963,9 @@ components:
       - operation_id
       - purchase_token
       properties:
-        family_id: *id001
-        access_token: *id002
-        operation_id: *id001
+        family_id: *premium_id001
+        access_token: *premium_id002
+        operation_id: *premium_id001
         purchase_token:
           type: string
           minLength: 1
@@ -6572,7 +7039,7 @@ components:
       - status
       - replayed
       properties:
-        operation_id: *id001
+        operation_id: *premium_id001
         status:
           $ref: '#/components/schemas/PremiumStatusResponse'
         replayed:
@@ -6728,6 +7195,605 @@ components:
       type: string
       enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, GASOLINE_PREMIUM_GRADE]
       example: GASOLINE_ADDITIVED
+    QualityReportCommandRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: &quality_report_id001
+          type: string
+          format: uuid
+        access_token: &quality_report_id002
+          type: string
+          minLength: 1
+          maxLength: 512
+        command_id: *quality_report_id001
+        report_id: *quality_report_id001
+        action:
+          type: string
+          enum:
+          - SUBMIT
+          - EDIT
+          - WITHDRAW
+          - APPEAL
+        expected_revision:
+          type: integer
+          format: int32
+          minimum: 0
+        kind: &quality_report_id003
+          type: string
+          enum:
+          - EXPERIENCE
+          - LINK_REVIEW
+        station_id: *quality_report_id001
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        occurred_on: &quality_report_id004
+          type: string
+          format: date
+        symptom: &quality_report_id005
+          type: string
+          enum:
+          - STARTING
+          - PERFORMANCE
+          - CONSUMPTION
+          - OTHER
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        official_revision_id: *quality_report_id001
+        sample_ref: &quality_report_id006
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - family_id
+      - access_token
+      - command_id
+      - report_id
+      - action
+      oneOf:
+      - properties:
+          action:
+            const: SUBMIT
+          expected_revision:
+            const: 0
+        required:
+        - kind
+        - station_id
+        - fuel
+        - occurred_on
+        - symptom
+        - text
+      - properties:
+          action:
+            const: EDIT
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - kind
+        - station_id
+        - fuel
+        - occurred_on
+        - symptom
+        - text
+        - expected_revision
+      - properties:
+          action:
+            const: WITHDRAW
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - expected_revision
+        not:
+          anyOf:
+          - required:
+            - kind
+          - required:
+            - station_id
+          - required:
+            - fuel
+          - required:
+            - occurred_on
+          - required:
+            - symptom
+          - required:
+            - text
+          - required:
+            - official_revision_id
+          - required:
+            - sample_ref
+      - properties:
+          action:
+            const: APPEAL
+          expected_revision:
+            type: integer
+            minimum: 1
+        required:
+        - expected_revision
+        - text
+        not:
+          anyOf:
+          - required:
+            - kind
+          - required:
+            - station_id
+          - required:
+            - fuel
+          - required:
+            - occurred_on
+          - required:
+            - symptom
+          - required:
+            - official_revision_id
+          - required:
+            - sample_ref
+      description: Free signed private command. User claims only; purchase documents and
+        verification are deferred. Server validates exact target revision, ownership and
+        dates.
+    QualityReportGetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *quality_report_id001
+        access_token: *quality_report_id002
+        report_id: *quality_report_id001
+      required:
+      - family_id
+      - access_token
+      - report_id
+    QualityReportListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id: *quality_report_id001
+        access_token: *quality_report_id002
+        after_id: *quality_report_id001
+      required:
+      - family_id
+      - access_token
+    QualityReportReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id: *quality_report_id001
+        revision:
+          type: integer
+          minimum: 1
+        status: &quality_report_id007
+          type: string
+          enum:
+          - PENDING_REVIEW
+          - WITHDRAWN
+          - HIDDEN
+          - REVIEWED
+      required:
+      - report_id
+      - revision
+      - status
+    QualityReport:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *quality_report_id001
+        revision:
+          type: integer
+          minimum: 1
+        kind: *quality_report_id003
+        station_id: *quality_report_id001
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        occurred_on: *quality_report_id004
+        symptom: *quality_report_id005
+        text:
+          type: string
+          maxLength: 1000
+        official_revision_id: *quality_report_id001
+        sample_ref: *quality_report_id006
+        status: *quality_report_id007
+        review_reason:
+          type: string
+          enum: [CLAIM_RECORDED, DUPLICATE, INSUFFICIENT_EVIDENCE, UNSUPPORTED_LINK, ABUSE, PRIVACY]
+        evidence_level:
+          type: string
+          const: USER_CLAIM
+      required:
+      - id
+      - revision
+      - kind
+      - station_id
+      - fuel
+      - occurred_on
+      - symptom
+      - text
+      - status
+      - evidence_level
+    QualityReportPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/QualityReport'
+        next_after_id: *quality_report_id001
+      required:
+      - items
+    QualityStream:
+      type: string
+      enum:
+      - pmqc-assay-v1
+      - enforcement-v1
+      - sanction-v1
+    QualityRevisionHeader:
+      type: object
+      additionalProperties: false
+      required:
+      - revision_id
+      - edition
+      - revision_status
+      - provenance_state
+      - is_current_stream
+      - published_at
+      properties:
+        supersedes_revision_id: {type: [string, 'null'], format: uuid}
+        revision_id:
+          type: string
+          format: uuid
+        edition:
+          type: string
+        revision_status:
+          type: string
+          enum:
+          - published
+          - superseded
+          - withdrawn
+        provenance_state:
+          type: string
+          enum:
+          - VERIFIED
+          - LEGACY_UNVERIFIED
+        is_current_stream:
+          type: boolean
+        published_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    QualityRevisionPage:
+      type: object
+      additionalProperties: false
+      required:
+      - source
+      - stream
+      - items
+      - next_cursor
+      - catalog_live
+      - generated_at
+      properties:
+        source:
+          type: string
+        stream:
+          $ref: '#/components/schemas/QualityStream'
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/QualityRevisionHeader'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        catalog_live:
+          type: boolean
+          const: true
+        generated_at:
+          type: string
+          format: date-time
+    QualityRevisionDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - lease
+      - counts
+      - manifest_hash
+      - resources
+      - generated_at
+      properties:
+        lease:
+          $ref: '#/components/schemas/QualityLease'
+        counts:
+          type:
+          - object
+          - 'null'
+          additionalProperties: false
+          required:
+          - input
+          - accepted
+          - duplicates
+          - quarantined
+          properties:
+            input:
+              type: integer
+              minimum: 0
+            accepted:
+              type: integer
+              minimum: 0
+            duplicates:
+              type: integer
+              minimum: 0
+            quarantined:
+              type: integer
+              minimum: 0
+        manifest_hash:
+          type:
+          - string
+          - 'null'
+          pattern: ^[0-9a-f]{64}$
+        resources:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - url
+            - sha256
+            - bytes
+            properties:
+              member_name:
+                type: string
+                minLength: 1
+                maxLength: 256
+              member_sha256:
+                type: string
+                pattern: ^[0-9a-f]{64}$
+              member_bytes:
+                type: integer
+                format: int64
+                minimum: 1
+              url:
+                type: string
+                format: uri
+              sha256:
+                type: string
+                pattern: ^[0-9a-f]{64}$
+              bytes:
+                type: integer
+                format: int64
+                minimum: 0
+        generated_at:
+          type: string
+          format: date-time
+    QualityLease:
+      description: >
+        Frozen read context served with every quality response. Stale
+        leases stay served with the flag set; missing leases report
+        available false without inventing data.
+      type: object
+      required: [source, stream, edition, revision_id, available, stale, coverage_note]
+      properties:
+        source_clock_precision: {type: string, enum: [DAY, MONTH]}
+        source_input_contract: {type: string, maxLength: 128}
+        source_period: {type: string, maxLength: 32}
+        source_clock_value:
+          description: Original extraction day or month, according to source_clock_precision; never a decision date or invented extraction instant.
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])(-[0-9]{2})?$'
+        source_record_count: {type: integer, minimum: 0, maximum: 500000}
+        source_metadata_records:
+          description: Source footer/separator records already included in input/quarantine counts; never additional fines.
+          type: integer
+          minimum: 0
+          maximum: 500000
+        source_notes:
+          description: Distinct allowlisted source payment caveats. Blank separators retain counts without display text.
+          type: array
+          maxItems: 2
+          items:
+            type: object
+            required: [kind, text, evidence_ref]
+            properties:
+              kind: {type: string, enum: [PUBLIC_PAYMENT_NOTE]}
+              text: {type: string}
+              evidence_ref: {type: string}
+        source_extraction_month: {type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        source_report_year: {type: integer, minimum: 2016, maximum: 9999}
+        supersedes_revision_id: {type: [string, 'null'], format: uuid}
+        revision_status: {type: string, enum: [published, superseded, withdrawn, unavailable]}
+        provenance_state: {type: string, enum: [VERIFIED, LEGACY_UNVERIFIED, UNAVAILABLE]}
+        is_current_stream: {type: boolean}
+        source: {type: string, example: pmqc}
+        stream: {type: string, example: pmqc-assay-v1}
+        edition: {type: string, example: '2026-09'}
+        revision_id: {type: [string, 'null'], format: uuid}
+        published_at: {type: [string, 'null'], format: date-time}
+        available: {type: boolean}
+        stale: {type: boolean}
+        stale_reason: {type: string}
+        coverage_note: {type: string}
+        periods:
+          type: array
+          items:
+            type: object
+            required: [label, start, end]
+            properties:
+              label: {type: string, example: '2026-09'}
+              start: {type: string, format: date, example: '2026-09-01'}
+              end: {type: string, format: date, example: '2026-09-30'}
+    QualitySummary:
+      description: Raw assay conformity counts and separately judged sample dimensions, bound to the selected read lease. Numeric scores remain unavailable.
+      type: object
+      required: [station_id, fuel_cells, lease, generated_at]
+      properties:
+        station_id: {type: string, format: uuid}
+        sample_dimensions:
+          $ref: '#/components/schemas/QualitySampleDimensions'
+        fuel_cells:
+          type: array
+          items:
+            type: object
+            required: [fuel_product, conformity, count, last_observed]
+            properties:
+              fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+              conformity: {type: string, enum: [CONFORMING, NONCONFORMING, INCONCLUSIVE, UNKNOWN]}
+              count: {type: integer, minimum: 0}
+              last_observed: {type: string, format: date}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySampleDimensions:
+      description: Matching derived rows only. Missing projections do not establish a zero denominator; historical raw facts remain independently accessible.
+      type: object
+      required: [available, methodology, limitation, items]
+      properties:
+        available: {type: boolean}
+        methodology: {type: string}
+        limitation: {type: string}
+        items:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            required: [fuel_product, policy, input_digest, samples, visits, conforming, nonconforming, unresolved, oldest_observed_on, newest_observed_on, computed_at, score_state, score]
+            properties:
+              fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+              policy: {type: string}
+              input_digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+              samples: {type: integer, minimum: 0}
+              visits: {type: integer, minimum: 0}
+              conforming: {type: integer, minimum: 0}
+              nonconforming: {type: integer, minimum: 0}
+              unresolved: {type: integer, minimum: 0}
+              oldest_observed_on: {type: string}
+              newest_observed_on: {type: string}
+              computed_at: {type: string, format: date-time}
+              score_state: {type: string, enum: [UNSCORED]}
+              score: {type: [integer, 'null']}
+    QualityAssay:
+      description: One published determination without source identifiers.
+      type: object
+      required: [id, sample_ref, assay_ref, observed_on, fuel_product, result_text, unit, conformity, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        sample_ref: {type: string, example: S-001}
+        assay_ref: {type: string, example: ASPECTO}
+        observed_on: {type: string, format: date}
+        source_observed_at:
+          type: string
+          description: Original unzoned official collection clock, when supplied; no timezone inferred.
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2} (0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+        fuel_product: {$ref: '#/components/schemas/FuelProduct'}
+        result_text: {type: string, example: '181,5'}
+        unit: {type: string, example: '°C'}
+        conformity: {type: string, enum: [CONFORMING, NONCONFORMING, INCONCLUSIVE, UNKNOWN]}
+        evidence_ref: {type: string}
+    QualityAssayPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        station_id: {type: string, format: uuid}
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAssay'}
+        next_cursor: {type: [string, 'null']}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySample:
+      description: Sample assays with link state and lease.
+      type: object
+      required: [sample_ref, assays, links, lease, generated_at]
+      properties:
+        sample_ref: {type: string}
+        assays:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAssay'}
+        links:
+          type: array
+          items:
+            type: object
+            required: [station_id, automatic, reason, active]
+            properties:
+              station_id: {type: [string, 'null'], format: uuid}
+              automatic: {type: boolean}
+              reason: {type: string}
+              active: {type: boolean}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityAction:
+      description: One published fiscal action, source-verbatim, no guilt semantics. Page items omit lease and generated_at; detail responses include them.
+      type: object
+      required: [id, native_key, scope, status, as_of, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        native_key: {type: string, example: AUTO-001}
+        scope: {type: string}
+        status: {type: string}
+        occurred_on: {type: [string, 'null'], format: date}
+        as_of: {type: string, format: date}
+        evidence_ref: {type: string}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityActionPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualityAction'}
+        next_cursor: {type: [string, 'null']}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySanction:
+      description: One published snapshot with source-time facts only; extraction retains the actual day/month precision and grouped period. Due and source-declared transit dates never become decided_on. Unknown paid remains null; raw unlabelled data has no inferred meaning. Content observation keys are not source-issued fine numbers. Page items omit lease and generated_at; detail responses include them.
+      type: object
+      required: [id, native_key, proceeding_ref, status, as_of, evidence_ref]
+      properties:
+        id: {type: string, format: uuid}
+        native_key: {type: string, example: MULTA-001}
+        proceeding_ref: {type: string}
+        amount_minor: {type: [integer, 'null'], minimum: 0}
+        status: {type: string}
+        decided_on: {type: [string, 'null'], format: date}
+        as_of: {type: [string, 'null'], format: date}
+        as_of_precision: {type: string, enum: [DAY, MONTH]}
+        identity_kind: {type: string, enum: [LEGACY_REFERENCE, CONTENT_OBSERVATION]}
+        extraction_month: {type: [string, 'null'], pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'}
+        report_year: {type: [integer, 'null'], minimum: 2016, maximum: 9999}
+        duf_ref: {type: [string, 'null']}
+        department: {type: [string, 'null']}
+        due_on: {type: [string, 'null'], format: date}
+        amount_text: {type: [string, 'null']}
+        paid_text: {type: [string, 'null']}
+        paid_minor: {type: [integer, 'null'], minimum: 0}
+        input_contract: {type: [string, 'null']}
+        source_period: {type: [string, 'null']}
+        source_clock_value:
+          type: [string, 'null']
+          description: Exact extraction value paired with as_of_precision; does not populate as_of or decided_on.
+        reference_label: {type: [string, 'null']}
+        reference_ref: {type: [string, 'null']}
+        source_transit_on:
+          description: Verbatim source-declared Data Transito Julgado, when present; no legal outcome is inferred.
+          type: [string, 'null']
+          format: date
+        unlabelled_field:
+          description: Verbatim value from an empty source header; no business meaning is inferred.
+          type: [string, 'null']
+        evidence_ref: {type: string}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualitySanctionPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualitySanction'}
+        next_cursor: {type: [string, 'null']}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
     PriceCondition:
       description: >
         Sale condition. STANDARD forbids qualifier_id (mirrored

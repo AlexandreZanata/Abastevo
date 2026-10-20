@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">Qualidade do combustível</string>
+    <string name="quality_entry">Consultar análises de qualidade</string>
+    <string name="quality_note">Resultados de coletas da ANP. Não são garantia da qualidade atual do posto.</string>
+    <string name="quality_score_unavailable">Nota indisponível: não há metodologia numérica calibrada.</string>
+    <string name="quality_unavailable">Não foi possível consultar os dados de qualidade.</string>
+    <string name="quality_no_source">Não há dados oficiais disponíveis para esta revisão.</string>
+    <string name="quality_empty">Não há ensaios publicados para este combustível nesta revisão.</string>
+    <string name="quality_stale">Dados antigos ou sem atualização confirmada. Confira a data da coleta.</string>
+    <string name="quality_historical">Revisão histórica. Consulte também a edição atual.</string>
+    <string name="quality_edition">Edição %1$s • publicada em %2$s</string>
+    <string name="quality_periods">Escolher edição</string>
+    <string name="quality_current">Acompanhar edição atual</string>
+    <string name="quality_more_periods">Mais edições</string>
+    <string name="quality_more_assays">Próxima página de ensaios</string>
+    <string name="quality_first_page">Voltar à primeira página</string>
+    <string name="quality_samples">Amostras: %1$d • Visitas: %2$d</string>
+    <string name="quality_verdicts">Conformes: %1$d • Não conformes: %2$d • Inconclusivas: %3$d</string>
+    <string name="quality_sample_range">Coletas de %1$s a %2$s</string>
+    <string name="quality_pending_dimensions">Contagem de amostras ainda indisponível. Os ensaios abaixo são registros individuais.</string>
+    <string name="quality_assay_count">Ensaios: %1$d • Última coleta: %2$s</string>
+    <string name="quality_sample_title">Detalhes da amostra</string>
+    <string name="quality_aspect_note">O julgamento da amostra considera o combustível e os ensaios complementares. Um resultado isolado não classifica todo o posto.</string>
+    <string name="quality_observed">Coleta informada na fonte: %1$s</string>
+    <string name="quality_conforming">Ensaio conforme</string>
+    <string name="quality_nonconforming">Ensaio não conforme</string>
+    <string name="quality_unknown">Resultado não classificado</string>
+    <string name="quality_source">Ver fonte oficial</string>
+    <string name="quality_source_unavailable">Não foi possível abrir os detalhes da fonte.</string>
+    <string name="quality_blank_result">Resultado não informado</string>
+    <string name="quality_revisions_unavailable">Não foi possível listar as edições. As análises disponíveis continuam abaixo.</string>
+    <string name="quality_provenance">Arquivo: %1$s</string>
+    <string name="quality_hash">SHA-256: %1$s</string>
+</resources>

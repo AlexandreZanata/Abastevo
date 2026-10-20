@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -76,6 +77,10 @@ import (
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
+	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
+	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
@@ -327,6 +332,27 @@ func run() error {
 				ProjectionVersion: view.ProjectionVersion,
 			}, true, nil
 		},
+	}.RegisterRoutes(router)
+	// Anonymous quality ledger reads (FQ-08). Same composition rule: the
+	// handler gets station existence as a closure so modules never
+	// cross-read. Disabled by ANPFUEL_QUALITY_READS_ENABLED=false, which
+	// answers 404 without touching storage.
+	qualityReads := qualityread.NewReader(pool.Underlying())
+	qualityReadsEnabled := cfg.QualityReadsEnabled
+	qualityhttp.Handler{
+		Read:    qualityReads,
+		Secrets: cfg.CursorSecret,
+		StationsExist: func(ctx context.Context, id string) (bool, error) {
+			_, err := stations.Detail(ctx, id)
+			if err == nil {
+				return true, nil
+			}
+			if errors.Is(err, directoryapp.ErrUnknownStation) {
+				return false, nil
+			}
+			return false, err
+		},
+		Enabled: func() bool { return qualityReadsEnabled },
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.
@@ -627,6 +653,48 @@ func run() error {
 		},
 	}
 	premiumHTTP.RegisterRoutes(router)
+	// Free document-free quality participation; payment capabilities never enter.
+	qualityReportStore := &qualityadapters.ReportStore{ConsumeBudget: func(ctx context.Context, tx pgx.Tx, owner string) error {
+		digest := sha256.Sum256([]byte("quality-reports:" + owner))
+		retry, err := identityLimiter.CheckTx(ctx, tx, hex.EncodeToString(digest[:]), identitydomain.OperationWrite)
+		if errors.Is(err, identitydomain.ErrQuotaExceeded) {
+			return &qualitydomain.ReportQuotaError{RetryAfterSeconds: int(math.Ceil(retry.Seconds()))}
+		}
+		return err
+	}, Pool: pool.Underlying(), Now: time.Now, Station: func(ctx context.Context, id string) (bool, error) {
+		_, err := stations.Detail(ctx, id)
+		if errors.Is(err, directorydomain.ErrUnknownStation) {
+			return false, nil
+		}
+		return err == nil, err
+	}}
+	qualityhttp.ReportsHandler{
+		Service: qualityReportStore, Enabled: func() bool { return cfg.QualityReportsEnabled },
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			owner, err := accountService.ValidateAccess(ctx, family, access)
+			if err != nil {
+				return "", qualityAuthError(err)
+			}
+			return owner, nil
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			contributor, key, err := premiumHTTP.SignedOwner(r, owner)
+			if err != nil {
+				return "", "", qualityAuthError(err)
+			}
+			return contributor, key, nil
+		},
+		Guard: func(ctx context.Context, tx pgx.Tx, owner, family, access, contributor, key string) error {
+			if err := accountStore.RequireQualitySessionTx(ctx, tx, owner, family, access, contributor, accountService.Hasher, time.Now().Unix()); err != nil {
+				return qualityAuthError(err)
+			}
+			if err := identityadapters.RequireQualitySigningKeyTx(ctx, tx, contributor, key); err != nil {
+				return qualityAuthError(err)
+			}
+			return nil
+		},
+	}.RegisterRoutes(router)
+
 	cloudStore := cloudadapters.NewStore(pool.Underlying())
 	cloudStore.Origin = cfg.CanonicalHost
 	cloudStore.Station = stations.ActiveReference

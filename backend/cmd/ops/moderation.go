@@ -15,6 +15,7 @@ import (
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
+	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	trustadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/adapters"
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -114,6 +115,7 @@ func moderationAct(a actArgs, getenv func(string) string) error {
 	raw := pool.Underlying()
 	store := moderationadapters.NewStore(raw)
 	res, err := moderationapp.Act(ctx, moderationapp.ActPorts{
+		ApplyQualityReport:    (&qualityadapters.ReportStore{Pool: raw}).ApplyReviewTx,
 		Clock:                 time.Now,
 		NewID:                 newUUID,
 		Store:                 store,

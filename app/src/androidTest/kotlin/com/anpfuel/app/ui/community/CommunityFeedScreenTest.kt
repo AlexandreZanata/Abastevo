@@ -49,7 +49,7 @@ class CommunityFeedScreenTest {
         compose.onNodeWithText("R$", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("3,981", substring = true).assertExists()
         compose.onNodeWithText("Synthetic station").performClick()
-        assertEquals(Routes.stationProfile(item.stationId), route)
+        assertEquals(Routes.stationPage(item.stationId, FuelProduct.ETHANOL), route)
     }
     @Test fun darkFeedRetainsCardsDuringNetworkFailure() {
         render(CommunityFeedUiState(city = city, fuel = FuelProduct.ETHANOL, loading = false, failed = true, items = listOf(item)), dark = true)
@@ -57,12 +57,12 @@ class CommunityFeedScreenTest {
         capture("community-feed-dark.png")
         compose.onNodeWithText("Synthetic station").performScrollTo().assertIsDisplayed()
     }
-    @Test fun noCoverageNeverInventsPricesAndContributesThroughStationSelection() {
+    @Test fun noCoverageNeverInventsPricesAndOpensCaptureForContribution() {
         var route: String? = null
         render(CommunityFeedUiState(city = city, loading = false), navigate = { route = it })
         compose.onNodeWithText(context.getString(R.string.feed_empty_title)).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.community_action_contribute)).performScrollTo().performClick()
-        assertEquals(Routes.STATIONS, route)
+        assertEquals(Routes.CAPTURE, route)
     }
     @Test fun filtersAndCitySelectorRemainAccessibleAtLargeFont() {
         var selected: FeedSort? = null

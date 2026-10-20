@@ -18,9 +18,13 @@ import org.json.JSONObject
  */
 object DirectoryStationJsonCodec {
 
+    /** Server pages never exceed the 100-item limit; cursors stay tiny like the feed. */
+    const val MAX_PAGE_ITEMS = 100
+    const val MAX_CURSOR_CHARS = 4096
+
     fun decodeStation(payload: String): ServerStation =
         try {
-            parseStation(JSONObject(payload))
+            parseStation(parseObject(payload))
         } catch (error: DomainException) {
             throw error
         } catch (error: Exception) {
@@ -29,13 +33,15 @@ object DirectoryStationJsonCodec {
 
     fun decodeList(payload: String): ServerStationPage =
         try {
-            val doc = JSONObject(payload)
+            val doc = parseObject(payload)
             val items = doc.getJSONArray("items")
+            require(items.length() <= MAX_PAGE_ITEMS) { "page exceeds $MAX_PAGE_ITEMS items" }
             val out = mutableListOf<ServerStation>()
             for (index in 0 until items.length()) {
                 out += parseStation(items.getJSONObject(index))
             }
-            val cursor = optNullableString(doc, "next_cursor")
+            val cursor = if (doc.isNull("next_cursor")) null else doc.getString("next_cursor").also { require(it.isNotBlank()) }
+            require(cursor == null || cursor.length <= MAX_CURSOR_CHARS) { "cursor exceeds $MAX_CURSOR_CHARS chars" }
             ServerStationPage(items = out, nextCursor = cursor)
         } catch (error: DomainException) {
             throw error
@@ -45,10 +51,11 @@ object DirectoryStationJsonCodec {
 
     fun decodeNearby(payload: String): List<NearbyServerStation> =
         try {
-            val doc = JSONObject(payload)
+            val doc = parseObject(payload)
             val items = doc.optJSONArray("items")
             val out = mutableListOf<NearbyServerStation>()
             if (items != null) {
+                require(items.length() <= MAX_PAGE_ITEMS) { "page exceeds $MAX_PAGE_ITEMS items" }
                 for (index in 0 until items.length()) {
                     val item = items.getJSONObject(index)
                     val distance = item.getDouble("distance_m")
@@ -62,6 +69,29 @@ object DirectoryStationJsonCodec {
         } catch (error: Exception) {
             throw DomainException("malformed nearby payload", error)
         }
+
+    /** Refuse excessive nesting before org.json's recursive parser allocates or exhausts the stack. */
+    private fun parseObject(payload: String): JSONObject {
+        require(payload.length <= DirectoryStationHttpClient.MAX_BODY_BYTES)
+        var depth = 0
+        var quoted = false
+        var escaped = false
+        for (character in payload) {
+            if (quoted) {
+                when {
+                    escaped -> escaped = false
+                    character == '\\' -> escaped = true
+                    character == '"' -> quoted = false
+                }
+            } else when (character) {
+                '"' -> quoted = true
+                '{', '[' -> { depth++; require(depth <= 12) { "directory JSON nesting exceeded" } }
+                '}', ']' -> { depth--; require(depth >= 0) }
+            }
+        }
+        require(depth == 0 && !quoted)
+        return JSONObject(payload)
+    }
 
     private fun parseStation(item: JSONObject): ServerStation {
         val coords = if (item.isNull("coordinates")) {

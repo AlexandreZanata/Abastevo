@@ -211,6 +211,25 @@ func (q *Queries) GetContributor(ctx context.Context, id pgtype.UUID) (GetContri
 	return i, err
 }
 
+const lockQualitySigningKey = `-- name: LockQualitySigningKey :one
+SELECT k.id FROM identity_keys k JOIN identity_contributors c ON c.id=k.contributor_id
+WHERE k.id = $1 AND c.id = $2 AND k.revoked_at IS NULL AND c.status='active'
+FOR SHARE OF c,k
+`
+
+type LockQualitySigningKeyParams struct {
+	KeyID         pgtype.UUID `json:"key_id"`
+	ContributorID pgtype.UUID `json:"contributor_id"`
+}
+
+// FQ-09: preserve live contributor/key authorization through caller transaction.
+func (q *Queries) LockQualitySigningKey(ctx context.Context, arg LockQualitySigningKeyParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockQualitySigningKey, arg.KeyID, arg.ContributorID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const oldestExpiredChallenge = `-- name: OldestExpiredChallenge :one
 
 SELECT expires_at

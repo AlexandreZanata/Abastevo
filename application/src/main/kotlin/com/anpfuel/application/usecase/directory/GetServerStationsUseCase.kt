@@ -26,7 +26,7 @@ import com.anpfuel.domain.repository.ServerStationGateway
  */
 sealed interface ServerStationsOutcome {
     data object Disabled : ServerStationsOutcome
-    data class Fresh(val page: ServerStationPage) : ServerStationsOutcome
+    data class Fresh(val page: ServerStationPage, val fromCache: Boolean = false) : ServerStationsOutcome
     data class StaleCache(val page: ServerStationPage, val cause: Exception) : ServerStationsOutcome
     data class Unavailable(val cause: Exception) : ServerStationsOutcome
 }
@@ -46,51 +46,149 @@ class GetServerStationsUseCase(
 ) {
     private val refreshLock = Mutex()
 
-    suspend fun cached(): ServerStationsOutcome {
+    private suspend fun scope(): String? {
+        val city = scopeProvider?.municipalityCode()
+        check(scopeProvider == null || city != null) { "directory city unavailable" }
+        return city
+    }
+
+    private fun partition(city: String?, query: String): String? =
+        if (query.isEmpty()) city else "${city ?: "national"}|query:$query"
+
+    private suspend fun load(key: String?): ServerStationPage? =
+        if (key == null) cache.loadPage() else cache.loadScopedPage(key)
+
+    private suspend fun save(key: String?, page: ServerStationPage) {
+        if (key == null) cache.savePage(page) else cache.saveScopedPage(key, page)
+    }
+
+    private suspend fun offlineWindow(city: String?, query: String, limit: Int, offset: Int): ServerStationPage? {
+        if (query.isEmpty() && scopeProvider != null) {
+            val downloaded = cache.loadScopedPage("${city ?: "national"}|download", limit, offset)
+            if (downloaded != null) return downloaded
+        }
+        val key = partition(city, query)
+        return if (key == null) cache.loadPage(limit, offset) else cache.loadScopedPage(key, limit, offset)
+    }
+
+    suspend fun cached(query: String = ""): ServerStationsOutcome {
         if (!flagProvider.isEnabled()) return ServerStationsOutcome.Disabled
-        val cause = java.io.IOException("directory offline")
         return try {
-            val scope = scopeProvider?.municipalityCode()
-            if (scopeProvider != null && scope == null) return ServerStationsOutcome.Unavailable(cause)
-            loadCache(scope)?.let { ServerStationsOutcome.StaleCache(it, cause) }
-                ?: ServerStationsOutcome.Unavailable(cause)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            ServerStationsOutcome.Unavailable(error)
-        }
+            val page = offlineWindow(scope(), query.trim(), 20, 0)
+            val error = java.io.IOException("directory offline")
+            if (page == null) ServerStationsOutcome.Unavailable(error) else ServerStationsOutcome.StaleCache(page, error)
+        } catch (error: CancellationException) { throw error
+        } catch (error: Exception) { ServerStationsOutcome.Unavailable(error) }
     }
 
-    suspend operator fun invoke(limit: Int = 20, cursor: String? = null): ServerStationsOutcome = refreshLock.withLock {
+    suspend operator fun invoke(limit: Int = 20, cursor: String? = null, query: String = ""): ServerStationsOutcome = refreshLock.withLock {
         if (!flagProvider.isEnabled()) return@withLock ServerStationsOutcome.Disabled
-        val scope = try {
-            scopeProvider?.municipalityCode()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            return@withLock ServerStationsOutcome.Unavailable(error)
-        }
-        if (scopeProvider != null && scope == null) {
-            return@withLock ServerStationsOutcome.Unavailable(java.io.IOException("directory city unavailable"))
-        }
         try {
-            val page = if (scope == null) gateway.list(limit, cursor)
-                else gateway.listInMunicipality(scope, limit, cursor)
-            require(scope == null || page.items.all { it.municipalityCode == scope }) { "directory city mismatch" }
-            currentCoroutineContext().ensureActive()
-            if (scope == null) cache.savePage(page) else cache.saveScopedPage(scope, page)
-            ServerStationsOutcome.Fresh(page)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            val cached = runCatching { loadCache(scope) }.onFailure { if (it is CancellationException) throw it }.getOrNull()
-            if (cached != null) ServerStationsOutcome.StaleCache(cached, error)
-            else ServerStationsOutcome.Unavailable(error)
+            val city = scope()
+            fresh(limit, cursor, city, query.trim(), partition(city, query.trim()))
+        } catch (error: CancellationException) { throw error
+        } catch (error: Exception) { ServerStationsOutcome.Unavailable(error) }
+    }
+
+    suspend fun loadMore(limit: Int = 20, query: String = "", cachedOffset: Int? = null): ServerStationsOutcome {
+        if (!flagProvider.isEnabled()) return ServerStationsOutcome.Disabled
+        if (cachedOffset != null) {
+            return try {
+                val window = offlineWindow(scope(), query.trim(), limit, cachedOffset)
+                    ?: return ServerStationsOutcome.Unavailable(java.io.IOException("directory cached page unavailable"))
+                ServerStationsOutcome.Fresh(window, fromCache = true)
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { ServerStationsOutcome.Unavailable(error) }
+        }
+        return refreshLock.withLock {
+            try {
+                val city = scope()
+                more(limit, city, query.trim(), partition(city, query.trim()))
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { ServerStationsOutcome.Unavailable(error) }
         }
     }
 
-    private suspend fun loadCache(scope: String?): ServerStationPage? =
-        if (scope == null) cache.loadPage() else cache.loadScopedPage(scope)
+    /** Clear serializes with every public read and sync batch: a retired write cannot repopulate it. */
+    suspend fun clearPublicPages() = refreshLock.withLock { cache.clearPublicPages() }
+
+    /** A separate persisted staging scope resumes bounded batches without replacing the usable city. */
+    suspend fun syncBatch(limit: Int, maxPages: Int, allowed: suspend () -> Boolean): SyncPublicCatalogUseCase.SyncResult = refreshLock.withLock {
+        var fetched = 0
+        var last: ServerStationsOutcome = ServerStationsOutcome.Disabled
+        if (!flagProvider.isEnabled() || !allowed()) return@withLock SyncPublicCatalogUseCase.SyncResult(0, false, last)
+        try {
+            val city = scope()
+            val stage = "${city ?: "national"}|background"
+            var saved = load(stage)
+            while (fetched < maxPages && allowed()) {
+                currentCoroutineContext().ensureActive()
+                last = if (saved?.nextCursor != null) more(limit, city, "", stage, allowed)
+                    else fresh(limit, null, city, "", stage, allowed)
+                if (last !is ServerStationsOutcome.Fresh) break
+                fetched++
+                saved = last.page
+                if (saved.nextCursor == null) {
+                    if (!allowed() || scope() != city) return@withLock SyncPublicCatalogUseCase.SyncResult(fetched, false, ServerStationsOutcome.Disabled)
+                    cache.saveScopedPage("${city ?: "national"}|download", saved)
+                    cache.removeScopedPage(stage)
+                    return@withLock SyncPublicCatalogUseCase.SyncResult(fetched, true, last)
+                }
+            }
+            SyncPublicCatalogUseCase.SyncResult(fetched, false, last)
+        } catch (error: CancellationException) { throw error
+        } catch (error: Exception) { SyncPublicCatalogUseCase.SyncResult(fetched, false, ServerStationsOutcome.Unavailable(error)) }
+    }
+
+    private suspend fun request(limit: Int, cursor: String?, city: String?, query: String): ServerStationPage {
+        require(limit in 1..100)
+        require(query.isEmpty() || query.length in 2..100)
+        val page = when {
+            query.isNotEmpty() -> gateway.search(requireNotNull(city) { "search city unavailable" }, query, limit, cursor)
+            city == null -> gateway.list(limit, cursor)
+            else -> gateway.listInMunicipality(city, limit, cursor)
+        }
+        require(page.items.size <= limit) { "directory page exceeds requested limit" }
+        require(city == null || page.items.all { it.municipalityCode == city }) { "directory city mismatch" }
+        return page
+    }
+
+    private suspend fun canCommit(city: String?, allowed: suspend () -> Boolean): Boolean {
+        currentCoroutineContext().ensureActive()
+        return flagProvider.isEnabled() && allowed() && scope() == city
+    }
+
+    private suspend fun fresh(limit: Int, cursor: String?, city: String?, query: String, key: String?, allowed: suspend () -> Boolean = { true }): ServerStationsOutcome {
+        return try {
+            val page = request(limit, cursor, city, query)
+            if (!canCommit(city, allowed)) return ServerStationsOutcome.Disabled
+            save(key, page)
+            ServerStationsOutcome.Fresh(page)
+        } catch (error: CancellationException) { throw error
+        } catch (error: Exception) {
+            val cached = try {
+                if (key == partition(city, query)) offlineWindow(city, query, limit, 0) else load(key)
+            } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
+            if (cached != null) ServerStationsOutcome.StaleCache(cached, error) else ServerStationsOutcome.Unavailable(error)
+        }
+    }
+
+    private suspend fun more(limit: Int, city: String?, query: String, key: String?, allowed: suspend () -> Boolean = { true }): ServerStationsOutcome {
+        val prior = load(key) ?: return fresh(limit, null, city, query, key, allowed)
+        val cursor = prior.nextCursor ?: return ServerStationsOutcome.Fresh(prior)
+        return try {
+            val page = request(limit, cursor, city, query)
+            require(page.nextCursor != cursor) { "directory cursor did not advance" }
+            val ids = prior.items.map { it.stationId }.toHashSet()
+            require(page.nextCursor == null || page.items.any { it.stationId !in ids }) { "directory page did not advance" }
+            if (!canCommit(city, allowed)) return ServerStationsOutcome.Disabled
+            val merged = ServerStationPage((prior.items + page.items).distinctBy { it.stationId }, page.nextCursor)
+            if (key == null) cache.appendPage(page) else cache.appendScopedPage(key, page)
+            ServerStationsOutcome.Fresh(merged)
+        } catch (error: CancellationException) { throw error
+        } catch (error: com.anpfuel.domain.discovery.DirectoryCursorExpiredException) { fresh(limit, null, city, query, key, allowed)
+        } catch (error: Exception) { ServerStationsOutcome.StaleCache(prior, error) }
+    }
 }
 
 class GetServerStationDetailUseCase(

@@ -32,6 +32,8 @@ func run(args []string, getenv func(string) string) error {
 		return errors.New(usage)
 	}
 	switch args[0] {
+	case "quality":
+		return runQuality(args[1:], getenv)
 	case "subscription":
 		return runSubscription(args[1:], getenv)
 	case "feedback":
@@ -52,6 +54,9 @@ func run(args []string, getenv func(string) string) error {
 }
 
 const usage = `usage:
+  ops quality queue [--after <case-uuid>] [--operator <id>]
+  ops quality inspect --target <review-target-uuid> [--operator <id>]
+  ops quality group --station <uuid> --fuel <canonical> --day <YYYY-MM-DD> [--after <uuid>] [--operator <id>]
   ops subscription stats|replay [--job <uuid> --reason provider-fixed|db-fixed|key-rotated] [--operator <id>]
   ops feedback hide|show --comment <id> --case <id> [--operator <id>]
   ops feedback export --account <id> [--operator <id>]

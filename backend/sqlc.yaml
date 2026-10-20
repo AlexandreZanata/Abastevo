@@ -30,6 +30,7 @@ sql:
       - db/migrations/000034_station_suggestions.sql
       - db/migrations/000035_suggestion_decisions.sql
       - db/migrations/000053_prepared_run_membership.sql
+      - db/migrations/000102_directory_source_identity_history_index.sql
     gen:
       go:
         package: directory
@@ -279,5 +280,34 @@ sql:
       go:
         package: alerts
         out: db/queries/alerts
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/quality
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000093_quality_assay_ledger.sql
+      - db/migrations/000094_quality_event_ledgers.sql
+      - db/migrations/000095_quality_watermarks.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000096_quality_reports.sql
+      - db/migrations/000097_quality_native_empty_result.sql
+      - db/migrations/000098_quality_revision_provenance.sql
+      - db/migrations/000099_quality_report_review.sql
+      - db/migrations/000100_quality_resource_members.sql
+      - db/migrations/000101_quality_source_collection_clock.sql
+      - db/migrations/000103_quality_revalidation_cursor.sql
+      - db/migrations/000104_quality_discovery_cursor.sql
+      - db/migrations/000105_quality_station_projections.sql
+      - db/migrations/000106_quality_native_fine_precision.sql
+      - db/migrations/000107_quality_native_fine_revision_clock.sql
+      - db/migrations/000108_quality_historical_fine_profiles.sql
+      - db/migrations/000109_quality_company_association_scope.sql
+    gen:
+      go:
+        package: quality
+        out: db/queries/quality
         sql_package: pgx/v5
         emit_json_tags: true

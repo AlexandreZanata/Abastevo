@@ -7,6 +7,8 @@ import com.anpfuel.application.usecase.location.SelectLocationUseCase
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
+import com.anpfuel.application.usecase.price.StationPricesPageOutcome
+import com.anpfuel.domain.discovery.DiscoveryStationsRule
 import com.anpfuel.application.usecase.station.BuildStationNavigationQueryUseCase
 import com.anpfuel.application.usecase.station.FindNearestBestPriceStationUseCase
 import com.anpfuel.application.usecase.station.FindNearestStationOutcome
@@ -31,6 +33,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -167,29 +171,39 @@ class StationsViewModelTest {
         assertFalse(viewModel.uiState.value.isFindingNearest)
     }
 
+    private fun pageOf(
+        week: SurveyWeek,
+        vararg prices: StationPrice,
+        totalCount: Int = prices.size,
+        hasMore: Boolean = false,
+    ) = StationPricesPageOutcome.Success(
+        surveyWeek = week,
+        state = BrazilianState.PARANA,
+        municipality = "Curitiba",
+        fuelProduct = FuelProduct.ETHANOL,
+        page = DiscoveryStationsRule.DiscoveryPage(
+            items = prices.toList(),
+            hasMore = hasMore,
+            totalCount = totalCount,
+        ),
+    )
+
     @Test
-    fun failedRefreshKeepsCachedStations() = runTest(dispatcher) {
+    fun failedRefreshKeepsStations() = runTest(dispatcher) {
         val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
         coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
             state = BrazilianState.PARANA,
             municipality = "Curitiba",
         )
-        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
-            surveyWeek = week,
-            state = BrazilianState.PARANA,
-            municipality = "Curitiba",
-            fuelProduct = FuelProduct.ETHANOL,
-            stations = listOf(
-                stationPrice("POSTO CENTRO", "5.19", week),
-                stationPrice("POSTO LESTE", "5.29", week),
-            ),
-        )
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            pageOf(week, stationPrice("POSTO CENTRO", "5.19", week), stationPrice("POSTO LESTE", "5.29", week))
 
         viewModel.load(Locale.US)
         advanceUntilIdle()
         assertEquals(2, viewModel.uiState.value.stations.size)
 
-        coEvery { getStationPricesUseCase(fuelProduct = any()) } throws RuntimeException("boom")
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } throws
+            RuntimeException("boom")
         viewModel.load(Locale.US)
         advanceUntilIdle()
 
@@ -198,22 +212,25 @@ class StationsViewModelTest {
     }
 
     @Test
-    fun searchQueryFiltersVisibleStationsLocally() = runTest(dispatcher) {
+    fun searchQueryLoadsBoundedWindowsLocally() = runTest(dispatcher) {
         val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
         coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
             state = BrazilianState.PARANA,
             municipality = "Curitiba",
         )
-        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
-            surveyWeek = week,
-            state = BrazilianState.PARANA,
-            municipality = "Curitiba",
-            fuelProduct = FuelProduct.ETHANOL,
-            stations = listOf(
-                stationPrice("POSTO CENTRO", "5.19", week),
-                stationPrice("POSTO LESTE", "5.29", week),
-            ),
-        )
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+            val search = it.invocation.args[4] as String
+            when (search) {
+                "leste" -> pageOf(week, stationPrice("POSTO LESTE", "5.29", week), totalCount = 1)
+                "inexistente" -> pageOf(week, totalCount = 0)
+                else -> pageOf(
+                    week,
+                    stationPrice("POSTO CENTRO", "5.19", week),
+                    stationPrice("POSTO LESTE", "5.29", week),
+                    totalCount = 2,
+                )
+            }
+        }
 
         viewModel.load(Locale.US)
         advanceUntilIdle()
@@ -228,6 +245,7 @@ class StationsViewModelTest {
         advanceUntilIdle()
         assertEquals(0, viewModel.uiState.value.stations.size)
         assertEquals("inexistente", viewModel.uiState.value.searchNoMatch)
+        assertEquals(false, viewModel.uiState.value.showEmpty)
 
         viewModel.onSearchQueryChanged("", Locale.US)
         advanceUntilIdle()
@@ -236,27 +254,78 @@ class StationsViewModelTest {
     }
 
     @Test
-    fun selectingStationBuildsDetailFromCache() = runTest(dispatcher) {
+    fun loadMoreAppendsAndClearsContinuation() = runTest(dispatcher) {
         val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
         coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
             state = BrazilianState.PARANA,
             municipality = "Curitiba",
         )
-        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
-            surveyWeek = week,
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), 0, any()) } returns
+            pageOf(week, stationPrice("POSTO CENTRO", "5.19", week), totalCount = 2, hasMore = true)
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), 1, any()) } returns
+            pageOf(week, stationPrice("POSTO LESTE", "5.29", week), totalCount = 2)
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.anpHasMore)
+
+        viewModel.loadMoreAnpStations()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.stations.size)
+        assertEquals(false, viewModel.uiState.value.anpHasMore)
+        assertEquals(null, viewModel.uiState.value.anpMoreError)
+    }
+
+    @Test
+    fun failedContinuationKeepsRowsAndRetries() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
             state = BrazilianState.PARANA,
             municipality = "Curitiba",
-            fuelProduct = FuelProduct.ETHANOL,
-            stations = listOf(
-                stationPrice("POSTO CENTRO", "5.19", week),
-                stationPrice("POSTO LESTE", "5.29", week),
-            ),
         )
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), 0, any()) } returns
+            pageOf(week, stationPrice("POSTO CENTRO", "5.19", week), totalCount = 2, hasMore = true)
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), 1, any()) } throws
+            RuntimeException("boom") andThen
+            pageOf(week, stationPrice("POSTO LESTE", "5.29", week), totalCount = 2)
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.loadMoreAnpStations()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.stations.size)
+        assertEquals(true, viewModel.uiState.value.anpHasMore)
+        assertNotNull(viewModel.uiState.value.anpMoreError)
+
+        viewModel.loadMoreAnpStations()
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.stations.size)
+        assertEquals(null, viewModel.uiState.value.anpMoreError)
+    }
+
+    @Test
+    fun selectingStationReadsTargetedRow() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            state = BrazilianState.PARANA,
+            municipality = "Curitiba",
+        )
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            pageOf(week, stationPrice("POSTO CENTRO", "5.19", week), totalCount = 1)
+        coEvery {
+            getStationPricesUseCase.findStationPrice(
+                BrazilianState.PARANA, "Curitiba", FuelProduct.ETHANOL, week, "61602199002409",
+            )
+        } returns stationPrice("POSTO CENTRO", "5.19", week)
 
         viewModel.load(Locale.US)
         advanceUntilIdle()
 
         viewModel.onStationSelected("61602199002409")
+        advanceUntilIdle()
         val detail = viewModel.uiState.value.selectedDetail
         assertNotNull(detail)
         assertEquals("POSTO CENTRO", detail?.station?.displayName)
@@ -275,18 +344,17 @@ class StationsViewModelTest {
             state = BrazilianState.PARANA,
             municipality = "Curitiba",
         )
-        coEvery { getStationPricesUseCase(fuelProduct = any()) } returns StationPricesOutcome.Success(
-            surveyWeek = week,
-            state = BrazilianState.PARANA,
-            municipality = "Curitiba",
-            fuelProduct = FuelProduct.ETHANOL,
-            stations = listOf(stationPrice("POSTO CENTRO", "5.19", week)),
-        )
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            pageOf(week, stationPrice("POSTO CENTRO", "5.19", week), totalCount = 1)
+        coEvery {
+            getStationPricesUseCase.findStationPrice(any(), any(), any(), any(), any())
+        } returns null
 
         viewModel.load(Locale.US)
         advanceUntilIdle()
 
         viewModel.onStationSelected("00000000000000")
+        advanceUntilIdle()
         assertEquals(null, viewModel.uiState.value.selectedDetail)
     }
 
@@ -326,4 +394,27 @@ class StationsViewModelTest {
         assertEquals(listOf(StationsMessage.NearestUnavailable), messages)
         assertFalse(viewModel.uiState.value.isFindingNearest)
     }
+    @Test
+    fun `retired ANP search cannot replace newer rows or fuel`() = runTest(dispatcher) {
+        val week = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(BrazilianState.PARANA, "Curitiba")
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { getStationPricesUseCase.page(any(), any(), any(), any(), any(), any(), any(), any()) } coAnswers {
+            if (it.invocation.args[4] == "old") {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { release.await() }
+                pageOf(week, stationPrice("POSTO CENTRO", "5.19", week))
+            } else pageOf(week, stationPrice("POSTO LESTE", "5.29", week))
+        }
+        viewModel.onSearchQueryChanged("old", Locale.US)
+        advanceTimeBy(300)
+        runCurrent()
+        viewModel.onSearchQueryChanged("new", Locale.US)
+        advanceTimeBy(300)
+        runCurrent()
+        release.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("new", viewModel.uiState.value.searchQuery)
+        assertEquals("POSTO LESTE", viewModel.uiState.value.stations.single().displayName)
+    }
+
 }

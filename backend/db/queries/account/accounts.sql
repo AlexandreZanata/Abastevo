@@ -127,6 +127,15 @@ SELECT id, alias, status, created_at
 FROM accounts
 WHERE id = @id;
 
+-- FQ-09: protect signed private commands against concurrent deletion/unbinding.
+-- name: LockQualityAccount :one
+SELECT id, alias, status, created_at FROM accounts WHERE id = @id FOR SHARE;
+
+-- name: LockQualityBinding :one
+SELECT account_id, contributor_id, key_fingerprint, bound_at
+FROM account_contributor_bindings
+WHERE account_id = @account_id AND contributor_id = @contributor_id FOR SHARE;
+
 -- Account status lifecycle (P13-T04A). Suspension and deletion revoke
 -- sessions via RevokeAccountFamilies in the same transaction; deletion
 -- additionally drops address and provider bindings while the account
@@ -319,3 +328,6 @@ SELECT account_id, contributor_id, created_at
 FROM account_erasure_intents
 WHERE account_id = @account_id
 ORDER BY contributor_id;
+
+-- name: ActiveQualityOwners :many
+SELECT id FROM accounts WHERE id=ANY(@ids::uuid[]) AND status='active';

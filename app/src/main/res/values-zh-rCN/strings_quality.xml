@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">燃料质量</string>
+    <string name="quality_entry">查看质量检测</string>
+    <string name="quality_note">ANP采样结果，不保证加油站当前的燃料质量。</string>
+    <string name="quality_score_unavailable">评分不可用：数值评分方法尚未完成校准。</string>
+    <string name="quality_unavailable">无法获取质量数据。</string>
+    <string name="quality_no_source">此版本暂无可用的官方数据。</string>
+    <string name="quality_empty">此版本没有所选燃料的已发布检测记录。</string>
+    <string name="quality_stale">数据较旧或更新未确认，请检查采样日期。</string>
+    <string name="quality_historical">这是历史版本，请同时查看最新版本。</string>
+    <string name="quality_edition">版本 %1$s • 发布于 %2$s</string>
+    <string name="quality_periods">选择版本</string>
+    <string name="quality_current">查看最新版本</string>
+    <string name="quality_more_periods">更多版本</string>
+    <string name="quality_more_assays">下一页检测记录</string>
+    <string name="quality_first_page">返回第一页</string>
+    <string name="quality_samples">样品数：%1$d • 访问次数：%2$d</string>
+    <string name="quality_verdicts">合格：%1$d • 不合格：%2$d • 未确定：%3$d</string>
+    <string name="quality_sample_range">采样日期：%1$s 至 %2$s</string>
+    <string name="quality_pending_dimensions">样品数量暂不可用，以下检测结果为独立记录。</string>
+    <string name="quality_assay_count">检测数：%1$d • 最近采样：%2$s</string>
+    <string name="quality_sample_title">样品详情</string>
+    <string name="quality_aspect_note">样品判定会考虑燃料类型及补充检测。单项结果不能代表整个加油站。</string>
+    <string name="quality_observed">来源中记录的采样时间：%1$s</string>
+    <string name="quality_conforming">检测合格</string>
+    <string name="quality_nonconforming">检测不合格</string>
+    <string name="quality_unknown">结果未分类</string>
+    <string name="quality_source">查看官方来源</string>
+    <string name="quality_source_unavailable">无法打开来源详情。</string>
+    <string name="quality_blank_result">未提供结果</string>
+    <string name="quality_revisions_unavailable">无法列出版本，可用的分析仍显示在下方。</string>
+    <string name="quality_provenance">文件：%1$s</string>
+    <string name="quality_hash">SHA-256：%1$s</string>
+</resources>

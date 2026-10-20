@@ -176,14 +176,19 @@ func (q *Queries) GetJob(ctx context.Context, id pgtype.UUID) (JobQueue, error) 
 }
 
 const getJobByDedupe = `-- name: GetJobByDedupe :one
-SELECT id FROM job_queue WHERE dedupe_key = $1
+SELECT id, status FROM job_queue WHERE dedupe_key = $1
 `
 
-func (q *Queries) GetJobByDedupe(ctx context.Context, dedupeKey pgtype.Text) (pgtype.UUID, error) {
+type GetJobByDedupeRow struct {
+	ID     pgtype.UUID `json:"id"`
+	Status string      `json:"status"`
+}
+
+func (q *Queries) GetJobByDedupe(ctx context.Context, dedupeKey pgtype.Text) (GetJobByDedupeRow, error) {
 	row := q.db.QueryRow(ctx, getJobByDedupe, dedupeKey)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i GetJobByDedupeRow
+	err := row.Scan(&i.ID, &i.Status)
+	return i, err
 }
 
 const jobBacklog = `-- name: JobBacklog :one

@@ -92,7 +92,7 @@ func TestSafetyClaimIndexOnlyUpgradePreservesQueueLeases(t *testing.T) {
 	if err := q.Complete(ctx, job.ID, job.LeaseToken); err != nil {
 		t.Fatal("upgrade invalidated live lease", err)
 	}
-	if returned, err := Enqueue(ctx, pool, "evidence-sweep", []byte(`{"version":1}`), "live-upgrade", 1, time.Time{}); err != nil || returned != job.ID {
+	if returned, err := Enqueue(ctx, pool, "evidence-sweep", []byte(`{"version":1}`), "live-upgrade", 1, time.Time{}); err != nil || returned.ID != job.ID || returned.Created {
 		t.Fatal("upgrade forked dedupe", returned, err)
 	}
 	if foreign, err := q.claim(ctx, "", "general", time.Minute, []string{"evidence-sweep"}); err != nil || foreign.Kind != "general-import" {

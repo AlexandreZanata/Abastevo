@@ -92,27 +92,38 @@ func uuidString(id pgtype.UUID) string {
 		hexed[16:20] + "-" + hexed[20:32]
 }
 
+// EnqueueResult reports the platform-owned enqueue outcome. Created is
+// false when an identical dedupe key already existed and the call
+// converged on the stored job; callers that budget fresh work must not
+// charge converged enqueues against that budget. Status is the stored job
+// state after the call so callers can act on converged dead work.
+type EnqueueResult struct {
+	ID      string
+	Created bool
+	Status  string
+}
+
 // Enqueue stores one job, sharing the caller's transaction when given one
 // (pass the pool for standalone enqueue). Payload must be valid JSON;
 // dedupe constrains repeats only when non-empty. Re-enqueueing an existing
 // dedupe key converges on the stored id instead of forking the work.
-func Enqueue(ctx context.Context, db platform.DBTX, kind string, payload []byte, dedupeKey string, maxAttempts int32, notBefore time.Time) (string, error) {
+func Enqueue(ctx context.Context, db platform.DBTX, kind string, payload []byte, dedupeKey string, maxAttempts int32, notBefore time.Time) (EnqueueResult, error) {
 	if kind == "" {
-		return "", errors.New("jobs: empty kind")
+		return EnqueueResult{}, errors.New("jobs: empty kind")
 	}
 	if !json.Valid(payload) {
-		return "", errors.New("jobs: payload must be JSON")
+		return EnqueueResult{}, errors.New("jobs: payload must be JSON")
 	}
 	if maxAttempts < 1 {
-		return "", errors.New("jobs: max attempts must be positive")
+		return EnqueueResult{}, errors.New("jobs: max attempts must be positive")
 	}
 	id, err := NewUUIDv4()
 	if err != nil {
-		return "", err
+		return EnqueueResult{}, err
 	}
 	uid, err := mustUUID(id)
 	if err != nil {
-		return "", err
+		return EnqueueResult{}, err
 	}
 	var dedupe pgtype.Text
 	if dedupeKey != "" {
@@ -131,15 +142,17 @@ func Enqueue(ctx context.Context, db platform.DBTX, kind string, payload []byte,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			// ON CONFLICT DO NOTHING waits for an in-flight conflicting
+			// insert, so a visible stored job is already committed.
 			existing, rerr := platform.New(db).GetJobByDedupe(ctx, dedupe)
 			if rerr != nil {
-				return "", rerr
+				return EnqueueResult{}, rerr
 			}
-			return uuidString(existing), nil
+			return EnqueueResult{ID: uuidString(existing.ID), Created: false, Status: existing.Status}, nil
 		}
-		return "", err
+		return EnqueueResult{}, err
 	}
-	return uuidString(returned), nil
+	return EnqueueResult{ID: uuidString(returned), Created: true, Status: "queued"}, nil
 }
 
 // Claim takes the oldest claimable job of a kind ("" for any), fencing it

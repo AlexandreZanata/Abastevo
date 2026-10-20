@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quality_title">Kraftstoffqualität</string>
+    <string name="quality_entry">Qualitätsanalysen ansehen</string>
+    <string name="quality_note">Ergebnisse von ANP-Proben. Sie garantieren nicht die aktuelle Qualität der Tankstelle.</string>
+    <string name="quality_score_unavailable">Keine Bewertung: Es gibt keine kalibrierte numerische Methodik.</string>
+    <string name="quality_unavailable">Qualitätsdaten konnten nicht abgerufen werden.</string>
+    <string name="quality_no_source">Für diese Revision sind keine offiziellen Daten verfügbar.</string>
+    <string name="quality_empty">Für diesen Kraftstoff liegen in dieser Revision keine veröffentlichten Prüfungen vor.</string>
+    <string name="quality_stale">Alte Daten oder Aktualität nicht bestätigt. Bitte das Entnahmedatum prüfen.</string>
+    <string name="quality_historical">Historische Revision. Auch die aktuelle Ausgabe prüfen.</string>
+    <string name="quality_edition">Ausgabe %1$s • veröffentlicht am %2$s</string>
+    <string name="quality_periods">Ausgabe auswählen</string>
+    <string name="quality_current">Aktuelle Ausgabe verfolgen</string>
+    <string name="quality_more_periods">Weitere Ausgaben</string>
+    <string name="quality_more_assays">Nächste Prüfungsseite</string>
+    <string name="quality_first_page">Zur ersten Seite</string>
+    <string name="quality_samples">Proben: %1$d • Besuche: %2$d</string>
+    <string name="quality_verdicts">Konform: %1$d • Nicht konform: %2$d • Ungeklärt: %3$d</string>
+    <string name="quality_sample_range">Entnahmen vom %1$s bis %2$s</string>
+    <string name="quality_pending_dimensions">Probenzahlen noch nicht verfügbar. Die Prüfungen unten sind einzelne Datensätze.</string>
+    <string name="quality_assay_count">Prüfungen: %1$d • Letzte Entnahme: %2$s</string>
+    <string name="quality_sample_title">Probendetails</string>
+    <string name="quality_aspect_note">Die Probenbewertung berücksichtigt Kraftstoff und ergänzende Prüfungen. Ein einzelnes Ergebnis bewertet nicht die gesamte Tankstelle.</string>
+    <string name="quality_observed">Entnahme laut Quelle: %1$s</string>
+    <string name="quality_conforming">Konforme Prüfung</string>
+    <string name="quality_nonconforming">Nicht konforme Prüfung</string>
+    <string name="quality_unknown">Ergebnis nicht klassifiziert</string>
+    <string name="quality_source">Offizielle Quelle ansehen</string>
+    <string name="quality_source_unavailable">Quellendetails konnten nicht geöffnet werden.</string>
+    <string name="quality_blank_result">Kein Ergebnis angegeben</string>
+    <string name="quality_revisions_unavailable">Ausgaben konnten nicht aufgelistet werden. Verfügbare Analysen stehen weiterhin unten.</string>
+    <string name="quality_provenance">Datei: %1$s</string>
+    <string name="quality_hash">SHA-256: %1$s</string>
+</resources>

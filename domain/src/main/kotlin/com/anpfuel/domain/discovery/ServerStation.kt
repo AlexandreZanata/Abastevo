@@ -96,6 +96,7 @@ class ServerStation private constructor(
 data class ServerStationPage(
     val items: List<ServerStation>,
     val nextCursor: String?,
+    val cachedNextOffset: Int? = null,
 )
 
 data class NearbyServerStation(

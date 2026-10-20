@@ -55,7 +55,7 @@ FROM job_queue
 WHERE id = @id;
 
 -- name: GetJobByDedupe :one
-SELECT id FROM job_queue WHERE dedupe_key = @dedupe_key;
+SELECT id, status FROM job_queue WHERE dedupe_key = @dedupe_key;
 
 -- Monitoring (P08-T05): queue depth, dead-letter count and oldest
 -- queued job for backlog alerts. One indexed scan, no payload reads.

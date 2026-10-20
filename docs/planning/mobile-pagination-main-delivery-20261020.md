@@ -1,0 +1,42 @@
+# Mobile pagination and maintained-dev delivery reconciliation
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+User authorized reconciliation and protected main integration on 2026-10-20. Reuse PR138 (dev→main), preserving its quality batch and both histories. Main base08a54dc4, published dev901c432c, committed local quality tip9737b22f (advanced from the initial91ad38c0 during reconciliation), mobile/native review tipd0918d03. An independent local clone with a private dev ref avoids taking over the dirty maintained-dev checkout. The uncommitted quality109 work and the original evidence-store edit stay in their original directories; no stash/reset/force update is used.
+
+Normal merge changes only the combined progress record on conflict. All Android/domain/application/data/build inputs are byte-identical to d0918d03; its1,726 JVM executions and38 native passes remain applicable. The additional backend source is the committed quality continuation through FQ-07R6B, with its checkpoint evidence and still-default-off sources. No uncommitted future milestone or whole-feature acceptance is imported.
+
+Before final integration, validate the combined backend on a separately named tmpfs PostGIS, actual migration chain109, the four pinned Rust executables and the two actual SQLite harnesses. Reverify actual GitHub head/base and all applicable signals. Main protection observed: strict required Quick verification (GitHub Actions app15368), administrators enforced, zero required approvals, no force-push/deletion. No protection changes or override are authorized. Run git-flow finish with explicit origin/main and required Quick verification only when remote acceptance is successful.
+
+Existing remote failures were not treated as accepted: quick refused the unclassified .dockerignore Docker build input; integration reported alert fixture/no-candidate failures and a concurrent cloud snapshot duplicate. The first combined local run additionally exposed stale quality/source-index fixture expectations and strict preparer mode requirements. Diagnose each failure before claiming acceptance; no assertion is removed merely to turn CI green.
+
+Review contracts for integration repairs:
+
+- B-BR-DELIVERY-01: commits from main, published dev, captured local dev and mobile review remain ancestors; foreign dirty files and local branch remain unchanged.
+- B-BR-GATE-DOCKER-01: .dockerignore is a full-code gate input, never docs-only; unknown top-level paths still fail closed and secret scanning remains active.
+- B-BR-SNAPSHOT-ONCE-01: concurrent snapshot ticks for the same admitted owner/revision/policy do not publish duplicate ready snapshots; failed writes remain recoverable, private ownership/consent fences remain mandatory.
+
+Final test counts, CI head/base/check URLs and integration/wiki outcome belong in this record or post-merge PR metadata once actually observed. No release, deploy, source activation or certification follows from source integration.
+
+## Reconciliation repairs and local evidence
+
+- Gate failure reproduced by executing the actual Bash selector: .dockerignore refused before, full selection after; three selector tests PASS, existing code/docs routing and unknown-path refusal retained. Harness invokes the regression. No required context/workflow is disabled.
+- The old CI ran alerts on Sunday with a Monday–Wednesday schedule; wall-clock integration fixtures correctly produced no candidates. Fixed the injected evaluation time to Tuesday10:00 Sao Paulo and retained explicit Sunday/outside-window negative tests; no production schedule changed.
+- The historical Directory index test still hardcoded the complete applied list ending105. It now requires the first pending index migration102 plus unchanged replay/index-plan/retained-row assertions, allowing later independent append-only migrations.
+- The initial local Rust artifacts inherited group-write mode775 and were correctly refused by the trusted executable port. Applied755 to this run's temporary preparers, matching CI's explicit chmod; no port was relaxed. Five repaired race/PostGIS packages PASS: alerts/adapters, directory/adapters, quality/adapters/native, quality/adapters/jobs and cmd/worker.
+- Original cloud race deterministically reproduced two uploads/ready snapshots with the first object write paused. Fixed scheduled ticks with a per-owner PostgreSQL try-advisory session lease over admission/upload/receipt. A separate connection (bounded by the30s tick/5s connect/close deadlines) keeps the publication pool and owner-row transactions available during object I/O. Busy owners skip this tick; pending metadata/recovery behavior remains unchanged. All cloud adapters/HTTP/domain race/PostGIS tests PASS, including a one-connection publication pool and cancellation releasing the lease for retry; vet/staticcheck PASS. No migration109 conflict or dependency addition.
+- Both actual SQLite harnesses PASS (six cases each). Android/build inputs remain identical to d0918d03, so prior1,726 JVM and38 native executions are retained as exact-source evidence.
+
+The initial broad backend matrix executed2,715 passing cases plus13 failing nested cases across four packages (all repaired/environment causes above), four explicit optional case skips and26 packages without tests. Its passing package evidence is not a claim of an all-green aggregate. The final combined109 matrix is recorded only after it actually completes. The occupied other front advanced to its committed9737b22f checkpoint; it was normally merged before publication. Its subsequent uncommitted FQ-07R6C remains outside this candidate and untouched.
+
+## Final local acceptance and publication
+
+Combined migration109 matrix:112 packages PASS, one failing package solely from the old fixed-port Caddy fixture;2,756 passing nested Go cases, one failed case, four explicit optional case skips,26 packages with no tests. Repaired the edge fixture to bind an ephemeral loopback port and run detached with a CID receipt; cleanup removes only the64-hex container ID created by this test, including failure paths. Retained observed-client/forged-header/503 assertions. Two real Docker/Caddy/race executions PASS afterward; no test-labeled edge container remains. This is an affected rerun after a concrete harness correction, not a retry hiding an unexplained failure. The union covers113 backend packages; it is not represented as a single unbroken aggregate run.
+
+Classifier3, SQLite12, affected alert/index/worker/native packages, full cloud ownership/consent/recovery/race regression, source compilation through the Go matrix, scoped vet/staticcheck, gofmt, whitespace and secret-surface checks PASS. Android source/build comparison against d0918d03 is empty, preserving the exact-source JVM/native evidence. The final bounded local quick gate is reserved for git-flow finish after remote acceptance, per CI_PLAN.
+
+Published dev normally from901c432c to the reconciled candidate through c422b2b3; final edge/acceptance commit follows. PR138 was reused and retitled to the cumulative Android/quality scope. GitHub CLI edit encountered an obsolete projectCards GraphQL field; the same title/body update succeeded through REST. No new PR or tracker closure was created. Wiki alias was independently reachable at HEAD0100fe7d; actual mirror publication waits for the merged source SHA.
+
+At this checkpoint remote checks are not yet accepted. Required Quick verification and applicable Android/backend fast/integration must complete successfully on the final candidate and verified head/base mapping before merge. Any new failure or moved input requires repair/revalidation. The dirty local dev checkout and its later FQ-07R6C changes stay untouched and must reconcile the remote result before its own future push. Remote dev is retained/synchronized by guarded finish; source publication does not assert full FQ-17/G24/G09 acceptance.

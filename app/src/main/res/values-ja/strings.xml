@@ -258,6 +258,14 @@
     <string name="a11y_language_russian">ロシア語</string>
     <string name="settings_preferences_section">環境設定</string>
     <string name="settings_sync_station_detail">バックグラウンドでスタンド詳細を同期</string>
+    <string name="settings_public_catalog_section">公開されている市のスタンド一覧</string>
+    <string name="settings_public_catalog_description">あなたの市の公開スタンド一覧のオフラインコピーを保持します。詳細、投稿、位置情報をダウンロードすることはありません。</string>
+    <string name="settings_public_catalog_toggle">公開一覧を最新の状態に保つ</string>
+    <string name="settings_public_catalog_last_sync">最終更新：%1$s</string>
+    <string name="settings_public_catalog_never_synced">この端末ではまだ更新されていません。</string>
+    <string name="settings_public_catalog_off_note">バックグラウンド更新はオフです。閲覧、手動更新、投稿は引き続き利用できます。</string>
+    <string name="settings_clear_public_catalog">公開一覧を削除</string>
+    <string name="public_catalog_cleared">公開一覧を削除しました。</string>
     <string name="settings_auto_download_latest_week">最新の調査週を自動的にダウンロード</string>
     <string name="settings_sync_wifi_only">Wi‑Fi接続時のみ自動同期</string>
     <string name="settings_show_price_history">価格履歴を表示</string>
@@ -445,7 +453,11 @@
     <string name="server_station_unknown_location">場所未確認のため、座標を表示しません。</string>
     <string name="server_station_cached">オフライン保存された最後の情報を表示しています。</string>
     <string name="server_stations_unavailable">サーバーの一覧は利用できません。公式ANPデータの閲覧は引き続き可能です。</string>
+    <string name="server_stations_load_more">さらにスタンドを表示</string>
+    <string name="server_stations_load_more_failed">さらにスタンドを読み込めませんでした。上のリストは変更されていません。</string>
     <string name="station_feedback_title">給油所のディスカッション</string>
+    <string name="station_feedback_show_more">さらにコメントを表示</string>
+    <string name="station_feedback_show_more_failed">さらにコメントを読み込めませんでした。上のリストは変更されていません。</string>
     <string name="station_feedback_guest">評価、コメント、投票にはログインしてください。閲覧は誰でもできます。</string>
     <string name="station_feedback_rate">給油所を評価（1～5）</string>
     <string name="station_feedback_comment_hint">コメントを投稿（280文字）</string>
@@ -802,4 +814,6 @@
     <string name="home_community_empty_hint">価格を投稿して地域の比較を始めましょう。</string>
     <string name="home_community_unavailable">コミュニティの価格を取得できません。もう一度お試しください。</string>
     <string name="home_community_updated">コミュニティ · 更新 %1$s</string>
+    <string name="feed_restart_list">一覧の先頭に戻る</string>
+    <string name="settings_public_catalog_size">公開キャッシュの推定サイズ: %1$s</string>
 </resources>

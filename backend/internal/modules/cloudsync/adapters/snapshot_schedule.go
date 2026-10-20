@@ -104,6 +104,28 @@ func (s *Store) TickSnapshots(ctx context.Context, now time.Time, limit int) (in
 }
 
 func (s *Store) snapshotOneAccount(ctx context.Context, accountID string, now time.Time) (bool, error) {
+	// Keep the background admission/upload/receipt sequence serialized across
+	// workers. The owner row is released before object I/O, so it cannot be
+	// the lease. A separate bounded connection avoids consuming a publication
+	// pool slot while another transaction or upload is running.
+	cfg := s.Pool.Config().ConnConfig.Copy()
+	cfg.ConnectTimeout = 5 * time.Second
+	lease, err := pgx.ConnectConfig(ctx, cfg)
+	if err != nil {
+		return false, domain.ErrUnavailable
+	}
+	defer func() {
+		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = lease.Close(closeCtx) // Closing releases the session lock, including on cancellation.
+	}()
+	var admitted bool
+	if err = lease.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtextextended($1, 0))", "cloud-snapshot-tick:"+accountID).Scan(&admitted); err != nil {
+		return false, domain.ErrUnavailable
+	}
+	if !admitted {
+		return false, nil
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return false, domain.ErrUnavailable

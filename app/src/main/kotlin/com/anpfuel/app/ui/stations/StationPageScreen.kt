@@ -53,6 +53,7 @@ fun StationPageScreen(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     onUpdatePrice: (String, String) -> Unit,
+    onQuality: (String, FuelProduct) -> Unit,
     viewModel: StationPageViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -69,7 +70,7 @@ fun StationPageScreen(
             if (query != null && MapAppChooser.openNavigation(context, query) == MapNavigationResult.NoAppFound) {
                 Toast.makeText(context, context.getString(R.string.stations_navigate_no_app), Toast.LENGTH_SHORT).show()
             }
-        })
+        },onQuality=onQuality)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -82,6 +83,7 @@ internal fun StationPageContent(
     onSignIn: () -> Unit,
     onUpdatePrice: (String, String) -> Unit,
     onRoute: () -> Unit,
+    onQuality: (String, FuelProduct) -> Unit = {_,_->},
 ) {
     var showGuide by remember { mutableStateOf(false) }
     val artwork = state.profile?.artwork ?: state.canonical?.artwork ?: StationArtwork.BETA_DEFAULT
@@ -217,6 +219,11 @@ internal fun StationPageContent(
                     if (state.pricesStale) Text(stringResource(R.string.community_stale_label))
                 }
             }
+            state.canonical?.takeIf {com.anpfuel.app.BuildConfig.QUALITY_UI_ENABLED}?.let {station -> item {
+                OutlinedButton(onClick={onQuality(station.stationId,state.fuel)},enabled=state.canParticipate,modifier=Modifier.widthIn(max=720.dp).fillMaxWidth()) {
+                    Text(stringResource(R.string.quality_entry))
+                }
+            }}
             item {
                 if (state.canParticipate) {
                     val id = checkNotNull(state.canonical).stationId

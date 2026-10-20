@@ -17,4 +17,10 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override suspend fun savePreferences(preferences: UserPreferences) {
         userPreferencesDataStore.write(preferences)
     }
+
+    override suspend fun markPublicCityCatalogSynced(expected: UserPreferences, atMillis: Long): Boolean =
+        userPreferencesDataStore.markPublicCityCatalogSynced(expected, atMillis)
+
+    override suspend fun clearPublicCityCatalogSyncMarker() = userPreferencesDataStore.clearPublicCityCatalogSyncMarker()
+
 }

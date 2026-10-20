@@ -24,7 +24,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		t.Fatal(dispatchers, err)
 	}
 	general := dispatchers[0]
-	if general.Kind != "" || len(general.ExcludedKinds) != 4 {
+	if general.Kind != "" || len(general.ExcludedKinds) != 10 {
 		t.Fatal("general dispatcher can steal safety work", general)
 	}
 	seen := map[string]bool{}
@@ -35,7 +35,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		seen[d.Kind] = true
 	}
 	for _, kind := range general.ExcludedKinds {
-		if !seen[kind] {
+		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" {
 			t.Fatal("safety work lost its slot", kind)
 		}
 	}
@@ -62,5 +62,32 @@ func TestWorkerDispatcherCancellationJoinsEveryLoop(t *testing.T) {
 	}
 	if err := runDispatchers(context.Background(), []*jobs.Dispatcher{nil}); err == nil {
 		t.Fatal("nil worker accepted")
+	}
+}
+
+func TestWorkerNativeSlotsAreExplicitAndIndependent(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery"} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	disabled, e := workerDispatchers(nil, handlers)
+	if e != nil || len(disabled) != 5 {
+		t.Fatal("source handler implicitly claimed work", disabled, e)
+	}
+	enabled, e := workerDispatchers(nil, handlers, "quality-import", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery")
+	if e != nil || len(enabled) != 10 || enabled[5].Kind != "quality-import" || enabled[6].Kind != "quality-revalidate" || enabled[7].Kind != "quality-recompute" || enabled[8].Kind != "quality-sanctions-import" || enabled[9].Kind != "quality-sanctions-discovery" {
+		t.Fatal("native slot", enabled, e)
+	}
+	if len(enabled[0].ExcludedKinds) != 10 {
+		t.Fatal("general worker can claim source jobs")
+	}
+	for _, kinds := range [][]string{{"foreign"}, {"quality-import", "quality-import"}} {
+		if _, e := workerDispatchers(nil, handlers, kinds...); e == nil {
+			t.Fatal("invalid source slots accepted")
+		}
+	}
+	delete(handlers, "quality-import")
+	if _, e := workerDispatchers(nil, handlers, "quality-import"); e == nil {
+		t.Fatal("missing enabled native handler accepted")
 	}
 }

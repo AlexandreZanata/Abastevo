@@ -165,7 +165,24 @@ fun AnpNavGraph(
                 onBack = { navController.popBackStack() },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+                onQuality = {stationId,fuel -> navController.navigate(Routes.stationQuality(stationId,fuel))},
             )
+        }
+        composable(Routes.STATION_QUALITY,arguments=listOf(
+            navArgument("stationId"){type=NavType.StringType},
+            navArgument("fuelProduct"){type=NavType.StringType;defaultValue="GASOLINE_REGULAR"},
+        )) {
+            com.anpfuel.app.ui.quality.QualityScreen(onBack={navController.popBackStack()},onReports={station,fuel,revision,sample ->
+                navController.navigate(Routes.qualityReports(station,fuel,revision,sample))
+            })
+        }
+        composable(Routes.QUALITY_REPORTS,arguments=listOf(
+            navArgument("stationId"){type=NavType.StringType},
+            navArgument("fuelProduct"){type=NavType.StringType;defaultValue="GASOLINE_REGULAR"},
+            navArgument("revisionId"){type=NavType.StringType;defaultValue=""},
+            navArgument("sampleRef"){type=NavType.StringType;defaultValue=""},
+        )) {
+            com.anpfuel.app.ui.quality.QualityReportsScreen(onBack={navController.popBackStack()},onSignIn={navController.navigate(Routes.AUTH)})
         }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(

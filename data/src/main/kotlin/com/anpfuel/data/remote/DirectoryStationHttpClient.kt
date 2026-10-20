@@ -20,11 +20,32 @@ import kotlin.coroutines.resumeWithException
  * transport failures and non-2xx/empty bodies throw [IOException]; cache
  * fallback lives in the repository, never here. HTTPS only; out-of-range
  * coordinates are refused before any network call. No user GPS is logged.
+ *
+ * Every read has a cancellable `await*` variant backed by
+ * [suspendCancellableCoroutine]: cancelling the coroutine closes the
+ * socket, so stale screen/city/filter requests never land late. Bodies
+ * are capped at [MAX_BODY_BYTES] before parsing so a proxy cannot expand
+ * memory; item-count caps live in the codec.
  */
 class DirectoryStationHttpClient(
     private val client: OkHttpClient,
     private val baseUrl: String,
 ) {
+    companion object {
+        /** 100-item pages stay under ~200 KiB; 512 KiB refuses abuse with headroom. */
+        const val MAX_BODY_BYTES = 512 * 1024L
+        /** Sealed cursors stay tiny; mirrors the codec cap. */
+        const val MAX_CURSOR_CHARS = 4096
+    }
+
+    /**
+     * Non-2xx HTTP failure with its status code. A subtype of
+     * [IOException] so existing transport handling keeps working; the
+     * code lets continuation reads distinguish an expired/invalid
+     * cursor (400) from outages without parsing messages.
+     */
+    class DirectoryHttpException(val code: Int, message: String) : IOException(message)
+
     fun list(limit: Int, cursor: String?): String = get(listUrl(limit, cursor))
 
     suspend fun awaitList(limit: Int, cursor: String?): String = await(listUrl(limit, cursor))
@@ -36,6 +57,7 @@ class DirectoryStationHttpClient(
 
     private fun listUrl(limit: Int, cursor: String?): String {
         require(limit in 1..100) { "limit must be 1..100" }
+        require(cursor == null || cursor.length in 1..MAX_CURSOR_CHARS) { "cursor out of bounds" }
         val url = buildString {
             append(baseUrl.trimEnd('/'))
             append("/v1/stations?limit=").append(limit)
@@ -51,33 +73,51 @@ class DirectoryStationHttpClient(
      * the city (the `q` parameter is omitted); a non-blank query needs
      * at least 2 characters and filters `display_name` server-side.
      */
-    fun search(municipalityCode: String, query: String, limit: Int): String {
-        val trimmed = query.trim()
-        require(municipalityCode.matches(Regex("[0-9]{7}")) && (trimmed.isEmpty() || trimmed.length in 2..100) && limit in 1..100)
-        val url = buildString {
-            append(baseUrl.trimEnd('/'))
-            append("/v1/stations?limit=").append(limit)
-            append("&municipality_code=").append(municipalityCode)
-            if (trimmed.isNotEmpty()) {
-                append("&q=").append(URLEncoder.encode(trimmed, Charsets.UTF_8.name()))
-            }
-        }
-        return get(url)
-    }
+    fun search(municipalityCode: String, query: String, limit: Int, cursor: String? = null): String =
+        get(searchUrl(municipalityCode, query, limit, cursor))
 
-    fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {
+    fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String =
+        get(nearbyUrl(lat, lon, radiusMeters, limit))
+
+    suspend fun awaitNearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String =
+        await(nearbyUrl(lat, lon, radiusMeters, limit))
+
+    suspend fun awaitSearch(
+        municipalityCode: String,
+        query: String,
+        limit: Int,
+        cursor: String? = null,
+    ): String = await(searchUrl(municipalityCode, query, limit, cursor))
+
+    private fun nearbyUrl(lat: Double, lon: Double, radiusMeters: Int, limit: Int): String {
         require(lat in -90.0..90.0) { "lat out of range" }
         require(lon in -180.0..180.0) { "lon out of range" }
         require(radiusMeters in 100..15000) { "radius_m must be 100..15000" }
         require(limit in 1..100) { "limit must be 1..100" }
-        val url = buildString {
+        return buildString {
             append(baseUrl.trimEnd('/'))
             append("/v1/stations/nearby?lat=").append(lat)
             append("&lon=").append(lon)
             append("&radius_m=").append(radiusMeters)
             append("&limit=").append(limit)
         }
-        return get(url)
+    }
+
+    private fun searchUrl(municipalityCode: String, query: String, limit: Int, cursor: String?): String {
+        val trimmed = query.trim()
+        require(municipalityCode.matches(Regex("[0-9]{7}")) && (trimmed.isEmpty() || trimmed.length in 2..100) && limit in 1..100)
+        require(cursor == null || cursor.length in 1..MAX_CURSOR_CHARS) { "cursor out of bounds" }
+        return buildString {
+            append(baseUrl.trimEnd('/'))
+            append("/v1/stations?limit=").append(limit)
+            append("&municipality_code=").append(municipalityCode)
+            if (trimmed.isNotEmpty()) {
+                append("&q=").append(URLEncoder.encode(trimmed, Charsets.UTF_8.name()))
+            }
+            if (cursor != null) {
+                append("&cursor=").append(URLEncoder.encode(cursor, Charsets.UTF_8.name()))
+            }
+        }
     }
 
     fun detail(stationId: String): String = get(detailUrl(stationId))
@@ -96,11 +136,18 @@ class DirectoryStationHttpClient(
         catch (_: StationNotFound) { null }
     }
 
+    suspend fun awaitByCnpj(cnpj: String): String? {
+        require(cnpj.matches(Regex("[A-Z0-9]{12}[0-9]{2}"))) { "invalid CNPJ shape" }
+        return try { await(baseUrl.trimEnd('/') + "/v1/stations/by-cnpj/" + cnpj) }
+        catch (_: StationNotFound) { null }
+    }
+
     private class StationNotFound : IOException("station not found")
 
     /** Cancels the socket as well as the coroutine when connectivity/lifecycle changes. */
     private suspend fun await(url: String): String = suspendCancellableCoroutine { continuation ->
         val call = client.newCall(request(url))
+        call.timeout().timeout(20, java.util.concurrent.TimeUnit.SECONDS)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
@@ -127,9 +174,15 @@ class DirectoryStationHttpClient(
 
     private fun readBody(response: Response): String {
         if (response.code == 404) throw StationNotFound()
-        if (!response.isSuccessful) throw IOException("directory read failed: HTTP ${response.code}")
-        return response.body?.string()?.takeIf { it.isNotBlank() }
-            ?: throw IOException("directory read failed: empty body")
+        if (!response.isSuccessful) throw DirectoryHttpException(response.code, "directory read failed: HTTP ${response.code}")
+        val body = response.body ?: throw IOException("directory read failed: empty body")
+        // Bound memory even when the server/proxy sends an invalid response.
+        val source = body.source()
+        source.request(MAX_BODY_BYTES + 1)
+        if (source.buffer.size > MAX_BODY_BYTES) throw IOException("directory read failed: oversized body")
+        val text = source.buffer.readUtf8()
+        if (text.isBlank()) throw IOException("directory read failed: empty body")
+        return text
     }
 
     private fun get(url: String): String {

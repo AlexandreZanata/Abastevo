@@ -1,6 +1,7 @@
 # Image builds run from the repository root (see infra/docker/Dockerfile).
-# Default-ignore everything; re-include only the Go build inputs so Android
-# sources, docs, samples and local env files never enter the build context.
+# Default-ignore everything; re-include only the Go build inputs plus the
+# pinned Rust quality preparer source so Android sources, docs, samples, raw
+# fixtures and local env files never enter the build context.
 *
 !backend/
 backend/*
@@ -9,3 +10,10 @@ backend/*
 !backend/cmd/
 !backend/internal/
 !backend/db/
+!tools/
+tools/*
+!tools/station-prep/
+tools/station-prep/*
+!tools/station-prep/Cargo.toml
+!tools/station-prep/Cargo.lock
+!tools/station-prep/src/

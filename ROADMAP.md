@@ -16,11 +16,15 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**2026-10-14 selected planning amendment:** [A → B → C consolidation](docs/planning/APP_CONSOLIDATION_PLAN.md) defines future offline efficiency, reliability without mandatory GPS and user economy work after actual app-first/current-head prerequisites. [D](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) is DEFERRED_FUTURE: no receipt/NFC-e/private-document or business claim/management/portal expansion until extreme consolidation AND thousands of real clients, unless the maintainer explicitly requests earlier named scope. New D work is outside the core A–C/launch prerequisite set. Earlier sequences containing new P30–P33 expansion are superseded for that scope; preserve implemented evidence and all existing safety/release obligations.
+
 Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
 
 Existing phase tasks below retain their detailed scoped checks; “all earlier phase gates” means this dependency graph, not ascending phase number or a dependency on deferred G09. Elapsed dates/costs are not invented. Split oversized tasks into letter-suffixed IDs with explicit acceptance before coding. New owning tasks must introduce/document executable acceptance commands when the plan names a descriptive gate.
 
 **Independent website phase:** [P25 — Static landing page](#p25--static-landing-page) follows its own T01–T05 sequence after existing G09-LOCAL integration. It can be built locally before Play Store availability; it neither blocks nor accepts Android/backend release gates. This planning request authorizes local docs only, with website publication and store-link activation handled separately.
+
+**Fuel quality planning overlay (2026-10-14):** [FQ-00–FQ-17](#fuel-quality-evidence-and-station-reliability) adds official quality history, Rust preparation extensions, structured consumer reports and calibrated station/fuel reliability targets. Planning is local-only; implementation selection must reconcile the existing app-first/safety checkpoints. No phase reorder, score publication or new runtime acceptance follows from this overlay.
 
 ## P00 — Project identity documentation and visual preview
 
@@ -2988,6 +2992,8 @@ Priority: **MUST for catalog scope**. Entry: G27; every selected enabled G28 tas
 
 ## Station profile and representation — PLANNED
 
+New private claim/proof/management/portal expansion is **DEFERRED_FUTURE / D_GATE_REQUIRED** under [the 2026-10-14 maintainer restriction](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md). Public read-only station metadata and existing security/privacy maintenance remain in scope; historical task acceptance is preserved. No new D task is required to close the selected A–C/core candidate.
+
 <a id="station-profile-and-representation"></a>
 
 [STATION_PROFILE_PLAN](docs/planning/STATION_PROFILE_PLAN.md) defines the full process; [STATION_PROFILE_REPRESENTATION](docs/product/STATION_PROFILE_REPRESENTATION.md) owns B-BR-P01–P16 / BUC-P01–P10; [ADR-017](docs/adr/017-station-profile-and-verified-representation.md) records identity/authority boundaries. Reuse Directory Station; new profile/claim/grant entities do not duplicate station IDs. Sequence after app-first P34–P38 and catalog checkpoints: G29 source checkpoint → P30 → P31 → P32 → P33 → end affected Android manual/device acceptance → final integration → existing P09/G09. P28-T04 is superseded, preserving its ID; no duplicate owner-verification implementation. All tasks below are PLANNED, local-only documentation, not runtime readiness or remote issues.
@@ -3609,3 +3615,57 @@ User-selected 2026-10-11: isolated `games` branch, offline Android only.
 See [original plan](docs/planning/GAMES_OFFLINE_PLAN.md) and
 [mobile implementation contract](docs/mobile/games-mvp.md). Backend GME-03 and
 ranked consumer GME-05 remain deferred; no leaderboard or backend change.
+
+## Fuel quality evidence and station reliability
+
+<a id="fq-plan"></a>
+
+### FQ-PLAN — Professional quality implementation planning
+
+- **Priority / state:** MUST for the requested planning deliverable / PLANNING_LOCAL_DONE; FQ-00–FQ-05, FQ-08/09, FQ-02B/C, FQ-04c, FQ-08H and document-free FQ-11 LOCAL_DONE; FQ-06/07 Rust adapter contracts LOCAL_DONE with live Go source streams and complete enforcement/sanction history OWED; FQ-05W native runtime composition IN_PROGRESS (Directory revalidation and bounded live discovery LOCAL_DONE, imports default-off); FQ-12/13 and FQ-14A/B public PMQC LOCAL_DONE; FQ-15A/B document-free source and FQ-16A/B1/B2 cache/encrypted dispatch/erasure LOCAL_DONE; FQ-07R1–R4B native official-fine preparation/storage/publication/worker/discovery/image LOCAL_DONE with real2025 reconciliation; FQ-07R5A–E complete seven-resource history preparation/typed storage/publication/worker/image LOCAL_DONE; safe station links OWED; full FQ-14 linked enforcement/sanction journeys, live-source FQ-16 end-to-end and FQ-17 pending, FQ-10/document scope D-held.
+- **Goal:** Define a source-auditable quality history, safe canonical station linkage, consumer case responses and an explainable score without conflating official findings, personal ratings or community signals.
+- **Inputs:** Maintainer request/attachment 2026-10-14; current PROGRESS and actual dev code; existing RST/ING-AUDIT evidence; verified ANP PMQC, enforcement, fines, retailer registry and complaint guidance.
+- **Canonical scope:** [Implementation plan](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md), [target B-BR-FQ-01–16 / BUC-FQ-01–09](docs/product/FUEL_QUALITY_TARGET_CONTRACT.md) and [continuation prompt](docs/planning/FUEL_QUALITY_EXECUTION_PROMPT.md).
+- **Dependencies:** Documentation can be prepared locally now; future code selection reconciles affected app-first and safety/privacy checkpoints under ADR-019/020. Reuse the existing Rust crate, Directory identity and Go ownership.
+- **Acceptance:** Source facts separated from uninspected schemas; loss accounting/quarantine, sample-versus-assay identity, legal status, score sufficiency/methodology, private documentation/24h rights and complete-case access explicitly planned. Every implementation task has dependencies, checks, acceptance and recovery.
+- **Validation:** Changed/new Markdown paths/anchors and rule/task references; dependency/state consistency; git diff --check; scoped secret/PII review. No runtime suites for this documentation-only deliverable.
+- **Recovery / limits:** Preserve all existing task IDs/history and occupied edits. Planning does not authorize national fetch, implementation, live receipt verification, issue creation, VPS/device mutation, PR/main merge or wiki publication.
+
+Execution index; task details/tests/recovery are canonical in the linked plan:
+
+- [FQ-00 — Current code and official source inventory](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-00--reconcile-current-code-and-official-source-inventory-s).
+- [FQ-01 — Product, module and batch contracts](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-01--freeze-product-module-and-batch-contracts-m).
+- [FQ-02 — Lossless Rust PMQC quality preparation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-02--extend-rust-with-lossless-pmqc-quality-preparation-m).
+- [FQ-03 — Identity resolution and review](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-03--identity-resolution-and-review-policy-s).
+- [FQ-04 — Go ledger, migrations and publication](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-04--go-quality-ledger-migrations-and-atomic-publication-m).
+- [FQ-05 — Backfill and incremental discovery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-05--historical-backfill-and-incremental-discovery-m).
+- [FQ-06 — Enforcement events](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-06--enforcement-adapter-and-legally-accurate-events-m).
+- [FQ-07 — Sanction revisions and case correlation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-07--sanction-snapshots-corrections-and-case-correlation-m).
+- [FQ-08 — Official API, timeline and coverage](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-08--official-read-api-timeline-and-coverage-m).
+- [FQ-09 — Structured reports and linkage review](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-09--signed-structured-reports-and-case-link-review-requests-m).
+- [FQ-10 — Private documents and purchase verification](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-10--private-documents-and-purchase-verification-decisions-m).
+- [FQ-11 — Community signals and moderation](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-11--community-signal-and-moderation-policy-m).
+- [FQ-12 — Score calibration and methodology](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-12--calibrate-and-freeze-score-methodology-m).
+- [FQ-13 — Score engine and projections](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-13--deterministic-score-engine-and-projections-m).
+- [FQ-14 — Android official quality/score journeys](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-14--android-official-quality-and-score-journeys-m).
+- [FQ-15 — Android reports/documents/case response](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-15--android-report-document-and-official-case-response-m).
+- [FQ-16 — Offline, privacy and compatibility](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-16--offline-privacy-and-end-to-end-compatibility-m).
+- [FQ-17 — Scoped acceptance and staged delivery](docs/planning/FUEL_QUALITY_IMPLEMENTATION_PLAN.md#fq-17--scoped-acceptance-staged-rollout-and-delivery-m).
+
+Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)); purchase-supported independence remains D-held. Historical read completion is LOCAL_DONE ([FQ-08H](docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md)). Prepared bridge is LOCAL_DONE ([FQ-05C](docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md)); [monthly provenance FQ-05W1](docs/backend/evidence/fuel-quality/FQ05W1_MEMBER_PROVENANCE.md), [bounded archive/process FQ-05W2](docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md) and [historical source clocks FQ-02C](docs/backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md) are LOCAL_DONE. [Directory identity/fencing FQ-05W3](docs/backend/evidence/fuel-quality/FQ05W3_DIRECTORY_FENCE.md) is LOCAL_DONE. [Verified file-job FQ-05W4](docs/backend/evidence/fuel-quality/FQ05W4_FILE_IMPORT.md), [native worker composition FQ-05W5](docs/backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md), [durable Directory revalidation FQ-05W6](docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md), [bounded live discovery FQ-05W7](docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and [static worker image/schedules FQ-05W8](docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md) are LOCAL_DONE with imports default-off and schedules default-off. [Official fine source preparation](docs/backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md) and [typed Rust→Go boundary](docs/backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md) are LOCAL_DONE; [Native storage prerequisite](docs/backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) is LOCAL_DONE; [Native publication/clock read contracts](docs/backend/evidence/fuel-quality/FQ07R3B_NATIVE_FINE_PUBLICATION.md) are LOCAL_DONE; [Native fine file/process/job boundary](docs/backend/evidence/fuel-quality/FQ07R4A_NATIVE_FINE_FILE_IMPORT.md) is LOCAL_DONE; [Native fine worker/discovery/image](docs/backend/evidence/fuel-quality/FQ07R4B_NATIVE_FINE_WORKER.md) is LOCAL_DONE with real2025 reconciliation and default-off controls; [Historical native fine profiles](docs/backend/evidence/fuel-quality/FQ07R5A_HISTORICAL_FINE_PREPARER.md) are LOCAL_DONE with32,516-record native reconciliation; [Verified historical Rust→Go boundary](docs/backend/evidence/fuel-quality/FQ07R5B_HISTORICAL_FINE_BRIDGE.md) is LOCAL_DONE; [Compatible historical storage](docs/backend/evidence/fuel-quality/FQ07R5C_HISTORICAL_FINE_STORAGE.md) is LOCAL_DONE with real107→108 acceptance; [Historical publication/public contracts](docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md) are LOCAL_DONE with complete seven-resource Rust→Go→PostGIS/full traversal; [Seven-resource historical worker/image](docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md) is LOCAL_DONE with actual complete-source worker/queue/image acceptance; [Current-company policy](docs/backend/evidence/fuel-quality/FQ07R6A_COMPANY_ASSOCIATION_POLICY.md) is LOCAL_DONE with explicit unknown historical operation; [Compatible scoped company ledger](docs/backend/evidence/fuel-quality/FQ07R6B_COMPANY_ASSOCIATION_STORAGE.md) is LOCAL_DONE with109/negative/concurrency/rollback acceptance; atomic scoped publication/runtime links, FQ-06 live composition and complete station history remain OWED, followed by linked Android journeys and FQ-17 scoped acceptance; see the [remaining-work handoff](docs/planning/FUEL_QUALITY_REMAINING_HANDOFF.md). "100%" means a reconciled dataset/event denominator and complete reachable matched history, never guaranteed national sampling, automatic CNPJ matching or consumer laboratory certification.
+
+## A–D app consolidation planning
+
+<a id="opt-plan"></a>
+
+### OPT-PLAN — Offline efficiency, community reliability and economy plans
+
+- **Priority / state:** requested planning deliverable / PLANNING_LOCAL_DONE; A/B/C implementation PLANNED, D DEFERRED_FUTURE / NOT_AUTHORIZED.
+- **Goal:** Define sequential bounded tasks for local-first Home, measured operational efficiency, calibrated independent community confidence and useful alerts/history/net fueling economy; reserve private purchase evidence and business portal for future adoption/maturity.
+- **Canonical scope:** [Master](docs/planning/APP_CONSOLIDATION_PLAN.md), [target B-BR-OPT-01–18 / BUC-OPT-01–10](docs/product/APP_CONSOLIDATION_TARGET_CONTRACT.md), [continuation](docs/planning/APP_CONSOLIDATION_EXECUTION_PROMPT.md).
+- **Stages / stable IDs:** [A: OPT-A00–A07](docs/planning/HOME_OFFLINE_EFFICIENCY_PLAN.md); [B: OPT-B00–B08](docs/planning/COMMUNITY_RELIABILITY_PLAN.md); [C: OPT-C00–C08](docs/planning/ECONOMY_RETENTION_PLAN.md); [D: OPT-D00–D06](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md).
+- **Inputs/dependencies:** current app/quality/safety evidence and actual source; preserve current occupied checkouts and FQ-00–08 acceptance. Reuse Room/summary, media/Trust/Jobs, vehicles/history/alerts and Profile/FQ ownership.
+- **Acceptance:** every task has dependencies, inputs/areas, output, meaningful tests and recovery; scope/freshness/independence/units/privacy/provider limits explicit. D held across FQ/Profile/Premium, not just behind a flag; core A–C excludes D.
+- **Validation:** changed/new Markdown paths/anchors, rule/task/dependency consistency, D timing precedence, git diff --check and scoped secret/PII review; no runtime suite for docs.
+- **Recovery/limits:** documentation-only isolated commit; no product implementation, remote issue/PR/wiki publication, provider enrollment, live collection/VPS/device/deployment or release claim.
+- **Next:** explicit implementation selection, current dev/main reconciliation and OPT-A00. Generic continuation of current work does not override future D.

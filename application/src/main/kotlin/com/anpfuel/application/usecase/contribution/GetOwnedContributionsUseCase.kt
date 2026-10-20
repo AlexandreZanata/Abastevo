@@ -28,6 +28,8 @@ data class OwnedContributionStatus(
     val fuelProduct: FuelProduct? = null,
 )
 
+data class OwnedContributionsPage(val items: List<OwnedContributionStatus>, val nextOffset: Int?, val scopeKey: String?)
+
 class GetOwnedContributionsUseCase(
     private val outbox: ContributionOutboxRepository,
     private val scopeProvider: ContributionScopeProvider? = null,
@@ -38,8 +40,16 @@ class GetOwnedContributionsUseCase(
      * table is never loaded for display.
      */
     suspend fun invoke(limit: Int = OutboxBudgets.HISTORY_PAGE_SIZE, offset: Int = 0): List<OwnedContributionStatus> {
+        return page(limit, offset).items
+    }
+
+    suspend fun page(limit: Int = 20, offset: Int = 0): OwnedContributionsPage {
+        require(limit in 1..OutboxBudgets.HISTORY_PAGE_SIZE && offset >= 0)
         val scope = scopeProvider?.currentScope()
-        return outbox.listOwnedPage(limit, offset).filter { scope == null || it.scope == scope }.map { owned ->
+        if (scopeProvider != null && scope == null) return OwnedContributionsPage(emptyList(), null, null)
+        val raw = outbox.listOwnedPage(limit, offset)
+        if (scopeProvider != null && scopeProvider.currentScope() != scope) return OwnedContributionsPage(emptyList(), null, null)
+        val items = raw.filter { scopeProvider == null || it.scope == scope }.map { owned ->
             val local = when (owned.phase) {
                 OwnedContributionPhase.QUEUED -> ContributionLocalPhase.NOT_SENT
                 OwnedContributionPhase.IN_FLIGHT -> ContributionLocalPhase.IN_FLIGHT
@@ -56,6 +66,9 @@ class GetOwnedContributionsUseCase(
                 fuelProduct = owned.fuelProduct,
             )
         }
+        // Advance by rows actually read, including filtered foreign rows: no owner is hidden behind an empty page.
+        return OwnedContributionsPage(items, if (raw.size == limit) offset + raw.size else null,
+            scope?.let { "${it.ownerScope}|${it.origin}" })
     }
 }
 
@@ -66,7 +79,7 @@ class CancelOwnedContributionUseCase(
     suspend fun invoke(commandId: String) {
         if (commandId.isBlank()) throw DomainException("command_id is blank")
         if (scopeProvider != null) {
-            val scope = scopeProvider.currentScope()
+            val scope = scopeProvider.currentScope() ?: throw DomainException("owned contribution unavailable")
             val command = outbox.findOwned(commandId)
                 ?.takeIf { it.scope == scope }
                 ?: throw DomainException("owned contribution unavailable")

@@ -41,6 +41,8 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 4
         versionName = "3.1.0"
+        buildConfigField("boolean", "QUALITY_UI_ENABLED",
+            providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
@@ -92,6 +94,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {

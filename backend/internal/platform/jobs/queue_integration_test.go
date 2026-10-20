@@ -249,11 +249,57 @@ func TestDedupeKeyConverges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !first.Created {
+		t.Error("first enqueue not reported as created")
+	}
 	second, err := Enqueue(ctx, q.pool, "import", []byte(`{"a":2}`), "same", 3, time.Time{})
 	if err != nil {
 		t.Fatalf("dedupe re-enqueue: %v", err)
 	}
-	if first != second {
-		t.Errorf("dedupe returned different ids: %s vs %s", first, second)
+	if first.ID != second.ID {
+		t.Errorf("dedupe returned different ids: %s vs %s", first.ID, second.ID)
+	}
+	if second.Created || second.Status != "queued" {
+		t.Errorf("deduped enqueue reported wrong outcome: %+v", second)
+	}
+}
+
+// TestConcurrentDedupeCreatesExactlyOneJob proves parallel callers converge
+// on one stored row and exactly one of them observes the creation, so a
+// budget counting fresh work cannot be double-charged by a race.
+func TestConcurrentDedupeCreatesExactlyOneJob(t *testing.T) {
+	_, pool := freshQueue(t)
+	ctx := context.Background()
+	const callers = 8
+	results := make(chan EnqueueResult, callers)
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, err := Enqueue(ctx, pool, "import", []byte(`{"n":1}`), "concurrent", 3, time.Time{})
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			results <- result
+		}()
+	}
+	wg.Wait()
+	close(results)
+	ids := map[string]bool{}
+	created := 0
+	for result := range results {
+		ids[result.ID] = true
+		if result.Created {
+			created++
+		}
+	}
+	if len(ids) != 1 || created != 1 {
+		t.Fatalf("concurrent enqueue forked or double-charged: ids=%d created=%d", len(ids), created)
+	}
+	var count int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM job_queue WHERE dedupe_key='concurrent'").Scan(&count); err != nil || count != 1 {
+		t.Fatal("stored rows", count, err)
 	}
 }

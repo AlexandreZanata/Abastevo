@@ -87,3 +87,8 @@ WHERE dead.id IN (
     ORDER BY live.expires_at ASC
     LIMIT @batch
 );
+-- FQ-09: preserve live contributor/key authorization through caller transaction.
+-- name: LockQualitySigningKey :one
+SELECT k.id FROM identity_keys k JOIN identity_contributors c ON c.id=k.contributor_id
+WHERE k.id = @key_id AND c.id = @contributor_id AND k.revoked_at IS NULL AND c.status='active'
+FOR SHARE OF c,k;

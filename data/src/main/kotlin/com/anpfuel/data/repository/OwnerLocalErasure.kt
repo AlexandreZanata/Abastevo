@@ -24,8 +24,9 @@ class OwnerLocalErasure @Inject constructor(
     private val photoSessions: PhotoUploadSessionDao,
     private val photoCache: PhotoCache,
     private val scopeProvider: ContributionScopeProvider,
+    private val quality:com.anpfuel.application.port.QualityReportLocalErasure=com.anpfuel.application.port.QualityReportLocalErasure {true},
 ) {
-    data class Report(val outboxPurged: Int, val sessionsPurged: Int, val cacheDeleted: Int)
+    data class Report(val outboxPurged: Int, val sessionsPurged: Int, val cacheDeleted: Int,val qualityErased:Boolean=true)
 
     /** Current owner scope, or null when identity is unavailable. */
     suspend fun currentScopeOrNull(): String? = try {
@@ -35,11 +36,12 @@ class OwnerLocalErasure @Inject constructor(
     }
 
     suspend fun purgeCurrentOwner(): Report {
-        return purgeScope(currentScopeOrNull() ?: return Report(0, 0, 0))
+        return purgeScope(currentScopeOrNull() ?: return Report(0, 0, 0,qualityErased=false))
     }
 
     suspend fun purgeScope(ownerScope: String): Report {
-        if (ownerScope.isBlank()) return Report(0, 0, 0)
+        if (ownerScope.isBlank()) return Report(0, 0, 0,qualityErased=false)
+        val qualityErased=try {quality.eraseOwner(ownerScope)}catch(_:Exception){false}
         val outboxPurged = try {
             outbox.purgeOwned(ownerScope)
         } catch (_: Exception) {
@@ -60,6 +62,6 @@ class OwnerLocalErasure @Inject constructor(
         } catch (_: Exception) {
             0
         }
-        return Report(outboxPurged, sessionsPurged, cacheDeleted)
+        return Report(outboxPurged, sessionsPurged, cacheDeleted,qualityErased)
     }
 }

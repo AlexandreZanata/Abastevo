@@ -41,6 +41,7 @@ import (
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/anp"
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
@@ -50,6 +51,8 @@ import (
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
+	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
+	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -343,9 +346,18 @@ func run() error {
 		},
 	}
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
+	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
+			qualityDone, qualityErr := qualityReportStore.EraseAccountBatch(ctx, id)
+			if qualityErr != nil {
+				return qualityErr
+			}
+			if !qualityDone {
+				return accountapp.ErrErasurePending
+			}
+
 			done, err := feedbackStore.EraseAccountBatch(ctx, id, time.Now().Unix())
 			if err == nil && !done {
 				return accountapp.ErrErasurePending
@@ -748,6 +760,19 @@ func run() error {
 		// Owner erasure (P07-T04): durable deletion requests revoke and
 		// purge scope by scope with ledger rows; terminal replays
 		// converge and scope failures park for audited retry.
+		"quality-report-reviewed": qualityjobs.ReportReviewed{Pool: raw},
+		"quality-report-review": qualityjobs.ReportReview{Pool: raw, Open: func(ctx context.Context, tx pgx.Tx, id, kind string) error {
+			caseID, err := jobs.NewUUIDv4()
+			if err != nil {
+				return err
+			}
+			c, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{ID: caseID, TargetType: moderationdomain.TargetQualityReport, TargetID: id, Priority: moderationdomain.PriorityP2, Reason: kind, Detail: "private document-free quality report", OpenedAt: time.Now()})
+			if err != nil {
+				return err
+			}
+			_, _, err = modStore.OpenCaseTx(ctx, tx, c)
+			return err
+		}},
 		"account-erasure-reconcile": accountjobs.Erasure{Reconcile: accountRecovery.Reconcile},
 		"privacy-erasure": privacyjobs.Erasure{
 			Load: func(ctx context.Context, requestID string) (privacydomain.Request, error) {
@@ -813,7 +838,17 @@ func run() error {
 			},
 		},
 	}
-	dispatchers, err := workerDispatchers(queue, handlers)
+	nativeKinds := []string{}
+	if cfg.QualityImportsEnabled {
+		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
+		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
+		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
+		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
+		handlers["quality-discovery"] = nativeQualityLiveDiscovery(raw)
+		handlers[qualityjobs.RecomputeKind] = qualityjobs.Recompute{Store: qualityadapters.NewProjectionStore(raw)}
+		nativeKinds = append(nativeKinds, qualityjobs.NativeFineImportKind, qualityjobs.NativeFineDiscoveryKind, "quality-import", qualityjobs.RevalidationKind, "quality-discovery", qualityjobs.RecomputeKind)
+	}
+	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {
 		return err
 	}
@@ -848,6 +883,26 @@ func run() error {
 			Build: func(string) map[string]any {
 				return map[string]any{"version": 1, "batch": 25}
 			},
+		},
+		{
+			// Bounded PMQC discovery and Directory revalidation schedules
+			// (FQ-05W8). Independent explicit switches; neither activates
+			// unrelated ANP/registry imports. Handlers exist only with the
+			// native imports switch, so queued jobs wait undrained without
+			// charging attempts.
+			Name: "quality-discovery-daily", Kind: "quality-discovery", Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualityDiscoveryEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "quality-revalidate-daily", Kind: qualityjobs.RevalidationKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualityRevalidationEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "quality-sanctions-discovery-daily", Kind: qualityjobs.NativeFineDiscoveryKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.QualitySanctionsDiscoveryEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any { return map[string]any{"period": period} },
 		},
 		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},

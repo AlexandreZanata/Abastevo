@@ -351,6 +351,14 @@
     <string name="a11y_language_japanese">Japanese</string>
     <string name="settings_preferences_section">Preferences</string>
     <string name="settings_sync_station_detail">Sync station detail in background</string>
+    <string name="settings_public_catalog_section">Public city directory</string>
+    <string name="settings_public_catalog_description">Keep an offline copy of your city\'s public station directory. Never downloads details, contributions or location.</string>
+    <string name="settings_public_catalog_toggle">Keep public directory updated</string>
+    <string name="settings_public_catalog_last_sync">Last updated %1$s</string>
+    <string name="settings_public_catalog_never_synced">Never updated on this device.</string>
+    <string name="settings_public_catalog_off_note">Background updates are off. Browsing, manual refresh and contributions keep working.</string>
+    <string name="settings_clear_public_catalog">Clear public directory</string>
+    <string name="public_catalog_cleared">Public directory cleared.</string>
     <string name="settings_auto_download_latest_week">Automatically download the latest survey week</string>
     <string name="settings_sync_wifi_only">Auto sync on Wi‑Fi only</string>
     <string name="settings_show_price_history">Show price history</string>
@@ -455,9 +463,13 @@
     <string name="server_station_unknown_location">Location not verified — shown without coordinates.</string>
     <string name="server_station_cached">Showing last known data (offline cache).</string>
     <string name="server_stations_unavailable">Server directory unavailable. Official ANP browsing still works.</string>
+    <string name="server_stations_load_more">Load more stations</string>
+    <string name="server_stations_load_more_failed">Could not load more stations. The list above is unchanged.</string>
 
     <!-- Station discussion (P36-T02, canonical UUID target, flag-gated) -->
     <string name="station_feedback_title">Station discussion</string>
+    <string name="station_feedback_show_more">Show more comments</string>
+    <string name="station_feedback_show_more_failed">Could not load more comments. The list above is unchanged.</string>
     <string name="station_feedback_guest">Sign in to rate, comment or vote. Reading is open to everyone.</string>
     <string name="station_feedback_rate">Rate this station (1–5)</string>
     <string name="station_feedback_comment_hint">Share a note (280 characters)</string>
@@ -821,4 +833,6 @@
     <string name="home_community_empty_hint">Contribute a price to start your city’s comparison.</string>
     <string name="home_community_unavailable">Community prices are temporarily unavailable. Try again.</string>
     <string name="home_community_updated">Community · updated %1$s</string>
+    <string name="feed_restart_list">Back to the start of the list</string>
+    <string name="settings_public_catalog_size">Estimated public cache: %1$s</string>
 </resources>

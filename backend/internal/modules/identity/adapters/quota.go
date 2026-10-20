@@ -41,6 +41,15 @@ func NewLimiter(pool *pgxpool.Pool, policy domain.QuotaPolicy) *Limiter {
 // Check consumes one unit of budget. The returned RetryAfter is positive
 // exactly when the call is denied.
 func (l *Limiter) Check(ctx context.Context, subject, operation string) (time.Duration, error) {
+	return l.check(ctx, l.pool, subject, operation)
+}
+
+// CheckTx binds budget consumption to the caller's transaction and rollback.
+func (l *Limiter) CheckTx(ctx context.Context, tx pgx.Tx, subject, operation string) (time.Duration, error) {
+	return l.check(ctx, tx, subject, operation)
+}
+
+func (l *Limiter) check(ctx context.Context, db identity.DBTX, subject, operation string) (time.Duration, error) {
 	q, err := l.policy.Lookup(operation)
 	if err != nil {
 		return 0, err
@@ -50,7 +59,7 @@ func (l *Limiter) Check(ctx context.Context, subject, operation string) (time.Du
 	}
 	now := l.now()
 	start := domain.WindowStart(now, q.Window)
-	row, err := identity.New(l.pool).ConsumeQuota(ctx, identity.ConsumeQuotaParams{
+	row, err := identity.New(db).ConsumeQuota(ctx, identity.ConsumeQuotaParams{
 		SubjectDigest: subject,
 		Operation:     operation,
 		WindowStart:   pgtype.Timestamptz{Time: start, Valid: true},
