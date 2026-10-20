@@ -21,8 +21,9 @@ import (
 
 // Publisher stages and publishes quality assay revisions.
 type Publisher struct {
-	pool  *pgxpool.Pool
-	guard func(context.Context, pgx.Tx) error
+	pool         *pgxpool.Pool
+	guard        func(context.Context, pgx.Tx) error
+	companyGuard func(context.Context, pgx.Tx, []application.CompanyBinding) error
 }
 
 // NewPublisher wires the owned generated queries to a pool.
@@ -33,12 +34,20 @@ func NewPublisher(pool *pgxpool.Pool) *Publisher {
 // WithGuard returns an immutable publisher bound to a per-attempt live guard.
 // The guard executes inside every publication/replay transaction before writes.
 func (p *Publisher) WithGuard(guard func(context.Context, pgx.Tx) error) *Publisher {
-	return &Publisher{pool: p.pool, guard: guard}
+	return &Publisher{pool: p.pool, guard: guard, companyGuard: p.companyGuard}
+}
+
+// WithCompanyGuard receives bindings derived from the actual source and typed
+// decisions, rather than an unrelated caller-captured expected identity set.
+func (p *Publisher) WithCompanyGuard(guard func(context.Context, pgx.Tx, []application.CompanyBinding) error) *Publisher {
+	return &Publisher{pool: p.pool, guard: p.guard, companyGuard: guard}
 }
 
 // editionRequest is the shared edition/manifest envelope for assay and
 // event publications. Row staging differs per stream and arrives as stage.
 type editionRequest struct {
+	CompanyAssociations   *application.CompanyAssociationInput
+	CompanyBindings       []application.CompanyBinding
 	NativeFineClock       *application.NativeFineClock
 	HistoricalFineContext *application.FineHistoryContext
 	Source                string
@@ -186,6 +195,14 @@ func (p *Publisher) publishTx(ctx context.Context, req editionRequest, newID fun
 	}()
 	if p.guard != nil {
 		if err := p.guard(ctx, tx); err != nil {
+			return "", false, err
+		}
+	}
+	if len(req.CompanyBindings) > 0 {
+		if p.companyGuard == nil {
+			return "", false, errors.New("quality: live company identity guard unavailable")
+		}
+		if err := p.companyGuard(ctx, tx, append([]application.CompanyBinding(nil), req.CompanyBindings...)); err != nil {
 			return "", false, err
 		}
 	}
@@ -399,9 +416,10 @@ func (r editionRequest) publicationKey() string {
 		Resources                         []application.Resource
 		Periods                           []application.PeriodInput
 		Links                             []application.LinkInput
-		NativeFineClock                   *application.NativeFineClock    `json:",omitempty"`
-		HistoricalFineContext             *application.FineHistoryContext `json:",omitempty"`
-	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links, r.NativeFineClock, r.HistoricalFineContext})
+		NativeFineClock                   *application.NativeFineClock            `json:",omitempty"`
+		HistoricalFineContext             *application.FineHistoryContext         `json:",omitempty"`
+		CompanyAssociations               *application.CompanyAssociationIdentity `json:",omitempty"`
+	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links, r.NativeFineClock, r.HistoricalFineContext, r.CompanyAssociations.PublicationIdentity()})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }

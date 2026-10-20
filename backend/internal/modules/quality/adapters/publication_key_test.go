@@ -56,3 +56,37 @@ func TestNativeClockPublicationKeyRemainsCompatibleBeforeHistory(t *testing.T) {
 		t.Fatal("historical source clock omitted from frozen identity")
 	}
 }
+
+func TestCompanyPublicationKeyPreservesOldHistoryAndFreezesOnlyIdentityFacts(t *testing.T) {
+	c := &application.FineHistoryContext{SourcePeriod: "2024", Clock: application.FineHistoryClock{Precision: "MONTH", Value: "2025-03"}}
+	req := editionRequest{Source: "sanctions", Stream: "sanction-v1", Edition: "2024", ManifestHash: "same-source", HistoricalFineContext: c}
+	prior, _ := json.Marshal(struct {
+		Source, Stream, Edition, Manifest string
+		Counts                            domain.Counts
+		Resources                         []application.Resource
+		Periods                           []application.PeriodInput
+		Links                             []application.LinkInput
+		NativeFineClock                   *application.NativeFineClock    `json:",omitempty"`
+		HistoricalFineContext             *application.FineHistoryContext `json:",omitempty"`
+	}{req.Source, req.Stream, req.Edition, req.ManifestHash, req.Counts, nil, nil, nil, nil, c})
+	sum := sha256.Sum256(prior)
+	old := hex.EncodeToString(sum[:])
+	if req.publicationKey() != old {
+		t.Fatal("history key changed without company evidence")
+	}
+	req.CompanyAssociations = &application.CompanyAssociationInput{PolicyVersion: domain.CompanyObservationPolicyVersion, DecisionDay: "2026-10-20", Decisions: []domain.CompanyObservationDecision{{RecordKey: "source-a", Kind: domain.ResolutionUnmatched, Reason: domain.ReasonUnmatchedID}}}
+	declared := req.publicationKey()
+	if declared == old {
+		t.Fatal("explicit company policy omitted")
+	}
+	req.CompanyAssociations.DecisionDay = "2026-10-21"
+	req.CompanyAssociations.Decisions[0].DecidedAt = "2026-10-21"
+	if req.publicationKey() != declared {
+		t.Fatal("operational day entered frozen identity")
+	}
+	req.CompanyAssociations.Decisions[0].Kind = domain.ResolutionAmbiguous
+	req.CompanyAssociations.Decisions[0].Reason = domain.ReasonAmbiguous
+	if req.publicationKey() == declared {
+		t.Fatal("company verdict excluded from frozen identity")
+	}
+}

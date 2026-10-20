@@ -11,12 +11,26 @@ import (
 )
 
 // PublishHistoricalFines stages source context, observations and public notes in
-// the existing atomic provenance/correction transaction. It infers no station links.
+// the existing atomic provenance/correction transaction. Explicit company-only
+// associations establish no historical operation at a station.
 func (p *Publisher) PublishHistoricalFines(ctx context.Context, in application.HistoricalFineInput, newID func() (string, error)) (string, error) {
 	if e := in.Validate(); e != nil {
 		return "", e
 	}
-	req := editionRequest{Source: "sanctions", Stream: domain.StreamSanction, Edition: in.Context.SourcePeriod, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, HistoricalFineContext: &in.Context}
+	var bindings []application.CompanyBinding
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Observations))
+		for _, row := range in.Observations {
+			sources[row.ObservationKey] = row.SourceCNPJ
+		}
+		var e error
+		bindings, e = fineCompanyBindings(in.CompanyAssociations, sources, p.companyGuard != nil)
+		if e != nil {
+			return "", e
+		}
+	}
+
+	req := editionRequest{CompanyAssociations: in.CompanyAssociations, CompanyBindings: bindings, Source: "sanctions", Stream: domain.StreamSanction, Edition: in.Context.SourcePeriod, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, HistoricalFineContext: &in.Context}
 	stage := func(q *quality.Queries, _, revision pgtype.UUID) error {
 		c := in.Context
 		if _, e := q.RecordHistoricalFineContext(ctx, quality.RecordHistoricalFineContextParams{RevisionID: revision, InputContract: c.InputContract, SourcePeriod: c.SourcePeriod, SourceFile: c.SourceFile, HeaderRecord: int32(c.HeaderRecord), SourceClockPrecision: c.Clock.Precision, SourceClockValue: c.Clock.Value, SourceRecordCount: int32(c.SourceRecordCount), MetadataCount: int32(c.MetadataRecords)}); e != nil {
@@ -62,7 +76,7 @@ func (p *Publisher) PublishHistoricalFines(ctx context.Context, in application.H
 		if count != int64(len(in.Observations)) || len(notes) != len(in.Notes) {
 			return errors.New("quality: historical fine staged counts diverged")
 		}
-		return nil
+		return stageCompanyAssociations(ctx, q, revision, in.CompanyAssociations)
 	}
 	for attempt := 0; ; attempt++ {
 		id, retry, e := p.publishTx(ctx, req, newID, stage)

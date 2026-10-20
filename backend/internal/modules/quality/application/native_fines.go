@@ -21,14 +21,15 @@ type NativeFineClock struct {
 // NativeFineInput is not convertible to legacy event input without an explicit
 // semantic change. Source identity/provenance must be verified by the caller.
 type NativeFineInput struct {
-	Edition      string
-	Predecessor  string
-	Clock        NativeFineClock
-	Resources    []Resource
-	Counts       domain.Counts
-	ManifestHash string
-	Periods      []PeriodInput
-	Observations []FineObservation
+	Edition             string
+	Predecessor         string
+	Clock               NativeFineClock
+	Resources           []Resource
+	Counts              domain.Counts
+	ManifestHash        string
+	Periods             []PeriodInput
+	CompanyAssociations *CompanyAssociationInput
+	Observations        []FineObservation
 }
 
 func (in NativeFineInput) Validate() error {
@@ -82,6 +83,15 @@ func (in NativeFineInput) Validate() error {
 		paid, ok := domain.ParseFineAmount(row.PaidText)
 		if !ok || paid != row.PaidMinor || row.ObservationIdentity() != row.ObservationKey {
 			return refuse
+		}
+	}
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Observations))
+		for _, row := range in.Observations {
+			sources[row.ObservationKey] = row.SourceCNPJ
+		}
+		if _, e := in.CompanyAssociations.Bindings(sources); e != nil {
+			return e
 		}
 	}
 	return nil
