@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,7 +84,19 @@ type Period struct {
 // Lease is the frozen read context served with every response: stream
 // identity, edition, revision, reconciled denominators, claimed periods
 // and the staleness flag with its reason.
+type SourceNote struct {
+	Kind        string `json:"kind"`
+	Text        string `json:"text"`
+	EvidenceRef string `json:"evidence_ref"`
+}
+
 type Lease struct {
+	SourceInputContract   string
+	SourcePeriod          string
+	SourceClockValue      string
+	SourceRecordCount     *int
+	SourceMetadataRecords *int
+	SourceNotes           []SourceNote
 	SourceClockPrecision  string
 	SourceExtractionMonth string
 	SourceReportYear      *int32
@@ -156,24 +169,31 @@ type EnforcementEvent struct {
 
 // SanctionEvent is one published snapshot without party identifiers.
 type SanctionEvent struct {
-	IdentityKind    string
-	ClockPrecision  string
-	ExtractionMonth string
-	ReportYear      *int32
-	DUFRef          string
-	Department      string
-	DueOn           string
-	AmountText      string
-	PaidText        string
-	PaidMinor       *int64
-	ID              string
-	NativeKey       string
-	ProceedingRef   string
-	AmountMinor     *int64
-	Status          string
-	DecidedOn       string
-	AsOf            string
-	EvidenceRef     string
+	InputContract    string
+	SourcePeriod     string
+	SourceClockValue string
+	ReferenceLabel   string
+	ReferenceRef     string
+	SourceTransitOn  string
+	UnlabelledField  string
+	IdentityKind     string
+	ClockPrecision   string
+	ExtractionMonth  string
+	ReportYear       *int32
+	DUFRef           string
+	Department       string
+	DueOn            string
+	AmountText       string
+	PaidText         string
+	PaidMinor        *int64
+	ID               string
+	NativeKey        string
+	ProceedingRef    string
+	AmountMinor      *int64
+	Status           string
+	DecidedOn        string
+	AsOf             string
+	EvidenceRef      string
 }
 
 func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time) (Lease, pgtype.UUID, error) {
@@ -224,6 +244,12 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		clock, cerr := q.NativeFineRevisionClock(ctx, row.RevisionID)
 		if cerr == nil {
 			lease.SourceClockPrecision = "MONTH"
+			lease.SourceInputContract = "anp-sicom-cp850-9-v1"
+			lease.SourcePeriod = strconv.Itoa(int(clock.ReportYear))
+			lease.SourceClockValue = clock.ExtractionMonth
+			records, metadata := lease.Counts.Input, 0
+			lease.SourceRecordCount = &records
+			lease.SourceMetadataRecords = &metadata
 			lease.SourceExtractionMonth = clock.ExtractionMonth
 			year := clock.ReportYear
 			lease.SourceReportYear = &year
@@ -233,6 +259,37 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 			}
 		} else if !errors.Is(cerr, pgx.ErrNoRows) {
 			return Lease{}, pgtype.UUID{}, cerr
+		} else {
+			history, herr := q.HistoricalFineContext(ctx, row.RevisionID)
+			if herr == nil {
+				descriptor := application.FineHistoryContext{InputContract: history.InputContract, SourcePeriod: history.SourcePeriod, SourceFile: history.SourceFile, HeaderRecord: int(history.HeaderRecord), Clock: application.FineHistoryClock{Precision: history.SourceClockPrecision, Value: history.SourceClockValue}, SourceRecordCount: int(history.SourceRecordCount), MetadataRecords: int(history.MetadataCount)}
+				if !descriptor.Valid() || descriptor.SourceRecordCount != lease.Counts.Input || descriptor.MetadataRecords > lease.Counts.Quarantined {
+					return Lease{}, pgtype.UUID{}, errors.New("read: historical source context unavailable")
+				}
+				lease.SourceInputContract = descriptor.InputContract
+				lease.SourcePeriod = descriptor.SourcePeriod
+				lease.SourceClockValue = descriptor.Clock.Value
+				lease.SourceClockPrecision = descriptor.Clock.Precision
+				records, metadata := descriptor.SourceRecordCount, descriptor.MetadataRecords
+				lease.SourceRecordCount = &records
+				lease.SourceMetadataRecords = &metadata
+				if old, why := domain.FineSourceClockStale(descriptor.Clock.Precision, descriptor.Clock.Value, now); old {
+					lease.Stale = true
+					lease.StaleReason = why
+				}
+				notes, nerr := q.PublicHistoricalFineNotes(ctx, row.RevisionID)
+				if nerr != nil {
+					return Lease{}, pgtype.UUID{}, nerr
+				}
+				if len(notes) > 2 {
+					return Lease{}, pgtype.UUID{}, errors.New("read: historical source notes unavailable")
+				}
+				for _, note := range notes {
+					lease.SourceNotes = append(lease.SourceNotes, SourceNote{Kind: note.Kind, Text: note.NoteText, EvidenceRef: note.EvidenceRef})
+				}
+			} else if !errors.Is(herr, pgx.ErrNoRows) {
+				return Lease{}, pgtype.UUID{}, herr
+			}
 		}
 	}
 	lease.CoverageNote = application.CoverageNote(row.Edition, lease.Counts)
@@ -472,7 +529,14 @@ func (r *Reader) SanctionsAtLease(ctx context.Context, lease Lease, status, afte
 			amount = &v
 		}
 		event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
-		out = append(out, fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor))
+		event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+		if row.HistoryRevisionID.Valid {
+			if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
+				return nil, "", lease, errors.New("read: historical source mismatch")
+			}
+			event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+		}
+		out = append(out, event)
 	}
 	return out, "", lease, nil
 }
@@ -529,7 +593,14 @@ func (r *Reader) SanctionOne(ctx context.Context, now time.Time, source, stream,
 		amount = &v
 	}
 	event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
-	return fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor), lease, nil
+	event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+	if row.HistoryRevisionID.Valid {
+		if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
+			return SanctionEvent{}, lease, errors.New("read: historical source mismatch")
+		}
+		event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+	}
+	return event, lease, nil
 }
 
 func fineFacts(event SanctionEvent, contract string, month pgtype.Text, year pgtype.Int4, duf, department pgtype.Text, due pgtype.Date, amount, paid pgtype.Text, paidMinor pgtype.Int8) SanctionEvent {
@@ -537,6 +608,13 @@ func fineFacts(event SanctionEvent, contract string, month pgtype.Text, year pgt
 	event.ClockPrecision = "DAY"
 	if contract == "anp-sicom-cp850-9-v1" {
 		event.IdentityKind = "CONTENT_OBSERVATION"
+		event.InputContract = contract
+		event.SourceClockValue = month.String
+		event.ReferenceLabel = "Número do DUF"
+		event.ReferenceRef = duf.String
+		if year.Valid {
+			event.SourcePeriod = strconv.Itoa(int(year.Int32))
+		}
 		event.ClockPrecision = "MONTH"
 		event.ExtractionMonth = month.String
 		if year.Valid {
@@ -552,6 +630,27 @@ func fineFacts(event SanctionEvent, contract string, month pgtype.Text, year pgt
 			value := paidMinor.Int64
 			event.PaidMinor = &value
 		}
+	}
+	return event
+}
+
+func historicalFineFacts(event SanctionEvent, lease Lease, label, reference pgtype.Text, transit pgtype.Date, unlabelled, department pgtype.Text, due pgtype.Date, amount, paid pgtype.Text, paidMinor pgtype.Int8) SanctionEvent {
+	event.IdentityKind = "CONTENT_OBSERVATION"
+	event.ClockPrecision = lease.SourceClockPrecision
+	event.SourceClockValue = lease.SourceClockValue
+	event.InputContract = lease.SourceInputContract
+	event.SourcePeriod = lease.SourcePeriod
+	event.ReferenceLabel = label.String
+	event.ReferenceRef = reference.String
+	event.SourceTransitOn = dateString(transit)
+	event.UnlabelledField = unlabelled.String
+	event.Department = department.String
+	event.DueOn = dateString(due)
+	event.AmountText = amount.String
+	event.PaidText = paid.String
+	if paidMinor.Valid {
+		v := paidMinor.Int64
+		event.PaidMinor = &v
 	}
 	return event
 }

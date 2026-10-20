@@ -37,3 +37,22 @@ func FineMonthStale(month string, now time.Time) (bool, string) {
 	}
 	return false, ""
 }
+
+// FineSourceClockStale uses a source day/month only as an age bound. UTC midnight
+// for DAY is the earliest possible day boundary, never an invented source instant.
+func FineSourceClockStale(precision, value string, now time.Time) (bool, string) {
+	if precision == "MONTH" {
+		return FineMonthStale(value, now)
+	}
+	if precision != "DAY" || !ValidDay(value) {
+		return true, "source extraction clock unavailable"
+	}
+	start, _ := time.Parse("2006-01-02", value)
+	if now.Before(start) {
+		return true, "source extraction day is in the future"
+	}
+	if now.Sub(start) > time.Duration(SourceStaleAfterDays)*24*time.Hour {
+		return true, "source extraction day exceeds 180 days"
+	}
+	return false, ""
+}

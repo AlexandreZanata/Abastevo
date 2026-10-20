@@ -1,6 +1,10 @@
 package application
 
-import "testing"
+import (
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
+	"strings"
+	"testing"
+)
 
 func TestHistoricalFineUnknownSemanticsAndContentIdentity(t *testing.T) {
 	row := HistoricalFineObservation{Schema: "anp-fine-history-observation-v1", Source: "sanctions", SourceCNPJ: "11222333000181", ProceedingRef: "000000000000001", ReferenceLabel: "Número do DUF", ReferenceRef: "SYNTHETIC/1", Status: "Unknown source label", DueOn: "2023-02-28", AmountText: " R$ 1.234,56 ", AmountMinor: 123456, PaidText: " R$ -   ", SourcePeriod: "2023", Clock: FineHistoryClock{Precision: "MONTH", Value: "2024-06"}, InputContract: "anp-sicom-cp850-2023-v1", EvidenceRef: "multas-aplicadas-2023.csv:7"}
@@ -81,5 +85,43 @@ func TestHistoricalFineSourceSemanticsRefuseInventedMeaning(t *testing.T) {
 		if r.Clock.Valid(period) {
 			t.Fatal("month gained an invented exact day")
 		}
+	}
+}
+
+func validHistoryInput() HistoricalFineInput {
+	row := historySample("2020")
+	profile, _ := HistoricalFineProfile("2020")
+	return HistoricalFineInput{Context: FineHistoryContext{InputContract: profile.Contract, SourcePeriod: profile.Period, SourceFile: profile.SourceFile, HeaderRecord: profile.HeaderRecord, Clock: row.Clock, SourceRecordCount: 1}, Resources: []Resource{{URL: "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/" + profile.SourceFile, SHA256: strings.Repeat("a", 64), Bytes: 100}}, Counts: domain.Counts{Input: 1, Accepted: 1}, ManifestHash: strings.Repeat("b", 64), Observations: []HistoricalFineObservation{row}}
+}
+func TestHistoricalFinePublicationInputValidatesBeforeIO(t *testing.T) {
+	if e := validHistoryInput().Validate(); e != nil {
+		t.Fatal("verified historical input refused", e)
+	}
+	for name, change := range map[string]func(*HistoricalFineInput){
+		"wrong source URL":        func(in *HistoricalFineInput) { in.Resources[0].URL = "https://evil.example/source.csv" },
+		"context clock":           func(in *HistoricalFineInput) { in.Context.Clock.Precision = "DAY" },
+		"wrong count":             func(in *HistoricalFineInput) { in.Counts.Accepted++ },
+		"negative balanced count": func(in *HistoricalFineInput) { in.Counts.Duplicates = -1; in.Counts.Quarantined = 1 },
+		"wrong original records":  func(in *HistoricalFineInput) { in.Context.SourceRecordCount++ },
+		"unannotated metadata":    func(in *HistoricalFineInput) { in.Context.MetadataRecords = 1 },
+		"header locator":          func(in *HistoricalFineInput) { in.Observations[0].EvidenceRef = "multas-aplicadas-2020.csv:7" },
+		"other profile row":       func(in *HistoricalFineInput) { in.Observations[0].SourcePeriod = "2021" },
+		"missing field":           func(in *HistoricalFineInput) { in.Observations[0].ReferenceLabel = "" },
+		"wrong manifest hash":     func(in *HistoricalFineInput) { in.ManifestHash = "bad" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			in := validHistoryInput()
+			change(&in)
+			if in.Validate() == nil {
+				t.Fatal("invalid source publication input accepted")
+			}
+		})
+	}
+	empty := validHistoryInput()
+	empty.Context.SourceRecordCount = 0
+	empty.Counts = domain.Counts{}
+	empty.Observations = nil
+	if e := empty.Validate(); e != nil {
+		t.Fatal("empty source lost its clock", e)
 	}
 }

@@ -62,6 +62,40 @@ func (q *Queries) HistoricalFineNotes(ctx context.Context, revisionID pgtype.UUI
 	return items, nil
 }
 
+const publicHistoricalFineNotes = `-- name: PublicHistoricalFineNotes :many
+SELECT kind,note_text,min(evidence_ref)::text AS evidence_ref
+FROM quality_historical_fine_notes WHERE revision_id = $1 AND kind='PUBLIC_PAYMENT_NOTE'
+GROUP BY kind,note_text ORDER BY note_text LIMIT 3
+`
+
+type PublicHistoricalFineNotesRow struct {
+	Kind        string `json:"kind"`
+	NoteText    string `json:"note_text"`
+	EvidenceRef string `json:"evidence_ref"`
+}
+
+// The schema allowlist admits at most two distinct payment notes per profile;
+// blank separators retain counts but add no public event or display text.
+func (q *Queries) PublicHistoricalFineNotes(ctx context.Context, revisionID pgtype.UUID) ([]PublicHistoricalFineNotesRow, error) {
+	rows, err := q.db.Query(ctx, publicHistoricalFineNotes, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PublicHistoricalFineNotesRow
+	for rows.Next() {
+		var i PublicHistoricalFineNotesRow
+		if err := rows.Scan(&i.Kind, &i.NoteText, &i.EvidenceRef); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordHistoricalFineContext = `-- name: RecordHistoricalFineContext :one
 WITH staging AS MATERIALIZED (
  SELECT r.id FROM quality_revisions r JOIN quality_editions e ON e.id=r.edition_id

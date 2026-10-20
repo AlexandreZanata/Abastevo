@@ -37,3 +37,21 @@ func TestFineMonthSourceAgeCannotBeRefreshedByLocalPublication(t *testing.T) {
 		t.Fatal("uncertain month age incorrectly fresh")
 	}
 }
+
+func TestFineDayClockAgeDoesNotInventAnExtractionInstant(t *testing.T) {
+	start := time.Date(2020, 2, 6, 0, 0, 0, 0, time.UTC)
+	if stale, _ := FineSourceClockStale("DAY", "2020-02-06", start.Add(180*24*time.Hour)); stale {
+		t.Fatal("day boundary changed")
+	}
+	if stale, _ := FineSourceClockStale("DAY", "2020-02-06", start.Add(180*24*time.Hour+time.Second)); !stale {
+		t.Fatal("old source day made fresh")
+	}
+	for _, clock := range []struct{ precision, value string }{{"DAY", "2020-02-30"}, {"DAY", "2020-02-06T00:00:00Z"}, {"MINUTE", "2020-02-06"}, {"DAY", "0000-01-01"}} {
+		if stale, _ := FineSourceClockStale(clock.precision, clock.value, start); !stale {
+			t.Fatal("uncertain clock fresh")
+		}
+	}
+	if stale, _ := FineSourceClockStale("DAY", "2020-02-06", start.Add(-time.Second)); !stale {
+		t.Fatal("future source clock fresh")
+	}
+}

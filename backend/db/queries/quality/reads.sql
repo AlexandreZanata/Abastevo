@@ -81,7 +81,7 @@ LIMIT @limit_plus_one::int;
 
 -- name: SanctionPageByRevision :many
 SELECT id, native_key, proceeding_ref, party_cnpj, amount_minor, status,
-    decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor
+    decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor, history_revision_id, reference_label, reference_ref, source_transit_on, unlabelled_field
 FROM quality_sanction_events
 WHERE revision_id = @revision_id
     AND (@status::text = '' OR status = @status)
@@ -98,7 +98,7 @@ WHERE id = @id AND revision_id = @revision_id;
 
 -- name: SanctionByID :one
 SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
-    status, decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor
+    status, decided_on, as_of, evidence_ref, source_contract, extraction_month, report_year, duf_ref, department, due_on, amount_text, paid_text, paid_minor, history_revision_id, reference_label, reference_ref, source_transit_on, unlabelled_field
 FROM quality_sanction_events
 WHERE id = @id AND revision_id = @revision_id;
 

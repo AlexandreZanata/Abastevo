@@ -43,3 +43,10 @@ SELECT * FROM quality_historical_fine_revisions WHERE revision_id = @revision_id
 
 -- name: HistoricalFineNotes :many
 SELECT evidence_ref,kind,note_text FROM quality_historical_fine_notes WHERE revision_id = @revision_id ORDER BY evidence_ref;
+
+-- The schema allowlist admits at most two distinct payment notes per profile;
+-- blank separators retain counts but add no public event or display text.
+-- name: PublicHistoricalFineNotes :many
+SELECT kind,note_text,min(evidence_ref)::text AS evidence_ref
+FROM quality_historical_fine_notes WHERE revision_id = @revision_id AND kind='PUBLIC_PAYMENT_NOTE'
+GROUP BY kind,note_text ORDER BY note_text LIMIT 3;

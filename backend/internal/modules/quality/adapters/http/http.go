@@ -69,27 +69,34 @@ type wirePeriod struct {
 }
 
 type wireLease struct {
-	SourceClockPrecision  string       `json:"source_clock_precision,omitempty"`
-	SourceExtractionMonth string       `json:"source_extraction_month,omitempty"`
-	SourceReportYear      *int32       `json:"source_report_year,omitempty"`
-	SupersedesRevisionID  *string      `json:"supersedes_revision_id"`
-	RevisionStatus        string       `json:"revision_status"`
-	ProvenanceState       string       `json:"provenance_state"`
-	IsCurrentStream       bool         `json:"is_current_stream"`
-	Source                string       `json:"source"`
-	Stream                string       `json:"stream"`
-	Edition               string       `json:"edition"`
-	RevisionID            *string      `json:"revision_id"`
-	PublishedAt           *string      `json:"published_at"`
-	Available             bool         `json:"available"`
-	Stale                 bool         `json:"stale"`
-	StaleReason           string       `json:"stale_reason"`
-	CoverageNote          string       `json:"coverage_note"`
-	Periods               []wirePeriod `json:"periods"`
+	SourceInputContract   string            `json:"source_input_contract,omitempty"`
+	SourcePeriod          string            `json:"source_period,omitempty"`
+	SourceClockValue      string            `json:"source_clock_value,omitempty"`
+	SourceRecordCount     *int              `json:"source_record_count,omitempty"`
+	SourceMetadataRecords *int              `json:"source_metadata_records,omitempty"`
+	SourceNotes           []read.SourceNote `json:"source_notes,omitempty"`
+	SourceClockPrecision  string            `json:"source_clock_precision,omitempty"`
+	SourceExtractionMonth string            `json:"source_extraction_month,omitempty"`
+	SourceReportYear      *int32            `json:"source_report_year,omitempty"`
+	SupersedesRevisionID  *string           `json:"supersedes_revision_id"`
+	RevisionStatus        string            `json:"revision_status"`
+	ProvenanceState       string            `json:"provenance_state"`
+	IsCurrentStream       bool              `json:"is_current_stream"`
+	Source                string            `json:"source"`
+	Stream                string            `json:"stream"`
+	Edition               string            `json:"edition"`
+	RevisionID            *string           `json:"revision_id"`
+	PublishedAt           *string           `json:"published_at"`
+	Available             bool              `json:"available"`
+	Stale                 bool              `json:"stale"`
+	StaleReason           string            `json:"stale_reason"`
+	CoverageNote          string            `json:"coverage_note"`
+	Periods               []wirePeriod      `json:"periods"`
 }
 
 func wireLeaseOf(l read.Lease) wireLease {
 	out := wireLease{
+		SourceInputContract: l.SourceInputContract, SourcePeriod: l.SourcePeriod, SourceClockValue: l.SourceClockValue, SourceRecordCount: l.SourceRecordCount, SourceMetadataRecords: l.SourceMetadataRecords, SourceNotes: l.SourceNotes,
 		SourceClockPrecision: l.SourceClockPrecision, SourceExtractionMonth: l.SourceExtractionMonth, SourceReportYear: l.SourceReportYear,
 		SupersedesRevisionID: nullableString(l.SupersedesRevisionID), RevisionStatus: l.Status, ProvenanceState: l.ProvenanceState, IsCurrentStream: l.IsCurrentStream, Source: l.Source, Stream: l.Stream, Edition: l.Edition,
 		RevisionID: nullableString(l.RevisionID), Available: l.HasPublished,
@@ -475,5 +482,5 @@ func nullableString(s string) *string {
 }
 
 func wireSanction(e read.SanctionEvent) map[string]any {
-	return map[string]any{"id": e.ID, "native_key": e.NativeKey, "identity_kind": e.IdentityKind, "proceeding_ref": e.ProceedingRef, "amount_minor": e.AmountMinor, "status": e.Status, "decided_on": nullableString(e.DecidedOn), "as_of": nullableString(e.AsOf), "as_of_precision": e.ClockPrecision, "extraction_month": nullableString(e.ExtractionMonth), "report_year": e.ReportYear, "duf_ref": nullableString(e.DUFRef), "department": nullableString(e.Department), "due_on": nullableString(e.DueOn), "amount_text": nullableString(e.AmountText), "paid_text": nullableString(e.PaidText), "paid_minor": e.PaidMinor, "evidence_ref": e.EvidenceRef}
+	return map[string]any{"id": e.ID, "native_key": e.NativeKey, "identity_kind": e.IdentityKind, "proceeding_ref": e.ProceedingRef, "amount_minor": e.AmountMinor, "status": e.Status, "decided_on": nullableString(e.DecidedOn), "as_of": nullableString(e.AsOf), "as_of_precision": e.ClockPrecision, "extraction_month": nullableString(e.ExtractionMonth), "report_year": e.ReportYear, "duf_ref": nullableString(e.DUFRef), "department": nullableString(e.Department), "due_on": nullableString(e.DueOn), "amount_text": nullableString(e.AmountText), "paid_text": nullableString(e.PaidText), "paid_minor": e.PaidMinor, "evidence_ref": e.EvidenceRef, "input_contract": nullableString(e.InputContract), "source_period": nullableString(e.SourcePeriod), "source_clock_value": nullableString(e.SourceClockValue), "reference_label": nullableString(e.ReferenceLabel), "reference_ref": nullableString(e.ReferenceRef), "source_transit_on": nullableString(e.SourceTransitOn), "unlabelled_field": nullableString(e.UnlabelledField)}
 }
