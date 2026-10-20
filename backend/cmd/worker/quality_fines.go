@@ -7,13 +7,17 @@ import (
 	"os"
 	"time"
 
+	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
+	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
 	quality "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/native"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,7 +25,41 @@ const bundledFinePreparer = "/prepare_sanctions"
 const bundledFineHistoryPreparer = "/prepare_fine_history"
 
 func nativeFineImport(pool *pgxpool.Pool, binary, historyBinary, root string) qualityjobs.FineFileImport {
-	return qualityjobs.FineFileImport{Pool: pool, Publish: quality.NewPublisher(pool), Serial: quality.NativeSourceSerial(pool), Fetch: nativeFineFetch(root), Prepare: func(ctx context.Context, payload qualityjobs.ImportPayload, file qualityjobs.FileArtifact) (prepared.FineBatch, error) {
+	identities := directory.NewSourceIdentityReader(pool)
+	publisher := quality.NewPublisher(pool).WithCompanyGuard(func(ctx context.Context, tx pgx.Tx, bindings []application.CompanyBinding) error {
+		expected := make([]directoryapp.SourceBinding, 0, len(bindings))
+		for _, b := range bindings {
+			expected = append(expected, directoryapp.SourceBinding{CNPJ: b.CNPJ, StationID: b.StationID})
+		}
+		return identities.Guard(ctx, tx, expected)
+	})
+	return qualityjobs.FineFileImport{Pool: pool, Publish: publisher, Associate: func(ctx context.Context, records []domain.CompanyObservationRecord) (*application.CompanyAssociationInput, error) {
+		day := time.Now().UTC().Format("2006-01-02")
+		decisions, e := application.PlanCompanyAssociations(ctx, records, day, func(ctx context.Context, cnpjs []string) (application.CompanyIdentitySnapshot, error) {
+			rows, e := identities.Evidence(ctx, cnpjs)
+			if e != nil {
+				return application.CompanyIdentitySnapshot{}, e
+			}
+			out := application.CompanyIdentitySnapshot{}
+			known := make(map[string]bool, len(cnpjs))
+			for _, row := range rows {
+				known[row.CNPJ] = true
+				out.Evidence = append(out.Evidence, domain.IdentityEvidence{CNPJ: row.CNPJ, StationID: row.StationID, Current: row.Current, StationActive: row.StationActive})
+			}
+			missing := make([]string, 0)
+			for _, cnpj := range cnpjs {
+				if !known[cnpj] {
+					missing = append(missing, cnpj)
+				}
+			}
+			out.OtherBranches, e = identities.OtherBranches(ctx, missing)
+			return out, e
+		})
+		if e != nil {
+			return nil, e
+		}
+		return &application.CompanyAssociationInput{PolicyVersion: domain.CompanyObservationPolicyVersion, DecisionDay: day, Decisions: decisions}, nil
+	}, Serial: quality.NativeSourceSerial(pool), Fetch: nativeFineFetch(root), Prepare: func(ctx context.Context, payload qualityjobs.ImportPayload, file qualityjobs.FileArtifact) (prepared.FineBatch, error) {
 		return (native.FineRunner{Binary: binary, WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})
 	}, PrepareHistory: func(ctx context.Context, payload qualityjobs.ImportPayload, file qualityjobs.FileArtifact) (prepared.FineHistoryBatch, error) {
 		return (native.FineHistoryRunner{Binary: historyBinary, WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})

@@ -251,9 +251,11 @@ eligibility. Vencimento/source extraction cannot substitute for incident dates.
 Ambiguous, retired-only, missing and wrong-branch records remain unassociated.
 [Current-company policy FQ-07R6A](../backend/evidence/fuel-quality/FQ07R6A_COMPANY_ASSOCIATION_POLICY.md)
 is LOCAL_DONE; [compatible scoped storage FQ-07R6B](../backend/evidence/fuel-quality/FQ07R6B_COMPANY_ASSOCIATION_STORAGE.md)
-is LOCAL_DONE with108→109/negative/concurrency/rollback acceptance. Atomic
-publication identity, live publication/read fences and actual runtime association
-remain OWED. Existing dated PMQC resolution is unchanged.
+is LOCAL_DONE with108→109/negative/concurrency/rollback acceptance. [Atomic scoped publication FQ-07R6C](../backend/evidence/fuel-quality/FQ07R6C_COMPANY_ASSOCIATION_PUBLICATION.md)
+is LOCAL_DONE with complete census, compatible frozen identity and actual Directory
+transaction guards. [Actual fine worker company composition FQ-07R6D](../backend/evidence/fuel-quality/FQ07R6D_COMPANY_WORKER_COMPOSITION.md)
+is LOCAL_DONE with complete-source planning/no-write and real retirement/ack-loss
+acceptance. Live read fences/revalidation and public station journeys remain OWED. Existing dated PMQC resolution is unchanged.
 
 ## 5. Reliability score proposal and publication gate
 

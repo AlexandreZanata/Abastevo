@@ -230,8 +230,12 @@ func TestOfficialSevenFileWorkerPipeline(t *testing.T) {
 	if e := p.QueryRow(ctx, `SELECT (SELECT count(*) FROM quality_revisions),(SELECT count(*) FROM quality_links),(SELECT count(*) FROM quality_watermarks),(SELECT count(*) FROM job_queue WHERE kind='quality-recompute')`).Scan(&revisions, &links, &watermarks, &recompute); e != nil || revisions != 7 || links != 0 || watermarks != 1 || recompute != 7 {
 		t.Fatal("worker replay/association/ack mismatch", revisions, links, watermarks, recompute, e)
 	}
+	var contexts, companyRows, unmatched, stations, identifiers int
+	if e := p.QueryRow(ctx, `SELECT (SELECT count(*) FROM quality_company_association_revisions),(SELECT count(*) FROM quality_company_associations),(SELECT count(*) FROM quality_company_associations WHERE resolution_kind='unmatched' AND station_id IS NULL),(SELECT count(*) FROM directory_stations),(SELECT count(*) FROM directory_identifiers)`).Scan(&contexts, &companyRows, &unmatched, &stations, &identifiers); e != nil || contexts != 7 || companyRows != 35612 || unmatched != 35612 || stations != 0 || identifiers != 0 {
+		t.Fatal("whole worker company census/no-identity-write mismatch", contexts, companyRows, unmatched, stations, identifiers, e)
+	}
 	if totalInput != 35911 || totalAccepted != 35612 || totalQuarantine != 299 || totalMetadata != 6 {
 		t.Fatal("seven-source denominator mismatch")
 	}
-	t.Log("whole seven-resource runtime pipeline/replay/full traversal:35911=35612accepted+293CPF+6metadata;zero station links")
+	t.Log("whole seven-resource runtime pipeline/replay/full traversal:35911=35612accepted+293CPF+6metadata;35612 explicit unmatched company decisions in empty Directory,zero identity writes")
 }

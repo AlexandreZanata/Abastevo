@@ -183,3 +183,38 @@ func (q *Queries) SourceHasOtherBranch(ctx context.Context, arg SourceHasOtherBr
 	err := row.Scan(&exists)
 	return exists, err
 }
+
+const sourceOtherBranchesBatch = `-- name: SourceOtherBranchesBatch :many
+SELECT DISTINCT expected.cnpj::text AS cnpj
+FROM unnest($1::text[]) expected(cnpj)
+WHERE EXISTS(SELECT 1 FROM directory_identifiers i
+ WHERE i.kind='CNPJ'
+  AND i.normalized_value ~>=~ left(expected.cnpj,8)
+  AND i.normalized_value ~<~ (left(expected.cnpj,8) || chr(127))
+  AND i.normalized_value LIKE left(expected.cnpj,8) || '%'
+  AND i.normalized_value<>expected.cnpj LIMIT 1)
+ORDER BY cnpj
+`
+
+// Explicit bytewise pattern_ops bounds keep each correlated prefix indexed.
+// CNPJs are validated canonical ASCII; DEL is above every admitted suffix byte.
+// The LIKE predicate retains the exact scalar branch-review semantics.
+func (q *Queries) SourceOtherBranchesBatch(ctx context.Context, cnpjs []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, sourceOtherBranchesBatch, cnpjs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var cnpj string
+		if err := rows.Scan(&cnpj); err != nil {
+			return nil, err
+		}
+		items = append(items, cnpj)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -27,8 +27,10 @@ var ErrNotFound = errors.New("read: row outside the current lease")
 
 // Reader serves frozen-lease quality reads.
 type Reader struct {
-	pool       *pgxpool.Pool
-	revisionID string
+	companyProbe CompanyIdentityProbe
+	companyGuard CompanyIdentityGuard
+	pool         *pgxpool.Pool
+	revisionID   string
 }
 
 // NewReader wires the owned generated queries to a pool.
@@ -517,28 +519,8 @@ func (r *Reader) SanctionsAtLease(ctx context.Context, lease Lease, status, afte
 	if err != nil {
 		return nil, "", lease, err
 	}
-	out := make([]SanctionEvent, 0, len(rows))
-	for i, row := range rows {
-		if i == limit {
-			last := rows[limit-1]
-			return out, last.NativeKey + "|" + uuidString(last.ID), lease, nil
-		}
-		var amount *int64
-		if row.AmountMinor.Valid {
-			v := row.AmountMinor.Int64
-			amount = &v
-		}
-		event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
-		event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
-		if row.HistoryRevisionID.Valid {
-			if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
-				return nil, "", lease, errors.New("read: historical source mismatch")
-			}
-			event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
-		}
-		out = append(out, event)
-	}
-	return out, "", lease, nil
+	out, next, e := sanctionPageRows(rows, lease, limit)
+	return out, next, lease, e
 }
 
 // EnforcementOne returns one action by id within the selected revision.
@@ -587,20 +569,8 @@ func (r *Reader) SanctionOne(ctx context.Context, now time.Time, source, stream,
 		}
 		return SanctionEvent{}, lease, err
 	}
-	var amount *int64
-	if row.AmountMinor.Valid {
-		v := row.AmountMinor.Int64
-		amount = &v
-	}
-	event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
-	event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
-	if row.HistoryRevisionID.Valid {
-		if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
-			return SanctionEvent{}, lease, errors.New("read: historical source mismatch")
-		}
-		event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
-	}
-	return event, lease, nil
+	event, e := sanctionDetailRow(row, lease)
+	return event, lease, e
 }
 
 func fineFacts(event SanctionEvent, contract string, month pgtype.Text, year pgtype.Int4, duf, department pgtype.Text, due pgtype.Date, amount, paid pgtype.Text, paidMinor pgtype.Int8) SanctionEvent {
@@ -653,4 +623,45 @@ func historicalFineFacts(event SanctionEvent, lease Lease, label, reference pgty
 		event.PaidMinor = &v
 	}
 	return event
+}
+
+func sanctionPageRows(rows []quality.SanctionPageByRevisionRow, lease Lease, limit int) ([]SanctionEvent, string, error) {
+	out := make([]SanctionEvent, 0, len(rows))
+	for i, row := range rows {
+		if i == limit {
+			last := rows[limit-1]
+			return out, last.NativeKey + "|" + uuidString(last.ID), nil
+		}
+		var amount *int64
+		if row.AmountMinor.Valid {
+			v := row.AmountMinor.Int64
+			amount = &v
+		}
+		event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
+		event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+		if row.HistoryRevisionID.Valid {
+			if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
+				return nil, "", errors.New("read: historical source mismatch")
+			}
+			event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+		}
+		out = append(out, event)
+	}
+	return out, "", nil
+}
+func sanctionDetailRow(row quality.QualitySanctionEvent, lease Lease) (SanctionEvent, error) {
+	var amount *int64
+	if row.AmountMinor.Valid {
+		v := row.AmountMinor.Int64
+		amount = &v
+	}
+	event := SanctionEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, ProceedingRef: row.ProceedingRef, AmountMinor: amount, Status: row.Status, DecidedOn: dateString(row.DecidedOn), AsOf: dateString(row.AsOf), EvidenceRef: row.EvidenceRef}
+	event = fineFacts(event, row.SourceContract, row.ExtractionMonth, row.ReportYear, row.DufRef, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+	if row.HistoryRevisionID.Valid {
+		if row.SourceContract != lease.SourceInputContract || lease.SourcePeriod == "" {
+			return SanctionEvent{}, errors.New("read: historical source mismatch")
+		}
+		event = historicalFineFacts(event, lease, row.ReferenceLabel, row.ReferenceRef, row.SourceTransitOn, row.UnlabelledField, row.Department, row.DueOn, row.AmountText, row.PaidText, row.PaidMinor)
+	}
+	return event, nil
 }

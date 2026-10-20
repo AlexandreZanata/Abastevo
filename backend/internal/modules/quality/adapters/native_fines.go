@@ -11,12 +11,26 @@ import (
 )
 
 // PublishNativeFines preserves native semantics through the existing atomic
-// edition/revision/provenance/correction machinery. No station links are inferred.
+// edition/revision/provenance/correction machinery. Optional company-only
+// associations remain separate from dated station findings.
 func (p *Publisher) PublishNativeFines(ctx context.Context, in application.NativeFineInput, newID func() (string, error)) (string, error) {
 	if e := in.Validate(); e != nil {
 		return "", e
 	}
-	req := editionRequest{Source: "sanctions", Stream: domain.StreamSanction, Edition: in.Edition, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, Periods: in.Periods, NativeFineClock: &in.Clock}
+	var bindings []application.CompanyBinding
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Observations))
+		for _, row := range in.Observations {
+			sources[row.ObservationKey] = row.SourceCNPJ
+		}
+		var e error
+		bindings, e = fineCompanyBindings(in.CompanyAssociations, sources, p.companyGuard != nil)
+		if e != nil {
+			return "", e
+		}
+	}
+
+	req := editionRequest{CompanyAssociations: in.CompanyAssociations, CompanyBindings: bindings, Source: "sanctions", Stream: domain.StreamSanction, Edition: in.Edition, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, Periods: in.Periods, NativeFineClock: &in.Clock}
 	stage := func(q *quality.Queries, _, revision pgtype.UUID) error {
 		n, e := q.RecordNativeFineClock(ctx, quality.RecordNativeFineClockParams{RevisionID: revision, ReportYear: int32(in.Clock.ReportYear), ExtractionMonth: in.Clock.ExtractionMonth})
 		if e != nil {
@@ -45,7 +59,7 @@ func (p *Publisher) PublishNativeFines(ctx context.Context, in application.Nativ
 		if n != int64(len(in.Observations)) {
 			return errors.New("quality: native staged count diverged")
 		}
-		return nil
+		return stageCompanyAssociations(ctx, q, revision, in.CompanyAssociations)
 	}
 	for attempt := 0; ; attempt++ {
 		rev, retry, e := p.publishTx(ctx, req, newID, stage)

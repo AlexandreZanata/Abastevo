@@ -180,10 +180,17 @@ removed before publication. Both import activation and the independent
 `ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stay off until
 runtime acceptance. The seven files reconcile35,911 source records into35,612
 accepted observations,293 CPF quarantines and six source metadata records; these
-counts do not establish national case coverage or station association. Safe
-station association and enforcement XLSX remain owed. See
-[FQ-07R5D](../docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md)
-and [FQ-07R5E](../docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md).
+counts do not establish national case coverage or station association.
+
+Fresh bounded Directory planning now records explicit current-company-only
+associations and guards real bindings in the publication transaction. Unknown/
+ambiguous/retired/foreign-branch company evidence remains unassociated; fine due
+dates never establish incident dates. This does not prove historical operation
+at a site. Public station filtering/live read fences and enforcement XLSX remain
+owed. See
+[FQ-07R5D](../docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md),
+[FQ-07R5E](../docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md)
+and [FQ-07R6D](../docs/backend/evidence/fuel-quality/FQ07R6D_COMPANY_WORKER_COMPOSITION.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account

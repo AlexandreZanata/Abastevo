@@ -11,6 +11,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/native"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5"
@@ -20,6 +21,7 @@ import (
 const NativeFineImportKind = "quality-sanctions-import"
 
 type FineFileImport struct {
+	Associate      func(context.Context, []domain.CompanyObservationRecord) (*application.CompanyAssociationInput, error)
 	Pool           *pgxpool.Pool
 	Publish        *adapters.Publisher
 	Fetch          func(context.Context, string) (FileArtifact, error)
@@ -129,6 +131,16 @@ func (im FineFileImport) preparedFinePublication(ctx context.Context, payload Im
 		if in.Validate() != nil {
 			return nil, "", fineImportError("typed source contract refused")
 		}
+		if im.Associate != nil {
+			records := make([]domain.CompanyObservationRecord, 0, len(batch.Observations))
+			for _, row := range batch.Observations {
+				records = append(records, domain.CompanyObservationRecord{RecordKey: row.ObservationKey, CNPJ: row.SourceCNPJ})
+			}
+			in.CompanyAssociations, e = im.companyPlan(ctx, records)
+			if e != nil {
+				return nil, "", e
+			}
+		}
 		return func(ctx context.Context, predecessor string) (string, error) {
 			in.Predecessor = predecessor
 			return im.Publish.PublishNativeFines(ctx, in, platformjobs.NewUUIDv4)
@@ -142,8 +154,33 @@ func (im FineFileImport) preparedFinePublication(ctx context.Context, payload Im
 	if batch.SourcePeriod != payload.Edition || in.Validate() != nil {
 		return nil, "", fineImportError("typed historical contract refused")
 	}
+	if im.Associate != nil {
+		records := make([]domain.CompanyObservationRecord, 0, len(batch.Observations))
+		for _, row := range batch.Observations {
+			records = append(records, domain.CompanyObservationRecord{RecordKey: row.ObservationKey, CNPJ: row.SourceCNPJ})
+		}
+		in.CompanyAssociations, e = im.companyPlan(ctx, records)
+		if e != nil {
+			return nil, "", e
+		}
+	}
 	return func(ctx context.Context, predecessor string) (string, error) {
 		in.Predecessor = predecessor
 		return im.Publish.PublishHistoricalFines(ctx, in, platformjobs.NewUUIDv4)
 	}, batch.ManifestHash, nil
+}
+
+func (im FineFileImport) companyPlan(ctx context.Context, records []domain.CompanyObservationRecord) (*application.CompanyAssociationInput, error) {
+	plan, e := im.Associate(ctx, records)
+	if e != nil || plan == nil {
+		return nil, fineImportError("company identity planning unavailable")
+	}
+	sources := make(map[string]string, len(records))
+	for _, r := range records {
+		sources[r.RecordKey] = r.CNPJ
+	}
+	if _, e := plan.Bindings(sources); e != nil {
+		return nil, fineImportError("company identity plan refused")
+	}
+	return plan, nil
 }

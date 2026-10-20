@@ -29,13 +29,14 @@ func (c FineHistoryContext) Record(locator string) (int, bool) {
 }
 
 type HistoricalFineInput struct {
-	Context      FineHistoryContext
-	Predecessor  string
-	Resources    []Resource
-	Counts       domain.Counts
-	ManifestHash string
-	Observations []HistoricalFineObservation
-	Notes        []FineHistoryNote
+	Context             FineHistoryContext
+	Predecessor         string
+	Resources           []Resource
+	Counts              domain.Counts
+	ManifestHash        string
+	CompanyAssociations *CompanyAssociationInput
+	Observations        []HistoricalFineObservation
+	Notes               []FineHistoryNote
 }
 
 func (in HistoricalFineInput) Validate() error {
@@ -73,6 +74,15 @@ func (in HistoricalFineInput) Validate() error {
 			return refused
 		}
 		locators[n] = true
+	}
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Observations))
+		for _, row := range in.Observations {
+			sources[row.ObservationKey] = row.SourceCNPJ
+		}
+		if _, e := in.CompanyAssociations.Bindings(sources); e != nil {
+			return e
+		}
 	}
 	return nil
 }
