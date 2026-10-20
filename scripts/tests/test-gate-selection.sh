@@ -90,6 +90,8 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+assert_pass "real quick path classification" python3 "$ROOT/scripts/tests/test-quick-path-selection.py"
+
 echo "== bounded mobile selection (P12-T05) =="
 if MOBILE_ROOT="$ROOT" bash "$ROOT/scripts/check-mobile.sh" --static-only >/dev/null 2>&1; then
     echo "PASS: mobile static-only green on repo tree"
