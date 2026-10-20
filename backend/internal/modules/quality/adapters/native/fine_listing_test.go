@@ -12,7 +12,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
 )
 
-func TestFineListingActualHrefsAndUnsupportedCoverage(t *testing.T) {
+func TestFineListingActualHrefsAndVerifiedCoverage(t *testing.T) {
 	body := []byte(`<a href="` + fineResource + `">2019</a>
 <a href='` + FineResourcePrefix + `multas-aplicadas-2024.csv'>2021</a>
 <a HREF="` + fineResource + `">duplicate</a>
@@ -21,7 +21,7 @@ func TestFineListingActualHrefsAndUnsupportedCoverage(t *testing.T) {
 <a href="https://evil.example/multas-aplicadas-2023.csv">foreign</a>
 <a href="` + fineResource + `?secret=x">query</a>`)
 	refs, e := ParseFineListingPage(FineListingPage, body)
-	if e != nil || len(refs) != 2 || refs[0].Year != "2024" || refs[1].Year != "2025" || refs[1].URL != fineResource {
+	if e != nil || len(refs) != 4 || refs[0].Period != "2021" || refs[1].Period != "2016-2019" || refs[2].Period != "2024" || refs[3].Period != "2025" || refs[3].URL != fineResource {
 		t.Fatal("listing invented coverage or trusted anchor labels", refs, e)
 	}
 	for _, page := range []string{FineListingPage + "?x", FineListingPage + "#x", strings.Replace(FineListingPage, "www.gov.br", "www.gov.br:443", 1), strings.Replace(FineListingPage, "https:", "http:", 1), FineListingPage + "/other"} {
@@ -29,7 +29,7 @@ func TestFineListingActualHrefsAndUnsupportedCoverage(t *testing.T) {
 			t.Fatal("foreign listing accepted")
 		}
 	}
-	for _, raw := range [][]byte{nil, []byte(`<a href="multas-aplicadas-2016a2019.csv">grouped</a>`), []byte(strings.Repeat("x", MaxListingBytes+1))} {
+	for _, raw := range [][]byte{nil, []byte(`<a href="multas-aplicadas-2017.csv">unverified</a>`), []byte(strings.Repeat("x", MaxListingBytes+1))} {
 		if _, e = ParseFineListingPage(FineListingPage, raw); e == nil {
 			t.Fatal("empty/unsupported/oversized listing accepted")
 		}
@@ -45,7 +45,7 @@ func TestFineInspectionPinsPrivateContentAndCancellation(t *testing.T) {
 	}
 	hash := sha256.Sum256(content)
 	id := prepared.InputIdentity{SHA256: hex.EncodeToString(hash[:]), Bytes: int64(len(content))}
-	ref := FineRef{URL: fineResource, Year: "2025"}
+	ref := FineRef{URL: fineResource, Period: "2025"}
 	entry, e := InspectFineFile(context.Background(), filename, ref, id)
 	if e != nil || entry.SHA256 != id.SHA256 || entry.Label != "2025" || entry.Bytes != uint64(id.Bytes) {
 		t.Fatal("identity not preserved", entry, e)

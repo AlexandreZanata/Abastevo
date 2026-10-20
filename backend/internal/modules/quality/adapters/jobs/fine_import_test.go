@@ -13,6 +13,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -53,6 +54,11 @@ func TestFineImportPayloadAndPortsRefusedBeforeIO(t *testing.T) {
 	}
 }
 func TestFineImportPrepublicationFailuresCleanAndRedact(t *testing.T) {
+	for _, period := range []string{"2025", "2024"} {
+		t.Run(period, func(t *testing.T) { testFineImportPrepublicationFailuresCleanAndRedact(t, period) })
+	}
+}
+func testFineImportPrepublicationFailuresCleanAndRedact(t *testing.T, period string) {
 	for _, mode := range []string{"fetch", "prepare", "tamper", "cancel", "cleanup"} {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()
@@ -93,11 +99,37 @@ func TestFineImportPrepublicationFailuresCleanAndRedact(t *testing.T) {
 				}
 				return prepared.FineBatch{ReportYear: 2025, ExtractionMonth: "2026-01", ManifestHash: strings.Repeat("b", 64)}, nil
 			}
-			payload := fineJobPayload(t, func(p *ImportPayload) { p.SHA256 = hash })
+			im.PrepareHistory = func(ctx context.Context, payload ImportPayload, f FileArtifact) (prepared.FineHistoryBatch, error) {
+				_, e := im.Prepare(ctx, payload, f)
+				return prepared.FineHistoryBatch{SourcePeriod: period, InputContract: "anp-sicom-utf8bom-2024-v1", SourceFile: "multas-aplicadas-2024.csv", HeaderRecord: 7, Clock: application.FineHistoryClock{Precision: "MONTH", Value: "2025-03"}, ManifestHash: strings.Repeat("b", 64)}, e
+			}
+			payload := fineJobPayload(t, func(p *ImportPayload) {
+				p.SHA256 = hash
+				p.Edition = period
+				p.URL = strings.Replace(unitFineURL, "2025.csv", period+".csv", 1)
+			})
 			e := im.Handle(ctx, platformjobs.Job{Payload: payload})
 			if e == nil || strings.Contains(e.Error(), "private") || closed != 1 {
 				t.Fatal("fine failure escaped/redacted/cleanup contract", e, closed)
 			}
 		})
+	}
+}
+
+func TestHistoricalFineRequiresItsOwnPreparationPortBeforeIO(t *testing.T) {
+	calls := 0
+	im := FineFileImport{Pool: &pgxpool.Pool{}, Publish: &adapters.Publisher{}, Serial: func(ctx context.Context, f func(context.Context) error) error { calls++; return f(ctx) }, Fetch: func(context.Context, string) (FileArtifact, error) { calls++; return FileArtifact{}, nil }, Prepare: func(context.Context, ImportPayload, FileArtifact) (prepared.FineBatch, error) {
+		calls++
+		return prepared.FineBatch{}, nil
+	}}
+	payload := fineJobPayload(t, func(p *ImportPayload) {
+		p.Edition = "2024"
+		p.URL = strings.Replace(unitFineURL, "2025.csv", "2024.csv", 1)
+	})
+	if _, e := decodeFinePayload(payload); e != nil {
+		t.Fatal("verified historical payload refused", e)
+	}
+	if e := im.Handle(context.Background(), platformjobs.Job{Payload: payload}); e == nil || calls != 0 {
+		t.Fatal("historical job used v1 port/performed I/O", e, calls)
 	}
 }

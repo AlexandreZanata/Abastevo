@@ -35,6 +35,11 @@ func nativeFineJob(t *testing.T, raw []byte) platformjobs.Job {
 	return platformjobs.Job{Payload: payload}
 }
 func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
+	for _, period := range []string{"2025", "2024"} {
+		t.Run(period, func(t *testing.T) { testFineFileRustPostGISRecoveryCorrectionAndCleanup(t, period) })
+	}
+}
+func testFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T, period string) {
 	binary := os.Getenv("ANPFUEL_TEST_SANCTIONS_PREPARER_PATH")
 	if binary == "" {
 		t.Fatal("ANPFUEL_TEST_SANCTIONS_PREPARER_PATH must name the trusted Rust fine CLI")
@@ -42,9 +47,21 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 	p := freshJobsDB(t)
 	ctx := context.Background()
 	root := t.TempDir()
-	raw := nativeFineCSV("Source original")
+	csv := nativeFineCSV
+	if period == "2024" {
+		csv = historicalFineCSV
+	}
+	makeJob := func(raw []byte) platformjobs.Job {
+		sum := sha256.Sum256(raw)
+		return platformjobs.Job{Payload: fineJobPayload(t, func(p *ImportPayload) {
+			p.SHA256 = hex.EncodeToString(sum[:])
+			p.Edition = period
+			p.URL = "https://www.gov.br" + native.FineResourcePrefix + "multas-aplicadas-" + period + ".csv"
+		})}
+	}
+	raw := csv("Source original")
 	original := append([]byte{}, raw...)
-	job := nativeFineJob(t, raw)
+	job := makeJob(raw)
 	im := FineFileImport{Pool: p, Publish: adapters.NewPublisher(p), Serial: adapters.NativeSourceSerial(p)}
 	cleanupFailure := false
 	closed := 0
@@ -66,6 +83,9 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 	im.Prepare = func(ctx context.Context, payload ImportPayload, file FileArtifact) (prepared.FineBatch, error) {
 		return (native.FineRunner{Binary: binary, WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})
 	}
+	im.PrepareHistory = func(ctx context.Context, payload ImportPayload, file FileArtifact) (prepared.FineHistoryBatch, error) {
+		return (native.FineHistoryRunner{Binary: os.Getenv("ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH"), WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})
+	}
 	// Cleanup is confirmed before publication, even when the typed native parse succeeded.
 	cleanupFailure = true
 	if e := im.Handle(ctx, job); e == nil {
@@ -86,7 +106,7 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 	}
 	reader := qualityread.NewReader(p)
 	rows, _, lease, e := reader.Sanctions(ctx, time.Now(), "sanctions", "sanction-v1", "", "", "", 10)
-	if e != nil || len(rows) != 1 || lease.Counts.Input != 3 || lease.Counts.Accepted != 1 || lease.Counts.Duplicates != 1 || lease.Counts.Quarantined != 1 || rows[0].DueOn != "2025-02-28" || rows[0].Status != "Source original" {
+	if e != nil || len(rows) != 1 || lease.Counts.Input != 3 || lease.Counts.Accepted != 1 || lease.Counts.Duplicates != 1 || lease.Counts.Quarantined != 1 || rows[0].DueOn != "2025-02-28" || rows[0].Status != "Source original" || (period == "2024" && (lease.SourceClockValue != "2025-03" || rows[0].UnlabelledField != "SIM")) {
 		t.Fatal("actual Rust/PostGIS source mismatch", e)
 	}
 	first := lease.RevisionID
@@ -105,8 +125,8 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 	if e != nil || replayed.RevisionID != first {
 		t.Fatal("replayed fine import forked", e)
 	}
-	raw = nativeFineCSV("Source correction")
-	correction := nativeFineJob(t, raw)
+	raw = csv("Source correction")
+	correction := makeJob(raw)
 	if e = im.Handle(ctx, correction); e != nil {
 		t.Fatal("native correction import", e)
 	}
@@ -130,11 +150,11 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 		t.Fatal("original native history lost", e)
 	}
 	mark, e := quality.New(p).GetWatermark(ctx, quality.GetWatermarkParams{Source: "sanctions", Stream: "sanction-v1"})
-	if e != nil || mark.LastEdition != "2025" || mark.LastHash != latest.ManifestHash {
+	if e != nil || mark.LastEdition != period || mark.LastHash != latest.ManifestHash {
 		t.Fatal("watermark drift", e)
 	}
 	raw = []byte("private invalid source body\n")
-	if e = im.Handle(ctx, nativeFineJob(t, raw)); e == nil || strings.Contains(e.Error(), "private invalid source") {
+	if e = im.Handle(ctx, makeJob(raw)); e == nil || strings.Contains(e.Error(), "private invalid source") {
 		t.Fatal("malformed native source accepted/leaked", e)
 	}
 	children, e := os.ReadDir(root)
@@ -147,4 +167,11 @@ func TestNativeFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T) {
 	if e = p.QueryRow(ctx, "SELECT count(*) FROM quality_links").Scan(&n); e != nil || n != 0 {
 		t.Fatal("raw native import invented station association", n, e)
 	}
+}
+
+func historicalFineCSV(status string) []byte {
+	preamble := "\ufeffANP - Agência Nacional do Petroleo, Gás Natural e Biocombustíveis;;;;;;;;;\n;;;;;;;;;\nRELAÇÃO DE MULTAS APLICADAS EM 2024  (Relatório extraído em março/2025);;;;;;;;;\nFonte: Sistema de Controle de Multas - SICOM;;;;;;;;;\n;;;;;;;;;\n;;;;;;;;;\nStatus Processo;Superintendência;Número do Processo;Número do DUF;CNPJ/CPF;Razão Social;Vencimento;Valor da Multa;Valor Total Pago;\n"
+	row := status + ";SYNTHETIC;000000000000001;SYNTHETIC/1;11.222.333/0001-81;Discarded synthetic company;28/02/2025;150000,00;180000,01;SIM\n"
+	cpf := strings.Replace(row, "11.222.333/0001-81", "000.000.000-00", 1)
+	return []byte(preamble + row + row + cpf)
 }

@@ -18,10 +18,13 @@ import (
 )
 
 const bundledFinePreparer = "/prepare_sanctions"
+const bundledFineHistoryPreparer = "/prepare_fine_history"
 
-func nativeFineImport(pool *pgxpool.Pool, binary, root string) qualityjobs.FineFileImport {
+func nativeFineImport(pool *pgxpool.Pool, binary, historyBinary, root string) qualityjobs.FineFileImport {
 	return qualityjobs.FineFileImport{Pool: pool, Publish: quality.NewPublisher(pool), Serial: quality.NativeSourceSerial(pool), Fetch: nativeFineFetch(root), Prepare: func(ctx context.Context, payload qualityjobs.ImportPayload, file qualityjobs.FileArtifact) (prepared.FineBatch, error) {
 		return (native.FineRunner{Binary: binary, WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})
+	}, PrepareHistory: func(ctx context.Context, payload qualityjobs.ImportPayload, file qualityjobs.FileArtifact) (prepared.FineHistoryBatch, error) {
+		return (native.FineHistoryRunner{Binary: historyBinary, WorkspaceRoot: root}).Prepare(ctx, native.FineRequest{Path: file.Path, URL: payload.URL, Edition: payload.Edition, Identity: file.Identity})
 	}}
 }
 
@@ -30,14 +33,14 @@ func nativeFineImport(pool *pgxpool.Pool, binary, root string) qualityjobs.FineF
 // a host, local path, executable or alternate fetch security policy.
 func nativeFineFetch(root string) func(context.Context, string) (qualityjobs.FileArtifact, error) {
 	return func(ctx context.Context, raw string) (qualityjobs.FileArtifact, error) {
-		if _, e := native.FineURLYear(raw); e != nil {
+		if _, e := native.FineResourcePeriod(raw); e != nil {
 			return qualityjobs.FileArtifact{}, errors.New("fine source: resource selection refused")
 		}
 		workspace, e := os.MkdirTemp(root, "quality-fine-fetch-")
 		if e != nil {
 			return qualityjobs.FileArtifact{}, errors.New("fine source: workspace unavailable")
 		}
-		fetcher := source.NewFetcher([]source.Entry{{ID: "anp-fine-native", Host: "www.gov.br", PathPrefix: native.FineResourcePrefix, FileGlob: "multas-aplicadas-*.csv", Kind: source.KindHistoricalCSV}})
+		fetcher := source.NewFetcher([]source.Entry{{ID: "anp-fine-native", Host: "www.gov.br", PathPrefix: native.FineResourcePrefix, FileGlob: "multas*", Kind: source.KindHistoricalCSV}})
 		fetcher.TempDir, fetcher.MaxBytes, fetcher.MaxRedirects = workspace, prepared.MaxBytes, 3
 		result, e := fetcher.Fetch(ctx, raw, "", "")
 		if e != nil || result.NotModified || result.Bytes <= 0 {
@@ -94,7 +97,7 @@ func fetchFineListing(ctx context.Context) (refs []native.FineRef, err error) {
 }
 
 func inspectFineResource(ctx context.Context, ref native.FineRef) (entry application.InventoryEntry, err error) {
-	if native.ValidateFineSelection(ref.URL, ref.Year) != nil {
+	if native.ValidateFineResourceSelection(ref.URL, ref.Period) != nil {
 		return entry, errors.New("fine discovery: selection refused")
 	}
 	file, e := nativeFineFetch("")(ctx, ref.URL)

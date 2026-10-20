@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
 )
 
 const FineResourcePrefix = "/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/"
@@ -43,6 +44,28 @@ func ValidateFineSelection(raw, edition string) error {
 	return nil
 }
 
+// FineResourcePeriod admits only actually verified source profiles. Filename
+// suffixes do not guess an encoding: the2021 .xlsx resource is verified CSV.
+func FineResourcePeriod(raw string) (string, error) {
+	if raw == "https://www.gov.br"+FineResourcePrefix+"multas-aplicadas-2025.csv" {
+		return "2025", nil
+	}
+	for _, period := range []string{"2016-2019", "2020", "2021", "2022", "2023", "2024"} {
+		p, _ := application.HistoricalFineProfile(period)
+		if raw == "https://www.gov.br"+FineResourcePrefix+p.SourceFile {
+			return period, nil
+		}
+	}
+	return "", refused("fine resource profile")
+}
+func ValidateFineResourceSelection(raw, period string) error {
+	known, e := FineResourcePeriod(raw)
+	if e != nil || known != period {
+		return refused("fine resource period")
+	}
+	return nil
+}
+
 type FineRunner struct {
 	Binary, WorkspaceRoot string
 	Timeout               time.Duration
@@ -54,7 +77,28 @@ type FineRequest struct {
 
 // Prepare pins a private source descriptor and an independently verified private
 // process snapshot. Only the operator selects Binary; no job path enters exec.
-func (r FineRunner) Prepare(ctx context.Context, req FineRequest) (result prepared.FineBatch, err error) {
+func (r FineRunner) Prepare(ctx context.Context, req FineRequest) (prepared.FineBatch, error) {
+	return prepareFineBatch(r, ctx, req, ValidateFineSelection, func(ctx context.Context, raw []byte, open prepared.OpenStream, identity prepared.InputIdentity) (prepared.FineBatch, error) {
+		year, _ := FineURLYear(req.URL)
+		return prepared.LoadFines(ctx, raw, open, identity, year)
+	})
+}
+
+type FineHistoryRunner FineRunner
+
+func (r FineHistoryRunner) Prepare(ctx context.Context, req FineRequest) (prepared.FineHistoryBatch, error) {
+	selection := func(raw, period string) error {
+		if period == "2025" {
+			return refused("historical profile")
+		}
+		return ValidateFineResourceSelection(raw, period)
+	}
+	return prepareFineBatch(FineRunner(r), ctx, req, selection, func(ctx context.Context, raw []byte, open prepared.OpenStream, identity prepared.InputIdentity) (prepared.FineHistoryBatch, error) {
+		return prepared.LoadFineHistory(ctx, raw, open, identity, req.Edition)
+	})
+}
+
+func prepareFineBatch[T any](r FineRunner, ctx context.Context, req FineRequest, selection func(string, string) error, load func(context.Context, []byte, prepared.OpenStream, prepared.InputIdentity) (T, error)) (result T, err error) {
 	if e := ctx.Err(); e != nil {
 		return result, e
 	}
@@ -67,7 +111,7 @@ func (r FineRunner) Prepare(ctx context.Context, req FineRequest) (result prepar
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	if ValidateFineSelection(req.URL, req.Edition) != nil || !filepath.IsAbs(req.Path) {
+	if selection(req.URL, req.Edition) != nil || !filepath.IsAbs(req.Path) {
 		return result, refused("fine input selection")
 	}
 	info, e := os.Lstat(req.Path)
@@ -92,7 +136,8 @@ func (r FineRunner) Prepare(ctx context.Context, req FineRequest) (result prepar
 	}
 	defer func() {
 		if e := os.RemoveAll(workspace); e != nil {
-			result = prepared.FineBatch{}
+			var zero T
+			result = zero
 			err = refused("fine workspace cleanup")
 		}
 	}()
@@ -143,8 +188,7 @@ func (r FineRunner) Prepare(ctx context.Context, req FineRequest) (result prepar
 	if e != nil || closed != nil || len(raw) > 1<<20 {
 		return result, refused("fine manifest read")
 	}
-	year, _ := FineURLYear(req.URL)
-	batch, e := prepared.LoadFines(ctx, raw, func(name string) (io.ReadCloser, error) { return openArtifact(out, name, prepared.MaxBytes) }, req.Identity, year)
+	batch, e := load(ctx, raw, func(name string) (io.ReadCloser, error) { return openArtifact(out, name, prepared.MaxBytes) }, req.Identity)
 	if e != nil {
 		return result, refused("fine artifacts refused")
 	}

@@ -1,5 +1,17 @@
 # Fuel quality remaining implementation handoff
 
+Current continuation, 2026-10-20: this October17 prompt below is a preserved
+historical snapshot. Current Git/PROGRESS and linked evidence supersede its
+last-checkpoint/runtime assertions. PMQC prerequisites, FQ-12/13, public PMQC,
+document-free reports, bounded cache/encrypted outbox and FQ-07R1–R5E are now
+LOCAL_DONE / INTEGRATION_PENDING. The seven verified fine resources pass actual
+worker/replay/full-traversal and image acceptance with imports/schedules off.
+Next: safe Directory company-observation association, actual FQ-06 XLSX runtime,
+linked Android enforcement/fine journeys, full FQ-16/17 scoped acceptance and
+protected cumulative delivery/wiki. D and native-device/production obligations
+retain their explicit holds. See [current progress](PROGRESS.md) and
+[seven-resource worker evidence](../backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md).
+
 Prepared 2026-10-17. Copy the prompt below into the continuation agent. This is
 the scoped FQ construction handoff; the older planning-only execution prompt
 does not describe the current implemented head. Verify Git before trusting any

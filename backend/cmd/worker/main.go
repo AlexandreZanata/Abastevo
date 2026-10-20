@@ -840,7 +840,7 @@ func run() error {
 	}
 	nativeKinds := []string{}
 	if cfg.QualityImportsEnabled {
-		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, "")
+		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
 		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)

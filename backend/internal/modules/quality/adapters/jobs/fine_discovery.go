@@ -47,7 +47,7 @@ func (d FineDiscovery) Handle(ctx context.Context, _ platformjobs.Job) error {
 		refs = append([]native.FineRef(nil), refs...)
 		seen := map[string]bool{}
 		for _, ref := range refs {
-			if native.ValidateFineSelection(ref.URL, ref.Year) != nil || seen[ref.URL] {
+			if native.ValidateFineResourceSelection(ref.URL, ref.Period) != nil || seen[ref.URL] {
 				return fineImportError("listing reference refused")
 			}
 			seen[ref.URL] = true
@@ -69,9 +69,9 @@ func (d FineDiscovery) Handle(ctx context.Context, _ platformjobs.Job) error {
 		if e != nil {
 			return fineImportError("resource inspection unavailable")
 		}
-		payload := ImportPayload{Version: 1, Source: "sanctions", Stream: "sanction-v1", Edition: next.Year, URL: entry.URL, SHA256: entry.SHA256, Member: entry.Member}
+		payload := ImportPayload{Version: 1, Source: "sanctions", Stream: "sanction-v1", Edition: next.Period, URL: entry.URL, SHA256: entry.SHA256, Member: entry.Member}
 		raw, e := json.Marshal(payload)
-		if e != nil || entry.URL != next.URL || entry.Label != next.Year || entry.Bytes == 0 || entry.Bytes > uint64(prepared.MaxBytes) {
+		if e != nil || entry.URL != next.URL || entry.Label != next.Period || entry.Bytes == 0 || entry.Bytes > uint64(prepared.MaxBytes) {
 			return fineImportError("inspected resource identity refused")
 		}
 		if _, e = decodeFinePayload(raw); e != nil {

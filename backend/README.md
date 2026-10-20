@@ -55,12 +55,14 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --target-dir /tmp/abastevo-integration-rust
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_sanctions
 export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_fine_history
+export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
@@ -168,14 +170,20 @@ deployment selection; see
 [FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md),
 [FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and
 [FQ-05W8](../docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md).
-Native fine jobs use trusted `/prepare_sanctions`, the same whole-attempt source
-lease and verified/minimized typed publication. Fine discovery inspects one
-actual annual CSV href per run with its own persistent cursor; the independent
-`ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stays off.
-Grouped2016–2019 and2021 XLSX are not claimed as supported annual CSVs. Only2025
-has live source reconciliation at this checkpoint; other source profiles, safe
-station association and complete history remain owed. See
-[FQ-07R4B](../docs/backend/evidence/fuel-quality/FQ07R4B_NATIVE_FINE_WORKER.md).
+Native fine jobs use trusted `/prepare_sanctions` for2025 and
+`/prepare_fine_history` for the six separately verified historical profiles, under
+one whole-attempt source lease and verified/minimized typed publication. Discovery
+inspects one of seven actual supported hrefs per persistent cursor step. Grouped
+2016–2019 remains one resource;2021 is verified CSV despite its .xlsx filename.
+Strict resource/profile admission precedes fetch, and raw private files are
+removed before publication. Both import activation and the independent
+`ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stay off until
+runtime acceptance. The seven files reconcile35,911 source records into35,612
+accepted observations,293 CPF quarantines and six source metadata records; these
+counts do not establish national case coverage or station association. Safe
+station association and enforcement XLSX remain owed. See
+[FQ-07R5D](../docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md)
+and [FQ-07R5E](../docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md).
 Private signed document-free report commands/get/list remain separate; disabling
 `ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
 owner appeal, withdrawal and reads. Existing account write quota applies per account
@@ -203,7 +211,7 @@ Critical quality persistence/read/job checks, from backend/ against disposable
 local PostGIS (never the staging database):
 
 ```sh
-ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions go test -race -tags=integration ./internal/modules/quality/... -count=1
+ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history go test -race -tags=integration ./internal/modules/quality/... -count=1
 go test ./internal/platform/apicontract -count=1
 ```
 

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,6 +21,11 @@ import (
 )
 
 func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
+	for _, period := range []string{"2025", "2024", "2021", "2016-2019"} {
+		t.Run(period, func(t *testing.T) { testFineWorkerDiscoveryDispatchRustAndCorrection(t, period) })
+	}
+}
+func testFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T, period string) {
 	binary := os.Getenv("ANPFUEL_TEST_SANCTIONS_PREPARER_PATH")
 	if binary == "" {
 		t.Fatal("ANPFUEL_TEST_SANCTIONS_PREPARER_PATH must name the trusted fine CLI")
@@ -28,7 +34,13 @@ func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	raw := []byte("ANP - Ag\x88ncia Nacional do Petroleo, G\xa0s Natural e Biocombust\xa1veis;;;;;;;;\n;;;;;;;;\nRELA\x80\xc7O DE MULTAS APLICADAS EM 2025  (Relat\xa2rio extra\xa1do em janeiro/2026);;;;;;;;\nFonte: Sistema de Controle de Multas - SICOM;;;;;;;;\n;;;;;;;;\n;;;;;;;;\nStatus Processo;Superintend\x88ncia;N\xa3mero do Processo;N\xa3mero do DUF;CNPJ/CPF;Raz\xc6o Social;Vencimento GRM;Valor da Multa;Valor Total Pago\nSource original;SYNTHETIC;000000000000001;SYNTHETIC/1;11.222.333/0001-81;Discarded synthetic name;28/02/2025;150000,00;180000,01\n")
-	ref := native.FineRef{URL: "https://www.gov.br" + native.FineResourcePrefix + "multas-aplicadas-2025.csv", Year: "2025"}
+	ref := native.FineRef{URL: "https://www.gov.br" + native.FineResourcePrefix + "multas-aplicadas-2025.csv", Period: "2025"}
+	clock := "2026-01"
+	if period != "2025" {
+		raw, clock = workerHistoricalFineCSV(period)
+		profile, _ := application.HistoricalFineProfile(period)
+		ref = native.FineRef{URL: "https://www.gov.br" + native.FineResourcePrefix + profile.SourceFile, Period: period}
+	}
 	file := func() (qualityjobs.FileArtifact, error) {
 		filename := filepath.Join(root, "download.csv")
 		if e := os.WriteFile(filename, raw, 0600); e != nil {
@@ -56,7 +68,7 @@ func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
 		}()
 		return native.InspectFineFile(ctx, f.Path, r, f.Identity)
 	}
-	im := nativeFineImport(p, binary, root)
+	im := nativeFineImport(p, binary, os.Getenv("ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH"), root)
 	im.Fetch = func(_ context.Context, url string) (qualityjobs.FileArtifact, error) {
 		if url != ref.URL {
 			t.Fatal("unexpected URL")
@@ -88,7 +100,7 @@ func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
 	}
 	r := qualityread.NewReader(p)
 	rows, _, lease, e := r.Sanctions(ctx, time.Now(), "sanctions", "sanction-v1", "", "", "", 10)
-	if e != nil || len(rows) != 1 || rows[0].DueOn != "2025-02-28" || rows[0].Status != "Source original" || lease.SourceExtractionMonth != "2026-01" {
+	if e != nil || len(rows) != 1 || rows[0].DueOn != "2025-02-28" || rows[0].Status != "Source original" || lease.SourceClockValue != clock {
 		t.Fatal("native source facts lost", e)
 	}
 	first := lease.RevisionID
@@ -99,7 +111,10 @@ func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
 		t.Fatal("published stable content enqueued", found, e)
 	}
 	// A same-URL correction receives a different frozen hash and one new job.
-	raw = append(raw, []byte("Source corrected;SYNTHETIC;000000000000002;SYNTHETIC/2;11.222.333/0001-81;Discarded synthetic name;01/03/2025;25,00;0,00\n")...)
+	// Append one distinct source observation in the selected exact profile.
+	lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+	corrected := strings.Replace(lines[len(lines)-1], "Source original", "Source corrected", 1)
+	raw = append(raw, []byte(corrected+"\n")...)
 	if e = d.Handle(ctx, platformjobs.Job{}); e != nil {
 		t.Fatal(e)
 	}
@@ -122,4 +137,24 @@ func TestNativeFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T) {
 	if e != nil || len(files) != 0 {
 		t.Fatal("source files retained", e)
 	}
+}
+
+func workerHistoricalFineCSV(period string) ([]byte, string) {
+	agency := "ANP - Agência Nacional do Petroleo, Gás Natural e Biocombustíveis"
+	header := "Status Processo;Superintendência;Número do Processo;Número do DUF;CNPJ/CPF;Razão Social;Vencimento;Valor da Multa;Valor Total Pago;"
+	row := "Source original;SYNTHETIC;000000000000001;SYNTHETIC/1;11.222.333/0001-81;Discarded synthetic name;28/02/2025;150000,00;180000,01;SIM\n"
+	clock := "2025-03"
+	preamble := "\ufeff" + agency + ";;;;;;;;;\n;;;;;;;;;\nRELAÇÃO DE MULTAS APLICADAS EM 2024  (Relatório extraído em março/2025);;;;;;;;;\nFonte: Sistema de Controle de Multas - SICOM;;;;;;;;;\n;;;;;;;;;\n;;;;;;;;;\n"
+	if period != "2024" {
+		header = "Status Processo;Superintendência;Número do Processo;Auto de Infração;CNPJ/CPF;Razão Social;Data Transito Julgado;Vencimento;Valor  da Multa Aplicada;Valor Total Pago (*) (**) "
+		row = "Source original;SYNTHETIC;000000000000001;SYNTHETIC/1;11.222.333/0001-81;Discarded synthetic name;20/02/2021;28/02/2025;150000,00;180000,01\n"
+		preamble = strings.Replace(preamble, "2024  (Relatório extraído em março/2025)", "2021  (Relatório extraído em junho/2022)", 1)
+		clock = "2022-06"
+	}
+	if period == "2016-2019" {
+		preamble = "\ufeff" + agency + ";;;;Data: 06/02/2020;;;;;\nSICOM;;;;;;;;;\nFinanceiro (GRM);;;;;;;;;\n;;;;;;;;;\n"
+		header = "Status Processo;Superintendência;Número do Processo;Auto de Infração;CNPJ/CPF;Razão Social;Data Transito Julgado;Vencimento ;Valor da Multa Aplicada;Valor Total Pago (*) (**)"
+		clock = "2020-02-06"
+	}
+	return []byte(preamble + header + "\n" + row), clock
 }

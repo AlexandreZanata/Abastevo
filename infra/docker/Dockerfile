@@ -25,8 +25,8 @@ RUN apt-get update \
 WORKDIR /src
 COPY tools/station-prep/Cargo.toml tools/station-prep/Cargo.lock ./
 COPY tools/station-prep/src ./src
-RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin prepare_quality --bin prepare_sanctions \
- && chmod 755 target/x86_64-unknown-linux-musl/release/prepare_quality target/x86_64-unknown-linux-musl/release/prepare_sanctions
+RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history \
+ && chmod 755 target/x86_64-unknown-linux-musl/release/prepare_quality target/x86_64-unknown-linux-musl/release/prepare_sanctions target/x86_64-unknown-linux-musl/release/prepare_fine_history
 
 FROM ${GOLANG_IMAGE} AS builder
 ENV CGO_ENABLED=0 GOOS=linux GOTOOLCHAIN=local
@@ -59,6 +59,7 @@ COPY --from=builder --chown=65532:65532 /out/worker /worker
 # musl build, never a hostPath or job-provided executable.
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_quality /prepare_quality
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_sanctions /prepare_sanctions
+COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_fine_history /prepare_fine_history
 USER 65532:65532
 ENTRYPOINT ["/worker"]
 
