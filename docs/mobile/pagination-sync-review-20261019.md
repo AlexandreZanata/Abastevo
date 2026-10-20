@@ -3,7 +3,7 @@
 Status: LOCAL_DONE
 Validation: PASS
 Integration: INTEGRATION_PENDING
-Native execution: OWED
+Native execution: scoped PASS on 2026-10-20; see [device follow-up](pagination-sync-device-20261020.md). Whole-app/release acceptance remains OWED.
 
 Opened 2026-10-19; completed locally 2026-10-20. Review input: ten commits ending at `28a3de0a` (`79b6a7bd` first), reconciled with maintained dev `cb10cc5b` in `codex/mobile-pagination-review`. Both parents and the resolution are retained by the local merge commit containing this record. The occupied original checkout, its unrelated evidence-store edit and the separate quality construction checkout were preserved. Dev subsequently advanced to `08bef884`; integration with that newer head still requires affected revalidation. No remote PR/check/merge, staging probe, device installation, deployment or release is claimed.
 
@@ -65,6 +65,6 @@ Local logs: `/tmp/mobile-pagination-review-{red,backend,final-gradle,sqlite-fina
 
 ## Remaining acceptance and integration
 
-This source review is locally complete; the whole P35/G24/G09 is not certified. Execute the deferred Android batch against this candidate: Room migration/transaction/worker tests, process restart and offline browsing, rapid query/fuel/city changes, opt-out during requests, cache clear, network restoration, and scroll/frame-time checks with a dense-city catalog. Run scoped staging-origin checks separately; no production load campaign is authorized. Then reconcile the latest maintained dev with affected revalidation and use the protected dev→main delivery with current required `Quick verification`. No remote issue/PR was created for this local review; wiki/release evidence remains unchanged.
+This source review is locally complete; the whole P35/G24/G09 is not certified. The subsequent [device follow-up](pagination-sync-device-20261020.md) records38 native passes, real staging reads/network recovery and the physical frame diagnostic; it supersedes the native deferral for those named scenarios. Execute the deferred Android batch against this candidate: Room migration/transaction/worker tests, process restart and offline browsing, rapid query/fuel/city changes, opt-out during requests, cache clear, network restoration, and scroll/frame-time checks with a dense-city catalog. Run scoped staging-origin checks separately; no production load campaign is authorized. Then reconcile the latest maintained dev with affected revalidation and use the protected dev→main delivery with current required `Quick verification`. No remote issue/PR was created for this local review; wiki/release evidence remains unchanged.
 
 Rollback is the existing community-read flag OFF plus public-sync opt-out. Keep the applied 15→16 schema append-only; do not replace historical migrations or reset user data to roll back UI behavior.

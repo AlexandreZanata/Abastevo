@@ -104,19 +104,25 @@ class StagingDirectorySyncDeviceTest {
             val useCase = GetServerStationsUseCase(object : CommunityReadsFlagProvider {
                 override fun isEnabled() = true
             }, gateway, cache, com.anpfuel.application.port.StationDirectoryScopeProvider { "5107925" })
-            val first = useCase(100)
+            val first = useCase(20)
             assertTrue("Actual Android HTTPS read must succeed", first is ServerStationsOutcome.Fresh)
             val ids = (first as ServerStationsOutcome.Fresh).page.items.map { it.stationId }
             assertTrue(ids.isNotEmpty())
             assertTrue(first.page.items.all { it.municipalityCode == "5107925" })
-            assertNull(first.page.nextCursor)
+            assertTrue(first.page.items.size <= 20)
+            if (first.page.nextCursor != null) {
+                val next = useCase.loadMore(20) as ServerStationsOutcome.Fresh
+                assertTrue(next.page.items.size <= 40)
+                assertEquals(ids, next.page.items.take(ids.size).map { it.stationId })
+                assertEquals(next.page.items.size, next.page.items.map { it.stationId }.toSet().size)
+            }
             assertEquals(ids.size, ids.toSet().size)
             offline = true
-            val cached = useCase(100)
+            val cached = useCase(20)
             assertTrue(cached is ServerStationsOutcome.StaleCache)
             assertEquals(ids, (cached as ServerStationsOutcome.StaleCache).page.items.map { it.stationId })
             offline = false
-            assertTrue(useCase(100) is ServerStationsOutcome.Fresh)
+            assertTrue(useCase(20) is ServerStationsOutcome.Fresh)
         } finally { database.close() }
     }
 }

@@ -175,7 +175,7 @@ fun StationsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StationsContent(
+internal fun StationsContent(
     uiState: StationsUiState,
     onNavigateBack: (() -> Unit)? = null,
     onFuelProductSelected: (FuelProduct) -> Unit,
@@ -197,6 +197,7 @@ private fun StationsContent(
     onLoadMoreServerStations: () -> Unit = {},
     onLoadMoreAnpStations: () -> Unit = {},
     modifier: Modifier = Modifier,
+    weekPickerAction: @Composable () -> Unit = { SurveyWeekChipAction(onWeekChanged = onWeekChanged) },
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -211,9 +212,7 @@ private fun StationsContent(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                actions = {
-                    SurveyWeekChipAction(onWeekChanged = onWeekChanged)
-                },
+                actions = { weekPickerAction() },
             )
         },
     ) { innerPadding ->

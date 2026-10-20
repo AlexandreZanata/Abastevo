@@ -104,7 +104,7 @@ class DirectoryCacheTransactionTest {
     @Test fun pagedReadsWindowTheStoredServerOrder() = runBlocking {
         val dao = database.serverStationCacheDao()
         val cache = DirectoryStationRoomCache(dao)
-        val rows = (0 until 5).map { index -> row.copy(stationId = "station-$index", displayName = "Station $index", position = index) }
+        val rows = (0 until 5).map { index -> row.copy(stationId = "00000000-0000-4000-8000-%012d".format(index), displayName = "Station $index", position = index) }
         dao.replacePage(rows, meta("cursor-5"))
         val first = cache.loadPage(2, 0)
         val second = cache.loadPage(2, 2)

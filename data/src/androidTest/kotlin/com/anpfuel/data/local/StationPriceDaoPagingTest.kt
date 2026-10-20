@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anpfuel.data.local.entity.StationPriceEntity
+import com.anpfuel.data.local.entity.SurveyWeekEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -51,13 +52,14 @@ class StationPriceDaoPagingTest {
             ApplicationProvider.getApplicationContext(), AnpFuelDatabase::class.java,
         ).build()
         runBlocking {
+            database.surveyWeekDao().insert(SurveyWeekEntity("w1", "2026-06-07", "2026-06-13", 1, 1))
             database.stationPriceDao().insertAll(
                 listOf(
                     row("w1|111|G", 5.19),
-                    row("w1|222|G", 5.19, tradeName = "Posto Beta"),
-                    row("w1|333|G", 5.29, tradeName = "Posto Gama", collectedAt = null),
-                    row("w1|444|G", 4.99, tradeName = "Posto 100%", collectedAt = "2026-06-09"),
-                    row("w1|555|E", 3.49, fuel = "ETHANOL"),
+                    row("w1|222|G", 5.19, tradeName = "Posto Beta", cnpj = "22222222222222"),
+                    row("w1|333|G", 5.29, tradeName = "Posto Gama", collectedAt = null, cnpj = "33333333333333"),
+                    row("w1|444|G", 4.99, tradeName = "Posto 100%", collectedAt = "2026-06-09", cnpj = "44444444444444"),
+                    row("w1|555|E", 3.49, fuel = "ETHANOL", cnpj = "55555555555555"),
                 ),
             )
         }
@@ -86,7 +88,7 @@ class StationPriceDaoPagingTest {
     @Test fun recencyWindowOrdersNewestFirstWithNullsLast() = runBlocking {
         val dao = database.stationPriceDao()
         val rows = dao.findPageByRecency("w1", "SP", "SAO PAULO", "GASOLINE_REGULAR", "", 20, 0)
-        assertEquals(listOf("w1|222|G", "w1|111|G", "w1|444|G", "w1|333|G"), rows.map { it.id })
+        assertEquals(listOf("w1|111|G", "w1|222|G", "w1|444|G", "w1|333|G"), rows.map { it.id })
     }
 
     @Test fun targetedCnpjReadIsFuelScoped() = runBlocking {
