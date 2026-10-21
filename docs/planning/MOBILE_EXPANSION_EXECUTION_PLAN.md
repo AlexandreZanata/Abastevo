@@ -210,6 +210,11 @@ runtime parser/SQL/HTTP/Android acceptance stays with the downstream units.
 - Recovery/commit: revise unpublished contract; no fabricated live endpoint.
 
 ### MEX-03 — Pin performance baselines and test budgets
+
+**2026-10-21:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/mobile-expansion/MEX-03.md).
+Actual picker uses in-memory state-scoped filtering; the global search use case
+is not wired to an app consumer at the measured head. Preserve this distinction.
+
 - Depends: MEX-00/02; OPT-A00/A06 and current P35 evidence.
 - Deliver: pinned cold/warm search, typing/debounce, first useful content, SQL,
   payload, memory, scroll and request baselines. Set measured acceptance budgets

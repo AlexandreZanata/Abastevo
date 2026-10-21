@@ -1,5 +1,12 @@
 # Current execution state
 
+- MEX-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent5cb8e660 on
+  codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-03.md):
+  pinned5,571-city SQLite/actual JVM fallback and dense synthetic model baselines,
+  structural budgets and actual picker-versus-unused-search distinction. Host
+  probes/JVM compile/test PASS; native UI/network/PostGIS measurements OWED.
+  Next authorized units EE-00/01/02; no runtime optimization or publication.
+
 - Mobile expansion MEX-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
   d61ccc4c on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-02.md):
   typed exploration/official-source/company-site/filter/cache/Android-copy contract,
