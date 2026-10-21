@@ -45,6 +45,31 @@ class MunicipalityDataAvailabilityRuleTest {
     }
 
     @Test
+    fun resolvesNoDataThisWeekWithoutWeekWhenInAnpHistory() {
+        val availability = MunicipalityDataAvailabilityRule.resolveWithoutWeek(
+            entry = saoPauloEntry,
+            municipalitiesEverInAnp = setOf(saoPauloEntry.locationKey),
+        )
+
+        assertEquals(DataAvailability.NO_DATA_THIS_WEEK, availability)
+    }
+
+    @Test
+    fun resolvesNeverInAnpWithoutWeekForIbgeOnlyMunicipality() {
+        val catalogOnly = MunicipalityCatalogEntry(
+            state = BrazilianState.ACRE,
+            municipality = "ACRELANDIA",
+        )
+
+        val availability = MunicipalityDataAvailabilityRule.resolveWithoutWeek(
+            entry = catalogOnly,
+            municipalitiesEverInAnp = emptySet(),
+        )
+
+        assertEquals(DataAvailability.NEVER_IN_ANP, availability)
+    }
+
+    @Test
     fun resolvesNeverInAnpForIbgeOnlyMunicipality() {
         val catalogOnly = MunicipalityCatalogEntry(
             state = BrazilianState.ACRE,

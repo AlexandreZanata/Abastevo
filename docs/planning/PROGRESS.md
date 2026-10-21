@@ -1,5 +1,14 @@
 # Current execution state
 
+- MEX-04 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentd23aebc1. [Evidence](../backend/evidence/mobile-expansion/MEX-04.md):
+  batch place lookup/availability: discovery reads without mandatory imported
+  week (unavailable flags, never error), one grouped availability query + one
+  indexed state read per involved state, per-result N+1 eliminated with
+  identical accent/unknown-state semantics. Real-SQLite oracle PASS;
+  data 440 (2 pre-existing skips), application 390, domain 547, app 367 —
+  zero failures; assemble/lint/diff-check/secrets PASS. Selection write
+  still requires a week (week-bound event). Next MEX-05 typo search.
+
 - EE-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent49b8be2d. [Evidence](../backend/evidence/ev-support/EE-03.md):
   versioned preparation/census envelope frozen (charging-prepared-v1,
   vehicle-energy-reference-v1): pinned OCM-candidate/PBE-held/synthetic
