@@ -1,0 +1,28 @@
+{
+  "head": "42e4efe7378274800b0d136792c3a1688139d602",
+  "state": "SOURCE_INVENTORY_NOT_RUNTIME_ACCEPTANCE",
+  "files": {
+    "domain/src/main/kotlin/com/anpfuel/domain/model/Vehicle.kt": "f8495494801799923f08b7c6ab4233a2f8b6a33257d0738921bdc931a08cbc4d",
+    "domain/src/main/kotlin/com/anpfuel/domain/valueobject/FuelProduct.kt": "6179490f45189d8bd0a1b6b1c553fbeb3bc0d0fbfed31dd4ebc39fadf71f0055",
+    "data/src/main/kotlin/com/anpfuel/data/local/entity/VehicleEntity.kt": "5a5fd3bf949f9a2f4ffd07ef463f2fdf7c83c2dc3051a2819c807f99f10fdb0e",
+    "data/schemas/com.anpfuel.data.local.AnpFuelDatabase/16.json": "f4ffcc5d29301d81d771e538e151a656e7d80be9fa141422ce1ce20ce2d0b882",
+    "backend/internal/modules/cloudsync/domain/vehicle.go": "f0888a4b5ee634926f3b8a7372c0ffece2cd2cea8aad26875f2062ecc4111db8",
+    "backend/internal/modules/ledger/domain/ledger.go": "28194e19c6e5eb0a1de63c0f4256bd4c57ebe42fa02579da933d8a85f2171fef",
+    "backend/internal/modules/metrics/consumption.go": "2de8659f81b8bce8c43ff19c7600ae7a0ea101d7548c0dd18bbdffc56a881bd4",
+    "backend/internal/modules/community/domain/observation.go": "f24af55fd5a8ea697a76b1849b8724be46162a3f7ec3387de75ca056309e7556",
+    "tools/station-prep/Cargo.toml": "cf8dec745e1c8682369af0ed7ee435fba28e04087a324b1df04d956f5641044e",
+    "contracts/premium/policy-v1.json": "803e9c93d34a7d064c85b95f9deb98863be0016dbb619336affffe137d0e2c8b",
+    "contracts/openapi/mobile-exploration-planned.json": "8174fd62c9ab717050a5ce3740bd67b74efc91046f974552b46f5f7afc29d13a",
+    "docs/planning/EV_MEX_DEPENDENCIES.json": "26286f58cb5fa3c3b58307d850eaf92e6d568014c01e552b938a763e4e529144"
+  },
+  "verified_ancestor_pins": [
+    "a104ed80",
+    "c2b69cfc",
+    "c9ffbbf6",
+    "0e68021b",
+    "0e7af9d5",
+    "d61ccc4c",
+    "5cb8e660",
+    "42e4efe7"
+  ]
+}

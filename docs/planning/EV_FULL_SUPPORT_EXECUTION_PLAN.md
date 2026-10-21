@@ -180,6 +180,9 @@ implementation into suffixed bounded children before coding, never to bypass a
 critical check. Reuse valid existing work rather than bookkeeping-only commits.
 
 ### EE-00 — Reconcile EV source and MEX implementation inventory
+
+**2026-10-21:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/ev-support/EE-00.md).
+
 - Depends: MEX-00. Rules: B-BR-EV-01/24; journeys BUC-EV-01/12. Risk: source integrity.
 - Deliver: actual current vehicle/carrier/unit/schema/PRM/FQ/community/Rust/Room
   map and EE/MEX ownership/dependencies, preserving foreign dirty work.

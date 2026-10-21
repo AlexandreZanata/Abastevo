@@ -1,5 +1,11 @@
 # Current execution state
 
+- EE-00 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent42e4efe7. [Inventory](../backend/evidence/ev-support/EE-00.md)
+  pins12 source files/eight ancestor checkpoints, actual liquid-only vehicle/Room16/
+  hosted model and PRM/FQ/community/Rust owners. No accepted EV source/parser/session
+  implementation found; no runtime mutation. Hash/ancestry/docs checks PASS.
+  Next authorized EE-01 qualification and EE-02 contracts; rights/runtime stay separate.
+
 - MEX-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent5cb8e660 on
   codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-03.md):
   pinned5,571-city SQLite/actual JVM fallback and dense synthetic model baselines,
