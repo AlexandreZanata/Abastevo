@@ -1,0 +1,1181 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Abastevo planned electric vehicle data contracts",
+    "version": "0.1.0-contract-only",
+    "description": "EE-02 shapes only; no live routes, source grants, trust policy or numerical engine."
+  },
+  "x-implementation-status": "CONTRACT_FROZEN_RUNTIME_PENDING",
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Rational": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "numerator",
+          "denominator"
+        ],
+        "properties": {
+          "numerator": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,11}|1000000000000)$"
+          },
+          "denominator": {
+            "type": "string",
+            "pattern": "^([1-9][0-9]{0,8}|1000000000)$"
+          }
+        }
+      },
+      "Battery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "usable_wh",
+          "gross_wh"
+        ],
+        "properties": {
+          "usable_wh": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          },
+          "gross_wh": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          }
+        }
+      },
+      "ConnectorKind": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "standard",
+          "source_code"
+        ],
+        "properties": {
+          "standard": {
+            "type": "string",
+            "enum": [
+              "CCS2",
+              "TYPE2",
+              "CHADEMO",
+              "GBT_AC",
+              "GBT_DC",
+              "NACS",
+              "TYPE1",
+              "DOMESTIC_SOCKET",
+              "OTHER",
+              "UNKNOWN"
+            ]
+          },
+          "source_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "nullable": true
+          }
+        }
+      },
+      "ModelReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "edition",
+          "record_key",
+          "market",
+          "model_year",
+          "trim",
+          "basis"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "edition": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "record_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "BR"
+            ]
+          },
+          "model_year": {
+            "type": "string",
+            "pattern": "^[0-9]{4}$",
+            "nullable": true
+          },
+          "trim": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "nullable": true
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "LAB_REFERENCE",
+              "MANUFACTURER",
+              "MANUAL",
+              "MEASURED"
+            ]
+          }
+        }
+      },
+      "EnergyVehicle": {
+        "allOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "id",
+              "propulsion",
+              "source_propulsion_label",
+              "fuel_product",
+              "tank_capacity_millilitres",
+              "battery",
+              "external_charging",
+              "connectors",
+              "max_ac_w",
+              "max_dc_w",
+              "reference"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "propulsion": {
+                "type": "string",
+                "enum": [
+                  "ICE",
+                  "BEV",
+                  "PHEV",
+                  "HEV",
+                  "MHEV",
+                  "RANGE_EXTENDER",
+                  "OTHER",
+                  "UNKNOWN"
+                ]
+              },
+              "source_propulsion_label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "nullable": true
+              },
+              "fuel_product": {
+                "type": "string",
+                "enum": [
+                  "ETHANOL",
+                  "GASOLINE_REGULAR",
+                  "GASOLINE_ADDITIVED",
+                  "GASOLINE_PREMIUM_GRADE",
+                  "DIESEL_S500",
+                  "DIESEL_S10",
+                  "CNG",
+                  null
+                ],
+                "nullable": true
+              },
+              "legacy_fuel_product": {
+                "type": "string",
+                "enum": [
+                  "GASOLINE_PREMIUM"
+                ]
+              },
+              "tank_capacity_millilitres": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200000,
+                "nullable": true
+              },
+              "battery": {
+                "$ref": "#/components/schemas/Battery"
+              },
+              "external_charging": {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "UNSUPPORTED",
+                  "UNKNOWN"
+                ]
+              },
+              "connectors": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConnectorKind"
+                },
+                "minItems": 0,
+                "maxItems": 32
+              },
+              "max_ac_w": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000,
+                "nullable": true
+              },
+              "max_dc_w": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000000000,
+                "nullable": true
+              },
+              "reference": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/ModelReference"
+                  }
+                ],
+                "nullable": true
+              }
+            }
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "propulsion": {
+                    "type": "string",
+                    "enum": [
+                      "BEV"
+                    ]
+                  },
+                  "fuel_product": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      null
+                    ]
+                  },
+                  "tank_capacity_millilitres": {
+                    "type": "integer",
+                    "nullable": true,
+                    "enum": [
+                      null
+                    ]
+                  },
+                  "external_charging": {
+                    "type": "string",
+                    "enum": [
+                      "SUPPORTED",
+                      "UNKNOWN"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "propulsion": {
+                    "type": "string",
+                    "enum": [
+                      "ICE",
+                      "HEV",
+                      "MHEV"
+                    ]
+                  },
+                  "external_charging": {
+                    "type": "string",
+                    "enum": [
+                      "UNSUPPORTED",
+                      "UNKNOWN"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "propulsion": {
+                    "type": "string",
+                    "enum": [
+                      "PHEV",
+                      "RANGE_EXTENDER",
+                      "OTHER",
+                      "UNKNOWN"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "SourceAssertion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "external_id",
+          "source_revision",
+          "rights_record_id",
+          "license_id",
+          "attribution",
+          "changes_indicated",
+          "observed_at"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "external_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rights_record_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "license_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "attribution": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "changes_indicated": {
+            "type": "boolean"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "PublicLocation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "id",
+          "publication_eligibility",
+          "source",
+          "name",
+          "country",
+          "municipality_ibge",
+          "access",
+          "hours",
+          "latitude",
+          "longitude",
+          "equipment_count",
+          "station_id"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publication_eligibility": {
+            "type": "string",
+            "enum": [
+              "PUBLIC_VERIFIED"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceAssertion"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "country": {
+            "type": "string",
+            "enum": [
+              "BR"
+            ]
+          },
+          "municipality_ibge": {
+            "type": "string",
+            "pattern": "^[0-9]{7}$",
+            "nullable": true
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "CUSTOMERS",
+              "RESTRICTED",
+              "UNKNOWN"
+            ]
+          },
+          "hours": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "nullable": true
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "nullable": true
+          },
+          "equipment_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "station_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        }
+      },
+      "EVSE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "location_id",
+          "source",
+          "connector_count",
+          "simultaneous_capacity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "location_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceAssertion"
+          },
+          "connector_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "simultaneous_capacity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "nullable": true
+          }
+        }
+      },
+      "Connector": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "evse_id",
+          "source",
+          "kind",
+          "current",
+          "max_power_w"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evse_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceAssertion"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ConnectorKind"
+          },
+          "current": {
+            "type": "string",
+            "enum": [
+              "AC",
+              "DC",
+              "UNKNOWN"
+            ]
+          },
+          "max_power_w": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          }
+        }
+      },
+      "OperationalStatus": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "basis",
+              "observed_at",
+              "expires_at"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "UNKNOWN"
+                ]
+              },
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "STATIC_CATALOG",
+                  "DATED_COMMUNITY_REPORT",
+                  "LICENSED_OPERATOR"
+                ]
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "basis",
+              "observed_at",
+              "expires_at"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "AVAILABLE",
+                  "OCCUPIED",
+                  "FAULT",
+                  "OUT_OF_SERVICE"
+                ]
+              },
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "LICENSED_OPERATOR"
+                ]
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "TariffComponent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "rate_centavos",
+          "billing_step",
+          "grace_seconds"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "ENERGY_WH",
+              "CHARGING_SECOND",
+              "IDLE_SECOND",
+              "SESSION",
+              "PARKING_SECOND"
+            ]
+          },
+          "rate_centavos": {
+            "$ref": "#/components/schemas/Rational"
+          },
+          "billing_step": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+          },
+          "grace_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 31622400
+          }
+        }
+      },
+      "Tariff": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "id",
+          "revision",
+          "target_kind",
+          "target_id",
+          "currency",
+          "condition",
+          "qualifier_id",
+          "timezone",
+          "valid_from",
+          "valid_until",
+          "tax_basis",
+          "mandatory_components_complete",
+          "components",
+          "minimum_centavos",
+          "maximum_centavos",
+          "billing_rounding",
+          "provenance"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "target_kind": {
+            "type": "string",
+            "enum": [
+              "LOCATION",
+              "EVSE",
+              "CONNECTOR"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "STANDARD",
+              "MEMBER",
+              "APP",
+              "EMPLOYER",
+              "UNKNOWN"
+            ]
+          },
+          "qualifier_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "tax_basis": {
+            "type": "string",
+            "enum": [
+              "INCLUDED",
+              "EXCLUDED",
+              "UNKNOWN"
+            ]
+          },
+          "mandatory_components_complete": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TariffComponent"
+            },
+            "minItems": 1,
+            "maxItems": 32
+          },
+          "minimum_centavos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000,
+            "nullable": true
+          },
+          "maximum_centavos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000,
+            "nullable": true
+          },
+          "billing_rounding": {
+            "type": "string",
+            "enum": [
+              "FINAL_HALF_UP_CENTAVO",
+              "SOURCE_SPECIFIC_UNSUPPORTED"
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "LICENSED_OPERATOR",
+              "DATED_COMMUNITY_REPORT",
+              "USER_ESTIMATE"
+            ]
+          }
+        }
+      },
+      "PrivateSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "id",
+          "vehicle_id",
+          "context",
+          "measurement_basis",
+          "energy_wh",
+          "actual_total_centavos",
+          "currency",
+          "occurred_at",
+          "timezone",
+          "started_at",
+          "ended_at",
+          "odometer_metres",
+          "soc_start_basis_points",
+          "soc_end_basis_points",
+          "soc_basis",
+          "tariff_revision",
+          "public_charging_target_id",
+          "paid_at"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "context": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "WORK",
+              "PUBLIC",
+              "OTHER",
+              "UNKNOWN"
+            ]
+          },
+          "measurement_basis": {
+            "type": "string",
+            "enum": [
+              "SUPPLY_METER",
+              "CHARGER_REPORTED",
+              "VEHICLE_MEASURED",
+              "MANUAL_ESTIMATE",
+              "UNKNOWN"
+            ]
+          },
+          "energy_wh": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000,
+            "nullable": true
+          },
+          "actual_total_centavos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000,
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "odometer_metres": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000,
+            "nullable": true
+          },
+          "soc_start_basis_points": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "soc_end_basis_points": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "nullable": true
+          },
+          "soc_basis": {
+            "type": "string",
+            "enum": [
+              "DASHBOARD_DISPLAY",
+              "BMS_REPORTED",
+              "USER_ESTIMATE",
+              "UNKNOWN"
+            ]
+          },
+          "tariff_revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "nullable": true
+          },
+          "public_charging_target_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "EfficiencyReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "unit",
+          "basis",
+          "reference"
+        ],
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/Rational"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "WH_PER_KM",
+              "MJ_PER_KM",
+              "EQUIVALENT_KM_PER_L"
+            ]
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "PBE_LAB",
+              "MANUFACTURER",
+              "MANUAL_ESTIMATE",
+              "VEHICLE_MEASURED"
+            ]
+          },
+          "reference": {
+            "$ref": "#/components/schemas/ModelReference"
+          }
+        }
+      },
+      "Calculation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "method",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "KNOWN"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "PURCHASED_ENERGY_INTERVAL"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/Rational"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "KWH_PER_100KM"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "method",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "KNOWN"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "VEHICLE_MEASURED_ENERGY"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/Rational"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "KWH_PER_100KM"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "method",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "KNOWN"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "MATCHED_MONEY_WINDOW"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/Rational"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "CENTAVOS_PER_KM"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "method",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "KNOWN"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "MODEL_ONLY"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/Rational"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "WH"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "method",
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "KNOWN"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "TARIFF_SCENARIO"
+                ]
+              },
+              "value": {
+                "$ref": "#/components/schemas/Rational"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "CENTAVOS"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "reason",
+              "value"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "UNKNOWN"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "MISSING_DISTANCE",
+                  "INCOMPLETE_ENERGY",
+                  "MISMATCHED_WINDOW",
+                  "MEASUREMENT_BASIS_MISMATCH",
+                  "SOC_UNVERIFIED",
+                  "UNKNOWN_FEES",
+                  "UNSUPPORTED_METHOD",
+                  "UNSUPPORTED_PRECISION",
+                  "UNSUPPORTED_CURRENCY",
+                  "PROPULSION_SPLIT_UNKNOWN",
+                  "OVERFLOW"
+                ]
+              },
+              "value": {
+                "type": "object",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -5,6 +5,11 @@ charging places, tariffs/status, community information and local processing.
 Owner: [EV extension](EV_FULL_SUPPORT_EXECUTION_PLAN.md), integrated into
 [MEX](MOBILE_EXPANSION_EXECUTION_PLAN.md). Product: [EV contract](../product/EV_SUPPORT_CONTRACT.md).
 
+**2026-10-21 sample qualification:** [EE-01](../backend/evidence/ev-support/EE-01.md)
+pins three actual Brazilian OCM POIs/reference and the actual PBE PDF bytes.
+Provider1 reports CC-BY4.0; PBE reuse rights remain pending. The minimized sample
+register is not a national census or source activation/rights blanket approval.
+
 ## Research result and limits
 
 No single comprehensive, open Brazilian federal dataset of every charging place,

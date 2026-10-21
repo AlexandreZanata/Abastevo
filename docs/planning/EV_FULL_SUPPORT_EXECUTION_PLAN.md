@@ -205,6 +205,11 @@ Real samples verified; PBE rights and source admission remain pending, not appro
 - Recovery/commit: skip an unqualified optional source, not license safeguards.
 
 ### EE-02 — Freeze propulsion, entities and cross-language numeric contract
+
+**2026-10-21:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/ev-support/EE-02.md).
+[Frozen types/ports/numerics](../product/EV_TYPED_DATA_CONTRACT.md); no live model,
+tariff engine or applied schema acceptance follows from this checkpoint.
+
 - Depends: MEX-01/02, EE-00. Rules: EV-01–07/10–12/16–22; journeys EV-01–12.
   Risk: compatibility/exact money/privacy.
 - Deliver: pure values/ports/wire examples for energy-capable vehicles, variant

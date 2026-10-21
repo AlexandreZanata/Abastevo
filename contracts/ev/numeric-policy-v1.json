@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "state": "CONTRACT_FROZEN_RUNTIME_PENDING",
+  "actual_money_centavos_max": 1000000000000,
+  "energy_wh_max": 1000000000,
+  "power_w_max": 1000000000,
+  "odometer_metres_max": 1000000000000,
+  "scenario_seconds_max": 31622400,
+  "soc_scale": "BASIS_POINTS_0_TO_10000",
+  "rate_numerator_max": "1000000000000",
+  "rate_denominator_max": "1000000000",
+  "integer_wire_max": "9007199254740991",
+  "rate_format": "REDUCED_CANONICAL_NONNEGATIVE_RATIONAL",
+  "unknown_quantity": "NULL_NOT_ZERO",
+  "display_money_rounding": "HALF_UP_ONCE_AT_DISPLAY_OR_DECLARED_BILLING_BOUNDARY",
+  "intermediates": "CHECKED_EXACT_INTEGER_OR_RATIONAL_NO_FLOAT",
+  "source_numeric_lexeme": "PRESERVE_EXACT_DECIMAL_BEFORE_CONVERSION_NO_F64",
+  "private_event_time": "USER_CONFIRMED_OCCURRED_AT_INSTANT_AND_ENTRY_IANA_TIMEZONE",
+  "runtime_math_engine_accepted": false,
+  "source_admission_enabled": false
+}

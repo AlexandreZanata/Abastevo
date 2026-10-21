@@ -39,7 +39,9 @@ future D still held. [Product rules](docs/product/MOBILE_EXPANSION_CONTRACT.md),
 [MEX-01](docs/backend/evidence/mobile-expansion/MEX-01.md) and
 [MEX-02](docs/backend/evidence/mobile-expansion/MEX-02.md) are LOCAL_DONE /
 INTEGRATION_PENDING. [Continuation](docs/planning/MOBILE_EXPANSION_CONTINUATION.md)
-records next MEX-03/independent EE-00 and integration limits; product runtime
+also records [MEX-03 baselines](docs/backend/evidence/mobile-expansion/MEX-03.md)
+and [EE-00/01/02 inventory/qualification/contracts](docs/backend/evidence/ev-support/EE-02.md)
+as LOCAL_DONE / INTEGRATION_PENDING. Next EE-03 or independent MEX-04; product runtime
 quota/query/UI behavior remains pending its owning units.
 
 **Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)

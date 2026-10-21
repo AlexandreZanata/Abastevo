@@ -1,5 +1,14 @@
 # Current execution state
 
+- EE-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent22adc7b8. [Evidence](../backend/evidence/ev-support/EE-02.md):
+  typed vehicle/propulsion/source/place-EVSE-connector/tariff/private-session/port
+  contract,15 planned components (zero paths),46 shape examples and24 exact shared
+  CSV examples PASS in Go/Kotlin/Rust. Full apicontract race/vet/static, JVM test/
+  compile, Rust test/fmt/clippy and document/secrets PASS. No runtime engine,
+  migration or app/source/sales activation. Four requested units complete:
+  MEX-03,EE-00/01/02; EE-01 is qualification only, PBE rights/source admission
+  pending. [Handoff](MOBILE_EXPANSION_CONTINUATION.md): EE-03 or independent MEX-04.
+
 - EE-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING as qualification only,
   parent83897983. [Evidence/register](../backend/evidence/ev-support/EE-01.md):
   three real commit-pinned Brazilian OCM samples/reference and actual9-page PBE

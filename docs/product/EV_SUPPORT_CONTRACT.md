@@ -6,6 +6,11 @@ with [MEX](../planning/MOBILE_EXPANSION_EXECUTION_PLAN.md).
 Sources/access limits: [research register](../planning/EV_SOURCE_RESEARCH.md).
 Math: [EV financial method](EV_FINANCIAL_METHOD.md).
 
+**EE-02 frozen data/numeric contract (2026-10-21):**
+[Typed data/ports](EV_TYPED_DATA_CONTRACT.md), planned schemas and shared exact
+vectors now freeze this contract layer. Runtime implementations, source rights/
+admission and real device/operator acceptance remain pending.
+
 ## Meaning of complete support
 
 The requested target is complete product support for declared BEV, PHEV and

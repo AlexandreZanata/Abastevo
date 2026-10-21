@@ -6,6 +6,11 @@ reinterprets, [financial-v1](PREMIUM_FINANCIAL_METHOD.md). Freeze machine vector
 before code; numeric input ceilings/rounding precision follow a recorded need
 and existing bounds, not arbitrary guesses or provider float examples.
 
+**EE-02 checkpoint, 2026-10-21:** [exact policy/data contract](EV_TYPED_DATA_CONTRACT.md)
+and24 shared CSV arithmetic vectors are frozen and validated in Go/Kotlin/Rust.
+This is contract arithmetic, not acceptance of the EE-11 runtime tariff engine,
+measurement/window method, provider billing or SQL/report implementation.
+
 ## Basis and valid windows
 
 Persist actual paid BRL in centavos; energy in an exact declared Wh-compatible
