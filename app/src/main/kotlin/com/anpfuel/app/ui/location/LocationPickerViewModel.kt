@@ -12,6 +12,8 @@ import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.DeviceLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -63,6 +65,15 @@ class LocationPickerViewModel @Inject constructor(
     private val _locationPermissionRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val locationPermissionRequest: SharedFlow<Unit> = _locationPermissionRequest.asSharedFlow()
 
+    /**
+     * MEX-06 generation fencing: every catalog load cancels the previous
+     * one, and only the latest generation may publish results. Obsolete
+     * responses can neither replace current results nor surface stale
+     * errors; cancellation itself never becomes an error message.
+     */
+    private var loadJob: Job? = null
+    private var loadGeneration = 0
+
     init {
         loadStates()
     }
@@ -76,7 +87,9 @@ class LocationPickerViewModel @Inject constructor(
     }
 
     fun loadStates() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        val ticket = ++loadGeneration
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -88,23 +101,32 @@ class LocationPickerViewModel @Inject constructor(
             runCatching {
                 val preferred = selectLocationUseCase.getPreferredLocation()
                 val result = selectLocationUseCase.getStatesWithData()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        states = result.states.sortedBy { state -> state.abbreviation },
-                        preferredLocation = preferred,
-                    )
+                if (ticket == loadGeneration) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            states = result.states.sortedBy { state -> state.abbreviation },
+                            preferredLocation = preferred,
+                        )
+                    }
                 }
             }.onFailure { error ->
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = error.message ?: error.javaClass.simpleName)
+                if (error is CancellationException) {
+                    throw error
+                }
+                if (ticket == loadGeneration) {
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = error.message ?: error.javaClass.simpleName)
+                    }
                 }
             }
         }
     }
 
     fun onStateSelected(state: BrazilianState) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        val ticket = ++loadGeneration
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
@@ -116,15 +138,22 @@ class LocationPickerViewModel @Inject constructor(
             }
             runCatching {
                 val result = selectLocationUseCase.getMunicipalities(state)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        municipalities = result.municipalities,
-                    )
+                if (ticket == loadGeneration) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            municipalities = result.municipalities,
+                        )
+                    }
                 }
             }.onFailure { error ->
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = error.message ?: error.javaClass.simpleName)
+                if (error is CancellationException) {
+                    throw error
+                }
+                if (ticket == loadGeneration) {
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = error.message ?: error.javaClass.simpleName)
+                    }
                 }
             }
         }
@@ -154,6 +183,9 @@ class LocationPickerViewModel @Inject constructor(
                 _uiState.update { it.copy(isSaving = false) }
                 _navigation.emit(LocationPickerNavigation.ToHome)
             }.onFailure { error ->
+                if (error is CancellationException) {
+                    throw error
+                }
                 _uiState.update {
                     it.copy(
                         isSaving = false,

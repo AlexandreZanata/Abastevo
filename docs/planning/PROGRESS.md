@@ -1,5 +1,13 @@
 # Current execution state
 
+- MEX-06 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent3c6a9878. [Evidence](../backend/evidence/mobile-expansion/MEX-06.md):
+  fast picker UI: generation fencing on catalog loads (obsolete responses
+  cannot land or error), memoized composition filters over a precomputed
+  normalized index, measured zero-debounce policy (indexed keystroke p95
+  0.35ms vs 5.13ms before, host JVM). app 375 tests incl. 5 new ViewModel
+  fencing/retention cases — zero failures; assemble/lint/diff/secrets
+  PASS. Native keystroke timing stays OWED. Next MEX-07.
+
 - MEX-05 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent431b935a. [Evidence](../backend/evidence/mobile-expansion/MEX-05.md):
   bound typo search, retired per-keystroke findAll: one indexed
   normalized-prefix range per stem (migration 16→17 additive, schema 17),
