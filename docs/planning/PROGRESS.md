@@ -1,5 +1,16 @@
 # Current execution state
 
+- EE-11 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent2afc77bf. [Tariff engine](../backend/evidence/ev-support/EE-11.md):
+  pure exact tariff scenario calculation in Go/Kotlin + Rust parity over 42
+  shared synthetic vectors: only INCLUDED/complete/no-min-max/final-half-up
+  yields KNOWN centavos; absent energy, unknown fees, eligibility mismatch,
+  partial validity windows and overflow are explicit refusals/UNKNOWN. Go
+  race/vet/static PASS; domain 615 tests zero failures (charging 100%
+  coverage; repo-wide 0.90 JaCoCo gate remains pre-existing failing for
+  unrelated packages); Rust lib+integration, fmt/clippy PASS; APK compile/
+  assemble, diff/secret PASS. No persistence/API/provider activation.
+  EE-04–10 blocked on admitted sources; next ready MEX-10 (needs EE-11+MEX-09).
+
 - MEX-09 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentb71f2732. [Exact financial/wire parity](../backend/evidence/mobile-expansion/MEX-09.md): repaired both full anchors, excluded-anchor fuel/unit checks, negative matched-window money and overflow in existing Go/Kotlin engines; checked sums and exact rational intermediates. Actual RED→GREEN, 36 shared execution vectors covering all15 frozen examples plus22 raw-value vectors, Go race/API/contracts/vet/static/build PASS. JVM domain608/application390/data450 (two existing skips)/app375, APKs and lint zero errors PASS; diff/secret checks PASS. No new API/dependency/schema or publication; retained raw/estimate/UNKNOWN distinctions. Two-unit request MEX-07/09 complete locally. MEX-08 needs EE-19; next ready MEX-10 or independent EE-04 needs new authorization. Global Go vulnerability integration gate remains separate.
 
 - MEX-07 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent9f05bdc1. [Hosted vehicle admission](../backend/evidence/mobile-expansion/MEX-07.md): live vehicles.multiple and central atomic 1-free/3-ceiling rule reused in cloud creation/import/restore; final proof recheck, retained legacy IDs and honest previews. Three RED defects closed; actual PostGIS race/rollback/retry and full cloud/subscription/API/contract matrix PASS, vet/build/static/OpenAPI/diff/secret checks PASS. MEX-06 location13 independently re-executed PASS. No schema/dependency/activation change. Global Go vulnerability CI remains blocked separately. MEX-08 needs EE-19; next ready MEX-09.

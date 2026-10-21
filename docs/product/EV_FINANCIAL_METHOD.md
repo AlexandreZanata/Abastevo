@@ -11,6 +11,16 @@ and24 shared CSV arithmetic vectors are frozen and validated in Go/Kotlin/Rust.
 This is contract arithmetic, not acceptance of the EE-11 runtime tariff engine,
 measurement/window method, provider billing or SQL/report implementation.
 
+**EE-11 checkpoint, 2026-10-21:** the pure tariff scenario engine is implemented
+in Go/Kotlin with a Rust parity oracle over [42 shared synthetic rows](../../contracts/testdata/ev/tariff-v1.csv)
+([evidence](../backend/evidence/ev-support/EE-11.md)). Only INCLUDED tax with
+complete mandatory components, no undeclared minimum/maximum stage and the
+supported final half-up rounding produce KNOWN centavos; absent energy,
+incomplete/unknown fees, eligibility mismatch, partial validity windows and
+money overflow are explicit refusals/UNKNOWN. This remains a local pure engine:
+provider billing terms, SQL/report persistence, monthly timezone allocation and
+public ranking are not accepted by this checkpoint.
+
 ## Basis and valid windows
 
 Persist actual paid BRL in centavos; energy in an exact declared Wh-compatible
