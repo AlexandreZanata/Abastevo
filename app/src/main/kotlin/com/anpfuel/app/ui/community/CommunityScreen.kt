@@ -137,7 +137,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 if (fuelOpen) FuelProductSelectorDialog(selected = state.fuel,
                     onSelect = { fuelOpen = false; onFuel(it) }, onDismiss = { fuelOpen = false })
             }
-            if (state.items.size > 20 && !state.failed) item {
+            if ((state.items.size > 20 || state.stale) && !state.failed) item {
                 Text(stringResource(R.string.feed_cached_hint), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

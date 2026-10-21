@@ -3,7 +3,10 @@ package com.anpfuel.app.ui.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.community.GetCityCommunityFeedUseCase
+import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.domain.community.CommunityFeedItem
+import com.anpfuel.domain.community.CommunityRefreshPolicy
+import com.anpfuel.domain.community.CommunityFeedLocalSnapshot
 import com.anpfuel.domain.community.FeedCity
 import com.anpfuel.domain.community.FeedQuery
 import com.anpfuel.domain.community.FeedSort
@@ -17,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,71 +37,225 @@ data class CommunityFeedUiState(
     val noCity: Boolean = false,
     val nextCursor: String? = null,
     val lastUpdated: Instant? = null,
+    val stale: Boolean = false,
     val newUpdates: Boolean = false,
     val earlierItemsTrimmed: Boolean = false,
 )
 
 /** Foreground-only refresh. Filters and city changes cancel obsolete HTTP work. */
 @HiltViewModel
-class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommunityFeedUseCase) : ViewModel() {
+class CommunityFeedViewModel @Inject constructor(
+    private val feed: GetCityCommunityFeedUseCase,
+    private val snapshots: CommunityFeedLocalSnapshot,
+    observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
+) : ViewModel() {
     private val mutable = MutableStateFlow(CommunityFeedUiState())
     val state = mutable.asStateFlow()
     private var foreground = false
+    private var connected = true
     private var refreshJob: Job? = null
     private var pageJob: Job? = null
     private var resetPagination = false
     private var initialHead: List<CommunityFeedItem> = emptyList()
+    private var lastAttemptMillis: Long? = null
+    private var consecutiveFailures = 0
     internal var now: () -> Instant = { Instant.now() }
 
+    init {
+        viewModelScope.launch {
+            observeNetworkConnectivityUseCase().distinctUntilChanged().collect { isConnected ->
+                val wasOffline = !connected && isConnected
+                connected = isConnected
+                // A new network is an explicit event: reset backoff and re-evaluate.
+                if (wasOffline && foreground) {
+                    consecutiveFailures = 0
+                    startRefreshLoop()
+                }
+            }
+        }
+    }
+
     fun setForeground(value: Boolean) {
-        if (foreground == value) return
-        foreground = value
-        if (value) startRefresh() else {
+        if (!value) {
+            foreground = false
             refreshJob?.cancel()
             pageJob?.cancel()
             mutable.update { it.copy(loading = false, loadingMore = false) }
+            return
         }
+        foreground = true
+        startRefreshLoop()
     }
     fun selectFuel(fuel: FuelProduct) {
         if (fuel == mutable.value.fuel) return
-        mutable.update { it.copy(fuel = fuel, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false, earlierItemsTrimmed = false) }
-        startRefresh()
+        mutable.update { it.copy(fuel = fuel, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, stale = false, newUpdates = false, earlierItemsTrimmed = false) }
+        resetScope()
+        startRefreshLoop()
     }
     fun selectSort(sort: FeedSort) {
         if (sort == mutable.value.sort) return
-        mutable.update { it.copy(sort = sort, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, newUpdates = false, earlierItemsTrimmed = false) }
-        startRefresh()
+        mutable.update { it.copy(sort = sort, items = emptyList(), nextCursor = null, lastUpdated = null, failed = false, stale = false, newUpdates = false, earlierItemsTrimmed = false) }
+        resetScope()
+        startRefreshLoop()
     }
     fun refresh() {
         resetPagination = true
-        startRefresh()
+        consecutiveFailures = 0
+        startRefreshLoop()
     }
-    private fun startRefresh() {
+
+    /**
+     * Central policy delay: zero only when a fetch is due now, otherwise the
+     * time until the next event that could make one due (stale window, failure
+     * backoff, or local sweep tick), never below the loop floor.
+     */
+    internal fun nextDelayMillis(): Long {
+        // Mirror evaluate(): without a city no fetch can happen, so re-check
+        // the scope on the sweep tick instead of busy-looping on zero.
+        if (mutable.value.city == null || !connected || !foreground) {
+            return CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
+        }
+        if (shouldFetchNow()) return 0L
+        val nowMillis = now().toEpochMilli()
+        var delay = CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
+        mutable.value.lastUpdated?.let { updated ->
+            val remaining = CommunityRefreshPolicy.STALE_AFTER_MILLIS - (nowMillis - updated.toEpochMilli())
+            if (remaining > 0) delay = minOf(delay, remaining)
+        }
+        if (consecutiveFailures > 0 && CommunityRefreshPolicy.shouldKeepRetrying(consecutiveFailures)) {
+            val lastAttempt = lastAttemptMillis ?: nowMillis
+            val remaining = CommunityRefreshPolicy.retryDelayMillis(consecutiveFailures) - (nowMillis - lastAttempt)
+            if (remaining > 0) delay = minOf(delay, remaining)
+        }
+        return maxOf(delay, CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS)
+    }
+
+    private fun resetScope() {
+        consecutiveFailures = 0
+        lastAttemptMillis = null
+        initialHead = emptyList()
+    }
+
+    private fun startRefreshLoop() {
         refreshJob?.cancel()
         pageJob?.cancel()
         if (!foreground) return
         refreshJob = viewModelScope.launch {
+            evaluate()
             while (isActive) {
-                refreshFirstPage()
-                delay(15_000)
+                delay(nextDelayMillis())
+                if (!isActive) break
+                evaluate()
             }
         }
     }
-    private suspend fun refreshFirstPage() {
+
+    private suspend fun evaluate() {
+        sweepExpiredLocally()
+        val city = try {
+            feed.city()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            // Local lookup failed: keep painted content, report only when empty.
+            if (mutable.value.items.isEmpty() && mutable.value.lastUpdated == null) {
+                mutable.update { it.copy(loading = false, failed = true) }
+            }
+            refreshStale()
+            return
+        }
+        if (city == null) {
+            mutable.update { it.copy(city = null, items = emptyList(), loading = false, noCity = true, failed = false, nextCursor = null, lastUpdated = null, stale = false, newUpdates = false, earlierItemsTrimmed = false) }
+            return
+        }
+        if (city != mutable.value.city) { pageJob?.cancel() }
+        if (city != mutable.value.city) {
+            consecutiveFailures = 0
+            lastAttemptMillis = null
+            mutable.update {
+                it.copy(city = city, items = emptyList(), nextCursor = null, lastUpdated = null, stale = false, newUpdates = false, earlierItemsTrimmed = false, noCity = false)
+            }
+        }
+        paintSnapshotIfEmpty(city)
+        refreshStale()
+        if (!connected) {
+            // No query without a connection; aged snapshot stays with an error mark.
+            resetPagination = false
+            mutable.update { it.copy(loading = false, failed = true) }
+            refreshStale()
+            return
+        }
+        if (shouldFetchNow()) {
+            refreshFirstPage(city)
+        } else {
+            mutable.update { it.copy(loading = false) }
+        }
+        refreshStale()
+    }
+
+    private suspend fun paintSnapshotIfEmpty(city: FeedCity) {
+        if (mutable.value.items.isNotEmpty() || mutable.value.lastUpdated != null) return
+        val snapshot = try {
+            snapshots.snapshotFeed(city, mutable.value.fuel, mutable.value.sort)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            null
+        } ?: return
+        mutable.update {
+            it.copy(
+                items = snapshot.items,
+                nextCursor = null,
+                loading = false,
+                failed = false,
+                noCity = false,
+                lastUpdated = snapshot.generatedAt,
+                newUpdates = false,
+                earlierItemsTrimmed = false,
+            )
+        }
+        if (snapshot.items.size <= 20) initialHead = snapshot.items
+    }
+
+    private fun shouldFetchNow(): Boolean {
+        if (!connected || !foreground) return false
+        if (resetPagination) return true
+        val nowMillis = now().toEpochMilli()
+        // Never refetch within the loop floor of the previous attempt; the loop
+        // delay already guarantees progress, so back-to-back evaluations converge.
+        val lastAttempt = lastAttemptMillis
+        if (lastAttempt != null && nowMillis - lastAttempt < CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS) return false
+        if (consecutiveFailures > 0) {
+            if (!CommunityRefreshPolicy.shouldKeepRetrying(consecutiveFailures)) return false
+            if (nowMillis - lastAttempt!! < CommunityRefreshPolicy.retryDelayMillis(consecutiveFailures)) return false
+        }
+        if (mutable.value.items.isEmpty() && mutable.value.lastUpdated == null) return true
+        return CommunityRefreshPolicy.isStale(nowMillis, mutable.value.lastUpdated?.toEpochMilli())
+    }
+
+    private fun sweepExpiredLocally() {
+        val now = now()
+        mutable.update { state ->
+            val live = state.items.filter { row -> row.expiresAt > now }
+            if (live.size == state.items.size) state else state.copy(items = live)
+        }
+        refreshStale()
+    }
+
+    private fun refreshStale() {
+        val nowMillis = now().toEpochMilli()
+        mutable.update { state ->
+            state.copy(stale = state.lastUpdated?.let { updated -> CommunityRefreshPolicy.isStale(nowMillis, updated.toEpochMilli()) } ?: false)
+        }
+    }
+    private suspend fun refreshFirstPage(city: FeedCity) {
         mutable.update { it.copy(loading = it.items.isEmpty(), items = it.items.filter { row -> row.expiresAt > now() }) }
+        lastAttemptMillis = now().toEpochMilli()
         try {
-            val city = feed.city()
-            if (city == null) {
-                mutable.update { it.copy(city = null, items = emptyList(), loading = false, noCity = true, failed = false, nextCursor = null, lastUpdated = null, newUpdates = false, earlierItemsTrimmed = false) }
-                return
-            }
-            if (city != mutable.value.city) { pageJob?.cancel() }
-            if (city != mutable.value.city) mutable.update {
-                it.copy(city = city, items = emptyList(), nextCursor = null, lastUpdated = null, newUpdates = false, earlierItemsTrimmed = false, noCity = false)
-            }
             val query = FeedQuery(city, mutable.value.fuel, mutable.value.sort)
             val page = feed(query)
             currentCoroutineContext().ensureActive()
+            consecutiveFailures = 0
             val items = page.items.filter { it.expiresAt > now() }.distinctBy { it.stationId }
             mutable.update {
                 // Preserve scroll/pagination while browsing older rows. Advertise new
@@ -106,13 +264,15 @@ class CommunityFeedViewModel @Inject constructor(private val feed: GetCityCommun
                     items = it.items.filter { row -> row.expiresAt > now() }, newUpdates = items != initialHead,
                     lastUpdated = page.generatedAt)
                 else it.copy(city = city, items = items, nextCursor = page.nextCursor, loading = false, loadingMore = false,
-                    failed = false, noCity = false, lastUpdated = page.generatedAt, newUpdates = false, earlierItemsTrimmed = false)
+                    failed = false, noCity = false, lastUpdated = page.generatedAt, stale = false, newUpdates = false, earlierItemsTrimmed = false)
             }
             if (!mutable.value.earlierItemsTrimmed && mutable.value.items.size <= 20) initialHead = items
             resetPagination = false
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            consecutiveFailures++
+            resetPagination = false
             mutable.update { it.copy(loading = false, failed = true, items = it.items.filter { row -> row.expiresAt > now() }) }
         }
     }

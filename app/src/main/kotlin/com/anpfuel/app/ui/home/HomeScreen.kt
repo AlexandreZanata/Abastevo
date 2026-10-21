@@ -109,7 +109,7 @@ fun HomeScreen(
             if(uiState.priceSource==HomePriceSource.ANP) viewModel.load(locale)
             else {
                 val session=viewModel.startCommunitySession()
-                try { while(true) { viewModel.refreshCommunity(periodic = true);kotlinx.coroutines.delay(15_000) } }
+                try { while(true) { viewModel.refreshCommunity(periodic = true);kotlinx.coroutines.delay(viewModel.communityAutoRefreshDelayMillis()) } }
                 finally {viewModel.stopCommunityRefresh(session)}
             }
         }
@@ -263,7 +263,7 @@ internal fun HomeContent(
                     Text(stringResource(R.string.home_community_prices_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
                     HomePriceFilterButton(uiState.priceSort,onOpenFilters={ filterOpen=true })
                     when {
-                        uiState.communityFailed -> ErrorState(stringResource(R.string.home_community_unavailable),onRetry=onRetry)
+                        uiState.communityFailed && uiState.communityPrices.isEmpty() -> ErrorState(stringResource(R.string.home_community_unavailable),onRetry=onRetry)
                         !uiState.hasLocation && !uiState.communityLoading -> { EmptyState(stringResource(R.string.home_no_location_message),hint=stringResource(R.string.home_no_location_hint));RowActions(onNavigate) }
                         uiState.communityLoading && uiState.communityPrices.isEmpty() -> HomeLoadingSkeleton()
                         uiState.communityPrices.isEmpty() -> EmptyState(stringResource(R.string.home_community_empty),hint=stringResource(R.string.home_community_empty_hint))
@@ -271,6 +271,13 @@ internal fun HomeContent(
                             if(uiState.communityLoading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
                             uiState.communityUpdatedAt?.let { at -> Text(stringResource(R.string.home_community_updated,
                                 com.anpfuel.app.mapper.LastSyncFormatter.format(at, LocalConfiguration.current.locales[0]).orEmpty()),style=MaterialTheme.typography.bodySmall) }
+                            if (uiState.communityFailed || uiState.communityStale) {
+                                Text(stringResource(R.string.feed_cached_hint),style=MaterialTheme.typography.bodySmall,
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (uiState.communityFailed) {
+                                    TextButton(onClick=onRetry) { Text(stringResource(R.string.feed_retry)) }
+                                }
+                            }
                             uiState.communityPrices.forEach { price -> HomeReferencePriceCard(price,darkTheme,
                                 onClick={onNavigate(Routes.COMMUNITY)},priceSort=uiState.priceSort,community=true) }
                         }
