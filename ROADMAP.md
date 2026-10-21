@@ -26,6 +26,15 @@ Existing phase tasks below retain their detailed scoped checks; “all earlier p
 
 **Fuel quality planning overlay (2026-10-14):** [FQ-00–FQ-17](#fuel-quality-evidence-and-station-reliability) adds official quality history, Rust preparation extensions, structured consumer reports and calibrated station/fuel reliability targets. Planning is local-only; implementation selection must reconcile the existing app-first/safety checkpoints. No phase reorder, score publication or new runtime acceptance follows from this overlay.
 
+**Mobile expansion overlay (2026-10-20):** [MEX-00–MEX-39](docs/planning/MOBILE_EXPANSION_EXECUTION_PLAN.md)
+coordinates the requested one-free-vehicle/Premium amendment, existing PRM
+financial/cloud Android completion, local place-search optimization, national
+price questions and FQ official-record/station filters. MEX-20 has six mandatory
+real-enforcement children. This is planning-only, with canonical PRM/FQ/OPT task
+reuse, no source activation or release inference, preserved retained data and
+future D still held. [Product rules](docs/product/MOBILE_EXPANSION_CONTRACT.md),
+[agent prompt](docs/planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md).
+
 ## P00 — Project identity documentation and visual preview
 
 Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved identity/assets/README via guarded phase merge and wiki mirror. Maintainer approved V2 publication on 2026-10-01. This task does not block or alter the ongoing functional phase.

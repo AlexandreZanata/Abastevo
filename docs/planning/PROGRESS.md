@@ -1,5 +1,19 @@
 # Current execution state
 
+- Mobile expansion MEX-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING,
+  isolated codex/mobile-expansion-plan from dev fb85d4d1; occupied Home/week-picker/
+  manual-sync and primary work preserved. [Plan](MOBILE_EXPANSION_EXECUTION_PLAN.md),
+  [contract](../product/MOBILE_EXPANSION_CONTRACT.md),
+  [agent prompt](MOBILE_EXPANSION_EXECUTION_PROMPT.md),
+  [validation](MOBILE_EXPANSION_PLAN_VALIDATION.md). Forty parent tasks with six
+  enforcement children (45 execution units) reuse PRM/FQ/OPT owners. Confirmed:
+  one free vehicle, additional vehicles Premium, retained legacy data; existing
+  technical ceiling and professional capability matrix preserved. Includes fast
+  local places, financial/cloud Android, national price exploration and separate
+  source-global/current-company/site ANP occurrence filters. Implementation and
+  remote/runtime/provider/native acceptance remain pending; no publication or D
+  override. Next implementation candidate MEX-00 after human submits the prompt.
+
 - Fuel quality FQ-07R6E1 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING, parent c9ffbbf6. [Lease-bound current-company read ports](../backend/evidence/fuel-quality/FQ07R6E1_SCOPED_COMPANY_READS.md): frozen lease/current-company scope sealed in fingerprint without CNPJs; page/detail derive bindings and hold Directory guard through read Tx, retire/successor/suspend between scope and rows fails closed with no leaked rows; source-global history stays reachable. Real PostGIS retire/successor/suspend plus global accessibility PASS; 14 read tests and company adapter matrix PASS. No HTTP/OpenAPI/activation/deployment/D claim. Next FQ-07R6E2.
 
 - P35/quality final delivery 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING in the independent `mobile-pagination-integration` checkout, private maintained `dev`; PR138 reused. Captured mobile `d0918d03`, committed quality `9737b22f`, main `08a54dc4`, preserving both histories and the occupied quality/evidence drafts. [Reconciliation and CI repairs](mobile-pagination-main-delivery-20261020.md): Docker filter classifier RED→GREEN; deterministic alert schedule fixtures including Sunday/window refusal; historic index-upgrade boundary retained; real-PostGIS snapshot upload barrier reproduced duplicate admission, fixed with an owner session lease and pool-one/cancel/retry acceptance. Combined109 Go acceptance covers113 packages (112 full-matrix passes plus corrected Caddy/race rerun); four optional cases skipped, no known failure remains. Classifier/SQLite checks PASS. Final current-head CI/guarded finish pending; no merge/release claim.

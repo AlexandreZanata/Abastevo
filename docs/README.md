@@ -1,5 +1,12 @@
 # abastevo documentation
 
+[Mobile expansion plan](planning/MOBILE_EXPANSION_EXECUTION_PLAN.md),
+[product amendment](product/MOBILE_EXPANSION_CONTRACT.md) and
+[implementation-agent prompt](planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md)
+coordinate one-free-vehicle/Premium rules, professional Android tools, fast place
+search, national price exploration and safely attributed ANP occurrence filters.
+Planning only; PRM/FQ/OPT ownership and external activation gates remain intact.
+
 [Notification content/OneSignal plan](product/NOTIFICATION_CONTENT_CONTRACT.md) defines proposed bodies and PRM11–PRM14; implementation and live sends remain deferred.
 
 [Premium execution plan](planning/PREMIUM_BACKEND_APP_PLAN.md), [product contract](product/PREMIUM_PRODUCT_CONTRACT.md) and [first-ten evidence](backend/evidence/premium/PRM_FIRST_TEN.md) track the isolated backend batch and deferred real payments.

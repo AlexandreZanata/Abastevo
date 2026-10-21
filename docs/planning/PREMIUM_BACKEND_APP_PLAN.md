@@ -1,5 +1,14 @@
 # Premium delivery plan — complete backend, minimal Android UI
 
+**2026-10-20 selected vehicle amendment and Android continuation:**
+[Mobile expansion contract](../product/MOBILE_EXPANSION_CONTRACT.md) adopts one
+free vehicle and Premium for additional registrations with retained legacy data.
+Earlier three-free wording is historical for this selected amendment; the
+existing source ceiling remains until explicitly revised. Existing professional
+capability rules remain. [MEX execution](MOBILE_EXPANSION_EXECUTION_PLAN.md) reuses
+PRM02–09 ownership and validates actual source before completing Android/cloud
+journeys. No runtime quota, provider or commercial activation changes here.
+
 **2026-10-14 D deferral — adopted maintainer restriction:** [Future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) holds new fuel-purchase/private-document verification and business claim/management/portal implementation until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. A–C completion or generic continuation is not an override. This restriction supersedes earlier timing for that overlapping expansion; preserve existing source/evidence and necessary privacy/security maintenance. Core public station/ANP/ordinary photo features are outside the hold.
 
 State: **BOUNDED CONSTRUCTION AUTHORIZATIONS + PLANNING AMENDMENTS**, updated 2026-10-14. Community-first PRM15–PRM20 source LOCAL_DONE / INTEGRATION_PENDING; PRM21-T01/T03 local acceptance/handoff complete, T02 rollout prepared with staging/device proof OWED. [Community-first execution evidence](../backend/evidence/community-safety/PRM_COMMUNITY_FIRST.md). Current acceptance: **first ten source microtasks LOCAL_DONE / INTEGRATION_PENDING**, [PR #131](https://github.com/AlexandreZanata/Abastevo/pull/131), [execution evidence](../backend/evidence/premium/PRM_FIRST_TEN.md); later task checkpoints are recorded individually below. Original planning provenance is retained. Requested Premium scope: optional cloud services plus individual professional tools in one offering. The original scope defines 62 microtasks in 11 phases; OneSignal adds 17 in PRM11–PRM14. The community-first planning amendment adds 24 in PRM15–PRM22: **103 tasks in 23 phases**, including three explicitly DEFERRED future tasks. These free-community phases share this execution plan for handoff, never Premium entitlement. The [product contract](../product/PREMIUM_PRODUCT_CONTRACT.md) owns B-BR-PR01–PR25, BUC-PR01–PR07 and D-PR01–D-PR05. Existing [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) remains the commercial parent; free-community work refines P14/P16/P37 and the Rust/Directory plans.

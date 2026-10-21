@@ -1,5 +1,12 @@
 # Premium cloud and individual professional tools — proposed product contract
 
+**2026-10-20 selected amendment:** [Mobile expansion](MOBILE_EXPANSION_CONTRACT.md)
+supersedes earlier three-free-vehicle wording for the new one-free/Premium-extra
+registration policy when implemented, preserving held vehicles/history and data
+exit. The current technical ceiling is not raised. Other professional-tool
+capabilities and source/provider gates remain unchanged; this document amendment
+does not change runtime behavior before tested implementation.
+
 State: **PLANNED / NOT IMPLEMENTED**, 2026-10-13. Scope requested by the maintainer: one optional Premium offering containing cloud convenience and tools for an individual who uses a vehicle for work. Backend completion precedes a minimal Android UI using the existing design system; visual refinement is later. This planning request does not authorize implementation, charging, deployment or publication. The [execution plan](../planning/PREMIUM_BACKEND_APP_PLAN.md) owns the microtasks; [P11](../../ROADMAP.md#p11--optional-hosted-commercial-services) remains the commercial parent.
 
 ## Confirmed scope and proposed implementation decisions

@@ -1,5 +1,12 @@
 # Premium source policy v1
 
+**2026-10-20 planned registration amendment:** [MEX contract](MOBILE_EXPANSION_CONTRACT.md)
+selects one new free vehicle and verified Premium for additional registrations,
+with preserved legacy data. MEX-01/07/08 align the affected capability/retained-data
+contracts and atomic enforcement before activation. Existing three-vehicle source
+ceiling and all other policy-v1 limits remain; this note is not an enabled quota
+or an untested edit to machine-readable policy.
+
 State: source contract frozen for PRM00-T02, 2026-10-13. [Machine-readable limits](../../contracts/premium/policy-v1.json) own exact source bounds; [Premium contract](PREMIUM_PRODUCT_CONTRACT.md) owns behavior. These are conservative implementation ceilings, not measured VPS capacity, product prices or an enabled paid service. User explicitly deferred payment-module/catalog setup and real provider evidence; deployment admission remains zero. Measure workload/cost/headroom before any later activation.
 
 ## Capability and cancellation matrix
