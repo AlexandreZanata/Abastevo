@@ -595,7 +595,7 @@
     <string name="feed_contribute_title">司机互相帮助</string>
     <string name="feed_contribute_hint">发现价格了吗？与本市分享。</string>
     <string name="feed_prices_title">社区价格</string>
-    <string name="feed_auto_refresh">标准价格 · 每15秒更新</string>
+    <string name="feed_standard_prices">标准价格</string>
     <string name="feed_recent">最新</string>
     <string name="feed_cheapest">最便宜</string>
     <string name="feed_unavailable">无法更新动态</string>

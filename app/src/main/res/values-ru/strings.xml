@@ -595,7 +595,7 @@
     <string name="feed_contribute_title">Водители помогают водителям</string>
     <string name="feed_contribute_hint">Нашли цену? Поделитесь с вашим городом.</string>
     <string name="feed_prices_title">Цены сообщества</string>
-    <string name="feed_auto_refresh">Обычные цены · обновление каждые 15 секунд</string>
+    <string name="feed_standard_prices">Обычные цены</string>
     <string name="feed_recent">Самые свежие</string>
     <string name="feed_cheapest">Дешевле</string>
     <string name="feed_unavailable">Не удалось обновить ленту</string>

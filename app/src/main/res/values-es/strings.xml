@@ -595,7 +595,7 @@
     <string name="feed_contribute_title">Conductores ayudando a conductores</string>
     <string name="feed_contribute_hint">¿Encontraste un precio? Compártelo con tu ciudad.</string>
     <string name="feed_prices_title">Precios de la comunidad</string>
-    <string name="feed_auto_refresh">Precios estándar · se actualiza cada 15 segundos</string>
+    <string name="feed_standard_prices">Precios estándar</string>
     <string name="feed_recent">Más recientes</string>
     <string name="feed_cheapest">Más barato</string>
     <string name="feed_unavailable">No se pudo actualizar el feed</string>

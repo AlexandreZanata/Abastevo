@@ -122,7 +122,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(R.string.feed_prices_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.feed_auto_refresh), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.feed_standard_prices), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             item {

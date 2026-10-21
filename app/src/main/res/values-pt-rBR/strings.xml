@@ -663,7 +663,7 @@
     <string name="feed_contribute_title">Motoristas ajudando motoristas</string>
     <string name="feed_contribute_hint">Encontrou um preço? Compartilhe com sua cidade.</string>
     <string name="feed_prices_title">Preços da comunidade</string>
-    <string name="feed_auto_refresh">Preços padrão · atualiza a cada 15 segundos</string>
+    <string name="feed_standard_prices">Preços padrão</string>
     <string name="feed_recent">Mais recentes</string>
     <string name="feed_cheapest">Mais barato</string>
     <string name="feed_best">Melhor combustível</string>

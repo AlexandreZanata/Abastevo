@@ -595,7 +595,7 @@
     <string name="feed_contribute_title">ドライバー同士で助け合う</string>
     <string name="feed_contribute_hint">価格を見つけたら、あなたの都市で共有しましょう。</string>
     <string name="feed_prices_title">コミュニティの価格</string>
-    <string name="feed_auto_refresh">通常価格 · 15秒ごとに更新</string>
+    <string name="feed_standard_prices">通常価格</string>
     <string name="feed_recent">最新</string>
     <string name="feed_cheapest">最安値</string>
     <string name="feed_unavailable">フィードを更新できませんでした</string>

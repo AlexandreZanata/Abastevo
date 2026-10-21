@@ -698,7 +698,7 @@
     <string name="feed_contribute_title">Drivers helping drivers</string>
     <string name="feed_contribute_hint">Found a price? Share it with your city.</string>
     <string name="feed_prices_title">Community prices</string>
-    <string name="feed_auto_refresh">Standard prices · refreshes every 15 seconds</string>
+    <string name="feed_standard_prices">Standard prices</string>
     <string name="feed_recent">Most recent</string>
     <string name="feed_cheapest">Cheapest</string>
     <string name="feed_best">Best fuel</string>

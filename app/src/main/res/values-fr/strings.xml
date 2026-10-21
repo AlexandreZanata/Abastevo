@@ -595,7 +595,7 @@
     <string name="feed_contribute_title">Des conducteurs qui s\'entraident</string>
     <string name="feed_contribute_hint">Un prix trouvé ? Partagez-le avec votre ville.</string>
     <string name="feed_prices_title">Prix de la communauté</string>
-    <string name="feed_auto_refresh">Prix standard · actualisation toutes les 15 secondes</string>
+    <string name="feed_standard_prices">Prix standard</string>
     <string name="feed_recent">Plus récents</string>
     <string name="feed_cheapest">Moins cher</string>
     <string name="feed_unavailable">Impossible de mettre à jour le fil</string>
