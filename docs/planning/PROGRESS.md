@@ -1,5 +1,13 @@
 # Current execution state
 
+- Mobile expansion MEX-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
+  0e7af9d5 on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-01.md):
+  registration v2/machine amendment, retained legacy data, planned vehicles.multiple,
+  unchanged ceiling3 and professional capability matrix; 23 contract examples,
+  full apicontract/subscription domain race, vet/build/static/document checks PASS.
+  Runtime quotas/capability grants remain MEX-07/08 pending. Next MEX-02 only;
+  no publication, native run or commercial/source activation.
+
 - Mobile expansion MEX-00 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING on isolated
   codex/mobile-expansion-plan. [Foundation audit](../backend/evidence/mobile-expansion/MEX-00.md)
   reconciles planning 35accb9e with committed dev a2f8925c, preserving Home and

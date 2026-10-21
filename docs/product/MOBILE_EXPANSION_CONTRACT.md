@@ -14,6 +14,9 @@ canonical. Proposed behavior must pass its owning task before activation.
 
 ## Authority and commercial boundary
 
+[MEX-01 registration v2](VEHICLE_REGISTRATION_POLICY.md) freezes machine-policy,
+retained-data and import/lease examples; actual enforcement remains MEX-07/08.
+
 The maintainer explicitly selected one free vehicle and Premium for additional
 vehicles. This overrides the earlier three-free-vehicles proposal for new
 registrations when implemented; it does not delete existing vehicles or change

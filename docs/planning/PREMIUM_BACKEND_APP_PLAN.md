@@ -215,7 +215,7 @@ Entry: PRM00/PRM01. Exit: owned allowlisted data and device authorization persis
 **Source checkpoint: LOCAL_DONE / INTEGRATION_PENDING.** [Evidence](../backend/evidence/premium/PRM_NEXT_TEN.md).
 
 - **Dependencies/rules:** PRM01 capability port; PR01/06/07/13.
-- **Outcome/areas:** private vehicle schema/ports compatible with current local UUIDs and three-vehicle allowance; explicit account-bound mapping on initial opt-in.
+- **Outcome/areas:** private vehicle schema/ports compatible with current local UUIDs and technical ceiling3; [MEX-01 registration v2](../product/VEHICLE_REGISTRATION_POLICY.md) supersedes the original three-free allowance while preserving held data. Explicit account-bound mapping on initial opt-in; MEX-07/08 own tested new quota enforcement.
 - **Tests first:** cross-owner ID collision, repeat import, fourth-slot boundary, archived vehicle, fuel/unit compatibility and upgrade with existing users.
 - **Acceptance/recovery:** vehicles import once without changing local identity or expanding paid slots; failed mapping preserves the original local vehicle.
 

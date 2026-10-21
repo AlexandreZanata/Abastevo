@@ -180,6 +180,11 @@ Only the foundation audit was selected; next units remain unexecuted.
 - Recovery/commit: retain original worktrees; docs-only audit commit.
 
 ### MEX-01 — Freeze vehicle entitlement and retained-data amendment
+
+**2026-10-21 checkpoint:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/mobile-expansion/MEX-01.md).
+[Frozen v2 contract](../product/VEHICLE_REGISTRATION_POLICY.md); runtime enforcement
+is still MEX-07/08, not accepted by this contract checkpoint.
+
 - Depends: MEX-00. Owns amendment to PRM00/PRM02 contracts, not duplicate services.
 - Deliver: align old three-free references, machine policy, local/hosted/offline
   capability and upgrade/lapse/import rules to one free plus verified Premium
