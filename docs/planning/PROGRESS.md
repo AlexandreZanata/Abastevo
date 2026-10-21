@@ -1,5 +1,13 @@
 # Current execution state
 
+- EE-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING as qualification only,
+  parent83897983. [Evidence/register](../backend/evidence/ev-support/EE-01.md):
+  three real commit-pinned Brazilian OCM samples/reference and actual9-page PBE
+  bytes/hash/profile verified; seven privacy/failure tests PASS. Only minimized
+  metadata committed. Provider1 reports CC-BY4.0; source admission remains OFF,
+  PBE RIGHTS_PENDING and full corpus/privacy/provider gates owed. Next EE-02,
+  independently; EE-03/source activation cannot infer approval from this checkpoint.
+
 - EE-00 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent42e4efe7. [Inventory](../backend/evidence/ev-support/EE-00.md)
   pins12 source files/eight ancestor checkpoints, actual liquid-only vehicle/Room16/
   hosted model and PRM/FQ/community/Rust owners. No accepted EV source/parser/session

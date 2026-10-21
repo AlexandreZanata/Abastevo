@@ -191,6 +191,10 @@ critical check. Reuse valid existing work rather than bookkeeping-only commits.
 - Recovery/commit: preserve all worktrees; scoped inventory/evidence commit.
 
 ### EE-01 — Qualify sources, rights and reproducible Brazilian samples
+
+**2026-10-21:** [qualification LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/ev-support/EE-01.md).
+Real samples verified; PBE rights and source admission remain pending, not approved.
+
 - Depends: EE-00. Rules: EV-03/05–09/15; journeys EV-02/03/08/12. Risk: rights/PII.
 - Deliver: source admission records for initial sources, licensing/offline/display
   boundaries, actual Brazilian sample formats/IDs/clocks and provider access gaps.
