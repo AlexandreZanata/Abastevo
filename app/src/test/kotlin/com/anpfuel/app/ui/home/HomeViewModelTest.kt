@@ -58,6 +58,8 @@ class HomeViewModelTest {
     private val getTankFillCostEstimatesUseCase = mockk<GetTankFillCostEstimatesUseCase>()
     private val homeVehiclePresenceStore = mockk<com.anpfuel.data.local.preferences.HomeVehiclePresenceStore>()
     private val homeBenefitsVisibilityStore = mockk<com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore>()
+    private val manualSyncVerificationStore =
+        mockk<com.anpfuel.data.local.preferences.ManualSyncVerificationStore>(relaxed = true)
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
 
     private val communitySummary = mockk<com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase>()
@@ -75,6 +77,7 @@ class HomeViewModelTest {
         every { homeVehiclePresenceStore.setHasVehicle(any()) } returns Unit
         every { homeBenefitsVisibilityStore.isVisible() } returns true
         every { homeBenefitsVisibilityStore.setVisible(any()) } returns Unit
+        every { manualSyncVerificationStore.get() } returns null
         viewModel = HomeViewModel(
             getDataReadinessUseCase = getDataReadinessUseCase,
             getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
@@ -84,6 +87,7 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
         )
@@ -213,6 +217,7 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
         )
@@ -232,6 +237,7 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
         )
@@ -261,6 +267,119 @@ class HomeViewModelTest {
 
         assertTrue(viewModel.uiState.value.hasVehicle)
         coVerify { homeVehiclePresenceStore.setHasVehicle(true) }
+    }
+
+    @Test
+    fun refreshWithNoNewDataKeepsStaleButMarksVerified() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } returns com.anpfuel.application.usecase.sync.SyncPriceTablesResult(
+            outcome = com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA,
+        )
+        var stored: com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification? = null
+        every { manualSyncVerificationStore.get() } answers { stored }
+        every {
+            manualSyncVerificationStore.saveVerified(any(), any(), any())
+        } answers {
+            stored = com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification(
+                weekStartIso = firstArg(),
+                weekEndIso = secondArg(),
+                verifiedAtMillis = thirdArg(),
+            )
+        }
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        coVerify {
+            manualSyncVerificationStore.saveVerified(
+                weekStartIso = surveyWeek.startDate.toString(),
+                weekEndIso = surveyWeek.endDate.toString(),
+                verifiedAtMillis = any(),
+            )
+        }
+        assertEquals(
+            com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA,
+            viewModel.uiState.value.lastSyncOutcome,
+        )
+        assertTrue(viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun refreshWithSuccessClearsStaleVerification() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } returns com.anpfuel.application.usecase.sync.SyncPriceTablesResult(
+            outcome = com.anpfuel.domain.event.SyncJobOutcome.SUCCESS,
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        coVerify { manualSyncVerificationStore.clear() }
+        assertEquals(false, viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun loadHidesVerificationWhenPinnedToOldWeek() = runTest(dispatcher) {
+        val oldWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        val latestWeek = SurveyWeek.fromIsoDates("2026-06-14", "2026-06-20")
+        stubStaleHome(displayedWeek = oldWeek, latestWeek = latestWeek)
+        every { manualSyncVerificationStore.get() } returns com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification(
+            weekStartIso = oldWeek.startDate.toString(),
+            weekEndIso = oldWeek.endDate.toString(),
+            verifiedAtMillis = 123L,
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isStaleVerified)
+    }
+
+    private fun stubStaleHome(
+        displayedWeek: SurveyWeek,
+        latestWeek: SurveyWeek,
+        vehicles: List<Vehicle> = emptyList(),
+        tankItems: List<VehicleTankFillCostEstimate> = emptyList(),
+    ) {
+        coEvery { getDataReadinessUseCase.invoke() } returns DataReadinessResult(
+            readiness = DataReadinessState.STALE,
+            hasCachedData = true,
+            latestSurveyWeek = latestWeek,
+            lastSummarySyncAt = null,
+        )
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            municipality = municipality,
+            state = state,
+        )
+        coEvery { listVehiclesUseCase.invoke() } returns vehicles
+        coEvery { getMunicipalityPricesUseCase.invoke() } returns MunicipalityPricesResult(
+            surveyWeek = displayedWeek,
+            state = state,
+            municipality = municipality,
+            prices = emptyList(),
+            dataAvailability = DataAvailability.HAS_DATA,
+        )
+        coEvery {
+            getTankFillCostEstimatesUseCase.invoke(
+                vehicles = vehicles,
+                state = state,
+                municipality = municipality,
+                surveyWeek = displayedWeek,
+            )
+        } returns TankFillCostEstimatesResult(
+            surveyWeek = displayedWeek,
+            state = state,
+            municipality = municipality,
+            items = tankItems,
+        )
     }
 
     private fun stubReadyHome(

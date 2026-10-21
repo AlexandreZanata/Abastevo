@@ -118,8 +118,10 @@
     <string name="week_picker_confirm_message">Télécharger et importer les données ANP pour %1$s ? Cela peut prendre quelques minutes.</string>
     <string name="active_week_label">Plus récente</string>
     <string name="survey_week_chip_latest_suffix">· Plus récente</string>
+    <string name="survey_week_chip_stale_suffix">· Dernière disponible</string>
     <string name="a11y_survey_week_chip">Semaine d\'enquête active : %1$s. Appuyez pour modifier.</string>
     <string name="a11y_survey_week_chip_latest">Semaine d\'enquête active : %1$s (plus récente). Appuyez pour modifier.</string>
+    <string name="a11y_survey_week_chip_stale_latest">Semaine d\'enquête active : %1$s (dernière disponible, peut être obsolète). Appuyez pour modifier.</string>
 
     <!-- Sync banners (BR-004, freshness) -->
     <string name="banner_offline">Hors ligne — affichage des données en cache.</string>
@@ -135,6 +137,8 @@
     <string name="sync_completed">Synchronisation terminée</string>
     <string name="sync_failed">Échec de la synchronisation</string>
     <string name="info_sync_up_to_date">Déjà à jour.</string>
+    <string name="home_stale_verified">Vérifié %1$s — l\'ANP n\'a pas encore publié de semaine plus récente. Affichage %2$s (dernière disponible).</string>
+    <string name="action_verify_again">Vérifier à nouveau</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Impossible d\'accéder à l\'ANP. Vérifiez votre connexion et réessayez.</string>

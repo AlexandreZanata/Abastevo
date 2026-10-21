@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.readiness.GetDataReadinessUseCase
 import com.anpfuel.application.usecase.settings.GetSettingsUseCase
+import com.anpfuel.domain.state.DataReadinessState
 import com.anpfuel.domain.valueobject.SurveyWeek
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 data class ActiveSurveyWeekUiState(
     val surveyWeek: SurveyWeek? = null,
     val isLatest: Boolean = false,
+    val isStale: Boolean = false,
 )
 
 @HiltViewModel
@@ -36,6 +38,7 @@ class ActiveSurveyWeekViewModel @Inject constructor(
                 it.copy(
                     surveyWeek = activeWeek,
                     isLatest = activeWeek != null && activeWeek == readiness.latestSurveyWeek,
+                    isStale = readiness.readiness == DataReadinessState.STALE,
                 )
             }
         }
