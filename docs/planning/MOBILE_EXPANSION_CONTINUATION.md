@@ -1,15 +1,26 @@
-# Resume mobile expansion after MEX-00–03 / EE-00–02
+# Resume mobile expansion from the current local checkpoint
+
+Current checkpoint, 2026-10-21: MEX-00–07, MEX-09 and EE-00–03 are
+LOCAL_DONE / INTEGRATION_PENDING; use [current PROGRESS](PROGRESS.md) and
+their linked evidence. The latest two-unit request delivered
+[MEX-07 hosted admission](../backend/evidence/mobile-expansion/MEX-07.md) and
+[MEX-09 exact parity](../backend/evidence/mobile-expansion/MEX-09.md).
+MEX-08 remains blocked by EE-19. Next ready work is MEX-10 or independent
+EE-04, only on a new authorization. Current source checkpoints do not accept
+source admission, later mobile journeys or production/commercial readiness.
+
+## Foundation history
 
 The foundation [MEX-00 audit](../backend/evidence/mobile-expansion/MEX-00.md) and
 the subsequently authorized [MEX-01 registration contract](../backend/evidence/mobile-expansion/MEX-01.md)
 and [MEX-02 exploration contract](../backend/evidence/mobile-expansion/MEX-02.md)
-are LOCAL_DONE / INTEGRATION_PENDING. The next four-unit request selected
+are LOCAL_DONE / INTEGRATION_PENDING. The earlier four-unit request selected
 [MEX-03 baselines](../backend/evidence/mobile-expansion/MEX-03.md),
 [EE-00 inventory](../backend/evidence/ev-support/EE-00.md),
 [EE-01 qualification](../backend/evidence/ev-support/EE-01.md) and
 [EE-02 types/numerics](../backend/evidence/ev-support/EE-02.md), now locally complete.
 Qualification is not source admission: PBE rights and full-source/runtime/privacy
-gates remain pending. No product runtime implementation is accepted here.
+gates remain pending. Later implementation checkpoints do not satisfy them.
 This file is continuation guidance, not additional execution authorization.
 
 ## Starting point for the next authorized agent
@@ -25,9 +36,10 @@ This file is continuation guidance, not additional execution authorization.
 3. Refresh remote refs when available. The foundation's remote check failed DNS;
    no remote current-head/CI acceptance was established. Work on maintained dev
    when available; otherwise isolate and reconcile normally under ADR-020.
-4. Next in the combined order is **EE-03**, source-specific preparation/census
-   manifests; it must respect the actual EE-01 rights/profile/admission limits.
-   **MEX-04** place batching is independently ready. Select one bounded task,
+4. **MEX-10** can reuse the accepted pure financial checkpoint to reaccept
+   hosted ledger/reports; independent **EE-04** can prepare OCM within actual
+   EE-01 rights/profile/admission limits. **MEX-08 requires EE-19**, not just
+   MEX-07. Select one authorized bounded task,
    complete actual acceptance and commit before the next. No schema/UI changes
    before their owning dependencies; required source gates cannot be mocked away.
 5. Read the selected unit and linked rules; do not rerun the entire project for
@@ -40,7 +52,8 @@ This file is continuation guidance, not additional execution authorization.
   existing professional feature matrix remain until an explicit amendment.
   Preserve old vehicles/history and expired-account data-exit rights.
   [Registration v2](../product/VEHICLE_REGISTRATION_POLICY.md) and its23 worked
-  examples are frozen; actual vehicles.multiple grants/quota remain MEX-07/08.
+  examples are frozen; hosted vehicles.multiple admission is implemented in
+  MEX-07; local quota/lease acceptance remains MEX-08 after EE-19.
 - [Exploration v1](../product/MOBILE_EXPLORATION_CONTRACT.md) has54 shape and
   three counting examples in a separate schema without live endpoints. Reuse it
   for typed intent/source/clock/coverage/company filters and Android wording;

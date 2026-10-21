@@ -17,6 +17,18 @@ class PremiumMapperTest {
     private val scope = PremiumOwnerScope("acc-1", "origin-1")
 
     @Test
+    fun `ledger command round trip preserves exact payload and owner origin`() {
+        val payload = """{"fuel":"ETHANOL","unit":"L","quantity_milli":1000000000,"total_centavos":1000000000000,"odometer_metres":123450,"fill":"partial"}"""
+        val original = PremiumCommand("ledger-op", scope, "refuel", "refuel-1", 7, payloadJson = payload)
+        val stored = PremiumMapper.toEntity(original)
+        assertEquals(payload, stored.payloadJson)
+        assertEquals(original, PremiumMapper.toDomain(stored))
+        val otherOrigin = original.copy(scope = scope.copy(origin = "origin-2"))
+        assertEquals(otherOrigin, PremiumMapper.toDomain(PremiumMapper.toEntity(otherOrigin)))
+        assertEquals("origin-1", stored.origin)
+    }
+
+    @Test
     fun `round trip preserves command fields and scope`() {
         val command = PremiumCommand(
             operationId = "op-1",

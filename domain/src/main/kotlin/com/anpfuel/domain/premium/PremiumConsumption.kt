@@ -65,9 +65,31 @@ data class PremiumAggregateTotals(
     val eligibleCostCentavos: Long = 0L,
     val kmPerUnit: String = "",
     val centavosPerKm: String = "",
+    val unknown: String = "",
 )
 
+data class PremiumComparisonResult(val changePercent: String = "", val unknown: String = "")
+
 object PremiumConsumption {
+    fun compare(base: PremiumConsumptionResult, current: PremiumConsumptionResult): PremiumComparisonResult {
+        if (base.unknown.isNotEmpty()) return PremiumComparisonResult(unknown = "baseline-incomplete: ${base.unknown}")
+        if (current.unknown.isNotEmpty()) return PremiumComparisonResult(unknown = "current-incomplete: ${current.unknown}")
+        if (base.eligibleCostCentavos == 0L) return PremiumComparisonResult(unknown = "comparison-baseline-zero")
+        if (base.distanceMetres <= 0L || base.eligibleQuantityMilli <= 0L ||
+            current.distanceMetres <= 0L || current.eligibleQuantityMilli <= 0L ||
+            base.eligibleCostCentavos < 0L || current.eligibleCostCentavos < 0L
+        ) return PremiumComparisonResult(unknown = "input-out-of-bounds")
+        fun n(v: Long) = java.math.BigInteger.valueOf(v)
+        val numerator = (
+            n(current.distanceMetres) * n(base.eligibleQuantityMilli) -
+                n(base.distanceMetres) * n(current.eligibleQuantityMilli)
+            ) * n(100)
+        val denominator = n(base.distanceMetres) * n(current.eligibleQuantityMilli)
+        val divisor = numerator.gcd(denominator)
+        val a = numerator / divisor
+        val b = denominator / divisor
+        return PremiumComparisonResult(if (b == java.math.BigInteger.ONE) a.toString() else "$a/$b")
+    }
 
     fun compute(input: PremiumInterval): PremiumConsumptionResult {
         val all = listOf(input.startingFillExcluded) + input.fills
@@ -86,24 +108,28 @@ object PremiumConsumption {
         if (input.crossesSegment) return PremiumConsumptionResult(unknown = "odometer-segment-boundary")
         if (input.distanceMetres <= 0L) return PremiumConsumptionResult(unknown = "distance-nonpositive")
 
-        val units = input.fills.map { it.unit }.toSet()
+        for (fill in all) {
+            if (fill.unit != fill.fuel.unit) return PremiumConsumptionResult(unknown = "incompatible-unit")
+        }
+        val units = all.map { it.unit }.toSet()
         if (units.size > 1) return PremiumConsumptionResult(unknown = "incompatible-unit")
-        val fuels = input.fills.map { it.fuel }.toSet()
+        val fuels = all.map { it.fuel }.toSet()
         for (fuel in fuels) {
             if (fuel == PremiumFuel.CNG) return PremiumConsumptionResult(unknown = "unsupported-gnv-method")
         }
         if (fuels.size > 1) return PremiumConsumptionResult(unknown = "unsupported-mixed-method")
 
-        var fullAnchors = 0
-        if (input.startingFillExcluded.full) fullAnchors += 1
-        for (f in input.fills) if (f.full) fullAnchors += 1
-        if (fullAnchors < 2) return PremiumConsumptionResult(unknown = "full-anchors-required")
+        if (!input.startingFillExcluded.full || input.fills.isEmpty() || !input.fills.last().full) {
+            return PremiumConsumptionResult(unknown = "full-anchors-required")
+        }
 
         var quantity = 0L
         var cost = 0L
         for (f in input.fills) {
-            quantity += f.quantityMilli
-            cost += f.totalCentavos
+            quantity = PremiumBounds.addNonNegative(quantity, f.quantityMilli)
+                ?: return PremiumConsumptionResult(unknown = "input-out-of-bounds")
+            cost = PremiumBounds.addNonNegative(cost, f.totalCentavos)
+                ?: return PremiumConsumptionResult(unknown = "input-out-of-bounds")
         }
         if (quantity <= 0L) return PremiumConsumptionResult(unknown = "full-anchors-required")
 
@@ -112,7 +138,7 @@ object PremiumConsumption {
             eligibleCostCentavos = cost,
             distanceMetres = input.distanceMetres,
             kmPerUnit = PremiumBounds.rational(input.distanceMetres, quantity),
-            centavosPerKm = PremiumBounds.rational(cost * 1000L, input.distanceMetres),
+            centavosPerKm = PremiumBounds.scaledRational(cost, 1000, input.distanceMetres),
         )
     }
 
@@ -126,7 +152,7 @@ object PremiumConsumption {
         return PremiumCostResult(
             totalCentavos = eligibleCostCentavos,
             distanceMetres = distanceMetres,
-            centavosPerKm = PremiumBounds.rational(eligibleCostCentavos * 1000L, distanceMetres),
+            centavosPerKm = PremiumBounds.scaledRational(eligibleCostCentavos, 1000, distanceMetres),
             method = "fuel-purchase-interval",
         )
     }
@@ -137,6 +163,11 @@ object PremiumConsumption {
         expenses: List<PremiumExpenseEntry>,
         window: PremiumWindow,
     ): PremiumCostResult {
+        if (fuelCostCentavos !in 0..PremiumBounds.MAX_TOTAL_CENTAVOS ||
+            fuelDistanceMetres !in 0..PremiumBounds.MAX_DISTANCE_METRES ||
+            window.startOdometerMetres !in 0..PremiumBounds.MAX_DISTANCE_METRES ||
+            window.endOdometerMetres !in 0..PremiumBounds.MAX_DISTANCE_METRES
+        ) return PremiumCostResult(unknown = "input-out-of-bounds")
         if (window.endMillis <= window.startMillis) {
             return PremiumCostResult(unknown = "unmatched-period-window")
         }
@@ -155,12 +186,13 @@ object PremiumConsumption {
             if (e.occurredAtMillis < window.startMillis || e.occurredAtMillis >= window.endMillis) continue
             val odo = e.odometerMetres
             if (odo != null && (odo < window.startOdometerMetres || odo > window.endOdometerMetres)) continue
-            total += e.amountCentavos
+            total = PremiumBounds.addNonNegative(total, e.amountCentavos)
+                ?: return PremiumCostResult(unknown = "input-out-of-bounds")
         }
         return PremiumCostResult(
             totalCentavos = total,
             distanceMetres = distance,
-            centavosPerKm = PremiumBounds.rational(total * 1000L, distance),
+            centavosPerKm = PremiumBounds.scaledRational(total, 1000, distance),
             method = "matched-window",
         )
     }
@@ -171,9 +203,12 @@ object PremiumConsumption {
         var cost = 0L
         for (r in results) {
             if (r.unknown.isNotEmpty()) continue
-            distance += r.distanceMetres
-            quantity += r.eligibleQuantityMilli
-            cost += r.eligibleCostCentavos
+            distance = PremiumBounds.addNonNegative(distance, r.distanceMetres)
+                ?: return PremiumAggregateTotals(unknown = "input-out-of-bounds")
+            quantity = PremiumBounds.addNonNegative(quantity, r.eligibleQuantityMilli)
+                ?: return PremiumAggregateTotals(unknown = "input-out-of-bounds")
+            cost = PremiumBounds.addNonNegative(cost, r.eligibleCostCentavos)
+                ?: return PremiumAggregateTotals(unknown = "input-out-of-bounds")
         }
         return PremiumAggregateTotals(
             distanceMetres = distance,
@@ -185,7 +220,7 @@ object PremiumConsumption {
                 ""
             },
             centavosPerKm = if (distance > 0L) {
-                PremiumBounds.rational(cost * 1000L, distance)
+                PremiumBounds.scaledRational(cost, 1000, distance)
             } else {
                 ""
             },

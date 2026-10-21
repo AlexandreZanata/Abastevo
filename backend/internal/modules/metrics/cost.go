@@ -42,10 +42,13 @@ func FuelPurchasePerKm(eligibleCostCentavos, distanceMetres int64) CostResult {
 	if distanceMetres <= 0 {
 		return CostResult{Version: CalculationVersion, Unknown: "distance-nonpositive"}
 	}
-	return CostResult{Version: CalculationVersion, TotalCentavos: eligibleCostCentavos, DistanceMetres: distanceMetres, CentavosPerKm: rational(eligibleCostCentavos*1000, distanceMetres), Method: "fuel-purchase-interval"}
+	return CostResult{Version: CalculationVersion, TotalCentavos: eligibleCostCentavos, DistanceMetres: distanceMetres, CentavosPerKm: scaledRational(eligibleCostCentavos, 1000, distanceMetres), Method: "fuel-purchase-interval"}
 }
 
 func MatchedWindowCost(fuelCostCentavos, fuelDistanceMetres int64, expenses []ExpenseEntry, window Window) CostResult {
+	if fuelCostCentavos < 0 || fuelCostCentavos > MaxTotalCentavos || fuelDistanceMetres < 0 || fuelDistanceMetres > MaxDistanceMetres || window.StartOdometer < 0 || window.StartOdometer > MaxDistanceMetres || window.EndOdometer < 0 || window.EndOdometer > MaxDistanceMetres {
+		return CostResult{Version: CalculationVersion, Unknown: "input-out-of-bounds"}
+	}
 	if !window.EndTime.After(window.StartTime) {
 		return CostResult{Version: CalculationVersion, Unknown: "unmatched-period-window"}
 	}
@@ -78,12 +81,17 @@ func MatchedWindowCost(fuelCostCentavos, fuelDistanceMetres int64, expenses []Ex
 		if e.OdometerMetres != nil && (*e.OdometerMetres < window.StartOdometer || *e.OdometerMetres > window.EndOdometer) {
 			continue
 		}
-		total += e.AmountCentavos
+		var ok bool
+		total, ok = addNonNegative(total, e.AmountCentavos)
+		if !ok {
+			return CostResult{Version: CalculationVersion, Unknown: "input-out-of-bounds"}
+		}
 	}
-	return CostResult{Version: CalculationVersion, TotalCentavos: total, DistanceMetres: distance, CentavosPerKm: rational(total*1000, distance), Method: "matched-window"}
+	return CostResult{Version: CalculationVersion, TotalCentavos: total, DistanceMetres: distance, CentavosPerKm: scaledRational(total, 1000, distance), Method: "matched-window"}
 }
 
 type AggregateTotals struct {
+	Unknown               string
 	DistanceMetres        int64
 	EligibleQuantityMilli int64
 	EligibleCostCentavos  int64
@@ -97,15 +105,25 @@ func SumIntervals(results []Result) AggregateTotals {
 		if r.Unknown != "" {
 			continue
 		}
-		totals.DistanceMetres += r.DistanceMetres
-		totals.EligibleQuantityMilli += r.EligibleQuantityMilli
-		totals.EligibleCostCentavos += r.EligibleCostCentavos
+		var ok bool
+		totals.DistanceMetres, ok = addNonNegative(totals.DistanceMetres, r.DistanceMetres)
+		if !ok {
+			return AggregateTotals{Unknown: "input-out-of-bounds"}
+		}
+		totals.EligibleQuantityMilli, ok = addNonNegative(totals.EligibleQuantityMilli, r.EligibleQuantityMilli)
+		if !ok {
+			return AggregateTotals{Unknown: "input-out-of-bounds"}
+		}
+		totals.EligibleCostCentavos, ok = addNonNegative(totals.EligibleCostCentavos, r.EligibleCostCentavos)
+		if !ok {
+			return AggregateTotals{Unknown: "input-out-of-bounds"}
+		}
 	}
 	if totals.DistanceMetres > 0 && totals.EligibleQuantityMilli > 0 {
 		totals.KmPerUnit = rational(totals.DistanceMetres, totals.EligibleQuantityMilli)
 	}
 	if totals.DistanceMetres > 0 {
-		totals.CentavosPerKm = rational(totals.EligibleCostCentavos*1000, totals.DistanceMetres)
+		totals.CentavosPerKm = scaledRational(totals.EligibleCostCentavos, 1000, totals.DistanceMetres)
 	}
 	return totals
 }

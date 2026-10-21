@@ -51,14 +51,14 @@ enum class ExpenseCategory(val wire: String) {
     }
 }
 
-enum class PremiumFuel(val wire: String) {
-    ETHANOL("ETHANOL"),
-    GASOLINE_REGULAR("GASOLINE_REGULAR"),
-    GASOLINE_ADDITIVED("GASOLINE_ADDITIVED"),
-    GASOLINE_PREMIUM_GRADE("GASOLINE_PREMIUM_GRADE"),
-    DIESEL_S500("DIESEL_S500"),
-    DIESEL_S10("DIESEL_S10"),
-    CNG("CNG"),
+enum class PremiumFuel(val wire: String, val unit: PremiumUnit) {
+    ETHANOL("ETHANOL", PremiumUnit.LITRE),
+    GASOLINE_REGULAR("GASOLINE_REGULAR", PremiumUnit.LITRE),
+    GASOLINE_ADDITIVED("GASOLINE_ADDITIVED", PremiumUnit.LITRE),
+    GASOLINE_PREMIUM_GRADE("GASOLINE_PREMIUM_GRADE", PremiumUnit.LITRE),
+    DIESEL_S500("DIESEL_S500", PremiumUnit.LITRE),
+    DIESEL_S10("DIESEL_S10", PremiumUnit.LITRE),
+    CNG("CNG", PremiumUnit.CUBIC_METRE),
     ;
 
     companion object {
