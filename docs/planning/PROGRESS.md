@@ -1,5 +1,16 @@
 # Current execution state
 
+- EE-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent49b8be2d. [Evidence](../backend/evidence/ev-support/EE-03.md):
+  versioned preparation/census envelope frozen (charging-prepared-v1,
+  vehicle-energy-reference-v1): pinned OCM-candidate/PBE-held/synthetic
+  profiles, 4 planned schemas + 5 payloads, byte/identity goldens, 14-unit
+  hand-counted synthetic census (6 accepted/5 duplicates/3 quarantined).
+  Python oracle 17/17, Rust lib 12 + vectors 1 + prepared 2, Go apicontract
+  race, fmt/clippy/gofmt/vet/staticcheck and docs/secrets PASS. Admission
+  stays false everywhere (OCM candidate, PBE rights/layout pending);
+  OCM Quantity is reported group count, never physical EVSE proof.
+  Next EE-04 OCM preparation or independent MEX-04.
+
 - EE-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent22adc7b8. [Evidence](../backend/evidence/ev-support/EE-02.md):
   typed vehicle/propulsion/source/place-EVSE-connector/tariff/private-session/port
   contract,15 planned components (zero paths),46 shape examples and24 exact shared

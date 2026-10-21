@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "state": "CONTRACT_FROZEN_RUNTIME_PENDING",
+  "profiles": [
+    {
+      "byte_profile": "ev-json-v1",
+      "identity_profile": "ev-source-key-v1",
+      "privacy_profile": "ev-minimal-v1",
+      "source_admission_enabled": false,
+      "id": "ocm-br-20261021-v1",
+      "namespace": "ocm",
+      "state": "CANDIDATE_NOT_ADMITTED",
+      "formats": [
+        "charging-prepared-v1"
+      ],
+      "kinds": [
+        "PLACE",
+        "CONNECTION_GROUP"
+      ],
+      "source_revision": "8e3bedca48ca94807d96b2f5e7ee02cffe63ae54",
+      "reference_sha256": "71c7ea6f70e8f360ff13cc64ada578d07c05af0bf9e92b5efeda591ff695f7e8",
+      "mapping": {
+        "PLACE": "ID",
+        "CONNECTION_GROUP": "PLACE-ID:Connections[].ID; parent PLACE ID retained",
+        "quantity": "Connections[].Quantity is reported group quantity, never individual EVSE IDs",
+        "clocks": [
+          "DateCreated",
+          "DateLastVerified",
+          "DateLastStatusUpdate"
+        ],
+        "unknown_reference": "UNKNOWN plus raw reference code, never guessed capability",
+        "exact_numeric": "Source decimal lexeme -> exact integer W; unsupported precision quarantined"
+      },
+      "rights": {
+        "state": "CONDITIONAL_REUSE_NOT_SOURCE_ADMISSION",
+        "provider_id": 1,
+        "reported_license": "CC-BY-4.0",
+        "provider_license_sha256": "44880f94a1b591f3c9fbb69daf42ce7d1c703454fe930d0a26c2653743d9e4f7",
+        "requirements": [
+          "provider attribution/license/change notice",
+          "public-access eligibility",
+          "discard contacts/comments/photos/home/private coordinates"
+        ]
+      },
+      "holds": [
+        "complete Brazilian corpus and census",
+        "source/publication rights and privacy admission",
+        "EE-04 source adapter and field mappings"
+      ],
+      "field_paths": {
+        "PLACE": {
+          "public_access": "/UsageTypeID",
+          "name": "/AddressInfo/Title",
+          "country": "/AddressInfo/CountryID",
+          "latitude_decimal": "/AddressInfo/Latitude",
+          "longitude_decimal": "/AddressInfo/Longitude",
+          "reported_point_count": "/NumberOfPoints"
+        },
+        "CONNECTION_GROUP": {
+          "connector_code": "/ConnectionTypeID",
+          "raw_connector_code": "/ConnectionTypeID",
+          "power_w": "/PowerKW",
+          "current": "/CurrentTypeID",
+          "reported_quantity": "/Quantity"
+        }
+      }
+    },
+    {
+      "byte_profile": "ev-json-v1",
+      "identity_profile": "ev-source-key-v1",
+      "privacy_profile": "ev-minimal-v1",
+      "source_admission_enabled": false,
+      "id": "pbe-2026-pdf-v1",
+      "namespace": "pbe",
+      "state": "RIGHTS_AND_LAYOUT_PENDING",
+      "formats": [
+        "vehicle-energy-reference-v1"
+      ],
+      "kinds": [
+        "VEHICLE_REFERENCE"
+      ],
+      "source_revision": "43e928f89a526f7b59013faca3501b2b0716e5a8cdc2e097b8653638aa688ba0",
+      "reference_sha256": null,
+      "mapping": {
+        "layout": "PDF_LAYOUT_NOT_CSV",
+        "identity": "UNRESOLVED_EDITION_QUALIFIED_ROW_ID",
+        "clocks": "Retain index, URL edition and internal PDF date separately",
+        "units": "EE-02 exact source lexemes; MJ/km and equivalent units never invented kWh"
+      },
+      "rights": {
+        "state": "RIGHTS_PENDING",
+        "requirements": [
+          "resolve offline/redistribution/derived-data permission"
+        ]
+      },
+      "holds": [
+        "EE-05 exact row/field identity and PDF layout profile",
+        "full vehicle census",
+        "rights admission"
+      ],
+      "field_paths": {}
+    },
+    {
+      "byte_profile": "ev-json-v1",
+      "identity_profile": "ev-source-key-v1",
+      "privacy_profile": "ev-minimal-v1",
+      "source_admission_enabled": false,
+      "id": "synthetic-hierarchy-v1",
+      "namespace": "ee-test",
+      "state": "CONTRACT_TEST_ONLY",
+      "formats": [
+        "charging-prepared-v1"
+      ],
+      "kinds": [
+        "PLACE",
+        "EVSE",
+        "CONNECTOR",
+        "CONNECTION_GROUP",
+        "VEHICLE_REFERENCE"
+      ],
+      "source_revision": "synthetic-reviewed-1",
+      "reference_sha256": null,
+      "mapping": {
+        "identity": "Explicit synthetic IDs, never ordinals",
+        "quantity": "Separate reported group quantity and physical connector assertions"
+      },
+      "rights": {
+        "state": "SYNTHETIC_ONLY",
+        "requirements": [
+          "not a live source or runtime admission"
+        ]
+      },
+      "holds": [
+        "never eligible for production"
+      ],
+      "field_paths": {
+        "PLACE": {
+          "public_access": "/public_access",
+          "name": "/name",
+          "country": "/country",
+          "latitude_decimal": "/latitude_decimal",
+          "longitude_decimal": "/longitude_decimal",
+          "reported_point_count": "/reported_point_count"
+        },
+        "EVSE": {
+          "power_w": "/power_w"
+        },
+        "CONNECTOR": {
+          "connector_code": "/connector_code",
+          "raw_connector_code": "/raw_connector_code",
+          "current": "/current",
+          "power_w": "/power_w"
+        },
+        "CONNECTION_GROUP": {
+          "connector_code": "/connector_code",
+          "raw_connector_code": "/raw_connector_code",
+          "current": "/current",
+          "power_w": "/power_w",
+          "reported_quantity": "/reported_quantity"
+        },
+        "VEHICLE_REFERENCE": {
+          "model_code": "/model_code"
+        }
+      }
+    }
+  ]
+}

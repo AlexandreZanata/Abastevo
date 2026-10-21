@@ -15,6 +15,7 @@
 pub mod cnpj;
 pub mod datasets;
 pub mod enforcement;
+pub mod ev_contract;
 pub mod join;
 pub mod municipality;
 pub mod output;
