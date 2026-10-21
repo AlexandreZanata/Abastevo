@@ -13,9 +13,11 @@ import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore
 import com.anpfuel.data.local.preferences.HomeVehiclePresenceStore
+import com.anpfuel.data.local.preferences.ManualSyncVerificationStore
 import com.anpfuel.app.mapper.TankFillCostUiMapper
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.domain.event.SyncJobOutcome
 import com.anpfuel.domain.event.SyncRequestSource
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.state.DataReadinessState
@@ -62,7 +64,22 @@ data class HomeUiState(
     val operationalNote: String? = null,
     val error: AppError? = null,
     val errorMessage: String? = null,
-)
+    val lastVerifiedAtMillis: Long? = null,
+    val verifiedSurveyWeek: SurveyWeek? = null,
+    val lastSyncOutcome: SyncJobOutcome? = null,
+) {
+    /**
+     * True when STALE is already verified for the displayed week:
+     * manual sync confirmed ANP has no newer week yet. Global per week,
+     * so switching city keeps the same verified state.
+     */
+    val isStaleVerified: Boolean
+        get() = readiness == DataReadinessState.STALE &&
+            lastSyncOutcome == SyncJobOutcome.NO_NEW_DATA &&
+            lastVerifiedAtMillis != null &&
+            verifiedSurveyWeek != null &&
+            verifiedSurveyWeek == surveyWeek
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -74,6 +91,7 @@ class HomeViewModel @Inject constructor(
     private val getTankFillCostEstimatesUseCase: GetTankFillCostEstimatesUseCase,
     private val homeVehiclePresenceStore: HomeVehiclePresenceStore,
     private val homeBenefitsVisibilityStore: HomeBenefitsVisibilityStore,
+    private val manualSyncVerificationStore: ManualSyncVerificationStore,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
     private val communitySummary: com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase,
     private val communitySnapshot: com.anpfuel.domain.community.CommunityFeedLocalSnapshot,
@@ -328,6 +346,8 @@ class HomeViewModel @Inject constructor(
 
                 if (preferred == null || !readinessResult.hasCachedData) {
                     homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
+                    val displayed = readinessResult.latestSurveyWeek
+                    val verification = resolveVerification(displayed, readinessResult.latestSurveyWeek)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -336,13 +356,16 @@ class HomeViewModel @Inject constructor(
                             hasLocation = preferred != null,
                             municipality = preferred?.municipality,
                             state = preferred?.state,
-                            surveyWeek = readinessResult.latestSurveyWeek,
+                            surveyWeek = displayed,
                             prices = emptyList(),
                             tankFillCostEstimates = emptyList(),
                             isEmptyMunicipality = false,
                             dataAvailability = null,
                             operationalNote = null,
                             hasVehicle = vehicles.isNotEmpty(),
+                            lastVerifiedAtMillis = verification.first,
+                            verifiedSurveyWeek = verification.second,
+                            lastSyncOutcome = verification.third,
                         )
                     }
                     hasPresentedContent = true
@@ -369,6 +392,10 @@ class HomeViewModel @Inject constructor(
 
                 if(ticket!=loadGeneration) return@launch
                 homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
+                val verification = resolveVerification(
+                    pricesResult.surveyWeek,
+                    readinessResult.latestSurveyWeek,
+                )
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -384,6 +411,9 @@ class HomeViewModel @Inject constructor(
                         dataAvailability = pricesResult.dataAvailability,
                         operationalNote = pricesResult.operationalNote,
                         hasVehicle = vehicles.isNotEmpty(),
+                        lastVerifiedAtMillis = verification.first,
+                        verifiedSurveyWeek = verification.second,
+                        lastSyncOutcome = verification.third,
                     )
                 }
                 hasPresentedContent = true
@@ -420,8 +450,11 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, errorMessage = null) }
+            var outcome: SyncJobOutcome? = null
             runCatching {
                 syncPriceTablesUseCase(SyncRequestSource.MANUAL)
+            }.onSuccess { result ->
+                outcome = result.outcome
             }.onFailure { error ->
                 if (error !is DomainException) {
                     val appError = AppErrorResolver.fromThrowable(error)
@@ -435,8 +468,56 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
             }
+            when (outcome) {
+                SyncJobOutcome.NO_NEW_DATA -> {
+                    _uiState.value.surveyWeek?.let { week ->
+                        manualSyncVerificationStore.saveVerified(
+                            weekStartIso = week.startDate.toString(),
+                            weekEndIso = week.endDate.toString(),
+                            verifiedAtMillis = System.currentTimeMillis(),
+                        )
+                    }
+                }
+                SyncJobOutcome.SUCCESS, SyncJobOutcome.PARTIAL -> {
+                    manualSyncVerificationStore.clear()
+                    _uiState.update {
+                        it.copy(
+                            lastVerifiedAtMillis = null,
+                            verifiedSurveyWeek = null,
+                            lastSyncOutcome = outcome,
+                        )
+                    }
+                }
+                else -> Unit
+            }
             _uiState.update { it.copy(isRefreshing = false) }
             load(locale)
         }
+    }
+
+    /**
+     * Verification is global per week (one sync covers every city).
+     * Only present it when the displayed week is also the latest imported
+     * week; a pinned old week must surface the week switch instead.
+     */
+    private fun resolveVerification(
+        displayed: SurveyWeek?,
+        latest: SurveyWeek?,
+    ): Triple<Long?, SurveyWeek?, SyncJobOutcome?> {
+        val stored = manualSyncVerificationStore.get() ?: return Triple(null, null, null)
+        if (displayed == null || latest == null) return Triple(null, null, null)
+        if (stored.weekStartIso != displayed.startDate.toString() ||
+            stored.weekEndIso != displayed.endDate.toString()
+        ) {
+            return Triple(null, null, null)
+        }
+        if (displayed != latest) return Triple(null, null, null)
+        if (stored.weekStartIso != latest.startDate.toString() ||
+            stored.weekEndIso != latest.endDate.toString()
+        ) {
+            manualSyncVerificationStore.clear()
+            return Triple(null, null, null)
+        }
+        return Triple(stored.verifiedAtMillis, displayed, SyncJobOutcome.NO_NEW_DATA)
     }
 }

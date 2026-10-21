@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
+import com.anpfuel.app.mapper.LastSyncFormatter
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
@@ -218,20 +219,32 @@ internal fun HomeContent(
             if (uiState.priceSource == HomePriceSource.ANP &&
                 (uiState.readiness == DataReadinessState.STALE || uiState.readiness == DataReadinessState.ERROR)
             ) {
-                TextButton(
-                    onClick = onRefresh,
-                    enabled = !uiState.isRefreshing,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (uiState.isRefreshing) {
-                                R.string.banner_syncing
-                            } else {
-                                R.string.onboarding_action_sync_now
-                            },
-                        ),
-                    )
+                when {
+                    uiState.isRefreshing -> {
+                        TextButton(
+                            onClick = onRefresh,
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.banner_syncing))
+                        }
+                    }
+                    uiState.isStaleVerified -> {
+                        StaleVerifiedRow(
+                            uiState = uiState,
+                            onVerifyAgain = onRefresh,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    else -> {
+                        TextButton(
+                            onClick = onRefresh,
+                            enabled = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.onboarding_action_sync_now))
+                        }
+                    }
                 }
             }
 
@@ -553,6 +566,39 @@ private fun PriceMetadata(uiState: HomeUiState) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * B-BR-008: STALE stays honest after manual sync confirms ANP has no newer
+ * week (NO_NEW_DATA). Shows verified time + latest available week instead
+ * of looping the "Sync now" CTA. Verification is global per week, so it
+ * survives city switches while the week is unchanged.
+ */
+@Composable
+private fun StaleVerifiedRow(
+    uiState: HomeUiState,
+    onVerifyAgain: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val weekLabel = uiState.surveyWeek?.let { SurveyWeekFormatter.formatRange(it, locale) }.orEmpty()
+    val timeLabel = uiState.lastVerifiedAtMillis?.let {
+        LastSyncFormatter.format(java.time.Instant.ofEpochMilli(it), locale)
+    }.orEmpty()
+    Column(
+        modifier = modifier.testTag("home_stale_verified"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.home_stale_verified, timeLabel, weekLabel),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onVerifyAgain) {
+            Text(text = stringResource(R.string.action_verify_again))
+        }
     }
 }
 
