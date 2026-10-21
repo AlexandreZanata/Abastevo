@@ -1,0 +1,1577 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Abastevo planned mobile exploration shapes",
+    "version": "0.1.0-contract-only",
+    "description": "MEX-02 staged semantics, not live routes. Domain/source applicability, guards and cross-field validation remain downstream acceptance."
+  },
+  "x-implementation-status": "CONTRACT_FROZEN_RUNTIME_PENDING",
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Geography": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "level",
+              "country"
+            ],
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "COUNTRY"
+                ]
+              },
+              "country": {
+                "type": "string",
+                "enum": [
+                  "BR"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "level",
+              "country",
+              "uf"
+            ],
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "STATE"
+                ]
+              },
+              "country": {
+                "type": "string",
+                "enum": [
+                  "BR"
+                ]
+              },
+              "uf": {
+                "type": "string",
+                "enum": [
+                  "AC",
+                  "AL",
+                  "AP",
+                  "AM",
+                  "BA",
+                  "CE",
+                  "DF",
+                  "ES",
+                  "GO",
+                  "MA",
+                  "MT",
+                  "MS",
+                  "MG",
+                  "PA",
+                  "PB",
+                  "PR",
+                  "PE",
+                  "PI",
+                  "RJ",
+                  "RN",
+                  "RS",
+                  "RO",
+                  "RR",
+                  "SC",
+                  "SP",
+                  "SE",
+                  "TO"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "level",
+              "country",
+              "uf",
+              "ibge_code"
+            ],
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "MUNICIPALITY"
+                ]
+              },
+              "country": {
+                "type": "string",
+                "enum": [
+                  "BR"
+                ]
+              },
+              "uf": {
+                "type": "string",
+                "enum": [
+                  "AC",
+                  "AL",
+                  "AP",
+                  "AM",
+                  "BA",
+                  "CE",
+                  "DF",
+                  "ES",
+                  "GO",
+                  "MA",
+                  "MT",
+                  "MS",
+                  "MG",
+                  "PA",
+                  "PB",
+                  "PR",
+                  "PE",
+                  "PI",
+                  "RJ",
+                  "RN",
+                  "RS",
+                  "RO",
+                  "RR",
+                  "SC",
+                  "SP",
+                  "SE",
+                  "TO"
+                ]
+              },
+              "ibge_code": {
+                "type": "string",
+                "pattern": "^[0-9]{7}$"
+              }
+            }
+          }
+        ]
+      },
+      "ProductScope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fuel",
+              "unit"
+            ],
+            "properties": {
+              "fuel": {
+                "type": "string",
+                "enum": [
+                  "ETHANOL",
+                  "GASOLINE_REGULAR",
+                  "GASOLINE_ADDITIVED",
+                  "GASOLINE_PREMIUM_GRADE",
+                  "DIESEL_S500",
+                  "DIESEL_S10"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "L"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fuel",
+              "unit"
+            ],
+            "properties": {
+              "fuel": {
+                "type": "string",
+                "enum": [
+                  "CNG"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "M3"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fuel",
+              "unit"
+            ],
+            "properties": {
+              "fuel": {
+                "type": "string",
+                "enum": [
+                  "LPG_P13"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "KG_13"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "Condition": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "STANDARD"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "CASH",
+                  "DEBIT",
+                  "CREDIT"
+                ]
+              },
+              "qualifier_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "qualifier_id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "APP",
+                  "LOYALTY",
+                  "OTHER"
+                ]
+              },
+              "qualifier_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        ]
+      },
+      "Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "limit"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        }
+      },
+      "PriceSource": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "survey_week_start"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "ANP_WEEKLY"
+                ]
+              },
+              "survey_week_start": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "eligibility"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "COMMUNITY"
+                ]
+              },
+              "eligibility": {
+                "type": "string",
+                "enum": [
+                  "CURRENT_ELIGIBLE"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "PriceMetric": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "group_by",
+              "sort"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "OBSERVATION_PRICE"
+                ]
+              },
+              "group_by": {
+                "type": "string",
+                "enum": [
+                  "STATION"
+                ]
+              },
+              "sort": {
+                "type": "string",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "group_by",
+              "sort",
+              "weighting"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "AREA_MEAN"
+                ]
+              },
+              "group_by": {
+                "type": "string",
+                "enum": [
+                  "MUNICIPALITY",
+                  "STATE"
+                ]
+              },
+              "sort": {
+                "type": "string",
+                "enum": [
+                  "ASC",
+                  "DESC"
+                ]
+              },
+              "weighting": {
+                "type": "string",
+                "enum": [
+                  "ELIGIBLE_SOURCE_OBSERVATIONS"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "PriceQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "kind",
+          "source",
+          "product",
+          "condition",
+          "geography",
+          "metric",
+          "page",
+          "policy_version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PRICE_RANKING"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/PriceSource"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductScope"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/Condition"
+          },
+          "geography": {
+            "$ref": "#/components/schemas/Geography"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/PriceMetric"
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "policy_version": {
+            "type": "string",
+            "enum": [
+              "mex-exploration-v1"
+            ]
+          }
+        }
+      },
+      "DateFilter": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "from",
+              "to_exclusive"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "EVENT_DAY",
+                  "DUE_DAY",
+                  "EXTRACTION_DAY",
+                  "SOURCE_PERIOD_DAY"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "DAY"
+                ]
+              },
+              "from": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "to_exclusive": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "from",
+              "to_exclusive"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "EXTRACTION_MONTH",
+                  "SOURCE_PERIOD_MONTH"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "MONTH"
+                ]
+              },
+              "from": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+              },
+              "to_exclusive": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+              }
+            }
+          }
+        ]
+      },
+      "RecordScope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "geography_basis"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_GLOBAL"
+                ]
+              },
+              "geography_basis": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_REPORTED"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "station_id",
+              "geography_basis"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "CURRENT_COMPANY_ONLY"
+                ]
+              },
+              "station_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "geography_basis": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_REPORTED",
+                  "CURRENT_DIRECTORY"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "StatusFilter": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "ANY"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "reported_value"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "EXACT_REPORTED"
+                ]
+              },
+              "reported_value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            }
+          }
+        ]
+      },
+      "OfficialQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "kind",
+          "sources",
+          "record_kinds",
+          "scope",
+          "geography",
+          "date",
+          "status",
+          "page",
+          "policy_version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "OFFICIAL_RECORDS"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "pmqc",
+                "enforcement",
+                "sanctions"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "record_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ASSAY",
+                "ENFORCEMENT_ACTION",
+                "REPORTED_INFRACTION",
+                "FINE_RECORD"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "scope": {
+            "$ref": "#/components/schemas/RecordScope"
+          },
+          "geography": {
+            "$ref": "#/components/schemas/Geography"
+          },
+          "date": {
+            "$ref": "#/components/schemas/DateFilter"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusFilter"
+          },
+          "fuel": {
+            "$ref": "#/components/schemas/ProductScope"
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "policy_version": {
+            "type": "string",
+            "enum": [
+              "mex-exploration-v1"
+            ]
+          }
+        }
+      },
+      "ExplorationQuery": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PriceQuery"
+          },
+          {
+            "$ref": "#/components/schemas/OfficialQuery"
+          }
+        ]
+      },
+      "Interpretation": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "query"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "RESOLVED"
+                ]
+              },
+              "query": {
+                "$ref": "#/components/schemas/ExplorationQuery"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "reason",
+              "alternatives"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "NEEDS_CHOICE"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "METRIC_REQUIRED",
+                  "SOURCE_REQUIRED",
+                  "FUEL_REQUIRED",
+                  "CONDITION_REQUIRED",
+                  "PERIOD_REQUIRED"
+                ]
+              },
+              "alternatives": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ExplorationQuery"
+                },
+                "minItems": 2,
+                "maxItems": 6
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "reason"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "UNSUPPORTED"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "UNSUPPORTED_INTENT",
+                  "UNKNOWN_FUEL",
+                  "UNSUPPORTED_FILTER",
+                  "UNKNOWN_SCHEMA"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SourceRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "stream",
+          "revision_id"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "pmqc",
+              "enforcement",
+              "sanctions"
+            ]
+          },
+          "stream": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SourceClock": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "value"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "EVENT_DAY",
+                  "DUE_DAY",
+                  "EXTRACTION_DAY",
+                  "ASSOCIATION_DAY"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "DAY"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "value"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "EXTRACTION_MONTH"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "MONTH"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "value"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "PUBLICATION_INSTANT"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "INSTANT"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "value"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "COLLECTION_LOCAL_DATETIME"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "LOCAL_DATETIME"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "basis",
+              "precision",
+              "value"
+            ],
+            "properties": {
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_REPORT_YEAR"
+                ]
+              },
+              "precision": {
+                "type": "string",
+                "enum": [
+                  "YEAR"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^[0-9]{4}$"
+              }
+            }
+          }
+        ]
+      },
+      "Association": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scope",
+              "historical_business_window_known",
+              "verification"
+            ],
+            "properties": {
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_GLOBAL"
+                ]
+              },
+              "historical_business_window_known": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              "verification": {
+                "type": "string",
+                "enum": [
+                  "NOT_APPLICABLE"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scope",
+              "station_id",
+              "historical_business_window_known",
+              "verification",
+              "last_checked_at"
+            ],
+            "properties": {
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "CURRENT_COMPANY_ONLY"
+                ]
+              },
+              "station_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "historical_business_window_known": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              "verification": {
+                "type": "string",
+                "enum": [
+                  "LIVE_VERIFIED",
+                  "LAST_CHECK_ONLY"
+                ]
+              },
+              "last_checked_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ]
+      },
+      "OfficialRecord": {
+        "allOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_record_key",
+              "record_kind",
+              "source",
+              "stream",
+              "revision_id",
+              "identity_kind",
+              "issued_case_id",
+              "document_ref",
+              "reported_result",
+              "reported_status",
+              "reported_paid",
+              "source_fuel",
+              "source_uf",
+              "source_municipality",
+              "clocks",
+              "association"
+            ],
+            "properties": {
+              "source_record_key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "record_kind": {
+                "type": "string",
+                "enum": [
+                  "ASSAY",
+                  "ENFORCEMENT_ACTION",
+                  "REPORTED_INFRACTION",
+                  "FINE_RECORD"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "pmqc",
+                  "enforcement",
+                  "sanctions"
+                ]
+              },
+              "stream": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "revision_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "identity_kind": {
+                "type": "string",
+                "enum": [
+                  "CONTENT_OBSERVATION",
+                  "SOURCE_ISSUED_CASE"
+                ]
+              },
+              "issued_case_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "nullable": true
+              },
+              "document_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "nullable": true
+              },
+              "reported_result": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "nullable": true
+              },
+              "reported_status": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "nullable": true
+              },
+              "reported_paid": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "source_fuel": {
+                "type": "string",
+                "enum": [
+                  "ETHANOL",
+                  "GASOLINE_REGULAR",
+                  "GASOLINE_ADDITIVED",
+                  "GASOLINE_PREMIUM_GRADE",
+                  "DIESEL_S500",
+                  "DIESEL_S10",
+                  "CNG",
+                  "LPG_P13",
+                  null
+                ],
+                "nullable": true
+              },
+              "source_uf": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2,
+                "nullable": true
+              },
+              "source_municipality": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "nullable": true
+              },
+              "clocks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceClock"
+                },
+                "minItems": 0,
+                "maxItems": 6
+              },
+              "association": {
+                "$ref": "#/components/schemas/Association"
+              }
+            }
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "identity_kind",
+                  "issued_case_id"
+                ],
+                "properties": {
+                  "identity_kind": {
+                    "type": "string",
+                    "enum": [
+                      "CONTENT_OBSERVATION"
+                    ]
+                  },
+                  "issued_case_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      null
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "identity_kind",
+                  "issued_case_id"
+                ],
+                "properties": {
+                  "identity_kind": {
+                    "type": "string",
+                    "enum": [
+                      "SOURCE_ISSUED_CASE"
+                    ]
+                  },
+                  "issued_case_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "OfficialResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "state",
+              "count_basis",
+              "record_count",
+              "distinct_station_count",
+              "unmatched_record_count",
+              "revision_vector",
+              "coverage_claim",
+              "records",
+              "next_cursor"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "AVAILABLE"
+                ]
+              },
+              "count_basis": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_REVISION_SOURCE_RECORDS"
+                ]
+              },
+              "record_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "distinct_station_count": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true
+              },
+              "unmatched_record_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "revision_vector": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceRevision"
+                },
+                "minItems": 1,
+                "maxItems": 10
+              },
+              "coverage_claim": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_SOURCES_ONLY"
+                ]
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OfficialRecord"
+                },
+                "minItems": 1,
+                "maxItems": 100
+              },
+              "next_cursor": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096,
+                "nullable": true
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "state",
+              "count_basis",
+              "record_count",
+              "distinct_station_count",
+              "unmatched_record_count",
+              "revision_vector",
+              "coverage_claim",
+              "records",
+              "next_cursor"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "EMPTY"
+                ]
+              },
+              "count_basis": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_REVISION_SOURCE_RECORDS"
+                ]
+              },
+              "record_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 0
+              },
+              "distinct_station_count": {
+                "type": "integer",
+                "minimum": 0,
+                "nullable": true
+              },
+              "unmatched_record_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "revision_vector": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceRevision"
+                },
+                "minItems": 1,
+                "maxItems": 10
+              },
+              "coverage_claim": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_SOURCES_ONLY"
+                ]
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OfficialRecord"
+                },
+                "minItems": 0,
+                "maxItems": 0
+              },
+              "next_cursor": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "state",
+              "count_basis",
+              "record_count",
+              "distinct_station_count",
+              "unmatched_record_count",
+              "revision_vector",
+              "coverage_claim",
+              "records",
+              "next_cursor",
+              "reason"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "UNKNOWN",
+                  "UNAVAILABLE"
+                ]
+              },
+              "count_basis": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_REVISION_SOURCE_RECORDS"
+                ]
+              },
+              "record_count": {
+                "type": "integer",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              },
+              "distinct_station_count": {
+                "type": "integer",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              },
+              "unmatched_record_count": {
+                "type": "integer",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              },
+              "revision_vector": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceRevision"
+                },
+                "minItems": 0,
+                "maxItems": 10
+              },
+              "coverage_claim": {
+                "type": "string",
+                "enum": [
+                  "SELECTED_SOURCES_ONLY"
+                ]
+              },
+              "records": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/OfficialRecord"
+                },
+                "minItems": 0,
+                "maxItems": 0
+              },
+              "next_cursor": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  null
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "SOURCE_UNAVAILABLE",
+                  "ASSOCIATION_UNAVAILABLE",
+                  "UNSUPPORTED_FILTER",
+                  "UNSUPPORTED_SCHEMA"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "StationCard": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "station_id",
+          "price_state",
+          "occurrence_state",
+          "association"
+        ],
+        "properties": {
+          "station_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price_state": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NO_CURRENT_PRICE",
+              "UNAVAILABLE"
+            ]
+          },
+          "occurrence_state": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "EMPTY",
+              "UNKNOWN",
+              "UNAVAILABLE"
+            ]
+          },
+          "association": {
+            "$ref": "#/components/schemas/Association"
+          }
+        }
+      },
+      "FilterCapability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "state",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "FUEL",
+              "EVENT_DAY",
+              "DUE_DAY",
+              "EXTRACTION_MONTH",
+              "SOURCE_STATUS",
+              "SOURCE_GEOGRAPHY",
+              "CURRENT_COMPANY",
+              "HISTORICAL_SITE"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "SUPPORTED",
+              "UNSUPPORTED",
+              "UNKNOWN"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "nullable": true
+          }
+        }
+      }
+    }
+  }
+}

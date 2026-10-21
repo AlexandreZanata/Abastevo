@@ -195,6 +195,11 @@ is still MEX-07/08, not accepted by this contract checkpoint.
 - Recovery/commit: no runtime limit change yet; atomic contract amendment commit.
 
 ### MEX-02 — Freeze typed queries, occurrence semantics and Android journeys
+
+**2026-10-21 checkpoint:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/mobile-expansion/MEX-02.md).
+[Contract](../product/MOBILE_EXPLORATION_CONTRACT.md) owns frozen examples;
+runtime parser/SQL/HTTP/Android acceptance stays with the downstream units.
+
 - Depends: MEX-00/01; canonical FQ/PRM/OPT contracts.
 - Deliver: typed query/schema examples, source/date/coverage vocabulary, source
   versus company/site semantics, filter availability and navigation/copy. Record

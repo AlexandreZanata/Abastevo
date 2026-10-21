@@ -1,0 +1,1866 @@
+{
+  "version": 1,
+  "state": "CONTRACT_EXAMPLES_NOT_RUNTIME_ACCEPTANCE",
+  "provenance": "Synthetic MEX-02 inputs; no real company, person, source admission or live endpoint.",
+  "cases": [
+    {
+      "id": "highest-observation",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "highest-average-is-separate",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "AREA_MEAN",
+          "group_by": "STATE",
+          "sort": "DESC",
+          "weighting": "ELIGIBLE_SOURCE_OBSERVATIONS"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "community-current",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "COMMUNITY",
+          "eligibility": "CURRENT_ELIGIBLE"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "cng-m3",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "CNG",
+          "unit": "M3"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "lpg-cylinder-unit",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "LPG_P13",
+          "unit": "KG_13"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "unknown-fuel-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "UNKNOWN_DIESEL",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "cng-litre-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "CNG",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "legacy-additive-name-not-wire",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_PREMIUM",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "source-mixing-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_AND_COMMUNITY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "standard-with-program-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD",
+          "qualifier_id": "synthetic-program"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "app-needs-program",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "APP"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "app-program-explicit",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "APP",
+          "qualifier_id": "synthetic-program"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "bounded-page-zero-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 0
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "bounded-page-overflow-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 101
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "untyped-sql-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "sql": "SELECT 1",
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "city-scope",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "MUNICIPALITY",
+          "country": "BR",
+          "uf": "MT",
+          "ibge_code": "5107925"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "ibge-invalid-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "PRICE_RANKING",
+        "source": {
+          "kind": "ANP_WEEKLY",
+          "survey_week_start": "2025-10-05"
+        },
+        "product": {
+          "fuel": "GASOLINE_REGULAR",
+          "unit": "L"
+        },
+        "condition": {
+          "kind": "STANDARD"
+        },
+        "geography": {
+          "level": "MUNICIPALITY",
+          "country": "BR",
+          "uf": "MT",
+          "ibge_code": "sorriso"
+        },
+        "metric": {
+          "kind": "OBSERVATION_PRICE",
+          "group_by": "STATION",
+          "sort": "DESC"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "ambiguous-cheapest",
+      "schema": "Interpretation",
+      "valid": true,
+      "value": {
+        "state": "NEEDS_CHOICE",
+        "reason": "METRIC_REQUIRED",
+        "alternatives": [
+          {
+            "version": 1,
+            "kind": "PRICE_RANKING",
+            "source": {
+              "kind": "ANP_WEEKLY",
+              "survey_week_start": "2025-10-05"
+            },
+            "product": {
+              "fuel": "GASOLINE_REGULAR",
+              "unit": "L"
+            },
+            "condition": {
+              "kind": "STANDARD"
+            },
+            "geography": {
+              "level": "COUNTRY",
+              "country": "BR"
+            },
+            "metric": {
+              "kind": "OBSERVATION_PRICE",
+              "group_by": "STATION",
+              "sort": "DESC"
+            },
+            "page": {
+              "limit": 20
+            },
+            "policy_version": "mex-exploration-v1"
+          },
+          {
+            "version": 1,
+            "kind": "PRICE_RANKING",
+            "source": {
+              "kind": "ANP_WEEKLY",
+              "survey_week_start": "2025-10-05"
+            },
+            "product": {
+              "fuel": "GASOLINE_REGULAR",
+              "unit": "L"
+            },
+            "condition": {
+              "kind": "STANDARD"
+            },
+            "geography": {
+              "level": "COUNTRY",
+              "country": "BR"
+            },
+            "metric": {
+              "kind": "AREA_MEAN",
+              "group_by": "STATE",
+              "sort": "DESC",
+              "weighting": "ELIGIBLE_SOURCE_OBSERVATIONS"
+            },
+            "page": {
+              "limit": 20
+            },
+            "policy_version": "mex-exploration-v1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ambiguous-single-option-refused",
+      "schema": "Interpretation",
+      "valid": false,
+      "value": {
+        "state": "NEEDS_CHOICE",
+        "reason": "METRIC_REQUIRED",
+        "alternatives": [
+          {
+            "version": 1,
+            "kind": "PRICE_RANKING",
+            "source": {
+              "kind": "ANP_WEEKLY",
+              "survey_week_start": "2025-10-05"
+            },
+            "product": {
+              "fuel": "GASOLINE_REGULAR",
+              "unit": "L"
+            },
+            "condition": {
+              "kind": "STANDARD"
+            },
+            "geography": {
+              "level": "COUNTRY",
+              "country": "BR"
+            },
+            "metric": {
+              "kind": "OBSERVATION_PRICE",
+              "group_by": "STATION",
+              "sort": "DESC"
+            },
+            "page": {
+              "limit": 20
+            },
+            "policy_version": "mex-exploration-v1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ambiguous-winner-refused",
+      "schema": "Interpretation",
+      "valid": false,
+      "value": {
+        "state": "NEEDS_CHOICE",
+        "reason": "METRIC_REQUIRED",
+        "alternatives": [
+          {
+            "version": 1,
+            "kind": "PRICE_RANKING",
+            "source": {
+              "kind": "ANP_WEEKLY",
+              "survey_week_start": "2025-10-05"
+            },
+            "product": {
+              "fuel": "GASOLINE_REGULAR",
+              "unit": "L"
+            },
+            "condition": {
+              "kind": "STANDARD"
+            },
+            "geography": {
+              "level": "COUNTRY",
+              "country": "BR"
+            },
+            "metric": {
+              "kind": "OBSERVATION_PRICE",
+              "group_by": "STATION",
+              "sort": "DESC"
+            },
+            "page": {
+              "limit": 20
+            },
+            "policy_version": "mex-exploration-v1"
+          },
+          {
+            "version": 1,
+            "kind": "PRICE_RANKING",
+            "source": {
+              "kind": "ANP_WEEKLY",
+              "survey_week_start": "2025-10-05"
+            },
+            "product": {
+              "fuel": "GASOLINE_REGULAR",
+              "unit": "L"
+            },
+            "condition": {
+              "kind": "STANDARD"
+            },
+            "geography": {
+              "level": "COUNTRY",
+              "country": "BR"
+            },
+            "metric": {
+              "kind": "AREA_MEAN",
+              "group_by": "STATE",
+              "sort": "DESC",
+              "weighting": "ELIGIBLE_SOURCE_OBSERVATIONS"
+            },
+            "page": {
+              "limit": 20
+            },
+            "policy_version": "mex-exploration-v1"
+          }
+        ],
+        "winner": "synthetic-station"
+      }
+    },
+    {
+      "id": "unknown-intent-explicit",
+      "schema": "Interpretation",
+      "valid": true,
+      "value": {
+        "state": "UNSUPPORTED",
+        "reason": "UNSUPPORTED_INTENT"
+      }
+    },
+    {
+      "id": "resolved-visible-query",
+      "schema": "Interpretation",
+      "valid": true,
+      "value": {
+        "state": "RESOLVED",
+        "query": {
+          "version": 1,
+          "kind": "PRICE_RANKING",
+          "source": {
+            "kind": "ANP_WEEKLY",
+            "survey_week_start": "2025-10-05"
+          },
+          "product": {
+            "fuel": "GASOLINE_REGULAR",
+            "unit": "L"
+          },
+          "condition": {
+            "kind": "STANDARD"
+          },
+          "geography": {
+            "level": "COUNTRY",
+            "country": "BR"
+          },
+          "metric": {
+            "kind": "OBSERVATION_PRICE",
+            "group_by": "STATION",
+            "sort": "DESC"
+          },
+          "page": {
+            "limit": 20
+          },
+          "policy_version": "mex-exploration-v1"
+        }
+      }
+    },
+    {
+      "id": "official-source-global",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "SOURCE_GLOBAL",
+          "geography_basis": "SOURCE_REPORTED"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "official-company-filter",
+      "schema": "ExplorationQuery",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "CURRENT_COMPANY_ONLY",
+          "station_id": "11111111-1111-4111-8111-111111111111",
+          "geography_basis": "CURRENT_DIRECTORY"
+        },
+        "geography": {
+          "level": "MUNICIPALITY",
+          "country": "BR",
+          "uf": "MT",
+          "ibge_code": "5107925"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "company-missing-station-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "CURRENT_COMPANY_ONLY",
+          "geography_basis": "CURRENT_DIRECTORY"
+        },
+        "geography": {
+          "level": "MUNICIPALITY",
+          "country": "BR",
+          "uf": "MT",
+          "ibge_code": "5107925"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "global-current-address-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "SOURCE_GLOBAL",
+          "geography_basis": "CURRENT_DIRECTORY"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "missing-clock-basis-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "SOURCE_GLOBAL",
+          "geography_basis": "SOURCE_REPORTED"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "date": {
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "month-day-query-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "FINE_RECORD"
+        ],
+        "scope": {
+          "kind": "SOURCE_GLOBAL",
+          "geography_basis": "SOURCE_REPORTED"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "private-report-refused",
+      "schema": "ExplorationQuery",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "kind": "OFFICIAL_RECORDS",
+        "sources": [
+          "sanctions"
+        ],
+        "record_kinds": [
+          "PRIVATE_COMMUNITY_REPORT"
+        ],
+        "scope": {
+          "kind": "SOURCE_GLOBAL",
+          "geography_basis": "SOURCE_REPORTED"
+        },
+        "geography": {
+          "level": "COUNTRY",
+          "country": "BR"
+        },
+        "date": {
+          "basis": "EXTRACTION_MONTH",
+          "precision": "MONTH",
+          "from": "2025-01",
+          "to_exclusive": "2026-01"
+        },
+        "status": {
+          "kind": "ANY"
+        },
+        "page": {
+          "limit": 20
+        },
+        "policy_version": "mex-exploration-v1"
+      }
+    },
+    {
+      "id": "unmatched-source-record",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 1,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "SOURCE_GLOBAL",
+              "historical_business_window_known": false,
+              "verification": "NOT_APPLICABLE"
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "empty-not-safe",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "EMPTY",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 0,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 0,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "empty-safe-badge-refused",
+      "schema": "OfficialResult",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "state": "EMPTY",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 0,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 0,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [],
+        "next_cursor": null,
+        "safe_station": true
+      }
+    },
+    {
+      "id": "source-unavailable",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "UNAVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": null,
+        "distinct_station_count": null,
+        "unmatched_record_count": null,
+        "revision_vector": [],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [],
+        "next_cursor": null,
+        "reason": "SOURCE_UNAVAILABLE"
+      }
+    },
+    {
+      "id": "unavailable-zero-refused",
+      "schema": "OfficialResult",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "state": "UNAVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 0,
+        "distinct_station_count": null,
+        "unmatched_record_count": null,
+        "revision_vector": [],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [],
+        "next_cursor": null,
+        "reason": "SOURCE_UNAVAILABLE"
+      }
+    },
+    {
+      "id": "unsupported-filter-explicit",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "UNKNOWN",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": null,
+        "distinct_station_count": null,
+        "unmatched_record_count": null,
+        "revision_vector": [],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [],
+        "next_cursor": null,
+        "reason": "UNSUPPORTED_FILTER"
+      }
+    },
+    {
+      "id": "company-is-not-site",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 1,
+        "unmatched_record_count": 0,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "CURRENT_COMPANY_ONLY",
+              "station_id": "11111111-1111-4111-8111-111111111111",
+              "historical_business_window_known": false,
+              "verification": "LIVE_VERIFIED",
+              "last_checked_at": "2026-10-21T12:00:00Z"
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "company-site-claim-refused",
+      "schema": "OfficialResult",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 1,
+        "unmatched_record_count": 0,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "CURRENT_COMPANY_ONLY",
+              "station_id": "11111111-1111-4111-8111-111111111111",
+              "historical_business_window_known": true,
+              "verification": "LIVE_VERIFIED",
+              "last_checked_at": "2026-10-21T12:00:00Z"
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "offline-company-last-check",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 1,
+        "unmatched_record_count": 0,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "CURRENT_COMPANY_ONLY",
+              "station_id": "11111111-1111-4111-8111-111111111111",
+              "historical_business_window_known": false,
+              "verification": "LAST_CHECK_ONLY",
+              "last_checked_at": "2026-10-21T12:00:00Z"
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "month-is-not-event-day",
+      "schema": "SourceClock",
+      "valid": false,
+      "value": {
+        "basis": "EVENT_DAY",
+        "precision": "MONTH",
+        "value": "2025-10"
+      }
+    },
+    {
+      "id": "extraction-month-preserved",
+      "schema": "SourceClock",
+      "valid": true,
+      "value": {
+        "basis": "EXTRACTION_MONTH",
+        "precision": "MONTH",
+        "value": "2025-10"
+      }
+    },
+    {
+      "id": "missing-month-value-refused",
+      "schema": "SourceClock",
+      "valid": false,
+      "value": {
+        "basis": "EXTRACTION_MONTH",
+        "precision": "MONTH",
+        "value": "2025"
+      }
+    },
+    {
+      "id": "paid-not-legal-finality",
+      "schema": "OfficialResult",
+      "valid": true,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 1,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "SOURCE_GLOBAL",
+              "historical_business_window_known": false,
+              "verification": "NOT_APPLICABLE"
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "invented-guilt-refused",
+      "schema": "OfficialResult",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 1,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "SOURCE_GLOBAL",
+              "historical_business_window_known": false,
+              "verification": "NOT_APPLICABLE"
+            },
+            "guilty": true
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "private-identity-refused",
+      "schema": "OfficialResult",
+      "valid": false,
+      "value": {
+        "version": 1,
+        "state": "AVAILABLE",
+        "count_basis": "SELECTED_REVISION_SOURCE_RECORDS",
+        "record_count": 1,
+        "distinct_station_count": 0,
+        "unmatched_record_count": 1,
+        "revision_vector": [
+          {
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222"
+          }
+        ],
+        "coverage_claim": "SELECTED_SOURCES_ONLY",
+        "records": [
+          {
+            "source_record_key": "synthetic-observation-a",
+            "record_kind": "FINE_RECORD",
+            "source": "sanctions",
+            "stream": "sanction-v1",
+            "revision_id": "22222222-2222-4222-8222-222222222222",
+            "identity_kind": "CONTENT_OBSERVATION",
+            "issued_case_id": null,
+            "document_ref": null,
+            "reported_result": null,
+            "reported_status": null,
+            "reported_paid": true,
+            "source_fuel": null,
+            "source_uf": null,
+            "source_municipality": null,
+            "clocks": [
+              {
+                "basis": "EXTRACTION_MONTH",
+                "precision": "MONTH",
+                "value": "2025-10"
+              },
+              {
+                "basis": "DUE_DAY",
+                "precision": "DAY",
+                "value": "2025-06-01"
+              },
+              {
+                "basis": "PUBLICATION_INSTANT",
+                "precision": "INSTANT",
+                "value": "2026-10-21T12:00:00Z"
+              }
+            ],
+            "association": {
+              "scope": "SOURCE_GLOBAL",
+              "historical_business_window_known": false,
+              "verification": "NOT_APPLICABLE"
+            },
+            "contributor_gps": {
+              "lat": 0,
+              "lon": 0
+            }
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "id": "station-without-price",
+      "schema": "StationCard",
+      "valid": true,
+      "value": {
+        "station_id": "11111111-1111-4111-8111-111111111111",
+        "price_state": "NO_CURRENT_PRICE",
+        "occurrence_state": "UNKNOWN",
+        "association": {
+          "scope": "SOURCE_GLOBAL",
+          "historical_business_window_known": false,
+          "verification": "NOT_APPLICABLE"
+        }
+      }
+    },
+    {
+      "id": "filter-fuel-unsupported",
+      "schema": "FilterCapability",
+      "valid": true,
+      "value": {
+        "field": "FUEL",
+        "state": "UNSUPPORTED",
+        "reason": "No explicit fuel in the admitted fine source"
+      }
+    },
+    {
+      "id": "filter-history-not-proven",
+      "schema": "FilterCapability",
+      "valid": true,
+      "value": {
+        "field": "HISTORICAL_SITE",
+        "state": "UNSUPPORTED",
+        "reason": "Current company evidence only"
+      }
+    },
+    {
+      "id": "unknown-kind-refused",
+      "schema": "OfficialRecord",
+      "valid": false,
+      "value": {
+        "source_record_key": "synthetic-observation-a",
+        "record_kind": "FUTURE_UNRECOGNIZED_KIND",
+        "source": "sanctions",
+        "stream": "sanction-v1",
+        "revision_id": "22222222-2222-4222-8222-222222222222",
+        "identity_kind": "CONTENT_OBSERVATION",
+        "issued_case_id": null,
+        "document_ref": null,
+        "reported_result": null,
+        "reported_status": null,
+        "reported_paid": true,
+        "source_fuel": null,
+        "source_uf": null,
+        "source_municipality": null,
+        "clocks": [
+          {
+            "basis": "EXTRACTION_MONTH",
+            "precision": "MONTH",
+            "value": "2025-10"
+          },
+          {
+            "basis": "DUE_DAY",
+            "precision": "DAY",
+            "value": "2025-06-01"
+          },
+          {
+            "basis": "PUBLICATION_INSTANT",
+            "precision": "INSTANT",
+            "value": "2026-10-21T12:00:00Z"
+          }
+        ],
+        "association": {
+          "scope": "SOURCE_GLOBAL",
+          "historical_business_window_known": false,
+          "verification": "NOT_APPLICABLE"
+        }
+      }
+    },
+    {
+      "id": "local-collection-clock-no-invented-zone",
+      "schema": "SourceClock",
+      "valid": true,
+      "value": {
+        "basis": "COLLECTION_LOCAL_DATETIME",
+        "precision": "LOCAL_DATETIME",
+        "value": "2025-10-21T10:30:00"
+      }
+    },
+    {
+      "id": "local-collection-not-utc",
+      "schema": "SourceClock",
+      "valid": false,
+      "value": {
+        "basis": "COLLECTION_LOCAL_DATETIME",
+        "precision": "LOCAL_DATETIME",
+        "value": "2025-10-21T10:30:00Z"
+      }
+    },
+    {
+      "id": "report-year-not-event-year",
+      "schema": "SourceClock",
+      "valid": true,
+      "value": {
+        "basis": "SOURCE_REPORT_YEAR",
+        "precision": "YEAR",
+        "value": "2025"
+      }
+    },
+    {
+      "id": "content-not-issued-case",
+      "schema": "OfficialRecord",
+      "valid": false,
+      "value": {
+        "source_record_key": "synthetic-observation-a",
+        "record_kind": "FINE_RECORD",
+        "source": "sanctions",
+        "stream": "sanction-v1",
+        "revision_id": "22222222-2222-4222-8222-222222222222",
+        "identity_kind": "CONTENT_OBSERVATION",
+        "issued_case_id": "invented-case",
+        "document_ref": null,
+        "reported_result": null,
+        "reported_status": null,
+        "reported_paid": true,
+        "source_fuel": null,
+        "source_uf": null,
+        "source_municipality": null,
+        "clocks": [
+          {
+            "basis": "EXTRACTION_MONTH",
+            "precision": "MONTH",
+            "value": "2025-10"
+          },
+          {
+            "basis": "DUE_DAY",
+            "precision": "DAY",
+            "value": "2025-06-01"
+          },
+          {
+            "basis": "PUBLICATION_INSTANT",
+            "precision": "INSTANT",
+            "value": "2026-10-21T12:00:00Z"
+          }
+        ],
+        "association": {
+          "scope": "SOURCE_GLOBAL",
+          "historical_business_window_known": false,
+          "verification": "NOT_APPLICABLE"
+        }
+      }
+    },
+    {
+      "id": "issued-case-needs-source-id",
+      "schema": "OfficialRecord",
+      "valid": false,
+      "value": {
+        "source_record_key": "synthetic-observation-a",
+        "record_kind": "FINE_RECORD",
+        "source": "sanctions",
+        "stream": "sanction-v1",
+        "revision_id": "22222222-2222-4222-8222-222222222222",
+        "identity_kind": "SOURCE_ISSUED_CASE",
+        "issued_case_id": null,
+        "document_ref": null,
+        "reported_result": null,
+        "reported_status": null,
+        "reported_paid": true,
+        "source_fuel": null,
+        "source_uf": null,
+        "source_municipality": null,
+        "clocks": [
+          {
+            "basis": "EXTRACTION_MONTH",
+            "precision": "MONTH",
+            "value": "2025-10"
+          },
+          {
+            "basis": "DUE_DAY",
+            "precision": "DAY",
+            "value": "2025-06-01"
+          },
+          {
+            "basis": "PUBLICATION_INSTANT",
+            "precision": "INSTANT",
+            "value": "2026-10-21T12:00:00Z"
+          }
+        ],
+        "association": {
+          "scope": "SOURCE_GLOBAL",
+          "historical_business_window_known": false,
+          "verification": "NOT_APPLICABLE"
+        }
+      }
+    },
+    {
+      "id": "explicit-issued-case-shape-only",
+      "schema": "OfficialRecord",
+      "valid": true,
+      "value": {
+        "source_record_key": "synthetic-observation-a",
+        "record_kind": "FINE_RECORD",
+        "source": "sanctions",
+        "stream": "sanction-v1",
+        "revision_id": "22222222-2222-4222-8222-222222222222",
+        "identity_kind": "SOURCE_ISSUED_CASE",
+        "issued_case_id": "synthetic-explicit-source-case",
+        "document_ref": null,
+        "reported_result": null,
+        "reported_status": null,
+        "reported_paid": true,
+        "source_fuel": null,
+        "source_uf": null,
+        "source_municipality": null,
+        "clocks": [
+          {
+            "basis": "EXTRACTION_MONTH",
+            "precision": "MONTH",
+            "value": "2025-10"
+          },
+          {
+            "basis": "DUE_DAY",
+            "precision": "DAY",
+            "value": "2025-06-01"
+          },
+          {
+            "basis": "PUBLICATION_INSTANT",
+            "precision": "INSTANT",
+            "value": "2026-10-21T12:00:00Z"
+          }
+        ],
+        "association": {
+          "scope": "SOURCE_GLOBAL",
+          "historical_business_window_known": false,
+          "verification": "NOT_APPLICABLE"
+        }
+      }
+    }
+  ]
+}

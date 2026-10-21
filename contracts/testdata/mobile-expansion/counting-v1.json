@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "state": "CONTRACT_EXAMPLES_NOT_RUNTIME_ACCEPTANCE",
+  "cases": [
+    {
+      "id": "repeated-snapshots-distinct-results",
+      "selected": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222"
+        }
+      ],
+      "observations": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "33333333-3333-4333-8333-333333333333",
+          "key": "synthetic-a",
+          "document": "synthetic-df",
+          "result": "result-a"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "33333333-3333-4333-8333-333333333333",
+          "key": "synthetic-b",
+          "document": "synthetic-df",
+          "result": "result-b"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-a",
+          "document": "synthetic-df",
+          "result": "result-a"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-b",
+          "document": "synthetic-df",
+          "result": "result-b"
+        }
+      ],
+      "valid": true,
+      "expected_records": 2,
+      "expected_issued_fines": null
+    },
+    {
+      "id": "do-not-collapse-records-by-document",
+      "selected": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222"
+        }
+      ],
+      "observations": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-a",
+          "document": "synthetic-df",
+          "result": "result-a"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-b",
+          "document": "synthetic-df",
+          "result": "result-b"
+        }
+      ],
+      "valid": true,
+      "expected_records": 2,
+      "expected_issued_fines": null
+    },
+    {
+      "id": "duplicate-revision-context-refused",
+      "selected": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "33333333-3333-4333-8333-333333333333"
+        }
+      ],
+      "observations": [
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "33333333-3333-4333-8333-333333333333",
+          "key": "synthetic-a",
+          "document": "synthetic-df",
+          "result": "result-a"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "33333333-3333-4333-8333-333333333333",
+          "key": "synthetic-b",
+          "document": "synthetic-df",
+          "result": "result-b"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-a",
+          "document": "synthetic-df",
+          "result": "result-a"
+        },
+        {
+          "source": "sanctions",
+          "stream": "sanction-v1",
+          "revision_id": "22222222-2222-4222-8222-222222222222",
+          "key": "synthetic-b",
+          "document": "synthetic-df",
+          "result": "result-b"
+        }
+      ],
+      "valid": false,
+      "expected_records": null,
+      "expected_issued_fines": null
+    }
+  ]
+}

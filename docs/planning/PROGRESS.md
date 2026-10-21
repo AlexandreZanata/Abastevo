@@ -1,5 +1,14 @@
 # Current execution state
 
+- Mobile expansion MEX-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
+  d61ccc4c on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-02.md):
+  typed exploration/official-source/company-site/filter/cache/Android-copy contract,
+  20 planned schemas (zero live paths), 54 shape and three counting examples.
+  Full apicontract race (including MEX-01/live goldens), vet/static/docs/secrets PASS.
+  No runtime parser/query/UI or source activation claim. Requested two microtasks
+  complete; [continuation](MOBILE_EXPANSION_CONTINUATION.md) starts at MEX-03,
+  or independently EE-00. No publication/device/deploy; other work preserved.
+
 - Mobile expansion MEX-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
   0e7af9d5 on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-01.md):
   registration v2/machine amendment, retained legacy data, planned vehicles.multiple,
