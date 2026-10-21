@@ -1,5 +1,15 @@
 # Current execution state
 
+- MEX-05 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent431b935a. [Evidence](../backend/evidence/mobile-expansion/MEX-05.md):
+  bound typo search, retired per-keystroke findAll: one indexed
+  normalized-prefix range per stem (migration 16→17 additive, schema 17),
+  normalized FTS tokens, ranking on Default dispatcher with cancellation.
+  Documented exact/accent/typo probes keep visible top results; mid-token
+  substring retrieval retired (rule unchanged). Real-SQLite plan/count
+  oracle + asset parity benchmark PASS. data 449 (2 pre-existing skips),
+  application 390, domain 547, app 367 — zero failures; assemble/lint/
+  diff-check/secrets PASS. Next MEX-06 fast state/city UI.
+
 - MEX-04 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentd23aebc1. [Evidence](../backend/evidence/mobile-expansion/MEX-04.md):
   batch place lookup/availability: discovery reads without mandatory imported
   week (unavailable flags, never error), one grouped availability query + one

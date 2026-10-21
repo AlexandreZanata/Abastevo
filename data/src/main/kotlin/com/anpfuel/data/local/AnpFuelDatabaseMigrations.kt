@@ -490,4 +490,13 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_16_17: Migration = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // MEX-05 bounded typo supplement: global normalized-prefix range
+            // over a dedicated normalized_name index. Additive only: no table
+            // rewrite, no data movement, existing rows and FTS triggers kept.
+            db.execSQL("CREATE INDEX IF NOT EXISTS `idx_municipality_catalog_normalized` ON `municipality_catalog` (`normalized_name`)")
+        }
+    }
+
 }

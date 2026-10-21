@@ -50,8 +50,25 @@ interface MunicipalityCatalogDao {
     @Query("UPDATE municipality_catalog SET anp_alias = :alias WHERE id = :id")
     suspend fun updateAnpAlias(id: String, alias: String)
 
-    @Query("SELECT * FROM municipality_catalog")
-    suspend fun findAll(): List<MunicipalityCatalogEntity>
+    /**
+     * MEX-05 bounded supplement pool: global normalized-prefix range over the
+     * dedicated normalized_name index (MIGRATION_16_17). Range comparison (not
+     * LIKE) keeps user punctuation harmless; ORDER BY + LIMIT make the pool
+     * deterministic. Retires the per-keystroke full-catalog scan.
+     */
+    @Query(
+        """
+        SELECT * FROM municipality_catalog
+        WHERE normalized_name >= :rangeStart AND normalized_name < :rangeEnd
+        ORDER BY normalized_name ASC
+        LIMIT :limit
+        """,
+    )
+    suspend fun findByNormalizedPrefix(
+        rangeStart: String,
+        rangeEnd: String,
+        limit: Int,
+    ): List<MunicipalityCatalogEntity>
 
     @Query(
         """
