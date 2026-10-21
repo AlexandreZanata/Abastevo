@@ -1,5 +1,14 @@
 # abastevo documentation
 
+[Full EV/hybrid extension](planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md),
+[25-source research register](planning/EV_SOURCE_RESEARCH.md),
+[EV product rules](product/EV_SUPPORT_CONTRACT.md),
+[energy/cost method](product/EV_FINANCIAL_METHOD.md) and
+[combined MEX/EV agent prompt](planning/EV_SUPPORT_EXECUTION_PROMPT.md) extend
+mobile expansion with Rust preparation, source/licensing boundaries, community
+charging prices, Android local data and private energy costs/sync. Planning only;
+complete declared journeys are distinct from national/live-provider coverage.
+
 [Mobile expansion plan](planning/MOBILE_EXPANSION_EXECUTION_PLAN.md),
 [product amendment](product/MOBILE_EXPANSION_CONTRACT.md) and
 [implementation-agent prompt](planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md)

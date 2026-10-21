@@ -1,5 +1,11 @@
 # Mobile vehicles, discovery and official occurrence contract
 
+**Selected EV extension, 2026-10-20:** [EV support rules](EV_SUPPORT_CONTRACT.md)
+and [energy/cost method](EV_FINANCIAL_METHOD.md) own BEV/PHEV/hybrid capability,
+charging community/catalog/tariff/status and private-session semantics. These
+extend the liquid-focused rules below without reinterpreting existing money,
+fuel enums, source history or commercial capability boundaries.
+
 Date: 2026-10-20. State: PLANNED / IMPLEMENTATION_NOT_STARTED_BY_THIS_PLAN.
 Owner: [execution plan](../planning/MOBILE_EXPANSION_EXECUTION_PLAN.md).
 This is a requested product amendment and execution specification, not runtime,

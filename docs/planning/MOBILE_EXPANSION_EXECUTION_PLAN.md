@@ -1,5 +1,14 @@
 # Mobile expansion execution plan — vehicles, fast discovery and ANP occurrences
 
+**Selected EV amendment, 2026-10-20:** the requested
+[full EV/hybrid extension](EV_FULL_SUPPORT_EXECUTION_PLAN.md) and
+[source qualification research](EV_SOURCE_RESEARCH.md) are part of this combined
+target. Read its section 4 and [dependency map](EV_MEX_DEPENDENCIES.json) before
+vehicle/ledger/sync schema or UI work. Add EE-00–31 without renumbering MEX;
+77 combined execution units include one conditional operator-access unit.
+[EV rules](../product/EV_SUPPORT_CONTRACT.md), [combined prompt](EV_SUPPORT_EXECUTION_PROMPT.md).
+Do not complete the old liquid-only architecture and retrofit EVs afterward.
+
 Date: 2026-10-20. Status: PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED.
 Scope: MEX-00–MEX-39, 40 parent tasks; MEX-20 has six mandatory children,
 yielding 45 execution units and at least 45 meaningful implementation checkpoints

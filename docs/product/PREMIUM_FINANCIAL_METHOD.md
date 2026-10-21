@@ -1,5 +1,11 @@
 # Premium financial method v1
 
+**Selected EV extension, 2026-10-20:** [EV method](EV_FINANCIAL_METHOD.md) adds
+electric measurement/tariff/PHEV monetary-window contracts. It does not silently
+extend the homogeneous-liquid full-to-full method below or reinterpret frozen
+financial-v1 vectors. Bought energy, battery measurement and reference values
+have distinct bases; exact shared tests precede implementation acceptance.
+
 State: frozen source examples for PRM00-T03; the professional engine is not implemented in this batch. [Golden vectors](../../contracts/testdata/premium/financial-v1.json) are synthetic and shared by later Go/Kotlin consumers.
 
 Actual BRL total is authoritative integer centavos. Quantity is integer milli-litres or milli-cubic-metres; odometer is integer metres. Optional advertised unit price uses existing milli-BRL vocabulary. Discounts/rounding may make the advertised product differ from actual paid total; preserve and flag, never rewrite actual amount. Parse Brazilian decimal text exactly; checked intermediates/rational arithmetic, half-up only at display boundary. Input ceilings: total 1e12 centavos, quantity 1e9 milli-units, odometer 1e12 metres, unit price 1e6 milli-BRL (existing wire bound); reject negative/overflow/noncanonical precision.

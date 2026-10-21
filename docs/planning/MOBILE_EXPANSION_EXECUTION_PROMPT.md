@@ -1,5 +1,11 @@
 # Execution prompt — mobile vehicles, performance and ANP discovery
 
+**Selected extension:** use the [combined MEX/EV prompt](EV_SUPPORT_EXECUTION_PROMPT.md)
+and [EE plan](EV_FULL_SUPPORT_EXECUTION_PLAN.md). The latest human request adds
+BEV/PHEV/hybrid, Rust source preparation, community charging prices and Android
+offline/private cost support. The original prompt below is historical base scope;
+do not execute it alone while ignoring the EE dependency splice.
+
 Submit the following prompt to the implementation agent. It selects local source
 construction, not remote publication, source activation or commercial release.
 User communication is Portuguese; repository code/docs/commits remain English.

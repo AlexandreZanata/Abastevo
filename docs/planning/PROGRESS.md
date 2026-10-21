@@ -1,5 +1,19 @@
 # Current execution state
 
+- Full EV extension EE-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING
+  on isolated codex/mobile-expansion-plan, parent 47fded8c. [Research](EV_SOURCE_RESEARCH.md)
+  records 25 source/data families (23 external, two first-party), actual access/
+  rights/coverage limits and no presumed national live feed. [EE plan](EV_FULL_SUPPORT_EXECUTION_PLAN.md),
+  [rules](../product/EV_SUPPORT_CONTRACT.md), [financial method](../product/EV_FINANCIAL_METHOD.md),
+  [combined prompt](EV_SUPPORT_EXECUTION_PROMPT.md), [validation](EV_SUPPORT_PLAN_VALIDATION.md).
+  Adds 32 EE units and an acyclic MEX splice (77 combined execution units,
+  conditional live-provider access separate), preserving existing IDs/data/free
+  boundaries. Includes BEV/PHEV/HEV, Rust source prep, community tariffs, local
+  Room processing and private electric ledger/report/sync. No implementation,
+  provider/account/contact/purchase, source activation, native run or publication;
+  D/iOS/charging-control/payment remain outside scope. Next: submit combined prompt
+  and reconcile current accepted MEX/EE prerequisites before schema/UI work.
+
 - Mobile expansion MEX-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING,
   isolated codex/mobile-expansion-plan from dev fb85d4d1; occupied Home/week-picker/
   manual-sync and primary work preserved. [Plan](MOBILE_EXPANSION_EXECUTION_PLAN.md),

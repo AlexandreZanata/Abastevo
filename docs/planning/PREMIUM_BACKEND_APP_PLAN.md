@@ -1,5 +1,12 @@
 # Premium delivery plan — complete backend, minimal Android UI
 
+**2026-10-20 EV data extension:** [EE](EV_FULL_SUPPORT_EXECUTION_PLAN.md) extends
+existing PRM vehicle/ledger/metrics/sync consumers for energy-capable vehicles
+before their dependent schema/UI, with [exact EV method](../product/EV_FINANCIAL_METHOD.md).
+One physical PHEV is one vehicle; paid/free capabilities and retained-data rights
+are unchanged except the separately selected one-free-vehicle MEX amendment.
+Public EV catalog/community remain free. No paid activation or provider access.
+
 **2026-10-20 selected vehicle amendment and Android continuation:**
 [Mobile expansion contract](../product/MOBILE_EXPANSION_CONTRACT.md) adopts one
 free vehicle and Premium for additional registrations with retained legacy data.

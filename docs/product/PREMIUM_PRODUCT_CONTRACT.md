@@ -1,5 +1,11 @@
 # Premium cloud and individual professional tools — proposed product contract
 
+**Selected EV extension, 2026-10-20:** [EV support](EV_SUPPORT_CONTRACT.md) and
+[energy/cost method](EV_FINANCIAL_METHOD.md) extend private vehicle/ledger/report/
+sync data for BEV/PHEV and hybrids. Public charging discovery/community remain
+free; private financial/cloud capabilities retain their existing matrix. No
+operator charging payment, document intake, live access or paid activation follows.
+
 **2026-10-20 selected amendment:** [Mobile expansion](MOBILE_EXPANSION_CONTRACT.md)
 supersedes earlier three-free-vehicle wording for the new one-free/Premium-extra
 registration policy when implemented, preserving held vehicles/history and data

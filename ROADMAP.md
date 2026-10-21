@@ -35,6 +35,17 @@ reuse, no source activation or release inference, preserved retained data and
 future D still held. [Product rules](docs/product/MOBILE_EXPANSION_CONTRACT.md),
 [agent prompt](docs/planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md).
 
+**Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
+adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing
+owners. [Source research](docs/planning/EV_SOURCE_RESEARCH.md),
+[EV rules](docs/product/EV_SUPPORT_CONTRACT.md),
+[combined dependencies](docs/planning/EV_MEX_DEPENDENCIES.json) and
+[agent prompt](docs/planning/EV_SUPPORT_EXECUTION_PROMPT.md) govern initial source
+qualification, Rust batches, Go contracts, community prices, Room/offline and
+private EV ledger/report/sync. Planning only; 77 combined execution units include
+one conditional operator-access unit. No all-chargers/live-coverage claim, provider
+purchase, charging control/payment, D override or release/activation is implied.
+
 ## P00 — Project identity documentation and visual preview
 
 Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved identity/assets/README via guarded phase merge and wiki mirror. Maintainer approved V2 publication on 2026-10-01. This task does not block or alter the ongoing functional phase.
