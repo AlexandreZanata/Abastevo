@@ -48,8 +48,9 @@ import com.anpfuel.data.local.entity.VehicleEntity
         PremiumCursorEntity::class,
         com.anpfuel.data.local.entity.QualityOwnerGateEntity::class,
         com.anpfuel.data.local.entity.QualityReportOutboxEntity::class,
+        com.anpfuel.data.local.entity.CommunityFeedCacheEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -81,4 +82,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun qualityReportOutboxDao():com.anpfuel.data.local.dao.QualityReportOutboxDao
 
     abstract fun premiumCursorDao(): PremiumCursorDao
+
+    abstract fun communityFeedCacheDao(): com.anpfuel.data.local.dao.CommunityFeedCacheDao
 }

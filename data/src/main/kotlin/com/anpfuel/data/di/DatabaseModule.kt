@@ -54,6 +54,7 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_13_14,
                 AnpFuelDatabaseMigrations.MIGRATION_14_15,
                 AnpFuelDatabaseMigrations.MIGRATION_15_16,
+                AnpFuelDatabaseMigrations.MIGRATION_16_17,
             )
             .build()
 
@@ -109,5 +110,9 @@ object DatabaseModule {
         database.premiumCursorDao()
     @Provides
     fun qualityReportOutboxDao(database:AnpFuelDatabase):com.anpfuel.data.local.dao.QualityReportOutboxDao = database.qualityReportOutboxDao()
+
+    @Provides
+    fun provideCommunityFeedCacheDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.CommunityFeedCacheDao =
+        database.communityFeedCacheDao()
 
 }

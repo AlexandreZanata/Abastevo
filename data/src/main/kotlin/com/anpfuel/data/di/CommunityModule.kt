@@ -32,8 +32,11 @@ object CommunityModule {
 
     @Provides
     @Singleton
-    fun provideCityFeedReader(@Named("apiOrigin") environment: ApiEnvironment): CityCommunityFeedReader =
-        CityCommunityFeedHttpClient(
+    fun provideCommunityFeedCacheStore(
+        @Named("apiOrigin") environment: ApiEnvironment,
+        dao: com.anpfuel.data.local.dao.CommunityFeedCacheDao,
+    ): com.anpfuel.data.repository.CommunityFeedCacheStore {
+        val client = CityCommunityFeedHttpClient(
             OkHttpClientFactory.create(maxRetries = 0).newBuilder()
                 .callTimeout(12, TimeUnit.SECONDS)
                 .followRedirects(false)
@@ -41,16 +44,26 @@ object CommunityModule {
                 .build(),
             environment.origin,
         )
+        return com.anpfuel.data.repository.CommunityFeedCacheStore(
+            networkFeed = client,
+            networkSummary = client,
+            dao = dao,
+            origin = environment.origin,
+        )
+    }
+
+    @Provides
+    fun provideCityFeedReader(store: com.anpfuel.data.repository.CommunityFeedCacheStore): CityCommunityFeedReader = store
+
+    @Provides
+    fun provideCityFeedSnapshot(store: com.anpfuel.data.repository.CommunityFeedCacheStore): com.anpfuel.domain.community.CommunityFeedLocalSnapshot = store
 
     @Provides
     fun provideCityFeedUseCase(reader: CityCommunityFeedReader, locations: SelectLocationUseCase, catalog: MunicipalityCatalogRepository) =
         GetCityCommunityFeedUseCase(reader, locations, catalog)
 
     @Provides
-    @Singleton
-    fun provideCitySummaryReader(@Named("apiOrigin") environment: ApiEnvironment): com.anpfuel.domain.community.CityCommunitySummaryReader =
-        CityCommunityFeedHttpClient(OkHttpClientFactory.create(maxRetries=0).newBuilder()
-            .callTimeout(12,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build(),environment.origin)
+    fun provideCitySummaryReader(store: com.anpfuel.data.repository.CommunityFeedCacheStore): com.anpfuel.domain.community.CityCommunitySummaryReader = store
 
     @Provides
     fun provideCitySummaryUseCase(reader: com.anpfuel.domain.community.CityCommunitySummaryReader, cityFeed: GetCityCommunityFeedUseCase) =
