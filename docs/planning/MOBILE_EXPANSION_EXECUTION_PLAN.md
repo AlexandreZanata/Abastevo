@@ -165,6 +165,11 @@ without inventing their success.
 ## 5. Sequential microtasks
 
 ### MEX-00 — Reconcile current work and canonical task ownership
+
+**2026-10-20 checkpoint:** [LOCAL_DONE / INTEGRATION_PENDING](../backend/evidence/mobile-expansion/MEX-00.md).
+Only the foundation audit was selected; next units remain unexecuted.
+[Current continuation boundary](MOBILE_EXPANSION_CONTINUATION.md).
+
 - Depends: current committed source and app-first prerequisite inventory.
 - Deliver: map PRM/FQ/OPT tasks to actual code, commits/evidence and outstanding
   acceptance; inventory dirty work, build tools and enabled runtime flags. Record

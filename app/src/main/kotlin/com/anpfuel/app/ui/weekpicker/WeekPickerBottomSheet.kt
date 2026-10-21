@@ -54,6 +54,7 @@ fun SurveyWeekChipAction(
             isLatest = uiState.isLatest,
             onClick = { sheetVisible = true },
             modifier = chipModifier,
+            isStale = uiState.isStale,
         )
     }
 

@@ -1,5 +1,15 @@
 # Current execution state
 
+- Mobile expansion MEX-00 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING on isolated
+  codex/mobile-expansion-plan. [Foundation audit](../backend/evidence/mobile-expansion/MEX-00.md)
+  reconciles planning 35accb9e with committed dev a2f8925c, preserving Home and
+  foreign work. Ownership, 30 PRM evidence base pins, app-first/FQ/OPT gaps,
+  source defaults and tools inventoried; documentation checks PASS. Separate OPT
+  copy/cache commits exist but are not blindly accepted (no-store/SQLite gates).
+  Remote freshness unverified (DNS); no new runtime behavior or publication.
+  Stopped after the requested first microtask. [Handoff](MOBILE_EXPANSION_CONTINUATION.md):
+  next MEX-01, or independently EE-00; both still unexecuted.
+
 - Full EV extension EE-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING
   on isolated codex/mobile-expansion-plan, parent 47fded8c. [Research](EV_SOURCE_RESEARCH.md)
   records 25 source/data families (23 external, two first-party), actual access/

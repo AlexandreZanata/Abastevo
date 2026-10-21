@@ -89,6 +89,11 @@ activation, safety certification or route-feasibility guarantee is authorized.
 
 ## Task workflow
 
+Foundation checkpoint: [MEX-00 audit](../backend/evidence/mobile-expansion/MEX-00.md)
+and [continuation](MOBILE_EXPANSION_CONTINUATION.md) record the first completed
+microtask and preserved parallel work. Verify its actual inputs before reuse;
+it does not complete EE-00 or any product feature.
+
 1. Inspect worktree/status/diff/history before editing; isolate occupied work
    according to ADR-020. Never stash/reset/overwrite/include foreign edits.
 2. Execute one bounded unit from the actual accepted dependency head. Document

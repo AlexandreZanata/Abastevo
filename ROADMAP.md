@@ -35,6 +35,10 @@ reuse, no source activation or release inference, preserved retained data and
 future D still held. [Product rules](docs/product/MOBILE_EXPANSION_CONTRACT.md),
 [agent prompt](docs/planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md).
 
+**Foundation checkpoint (2026-10-20):** only [MEX-00](docs/backend/evidence/mobile-expansion/MEX-00.md)
+is LOCAL_DONE / INTEGRATION_PENDING. [Continuation](docs/planning/MOBILE_EXPANSION_CONTINUATION.md)
+records the next unexecuted units and integration limits; product scope remains planned.
+
 **Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
 adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing
 owners. [Source research](docs/planning/EV_SOURCE_RESEARCH.md),
