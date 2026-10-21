@@ -81,11 +81,22 @@ func (s *Store) Preview(ctx context.Context, p app.Principal, b app.Batch) (app.
 	}
 	result := app.PreviewResult{Epoch: state.Epoch, Revision: state.Revision, ConsentRevision: state.ConsentRevision, Items: []app.PreviewItem{}}
 	pending := map[string]int64{}
+	pendingIDs := map[string]app.Command{}
+	admission := vehicleAdmission{}
 	for _, c := range b.Commands {
 		if state.ConsentMask&datasetBit(c.Dataset) == 0 {
 			return app.PreviewResult{}, domain.ErrDenied
 		}
 		item := app.PreviewItem{OperationID: c.OperationID, Dataset: c.Dataset, ID: c.ID, ExpectedRevision: c.ExpectedRevision}
+		key := c.Dataset + "\x00" + c.ID
+		if prior, ok := pendingIDs[key]; ok {
+			item.Action = "conflict"
+			if prior.OperationID == c.OperationID && prior.ExpectedRevision == c.ExpectedRevision && prior.Delete == c.Delete && bytes.Equal(prior.Payload, c.Payload) {
+				item.Action = "converge"
+			}
+			result.Items = append(result.Items, item)
+			continue
+		}
 		erased, err := query.ErasedID(ctx, q.ErasedIDParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID)})
 		if err != nil {
 			return app.PreviewResult{}, domain.ErrUnavailable
@@ -144,13 +155,7 @@ func (s *Store) Preview(ctx context.Context, p app.Principal, b app.Batch) (app.
 						continue
 					}
 				}
-				maximum := int64(1000)
-				if c.Dataset == "vehicles" {
-					maximum = 3
-				}
-				if c.Dataset == "preferences" {
-					maximum = 1
-				}
+
 				var count int64
 				if _, ok := pending[c.Dataset]; !ok {
 					n, e := query.CountDataset(ctx, q.CountDatasetParams{AccountID: uid(p.AccountID), Dataset: c.Dataset})
@@ -160,17 +165,24 @@ func (s *Store) Preview(ctx context.Context, p app.Principal, b app.Batch) (app.
 					pending[c.Dataset] = n
 				}
 				count = pending[c.Dataset]
-				if count >= maximum {
+				admissionError := s.admitRecord(ctx, tx, p.AccountID, c.Dataset, count, &admission)
+				if errors.Is(admissionError, domain.ErrQuota) || errors.Is(admissionError, domain.ErrDenied) {
 					item.Action = "quota"
+				} else if admissionError != nil {
+					return app.PreviewResult{}, admissionError
 				} else {
 					item.Action = "create"
 					pending[c.Dataset] = count + 1
+					pendingIDs[key] = c
 				}
 			}
 		} else {
 			return app.PreviewResult{}, domain.ErrUnavailable
 		}
 		result.Items = append(result.Items, item)
+	}
+	if err = s.recheckVehicleAdmission(ctx, tx, p.AccountID, admission); err != nil {
+		return app.PreviewResult{}, err
 	}
 	return result, nil
 }

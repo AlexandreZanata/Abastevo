@@ -6979,6 +6979,7 @@ components:
       - alerts.advanced
       - professional.write
       - professional.report
+      - vehicles.multiple
     PremiumStatusResponse:
       type: object
       additionalProperties: false

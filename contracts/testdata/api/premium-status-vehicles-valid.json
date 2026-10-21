@@ -1,0 +1,22 @@
+{
+  "id": "premium-status-vehicles-valid",
+  "schema": "PremiumStatusResponse",
+  "valid": true,
+  "value": {
+    "policy_version": 1,
+    "state": "ACTIVE",
+    "reason": "verified",
+    "capabilities": [
+      "cloud.sync",
+      "cloud.backup",
+      "cloud.restore",
+      "alerts.advanced",
+      "professional.write",
+      "professional.report",
+      "vehicles.multiple"
+    ],
+    "valid_until": "2026-10-21T13:00:00Z",
+    "retained_data_access": true,
+    "payments_configured": true
+  }
+}

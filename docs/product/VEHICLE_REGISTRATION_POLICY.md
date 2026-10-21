@@ -1,6 +1,6 @@
 # Vehicle registration policy v2 — staged MEX-01 contract
 
-Date: 2026-10-21. State: CONTRACT_FROZEN / RUNTIME_PENDING.
+Date: 2026-10-21. State: HOSTED_SOURCE_IMPLEMENTED / LOCAL_RUNTIME_PENDING.
 Rules: B-BR-MEX-01/02/06; BUC-MEX-01/04; amends B-BR-PR01/02/04/05/06.
 [Machine limits](../../contracts/premium/policy-v1.json) contain an additive v2
 amendment; [worked examples](../../contracts/testdata/premium/vehicle-registration-v2.json)
@@ -10,8 +10,8 @@ are synthetic contract acceptance, not persistence or billing acceptance.
 
 One new local vehicle is free, including guest/offline operation. Creating a
 second or third requires the planned `vehicles.multiple` capability in the one
-existing Premium bundle. This is a new capability identifier frozen for
-MEX-07/08; current subscription responses do not yet grant it. Unknown/missing
+existing Premium bundle. The MEX-07 hosted implementation grants this capability through the existing
+verified subscription evaluator; local admission remains MEX-08/EE-19 pending. Unknown/missing
 capability versions cannot grant extra registrations. The technical bound stays
 three; it is not an unlimited entitlement or a promise to sell three slots.
 No new product, price, trial, provider enrollment or manual grant path is added.
@@ -85,7 +85,7 @@ observations for the free concurrent case, atomic import refusal, live cloud
 authority versus a local lease, expiry/clock rollback/stale/unknown proof.
 They specify outcomes; they do not prove actual locking, SQLite or billing.
 
-MEX-07 owns hosted capability/wire/admission and real PostGIS concurrency,
+MEX-07 implements hosted capability/wire/admission and real PostGIS concurrency,
 failure/rollback and unauthorized/expired tests; MEX-08 owns local atomic quota,
 actual SQLite upgrade/reopen/concurrency/rollback and retained-data compatibility.
 Both must consume this version before activation. Applied SQL/Room migrations

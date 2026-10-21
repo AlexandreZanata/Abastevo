@@ -1,5 +1,7 @@
 # Current execution state
 
+- MEX-07 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent9f05bdc1. [Hosted vehicle admission](../backend/evidence/mobile-expansion/MEX-07.md): live vehicles.multiple and central atomic 1-free/3-ceiling rule reused in cloud creation/import/restore; final proof recheck, retained legacy IDs and honest previews. Three RED defects closed; actual PostGIS race/rollback/retry and full cloud/subscription/API/contract matrix PASS, vet/build/static/OpenAPI/diff/secret checks PASS. MEX-06 location13 independently re-executed PASS. No schema/dependency/activation change. Global Go vulnerability CI remains blocked separately. MEX-08 needs EE-19; next ready MEX-09.
+
 - MEX-06 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent3c6a9878. [Evidence](../backend/evidence/mobile-expansion/MEX-06.md):
   fast picker UI: generation fencing on catalog loads (obsolete responses
   cannot land or error), memoized composition filters over a precomputed

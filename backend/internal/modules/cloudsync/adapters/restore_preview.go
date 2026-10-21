@@ -89,6 +89,7 @@ func (s *Store) PreviewRestore(ctx context.Context, p app.Principal, snapshotID 
 		preview.Issues = append(preview.Issues, "oversize")
 		return preview, nil
 	}
+	newVehicles := int64(0)
 	seen := map[string]bool{}
 	for _, r := range parsed.Records {
 		key := r.Dataset + "\x00" + r.ID
@@ -135,11 +136,59 @@ func (s *Store) PreviewRestore(ctx context.Context, p app.Principal, snapshotID 
 		if err != nil {
 			return app.RestorePreview{}, domain.ErrUnavailable
 		}
+		if current == nil && r.Dataset == "vehicles" {
+			newVehicles++
+		}
 		if current != nil {
 			canonical, _ := NormalizePayload(r.Dataset, r.ID, current.Payload)
 			if current.Revision != r.Revision || string(canonical) != string(r.Payload) {
 				preview.ConflictCount++
 			}
+		}
+	}
+	if newVehicles > 0 {
+		// Object reads release the first lock. Reacquire current authority and
+		// the exact preview revision before reporting admission compatibility.
+		checkTx, check, e := s.writeTx(ctx, p)
+		if e != nil {
+			return app.RestorePreview{}, e
+		}
+		defer rollback(checkTx)
+		if e = s.device(ctx, checkTx, p); e != nil {
+			return app.RestorePreview{}, e
+		}
+		current, e := check.GetState(ctx, uid(p.AccountID))
+		if e != nil {
+			return app.RestorePreview{}, domain.ErrUnavailable
+		}
+		if current.Epoch != state.Epoch || current.Revision != state.Revision || current.ConsentRevision != state.ConsentRevision {
+			return app.RestorePreview{}, domain.ErrResnapshot
+		}
+		count, e := check.CountVehicles(ctx, uid(p.AccountID))
+		if e != nil {
+			return app.RestorePreview{}, domain.ErrUnavailable
+		}
+		admitted := vehicleAdmission{}
+		for i := int64(0); i < newVehicles; i++ {
+			e = s.admitRecord(ctx, checkTx, p.AccountID, "vehicles", count+i, &admitted)
+			if errors.Is(e, domain.ErrQuota) || errors.Is(e, domain.ErrDenied) {
+				preview.Compatible = false
+				issue := "vehicle-quota"
+				if errors.Is(e, domain.ErrDenied) {
+					issue = "vehicle-capability-required"
+				}
+				preview.Issues = append(preview.Issues, issue)
+				return preview, nil
+			}
+			if e != nil {
+				return app.RestorePreview{}, e
+			}
+		}
+		if e = s.checkPaid(ctx, checkTx, p.AccountID); e != nil {
+			return app.RestorePreview{}, e
+		}
+		if e = s.recheckVehicleAdmission(ctx, checkTx, p.AccountID, admitted); e != nil {
+			return app.RestorePreview{}, e
 		}
 	}
 	return preview, nil
