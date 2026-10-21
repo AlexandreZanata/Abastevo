@@ -312,6 +312,28 @@ class HomeScreenTest {
             }
         }
     }
+    @Test fun communityFailureRetainsPriceAndOffersRetry() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var retries = 0
+        composeTestRule.setContent {
+            AnpFuelTheme {
+                HomeContent(
+                    HomeUiState(
+                        priceSource = HomePriceSource.COMMUNITY, isLoading = false,
+                        hasLocation = true, municipality = "Synthetic city", state = BrazilianState.MATO_GROSSO,
+                        hasCachedData = false, showBenefits = false, communityFailed = true, communityStale = true,
+                        communityPrices = listOf(AveragePriceUiModel(FuelProduct.ETHANOL, "R$ 4,500", "R$ 4,000", "R$ 5,000", 65)),
+                    ),
+                    false, {}, {}, {}, { retries++ }, {}, includeSurveyWeekChip = false,
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("R$ 4,500").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.feed_cached_hint)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.feed_retry)).performScrollTo().performClick()
+        assertEquals(1, retries)
+    }
+
     @Test fun communitySourceWorksWithoutANPCacheAndKeepsThreePriceFilters() {
         val context=androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule.setContent {

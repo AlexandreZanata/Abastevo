@@ -70,7 +70,9 @@ class CommunityFeedCacheStore @Inject constructor(
                 entity.payloadJson,
                 FeedQuery(scope.city, scope.fuel, scope.sort),
             )
-        } catch (_: IllegalArgumentException) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
             return null
         }
         val now = Instant.ofEpochMilli(nowMillis())
@@ -89,7 +91,9 @@ class CommunityFeedCacheStore @Inject constructor(
         if (entity.payloadJson.length > CommunityFeedCacheRule.MAX_PAYLOAD_CHARS) return null
         val decoded = try {
             CityCommunityFeedHttpClient.decodeSummary(entity.payloadJson, city)
-        } catch (_: IllegalArgumentException) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
             return null
         }
         val now = Instant.ofEpochMilli(nowMillis())

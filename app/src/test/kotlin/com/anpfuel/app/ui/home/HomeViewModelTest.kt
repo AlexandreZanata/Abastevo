@@ -626,6 +626,7 @@ class HomeViewModelTest {
         coEvery { communitySnapshot.snapshotSummary(city) } returns null
         coEvery { communitySummary(city) } returns summary(city, 4900)
         viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession()
         viewModel.refreshCommunity(); advanceUntilIdle()
         assertTrue(viewModel.uiState.value.communityFailed)
         assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
@@ -683,6 +684,65 @@ class HomeViewModelTest {
         pending.complete(summary(city, 4900))
         runCurrent()
         assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
+    @Test fun `scheduled community loop always yields with no city or suspended lookup`() = runTest(dispatcher) {
+        val selected = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity?>()
+        coEvery { communitySummary.city() } coAnswers { selected.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession()
+        viewModel.refreshCommunity(periodic = true); runCurrent()
+        val pendingDelay = viewModel.communityAutoRefreshDelayMillis()
+        selected.complete(null); runCurrent()
+        val missingDelay = viewModel.communityAutoRefreshDelayMillis()
+        viewModel.stopCommunityRefresh()
+        assertTrue(pendingDelay >= 5_000, "pending lookup must yield")
+        assertTrue(missingDelay >= 5_000, "missing city must yield")
+    }
+
+    @Test fun `returning Home retains same city memory while the city lookup is suspended`() = runTest(dispatcher) {
+        val city = summaryCity()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.stopCommunityRefresh()
+        val selected = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity?>()
+        coEvery { communitySummary.city() } coAnswers { selected.await() }
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(periodic = true); runCurrent()
+        val retained = viewModel.uiState.value.communityPrices.size
+        selected.complete(city); runCurrent()
+        viewModel.stopCommunityRefresh()
+        assertEquals(1, retained)
+        coVerify(exactly = 1) { communitySummary(city) }
+        viewModel.stopCommunityRefresh()
+    }
+
+    @Test fun `reconnecting while Home is stopped makes no community query`() = runTest(dispatcher) {
+        connected.value = false
+        val city = summaryCity()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.stopCommunityRefresh()
+        connected.value = true; runCurrent()
+        coVerify(exactly = 0) { communitySummary(city) }
+    }
+
+    @Test fun `periodic evaluation retains Home failure until a successful check`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } throws java.io.IOException("unavailable")
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.communityNow = { at.plusSeconds(5) }
+        viewModel.refreshCommunity(periodic = true); runCurrent()
+        assertTrue(viewModel.uiState.value.communityFailed)
+        coVerify(exactly = 1) { communitySummary(city) }
+        viewModel.stopCommunityRefresh()
     }
 
 }

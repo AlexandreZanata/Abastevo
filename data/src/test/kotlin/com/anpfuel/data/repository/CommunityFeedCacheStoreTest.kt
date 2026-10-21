@@ -227,4 +227,21 @@ class CommunityFeedCacheStoreTest {
         }
         assertEquals(1, dao.count())
     }
+    @Test fun `balanced invalid JSON and missing fields are cache misses`() = runTest {
+        val dao = FakeDao()
+        val feed = mockk<CityCommunityFeedReader>()
+        val summaryReader = mockk<CityCommunitySummaryReader>()
+        coEvery { feed.read(any(), null) } returns page()
+        coEvery { summaryReader.readSummary(city) } returns summary()
+        val store = store(dao, feed, summaryReader)
+        store.read(FeedQuery(city, FuelProduct.ETHANOL, FeedSort.RECENT), null)
+        store.readSummary(city)
+        for (bad in listOf("{broken}", "{}")) {
+            dao.rows.replaceAll { _, row -> row.copy(payloadJson = bad) }
+            assertNull(store.snapshotFeed(city, FuelProduct.ETHANOL, FeedSort.RECENT))
+            assertNull(store.snapshotSummary(city))
+        }
+        assertEquals(page(), store.read(FeedQuery(city, FuelProduct.ETHANOL, FeedSort.RECENT), null))
+    }
+
 }

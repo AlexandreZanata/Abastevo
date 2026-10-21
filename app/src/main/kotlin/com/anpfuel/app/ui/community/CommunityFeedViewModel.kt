@@ -55,6 +55,8 @@ class CommunityFeedViewModel @Inject constructor(
     private var connected = true
     private var refreshJob: Job? = null
     private var pageJob: Job? = null
+    private var firstPageJob: Job? = null
+    private var needsLiveCursor = false
     private var resetPagination = false
     private var initialHead: List<CommunityFeedItem> = emptyList()
     private var lastAttemptMillis: Long? = null
@@ -83,6 +85,7 @@ class CommunityFeedViewModel @Inject constructor(
             mutable.update { it.copy(loading = false, loadingMore = false) }
             return
         }
+        if (!foreground) consecutiveFailures = 0
         foreground = true
         startRefreshLoop()
     }
@@ -105,9 +108,8 @@ class CommunityFeedViewModel @Inject constructor(
     }
 
     /**
-     * Central policy delay: zero only when a fetch is due now, otherwise the
-     * time until the next event that could make one due (stale window, failure
-     * backoff, or local sweep tick), never below the loop floor.
+     * Time until the next policy evaluation, always honoring the loop floor.
+     * Local expiry sweeps never issue a query on their own.
      */
     internal fun nextDelayMillis(): Long {
         // Mirror evaluate(): without a city no fetch can happen, so re-check
@@ -115,7 +117,7 @@ class CommunityFeedViewModel @Inject constructor(
         if (mutable.value.city == null || !connected || !foreground) {
             return CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
         }
-        if (shouldFetchNow()) return 0L
+        if (shouldFetchNow()) return CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
         val nowMillis = now().toEpochMilli()
         var delay = CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
         mutable.value.lastUpdated?.let { updated ->
@@ -134,6 +136,7 @@ class CommunityFeedViewModel @Inject constructor(
         consecutiveFailures = 0
         lastAttemptMillis = null
         initialHead = emptyList()
+        needsLiveCursor = false
     }
 
     private fun startRefreshLoop() {
@@ -164,14 +167,14 @@ class CommunityFeedViewModel @Inject constructor(
             refreshStale()
             return
         }
+        currentCoroutineContext().ensureActive()
         if (city == null) {
             mutable.update { it.copy(city = null, items = emptyList(), loading = false, noCity = true, failed = false, nextCursor = null, lastUpdated = null, stale = false, newUpdates = false, earlierItemsTrimmed = false) }
             return
         }
         if (city != mutable.value.city) { pageJob?.cancel() }
         if (city != mutable.value.city) {
-            consecutiveFailures = 0
-            lastAttemptMillis = null
+            resetScope()
             mutable.update {
                 it.copy(city = city, items = emptyList(), nextCursor = null, lastUpdated = null, stale = false, newUpdates = false, earlierItemsTrimmed = false, noCity = false)
             }
@@ -185,7 +188,7 @@ class CommunityFeedViewModel @Inject constructor(
             refreshStale()
             return
         }
-        if (shouldFetchNow()) {
+        if (shouldFetchNow() && pageJob?.isActive != true) {
             refreshFirstPage(city)
         } else {
             mutable.update { it.copy(loading = false) }
@@ -202,6 +205,10 @@ class CommunityFeedViewModel @Inject constructor(
         } catch (error: Exception) {
             null
         } ?: return
+        currentCoroutineContext().ensureActive()
+        // Cursors are deliberately not persisted. A full page needs a live
+        // head before it can truthfully offer a continuation.
+        needsLiveCursor = snapshot.items.size >= 20
         mutable.update {
             it.copy(
                 items = snapshot.items,
@@ -229,7 +236,7 @@ class CommunityFeedViewModel @Inject constructor(
             if (!CommunityRefreshPolicy.shouldKeepRetrying(consecutiveFailures)) return false
             if (nowMillis - lastAttempt!! < CommunityRefreshPolicy.retryDelayMillis(consecutiveFailures)) return false
         }
-        if (mutable.value.items.isEmpty() && mutable.value.lastUpdated == null) return true
+        if (needsLiveCursor || (mutable.value.items.isEmpty() && mutable.value.lastUpdated == null)) return true
         return CommunityRefreshPolicy.isStale(nowMillis, mutable.value.lastUpdated?.toEpochMilli())
     }
 
@@ -251,11 +258,14 @@ class CommunityFeedViewModel @Inject constructor(
     private suspend fun refreshFirstPage(city: FeedCity) {
         mutable.update { it.copy(loading = it.items.isEmpty(), items = it.items.filter { row -> row.expiresAt > now() }) }
         lastAttemptMillis = now().toEpochMilli()
+        val owner = currentCoroutineContext()[Job]
+        firstPageJob = owner
         try {
             val query = FeedQuery(city, mutable.value.fuel, mutable.value.sort)
             val page = feed(query)
             currentCoroutineContext().ensureActive()
             consecutiveFailures = 0
+            needsLiveCursor = false
             val items = page.items.filter { it.expiresAt > now() }.distinctBy { it.stationId }
             mutable.update {
                 // Preserve scroll/pagination while browsing older rows. Advertise new
@@ -274,13 +284,19 @@ class CommunityFeedViewModel @Inject constructor(
             consecutiveFailures++
             resetPagination = false
             mutable.update { it.copy(loading = false, failed = true, items = it.items.filter { row -> row.expiresAt > now() }) }
+        } finally {
+            if (firstPageJob === owner) firstPageJob = null
         }
     }
     fun loadMore() {
         val snapshot = mutable.value
         val cursor = snapshot.nextCursor ?: return
         val city = snapshot.city ?: return
-        if (!foreground || snapshot.loadingMore || snapshot.loading || pageJob?.isActive == true) return
+        if (!foreground || snapshot.loadingMore || snapshot.loading || pageJob?.isActive == true || firstPageJob?.isActive == true) return
+        if (!connected) {
+            mutable.update { it.copy(failed = true) }
+            return
+        }
         pageJob = viewModelScope.launch {
             mutable.update { it.copy(loadingMore = true) }
             try {

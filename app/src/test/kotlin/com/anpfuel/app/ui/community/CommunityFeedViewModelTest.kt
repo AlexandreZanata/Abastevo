@@ -272,4 +272,118 @@ class CommunityFeedViewModelTest {
         vm.setForeground(false); runCurrent()
     }
 
+    @Test fun `return after exhausted retries reopens the feed budget`() = runTest(dispatcher) {
+        var clock = at
+        val vm = model().also { it.now = { clock } }
+        coEvery { useCase(any(), any()) } throws java.io.IOException("unavailable")
+        vm.setForeground(true); runCurrent()
+        repeat(4) { clock = clock.plusSeconds(300); advanceTimeBy(300_000); runCurrent() }
+        coVerify(exactly = 5) { useCase(any(), any()) }
+        vm.setForeground(false); runCurrent()
+        clock = clock.plusSeconds(300)
+        coEvery { useCase(any(), any()) } returns CommunityFeedPage(listOf(item()), null, clock)
+        vm.setForeground(true); runCurrent()
+        vm.setForeground(false)
+        coVerify(exactly = 6) { useCase(any(), any()) }
+        assertFalse(vm.state.value.failed)
+    }
+
+    @Test fun `offline cursor request retains cards without a query`() = runTest(dispatcher) {
+        coEvery { useCase(any(), null) } returns CommunityFeedPage(listOf(item()), "more", at)
+        coEvery { useCase(any(), "more") } returns CommunityFeedPage(emptyList(), null, at)
+        val vm = model(); vm.setForeground(true); runCurrent()
+        connected.value = false; runCurrent()
+        vm.loadMore(); runCurrent()
+        vm.setForeground(false)
+        coVerify(exactly = 0) { useCase(any(), "more") }
+        assertEquals(1, vm.state.value.items.size)
+        assertTrue(vm.state.value.failed)
+    }
+
+    @Test fun `full fresh snapshot acquires a live cursor while retaining its cards`() = runTest(dispatcher) {
+        val first = (1..20).map { item().copy(stationId = "00000000-0000-0000-0000-%012d".format(it)) }
+        coEvery { snapshots.snapshotFeed(any(), any(), any()) } returns CommunityFeedPage(first, null, at)
+        val head = kotlinx.coroutines.CompletableDeferred<CommunityFeedPage>()
+        coEvery { useCase(any(), null) } coAnswers { head.await() }
+        coEvery { useCase(any(), "live-more") } returns CommunityFeedPage(listOf(item().copy(stationId = "00000000-0000-0000-0000-000000000021")), null, at)
+        val vm = model(); vm.setForeground(true); runCurrent()
+        assertEquals(first, vm.state.value.items)
+        head.complete(CommunityFeedPage(first, "live-more", at)); runCurrent()
+        vm.loadMore(); runCurrent()
+        vm.setForeground(false)
+        coVerify(exactly = 1) { useCase(any(), null) }
+        assertEquals(21, vm.state.value.items.size)
+    }
+
+    @Test fun `cancelled snapshot cannot paint into a newer fuel scope`() = runTest(dispatcher) {
+        val old = kotlinx.coroutines.CompletableDeferred<CommunityFeedPage>()
+        coEvery { snapshots.snapshotFeed(city, FuelProduct.GASOLINE_REGULAR, FeedSort.RECENT) } coAnswers {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { old.await() }
+        }
+        coEvery { useCase(any(), any()) } coAnswers { kotlinx.coroutines.awaitCancellation() }
+        val vm = model(); vm.setForeground(true); runCurrent()
+        vm.selectFuel(FuelProduct.ETHANOL); runCurrent()
+        old.complete(CommunityFeedPage(listOf(item()), null, at)); runCurrent()
+        vm.setForeground(false); runCurrent()
+        assertEquals(FuelProduct.ETHANOL, vm.state.value.fuel)
+        assertTrue(vm.state.value.items.isEmpty())
+    }
+
+    @Test fun `five foreground minutes refresh fresh data exactly six times`() = runTest(dispatcher) {
+        val vm = model().also { it.now = { at.plusMillis(testScheduler.currentTime) } }
+        coEvery { useCase(any(), null) } answers { CommunityFeedPage(listOf(item()), null, at.plusMillis(testScheduler.currentTime)) }
+        try {
+            vm.setForeground(true); runCurrent()
+            advanceTimeBy(300_000); runCurrent()
+            coVerify(exactly = 6) { useCase(any(), null) }
+        } finally { vm.setForeground(false); runCurrent() }
+    }
+
+    @Test fun `five offline foreground minutes keep snapshot with zero calls`() = runTest(dispatcher) {
+        connected.value = false
+        coEvery { snapshots.snapshotFeed(any(), any(), any()) } returns CommunityFeedPage(listOf(item()), null, at)
+        val vm = model().also { it.now = { at.plusMillis(testScheduler.currentTime) } }
+        try {
+            vm.setForeground(true); runCurrent()
+            advanceTimeBy(300_000); runCurrent()
+            coVerify(exactly = 0) { useCase(any(), any()) }
+            assertEquals(1, vm.state.value.items.size)
+            assertTrue(vm.state.value.failed)
+        } finally { vm.setForeground(false); runCurrent() }
+    }
+
+    @Test fun `five outage foreground minutes make exactly five attempts`() = runTest(dispatcher) {
+        coEvery { useCase(any(), null) } throws java.io.IOException("unavailable")
+        val vm = model().also { it.now = { at.plusMillis(testScheduler.currentTime) } }
+        try {
+            vm.setForeground(true); runCurrent()
+            advanceTimeBy(300_000); runCurrent()
+            coVerify(exactly = 5) { useCase(any(), null) }
+            advanceTimeBy(300_000); runCurrent()
+            coVerify(exactly = 5) { useCase(any(), null) }
+        } finally { vm.setForeground(false); runCurrent() }
+    }
+
+    @Test fun `first page and cursor jobs do not overlap`() = runTest(dispatcher) {
+        coEvery { useCase(any(), null) } returns CommunityFeedPage(listOf(item()), "more", at)
+        val vm = model()
+        val head = kotlinx.coroutines.CompletableDeferred<CommunityFeedPage>()
+        val continuation = kotlinx.coroutines.CompletableDeferred<CommunityFeedPage>()
+        coEvery { useCase(any(), "more") } coAnswers { continuation.await() }
+        try {
+            vm.setForeground(true); runCurrent()
+            coEvery { useCase(any(), null) } coAnswers { head.await() }
+            vm.now = { at.plusSeconds(61) }; advanceTimeBy(30_000); runCurrent()
+            vm.loadMore(); runCurrent()
+            coVerify(exactly = 0) { useCase(any(), "more") }
+            head.complete(CommunityFeedPage(listOf(item()), "more", at.plusSeconds(61))); runCurrent()
+            vm.loadMore(); runCurrent()
+            vm.now = { at.plusSeconds(122) }; advanceTimeBy(60_000); runCurrent()
+            coVerify(exactly = 2) { useCase(any(), null) }
+            assertTrue(vm.state.value.loadingMore)
+            continuation.complete(CommunityFeedPage(emptyList(), null, at.plusSeconds(122))); runCurrent()
+            assertFalse(vm.state.value.loadingMore)
+        } finally { vm.setForeground(false); runCurrent() }
+    }
+
 }

@@ -111,12 +111,14 @@ class HomeViewModel @Inject constructor(
     private var communityJob: kotlinx.coroutines.Job? = null
     private var communityGeneration = 0L
     private var communitySession = 0L
+    private var communityForeground = false
     private var consecutiveCommunityFailures = 0
     private var lastCommunityAttemptMillis: Long? = null
     internal var communityNow: () -> java.time.Instant = { java.time.Instant.now() }
     /** A resumed screen owns a lease; cleanup from an older screen cannot cancel this one. */
     fun startCommunitySession(): Long {
-        _uiState.update { it.copy(communityPrices = emptyList(), communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+        communityForeground = true
+        consecutiveCommunityFailures = 0
         return ++communitySession
     }
 
@@ -132,6 +134,7 @@ class HomeViewModel @Inject constructor(
 
     fun stopCommunityRefresh(session: Long? = null) {
         if (session != null && session != communitySession) return
+        communityForeground = false
         communitySession++
         communityGeneration++
         communityJob?.cancel()
@@ -148,12 +151,15 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Central policy delay for the Home community loop: zero only when a fetch
-     * is due now, otherwise the time until the next event that could make one
-     * due, never below the loop floor (a zero delay would busy-loop).
+     * The Compose caller schedules asynchronously: a pending city/network job
+     * must still yield, as must an empty city. Every path honors the loop floor.
      */
     fun communityAutoRefreshDelayMillis(): Long {
-        if (shouldFetchCommunity(explicit = false)) return 0L
+        if (communityJob?.isActive == true) return com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
+        if (!communityForeground || _uiState.value.communityCity == null || _uiState.value.isOffline) {
+            return com.anpfuel.domain.community.CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
+        }
+        if (shouldFetchCommunity(explicit = false)) return com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
         val nowMillis = communityNow().toEpochMilli()
         var delay = com.anpfuel.domain.community.CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
         _uiState.value.communityGeneratedAt?.let { generated ->
@@ -177,7 +183,7 @@ class HomeViewModel @Inject constructor(
         val ticket = ++communityGeneration
         communityJob?.cancel()
         _uiState.update { state ->
-            state.copy(communityLoading = true, communityFailed = false,
+            state.copy(communityLoading = true,
                 communityPrices = if (state.communityExpiresAt?.let { it > communityNow() } == true) state.communityPrices else emptyList())
         }
         communityJob = viewModelScope.launch {
@@ -202,14 +208,15 @@ class HomeViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 communityLoading = false,
-                                // Explicit refreshes report offline; periodic ticks stay quiet.
-                                communityFailed = if (!periodic && it.isOffline) true else it.communityFailed,
+                                // Skipping a query must not erase its last failure indication.
+                                communityFailed = it.isOffline || it.communityFailed,
                             )
                         }
                     }
                     refreshCommunityStale()
                     return@launch
                 }
+                _uiState.update { it.copy(communityFailed = false) }
                 lastCommunityAttemptMillis = communityNow().toEpochMilli()
                 val summary = communitySummary(city)
                 if (ticket != communityGeneration || _uiState.value.priceSource != HomePriceSource.COMMUNITY) return@launch
@@ -319,7 +326,7 @@ class HomeViewModel @Inject constructor(
             observeNetworkConnectivityUseCase().collect { isConnected ->
                 _uiState.update { it.copy(isOffline = !isConnected) }
                 // A new network is an explicit event: reset backoff and re-evaluate.
-                if (wasOffline && isConnected && _uiState.value.priceSource == HomePriceSource.COMMUNITY) {
+                if (wasOffline && isConnected && communityForeground && _uiState.value.priceSource == HomePriceSource.COMMUNITY) {
                     consecutiveCommunityFailures = 0
                     refreshCommunity(periodic = true)
                 }
