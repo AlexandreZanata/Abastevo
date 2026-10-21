@@ -14,7 +14,8 @@ the protected dev → main PR. Original phase evidence remains historical.
   Home session. Returning after retry exhaustion reopens the attempt budget.
 - BUC-OPT02: periodic evaluations that skip the network preserve the last
   failure/offline indication until a successful check. Cursor loads make no
-  request offline or during a first-page request.
+  request offline or during a first-page request. Cancelling a cursor load on
+  reconnect must release its loading state and allow a later continuation.
 - B-BR-OPT03: a full cached first page acquires a live continuation promptly
   while retaining its cards; persisted cursors remain excluded. A cancelled
   snapshot must not paint into a newer filter scope. Malformed JSON snapshots
@@ -38,10 +39,13 @@ current-head/base remote results belong to PR #140 metadata.
   failure indication, retry-budget return, offline cursor, full cached-page
   continuation, cancelled-snapshot isolation). A ninth data regression
   reproduced `JSONException` from balanced-invalid JSON/missing fields.
-- GREEN: all nine regressions pass after the scoped corrections. A separate
-  concurrency case proves first-page and cursor work cannot overlap.
+- GREEN: all nine initial regressions pass after the scoped corrections. A
+  tenth RED/GREEN regression found during final review proves reconnecting
+  during a cursor request releases `loadingMore`, retaining the cursor for
+  retry even when a fresh head needs no query. A separate concurrency case
+  proves first-page and cursor work cannot overlap.
 - Full JVM suites: domain 549, application 387, data 449 (two existing opt-in
-  skips), app 391; zero failures/errors. Exact commands:
+  skips), app 392; zero failures/errors. Exact commands:
 
   ```sh
   ./gradlew --no-daemon --max-workers=2 :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest
@@ -55,8 +59,13 @@ current-head/base remote results belong to PR #140 metadata.
   fixture rows, generated DAO age/64-entry bounds and close/reopen PASS (1).
   Community Compose class plus two Home community cases PASS (7, no skips),
   including stale hint, standard-price label, failure retention and retry.
-  Synthetic screenshot inspected. APKs installed with `adb install -r`;
+  Twelve additional existing native database/cache/13→14→15→16 migration
+  cases also PASS without skips. Synthetic screenshot inspected. APKs installed with `adb install -r`;
   direct instrumentation used `-e clearPackageData false`, no app-data reset.
+  Product APK identity was verified after install (SHA256
+  `64d20d5d94d71cf353ce162e071fd69a7b0706b4a87ea9d65cc37cb9508ca9be`).
+  The seven Compose cases were repeated successfully on this final APK after
+  the reconnect correction, alongside the full app JVM suite/build/lint.
 
   ```sh
   adb shell am instrument -w -r -e clearPackageData false -e class com.anpfuel.data.local.CommunityCacheMigration16To17Test com.anpfuel.data.test/androidx.test.runner.AndroidJUnitRunner

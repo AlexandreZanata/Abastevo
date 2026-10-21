@@ -142,6 +142,9 @@ class CommunityFeedViewModel @Inject constructor(
     private fun startRefreshLoop() {
         refreshJob?.cancel()
         pageJob?.cancel()
+        // Cancellation has no page result to clear the spinner. Fresh-scope
+        // reconnects may skip the head query, so release it at cancellation.
+        mutable.update { it.copy(loadingMore = false) }
         if (!foreground) return
         refreshJob = viewModelScope.launch {
             evaluate()

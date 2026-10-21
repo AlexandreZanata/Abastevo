@@ -386,4 +386,22 @@ class CommunityFeedViewModelTest {
         } finally { vm.setForeground(false); runCurrent() }
     }
 
+    @Test fun `reconnect cancels a cursor load without leaving pagination stuck`() = runTest(dispatcher) {
+        coEvery { useCase(any(), null) } returns CommunityFeedPage(listOf(item()), "more", at)
+        coEvery { useCase(any(), "more") } coAnswers { kotlinx.coroutines.awaitCancellation() }
+        val vm = model()
+        try {
+            vm.setForeground(true); runCurrent()
+            vm.loadMore(); runCurrent()
+            assertTrue(vm.state.value.loadingMore)
+            connected.value = false; runCurrent()
+            connected.value = true; runCurrent()
+            assertFalse(vm.state.value.loadingMore)
+            coEvery { useCase(any(), "more") } returns CommunityFeedPage(emptyList(), null, at)
+            vm.loadMore(); runCurrent()
+            coVerify(exactly = 2) { useCase(any(), "more") }
+            coVerify(exactly = 1) { useCase(any(), null) }
+        } finally { vm.setForeground(false); runCurrent() }
+    }
+
 }
