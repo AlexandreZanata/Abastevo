@@ -32,6 +32,16 @@ type ChargingConnectionGroup struct {
 	ReportedQuantity pgtype.Int4 `json:"reported_quantity"`
 }
 
+type ChargingHelpfulnessVote struct {
+	ID                 pgtype.UUID        `json:"id"`
+	AccountID          pgtype.UUID        `json:"account_id"`
+	ObservationID      pgtype.UUID        `json:"observation_id"`
+	Choice             string             `json:"choice"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type ChargingObservation struct {
 	ID                  pgtype.UUID        `json:"id"`
 	AccountID           pgtype.UUID        `json:"account_id"`
@@ -44,6 +54,17 @@ type ChargingObservation struct {
 	Revision            int64              `json:"revision"`
 	Deleted             bool               `json:"deleted"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	HiddenAt            pgtype.Timestamptz `json:"hidden_at"`
+}
+
+type ChargingObservationReport struct {
+	ID            pgtype.UUID        `json:"id"`
+	AccountID     pgtype.UUID        `json:"account_id"`
+	ObservationID pgtype.UUID        `json:"observation_id"`
+	Reason        string             `json:"reason"`
+	Detail        string             `json:"detail"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type ChargingPlace struct {

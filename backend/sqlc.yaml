@@ -324,6 +324,7 @@ sql:
       - db/migrations/000115_charging_reference_storage.sql
       - db/migrations/000116_charging_batch_order.sql
       - db/migrations/000117_charging_community_observations.sql
+      - db/migrations/000118_charging_helpfulness_reports.sql
     gen:
       go:
         package: charging

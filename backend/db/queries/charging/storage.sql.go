@@ -328,6 +328,33 @@ func (q *Queries) FindChargingBatchByManifest(ctx context.Context, manifestSha25
 	return id, err
 }
 
+const helpfulnessTally = `-- name: HelpfulnessTally :one
+SELECT
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = $1::uuid AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = $1::uuid AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful
+`
+
+type HelpfulnessTallyRow struct {
+	Helpful    int64 `json:"helpful"`
+	NotHelpful int64 `json:"not_helpful"`
+}
+
+func (q *Queries) HelpfulnessTally(ctx context.Context, observationID pgtype.UUID) (HelpfulnessTallyRow, error) {
+	row := q.db.QueryRow(ctx, helpfulnessTally, observationID)
+	var i HelpfulnessTallyRow
+	err := row.Scan(&i.Helpful, &i.NotHelpful)
+	return i, err
+}
+
+const hideObservation = `-- name: HideObservation :exec
+UPDATE charging_observations SET hidden_at = clock_timestamp() WHERE id = $1::uuid AND hidden_at IS NULL
+`
+
+func (q *Queries) HideObservation(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, hideObservation, id)
+	return err
+}
+
 const latestChargingBatch = `-- name: LatestChargingBatch :one
 SELECT id,profile_id,source_revision FROM charging_batches
 WHERE profile_id = $1::text ORDER BY stored_at DESC LIMIT 1
@@ -344,6 +371,62 @@ func (q *Queries) LatestChargingBatch(ctx context.Context, profile string) (Late
 	var i LatestChargingBatchRow
 	err := row.Scan(&i.ID, &i.ProfileID, &i.SourceRevision)
 	return i, err
+}
+
+const observationProjection = `-- name: ObservationProjection :many
+SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful
+FROM charging_observations o
+WHERE o.place_id = $1::uuid AND NOT o.deleted AND o.hidden_at IS NULL
+ AND o.observed_day >= $2::date
+ORDER BY o.observed_day DESC, o.id::text LIMIT $3::int
+`
+
+type ObservationProjectionParams struct {
+	PlaceID      pgtype.UUID `json:"place_id"`
+	Since        pgtype.Date `json:"since"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type ObservationProjectionRow struct {
+	ID                  pgtype.UUID `json:"id"`
+	ConnectorCode       string      `json:"connector_code"`
+	PriceMilliBrlPerKwh pgtype.Int4 `json:"price_milli_brl_per_kwh"`
+	Condition           string      `json:"condition"`
+	ObservedDay         pgtype.Date `json:"observed_day"`
+	Note                string      `json:"note"`
+	Helpful             int64       `json:"helpful"`
+	NotHelpful          int64       `json:"not_helpful"`
+}
+
+func (q *Queries) ObservationProjection(ctx context.Context, arg ObservationProjectionParams) ([]ObservationProjectionRow, error) {
+	rows, err := q.db.Query(ctx, observationProjection, arg.PlaceID, arg.Since, arg.LimitPlusOne)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ObservationProjectionRow
+	for rows.Next() {
+		var i ObservationProjectionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConnectorCode,
+			&i.PriceMilliBrlPerKwh,
+			&i.Condition,
+			&i.ObservedDay,
+			&i.Note,
+			&i.Helpful,
+			&i.NotHelpful,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const recordChargingBatch = `-- name: RecordChargingBatch :one
@@ -376,6 +459,33 @@ func (q *Queries) RecordChargingBatch(ctx context.Context, arg RecordChargingBat
 		arg.ManifestSha256,
 		arg.InputCount,
 		arg.AcceptedCount,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const reportObservation = `-- name: ReportObservation :one
+INSERT INTO charging_observation_reports(id,account_id,observation_id,reason,detail)
+VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)
+ON CONFLICT (account_id, observation_id) DO NOTHING RETURNING id
+`
+
+type ReportObservationParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	ObservationID pgtype.UUID `json:"observation_id"`
+	Reason        string      `json:"reason"`
+	Detail        string      `json:"detail"`
+}
+
+func (q *Queries) ReportObservation(ctx context.Context, arg ReportObservationParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, reportObservation,
+		arg.ID,
+		arg.AccountID,
+		arg.ObservationID,
+		arg.Reason,
+		arg.Detail,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -475,6 +585,33 @@ func (q *Queries) StageChargingVehicleReference(ctx context.Context, arg StageCh
 		arg.BatchID,
 		arg.EntityKey,
 		arg.ModelCode,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const voteHelpfulness = `-- name: VoteHelpfulness :one
+INSERT INTO charging_helpfulness_votes(id,account_id,observation_id,choice,client_submission_id)
+VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING RETURNING id
+`
+
+type VoteHelpfulnessParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	ObservationID pgtype.UUID `json:"observation_id"`
+	Choice        string      `json:"choice"`
+	SubmissionID  string      `json:"submission_id"`
+}
+
+func (q *Queries) VoteHelpfulness(ctx context.Context, arg VoteHelpfulnessParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, voteHelpfulness,
+		arg.ID,
+		arg.AccountID,
+		arg.ObservationID,
+		arg.Choice,
+		arg.SubmissionID,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

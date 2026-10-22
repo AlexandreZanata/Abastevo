@@ -88,3 +88,30 @@ RETURNING revision;
 
 -- name: CountAccountObservations :one
 SELECT count(*) FROM charging_observations WHERE account_id = @account_id::uuid AND NOT deleted;
+
+-- name: VoteHelpfulness :one
+INSERT INTO charging_helpfulness_votes(id,account_id,observation_id,choice,client_submission_id)
+VALUES(@id::uuid,@account_id::uuid,@observation_id::uuid,@choice,@submission_id)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING RETURNING id;
+
+-- name: HelpfulnessTally :one
+SELECT
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = @observation_id::uuid AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = @observation_id::uuid AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful;
+
+-- name: ReportObservation :one
+INSERT INTO charging_observation_reports(id,account_id,observation_id,reason,detail)
+VALUES(@id::uuid,@account_id::uuid,@observation_id::uuid,@reason,@detail)
+ON CONFLICT (account_id, observation_id) DO NOTHING RETURNING id;
+
+-- name: HideObservation :exec
+UPDATE charging_observations SET hidden_at = clock_timestamp() WHERE id = @id::uuid AND hidden_at IS NULL;
+
+-- name: ObservationProjection :many
+SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
+ (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful
+FROM charging_observations o
+WHERE o.place_id = @place_id::uuid AND NOT o.deleted AND o.hidden_at IS NULL
+ AND o.observed_day >= @since::date
+ORDER BY o.observed_day DESC, o.id::text LIMIT @limit_plus_one::int;
