@@ -53,7 +53,7 @@ func (s *Store) SetConsent(ctx context.Context, accountID string, datasets []str
 		return application.ConsentStatus{}, errUnavailable()
 	}
 	enabledDatasets := []string{}
-	for _, d := range []string{"refuel", "expense"} {
+	for _, d := range []string{"refuel", "expense", "charge"} {
 		if row.Mask&ledgerBit(d) != 0 {
 			enabledDatasets = append(enabledDatasets, d)
 		}
@@ -94,7 +94,7 @@ func (s *Store) EraseAll(ctx context.Context, accountID string) error {
 	if err = query.PurgeLedgerOperations(ctx, uid(accountID)); err != nil {
 		return errUnavailable()
 	}
-	if _, err = query.SetLedgerConsent(ctx, q.SetLedgerConsentParams{AccountID: uid(accountID), Enabled: false, Mask: 3}); err != nil {
+	if _, err = query.SetLedgerConsent(ctx, q.SetLedgerConsentParams{AccountID: uid(accountID), Enabled: false, Mask: 7}); err != nil {
 		return errUnavailable()
 	}
 	if err = tx.Commit(ctx); err != nil {

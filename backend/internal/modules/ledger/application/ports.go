@@ -73,6 +73,20 @@ type ReportTotals struct {
 	ByCategory       map[string]int64  `json:"by_category"`
 	RecordCount      int64             `json:"record_count"`
 	Coverage         map[string]string `json:"coverage"`
+	// EE-16 electric extension. ChargeEnergyWh/CostCentavos sum stated
+	// session values only (nulls stay out, never zero-filled); fees are
+	// reported separately and never auto-added to session totals.
+	// ByVehicle keeps all vehicle-attributed money (fuel plus charge
+	// plus expense, each row counted once). EnergyCoverage holds Wh/km
+	// or an unknown reason per charge vehicle; CombinedCostPerKm holds
+	// the exact money/km over the shared distance (or its unknown
+	// reason). Mixed fuel/charge vehicles report "phev-shared-distance"
+	// in both coverages: one distance is never attributed twice.
+	ChargeEnergyWh     int64             `json:"charge_energy_wh"`
+	ChargeCostCentavos int64             `json:"charge_cost_centavos"`
+	ChargeFeesCentavos int64             `json:"charge_fees_centavos"`
+	EnergyCoverage     map[string]string `json:"energy_coverage"`
+	CombinedCostPerKm  map[string]string `json:"combined_cost_per_km"`
 }
 
 type Report struct {
