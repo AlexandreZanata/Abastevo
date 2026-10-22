@@ -172,6 +172,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindLedgerDraftStore(
+        impl: com.anpfuel.data.repository.LedgerDraftStoreImpl,
+    ): com.anpfuel.domain.repository.LedgerDraftStore
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

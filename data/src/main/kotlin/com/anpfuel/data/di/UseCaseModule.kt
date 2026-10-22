@@ -488,6 +488,43 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideSaveLedgerDraftUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.SaveLedgerDraftUseCase =
+        com.anpfuel.application.usecase.ledger.SaveLedgerDraftUseCase(
+            drafts = drafts,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideEnqueueLedgerCommandUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.EnqueueLedgerCommandUseCase =
+        com.anpfuel.application.usecase.ledger.EnqueueLedgerCommandUseCase(
+            drafts = drafts,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideRecoverLedgerOutboxUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+    ): com.anpfuel.application.usecase.ledger.RecoverLedgerOutboxUseCase =
+        com.anpfuel.application.usecase.ledger.RecoverLedgerOutboxUseCase(
+            commands = commands,
+        )
+
+    @Provides
+    @Singleton
     fun provideDeleteVehicleUseCase(
         vehicleRepository: VehicleRepository,
         eventPublisher: DomainEventPublisher,

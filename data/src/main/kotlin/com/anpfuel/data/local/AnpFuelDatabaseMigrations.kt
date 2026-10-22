@@ -637,4 +637,28 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_21_22: Migration = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-11 durable ledger draft table. No existing
+            // table is altered; every vehicle, snapshot and private row
+            // survives untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ledger_draft` (
+                    `draft_id` TEXT NOT NULL,
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `record_id` TEXT NOT NULL,
+                    `expected_revision` INTEGER NOT NULL,
+                    `body_json` TEXT NOT NULL,
+                    `updated_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`draft_id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_ledger_draft_owner_record` ON `ledger_draft` (`owner_account`, `origin`, `dataset`, `record_id`)")
+        }
+    }
+
 }

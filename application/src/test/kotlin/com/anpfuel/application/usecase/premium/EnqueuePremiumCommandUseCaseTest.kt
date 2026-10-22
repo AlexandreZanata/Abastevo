@@ -41,6 +41,8 @@ class EnqueuePremiumCommandUseCaseTest {
         override suspend fun clearOwner(scope: PremiumOwnerScope) {
             rows.entries.removeIf { it.value.scope == scope }
         }
+
+        override suspend fun releaseExpired(nowMillis: Long): Int = 0
     }
 
     @Test

@@ -18,6 +18,13 @@ interface PremiumCommandStore {
     suspend fun listPending(scope: PremiumOwnerScope, limit: Int): List<PremiumCommand>
     suspend fun remove(scope: PremiumOwnerScope, operationId: String)
     suspend fun clearOwner(scope: PremiumOwnerScope)
+
+    /**
+     * MEX-11 restart recovery: crashed IN_FLIGHT claims whose lease
+     * expired return to QUEUED with their original operation IDs.
+     * Returns the released count.
+     */
+    suspend fun releaseExpired(nowMillis: Long): Int
 }
 
 interface PremiumCursorStore {

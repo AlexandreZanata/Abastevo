@@ -85,6 +85,17 @@ interface PremiumOutboxDao {
     )
     suspend fun deleteById(commandId: String, ownerAccount: String, origin: String)
 
+    /**
+     * MEX-11 restart recovery: crashed IN_FLIGHT claims whose lease
+     * expired return to QUEUED with their original operation IDs, so a
+     * lost acknowledgement retries without minting a duplicate command.
+     */
+    @Query(
+        "UPDATE premium_outbox SET state = 'QUEUED', nonce = '' " +
+            "WHERE state = 'IN_FLIGHT' AND next_eligible_tick <= :nowMillis",
+    )
+    suspend fun releaseExpired(nowMillis: Long): Int
+
     @Query(
         "DELETE FROM premium_outbox WHERE owner_account = :ownerAccount AND origin = :origin",
     )

@@ -57,6 +57,9 @@ class PremiumCommandStoreImpl @Inject constructor(
     override suspend fun clearOwner(scope: PremiumOwnerScope) {
         outbox.clearOwner(scope.accountId, scope.origin)
     }
+
+    override suspend fun releaseExpired(nowMillis: Long): Int =
+        outbox.releaseExpired(nowMillis)
 }
 
 class PremiumCursorStoreImpl @Inject constructor(

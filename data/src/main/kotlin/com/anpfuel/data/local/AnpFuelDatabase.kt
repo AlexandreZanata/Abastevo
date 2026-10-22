@@ -52,8 +52,9 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity::class,
         com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity::class,
         com.anpfuel.data.local.entity.VehicleCapabilityLeaseEntity::class,
+        com.anpfuel.data.local.entity.LedgerDraftEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -91,4 +92,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun chargingSnapshotDao(): com.anpfuel.data.local.dao.ChargingSnapshotDao
 
     abstract fun vehicleCapabilityLeaseDao(): com.anpfuel.data.local.dao.VehicleCapabilityLeaseDao
+
+    abstract fun ledgerDraftDao(): com.anpfuel.data.local.dao.LedgerDraftDao
 }
