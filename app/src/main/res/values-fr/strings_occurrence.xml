@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">Registres officiels</string>
+    <string name="occurrence_filter_type">Type</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">Période</string>
+    <string name="occurrence_empty">Aucun registre trouvé dans les sources et la période sélectionnées</string>
+    <string name="occurrence_unavailable">Source indisponible pour cette requête</string>
+    <string name="occurrence_unsupported_filter">Filtre indisponible pour cette source</string>
+    <string name="occurrence_stale">Données enregistrées ; lien actuel non vérifié</string>
+    <string name="occurrence_coverage">%1$d registres dans %2$d documents</string>
+    <string name="occurrence_document_day">Date du document : %1$s</string>
+    <string name="occurrence_no_guilt">Registre de la source ; ne prouve ni infraction, ni culpabilité, ni sécurité</string>
+    <string name="occurrence_company_note">Associé à l\'entreprise actuelle ; ne prouve pas d\'occurrence à cette adresse</string>
+    <string name="occurrence_unmatched">Aucun lien établi</string>
+    <string name="occurrence_retry">Réessayer</string>
+    <string name="occurrence_detail_title">Détail du registre</string>
+    <string name="occurrence_action_label">Action de contrôle</string>
+    <string name="occurrence_infra_label">Infraction signalée par la source</string>
+    <string name="occurrence_assay_label">Analyse de qualité</string>
+    <string name="occurrence_fine_label">Registre d\'amende</string>
+    <string name="occurrence_timeline">Chronologie</string>
+    <string name="occurrence_clear">Effacer</string>
+    <string name="occurrence_apply">Appliquer</string>
+    <string name="occurrence_all">Tous</string>
+    <string name="occurrence_company_section">Registres d’entreprise</string>
+    <string name="occurrence_global_section">Registres globaux de source</string>
+    <string name="occurrence_filter_segment">Segment</string>
+    <string name="occurrence_filter_kind">Type de sujet</string>
+</resources>

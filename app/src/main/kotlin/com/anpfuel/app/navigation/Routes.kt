@@ -56,6 +56,13 @@ object Routes {
 
     const val SUGGEST = "suggest"
 
+    const val OCCURRENCE_EXPLORER = "occurrence-explorer"
+    const val OCCURRENCE_DETAIL = "occurrence-detail/{recordId}"
+    fun occurrenceDetail(recordId: String): String {
+        require(java.util.UUID.fromString(recordId).toString() == recordId)
+        return "occurrence-detail/$recordId"
+    }
+
     fun stations(fuelProduct: FuelProduct): String = "stations/${fuelProduct.name}"
 
     /** Contextual capture for one canonical station + wire fuel (P37-T01). */

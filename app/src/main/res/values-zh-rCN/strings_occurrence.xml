@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">官方记录</string>
+    <string name="occurrence_filter_type">类型</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">期间</string>
+    <string name="occurrence_empty">在所选来源和期间内未找到记录</string>
+    <string name="occurrence_unavailable">此查询的来源不可用</string>
+    <string name="occurrence_unsupported_filter">此来源不支持该过滤器</string>
+    <string name="occurrence_stale">已保存数据；当前关联未验证</string>
+    <string name="occurrence_coverage">%2$d个文档中有%1$d条记录</string>
+    <string name="occurrence_document_day">文档日期：%1$s</string>
+    <string name="occurrence_no_guilt">来源记录；不证明违规、责任或安全</string>
+    <string name="occurrence_company_note">已关联当前企业；不证明此地址发生过事件</string>
+    <string name="occurrence_unmatched">未确定关联</string>
+    <string name="occurrence_retry">重试</string>
+    <string name="occurrence_detail_title">记录详情</string>
+    <string name="occurrence_action_label">检查行动</string>
+    <string name="occurrence_infra_label">来源报告的违规</string>
+    <string name="occurrence_assay_label">质量分析</string>
+    <string name="occurrence_fine_label">罚款记录</string>
+    <string name="occurrence_timeline">时间线</string>
+    <string name="occurrence_clear">清除</string>
+    <string name="occurrence_apply">应用</string>
+    <string name="occurrence_all">全部</string>
+    <string name="occurrence_company_section">企业记录</string>
+    <string name="occurrence_global_section">来源全局记录</string>
+    <string name="occurrence_filter_segment">细分</string>
+    <string name="occurrence_filter_kind">主体类型</string>
+</resources>

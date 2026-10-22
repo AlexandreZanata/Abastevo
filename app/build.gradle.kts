@@ -43,6 +43,8 @@ android {
         versionName = "3.1.0"
         buildConfigField("boolean", "QUALITY_UI_ENABLED",
             providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        buildConfigField("boolean", "OCCURRENCE_UI_ENABLED",
+            providers.gradleProperty("occurrenceUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }

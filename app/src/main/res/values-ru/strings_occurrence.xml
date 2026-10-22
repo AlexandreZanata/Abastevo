@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">Официальные записи</string>
+    <string name="occurrence_filter_type">Тип</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">Период</string>
+    <string name="occurrence_empty">Записей в выбранных источниках и периоде не найдено</string>
+    <string name="occurrence_unavailable">Источник недоступен для этого запроса</string>
+    <string name="occurrence_unsupported_filter">Фильтр недоступен для этого источника</string>
+    <string name="occurrence_stale">Сохранённые данные; текущая связь не проверена</string>
+    <string name="occurrence_coverage">Записей: %1$d в документах: %2$d</string>
+    <string name="occurrence_document_day">Дата документа: %1$s</string>
+    <string name="occurrence_no_guilt">Запись источника; не доказывает нарушение, вину или безопасность</string>
+    <string name="occurrence_company_note">Связано с текущей компанией; не доказывает происшествие по этому адресу</string>
+    <string name="occurrence_unmatched">Связь не установлена</string>
+    <string name="occurrence_retry">Повторить</string>
+    <string name="occurrence_detail_title">Детали записи</string>
+    <string name="occurrence_action_label">Контрольное действие</string>
+    <string name="occurrence_infra_label">Нарушение, сообщённое источником</string>
+    <string name="occurrence_assay_label">Анализ качества</string>
+    <string name="occurrence_fine_label">Запись о штрафе</string>
+    <string name="occurrence_timeline">Лента</string>
+    <string name="occurrence_clear">Очистить</string>
+    <string name="occurrence_apply">Применить</string>
+    <string name="occurrence_all">Все</string>
+    <string name="occurrence_company_section">Записи компаний</string>
+    <string name="occurrence_global_section">Глобальные записи источника</string>
+    <string name="occurrence_filter_segment">Сегмент</string>
+    <string name="occurrence_filter_kind">Тип субъекта</string>
+</resources>

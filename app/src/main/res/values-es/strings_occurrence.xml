@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">Registros oficiales</string>
+    <string name="occurrence_filter_type">Tipo</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">Período</string>
+    <string name="occurrence_empty">Ningún registro encontrado en las fuentes y el período seleccionados</string>
+    <string name="occurrence_unavailable">Fuente no disponible para esta consulta</string>
+    <string name="occurrence_unsupported_filter">Filtro no disponible en esta fuente</string>
+    <string name="occurrence_stale">Datos guardados; vínculo actual no verificado</string>
+    <string name="occurrence_coverage">%1$d registros en %2$d documentos</string>
+    <string name="occurrence_document_day">Fecha del documento: %1$s</string>
+    <string name="occurrence_no_guilt">Registro de la fuente; no prueba infracción, culpa o seguridad</string>
+    <string name="occurrence_company_note">Asociado a la empresa actual; no prueba ocurrencia en esta dirección</string>
+    <string name="occurrence_unmatched">Sin vínculo determinado</string>
+    <string name="occurrence_retry">Reintentar</string>
+    <string name="occurrence_detail_title">Detalle del registro</string>
+    <string name="occurrence_action_label">Acción de fiscalización</string>
+    <string name="occurrence_infra_label">Infracción informada por la fuente</string>
+    <string name="occurrence_assay_label">Análisis de calidad</string>
+    <string name="occurrence_fine_label">Registro de multa</string>
+    <string name="occurrence_timeline">Línea de tiempo</string>
+    <string name="occurrence_clear">Limpiar</string>
+    <string name="occurrence_apply">Aplicar</string>
+    <string name="occurrence_all">Todos</string>
+    <string name="occurrence_company_section">Registros de empresa</string>
+    <string name="occurrence_global_section">Registros de fuente global</string>
+    <string name="occurrence_filter_segment">Segmento</string>
+    <string name="occurrence_filter_kind">Tipo de sujeto</string>
+</resources>

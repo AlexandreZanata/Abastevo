@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">Offizielle Einträge</string>
+    <string name="occurrence_filter_type">Typ</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">Zeitraum</string>
+    <string name="occurrence_empty">Keine Einträge in den ausgewählten Quellen und im Zeitraum gefunden</string>
+    <string name="occurrence_unavailable">Quelle für diese Abfrage nicht verfügbar</string>
+    <string name="occurrence_unsupported_filter">Filter für diese Quelle nicht verfügbar</string>
+    <string name="occurrence_stale">Gespeicherte Daten; aktuelle Verknüpfung nicht verifiziert</string>
+    <string name="occurrence_coverage">%1$d Einträge in %2$d Dokumenten</string>
+    <string name="occurrence_document_day">Dokumentdatum: %1$s</string>
+    <string name="occurrence_no_guilt">Quelleneintrag; belegt weder Verstoß, Schuld noch Sicherheit</string>
+    <string name="occurrence_company_note">Dem aktuellen Unternehmen zugeordnet; belegt kein Vorkommnis an dieser Adresse</string>
+    <string name="occurrence_unmatched">Keine Verknüpfung festgestellt</string>
+    <string name="occurrence_retry">Erneut versuchen</string>
+    <string name="occurrence_detail_title">Eintragsdetails</string>
+    <string name="occurrence_action_label">Kontrollmaßnahme</string>
+    <string name="occurrence_infra_label">Von der Quelle gemeldeter Verstoß</string>
+    <string name="occurrence_assay_label">Qualitätsanalyse</string>
+    <string name="occurrence_fine_label">Bußgeldeintrag</string>
+    <string name="occurrence_timeline">Zeitachse</string>
+    <string name="occurrence_clear">Zurücksetzen</string>
+    <string name="occurrence_apply">Anwenden</string>
+    <string name="occurrence_all">Alle</string>
+    <string name="occurrence_company_section">Unternehmenseinträge</string>
+    <string name="occurrence_global_section">Globale Quelleneinträge</string>
+    <string name="occurrence_filter_segment">Segment</string>
+    <string name="occurrence_filter_kind">Subjektart</string>
+</resources>
