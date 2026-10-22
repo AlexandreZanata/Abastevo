@@ -32,6 +32,20 @@ type ChargingConnectionGroup struct {
 	ReportedQuantity pgtype.Int4 `json:"reported_quantity"`
 }
 
+type ChargingObservation struct {
+	ID                  pgtype.UUID        `json:"id"`
+	AccountID           pgtype.UUID        `json:"account_id"`
+	PlaceID             pgtype.UUID        `json:"place_id"`
+	ConnectorCode       string             `json:"connector_code"`
+	PriceMilliBrlPerKwh pgtype.Int4        `json:"price_milli_brl_per_kwh"`
+	Condition           string             `json:"condition"`
+	ObservedDay         pgtype.Date        `json:"observed_day"`
+	Note                string             `json:"note"`
+	Revision            int64              `json:"revision"`
+	Deleted             bool               `json:"deleted"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ChargingPlace struct {
 	ID             pgtype.UUID `json:"id"`
 	BatchID        pgtype.UUID `json:"batch_id"`

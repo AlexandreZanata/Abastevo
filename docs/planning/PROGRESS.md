@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-12 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentc8490dae. [Signed community EV observation commands](../backend/evidence/ev-support/EE-12.md): account-scoped observations (connector/price/condition/day/note) with quotas, revision-guarded correction/withdrawal, idempotent replay by ID, session-authenticated POST/PUT/DELETE; forged/cross-owner/malformed refuse. HTTP→DB integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No projections/moderation lifecycle (EE-13).
+
 - EE-10 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentf08b6740. [Hosted vehicle energy-capability migration](../backend/evidence/ev-support/EE-10.md): propulsion/battery pointers on Vehicle with BEV/PHEV/HEV/ICE rules, no backfill, merge-preserving partial updates with revision-guarded races; owner BEV, legacy merge, concurrent conflict and account isolation PASS with PostGIS; domain, vet, staticcheck green. No migration (JSONB), HTTP or activation.
 
 - EE-09 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentda7a9551. [Public charging/reference APIs](../backend/evidence/ev-support/EE-09.md): bounded pages/detail/coverage under explicit profiles with keyset/cursors/ETags, kill switch (default true, false answers 404), OpenAPI paths/schemas; traversal/coverage/malformed/OpenAPI tests PASS with PostGIS; charging module, vet, staticcheck, sqlc vet/diff, vacuum zero errors green. No ingestion/activation.

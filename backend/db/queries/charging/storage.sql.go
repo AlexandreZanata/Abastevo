@@ -218,6 +218,89 @@ func (q *Queries) ChargingPlacePage(ctx context.Context, arg ChargingPlacePagePa
 	return items, nil
 }
 
+const correctChargingObservation = `-- name: CorrectChargingObservation :one
+UPDATE charging_observations SET connector_code = $1,price_milli_brl_per_kwh = $2::int,
+ condition = $3,observed_day = $4::date,note = $5,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id = $6::uuid AND id = $7::uuid AND NOT deleted AND revision = $8::bigint
+RETURNING revision
+`
+
+type CorrectChargingObservationParams struct {
+	ConnectorCode string      `json:"connector_code"`
+	Price         pgtype.Int4 `json:"price"`
+	Condition     string      `json:"condition"`
+	ObservedDay   pgtype.Date `json:"observed_day"`
+	Note          string      `json:"note"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	ID            pgtype.UUID `json:"id"`
+	Expected      int64       `json:"expected"`
+}
+
+func (q *Queries) CorrectChargingObservation(ctx context.Context, arg CorrectChargingObservationParams) (int64, error) {
+	row := q.db.QueryRow(ctx, correctChargingObservation,
+		arg.ConnectorCode,
+		arg.Price,
+		arg.Condition,
+		arg.ObservedDay,
+		arg.Note,
+		arg.AccountID,
+		arg.ID,
+		arg.Expected,
+	)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
+const countAccountObservations = `-- name: CountAccountObservations :one
+SELECT count(*) FROM charging_observations WHERE account_id = $1::uuid AND NOT deleted
+`
+
+func (q *Queries) CountAccountObservations(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAccountObservations, accountID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createChargingObservation = `-- name: CreateChargingObservation :one
+INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note)
+VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5::int,$6,$7::date,$8)
+ON CONFLICT DO NOTHING RETURNING id, revision
+`
+
+type CreateChargingObservationParams struct {
+	ID            pgtype.UUID `json:"id"`
+	AccountID     pgtype.UUID `json:"account_id"`
+	PlaceID       pgtype.UUID `json:"place_id"`
+	ConnectorCode string      `json:"connector_code"`
+	Price         pgtype.Int4 `json:"price"`
+	Condition     string      `json:"condition"`
+	ObservedDay   pgtype.Date `json:"observed_day"`
+	Note          string      `json:"note"`
+}
+
+type CreateChargingObservationRow struct {
+	ID       pgtype.UUID `json:"id"`
+	Revision int64       `json:"revision"`
+}
+
+func (q *Queries) CreateChargingObservation(ctx context.Context, arg CreateChargingObservationParams) (CreateChargingObservationRow, error) {
+	row := q.db.QueryRow(ctx, createChargingObservation,
+		arg.ID,
+		arg.AccountID,
+		arg.PlaceID,
+		arg.ConnectorCode,
+		arg.Price,
+		arg.Condition,
+		arg.ObservedDay,
+		arg.Note,
+	)
+	var i CreateChargingObservationRow
+	err := row.Scan(&i.ID, &i.Revision)
+	return i, err
+}
+
 const findChargingBatch = `-- name: FindChargingBatch :one
 SELECT id FROM charging_batches WHERE profile_id = $1::text AND ($2::text = '' OR source_revision = $2::text) ORDER BY stored_at DESC LIMIT 1
 `
@@ -396,4 +479,23 @@ func (q *Queries) StageChargingVehicleReference(ctx context.Context, arg StageCh
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const withdrawChargingObservation = `-- name: WithdrawChargingObservation :one
+UPDATE charging_observations SET deleted=true,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id = $1::uuid AND id = $2::uuid AND NOT deleted AND revision = $3::bigint
+RETURNING revision
+`
+
+type WithdrawChargingObservationParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	ID        pgtype.UUID `json:"id"`
+	Expected  int64       `json:"expected"`
+}
+
+func (q *Queries) WithdrawChargingObservation(ctx context.Context, arg WithdrawChargingObservationParams) (int64, error) {
+	row := q.db.QueryRow(ctx, withdrawChargingObservation, arg.AccountID, arg.ID, arg.Expected)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
 }

@@ -69,3 +69,22 @@ WHERE profile_id = @profile::text ORDER BY stored_at DESC LIMIT 1;
 
 -- name: FindChargingBatch :one
 SELECT id FROM charging_batches WHERE profile_id = @profile::text AND (@revision::text = '' OR source_revision = @revision::text) ORDER BY stored_at DESC LIMIT 1;
+
+-- name: CreateChargingObservation :one
+INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note)
+VALUES(@id::uuid,@account_id::uuid,sqlc.narg(place_id)::uuid,@connector_code,sqlc.narg(price)::int,@condition,@observed_day::date,@note)
+ON CONFLICT DO NOTHING RETURNING id, revision;
+
+-- name: CorrectChargingObservation :one
+UPDATE charging_observations SET connector_code = @connector_code,price_milli_brl_per_kwh = sqlc.narg(price)::int,
+ condition = @condition,observed_day = @observed_day::date,note = @note,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id = @account_id::uuid AND id = @id::uuid AND NOT deleted AND revision = @expected::bigint
+RETURNING revision;
+
+-- name: WithdrawChargingObservation :one
+UPDATE charging_observations SET deleted=true,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id = @account_id::uuid AND id = @id::uuid AND NOT deleted AND revision = @expected::bigint
+RETURNING revision;
+
+-- name: CountAccountObservations :one
+SELECT count(*) FROM charging_observations WHERE account_id = @account_id::uuid AND NOT deleted;
