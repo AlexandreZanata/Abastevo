@@ -27,8 +27,18 @@ fun OccurrenceExplorerScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val list = rememberLazyListState()
-    var showFilters by rememberSaveable { mutableStateOf(false) }
+    var showSheet by rememberSaveable { mutableStateOf(false) }
+    var timeline by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.items.firstOrNull()?.id) { if (state.items.isNotEmpty()) list.scrollToItem(0) }
+    if (showSheet) {
+        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
+            OccurrenceFilterSheet(
+                filter = state.filter,
+                onApply = { filter -> viewModel.selectFilter(filter); showSheet = false },
+                onClear = { viewModel.clearFilters(); showSheet = false },
+            )
+        }
+    }
     AnpScaffold(topBar = { AnpTopAppBar(title = { Text(stringResource(R.string.occurrence_title)) }, onNavigateUp = onBack) }) { padding ->
         LazyColumn(state = list, modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
@@ -44,27 +54,33 @@ fun OccurrenceExplorerScreen(
                 }
             }
             item {
-                OutlinedButton(onClick = { showFilters = !showFilters }) { Text(stringResource(R.string.occurrence_filter_type)) }
-                if (showFilters) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = state.filter.uf == null, onClick = { viewModel.selectFilter(state.filter.copy(uf = null)) }, label = { Text("BR") })
-                        listOf("SP", "RJ", "DF").forEach { uf ->
-                            FilterChip(selected = state.filter.uf == uf, onClick = { viewModel.selectFilter(state.filter.copy(uf = uf)) }, label = { Text(uf) })
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { showSheet = true }) { Text(stringResource(R.string.occurrence_filter_type)) }
+                    FilterChip(selected = timeline, onClick = { timeline = !timeline }, label = { Text(stringResource(R.string.occurrence_timeline)) })
+                    if (!state.filter.isEmpty()) {
+                        OutlinedButton(onClick = viewModel::clearFilters) { Text(stringResource(R.string.occurrence_clear)) }
                     }
                 }
             }
             if (state.items.isEmpty() && !state.loading && !state.unavailable) {
                 item { Text(stringResource(R.string.occurrence_empty)) }
             }
-            items(state.items, key = { it.id }) { record ->
-                ElevatedCard(onClick = { onDetail(record.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.occurrence_action_label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-                        Text(record.result, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-                        Text(stringResource(R.string.occurrence_document_day, record.documentDay), style = MaterialTheme.typography.bodySmall)
-                        Text(record.municipality + " · " + record.uf, style = MaterialTheme.typography.bodySmall)
+            if (timeline) {
+                timelineSections(state.items).forEach { section ->
+                    item {
+                        Text(
+                            stringResource(if (section.companyKind) R.string.occurrence_company_section else R.string.occurrence_global_section),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
                     }
+                    items(section.items, key = { it.id }) { record ->
+                        OccurrenceCard(record, onDetail)
+                    }
+                }
+            } else {
+                items(state.items, key = { it.id }) { record ->
+                    OccurrenceCard(record, onDetail)
                 }
             }
             if (state.cursor != null) {
@@ -74,6 +90,58 @@ fun OccurrenceExplorerScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun OccurrenceCard(record: com.anpfuel.domain.occurrence.OccurrenceRecord, onDetail: (String) -> Unit) {
+    ElevatedCard(onClick = { onDetail(record.id) }, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.occurrence_action_label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            Text(record.result, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+            Text(stringResource(R.string.occurrence_document_day, record.documentDay), style = MaterialTheme.typography.bodySmall)
+            Text(record.municipality + " · " + record.uf, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OccurrenceFilterSheet(
+    filter: OccurrenceFilter,
+    onApply: (OccurrenceFilter) -> Unit,
+    onClear: () -> Unit,
+) {
+    var uf by rememberSaveable { mutableStateOf(filter.uf) }
+    var segment by rememberSaveable { mutableStateOf(filter.segment) }
+    var kind by rememberSaveable { mutableStateOf(filter.subjectKind) }
+    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.occurrence_filter_type), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(stringResource(R.string.occurrence_filter_uf))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = uf == null, onClick = { uf = null }, label = { Text("BR") })
+            listOf("SP", "RJ", "DF").forEach { code ->
+                FilterChip(selected = uf == code, onClick = { uf = code }, label = { Text(code) })
+            }
+        }
+        Text(stringResource(R.string.occurrence_filter_segment))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = segment == null, onClick = { segment = null }, label = { Text(stringResource(R.string.occurrence_all)) })
+            listOf("Revenda de Combustíveis", "Revenda de GLP").forEach { option ->
+                FilterChip(selected = segment == option, onClick = { segment = option }, label = { Text(option) })
+            }
+        }
+        Text(stringResource(R.string.occurrence_filter_kind))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = kind == null, onClick = { kind = null }, label = { Text(stringResource(R.string.occurrence_all)) })
+            listOf("company-shaped", "personal-shaped", "other").forEach { option ->
+                FilterChip(selected = kind == option, onClick = { kind = option }, label = { Text(option) })
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onClear, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.occurrence_clear)) }
+            Button(onClick = { onApply(OccurrenceFilter(uf = uf, segment = segment, subjectKind = kind, fromDay = filter.fromDay, toDay = filter.toDay)) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.occurrence_apply)) }
         }
     }
 }

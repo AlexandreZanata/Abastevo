@@ -18,9 +18,32 @@ import kotlinx.coroutines.launch
 
 data class OccurrenceFilter(
     val uf: String? = null,
+    val segment: String? = null,
+    val subjectKind: String? = null,
     val fromDay: String? = null,
     val toDay: String? = null,
+) {
+    fun isEmpty(): Boolean =
+        uf == null && segment == null && subjectKind == null && fromDay == null && toDay == null
+}
+
+/** Timeline section: company-kind records (potentially company-linked,
+ * verified separately) versus source-global records (never linked).
+ * Items are date-descending within the loaded window; a windowed view,
+ * never a global sort claim. */
+data class TimelineSection(
+    val companyKind: Boolean,
+    val items: List<OccurrenceRecord>,
 )
+
+fun timelineSections(items: List<OccurrenceRecord>): List<TimelineSection> {
+    val company = items.filter { it.subjectKind == "company-shaped" }.sortedByDescending { it.documentDay }
+    val global = items.filter { it.subjectKind != "company-shaped" }.sortedByDescending { it.documentDay }
+    return buildList {
+        if (company.isNotEmpty()) add(TimelineSection(true, company))
+        if (global.isNotEmpty()) add(TimelineSection(false, global))
+    }
+}
 
 data class OccurrenceUiState(
     val filter: OccurrenceFilter = OccurrenceFilter(),
@@ -43,6 +66,8 @@ class OccurrenceExplorerViewModel @Inject constructor(
     private val mutable = MutableStateFlow(OccurrenceUiState(
         filter = OccurrenceFilter(
             uf = savedStateHandle["uf"],
+            segment = savedStateHandle["segment"],
+            subjectKind = savedStateHandle["subjectKind"],
             fromDay = savedStateHandle["fromDay"],
             toDay = savedStateHandle["toDay"],
         ),
@@ -66,6 +91,10 @@ class OccurrenceExplorerViewModel @Inject constructor(
         load(first = true)
     }
 
+    fun clearFilters() {
+        selectFilter(OccurrenceFilter())
+    }
+
     fun nextPage() {
         if (!enabled) return
         val current = mutable.value
@@ -81,7 +110,8 @@ class OccurrenceExplorerViewModel @Inject constructor(
             try {
                 val filter = mutable.value.filter
                 val page = gateway.records(
-                    uf = filter.uf, fromDay = filter.fromDay, toDay = filter.toDay,
+                    uf = filter.uf, segment = filter.segment, subjectKind = filter.subjectKind,
+                    fromDay = filter.fromDay, toDay = filter.toDay,
                     limit = 20, cursor = if (first) null else mutable.value.cursor)
                 if (myGeneration != generation) return@launch
                 val (coverage, lease) = try {

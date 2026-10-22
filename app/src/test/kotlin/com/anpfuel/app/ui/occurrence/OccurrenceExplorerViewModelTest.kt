@@ -61,10 +61,24 @@ class OccurrenceExplorerViewModelTest {
     @Test fun `filter change resets list and reloads`() = runTest(dispatcher) {
         val viewModel = OccurrenceExplorerViewModel(fakeSavedState(), gateway())
         advanceUntilIdle()
-        viewModel.selectFilter(OccurrenceFilter(uf = "SP"))
+        viewModel.selectFilter(OccurrenceFilter(uf = "SP", segment = "Revenda de GLP", subjectKind = "company-shaped"))
         advanceUntilIdle()
         assertEquals("SP", viewModel.state.value.filter.uf)
+        assertEquals("Revenda de GLP", viewModel.state.value.filter.segment)
         assertEquals(1, viewModel.state.value.items.size)
+        viewModel.clearFilters()
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.filter.isEmpty())
+    }
+
+    @Test fun `timeline separates company and source-global records`() = runTest(dispatcher) {
+        val company = record
+        val global = record.copy(id = "eeeeeeee-6666-4666-8666-000000000003", subjectKind = "personal-shaped", documentDay = "2019-01-02")
+        val sections = timelineSections(listOf(global, company))
+        assertEquals(2, sections.size)
+        assertTrue(sections[0].companyKind)
+        assertEquals(listOf(company.id), sections[0].items.map { it.id })
+        assertEquals(listOf(global.id), sections[1].items.map { it.id })
     }
 
     @Test fun `failure with empty list marks unavailable without crashing`() = runTest(dispatcher) {

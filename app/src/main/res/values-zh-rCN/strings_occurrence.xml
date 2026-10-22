@@ -19,4 +19,12 @@
     <string name="occurrence_infra_label">来源报告的违规</string>
     <string name="occurrence_assay_label">质量分析</string>
     <string name="occurrence_fine_label">罚款记录</string>
+    <string name="occurrence_timeline">时间线</string>
+    <string name="occurrence_clear">清除</string>
+    <string name="occurrence_apply">应用</string>
+    <string name="occurrence_all">全部</string>
+    <string name="occurrence_company_section">企业记录</string>
+    <string name="occurrence_global_section">来源全局记录</string>
+    <string name="occurrence_filter_segment">细分</string>
+    <string name="occurrence_filter_kind">主体类型</string>
 </resources>

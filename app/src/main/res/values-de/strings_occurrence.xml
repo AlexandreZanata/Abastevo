@@ -19,4 +19,12 @@
     <string name="occurrence_infra_label">Von der Quelle gemeldeter Verstoß</string>
     <string name="occurrence_assay_label">Qualitätsanalyse</string>
     <string name="occurrence_fine_label">Bußgeldeintrag</string>
+    <string name="occurrence_timeline">Zeitachse</string>
+    <string name="occurrence_clear">Zurücksetzen</string>
+    <string name="occurrence_apply">Anwenden</string>
+    <string name="occurrence_all">Alle</string>
+    <string name="occurrence_company_section">Unternehmenseinträge</string>
+    <string name="occurrence_global_section">Globale Quelleneinträge</string>
+    <string name="occurrence_filter_segment">Segment</string>
+    <string name="occurrence_filter_kind">Subjektart</string>
 </resources>

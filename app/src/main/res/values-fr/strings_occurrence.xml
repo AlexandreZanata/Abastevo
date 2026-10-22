@@ -19,4 +19,12 @@
     <string name="occurrence_infra_label">Infraction signalée par la source</string>
     <string name="occurrence_assay_label">Analyse de qualité</string>
     <string name="occurrence_fine_label">Registre d\'amende</string>
+    <string name="occurrence_timeline">Chronologie</string>
+    <string name="occurrence_clear">Effacer</string>
+    <string name="occurrence_apply">Appliquer</string>
+    <string name="occurrence_all">Tous</string>
+    <string name="occurrence_company_section">Registres d’entreprise</string>
+    <string name="occurrence_global_section">Registres globaux de source</string>
+    <string name="occurrence_filter_segment">Segment</string>
+    <string name="occurrence_filter_kind">Type de sujet</string>
 </resources>

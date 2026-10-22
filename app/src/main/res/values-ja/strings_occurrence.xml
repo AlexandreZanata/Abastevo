@@ -19,4 +19,12 @@
     <string name="occurrence_infra_label">ソースが報告した違反</string>
     <string name="occurrence_assay_label">品質分析</string>
     <string name="occurrence_fine_label">罰金記録</string>
+    <string name="occurrence_timeline">タイムライン</string>
+    <string name="occurrence_clear">クリア</string>
+    <string name="occurrence_apply">適用</string>
+    <string name="occurrence_all">すべて</string>
+    <string name="occurrence_company_section">企業記録</string>
+    <string name="occurrence_global_section">ソースグローバル記録</string>
+    <string name="occurrence_filter_segment">セグメント</string>
+    <string name="occurrence_filter_kind">主体種別</string>
 </resources>

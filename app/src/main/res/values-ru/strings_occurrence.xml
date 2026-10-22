@@ -19,4 +19,12 @@
     <string name="occurrence_infra_label">Нарушение, сообщённое источником</string>
     <string name="occurrence_assay_label">Анализ качества</string>
     <string name="occurrence_fine_label">Запись о штрафе</string>
+    <string name="occurrence_timeline">Лента</string>
+    <string name="occurrence_clear">Очистить</string>
+    <string name="occurrence_apply">Применить</string>
+    <string name="occurrence_all">Все</string>
+    <string name="occurrence_company_section">Записи компаний</string>
+    <string name="occurrence_global_section">Глобальные записи источника</string>
+    <string name="occurrence_filter_segment">Сегмент</string>
+    <string name="occurrence_filter_kind">Тип субъекта</string>
 </resources>
