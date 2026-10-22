@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-25 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4b6. [Electric master questions](../backend/evidence/ev-support/EE-25.md): typed EV intents (compatible places, reported energy price, complete scenario cost) with pinned source/bounded pages, NEEDS_CHOICE for ambiguous/missing, refusals without guessing; deterministic vectors green, no liquid/official regressions. Backend vet/static/diff green; no OpenAPI/SQL change.
+
 - EE-23 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentb26c5547. [Energy comparisons](../backend/evidence/ev-support/EE-23.md): Go/Kotlin golden parity corpus (11 vectors, both engines green), pure energy engine with weighted compare + km/L-equivalent refusal, monthly measured/reference/comparison/combined, formula-safe CSV export, energy UI block (7 strings × 8 locales). Full suites (2009 tests, 0 failures) + backend metrics, lint, diff, secrets green; device reopen deferred.
 
 - MEX-13 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parenta5e98507. [Monthly indicators](../backend/evidence/mobile-expansion/MEX-13.md): month/vehicle totals, measured vs estimated, cost/km + combined with window explanation, stale-safe rebuilds, comparison, formula-safe CSV export, 19 strings × 8 locales. Full suites (2005 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No revenue/guessed denominators.

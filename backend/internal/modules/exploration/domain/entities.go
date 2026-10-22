@@ -16,8 +16,12 @@ func Interpret(question string, now time.Time) Interpretation {
 	}
 	price := priceScore(normalized)
 	official := officialScore(normalized)
-	if price == 0 && official == 0 {
+	electric := evScore(normalized)
+	if price == 0 && official == 0 && electric == 0 {
 		return Interpretation{State: StateUnsupported, Reason: ReasonUnsupportedIntent}
+	}
+	if electric > price && electric > official {
+		return interpretEV(normalized, now)
 	}
 	if official > price {
 		return interpretOfficial(normalized)
