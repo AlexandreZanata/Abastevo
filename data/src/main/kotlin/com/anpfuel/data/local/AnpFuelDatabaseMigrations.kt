@@ -526,4 +526,56 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_18_19: Migration = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-18 public EV snapshot tables. No existing table is
+            // altered; every ANP/history/fuel row and every private/outbox
+            // row survives the upgrade untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `charging_snapshot_place` (
+                    `place_id` TEXT NOT NULL,
+                    `generation` INTEGER NOT NULL,
+                    `profile` TEXT NOT NULL,
+                    `source_revision` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `license` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `country` TEXT NOT NULL,
+                    `latitude` TEXT,
+                    `longitude` TEXT,
+                    `public_access` TEXT NOT NULL,
+                    `reported_points` INTEGER NOT NULL,
+                    `groups_json` TEXT NOT NULL,
+                    `tombstone` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`place_id`, `generation`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_generation` ON `charging_snapshot_place` (`generation`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_profile_generation` ON `charging_snapshot_place` (`profile`, `generation`)")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `charging_snapshot_meta` (
+                    `key` TEXT NOT NULL,
+                    `generation` INTEGER NOT NULL,
+                    `profile` TEXT NOT NULL,
+                    `source_revision` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `license` TEXT NOT NULL,
+                    `schema_version` INTEGER NOT NULL,
+                    `base_generation` INTEGER NOT NULL,
+                    `place_count` INTEGER NOT NULL,
+                    `group_count` INTEGER NOT NULL,
+                    `cursor` TEXT,
+                    `state` TEXT NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`key`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
 }
