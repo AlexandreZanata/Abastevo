@@ -314,6 +314,8 @@ sql:
       go:
         package: quality
         out: db/queries/quality
+        sql_package: pgx/v5
+        emit_json_tags: true
   - engine: postgresql
     queries: db/queries/charging
     schema:
