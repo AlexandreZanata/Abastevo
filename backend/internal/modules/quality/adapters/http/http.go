@@ -48,6 +48,8 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/quality/actions", h.actions)
 	r.Get("/v1/quality/actions/coverage", h.actionCoverage)
 	r.Get("/v1/quality/actions/{id}", h.actionOne)
+	r.Get("/v1/quality/enforcement/stations", h.enforcementStations)
+	r.Get("/v1/quality/enforcement/stations/coverage", h.enforcementStationCoverage)
 	r.Get("/v1/quality/sanctions", h.sanctions)
 	r.Get("/v1/quality/sanctions/{id}", h.sanctionOne)
 }
@@ -525,6 +527,136 @@ func (h Handler) actionCoverage(w http.ResponseWriter, r *http.Request) {
 		"first_day": coverage.FirstDay, "last_day": coverage.LastDay,
 		"date_basis": coverage.DateBasis,
 		"lease":      wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
+	})
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage, "lease": wireLeaseOf(lease)})))
+}
+
+// enforcementStations pages distinctly associated stations for the leased
+// enforcement revision. Only exact current bindings qualify; a station
+// retired at read time is excluded. Stations without price observations
+// are included: this page is about occurrences, never a completeness
+// claim about prices.
+func (h Handler) enforcementStations(w http.ResponseWriter, r *http.Request) {
+	if h.disabled(w, r) {
+		return
+	}
+	if !h.selectRevision(w, r) {
+		return
+	}
+	lease, err := h.leaseOf(r, actionSource, actionStream)
+	if err != nil {
+		h.readErr(w, r, err)
+		return
+	}
+	if lease.SourceInputContract != application.EnforcementSourceProfile {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-source", "station page unavailable for this source", nil)
+		return
+	}
+	q := r.URL.Query()
+	for key := range q {
+		switch key {
+		case "revision_id", "state", "segment", "from_day", "to_day", "limit", "cursor":
+		default:
+			httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "unsupported query parameter", nil)
+			return
+		}
+	}
+	var filter read.EnforcementStationFilter
+	if state := q.Get("state"); state != "" {
+		if len(state) != 2 || state[0] < 'A' || state[0] > 'Z' || state[1] < 'A' || state[1] > 'Z' {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "state filter invalid",
+				[]httpapi.Detail{{Field: "state", Code: "shape"}})
+			return
+		}
+		filter.State = state
+	}
+	if segment, err := application.ValidateTextFilter("segment", q.Get("segment"), 256); err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "segment filter invalid",
+			[]httpapi.Detail{{Field: "segment", Code: "length"}})
+		return
+	} else {
+		filter.Segment = segment
+	}
+	from, to := q.Get("from_day"), q.Get("to_day")
+	if from != "" && !domain.ValidDay(from) {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "from_day filter invalid",
+			[]httpapi.Detail{{Field: "from_day", Code: "calendar"}})
+		return
+	}
+	if to != "" && !domain.ValidDay(to) {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "to_day filter invalid",
+			[]httpapi.Detail{{Field: "to_day", Code: "calendar"}})
+		return
+	}
+	if from != "" && to != "" && from > to {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "from_day filter invalid",
+			[]httpapi.Detail{{Field: "from_day", Code: "range"}})
+		return
+	}
+	filter.FromDay, filter.ToDay = from, to
+	limit, err := httpapi.ParseLimit(q.Get("limit"))
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-limit", "limit must be 1..100",
+			[]httpapi.Detail{{Field: "limit", Code: "range"}})
+		return
+	}
+	fh := httpapi.FilterHash("quality-enforcement-stations", filter.State, filter.Segment, filter.FromDay, filter.ToDay, strconv.Itoa(limit), lease.RevisionID)
+	lastKey, err := httpapi.ParseCursor(h.Secrets, q.Get("cursor"), fh, h.now())
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-cursor", "cursor invalid, expired or changed",
+			[]httpapi.Detail{{Field: "cursor", Code: "invalid"}})
+		return
+	}
+	afterID := lastKey
+	rows, next, _, err := h.Read.EnforcementStationsAtLease(r.Context(), lease, filter, afterID, limit)
+	if err != nil {
+		sourceDown(w, r)
+		return
+	}
+	wire := make([]map[string]any, 0, len(rows))
+	for _, station := range rows {
+		wire = append(wire, map[string]any{"id": station.ID, "display_name": station.DisplayName, "municipality": station.Municipality, "state": station.State, "status": station.Status, "record_count": station.RecordCount})
+	}
+	var nextCursor *string
+	if next != "" {
+		sealed := httpapi.Seal(h.Secrets, fh, next, h.now())
+		nextCursor = &sealed
+	}
+	body, _ := json.Marshal(map[string]any{
+		"items": wire, "next_cursor": nextCursor,
+		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
+	})
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": next, "lease": wireLeaseOf(lease)})))
+}
+
+// enforcementStationCoverage reports distinct bound stations versus
+// distinct bound records for the leased enforcement revision.
+func (h Handler) enforcementStationCoverage(w http.ResponseWriter, r *http.Request) {
+	if h.disabled(w, r) {
+		return
+	}
+	if !h.selectRevision(w, r) {
+		return
+	}
+	lease, err := h.leaseOf(r, actionSource, actionStream)
+	if err != nil {
+		h.readErr(w, r, err)
+		return
+	}
+	if lease.SourceInputContract != application.EnforcementSourceProfile {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-source", "station coverage unavailable for this source", nil)
+		return
+	}
+	coverage, _, err := h.Read.EnforcementStationCoverageAtLease(r.Context(), lease)
+	if err != nil {
+		sourceDown(w, r)
+		return
+	}
+	body, _ := json.Marshal(map[string]any{
+		"stations": coverage.Stations, "records": coverage.Records,
+		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
 		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage, "lease": wireLeaseOf(lease)})))

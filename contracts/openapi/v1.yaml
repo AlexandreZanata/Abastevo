@@ -1700,6 +1700,79 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/quality/enforcement/stations:
+    get:
+      summary: Keyset distinctly associated stations from the leased enforcement revision (anonymous).
+      operationId: qualityEnforcementStations
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+        - name: state
+          in: query
+          description: Optional exact two-letter station state facet.
+          schema: {type: string, pattern: '^[A-Z]{2}$'}
+        - name: segment
+          in: query
+          description: Optional exact occurrence segment facet.
+          schema: {type: string, maxLength: 256}
+        - name: from_day
+          in: query
+          description: Optional document-day lower bound, document_day basis.
+          schema: {type: string, format: date}
+        - name: to_day
+          in: query
+          description: Optional document-day upper bound, document_day basis.
+          schema: {type: string, format: date}
+        - name: limit
+          in: query
+          description: Station page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Distinctly bound stations with occurrence counts; stations without prices included, retired stations excluded live.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityEnforcementStationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/enforcement/stations/coverage:
+    get:
+      summary: Leased enforcement revision bound station versus record counts (anonymous).
+      operationId: qualityEnforcementStationCoverage
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+      responses:
+        '200':
+          description: Distinct stations versus distinct bound records. Counts only.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityEnforcementStationCoverage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/actions/{id}:
     get:
       summary: One enforcement action within the current lease (anonymous).
@@ -7881,6 +7954,36 @@ components:
         first_day: {type: [string, 'null'], format: date}
         last_day: {type: [string, 'null'], format: date}
         date_basis: {type: string, enum: [document_day]}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityEnforcementStation:
+      description: One distinctly associated station with its bound occurrence count. Display data is read live; retired stations never appear.
+      type: object
+      required: [id, display_name, state, status, record_count]
+      properties:
+        id: {type: string, format: uuid}
+        display_name: {type: string}
+        municipality: {type: [string, 'null']}
+        state: {type: [string, 'null'], pattern: '^[A-Z]{2}$'}
+        status: {type: string, enum: [active]}
+        record_count: {type: integer, minimum: 1}
+    QualityEnforcementStationPage:
+      type: object
+      required: [items, next_cursor, lease, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/QualityEnforcementStation'}
+        next_cursor: {type: [string, 'null']}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityEnforcementStationCoverage:
+      description: Leased revision bound stations versus bound records. Counts only.
+      type: object
+      required: [stations, records, lease, generated_at]
+      properties:
+        stations: {type: integer, minimum: 0, description: Distinct bound stations, live at read.}
+        records: {type: integer, minimum: 0, description: Distinct bound records.}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:

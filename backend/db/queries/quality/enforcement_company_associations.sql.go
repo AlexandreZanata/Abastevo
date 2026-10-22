@@ -103,6 +103,100 @@ func (q *Queries) EnforcementCompanyAssociationDecisions(ctx context.Context, re
 	return items, nil
 }
 
+const enforcementStationCoverage = `-- name: EnforcementStationCoverage :one
+SELECT count(DISTINCT a.station_id) AS stations,
+ count(DISTINCT a.record_key) AS records
+FROM quality_enforcement_company_associations a
+JOIN directory_stations s ON s.id = a.station_id
+WHERE a.revision_id = $1
+ AND a.resolution_kind = 'bound'
+ AND s.status = 'active'
+`
+
+type EnforcementStationCoverageRow struct {
+	Stations int64 `json:"stations"`
+	Records  int64 `json:"records"`
+}
+
+func (q *Queries) EnforcementStationCoverage(ctx context.Context, revisionID pgtype.UUID) (EnforcementStationCoverageRow, error) {
+	row := q.db.QueryRow(ctx, enforcementStationCoverage, revisionID)
+	var i EnforcementStationCoverageRow
+	err := row.Scan(&i.Stations, &i.Records)
+	return i, err
+}
+
+const enforcementStationPage = `-- name: EnforcementStationPage :many
+SELECT s.id,s.display_name,s.municipality_code,s.state,s.status,
+ count(a.record_key) AS record_count
+FROM quality_enforcement_company_associations a
+JOIN directory_stations s ON s.id = a.station_id
+JOIN quality_enforcement_source_records v ON v.revision_id = a.revision_id AND v.native_key = a.record_key
+WHERE a.revision_id = $1
+ AND a.resolution_kind = 'bound'
+ AND s.status = 'active'
+ AND (s.state = $2::text OR $2::text IS NULL)
+ AND (v.segment = $3::text OR $3::text IS NULL)
+ AND (v.document_day >= $4::date OR $4::date IS NULL)
+ AND (v.document_day <= $5::date OR $5::date IS NULL)
+ AND (s.id::text > $6::text OR $6::text = '')
+GROUP BY s.id,s.display_name,s.municipality_code,s.state,s.status
+ORDER BY s.id::text LIMIT $7::int
+`
+
+type EnforcementStationPageParams struct {
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	State        pgtype.Text `json:"state"`
+	Segment      pgtype.Text `json:"segment"`
+	FromDay      pgtype.Date `json:"from_day"`
+	ToDay        pgtype.Date `json:"to_day"`
+	AfterID      string      `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type EnforcementStationPageRow struct {
+	ID               pgtype.UUID `json:"id"`
+	DisplayName      string      `json:"display_name"`
+	MunicipalityCode pgtype.Text `json:"municipality_code"`
+	State            pgtype.Text `json:"state"`
+	Status           string      `json:"status"`
+	RecordCount      int64       `json:"record_count"`
+}
+
+func (q *Queries) EnforcementStationPage(ctx context.Context, arg EnforcementStationPageParams) ([]EnforcementStationPageRow, error) {
+	rows, err := q.db.Query(ctx, enforcementStationPage,
+		arg.RevisionID,
+		arg.State,
+		arg.Segment,
+		arg.FromDay,
+		arg.ToDay,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EnforcementStationPageRow
+	for rows.Next() {
+		var i EnforcementStationPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.MunicipalityCode,
+			&i.State,
+			&i.Status,
+			&i.RecordCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordEnforcementCompanyAssociationContext = `-- name: RecordEnforcementCompanyAssociationContext :one
 
 WITH staging AS MATERIALIZED (

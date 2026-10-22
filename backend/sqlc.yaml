@@ -309,6 +309,7 @@ sql:
       - db/migrations/000111_quality_enforcement_source.sql
       - db/migrations/000112_quality_enforcement_company_association.sql
       - db/migrations/000113_quality_enforcement_source_facet_idx.sql
+      - db/migrations/000114_quality_enforcement_company_station_idx.sql
     gen:
       go:
         package: quality

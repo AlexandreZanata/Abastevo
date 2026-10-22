@@ -31,14 +31,16 @@ func PlanEnforcementCompanyAssociations(ctx context.Context, records []applicati
 }
 
 // StageEnforcementCompanyAssociations stores one complete decision census
-// revision-scoped. The revision must stage enforcement source facts; the
-// stored count must equal the planned count or nothing is kept.
-func StageEnforcementCompanyAssociations(ctx context.Context, q *quality.Queries, revision pgtype.UUID, decisionDay string, decisions []domain.CompanyObservationDecision) error {
+// revision-scoped. The revision must stage enforcement source facts;
+// observationCount is the staged source-record census (decisions cover the
+// admitted subset, never the source-global remainder). The stored decision
+// count must equal the planned count or nothing is kept.
+func StageEnforcementCompanyAssociations(ctx context.Context, q *quality.Queries, revision pgtype.UUID, decisionDay string, observationCount int, decisions []domain.CompanyObservationDecision) error {
 	day, e := pgDate(decisionDay)
 	if e != nil {
 		return e
 	}
-	if _, e := q.RecordEnforcementCompanyAssociationContext(ctx, quality.RecordEnforcementCompanyAssociationContextParams{RevisionID: revision, PolicyVersion: domain.CompanyObservationPolicyVersion, AssociationScope: domain.CurrentCompanyOnly, DecisionDay: day, ObservationCount: int32(len(decisions))}); e != nil {
+	if _, e := q.RecordEnforcementCompanyAssociationContext(ctx, quality.RecordEnforcementCompanyAssociationContextParams{RevisionID: revision, PolicyVersion: domain.CompanyObservationPolicyVersion, AssociationScope: domain.CurrentCompanyOnly, DecisionDay: day, ObservationCount: int32(observationCount)}); e != nil {
 		return e
 	}
 	for _, d := range decisions {

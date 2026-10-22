@@ -66,6 +66,11 @@ func (p *Publisher) PublishEnforcementSource(ctx context.Context, in application
 		if n != int64(in.Counts.Accepted) {
 			return errors.New("quality: enforcement count diverged")
 		}
+		if in.CompanyAssociations != nil {
+			if e := StageEnforcementCompanyAssociations(ctx, q, revision, in.CompanyAssociations.DecisionDay, in.Counts.Accepted, in.CompanyAssociations.Decisions); e != nil {
+				return e
+			}
+		}
 		return nil
 	}
 	for attempt := 0; ; attempt++ {

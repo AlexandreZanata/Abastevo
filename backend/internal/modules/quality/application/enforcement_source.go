@@ -35,6 +35,10 @@ type EnforcementSourceInput struct {
 	ManifestHash string
 	Predecessor  string
 	Records      []EnforcementSourceRecord
+	// CompanyAssociations is an optional complete census of company
+	// decisions for admitted records. Nil retains the source-global
+	// contract; a non-nil census must cover exactly the admitted records.
+	CompanyAssociations *CompanyAssociationInput
 }
 
 func (r EnforcementSourceRecord) ContentHash() string {
@@ -113,6 +117,17 @@ func (in EnforcementSourceInput) Validate() error {
 	}
 	if first != c.FirstDocumentDay || last != c.LastDocumentDay {
 		return refuse
+	}
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Records))
+		for _, row := range in.Records {
+			if row.SourceCNPJ != "" {
+				sources[row.RecordKey] = row.SourceCNPJ
+			}
+		}
+		if _, e := in.CompanyAssociations.Bindings(sources); e != nil {
+			return e
+		}
 	}
 	return nil
 }

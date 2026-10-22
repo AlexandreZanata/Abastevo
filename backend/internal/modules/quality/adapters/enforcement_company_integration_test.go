@@ -40,7 +40,7 @@ func TestEnforcementCompanyAssociationStorageAndWithdrawal(t *testing.T) {
 	if e != nil || len(decisions) != 1 || decisions[0].Kind != domain.ResolutionBound {
 		t.Fatal("enforcement linkage not planned", e)
 	}
-	if e := StageEnforcementCompanyAssociations(ctx, q, rid, "2026-10-22", decisions); e != nil {
+	if e := StageEnforcementCompanyAssociations(ctx, q, rid, "2026-10-22", 1, decisions); e != nil {
 		t.Fatal(e)
 	}
 	rows, e := q.EnforcementCompanyAssociationDecisions(ctx, rid)
@@ -53,7 +53,7 @@ func TestEnforcementCompanyAssociationStorageAndWithdrawal(t *testing.T) {
 	}
 	// Staging is once per revision (guarded by the publisher transaction);
 	// a restage of the same revision conflicts instead of forking.
-	if e := StageEnforcementCompanyAssociations(ctx, q, rid, "2026-10-22", decisions); e == nil {
+	if e := StageEnforcementCompanyAssociations(ctx, q, rid, "2026-10-22", 1, decisions); e == nil {
 		t.Fatal("restage of the same revision forked")
 	}
 	if _, e := p.Exec(ctx, `DELETE FROM quality_revisions WHERE id=$1`, rid); e != nil {
