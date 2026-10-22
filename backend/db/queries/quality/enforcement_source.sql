@@ -25,3 +25,13 @@ SELECT * FROM quality_enforcement_source_revisions WHERE revision_id = @revision
 
 -- name: CountEnforcementSourceRecords :one
 SELECT count(*) FROM quality_enforcement_source_records WHERE revision_id = @revision_id;
+
+-- name: EnforcementSourcePage :many
+SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
+FROM quality_enforcement_source_records
+WHERE revision_id = @revision_id AND ((native_key,id::text) > (@after_native::text,@after_id::text) OR @after_id::text = '')
+ORDER BY native_key,id::text LIMIT @limit_plus_one::int;
+
+-- name: EnforcementSourceByID :one
+SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
+FROM quality_enforcement_source_records WHERE revision_id = @revision_id AND id = @id;

@@ -13,6 +13,9 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 )
 
+// EnforcementSourceEdition is a dataset identity, never a guessed source period.
+const EnforcementSourceEdition = "enforcement-source-v1"
+
 const EnforcementSourceProfile = "anp-enforcement-xlsx-2019-v1"
 
 // EnforcementSourceContext preserves the workbook calendar and document bounds.
@@ -54,7 +57,7 @@ func (in EnforcementSourceInput) Validate() error {
 			return refuse
 		}
 	}
-	m := domain.Manifest{Source: "enforcement", Stream: domain.StreamEnforcement, Edition: "2019+", Counts: n}
+	m := domain.Manifest{Source: "enforcement", Stream: domain.StreamEnforcement, Edition: EnforcementSourceEdition, Counts: n}
 	r := in.Resources[0]
 	if r.ValidateMember() != nil || r.Member != "" || r.URL == "" || len(r.URL) > 1024 || r.Bytes == 0 || r.Bytes > 100<<20 || len(r.SHA256) != 64 || !isHex(r.SHA256) || r.SHA256 != strings.ToLower(r.SHA256) {
 		return refuse
@@ -124,16 +127,16 @@ func (in EnforcementSourceInput) Validate() error {
 // addresses are never staged. Distinct results that share a document stay
 // distinct records; no record is bound to a current company or station here.
 type EnforcementSourceRecord struct {
-	RecordKey      string
-	SourceCNPJ     string
-	SubjectKind    string
-	UF             string
-	Municipality   string
-	Segment        string
-	DocumentDate   string
-	DocumentNumber string
-	Procedure      string
-	Result         string
-	EvidenceRef    string
-	Fingerprint    string
+	RecordKey      string `json:"native_key"`
+	SourceCNPJ     string `json:"subject_cnpj"`
+	SubjectKind    string `json:"subject_kind"`
+	UF             string `json:"uf"`
+	Municipality   string `json:"municipality"`
+	Segment        string `json:"segment"`
+	DocumentDate   string `json:"document_day"`
+	DocumentNumber string `json:"document_number"`
+	Procedure      string `json:"procedure"`
+	Result         string `json:"result"`
+	EvidenceRef    string `json:"evidence_ref"`
+	Fingerprint    string `json:"fingerprint"`
 }

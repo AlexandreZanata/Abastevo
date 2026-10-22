@@ -22,6 +22,49 @@ func (q *Queries) CountEnforcementSourceRecords(ctx context.Context, revisionID 
 	return count, err
 }
 
+const enforcementSourceByID = `-- name: EnforcementSourceByID :one
+SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
+FROM quality_enforcement_source_records WHERE revision_id = $1 AND id = $2
+`
+
+type EnforcementSourceByIDParams struct {
+	RevisionID pgtype.UUID `json:"revision_id"`
+	ID         pgtype.UUID `json:"id"`
+}
+
+type EnforcementSourceByIDRow struct {
+	ID             pgtype.UUID `json:"id"`
+	NativeKey      string      `json:"native_key"`
+	SubjectKind    string      `json:"subject_kind"`
+	Uf             string      `json:"uf"`
+	Municipality   string      `json:"municipality"`
+	Segment        string      `json:"segment"`
+	DocumentDay    pgtype.Date `json:"document_day"`
+	DocumentNumber string      `json:"document_number"`
+	Procedure      string      `json:"procedure"`
+	Result         string      `json:"result"`
+	EvidenceRef    string      `json:"evidence_ref"`
+}
+
+func (q *Queries) EnforcementSourceByID(ctx context.Context, arg EnforcementSourceByIDParams) (EnforcementSourceByIDRow, error) {
+	row := q.db.QueryRow(ctx, enforcementSourceByID, arg.RevisionID, arg.ID)
+	var i EnforcementSourceByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.NativeKey,
+		&i.SubjectKind,
+		&i.Uf,
+		&i.Municipality,
+		&i.Segment,
+		&i.DocumentDay,
+		&i.DocumentNumber,
+		&i.Procedure,
+		&i.Result,
+		&i.EvidenceRef,
+	)
+	return i, err
+}
+
 const enforcementSourceContext = `-- name: EnforcementSourceContext :one
 SELECT revision_id, source_profile, source_file, date_system, input_count, accepted_count, duplicate_count, first_document_day, last_document_day FROM quality_enforcement_source_revisions WHERE revision_id = $1
 `
@@ -41,6 +84,71 @@ func (q *Queries) EnforcementSourceContext(ctx context.Context, revisionID pgtyp
 		&i.LastDocumentDay,
 	)
 	return i, err
+}
+
+const enforcementSourcePage = `-- name: EnforcementSourcePage :many
+SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
+FROM quality_enforcement_source_records
+WHERE revision_id = $1 AND ((native_key,id::text) > ($2::text,$3::text) OR $3::text = '')
+ORDER BY native_key,id::text LIMIT $4::int
+`
+
+type EnforcementSourcePageParams struct {
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	AfterNative  string      `json:"after_native"`
+	AfterID      string      `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type EnforcementSourcePageRow struct {
+	ID             pgtype.UUID `json:"id"`
+	NativeKey      string      `json:"native_key"`
+	SubjectKind    string      `json:"subject_kind"`
+	Uf             string      `json:"uf"`
+	Municipality   string      `json:"municipality"`
+	Segment        string      `json:"segment"`
+	DocumentDay    pgtype.Date `json:"document_day"`
+	DocumentNumber string      `json:"document_number"`
+	Procedure      string      `json:"procedure"`
+	Result         string      `json:"result"`
+	EvidenceRef    string      `json:"evidence_ref"`
+}
+
+func (q *Queries) EnforcementSourcePage(ctx context.Context, arg EnforcementSourcePageParams) ([]EnforcementSourcePageRow, error) {
+	rows, err := q.db.Query(ctx, enforcementSourcePage,
+		arg.RevisionID,
+		arg.AfterNative,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EnforcementSourcePageRow
+	for rows.Next() {
+		var i EnforcementSourcePageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NativeKey,
+			&i.SubjectKind,
+			&i.Uf,
+			&i.Municipality,
+			&i.Segment,
+			&i.DocumentDay,
+			&i.DocumentNumber,
+			&i.Procedure,
+			&i.Result,
+			&i.EvidenceRef,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const recordEnforcementSourceContext = `-- name: RecordEnforcementSourceContext :execrows

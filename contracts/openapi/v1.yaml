@@ -7643,7 +7643,7 @@ components:
       type: object
       required: [source, stream, edition, revision_id, available, stale, coverage_note]
       properties:
-        source_clock_precision: {type: string, enum: [DAY, MONTH]}
+        source_clock_precision: {type: string, enum: [DAY, MONTH, UNAVAILABLE]}
         source_input_contract: {type: string, maxLength: 128}
         source_period: {type: string, maxLength: 32}
         source_clock_value:
@@ -7796,10 +7796,19 @@ components:
       properties:
         id: {type: string, format: uuid}
         native_key: {type: string, example: AUTO-001}
-        scope: {type: string}
-        status: {type: string}
+        scope: {type: [string, 'null']}
+        status: {type: [string, 'null']}
         occurred_on: {type: [string, 'null'], format: date}
-        as_of: {type: string, format: date}
+        as_of: {type: [string, 'null'], format: date}
+        source_profile: {type: string, enum: [anp-enforcement-xlsx-2019-v1]}
+        subject_kind: {type: string, enum: [company-shaped, personal-shaped, other]}
+        uf: {type: string, pattern: '^[A-Z]{2}$'}
+        municipality: {type: string, maxLength: 256}
+        segment: {type: string, maxLength: 256}
+        document_day: {type: string, format: date, description: Source document day only; no occurrence or legal finality inference.}
+        document_number: {type: string, maxLength: 128}
+        procedure: {type: string, maxLength: 65536}
+        result: {type: string, maxLength: 65536}
         evidence_ref: {type: string}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
