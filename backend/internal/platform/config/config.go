@@ -83,6 +83,7 @@ const (
 	// Source discovery/revalidation schedules are independent and default
 	// off. Installing a schedule never enables native imports.
 	keyQualityEnforcementImportsEnabled   = "ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED"
+	keyChargingImportsEnabled             = "ANPFUEL_CHARGING_IMPORTS_ENABLED"
 	keyQualityEnforcementDiscoveryEnabled = "ANPFUEL_QUALITY_ENFORCEMENT_DISCOVERY_ENABLED"
 	keyQualitySanctionsDiscoveryEnabled   = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
 	keyQualityDiscoveryEnabled            = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
@@ -125,6 +126,7 @@ type Config struct {
 	// Bounded source schedules are independent and default off. Handlers
 	// still require the native imports switch; a schedule alone only queues.
 	QualityEnforcementImportsEnabled   bool
+	ChargingImportsEnabled             bool
 	QualityEnforcementDiscoveryEnabled bool
 	QualitySanctionsDiscoveryEnabled   bool
 	QualityDiscoveryEnabled            bool
@@ -202,6 +204,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	for key, target := range map[string]*bool{
 		keyQualityEnforcementImportsEnabled:   &cfg.QualityEnforcementImportsEnabled,
+		keyChargingImportsEnabled:             &cfg.ChargingImportsEnabled,
 		keyQualityEnforcementDiscoveryEnabled: &cfg.QualityEnforcementDiscoveryEnabled,
 		keyQualitySanctionsDiscoveryEnabled:   &cfg.QualitySanctionsDiscoveryEnabled,
 		keyQualityDiscoveryEnabled:            &cfg.QualityDiscoveryEnabled,

@@ -27,10 +27,16 @@ func hexUUID(id pgtype.UUID) string {
 // from LoadBatch (verified identities, census and integrity); storage
 // rechecks structural bounds and same-batch census, never cryptographic
 // identities (already verified) and never Directory links (stay null
-// until reviewed). A census mismatch rolls back everything.
+// until reviewed). A census mismatch rolls back everything. Replay of
+// the same manifest hash returns the existing batch without duplicating
+// (immutable history: corrections carry new hashes and create batches).
 func StoreBatch(ctx context.Context, q *charging.Queries, batch Batch, manifestSHA256 string, inputCount, acceptedCount int) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
+	}
+	existing, err := q.FindChargingBatchByManifest(ctx, manifestSHA256)
+	if err == nil && existing.Valid {
+		return hexUUID(existing), nil
 	}
 	batchUUID, err := newUUID()
 	if err != nil {
