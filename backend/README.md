@@ -151,6 +151,22 @@ catalog traversal after imports to include newly inserted revisions.
 
 `ANPFUEL_QUALITY_READS_ENABLED=false` contains all official quality routes.
 
+Station-scoped sanction attribution is a separate, default-off contract:
+`ANPFUEL_QUALITY_COMPANY_READS_ENABLED=false` enables the optional `station_id`
+filter only on the sanction page/detail routes. It never enables source ingest
+or relaxes global reads, and it does not accept `station_id` on actions.
+Scoped responses are explicitly current-company-only
+(`association_scope=CURRENT_COMPANY_ONLY`,
+`historical_business_window_known=false`), expose no CNPJ or private proof, and
+never fall back to global rows when the scope is empty. Each scoped request
+revalidates the frozen source revision, the canonical station and fresh
+Directory identity evidence before answering `304`; `ETag`/cursor seal the
+revision, station, filters, limit and private scope fingerprint. Scoped
+responses use `Cache-Control: public, max-age=0, must-revalidate`; outages and
+the independent kill switch answer no-store errors. Unknown, duplicate or empty
+filters are refused. Keep the switch off until staging/operator acceptance; see
+[MEX-19](../docs/backend/evidence/mobile-expansion/MEX-19.md).
+
 Native quality worker imports have a separate default-off switch,
 `ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
 `quality-import`, `quality-discovery`, `quality-revalidate`, `quality-recompute`,

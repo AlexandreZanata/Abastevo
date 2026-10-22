@@ -274,3 +274,19 @@ func TestLoadTrustedProxies(t *testing.T) {
 		}
 	}
 }
+
+func TestMEX19CompanyReadSwitchIsIndependentAndDefaultsOff(t *testing.T) {
+	cfg, e := load(envFunc(nil))
+	if e != nil || cfg.QualityCompanyReadsEnabled || !cfg.QualityReadsEnabled {
+		t.Fatal("source attribution enabled implicitly", e)
+	}
+	for _, raw := range []string{"true", "false"} {
+		cfg, e = load(envFunc(map[string]string{keyQualityCompanyReadsEnabled: raw}))
+		if e != nil || cfg.QualityCompanyReadsEnabled != (raw == "true") || !cfg.QualityReadsEnabled {
+			t.Fatal("scoped/global switch coupled", e)
+		}
+	}
+	if _, e = load(envFunc(map[string]string{keyQualityCompanyReadsEnabled: "invalid"})); e == nil {
+		t.Fatal("invalid company switch admitted")
+	}
+}

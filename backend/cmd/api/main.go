@@ -79,7 +79,6 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
-	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
@@ -340,7 +339,7 @@ func run() error {
 	// handler gets station existence as a closure so modules never
 	// cross-read. Disabled by ANPFUEL_QUALITY_READS_ENABLED=false, which
 	// answers 404 without touching storage.
-	qualityReads := qualityread.NewReader(pool.Underlying())
+	qualityReads := companyQualityReader(pool.Underlying())
 	qualityReadsEnabled := cfg.QualityReadsEnabled
 	qualityhttp.Handler{
 		Read:    qualityReads,
@@ -355,7 +354,8 @@ func run() error {
 			}
 			return false, err
 		},
-		Enabled: func() bool { return qualityReadsEnabled },
+		Enabled:        func() bool { return qualityReadsEnabled },
+		CompanyEnabled: func() bool { return cfg.QualityCompanyReadsEnabled },
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.

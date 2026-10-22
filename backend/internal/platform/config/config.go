@@ -72,8 +72,9 @@ const (
 	// keyQualityReadsEnabled gates the anonymous quality ledger reads
 	// (FQ-08). Enabled by default; setting it false answers 404 without
 	// touching storage, which is the documented read recovery.
-	keyQualityReadsEnabled   = "ANPFUEL_QUALITY_READS_ENABLED"
-	keyQualityReportsEnabled = "ANPFUEL_QUALITY_REPORTS_ENABLED"
+	keyQualityCompanyReadsEnabled = "ANPFUEL_QUALITY_COMPANY_READS_ENABLED"
+	keyQualityReadsEnabled        = "ANPFUEL_QUALITY_READS_ENABLED"
+	keyQualityReportsEnabled      = "ANPFUEL_QUALITY_REPORTS_ENABLED"
 	// Source discovery/revalidation schedules are independent and default
 	// off. Installing a schedule never enables native imports.
 	keyQualitySanctionsDiscoveryEnabled = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
@@ -120,8 +121,9 @@ type Config struct {
 	QualityDiscoveryEnabled          bool
 	QualityRevalidationEnabled       bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
-	QualityReadsEnabled   bool
-	QualityReportsEnabled bool
+	QualityReadsEnabled        bool
+	QualityCompanyReadsEnabled bool
+	QualityReportsEnabled      bool
 	// TrainingTermsDigest is the published digest fresh training
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
@@ -204,6 +206,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_REPORTS_ENABLED must be boolean")
 		}
 		cfg.QualityReportsEnabled = enabled
+	}
+	if raw, present := getenv(keyQualityCompanyReadsEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_COMPANY_READS_ENABLED must be boolean")
+		}
+		cfg.QualityCompanyReadsEnabled = enabled
 	}
 	cfg.QualityReadsEnabled = true
 	if raw, present := getenv(keyQualityReadsEnabled); present {
