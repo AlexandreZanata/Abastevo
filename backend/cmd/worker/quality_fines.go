@@ -70,15 +70,21 @@ func nativeFineImport(pool *pgxpool.Pool, binary, historyBinary, root string) qu
 // private files, deadlines and the streamed content digest. No job can select
 // a host, local path, executable or alternate fetch security policy.
 func nativeFineFetch(root string) func(context.Context, string) (qualityjobs.FileArtifact, error) {
+	return nativeSourceFileFetch(root, func(raw string) error { _, e := native.FineResourcePeriod(raw); return e }, source.Entry{ID: "anp-fine-native", Host: "www.gov.br", PathPrefix: native.FineResourcePrefix, FileGlob: "multas*", Kind: source.KindHistoricalCSV})
+}
+
+// Each caller supplies its exact source selector and narrow approved entry;
+// TLS/public-IP pinning, redirects, private download and cleanup stay shared.
+func nativeSourceFileFetch(root string, selection func(string) error, entry source.Entry) func(context.Context, string) (qualityjobs.FileArtifact, error) {
 	return func(ctx context.Context, raw string) (qualityjobs.FileArtifact, error) {
-		if _, e := native.FineResourcePeriod(raw); e != nil {
+		if e := selection(raw); e != nil {
 			return qualityjobs.FileArtifact{}, errors.New("fine source: resource selection refused")
 		}
 		workspace, e := os.MkdirTemp(root, "quality-fine-fetch-")
 		if e != nil {
 			return qualityjobs.FileArtifact{}, errors.New("fine source: workspace unavailable")
 		}
-		fetcher := source.NewFetcher([]source.Entry{{ID: "anp-fine-native", Host: "www.gov.br", PathPrefix: native.FineResourcePrefix, FileGlob: "multas*", Kind: source.KindHistoricalCSV}})
+		fetcher := source.NewFetcher([]source.Entry{entry})
 		fetcher.TempDir, fetcher.MaxBytes, fetcher.MaxRedirects = workspace, prepared.MaxBytes, 3
 		result, e := fetcher.Fetch(ctx, raw, "", "")
 		if e != nil || result.NotModified || result.Bytes <= 0 {

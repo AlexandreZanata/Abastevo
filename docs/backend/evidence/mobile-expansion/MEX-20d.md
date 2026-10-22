@@ -1,5 +1,9 @@
 # MEX-20d — Atomic publication and frozen source reads
 
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
 State: LOCAL_DONE / INTEGRATION_PENDING. Parent:2206b31e. Rules B-BR-MEX-10/11/12/16,
 BUC-MEX-07. Reuse edition publication identity, guard, transaction, correction
 and immutable history. Native source geography/document/procedure/result are

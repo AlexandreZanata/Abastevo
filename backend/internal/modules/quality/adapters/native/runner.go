@@ -116,7 +116,7 @@ func (r Runner) Prepare(ctx context.Context, req Request, resolve prepared.Resol
 }
 func openArtifact(dir, name string, maxBytes int64) (*os.File, error) {
 	switch name {
-	case "manifest.json", "assays.jsonl", "sanctions.jsonl", "history.jsonl", "source_notes.jsonl", "duplicates.jsonl", "quarantine.jsonl":
+	case "manifest.json", "enforcement-source-records.jsonl", "assays.jsonl", "sanctions.jsonl", "history.jsonl", "source_notes.jsonl", "duplicates.jsonl", "quarantine.jsonl":
 	default:
 		return nil, refused("artifact name")
 	}
@@ -133,6 +133,21 @@ func openArtifact(dir, name string, maxBytes int64) (*os.File, error) {
 	if e != nil || !os.SameFile(info, current) || !current.Mode().IsRegular() || current.Size() > maxBytes {
 		_ = f.Close()
 		return nil, refused("artifact replacement")
+	}
+	return f, nil
+}
+
+// Native enforcement artifacts additionally require private file modes. Legacy
+// preparers retain their established private-workspace contract.
+func openPrivateArtifact(dir, name string, maxBytes int64) (*os.File, error) {
+	f, e := openArtifact(dir, name, maxBytes)
+	if e != nil {
+		return nil, e
+	}
+	st, e := f.Stat()
+	if e != nil || st.Mode().Perm()&0077 != 0 {
+		_ = f.Close()
+		return nil, refused("private artifact permissions")
 	}
 	return f, nil
 }

@@ -1,5 +1,9 @@
 # MEX-20c — Compatible enforcement storage
 
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
 State: LOCAL_DONE / INTEGRATION_PENDING. Parent: 2dffb82e.
 
 B-BR-MEX-10/11/12/16 and BUC-MEX-07: keep every distinct minimized

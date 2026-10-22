@@ -79,3 +79,33 @@ func TestFineDiscoveryScheduleIsIndependentAndDefaultOff(t *testing.T) {
 		}
 	}
 }
+
+func TestEnforcementFlagsAreIndependentAndDefaultOff(t *testing.T) {
+	for _, key := range []string{"ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED", "ANPFUEL_QUALITY_ENFORCEMENT_DISCOVERY_ENABLED"} {
+		for _, value := range []string{"", "false", "true", "invalid"} {
+			cfg, e := load(func(got string) (string, bool) {
+				if got == key {
+					return value, value != ""
+				}
+				return "", false
+			})
+			if value == "invalid" {
+				if e == nil {
+					t.Fatal("invalid flag admitted")
+				}
+				continue
+			}
+			if e != nil {
+				t.Fatal(e)
+			}
+			imports, discovery := false, false
+			if value == "true" {
+				imports = key == "ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED"
+				discovery = !imports
+			}
+			if cfg.QualityEnforcementImportsEnabled != imports || cfg.QualityEnforcementDiscoveryEnabled != discovery || cfg.QualityImportsEnabled || cfg.QualitySanctionsDiscoveryEnabled {
+				t.Fatal("enforcement activated another source")
+			}
+		}
+	}
+}
