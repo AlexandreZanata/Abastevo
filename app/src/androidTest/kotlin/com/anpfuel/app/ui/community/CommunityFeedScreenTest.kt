@@ -57,6 +57,14 @@ class CommunityFeedScreenTest {
         capture("community-feed-dark.png")
         compose.onNodeWithText("Synthetic station").performScrollTo().assertIsDisplayed()
     }
+    @Test fun staleSnapshotShowsAgeHintAndStandardPriceLabel() {
+        render(CommunityFeedUiState(city = city, fuel = FuelProduct.ETHANOL, loading = false, stale = true, items = listOf(item)))
+        compose.onNodeWithText(context.getString(R.string.feed_standard_prices)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.feed_cached_hint)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Synthetic station").performScrollTo().assertIsDisplayed()
+        capture("opt-community-stale.png")
+    }
+
     @Test fun noCoverageNeverInventsPricesAndOpensCaptureForContribution() {
         var route: String? = null
         render(CommunityFeedUiState(city = city, loading = false), navigate = { route = it })

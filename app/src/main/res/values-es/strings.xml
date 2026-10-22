@@ -118,8 +118,10 @@
     <string name="week_picker_confirm_message">¿Descargar e importar datos de la ANP para %1$s? Esto puede tardar unos minutos.</string>
     <string name="active_week_label">Más reciente</string>
     <string name="survey_week_chip_latest_suffix">· Más reciente</string>
+    <string name="survey_week_chip_stale_suffix">· Última disponible</string>
     <string name="a11y_survey_week_chip">Semana de encuesta activa: %1$s. Toque para cambiar.</string>
     <string name="a11y_survey_week_chip_latest">Semana de encuesta activa: %1$s (más reciente). Toque para cambiar.</string>
+    <string name="a11y_survey_week_chip_stale_latest">Semana de encuesta activa: %1$s (última disponible, puede estar desactualizada). Toque para cambiar.</string>
 
     <!-- Sync banners (BR-004, freshness) -->
     <string name="banner_offline">Sin conexión — mostrando datos en caché.</string>
@@ -135,6 +137,8 @@
     <string name="sync_completed">Sincronización completada</string>
     <string name="sync_failed">Error de sincronización</string>
     <string name="info_sync_up_to_date">Ya está actualizado.</string>
+    <string name="home_stale_verified">Verificado %1$s — ANP aún no publicó semana nueva. Mostrando %2$s (última disponible).</string>
+    <string name="action_verify_again">Verificar de nuevo</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">No se pudo acceder a la ANP. Compruebe su conexión e inténtelo de nuevo.</string>
@@ -595,7 +599,7 @@
     <string name="feed_contribute_title">Conductores ayudando a conductores</string>
     <string name="feed_contribute_hint">¿Encontraste un precio? Compártelo con tu ciudad.</string>
     <string name="feed_prices_title">Precios de la comunidad</string>
-    <string name="feed_auto_refresh">Precios estándar · se actualiza cada 15 segundos</string>
+    <string name="feed_standard_prices">Precios estándar</string>
     <string name="feed_recent">Más recientes</string>
     <string name="feed_cheapest">Más barato</string>
     <string name="feed_unavailable">No se pudo actualizar el feed</string>

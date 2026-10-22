@@ -33,7 +33,7 @@ env:
   # runs staticcheck under GOTOOLCHAIN=go1.27.1 until it catches up.
   # Re-pin deliberately only after verifying staticcheck AND govulncheck
   # against the new toolchain.
-  GO_VERSION: '1.27.2'
+  GO_VERSION: '1.27.3'
   RUST_VERSION: '1.99.0'
   SQLC_VERSION: v1.31.1
   STATICCHECK_VERSION: v0.8.1

@@ -118,8 +118,10 @@
     <string name="week_picker_confirm_message">Загрузить и импортировать данные ANP за %1$s? Это может занять несколько минут.</string>
     <string name="active_week_label">Последняя</string>
     <string name="survey_week_chip_latest_suffix">· Последняя</string>
+    <string name="survey_week_chip_stale_suffix">· Последняя доступная</string>
     <string name="a11y_survey_week_chip">Активная неделя опроса: %1$s. Нажмите, чтобы изменить.</string>
     <string name="a11y_survey_week_chip_latest">Активная неделя опроса: %1$s (последняя). Нажмите, чтобы изменить.</string>
+    <string name="a11y_survey_week_chip_stale_latest">Активная неделя опроса: %1$s (последняя доступная, может быть устаревшей). Нажмите, чтобы изменить.</string>
 
     <!-- Sync banners (BR-004, freshness) -->
     <string name="banner_offline">Офлайн — показаны кэшированные данные.</string>
@@ -135,6 +137,8 @@
     <string name="sync_completed">Синхронизация завершена</string>
     <string name="sync_failed">Синхронизация не удалась</string>
     <string name="info_sync_up_to_date">Уже актуально.</string>
+    <string name="home_stale_verified">Проверено %1$s — ANP пока не опубликовал новую неделю. Показана %2$s (последняя доступная).</string>
+    <string name="action_verify_again">Проверить снова</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Не удалось связаться с ANP. Проверьте подключение и повторите попытку.</string>
@@ -595,7 +599,7 @@
     <string name="feed_contribute_title">Водители помогают водителям</string>
     <string name="feed_contribute_hint">Нашли цену? Поделитесь с вашим городом.</string>
     <string name="feed_prices_title">Цены сообщества</string>
-    <string name="feed_auto_refresh">Обычные цены · обновление каждые 15 секунд</string>
+    <string name="feed_standard_prices">Обычные цены</string>
     <string name="feed_recent">Самые свежие</string>
     <string name="feed_cheapest">Дешевле</string>
     <string name="feed_unavailable">Не удалось обновить ленту</string>

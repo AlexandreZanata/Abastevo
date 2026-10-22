@@ -118,8 +118,10 @@
     <string name="week_picker_confirm_message">%1$sのANPデータをダウンロードしてインポートしますか？数分かかる場合があります。</string>
     <string name="active_week_label">最新</string>
     <string name="survey_week_chip_latest_suffix">· 最新</string>
+    <string name="survey_week_chip_stale_suffix">· 最新の利用可能</string>
     <string name="a11y_survey_week_chip">有効な調査週：%1$s。タップして変更。</string>
     <string name="a11y_survey_week_chip_latest">有効な調査週：%1$s（最新）。タップして変更。</string>
+    <string name="a11y_survey_week_chip_stale_latest">有効な調査週：%1$s（利用可能な最新、古い可能性あり）。タップして変更。</string>
 
     <!-- Sync banners (BR-004, freshness) -->
     <string name="banner_offline">オフライン — キャッシュデータを表示しています。</string>
@@ -135,6 +137,8 @@
     <string name="sync_completed">同期が完了しました</string>
     <string name="sync_failed">同期に失敗しました</string>
     <string name="info_sync_up_to_date">すでに最新です。</string>
+    <string name="home_stale_verified">%1$sに確認 — ANPはまだ新しい週を公開していません。%2$sを表示中（利用可能な最新）。</string>
+    <string name="action_verify_again">再確認</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">ANPに接続できませんでした。接続を確認して再試行してください。</string>
@@ -595,7 +599,7 @@
     <string name="feed_contribute_title">ドライバー同士で助け合う</string>
     <string name="feed_contribute_hint">価格を見つけたら、あなたの都市で共有しましょう。</string>
     <string name="feed_prices_title">コミュニティの価格</string>
-    <string name="feed_auto_refresh">通常価格 · 15秒ごとに更新</string>
+    <string name="feed_standard_prices">通常価格</string>
     <string name="feed_recent">最新</string>
     <string name="feed_cheapest">最安値</string>
     <string name="feed_unavailable">フィードを更新できませんでした</string>

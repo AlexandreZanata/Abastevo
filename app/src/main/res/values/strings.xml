@@ -204,8 +204,10 @@
     <string name="week_picker_confirm_message">Download and import ANP data for %1$s? This may take a few minutes.</string>
     <string name="active_week_label">Latest</string>
     <string name="survey_week_chip_latest_suffix">· Latest</string>
+    <string name="survey_week_chip_stale_suffix">· Latest available</string>
     <string name="a11y_survey_week_chip">Active survey week: %1$s. Tap to change.</string>
     <string name="a11y_survey_week_chip_latest">Active survey week: %1$s (latest). Tap to change.</string>
+    <string name="a11y_survey_week_chip_stale_latest">Active survey week: %1$s (latest available, may be outdated). Tap to change.</string>
 
     <!-- Sync banners (BR-004, freshness) -->
     <string name="banner_offline">Offline — showing cached data.</string>
@@ -221,6 +223,8 @@
     <string name="sync_completed">Sync completed</string>
     <string name="sync_failed">Sync failed</string>
     <string name="info_sync_up_to_date">Already up to date.</string>
+    <string name="home_stale_verified">Checked %1$s — ANP hasn\'t published a newer week yet. Showing %2$s (latest available).</string>
+    <string name="action_verify_again">Check again</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Could not reach ANP. Check your connection and try again.</string>
@@ -698,7 +702,7 @@
     <string name="feed_contribute_title">Drivers helping drivers</string>
     <string name="feed_contribute_hint">Found a price? Share it with your city.</string>
     <string name="feed_prices_title">Community prices</string>
-    <string name="feed_auto_refresh">Standard prices · refreshes every 15 seconds</string>
+    <string name="feed_standard_prices">Standard prices</string>
     <string name="feed_recent">Most recent</string>
     <string name="feed_cheapest">Cheapest</string>
     <string name="feed_best">Best fuel</string>

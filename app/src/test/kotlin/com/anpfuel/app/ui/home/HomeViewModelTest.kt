@@ -32,6 +32,7 @@ import io.mockk.verify
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -41,6 +42,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -58,9 +60,13 @@ class HomeViewModelTest {
     private val getTankFillCostEstimatesUseCase = mockk<GetTankFillCostEstimatesUseCase>()
     private val homeVehiclePresenceStore = mockk<com.anpfuel.data.local.preferences.HomeVehiclePresenceStore>()
     private val homeBenefitsVisibilityStore = mockk<com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore>()
+    private val manualSyncVerificationStore =
+        mockk<com.anpfuel.data.local.preferences.ManualSyncVerificationStore>(relaxed = true)
     private val observeNetworkConnectivityUseCase = mockk<ObserveNetworkConnectivityUseCase>()
+    private val connected = MutableStateFlow(true)
 
     private val communitySummary = mockk<com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase>()
+    private val communitySnapshot = mockk<com.anpfuel.domain.community.CommunityFeedLocalSnapshot>()
     private lateinit var viewModel: HomeViewModel
 
     private val surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
@@ -70,11 +76,14 @@ class HomeViewModelTest {
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        every { observeNetworkConnectivityUseCase.invoke() } returns flowOf(true)
+        connected.value = true
+        every { observeNetworkConnectivityUseCase.invoke() } returns connected
         every { homeVehiclePresenceStore.hasVehicle() } returns false
         every { homeVehiclePresenceStore.setHasVehicle(any()) } returns Unit
         every { homeBenefitsVisibilityStore.isVisible() } returns true
         every { homeBenefitsVisibilityStore.setVisible(any()) } returns Unit
+        coEvery { communitySnapshot.snapshotSummary(any()) } returns null
+        every { manualSyncVerificationStore.get() } returns null
         viewModel = HomeViewModel(
             getDataReadinessUseCase = getDataReadinessUseCase,
             getMunicipalityPricesUseCase = getMunicipalityPricesUseCase,
@@ -84,8 +93,10 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
+            communitySnapshot = communitySnapshot,
         )
     }
 
@@ -213,8 +224,10 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
+            communitySnapshot = communitySnapshot,
         )
 
         assertTrue(viewModel.uiState.value.hasVehicle)
@@ -232,8 +245,10 @@ class HomeViewModelTest {
             getTankFillCostEstimatesUseCase = getTankFillCostEstimatesUseCase,
             homeVehiclePresenceStore = homeVehiclePresenceStore,
             homeBenefitsVisibilityStore = homeBenefitsVisibilityStore,
+            manualSyncVerificationStore = manualSyncVerificationStore,
             observeNetworkConnectivityUseCase = observeNetworkConnectivityUseCase,
             communitySummary = communitySummary,
+            communitySnapshot = communitySnapshot,
         )
 
         assertEquals(false, viewModel.uiState.value.showBenefits)
@@ -261,6 +276,119 @@ class HomeViewModelTest {
 
         assertTrue(viewModel.uiState.value.hasVehicle)
         coVerify { homeVehiclePresenceStore.setHasVehicle(true) }
+    }
+
+    @Test
+    fun refreshWithNoNewDataKeepsStaleButMarksVerified() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } returns com.anpfuel.application.usecase.sync.SyncPriceTablesResult(
+            outcome = com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA,
+        )
+        var stored: com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification? = null
+        every { manualSyncVerificationStore.get() } answers { stored }
+        every {
+            manualSyncVerificationStore.saveVerified(any(), any(), any())
+        } answers {
+            stored = com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification(
+                weekStartIso = firstArg(),
+                weekEndIso = secondArg(),
+                verifiedAtMillis = thirdArg(),
+            )
+        }
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        coVerify {
+            manualSyncVerificationStore.saveVerified(
+                weekStartIso = surveyWeek.startDate.toString(),
+                weekEndIso = surveyWeek.endDate.toString(),
+                verifiedAtMillis = any(),
+            )
+        }
+        assertEquals(
+            com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA,
+            viewModel.uiState.value.lastSyncOutcome,
+        )
+        assertTrue(viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun refreshWithSuccessClearsStaleVerification() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } returns com.anpfuel.application.usecase.sync.SyncPriceTablesResult(
+            outcome = com.anpfuel.domain.event.SyncJobOutcome.SUCCESS,
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        coVerify { manualSyncVerificationStore.clear() }
+        assertEquals(false, viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun loadHidesVerificationWhenPinnedToOldWeek() = runTest(dispatcher) {
+        val oldWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
+        val latestWeek = SurveyWeek.fromIsoDates("2026-06-14", "2026-06-20")
+        stubStaleHome(displayedWeek = oldWeek, latestWeek = latestWeek)
+        every { manualSyncVerificationStore.get() } returns com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification(
+            weekStartIso = oldWeek.startDate.toString(),
+            weekEndIso = oldWeek.endDate.toString(),
+            verifiedAtMillis = 123L,
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isStaleVerified)
+    }
+
+    private fun stubStaleHome(
+        displayedWeek: SurveyWeek,
+        latestWeek: SurveyWeek,
+        vehicles: List<Vehicle> = emptyList(),
+        tankItems: List<VehicleTankFillCostEstimate> = emptyList(),
+    ) {
+        coEvery { getDataReadinessUseCase.invoke() } returns DataReadinessResult(
+            readiness = DataReadinessState.STALE,
+            hasCachedData = true,
+            latestSurveyWeek = latestWeek,
+            lastSummarySyncAt = null,
+        )
+        coEvery { selectLocationUseCase.getPreferredLocation() } returns PreferredLocation(
+            municipality = municipality,
+            state = state,
+        )
+        coEvery { listVehiclesUseCase.invoke() } returns vehicles
+        coEvery { getMunicipalityPricesUseCase.invoke() } returns MunicipalityPricesResult(
+            surveyWeek = displayedWeek,
+            state = state,
+            municipality = municipality,
+            prices = emptyList(),
+            dataAvailability = DataAvailability.HAS_DATA,
+        )
+        coEvery {
+            getTankFillCostEstimatesUseCase.invoke(
+                vehicles = vehicles,
+                state = state,
+                municipality = municipality,
+                surveyWeek = displayedWeek,
+            )
+        } returns TankFillCostEstimatesResult(
+            surveyWeek = displayedWeek,
+            state = state,
+            municipality = municipality,
+            items = tankItems,
+        )
     }
 
     private fun stubReadyHome(
@@ -351,8 +479,10 @@ class HomeViewModelTest {
         coVerify(exactly=0){getMunicipalityPricesUseCase()};coVerify(exactly=0){syncPriceTablesUseCase(any())};coVerify(exactly=0){getDataReadinessUseCase()}
         coEvery {communitySummary(city)} throws java.io.IOException("private details")
         viewModel.refresh(Locale.US);advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.communityFailed);assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
-        assertEquals(null,viewModel.uiState.value.communityGeneratedAt)
+        // Failure preserves the last validated prices with an explicit stale mark.
+        assertTrue(viewModel.uiState.value.communityFailed);assertTrue(viewModel.uiState.value.communityStale)
+        assertEquals("R$ 4,500",viewModel.uiState.value.communityPrices.single().averageFormatted)
+        assertTrue(viewModel.uiState.value.communityGeneratedAt != null)
     }
     @Test fun `late old city cannot replace current city and an old lifecycle cannot cancel the new request`()=runTest(dispatcher) {
         val first=summaryCity();val second=summaryCity("5107925","Synthetic second city")
@@ -397,6 +527,7 @@ class HomeViewModelTest {
         runCurrent()
         assertEquals("R$ 4,500", viewModel.uiState.value.communityPrices.single().averageFormatted)
         assertEquals(false, viewModel.uiState.value.communityLoading)
+        viewModel.communityNow = { java.time.Instant.now().plusSeconds(61) }
         viewModel.refreshCommunity(periodic = true)
         runCurrent()
         coVerify(exactly = 2) { communitySummary.city() }
@@ -424,6 +555,115 @@ class HomeViewModelTest {
         assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
     }
 
+    private fun fixedSummary(city: com.anpfuel.domain.community.FeedCity, generated: java.time.Instant, amount: Long = 4500) =
+        com.anpfuel.domain.community.CityCommunitySummary(city, listOf(
+            com.anpfuel.domain.community.CommunitySummaryPrice(FuelProduct.ETHANOL, amount, 4000, 5000, 65,
+                generated.minusSeconds(60), generated.plusSeconds(3600))), generated)
+
+    @Test fun `fresh community snapshot paints before the network answers`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySnapshot.snapshotSummary(city) } returns fixedSummary(city, at)
+        coEvery { communitySummary(city) } coAnswers { pending.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(); runCurrent()
+        // Painted from the snapshot while the network fetch is still suspended.
+        assertEquals("R$ 4,500", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        assertFalse(viewModel.uiState.value.communityFailed)
+        assertFalse(viewModel.uiState.value.communityStale)
+        pending.complete(fixedSummary(city, at.plusSeconds(61), 4900)); advanceUntilIdle()
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        // Once the data ages out, the next periodic evaluation refreshes from the network.
+        viewModel.communityNow = { at.plusSeconds(122) }
+        coEvery { communitySummary(city) } returns fixedSummary(city, at.plusSeconds(122), 4950)
+        viewModel.refreshCommunity(periodic = true); advanceUntilIdle()
+        assertEquals("R$ 4,950", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        coVerify(exactly = 2) { communitySummary(city) }
+    }
+
+    @Test fun `aged community snapshot marks stale without failing`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        val snap = com.anpfuel.domain.community.CityCommunitySummary(city, listOf(
+            com.anpfuel.domain.community.CommunitySummaryPrice(FuelProduct.ETHANOL, 4500, 4000, 5000, 65, at.minusSeconds(180), at.plusSeconds(3600))), at.minusSeconds(120))
+        val pending = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.CityCommunitySummary>()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySnapshot.snapshotSummary(city) } returns snap
+        coEvery { communitySummary(city) } coAnswers { pending.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(); runCurrent()
+        assertEquals(1, viewModel.uiState.value.communityPrices.size)
+        assertTrue(viewModel.uiState.value.communityStale)
+        assertFalse(viewModel.uiState.value.communityFailed)
+        pending.complete(summary(city, 4900))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.communityStale)
+    }
+
+    @Test fun `offline community refresh keeps the snapshot and marks failed without a call`() = runTest(dispatcher) {
+        connected.value = false
+        val city = summaryCity()
+        val snap = summary(city)
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySnapshot.snapshotSummary(city) } returns snap
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(); advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.communityPrices.size)
+        assertTrue(viewModel.uiState.value.communityFailed)
+        coVerify(exactly = 0) { communitySummary(city) }
+    }
+
+    @Test fun `reconnect refreshes a stale home community`() = runTest(dispatcher) {
+        connected.value = false
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySnapshot.snapshotSummary(city) } returns null
+        coEvery { communitySummary(city) } returns summary(city, 4900)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession()
+        viewModel.refreshCommunity(); advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.communityFailed)
+        assertTrue(viewModel.uiState.value.communityPrices.isEmpty())
+        viewModel.communityNow = { at.plusSeconds(61) }
+        connected.value = true; advanceUntilIdle()
+        assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+        assertFalse(viewModel.uiState.value.communityFailed)
+    }
+
+    @Test fun `community retries back off and stop after the budget until manual refresh`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } throws java.io.IOException("unavailable")
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.refreshCommunity(); advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.communityFailed)
+        coVerify(exactly = 1) { communitySummary(city) }
+        var clock = at
+        suspend fun tick(seconds: Long) {
+            clock = clock.plusSeconds(seconds)
+            val now = clock
+            viewModel.communityNow = { now }
+            viewModel.refreshCommunity(periodic = true); advanceUntilIdle()
+        }
+        tick(15); coVerify(exactly = 2) { communitySummary(city) }
+        tick(30); coVerify(exactly = 3) { communitySummary(city) }
+        tick(60); coVerify(exactly = 4) { communitySummary(city) }
+        tick(300); coVerify(exactly = 5) { communitySummary(city) }
+        tick(600); coVerify(exactly = 5) { communitySummary(city) }
+        coEvery { communitySummary(city) } returns summary(city)
+        viewModel.refreshCommunity(); advanceUntilIdle()
+        coVerify(exactly = 6) { communitySummary(city) }
+        assertFalse(viewModel.uiState.value.communityFailed)
+    }
+
     @Test fun `community expiry clears prices while slow refresh continues and stale expiry cannot clear fresh prices`() = runTest(dispatcher) {
         val city = summaryCity("5107925", "Sorriso")
         coEvery { communitySummary.city() } returns city
@@ -444,6 +684,65 @@ class HomeViewModelTest {
         pending.complete(summary(city, 4900))
         runCurrent()
         assertEquals("R$ 4,900", viewModel.uiState.value.communityPrices.single().averageFormatted)
+    }
+
+    @Test fun `scheduled community loop always yields with no city or suspended lookup`() = runTest(dispatcher) {
+        val selected = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity?>()
+        coEvery { communitySummary.city() } coAnswers { selected.await() }
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession()
+        viewModel.refreshCommunity(periodic = true); runCurrent()
+        val pendingDelay = viewModel.communityAutoRefreshDelayMillis()
+        selected.complete(null); runCurrent()
+        val missingDelay = viewModel.communityAutoRefreshDelayMillis()
+        viewModel.stopCommunityRefresh()
+        assertTrue(pendingDelay >= 5_000, "pending lookup must yield")
+        assertTrue(missingDelay >= 5_000, "missing city must yield")
+    }
+
+    @Test fun `returning Home retains same city memory while the city lookup is suspended`() = runTest(dispatcher) {
+        val city = summaryCity()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.stopCommunityRefresh()
+        val selected = kotlinx.coroutines.CompletableDeferred<com.anpfuel.domain.community.FeedCity?>()
+        coEvery { communitySummary.city() } coAnswers { selected.await() }
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(periodic = true); runCurrent()
+        val retained = viewModel.uiState.value.communityPrices.size
+        selected.complete(city); runCurrent()
+        viewModel.stopCommunityRefresh()
+        assertEquals(1, retained)
+        coVerify(exactly = 1) { communitySummary(city) }
+        viewModel.stopCommunityRefresh()
+    }
+
+    @Test fun `reconnecting while Home is stopped makes no community query`() = runTest(dispatcher) {
+        connected.value = false
+        val city = summaryCity()
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } returns summary(city)
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.stopCommunityRefresh()
+        connected.value = true; runCurrent()
+        coVerify(exactly = 0) { communitySummary(city) }
+    }
+
+    @Test fun `periodic evaluation retains Home failure until a successful check`() = runTest(dispatcher) {
+        val city = summaryCity()
+        val at = java.time.Instant.parse("2026-10-06T12:00:00Z")
+        viewModel.communityNow = { at }
+        coEvery { communitySummary.city() } returns city
+        coEvery { communitySummary(city) } throws java.io.IOException("unavailable")
+        viewModel.selectPriceSource(HomePriceSource.COMMUNITY, Locale.US)
+        viewModel.startCommunitySession(); viewModel.refreshCommunity(); runCurrent()
+        viewModel.communityNow = { at.plusSeconds(5) }
+        viewModel.refreshCommunity(periodic = true); runCurrent()
+        assertTrue(viewModel.uiState.value.communityFailed)
+        coVerify(exactly = 1) { communitySummary(city) }
+        viewModel.stopCommunityRefresh()
     }
 
 }

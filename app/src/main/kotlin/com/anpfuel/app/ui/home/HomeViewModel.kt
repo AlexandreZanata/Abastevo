@@ -13,9 +13,11 @@ import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.data.local.preferences.HomeBenefitsVisibilityStore
 import com.anpfuel.data.local.preferences.HomeVehiclePresenceStore
+import com.anpfuel.data.local.preferences.ManualSyncVerificationStore
 import com.anpfuel.app.mapper.TankFillCostUiMapper
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.domain.event.SyncJobOutcome
 import com.anpfuel.domain.event.SyncRequestSource
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.state.DataReadinessState
@@ -38,6 +40,7 @@ data class HomeUiState(
     val communityPrices: List<AveragePriceUiModel> = emptyList(),
     val communityLoading: Boolean = false,
     val communityFailed: Boolean = false,
+    val communityStale: Boolean = false,
     val communityGeneratedAt: java.time.Instant? = null,
     val communityUpdatedAt: java.time.Instant? = null,
     val communityExpiresAt: java.time.Instant? = null,
@@ -61,7 +64,22 @@ data class HomeUiState(
     val operationalNote: String? = null,
     val error: AppError? = null,
     val errorMessage: String? = null,
-)
+    val lastVerifiedAtMillis: Long? = null,
+    val verifiedSurveyWeek: SurveyWeek? = null,
+    val lastSyncOutcome: SyncJobOutcome? = null,
+) {
+    /**
+     * True when STALE is already verified for the displayed week:
+     * manual sync confirmed ANP has no newer week yet. Global per week,
+     * so switching city keeps the same verified state.
+     */
+    val isStaleVerified: Boolean
+        get() = readiness == DataReadinessState.STALE &&
+            lastSyncOutcome == SyncJobOutcome.NO_NEW_DATA &&
+            lastVerifiedAtMillis != null &&
+            verifiedSurveyWeek != null &&
+            verifiedSurveyWeek == surveyWeek
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -73,8 +91,10 @@ class HomeViewModel @Inject constructor(
     private val getTankFillCostEstimatesUseCase: GetTankFillCostEstimatesUseCase,
     private val homeVehiclePresenceStore: HomeVehiclePresenceStore,
     private val homeBenefitsVisibilityStore: HomeBenefitsVisibilityStore,
+    private val manualSyncVerificationStore: ManualSyncVerificationStore,
     observeNetworkConnectivityUseCase: ObserveNetworkConnectivityUseCase,
     private val communitySummary: com.anpfuel.application.usecase.community.GetCityCommunitySummaryUseCase,
+    private val communitySnapshot: com.anpfuel.domain.community.CommunityFeedLocalSnapshot,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -91,9 +111,14 @@ class HomeViewModel @Inject constructor(
     private var communityJob: kotlinx.coroutines.Job? = null
     private var communityGeneration = 0L
     private var communitySession = 0L
+    private var communityForeground = false
+    private var consecutiveCommunityFailures = 0
+    private var lastCommunityAttemptMillis: Long? = null
+    internal var communityNow: () -> java.time.Instant = { java.time.Instant.now() }
     /** A resumed screen owns a lease; cleanup from an older screen cannot cancel this one. */
     fun startCommunitySession(): Long {
-        _uiState.update { it.copy(communityPrices = emptyList(), communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+        communityForeground = true
+        consecutiveCommunityFailures = 0
         return ++communitySession
     }
 
@@ -109,6 +134,7 @@ class HomeViewModel @Inject constructor(
 
     fun stopCommunityRefresh(session: Long? = null) {
         if (session != null && session != communitySession) return
+        communityForeground = false
         communitySession++
         communityGeneration++
         communityJob?.cancel()
@@ -124,34 +150,79 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The Compose caller schedules asynchronously: a pending city/network job
+     * must still yield, as must an empty city. Every path honors the loop floor.
+     */
+    fun communityAutoRefreshDelayMillis(): Long {
+        if (communityJob?.isActive == true) return com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
+        if (!communityForeground || _uiState.value.communityCity == null || _uiState.value.isOffline) {
+            return com.anpfuel.domain.community.CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
+        }
+        if (shouldFetchCommunity(explicit = false)) return com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
+        val nowMillis = communityNow().toEpochMilli()
+        var delay = com.anpfuel.domain.community.CommunityRefreshPolicy.SWEEP_INTERVAL_MILLIS
+        _uiState.value.communityGeneratedAt?.let { generated ->
+            val remaining = com.anpfuel.domain.community.CommunityRefreshPolicy.STALE_AFTER_MILLIS - (nowMillis - generated.toEpochMilli())
+            if (remaining > 0) delay = minOf(delay, remaining)
+        }
+        if (consecutiveCommunityFailures > 0 && com.anpfuel.domain.community.CommunityRefreshPolicy.shouldKeepRetrying(consecutiveCommunityFailures)) {
+            val lastAttempt = lastCommunityAttemptMillis ?: nowMillis
+            val remaining = com.anpfuel.domain.community.CommunityRefreshPolicy.retryDelayMillis(consecutiveCommunityFailures) - (nowMillis - lastAttempt)
+            if (remaining > 0) delay = minOf(delay, remaining)
+        }
+        return maxOf(delay, com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS)
+    }
+
     fun refreshCommunity(periodic: Boolean = false) {
         if (_uiState.value.priceSource != HomePriceSource.COMMUNITY) return
         // A periodic tick must not restart a slow city lookup plus HTTP load.
         // Explicit refreshes still replace it so city changes and retries win.
         if (periodic && communityJob?.isActive == true) return
+        if (!periodic) consecutiveCommunityFailures = 0
         val ticket = ++communityGeneration
         communityJob?.cancel()
         _uiState.update { state ->
-            state.copy(communityLoading = true, communityFailed = false,
-                communityPrices = if (state.communityExpiresAt?.let { it > java.time.Instant.now() } == true) state.communityPrices else emptyList())
+            state.copy(communityLoading = true,
+                communityPrices = if (state.communityExpiresAt?.let { it > communityNow() } == true) state.communityPrices else emptyList())
         }
         communityJob = viewModelScope.launch {
             try {
                 val city = communitySummary.city()
                 if (ticket != communityGeneration) return@launch
                 if (city != _uiState.value.communityCity) {
+                    consecutiveCommunityFailures = 0
+                    lastCommunityAttemptMillis = null
                     _uiState.update { it.copy(communityPrices = emptyList(), communityGeneratedAt = null,
-                        communityUpdatedAt = null, communityExpiresAt = null, communityCity = city) }
+                        communityUpdatedAt = null, communityExpiresAt = null, communityStale = false, communityCity = city) }
                 }
                 _uiState.update { it.copy(hasLocation = city != null, municipality = city?.name, state = city?.state) }
                 if (city == null) {
                     _uiState.update { it.copy(communityLoading = false) }
                     return@launch
                 }
+                paintCommunitySnapshot(city, ticket)
+                if (ticket != communityGeneration || _uiState.value.priceSource != HomePriceSource.COMMUNITY) return@launch
+                if (!shouldFetchCommunity(!periodic)) {
+                    if (ticket == communityGeneration) {
+                        _uiState.update {
+                            it.copy(
+                                communityLoading = false,
+                                // Skipping a query must not erase its last failure indication.
+                                communityFailed = it.isOffline || it.communityFailed,
+                            )
+                        }
+                    }
+                    refreshCommunityStale()
+                    return@launch
+                }
+                _uiState.update { it.copy(communityFailed = false) }
+                lastCommunityAttemptMillis = communityNow().toEpochMilli()
                 val summary = communitySummary(city)
                 if (ticket != communityGeneration || _uiState.value.priceSource != HomePriceSource.COMMUNITY) return@launch
                 require(summary.city == city)
-                val now = java.time.Instant.now()
+                val now = communityNow()
+                consecutiveCommunityFailures = 0
                 val live = summary.items.filter { it.expiresAt > now }
                 val prices = live.sortedBy { it.fuel.ordinal }.map { price ->
                     AveragePriceUiModel(price.fuel,
@@ -159,24 +230,107 @@ class HomeViewModel @Inject constructor(
                         com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.minimumMilliBrl),
                         com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount)
                 }
-                _uiState.update { it.copy(communityLoading = false, communityFailed = false, communityPrices = prices,
+                _uiState.update { it.copy(communityLoading = false, communityFailed = false, communityStale = false, communityPrices = prices,
                     communityGeneratedAt = summary.generatedAt, communityUpdatedAt = live.maxOfOrNull { row -> row.updatedAt },
                     communityExpiresAt = live.minOfOrNull { row -> row.expiresAt }) }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 if (ticket == communityGeneration) {
-                    _uiState.update { it.copy(communityLoading = false, communityFailed = true,
-                        communityPrices = emptyList(), communityGeneratedAt = null, communityUpdatedAt = null, communityExpiresAt = null) }
+                    consecutiveCommunityFailures++
+                    val current = _uiState.value
+                    val retains = current.communityPrices.isNotEmpty() &&
+                        (current.communityExpiresAt == null || communityNow().isBefore(current.communityExpiresAt))
+                    _uiState.update {
+                        it.copy(communityLoading = false, communityFailed = true,
+                            communityStale = true,
+                            communityPrices = if (retains) it.communityPrices else emptyList(),
+                            communityGeneratedAt = if (retains) it.communityGeneratedAt else null,
+                            communityUpdatedAt = if (retains) it.communityUpdatedAt else null,
+                            communityExpiresAt = if (retains) it.communityExpiresAt else null)
+                    }
                 }
             }
         }
     }
 
+    private suspend fun paintCommunitySnapshot(city: com.anpfuel.domain.community.FeedCity, ticket: Long) {
+        val current = _uiState.value
+        if (current.communityPrices.isNotEmpty() || current.communityGeneratedAt != null) return
+        val snapshot = try {
+            communitySnapshot.snapshotSummary(city)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        } ?: return
+        if (ticket != communityGeneration) return
+        val now = communityNow()
+        val live = snapshot.items.filter { it.expiresAt > now }
+        val prices = live.sortedBy { it.fuel.ordinal }.map { price ->
+            AveragePriceUiModel(price.fuel,
+                com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.averageMilliBrl),
+                com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.minimumMilliBrl),
+                com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount)
+        }
+        _uiState.update {
+            it.copy(communityLoading = false, communityFailed = false, communityPrices = prices,
+                communityGeneratedAt = snapshot.generatedAt,
+                communityUpdatedAt = live.maxOfOrNull { row -> row.updatedAt },
+                communityExpiresAt = live.minOfOrNull { row -> row.expiresAt })
+        }
+        refreshCommunityStale()
+    }
+
+    private fun shouldFetchCommunity(explicit: Boolean): Boolean {
+        if (_uiState.value.priceSource != HomePriceSource.COMMUNITY) return false
+        // No query without a connection; an aged snapshot stays with an error mark.
+        if (_uiState.value.isOffline) return false
+        // Never refetch within the loop floor of the previous attempt, except for
+        // explicit refreshes; the loop delay already guarantees progress.
+        val lastAttempt = lastCommunityAttemptMillis
+        if (!explicit && lastAttempt != null &&
+            communityNow().toEpochMilli() - lastAttempt < com.anpfuel.domain.community.CommunityRefreshPolicy.MIN_LOOP_DELAY_MILLIS
+        ) return false
+        if (!explicit) {
+            if (consecutiveCommunityFailures > 0) {
+                if (!com.anpfuel.domain.community.CommunityRefreshPolicy.shouldKeepRetrying(consecutiveCommunityFailures)) return false
+                val lastAttempt = lastCommunityAttemptMillis ?: return true
+                if (communityNow().toEpochMilli() - lastAttempt <
+                    com.anpfuel.domain.community.CommunityRefreshPolicy.retryDelayMillis(consecutiveCommunityFailures)
+                ) return false
+            }
+            val state = _uiState.value
+            if (state.communityPrices.isEmpty() && state.communityGeneratedAt == null) return true
+            return com.anpfuel.domain.community.CommunityRefreshPolicy.isStale(
+                communityNow().toEpochMilli(), state.communityGeneratedAt?.toEpochMilli(),
+            )
+        }
+        return true
+    }
+
+    private fun refreshCommunityStale() {
+        val nowMillis = communityNow().toEpochMilli()
+        _uiState.update { state ->
+            state.copy(
+                communityStale = state.communityGeneratedAt?.let { generated ->
+                    com.anpfuel.domain.community.CommunityRefreshPolicy.isStale(nowMillis, generated.toEpochMilli())
+                } ?: false,
+            )
+        }
+    }
+
     init {
         viewModelScope.launch {
+            var wasOffline = false
             observeNetworkConnectivityUseCase().collect { isConnected ->
                 _uiState.update { it.copy(isOffline = !isConnected) }
+                // A new network is an explicit event: reset backoff and re-evaluate.
+                if (wasOffline && isConnected && communityForeground && _uiState.value.priceSource == HomePriceSource.COMMUNITY) {
+                    consecutiveCommunityFailures = 0
+                    refreshCommunity(periodic = true)
+                }
+                wasOffline = !isConnected
             }
         }
     }
@@ -199,6 +353,8 @@ class HomeViewModel @Inject constructor(
 
                 if (preferred == null || !readinessResult.hasCachedData) {
                     homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
+                    val displayed = readinessResult.latestSurveyWeek
+                    val verification = resolveVerification(displayed, readinessResult.latestSurveyWeek)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -207,13 +363,16 @@ class HomeViewModel @Inject constructor(
                             hasLocation = preferred != null,
                             municipality = preferred?.municipality,
                             state = preferred?.state,
-                            surveyWeek = readinessResult.latestSurveyWeek,
+                            surveyWeek = displayed,
                             prices = emptyList(),
                             tankFillCostEstimates = emptyList(),
                             isEmptyMunicipality = false,
                             dataAvailability = null,
                             operationalNote = null,
                             hasVehicle = vehicles.isNotEmpty(),
+                            lastVerifiedAtMillis = verification.first,
+                            verifiedSurveyWeek = verification.second,
+                            lastSyncOutcome = verification.third,
                         )
                     }
                     hasPresentedContent = true
@@ -240,6 +399,10 @@ class HomeViewModel @Inject constructor(
 
                 if(ticket!=loadGeneration) return@launch
                 homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
+                val verification = resolveVerification(
+                    pricesResult.surveyWeek,
+                    readinessResult.latestSurveyWeek,
+                )
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -255,6 +418,9 @@ class HomeViewModel @Inject constructor(
                         dataAvailability = pricesResult.dataAvailability,
                         operationalNote = pricesResult.operationalNote,
                         hasVehicle = vehicles.isNotEmpty(),
+                        lastVerifiedAtMillis = verification.first,
+                        verifiedSurveyWeek = verification.second,
+                        lastSyncOutcome = verification.third,
                     )
                 }
                 hasPresentedContent = true
@@ -291,8 +457,11 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null, errorMessage = null) }
+            var outcome: SyncJobOutcome? = null
             runCatching {
                 syncPriceTablesUseCase(SyncRequestSource.MANUAL)
+            }.onSuccess { result ->
+                outcome = result.outcome
             }.onFailure { error ->
                 if (error !is DomainException) {
                     val appError = AppErrorResolver.fromThrowable(error)
@@ -306,8 +475,56 @@ class HomeViewModel @Inject constructor(
                     return@launch
                 }
             }
+            when (outcome) {
+                SyncJobOutcome.NO_NEW_DATA -> {
+                    _uiState.value.surveyWeek?.let { week ->
+                        manualSyncVerificationStore.saveVerified(
+                            weekStartIso = week.startDate.toString(),
+                            weekEndIso = week.endDate.toString(),
+                            verifiedAtMillis = System.currentTimeMillis(),
+                        )
+                    }
+                }
+                SyncJobOutcome.SUCCESS, SyncJobOutcome.PARTIAL -> {
+                    manualSyncVerificationStore.clear()
+                    _uiState.update {
+                        it.copy(
+                            lastVerifiedAtMillis = null,
+                            verifiedSurveyWeek = null,
+                            lastSyncOutcome = outcome,
+                        )
+                    }
+                }
+                else -> Unit
+            }
             _uiState.update { it.copy(isRefreshing = false) }
             load(locale)
         }
+    }
+
+    /**
+     * Verification is global per week (one sync covers every city).
+     * Only present it when the displayed week is also the latest imported
+     * week; a pinned old week must surface the week switch instead.
+     */
+    private fun resolveVerification(
+        displayed: SurveyWeek?,
+        latest: SurveyWeek?,
+    ): Triple<Long?, SurveyWeek?, SyncJobOutcome?> {
+        val stored = manualSyncVerificationStore.get() ?: return Triple(null, null, null)
+        if (displayed == null || latest == null) return Triple(null, null, null)
+        if (stored.weekStartIso != displayed.startDate.toString() ||
+            stored.weekEndIso != displayed.endDate.toString()
+        ) {
+            return Triple(null, null, null)
+        }
+        if (displayed != latest) return Triple(null, null, null)
+        if (stored.weekStartIso != latest.startDate.toString() ||
+            stored.weekEndIso != latest.endDate.toString()
+        ) {
+            manualSyncVerificationStore.clear()
+            return Triple(null, null, null)
+        }
+        return Triple(stored.verifiedAtMillis, displayed, SyncJobOutcome.NO_NEW_DATA)
     }
 }

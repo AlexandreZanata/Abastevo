@@ -418,6 +418,35 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_16_17: Migration = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // OPT community snapshot: additive private cache for validated
+            // first-page/summary payloads. No existing table is touched;
+            // stored rows keep their original dates and are filtered at
+            // read time, so validity can only shrink, never extend.
+            // No secondary index on purpose: every read is by primary
+            // `key` (or a full-table hygiene sweep), matching the entity
+            // schema exactly on migrated installs.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `community_feed_cache` (
+                    `key` TEXT NOT NULL,
+                    `kind` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `state` TEXT NOT NULL,
+                    `municipality_code` TEXT NOT NULL,
+                    `fuel` TEXT,
+                    `sort` TEXT,
+                    `payload_json` TEXT NOT NULL,
+                    `generated_at_millis` INTEGER NOT NULL,
+                    `fetched_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`key`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
     val MIGRATION_15_16: Migration = object : Migration(15, 16) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Kotlin Unicode folding preserves the original case-insensitive name/address semantics;

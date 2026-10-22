@@ -25,13 +25,16 @@ fun SurveyWeekChip(
     isLatest: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isStale: Boolean = false,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val weekLabel = SurveyWeekFormatter.formatRangeCompact(surveyWeek, locale)
     val accessibilityWeekLabel = SurveyWeekFormatter.formatRange(surveyWeek, locale)
     val accessibilityLabel = stringResource(
-        if (isLatest) {
+        if (isLatest && !isStale) {
             R.string.a11y_survey_week_chip_latest
+        } else if (isLatest) {
+            R.string.a11y_survey_week_chip_stale_latest
         } else {
             R.string.a11y_survey_week_chip
         },
@@ -53,7 +56,13 @@ fun SurveyWeekChip(
                 )
                 if (isLatest) {
                     Text(
-                        text = stringResource(R.string.survey_week_chip_latest_suffix),
+                        text = stringResource(
+                            if (isStale) {
+                                R.string.survey_week_chip_stale_suffix
+                            } else {
+                                R.string.survey_week_chip_latest_suffix
+                            },
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(start = 4.dp),
                         maxLines = 1,
