@@ -29,4 +29,9 @@ data class LedgerDraftEntity(
     @ColumnInfo(name = "expected_revision") val expectedRevision: Long,
     @ColumnInfo(name = "body_json") val bodyJson: String,
     @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+    /**
+     * EE-20 local-only session context (home/work/public/other). Never
+     * synced: command payloads are built from the body alone.
+     */
+    @ColumnInfo(name = "context") val context: String? = null,
 )

@@ -5,6 +5,7 @@ import com.anpfuel.data.local.entity.LedgerDraftEntity
 import com.anpfuel.data.mapper.LedgerDraftCodec
 import com.anpfuel.domain.premium.LedgerDataset
 import com.anpfuel.domain.premium.LedgerDraft
+import com.anpfuel.domain.premium.LedgerSessionContext
 import com.anpfuel.domain.repository.LedgerDraftStore
 import com.anpfuel.domain.repository.StoredLedgerDraft
 import java.util.UUID
@@ -22,6 +23,7 @@ class LedgerDraftStoreImpl @Inject constructor(
         draft: LedgerDraft,
         expectedRevision: Long,
         nowMillis: Long,
+        context: LedgerSessionContext?,
     ): StoredLedgerDraft {
         drafts.upsert(
             LedgerDraftEntity(
@@ -33,9 +35,10 @@ class LedgerDraftStoreImpl @Inject constructor(
                 expectedRevision = expectedRevision,
                 bodyJson = draft.bodyJson(),
                 updatedAtMillis = nowMillis,
+                context = context?.wire,
             ),
         )
-        return StoredLedgerDraft(draft, expectedRevision, nowMillis)
+        return StoredLedgerDraft(draft, expectedRevision, nowMillis, context)
     }
 
     override suspend fun find(
@@ -69,6 +72,7 @@ class LedgerDraftStoreImpl @Inject constructor(
             draft = LedgerDraftCodec.decode(dataset, bodyJson),
             expectedRevision = expectedRevision,
             updatedAtMillis = updatedAtMillis,
+            context = context?.let { LedgerSessionContext.parse(it) },
         )
     }
 }

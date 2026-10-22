@@ -50,4 +50,23 @@ class LedgerDraftStoreImplTest {
             assertEquals("corrupt-draft", e.code)
         }
     }
+
+    @Test fun `session context persists locally and unknown context refuses`() = runTest {
+        val captured = slot<LedgerDraftEntity>()
+        coEvery { dao.upsert(capture(captured)) } returns Unit
+        store.save("acct-1", "https://api.example.test", draft, 0, 7L, com.anpfuel.domain.premium.LedgerSessionContext.HOME)
+        assertEquals("home", captured.captured.context)
+        coEvery { dao.findByRecord(any(), any(), any(), any()) } returns captured.captured
+        assertEquals(
+            com.anpfuel.domain.premium.LedgerSessionContext.HOME,
+            store.find("acct-1", "https://api.example.test", LedgerDataset.EXPENSE, draft.recordId)?.context,
+        )
+        coEvery { dao.findByRecord(any(), any(), any(), any()) } returns captured.captured.copy(context = "gps")
+        try {
+            store.find("acct-1", "https://api.example.test", LedgerDataset.EXPENSE, draft.recordId)
+            error("unknown context decoded")
+        } catch (e: com.anpfuel.domain.premium.PremiumValidationException) {
+            assertEquals("unknown-context", e.code)
+        }
+    }
 }

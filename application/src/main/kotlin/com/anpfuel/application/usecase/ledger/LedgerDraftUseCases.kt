@@ -28,10 +28,14 @@ class SaveLedgerDraftUseCase(
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
 
-    suspend operator fun invoke(draft: LedgerDraft, expectedRevision: Long): StoredLedgerDraft {
+    suspend operator fun invoke(
+        draft: LedgerDraft,
+        expectedRevision: Long,
+        context: com.anpfuel.domain.premium.LedgerSessionContext? = null,
+    ): StoredLedgerDraft {
         if (expectedRevision < 0) throw PremiumValidationException("invalid-revision")
         val accountId = sessions.load()?.accountId ?: "local"
-        return drafts.save(accountId, origin, draft, expectedRevision, nowMillis())
+        return drafts.save(accountId, origin, draft, expectedRevision, nowMillis(), context)
     }
 }
 

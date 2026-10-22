@@ -14,6 +14,7 @@ import com.anpfuel.domain.premium.LedgerFill
 import com.anpfuel.domain.premium.LedgerGapIntent
 import com.anpfuel.domain.premium.LedgerIntentCommandFactory
 import com.anpfuel.domain.premium.LedgerSegmentReset
+import com.anpfuel.domain.premium.LedgerSessionContext
 import com.anpfuel.domain.premium.PremiumCommand
 import com.anpfuel.domain.premium.PremiumOwnerScope
 import com.anpfuel.domain.premium.PremiumValidationException
@@ -44,6 +45,7 @@ data class LedgerEntryRow(
     val expectedRevision: Long,
     val note: String?,
     val state: LedgerEntryState,
+    val context: LedgerSessionContext?,
 )
 
 private fun summaryOf(draft: LedgerDraft): LedgerEntrySummary = when (draft) {
@@ -92,6 +94,7 @@ class ListLedgerEntriesUseCase(
                     expectedRevision = stored.expectedRevision,
                     note = rowNote(draft),
                     state = state,
+                    context = stored.context,
                 )
             }.sortedBy { it.occurredAt }
     }

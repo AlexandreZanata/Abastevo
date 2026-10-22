@@ -29,7 +29,7 @@ class LedgerDraftUseCasesTest {
 
     private class FakeDrafts : LedgerDraftStore {
         val rows = mutableMapOf<String, StoredLedgerDraft>()
-        override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long) =
+        override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?) =
             StoredLedgerDraft(draft, expectedRevision, nowMillis).also { rows[draft.recordId] = it }
         override suspend fun find(accountId: String, origin: String, dataset: LedgerDataset, recordId: String) = rows[recordId]
         override suspend fun list(accountId: String, origin: String) = rows.values.toList()

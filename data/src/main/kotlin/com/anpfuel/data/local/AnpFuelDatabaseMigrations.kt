@@ -661,4 +661,13 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_22_23: Migration = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-20 local-only session context on drafts. No
+            // existing table is altered; every draft and private row
+            // survives untouched (context defaults to absent).
+            db.execSQL("ALTER TABLE `ledger_draft` ADD COLUMN `context` TEXT DEFAULT NULL")
+        }
+    }
+
 }

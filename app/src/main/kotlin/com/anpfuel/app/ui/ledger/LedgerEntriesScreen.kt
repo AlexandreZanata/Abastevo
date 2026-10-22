@@ -79,6 +79,12 @@ fun LedgerEntriesScreen(
     LedgerEntriesContent(
         uiState = uiState,
         locale = locale,
+        vehicleIsElectric = uiState.vehicleIsElectric,
+        simulatedTotal = if (uiState.form.dataset == LedgerDataset.CHARGE) {
+            viewModel.simulatedChargeTotal()
+        } else {
+            null
+        },
         onNavigateBack = onNavigateBack,
         onAddRefuel = { viewModel.startAdd(LedgerDataset.REFUEL) },
         onAddExpense = { viewModel.startAdd(LedgerDataset.EXPENSE) },
@@ -102,6 +108,12 @@ fun LedgerEntriesScreen(
         onQuantityChanged = viewModel::onQuantityChanged,
         onTotalChanged = viewModel::onTotalChanged,
         onUnitPriceChanged = viewModel::onUnitPriceChanged,
+        onRateChanged = viewModel::onRateChanged,
+        onSocStartChanged = viewModel::onSocStartChanged,
+        onSocEndChanged = viewModel::onSocEndChanged,
+        onTariffIdChanged = viewModel::onTariffIdChanged,
+        onTariffRevisionChanged = viewModel::onTariffRevisionChanged,
+        onContextChanged = viewModel::onContextChanged,
         onFillChanged = viewModel::onFillChanged,
         onCategoryChanged = viewModel::onCategoryChanged,
         onOdometerChanged = viewModel::onOdometerChanged,
@@ -121,6 +133,8 @@ fun LedgerEntriesScreen(
 internal fun LedgerEntriesContent(
     uiState: LedgerEntriesUiState,
     locale: Locale,
+    vehicleIsElectric: Boolean,
+    simulatedTotal: String?,
     onNavigateBack: () -> Unit,
     onAddRefuel: () -> Unit,
     onAddExpense: () -> Unit,
@@ -144,6 +158,12 @@ internal fun LedgerEntriesContent(
     onQuantityChanged: (String) -> Unit,
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
+    onRateChanged: (String) -> Unit,
+    onSocStartChanged: (String) -> Unit,
+    onSocEndChanged: (String) -> Unit,
+    onTariffIdChanged: (String) -> Unit,
+    onTariffRevisionChanged: (String) -> Unit,
+    onContextChanged: (com.anpfuel.domain.premium.LedgerSessionContext?) -> Unit,
     onFillChanged: (LedgerFill) -> Unit,
     onCategoryChanged: (ExpenseCategory) -> Unit,
     onOdometerChanged: (String) -> Unit,
@@ -250,14 +270,23 @@ internal fun LedgerEntriesContent(
             form = uiState.form,
             isSaving = uiState.isSaving,
             locale = locale,
+            simulatedTotal = simulatedTotal,
+            vehicleHasFuel = uiState.vehicleHasFuel,
+            vehicleIsElectric = vehicleIsElectric,
             onDismiss = onDismissForm,
             onDatasetChanged = onDatasetChanged,
             onDateChanged = onDateChanged,
             onTimeChanged = onTimeChanged,
             onQuantityChanged = onQuantityChanged,
             onTotalChanged = onTotalChanged,
-            onUnitPriceChanged = onUnitPriceChanged,
-            onFillChanged = onFillChanged,
+                        onUnitPriceChanged = onUnitPriceChanged,
+                        onRateChanged = onRateChanged,
+                        onSocStartChanged = onSocStartChanged,
+                        onSocEndChanged = onSocEndChanged,
+                        onTariffIdChanged = onTariffIdChanged,
+                        onTariffRevisionChanged = onTariffRevisionChanged,
+                        onContextChanged = onContextChanged,
+                        onFillChanged = onFillChanged,
             onCategoryChanged = onCategoryChanged,
             onOdometerChanged = onOdometerChanged,
             onStationChanged = onStationChanged,
@@ -485,6 +514,9 @@ private fun LedgerEntryFormDialog(
     form: LedgerEntryFormState,
     isSaving: Boolean,
     locale: Locale,
+    simulatedTotal: String?,
+    vehicleHasFuel: Boolean,
+    vehicleIsElectric: Boolean,
     onDismiss: () -> Unit,
     onDatasetChanged: (LedgerDataset) -> Unit,
     onDateChanged: (String) -> Unit,
@@ -492,6 +524,12 @@ private fun LedgerEntryFormDialog(
     onQuantityChanged: (String) -> Unit,
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
+    onRateChanged: (String) -> Unit,
+    onSocStartChanged: (String) -> Unit,
+    onSocEndChanged: (String) -> Unit,
+    onTariffIdChanged: (String) -> Unit,
+    onTariffRevisionChanged: (String) -> Unit,
+    onContextChanged: (com.anpfuel.domain.premium.LedgerSessionContext?) -> Unit,
     onFillChanged: (LedgerFill) -> Unit,
     onCategoryChanged: (ExpenseCategory) -> Unit,
     onOdometerChanged: (String) -> Unit,
@@ -518,16 +556,25 @@ private fun LedgerEntryFormDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = form.dataset == LedgerDataset.REFUEL,
-                        onClick = { onDatasetChanged(LedgerDataset.REFUEL) },
-                        label = { Text(text = stringResource(R.string.ledger_entry_add_refuel)) },
-                    )
+                    if (vehicleHasFuel) {
+                        FilterChip(
+                            selected = form.dataset == LedgerDataset.REFUEL,
+                            onClick = { onDatasetChanged(LedgerDataset.REFUEL) },
+                            label = { Text(text = stringResource(R.string.ledger_entry_add_refuel)) },
+                        )
+                    }
                     FilterChip(
                         selected = form.dataset == LedgerDataset.EXPENSE,
                         onClick = { onDatasetChanged(LedgerDataset.EXPENSE) },
                         label = { Text(text = stringResource(R.string.ledger_entry_add_expense)) },
                     )
+                    if (vehicleIsElectric) {
+                        FilterChip(
+                            selected = form.dataset == LedgerDataset.CHARGE,
+                            onClick = { onDatasetChanged(LedgerDataset.CHARGE) },
+                            label = { Text(text = stringResource(R.string.ledger_entry_add_charge)) },
+                        )
+                    }
                 }
                 OutlinedTextField(
                     value = form.dateInput,
@@ -561,6 +608,80 @@ private fun LedgerEntryFormDialog(
                                 selected = form.fill == fill,
                                 onClick = { onFillChanged(fill) },
                                 label = { Text(text = fillLabel(fill)) },
+                            )
+                        }
+                    }
+                }
+                if (form.dataset == LedgerDataset.CHARGE) {
+                    OutlinedTextField(
+                        value = form.quantityInput,
+                        onValueChange = onQuantityChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_energy)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.QUANTITY_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.QUANTITY_INVALID, form),
+                    )
+                    OutlinedTextField(
+                        value = form.rateInput,
+                        onValueChange = onRateChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_rate)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.RATE_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.RATE_INVALID, form),
+                    )
+                    simulatedTotal?.let { simulated ->
+                        Text(
+                            text = stringResource(R.string.ledger_entry_charge_simulated, simulated),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    OutlinedTextField(
+                        value = form.socStartInput,
+                        onValueChange = onSocStartChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_soc_start)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.SOC_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.SOC_INVALID, form),
+                    )
+                    OutlinedTextField(
+                        value = form.socEndInput,
+                        onValueChange = onSocEndChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_soc_end)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.SOC_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.SOC_INVALID, form),
+                    )
+                    OutlinedTextField(
+                        value = form.tariffIdInput,
+                        onValueChange = onTariffIdChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_tariff)) },
+                        singleLine = true,
+                        isError = form.validationErrorKey == LedgerEntryValidationError.TARIFF_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.TARIFF_INVALID, form),
+                    )
+                    OutlinedTextField(
+                        value = form.tariffRevisionInput,
+                        onValueChange = onTariffRevisionChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_tariff_revision)) },
+                        singleLine = true,
+                        isError = form.validationErrorKey == LedgerEntryValidationError.TARIFF_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.TARIFF_INVALID, form),
+                    )
+                    Text(
+                        text = stringResource(R.string.ledger_entry_charge_context),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.anpfuel.domain.premium.LedgerSessionContext.entries.forEach { context ->
+                            FilterChip(
+                                selected = form.context == context,
+                                onClick = { onContextChanged(if (form.context == context) null else context) },
+                                label = { Text(text = contextLabel(context)) },
                             )
                         }
                     }
@@ -654,12 +775,23 @@ private fun errorText(key: LedgerEntryValidationError, form: LedgerEntryFormStat
         LedgerEntryValidationError.ODOMETER_INVALID -> R.string.ledger_entry_validation_odometer
         LedgerEntryValidationError.STATION_INVALID -> R.string.ledger_entry_validation_station
         LedgerEntryValidationError.FUEL_UNAVAILABLE -> R.string.ledger_entry_fuel_unavailable
-        LedgerEntryValidationError.RATE_INVALID -> R.string.ledger_entry_validation_total
-        LedgerEntryValidationError.SOC_INVALID -> R.string.ledger_entry_validation_quantity
-        LedgerEntryValidationError.ESTIMATE_INVALID -> R.string.ledger_entry_estimate_invalid
+        LedgerEntryValidationError.CHARGE_UNAVAILABLE -> R.string.ledger_entry_charge_unavailable
+        LedgerEntryValidationError.TARIFF_INVALID -> R.string.ledger_entry_validation_tariff
+        LedgerEntryValidationError.RATE_INVALID -> R.string.ledger_entry_validation_rate
+        LedgerEntryValidationError.SOC_INVALID -> R.string.ledger_entry_validation_soc
     }
     return { Text(text = stringResource(res)) }
 }
+
+@Composable
+private fun contextLabel(context: com.anpfuel.domain.premium.LedgerSessionContext): String = stringResource(
+    when (context) {
+        com.anpfuel.domain.premium.LedgerSessionContext.HOME -> R.string.ledger_entry_context_home
+        com.anpfuel.domain.premium.LedgerSessionContext.WORK -> R.string.ledger_entry_context_work
+        com.anpfuel.domain.premium.LedgerSessionContext.PUBLIC -> R.string.ledger_entry_context_public
+        com.anpfuel.domain.premium.LedgerSessionContext.OTHER -> R.string.ledger_entry_context_other
+    },
+)
 
 @Composable
 private fun fillLabel(fill: LedgerFill): String = stringResource(
@@ -690,6 +822,8 @@ private fun LedgerEntriesPreview() {
         LedgerEntriesContent(
             uiState = LedgerEntriesUiState(isLoading = false, vehicleName = "Gol"),
             locale = Locale.US,
+            vehicleIsElectric = false,
+            simulatedTotal = null,
             onNavigateBack = {},
             onAddRefuel = {},
             onAddExpense = {},
@@ -713,6 +847,12 @@ private fun LedgerEntriesPreview() {
             onQuantityChanged = {},
             onTotalChanged = {},
             onUnitPriceChanged = {},
+            onRateChanged = {},
+            onSocStartChanged = {},
+            onSocEndChanged = {},
+            onTariffIdChanged = {},
+            onTariffRevisionChanged = {},
+            onContextChanged = {},
             onFillChanged = {},
             onCategoryChanged = {},
             onOdometerChanged = {},

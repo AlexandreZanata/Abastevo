@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-20 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parenta655095a. [Private charging entry](../backend/evidence/ev-support/EE-20.md): home/work/public/other local context (migration v23, never synced/posted), charge form (kWh/rate/SOC/tariff pins, simulation vs actual, pt-BR parsing, electric gate, typed errors), late correction with revision/context, LOCAL/PENDING/CONFLICT states, double-tap guard, restart reload, account isolation, rollback-safe saves. Full suites (1986 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No dispatch.
+
 - MEX-12 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent7f4b300. [Refuel/expense journeys](../backend/evidence/mobile-expansion/MEX-12.md): entries UI per vehicle (list/add/edit/delete, fills, categories, pt-BR parsing, typed per-field errors, LOCAL/PENDING/CONFLICT, gap/reset intents, estimated km/L, double-tap guard, restart reload), 50 strings × 8 locales. Full suites (1979 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No transport (MEX-14).
 
 - MEX-11 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentf7d8110d. [Durable ledger drafts/outbox](../backend/evidence/mobile-expansion/MEX-11.md): validated refuel/expense/charge drafts with exact canonical bodies, deterministic op IDs (double-save converges, lost-ack retries same ID), partition-keyed draft table v22, reused premium outbox + restart release, 3 use cases (no transport). Full suites (1967 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No dispatch/sync.

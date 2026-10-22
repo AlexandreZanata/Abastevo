@@ -55,6 +55,26 @@ data class LedgerSegmentReset(val reason: String) {
 }
 
 /**
+ * EE-20 private charging session context: coarse home/work/public/other
+ * label kept local-only with the draft. Never coordinates, never a
+ * photo, never synced (the backend body carries no context), and never
+ * auto-posted anywhere public.
+ */
+enum class LedgerSessionContext(val wire: String) {
+    HOME("home"),
+    WORK("work"),
+    PUBLIC("public"),
+    OTHER("other"),
+    ;
+
+    companion object {
+        fun parse(wire: String): LedgerSessionContext =
+            entries.firstOrNull { it.wire == wire }
+                ?: throw PremiumValidationException("unknown-context")
+    }
+}
+
+/**
  * Stable intent commands: same intent converges to one queued command
  * (process-death double-submit safe); a different note or reason is a
  * different intent. Held for the sync transport (MEX-14).

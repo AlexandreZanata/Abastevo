@@ -62,6 +62,7 @@ class LedgerEntriesViewModelTest {
     private val vehicleId = DomainId.generate()
 
     private fun row(id: String = "11111111-1111-4111-8111-111111111111", state: LedgerEntryState = LedgerEntryState.LOCAL) = LedgerEntryRow(
+        context = null,
         recordId = id, dataset = LedgerDataset.REFUEL, vehicleId = vehicleId.value,
         vehicleName = "Gol", occurredAt = Instant.parse("2026-03-15T10:30:00Z"),
         timezone = "America/Sao_Paulo",
@@ -111,12 +112,12 @@ class LedgerEntriesViewModelTest {
         viewModel.saveDraft()
         advanceUntilIdle()
         assertEquals(LedgerEntryValidationError.QUANTITY_INVALID, viewModel.uiState.value.form.validationErrorKey)
-        coVerify(exactly = 0) { saveDraft.invoke(any(), any()) }
+        coVerify(exactly = 0) { saveDraft.invoke(any(), any(), any()) }
     }
 
     @Test fun `double-tap save converges on one draft`() = runTest(dispatcher) {
         val seen = mutableListOf<com.anpfuel.domain.premium.LedgerDraft>()
-        coEvery { saveDraft.invoke(any(), any()) } answers {
+        coEvery { saveDraft.invoke(any(), any(), any()) } answers {
             val d: com.anpfuel.domain.premium.LedgerDraft = firstArg()
             seen.add(d)
             com.anpfuel.domain.repository.StoredLedgerDraft(d, 0, 1)
@@ -129,7 +130,7 @@ class LedgerEntriesViewModelTest {
         viewModel.saveDraft()
         viewModel.saveDraft()
         advanceUntilIdle()
-        coVerify(exactly = 1) { saveDraft.invoke(any(), any()) }
+        coVerify(exactly = 1) { saveDraft.invoke(any(), any(), any()) }
         assertEquals(1, seen.size)
     }
 
@@ -155,8 +156,7 @@ class LedgerEntriesViewModelTest {
         assertNull(viewModel.uiState.value.form.validationErrorKey)
     }
 
-    @Test fun `gap and reset queue intents and restart restores drafts`() = runTest(dispatcher) {
-        coEvery { listEntries.invoke(vehicleId) } returns listOf(row())
+    @Test fun `gap and reset queue intents and restart restores drafts`() = runTest(dispatcher) {        coEvery { listEntries.invoke(vehicleId) } returns listOf(row())
         viewModel.load(vehicleId, Locale.US)
         advanceUntilIdle()
         viewModel.openGapDialog(row())
@@ -176,5 +176,100 @@ class LedgerEntriesViewModelTest {
         advanceUntilIdle()
         assertEquals(1, restarted.uiState.value.entries.size)
         assertNotNull(restarted.uiState.value.entries.singleOrNull { it.recordId == "11111111-1111-4111-8111-111111111111" })
+    }
+
+    private fun bev() = Vehicle.create(
+        displayName = "Dolphin", tankCapacity = null, fuelProduct = null,
+        priceSource = VehiclePriceSource.cheapest(), id = vehicleId,
+        propulsion = com.anpfuel.domain.valueobject.Propulsion.BEV,
+        batteryCapacity = com.anpfuel.domain.valueobject.BatteryCapacity.ofWh(38000),
+    )
+
+    @Test fun `charge save stores energy rate soc tariff and context with pt-BR parsing`() = runTest(dispatcher) {
+        coEvery { vehicle.invoke(vehicleId) } returns bev()
+        coEvery { listEntries.invoke(vehicleId) } returns emptyList()
+        val seen = mutableListOf<com.anpfuel.domain.premium.LedgerDraft>()
+        coEvery { saveDraft.invoke(capture(seen), any(), any()) } answers {
+            com.anpfuel.domain.repository.StoredLedgerDraft(firstArg<com.anpfuel.domain.premium.LedgerDraft>(), 0, 1)
+        }
+        viewModel.load(vehicleId, Locale("pt", "BR"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.vehicleIsElectric)
+        viewModel.startAdd(LedgerDataset.CHARGE)
+        viewModel.onQuantityChanged("15,5")
+        viewModel.onTotalChanged("13,95")
+        viewModel.onRateChanged("0,90")
+        viewModel.onSocStartChanged("20")
+        viewModel.onSocEndChanged("80")
+        viewModel.onTariffIdChanged("33333333-3333-4333-8333-333333333333")
+        viewModel.onTariffRevisionChanged("r7")
+        viewModel.onContextChanged(com.anpfuel.domain.premium.LedgerSessionContext.HOME)
+        assertEquals("13.95", viewModel.simulatedChargeTotal())
+        viewModel.saveDraft()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { saveDraft.invoke(any(), eq(0), any()) }
+        val draft = seen.single() as com.anpfuel.domain.premium.ChargeDraft
+        assertEquals(15500L, draft.energyWh)
+        assertEquals(1395, draft.totalCentavos)
+        assertEquals(20, draft.socStart)
+        assertEquals("33333333-3333-4333-8333-333333333333", draft.tariffId)
+        assertEquals("r7", draft.tariffRevision)
+    }
+
+    @Test fun `charge refused for non-electric vehicle and invalid rate soc tariff`() = runTest(dispatcher) {
+        coEvery { vehicle.invoke(vehicleId) } returns sampleVehicle()
+        coEvery { listEntries.invoke(vehicleId) } returns emptyList()
+        viewModel.load(vehicleId, Locale.US)
+        advanceUntilIdle()
+        viewModel.startAdd(LedgerDataset.CHARGE)
+        assertEquals(LedgerEntryValidationError.CHARGE_UNAVAILABLE, viewModel.uiState.value.form.validationErrorKey)
+        coVerify(exactly = 0) { saveDraft.invoke(any(), any(), any()) }
+    }
+
+    @Test fun `charge validation rejects bad rate soc and split tariff`() = runTest(dispatcher) {
+        coEvery { vehicle.invoke(vehicleId) } returns bev()
+        coEvery { listEntries.invoke(vehicleId) } returns emptyList()
+        viewModel.load(vehicleId, Locale.US)
+        advanceUntilIdle()
+        viewModel.startAdd(LedgerDataset.CHARGE)
+        viewModel.onQuantityChanged("15,5")
+        viewModel.onRateChanged("abc")
+        viewModel.saveDraft()
+        advanceUntilIdle()
+        assertEquals(LedgerEntryValidationError.RATE_INVALID, viewModel.uiState.value.form.validationErrorKey)
+        viewModel.onRateChanged("")
+        viewModel.onSocStartChanged("120")
+        viewModel.saveDraft()
+        advanceUntilIdle()
+        assertEquals(LedgerEntryValidationError.SOC_INVALID, viewModel.uiState.value.form.validationErrorKey)
+        viewModel.onSocStartChanged("")
+        viewModel.onTariffIdChanged("not-a-uuid")
+        viewModel.saveDraft()
+        advanceUntilIdle()
+        assertEquals(LedgerEntryValidationError.TARIFF_INVALID, viewModel.uiState.value.form.validationErrorKey)
+        coVerify(exactly = 0) { saveDraft.invoke(any(), any(), any()) }
+    }
+
+    @Test fun `late charge correction keeps id revision tariff and context`() = runTest(dispatcher) {
+        coEvery { vehicle.invoke(vehicleId) } returns bev()
+        val stored = com.anpfuel.domain.premium.ChargeDraft(
+            "11111111-1111-4111-8111-111111111111", vehicleId.value,
+            java.time.Instant.parse("2026-03-15T10:30:00Z"), "America/Sao_Paulo",
+            15000, 1275, 20, 80, 50000, null, "33333333-3333-4333-8333-333333333333", "r7", null,
+        )
+        coEvery { getDraft.invoke(LedgerDataset.CHARGE, stored.id) } returns com.anpfuel.domain.repository.StoredLedgerDraft(
+            stored, 1, 1, com.anpfuel.domain.premium.LedgerSessionContext.WORK,
+        )
+        coEvery { listEntries.invoke(vehicleId) } returns emptyList()
+        viewModel.load(vehicleId, Locale.US)
+        advanceUntilIdle()
+        viewModel.startEdit(row(id = stored.id).copy(dataset = LedgerDataset.CHARGE))
+        advanceUntilIdle()
+        assertEquals("r7", viewModel.uiState.value.form.tariffRevisionInput)
+        assertEquals(com.anpfuel.domain.premium.LedgerSessionContext.WORK, viewModel.uiState.value.form.context)
+        viewModel.onTotalChanged("14,00")
+        viewModel.saveDraft()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { saveDraft.invoke(any(), eq(1), any()) }
     }
 }

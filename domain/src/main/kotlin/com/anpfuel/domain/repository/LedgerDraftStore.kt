@@ -2,12 +2,14 @@ package com.anpfuel.domain.repository
 
 import com.anpfuel.domain.premium.LedgerDataset
 import com.anpfuel.domain.premium.LedgerDraft
+import com.anpfuel.domain.premium.LedgerSessionContext
 
 /** Stored draft envelope: validated values plus dispatch revision. */
 data class StoredLedgerDraft(
     val draft: LedgerDraft,
     val expectedRevision: Long,
     val updatedAtMillis: Long,
+    val context: LedgerSessionContext? = null,
 )
 
 /**
@@ -22,6 +24,7 @@ interface LedgerDraftStore {
         draft: LedgerDraft,
         expectedRevision: Long,
         nowMillis: Long,
+        context: LedgerSessionContext? = null,
     ): StoredLedgerDraft
 
     suspend fun find(
