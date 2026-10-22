@@ -144,6 +144,9 @@ func (s CompanyScope) bindings() []application.CompanyBinding {
 }
 
 func (r *Reader) CompanySanctionsAtScope(ctx context.Context, lease Lease, scope CompanyScope, status, afterNative, afterID string, limit int) ([]SanctionEvent, string, error) {
+	if e := ctx.Err(); e != nil {
+		return nil, "", e
+	}
 	if !scope.validFor(lease) || limit < 1 || limit > 100 || len(afterNative) > 256 {
 		return nil, "", errors.New("read: invalid company scope or page")
 	}
@@ -173,6 +176,9 @@ func (r *Reader) CompanySanctionsAtScope(ctx context.Context, lease Lease, scope
 		return nil, "", e
 	}
 	defer tx.Rollback(context.Background())
+	if _, e := quality.New(tx).LockCompanyReadRevision(ctx, rid); e != nil {
+		return nil, "", errors.New("read: company source revision unavailable")
+	}
 	if e := r.companyGuard(ctx, tx, scope.bindings()); e != nil {
 		return nil, "", errors.New("read: company identity changed or unavailable")
 	}
@@ -194,6 +200,9 @@ func (r *Reader) CompanySanctionsAtScope(ctx context.Context, lease Lease, scope
 	return out, next, nil
 }
 func (r *Reader) CompanySanctionAtScope(ctx context.Context, lease Lease, scope CompanyScope, id string) (SanctionEvent, error) {
+	if e := ctx.Err(); e != nil {
+		return SanctionEvent{}, e
+	}
 	if !scope.validFor(lease) {
 		return SanctionEvent{}, errors.New("read: invalid company detail scope")
 	}
@@ -224,6 +233,9 @@ func (r *Reader) CompanySanctionAtScope(ctx context.Context, lease Lease, scope 
 		return SanctionEvent{}, e
 	}
 	defer tx.Rollback(context.Background())
+	if _, e := quality.New(tx).LockCompanyReadRevision(ctx, rid); e != nil {
+		return SanctionEvent{}, errors.New("read: company source revision unavailable")
+	}
 	if e := r.companyGuard(ctx, tx, scope.bindings()); e != nil {
 		return SanctionEvent{}, errors.New("read: company identity changed or unavailable")
 	}
