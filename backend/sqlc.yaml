@@ -322,6 +322,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000115_charging_reference_storage.sql
+      - db/migrations/000116_charging_batch_order.sql
     gen:
       go:
         package: charging

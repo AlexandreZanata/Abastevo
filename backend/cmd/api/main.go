@@ -35,6 +35,8 @@ import (
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
 	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
+	charginghttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/http"
+	chargingread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/read"
 	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
 	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
 	clouddomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/domain"
@@ -364,6 +366,15 @@ func run() error {
 		},
 		Enabled:        func() bool { return qualityReadsEnabled },
 		CompanyEnabled: func() bool { return cfg.QualityCompanyReadsEnabled },
+	}.RegisterRoutes(router)
+	// Anonymous charging/reference reads (EE-09). Same composition rule:
+	// the handler gets pool-local reads; disabled by
+	// ANPFUEL_CHARGING_READS_ENABLED=false, which answers 404 without
+	// touching storage.
+	charginghttp.Handler{
+		Read:    chargingread.NewReader(pool.Underlying()),
+		Secrets: cfg.CursorSecret,
+		Enabled: func() bool { return cfg.ChargingReadsEnabled },
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.

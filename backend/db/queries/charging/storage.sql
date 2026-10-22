@@ -35,3 +35,37 @@ FROM (
 
 -- name: FindChargingBatchByManifest :one
 SELECT id FROM charging_batches WHERE manifest_sha256 = @manifest_sha256 LIMIT 1;
+
+-- name: ChargingPlacePage :many
+SELECT p.id,p.entity_key,p.external_id,p.name,p.country,p.latitude,p.longitude,p.public_access,p.reported_points
+FROM charging_places p
+JOIN charging_batches b ON b.id = p.batch_id
+WHERE b.profile_id = @profile::text
+ AND (@revision::text = '' OR b.source_revision = @revision::text)
+ AND (p.id::text > @after_id::text OR @after_id::text = '')
+ORDER BY p.id::text LIMIT @limit_plus_one::int;
+
+-- name: ChargingPlaceDetail :one
+SELECT p.id,p.entity_key,p.external_id,p.name,p.country,p.latitude,p.longitude,p.public_access,p.reported_points,
+ b.profile_id,b.source_revision
+FROM charging_places p
+JOIN charging_batches b ON b.id = p.batch_id
+WHERE p.id = @id::uuid;
+
+-- name: ChargingGroupsForPlace :many
+SELECT id,entity_key,external_id,connector_code,raw_connector_code,current,power_w,reported_quantity
+FROM charging_connection_groups WHERE place_id = @place_id::uuid ORDER BY entity_key;
+
+-- name: ChargingBatchCoverage :one
+SELECT b.profile_id,b.source_revision,b.input_count,b.accepted_count,
+ (SELECT count(*) FROM charging_places WHERE batch_id = b.id) AS places,
+ (SELECT count(*) FROM charging_connection_groups WHERE batch_id = b.id) AS groups,
+ (SELECT count(*) FROM charging_vehicle_references WHERE batch_id = b.id) AS vehicles
+FROM charging_batches b WHERE b.id = @batch_id::uuid;
+
+-- name: LatestChargingBatch :one
+SELECT id,profile_id,source_revision FROM charging_batches
+WHERE profile_id = @profile::text ORDER BY stored_at DESC LIMIT 1;
+
+-- name: FindChargingBatch :one
+SELECT id FROM charging_batches WHERE profile_id = @profile::text AND (@revision::text = '' OR source_revision = @revision::text) ORDER BY stored_at DESC LIMIT 1;

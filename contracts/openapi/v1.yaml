@@ -1773,6 +1773,102 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/charging/places:
+    get:
+      summary: Keyset public charging places from stored batches (anonymous).
+      operationId: chargingPlaces
+      tags: [charging]
+      security: []
+      parameters:
+        - name: profile
+          in: query
+          required: true
+          description: Admitted source profile.
+          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1]}
+        - name: revision
+          in: query
+          description: Optional source revision; empty resolves latest stored.
+          schema: {type: string}
+        - name: limit
+          in: query
+          description: Place page size.
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+          example: 20
+        - name: cursor
+          in: query
+          description: Opaque page cursor from the previous response.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Public places with source wording; no private fields.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargingPlacePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/places/{id}:
+    get:
+      summary: One public charging place with its connection groups (anonymous).
+      operationId: chargingPlaceOne
+      tags: [charging]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Public place detail; reported quantities stay reported.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargingPlace'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/coverage:
+    get:
+      summary: Stored batch valid counts (anonymous).
+      operationId: chargingCoverage
+      tags: [charging]
+      security: []
+      parameters:
+        - name: profile
+          in: query
+          required: true
+          description: Admitted source profile.
+          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1]}
+      responses:
+        '200':
+          description: Distinct places, groups and vehicles. Counts only.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargingCoverage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/actions/{id}:
     get:
       summary: One enforcement action within the current lease (anonymous).
@@ -7985,6 +8081,55 @@ components:
         stations: {type: integer, minimum: 0, description: 'Distinct bound stations, live at read.'}
         records: {type: integer, minimum: 0, description: 'Distinct bound records.'}
         lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    ChargingPlace:
+      description: One public charging location with source wording; no private fields.
+      type: object
+      required: [id, entity_key, external_id, name, country, latitude, longitude, public_access, reported_points]
+      properties:
+        id: {type: string, format: uuid}
+        entity_key: {type: string, pattern: '^[0-9a-f]{64}$'}
+        external_id: {type: string}
+        name: {type: string}
+        country: {type: string, enum: [BR]}
+        latitude: {type: string}
+        longitude: {type: string}
+        public_access: {type: string, enum: [PUBLIC, UNKNOWN]}
+        reported_points: {type: integer, minimum: 0}
+        groups:
+          type: array
+          items: {$ref: '#/components/schemas/ChargingConnectionGroup'}
+    ChargingConnectionGroup:
+      type: object
+      required: [id, entity_key, external_id, connector_code, raw_connector_code, current]
+      properties:
+        id: {type: string, format: uuid}
+        entity_key: {type: string, pattern: '^[0-9a-f]{64}$'}
+        external_id: {type: string}
+        connector_code: {type: string, enum: [CCS2, TYPE2, CHADEMO, NACS, UNKNOWN]}
+        raw_connector_code: {type: string}
+        current: {type: string, enum: [AC, DC, UNKNOWN]}
+        power_w: {type: integer, minimum: 1}
+        reported_quantity: {type: integer, minimum: 1}
+    ChargingPlacePage:
+      type: object
+      required: [items, next_cursor, generated_at]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ChargingPlace'}
+        next_cursor: {type: [string, 'null']}
+        generated_at: {type: string, format: date-time}
+    ChargingCoverage:
+      description: Stored batch valid counts. Counts only.
+      type: object
+      required: [profile, source_revision, places, groups, vehicles, generated_at]
+      properties:
+        profile: {type: string}
+        source_revision: {type: string}
+        places: {type: integer, minimum: 0}
+        groups: {type: integer, minimum: 0}
+        vehicles: {type: integer, minimum: 0}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:
       type: object

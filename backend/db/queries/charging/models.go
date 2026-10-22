@@ -9,13 +9,14 @@ import (
 )
 
 type ChargingBatch struct {
-	ID             pgtype.UUID `json:"id"`
-	Format         string      `json:"format"`
-	ProfileID      string      `json:"profile_id"`
-	SourceRevision string      `json:"source_revision"`
-	ManifestSha256 string      `json:"manifest_sha256"`
-	InputCount     int32       `json:"input_count"`
-	AcceptedCount  int32       `json:"accepted_count"`
+	ID             pgtype.UUID        `json:"id"`
+	Format         string             `json:"format"`
+	ProfileID      string             `json:"profile_id"`
+	SourceRevision string             `json:"source_revision"`
+	ManifestSha256 string             `json:"manifest_sha256"`
+	InputCount     int32              `json:"input_count"`
+	AcceptedCount  int32              `json:"accepted_count"`
+	StoredAt       pgtype.Timestamptz `json:"stored_at"`
 }
 
 type ChargingConnectionGroup struct {

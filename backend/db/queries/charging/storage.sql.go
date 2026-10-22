@@ -35,6 +35,205 @@ func (q *Queries) ChargingBatchCounts(ctx context.Context, batchID pgtype.UUID) 
 	return i, err
 }
 
+const chargingBatchCoverage = `-- name: ChargingBatchCoverage :one
+SELECT b.profile_id,b.source_revision,b.input_count,b.accepted_count,
+ (SELECT count(*) FROM charging_places WHERE batch_id = b.id) AS places,
+ (SELECT count(*) FROM charging_connection_groups WHERE batch_id = b.id) AS groups,
+ (SELECT count(*) FROM charging_vehicle_references WHERE batch_id = b.id) AS vehicles
+FROM charging_batches b WHERE b.id = $1::uuid
+`
+
+type ChargingBatchCoverageRow struct {
+	ProfileID      string `json:"profile_id"`
+	SourceRevision string `json:"source_revision"`
+	InputCount     int32  `json:"input_count"`
+	AcceptedCount  int32  `json:"accepted_count"`
+	Places         int64  `json:"places"`
+	Groups         int64  `json:"groups"`
+	Vehicles       int64  `json:"vehicles"`
+}
+
+func (q *Queries) ChargingBatchCoverage(ctx context.Context, batchID pgtype.UUID) (ChargingBatchCoverageRow, error) {
+	row := q.db.QueryRow(ctx, chargingBatchCoverage, batchID)
+	var i ChargingBatchCoverageRow
+	err := row.Scan(
+		&i.ProfileID,
+		&i.SourceRevision,
+		&i.InputCount,
+		&i.AcceptedCount,
+		&i.Places,
+		&i.Groups,
+		&i.Vehicles,
+	)
+	return i, err
+}
+
+const chargingGroupsForPlace = `-- name: ChargingGroupsForPlace :many
+SELECT id,entity_key,external_id,connector_code,raw_connector_code,current,power_w,reported_quantity
+FROM charging_connection_groups WHERE place_id = $1::uuid ORDER BY entity_key
+`
+
+type ChargingGroupsForPlaceRow struct {
+	ID               pgtype.UUID `json:"id"`
+	EntityKey        string      `json:"entity_key"`
+	ExternalID       string      `json:"external_id"`
+	ConnectorCode    string      `json:"connector_code"`
+	RawConnectorCode string      `json:"raw_connector_code"`
+	Current          string      `json:"current"`
+	PowerW           pgtype.Int4 `json:"power_w"`
+	ReportedQuantity pgtype.Int4 `json:"reported_quantity"`
+}
+
+func (q *Queries) ChargingGroupsForPlace(ctx context.Context, placeID pgtype.UUID) ([]ChargingGroupsForPlaceRow, error) {
+	rows, err := q.db.Query(ctx, chargingGroupsForPlace, placeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChargingGroupsForPlaceRow
+	for rows.Next() {
+		var i ChargingGroupsForPlaceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntityKey,
+			&i.ExternalID,
+			&i.ConnectorCode,
+			&i.RawConnectorCode,
+			&i.Current,
+			&i.PowerW,
+			&i.ReportedQuantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const chargingPlaceDetail = `-- name: ChargingPlaceDetail :one
+SELECT p.id,p.entity_key,p.external_id,p.name,p.country,p.latitude,p.longitude,p.public_access,p.reported_points,
+ b.profile_id,b.source_revision
+FROM charging_places p
+JOIN charging_batches b ON b.id = p.batch_id
+WHERE p.id = $1::uuid
+`
+
+type ChargingPlaceDetailRow struct {
+	ID             pgtype.UUID `json:"id"`
+	EntityKey      string      `json:"entity_key"`
+	ExternalID     string      `json:"external_id"`
+	Name           string      `json:"name"`
+	Country        string      `json:"country"`
+	Latitude       string      `json:"latitude"`
+	Longitude      string      `json:"longitude"`
+	PublicAccess   string      `json:"public_access"`
+	ReportedPoints int32       `json:"reported_points"`
+	ProfileID      string      `json:"profile_id"`
+	SourceRevision string      `json:"source_revision"`
+}
+
+func (q *Queries) ChargingPlaceDetail(ctx context.Context, id pgtype.UUID) (ChargingPlaceDetailRow, error) {
+	row := q.db.QueryRow(ctx, chargingPlaceDetail, id)
+	var i ChargingPlaceDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.EntityKey,
+		&i.ExternalID,
+		&i.Name,
+		&i.Country,
+		&i.Latitude,
+		&i.Longitude,
+		&i.PublicAccess,
+		&i.ReportedPoints,
+		&i.ProfileID,
+		&i.SourceRevision,
+	)
+	return i, err
+}
+
+const chargingPlacePage = `-- name: ChargingPlacePage :many
+SELECT p.id,p.entity_key,p.external_id,p.name,p.country,p.latitude,p.longitude,p.public_access,p.reported_points
+FROM charging_places p
+JOIN charging_batches b ON b.id = p.batch_id
+WHERE b.profile_id = $1::text
+ AND ($2::text = '' OR b.source_revision = $2::text)
+ AND (p.id::text > $3::text OR $3::text = '')
+ORDER BY p.id::text LIMIT $4::int
+`
+
+type ChargingPlacePageParams struct {
+	Profile      string `json:"profile"`
+	Revision     string `json:"revision"`
+	AfterID      string `json:"after_id"`
+	LimitPlusOne int32  `json:"limit_plus_one"`
+}
+
+type ChargingPlacePageRow struct {
+	ID             pgtype.UUID `json:"id"`
+	EntityKey      string      `json:"entity_key"`
+	ExternalID     string      `json:"external_id"`
+	Name           string      `json:"name"`
+	Country        string      `json:"country"`
+	Latitude       string      `json:"latitude"`
+	Longitude      string      `json:"longitude"`
+	PublicAccess   string      `json:"public_access"`
+	ReportedPoints int32       `json:"reported_points"`
+}
+
+func (q *Queries) ChargingPlacePage(ctx context.Context, arg ChargingPlacePageParams) ([]ChargingPlacePageRow, error) {
+	rows, err := q.db.Query(ctx, chargingPlacePage,
+		arg.Profile,
+		arg.Revision,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChargingPlacePageRow
+	for rows.Next() {
+		var i ChargingPlacePageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntityKey,
+			&i.ExternalID,
+			&i.Name,
+			&i.Country,
+			&i.Latitude,
+			&i.Longitude,
+			&i.PublicAccess,
+			&i.ReportedPoints,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findChargingBatch = `-- name: FindChargingBatch :one
+SELECT id FROM charging_batches WHERE profile_id = $1::text AND ($2::text = '' OR source_revision = $2::text) ORDER BY stored_at DESC LIMIT 1
+`
+
+type FindChargingBatchParams struct {
+	Profile  string `json:"profile"`
+	Revision string `json:"revision"`
+}
+
+func (q *Queries) FindChargingBatch(ctx context.Context, arg FindChargingBatchParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, findChargingBatch, arg.Profile, arg.Revision)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const findChargingBatchByManifest = `-- name: FindChargingBatchByManifest :one
 SELECT id FROM charging_batches WHERE manifest_sha256 = $1 LIMIT 1
 `
@@ -44,6 +243,24 @@ func (q *Queries) FindChargingBatchByManifest(ctx context.Context, manifestSha25
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const latestChargingBatch = `-- name: LatestChargingBatch :one
+SELECT id,profile_id,source_revision FROM charging_batches
+WHERE profile_id = $1::text ORDER BY stored_at DESC LIMIT 1
+`
+
+type LatestChargingBatchRow struct {
+	ID             pgtype.UUID `json:"id"`
+	ProfileID      string      `json:"profile_id"`
+	SourceRevision string      `json:"source_revision"`
+}
+
+func (q *Queries) LatestChargingBatch(ctx context.Context, profile string) (LatestChargingBatchRow, error) {
+	row := q.db.QueryRow(ctx, latestChargingBatch, profile)
+	var i LatestChargingBatchRow
+	err := row.Scan(&i.ID, &i.ProfileID, &i.SourceRevision)
+	return i, err
 }
 
 const recordChargingBatch = `-- name: RecordChargingBatch :one
