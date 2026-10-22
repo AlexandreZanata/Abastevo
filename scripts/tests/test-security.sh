@@ -118,7 +118,7 @@ clear_overrides
 # 5. Unpinned builder image (digest stripped).
 M5="$(mktemp -d)"
 mutant_root "$M5"
-sed -i 's|golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61|golang:1.27.2-bookworm|' "$M5/infra/docker/Dockerfile"
+sed -Ei 's|^(ARG GOLANG_IMAGE=[^@]+)@sha256:[0-9a-f]{64}$|\1|' "$M5/infra/docker/Dockerfile"
 with_overrides "$M5"
 assert_fail "unpinned builder refused" bash scripts/check-security.sh --static-only
 clear_overrides
@@ -139,7 +139,15 @@ with_overrides "$M7"
 assert_fail "go.mod replace refused" bash scripts/check-security.sh --static-only
 clear_overrides
 
-rm -rf "$M1" "$M2" "$M3" "$M4" "$M5" "$M6" "$M7"
+# 8. Previously vulnerable production toolchain, even with unchanged dependencies.
+M8="$(mktemp -d)"
+mutant_root "$M8"
+sed -i 's/^toolchain go.*/toolchain go1.27.2/' "$M8/backend/go.mod"
+with_overrides "$M8"
+assert_fail "vulnerable Go toolchain refused" bash scripts/check-security.sh --static-only
+clear_overrides
+
+rm -rf "$M1" "$M2" "$M3" "$M4" "$M5" "$M6" "$M7" "$M8"
 
 # Live gates on the real tree: vulnerability scan clean and one focused
 # adversarial package executes (proves the selection is executable, not
