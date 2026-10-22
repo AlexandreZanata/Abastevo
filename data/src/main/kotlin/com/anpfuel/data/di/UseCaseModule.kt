@@ -592,6 +592,25 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideGetMonthlyIndicatorsUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        vehicles: com.anpfuel.domain.repository.VehicleRepository,
+        efficiency: com.anpfuel.application.port.EstimatedEfficiencyStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.GetMonthlyIndicatorsUseCase =
+        com.anpfuel.application.usecase.ledger.GetMonthlyIndicatorsUseCase(
+            drafts = drafts,
+            vehicles = vehicles,
+            efficiency = efficiency,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
     fun provideGetLedgerEntryDraftUseCase(
         drafts: com.anpfuel.domain.repository.LedgerDraftStore,
         sessions: com.anpfuel.application.portable.AuthSessionStore,

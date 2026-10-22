@@ -252,6 +252,19 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.ledger.LedgerEntriesScreen(
                 vehicleId = vehicleId,
                 onNavigateBack = { navController.popBackStack() },
+                onOpenMonthly = { id -> navController.navigate(Routes.monthlyIndicators(id)) },
+            )
+        }
+        composable(
+            route = Routes.MONTHLY_INDICATORS,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.monthly.MonthlyIndicatorsScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -66,6 +67,7 @@ import java.util.Locale
 fun LedgerEntriesScreen(
     vehicleId: String,
     onNavigateBack: () -> Unit,
+    onOpenMonthly: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LedgerEntriesViewModel = hiltViewModel(),
 ) {
@@ -124,6 +126,7 @@ fun LedgerEntriesScreen(
         onSaveEstimate = viewModel::saveEstimate,
         onClearEstimate = viewModel::clearEstimate,
         onDismissError = viewModel::dismissError,
+        onOpenMonthly = { onOpenMonthly(vehicleId) },
         modifier = modifier,
     )
 }
@@ -174,6 +177,7 @@ internal fun LedgerEntriesContent(
     onSaveEstimate: () -> Unit,
     onClearEstimate: () -> Unit,
     onDismissError: () -> Unit,
+    onOpenMonthly: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -231,13 +235,20 @@ internal fun LedgerEntriesContent(
                     modifier = Modifier.weight(1f),
                 )
             }
-            ActionCardButton(
-                label = stringResource(R.string.ledger_entry_reset),
-                icon = Icons.Default.Add,
-                onClick = onRequestReset,
-                style = ActionCardStyle.Destructive,
-                modifier = Modifier.fillMaxWidth(),
-            )
+                ActionCardButton(
+                    label = stringResource(R.string.ledger_entry_reset),
+                    icon = Icons.Default.Add,
+                    onClick = onRequestReset,
+                    style = ActionCardStyle.Destructive,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ActionCardButton(
+                    label = stringResource(R.string.monthly_open),
+                    icon = Icons.Default.DateRange,
+                    onClick = onOpenMonthly,
+                    style = ActionCardStyle.Primary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             if (uiState.entries.isEmpty()) {
                 EmptyState(
                     message = stringResource(R.string.ledger_entries_empty),
@@ -861,8 +872,9 @@ private fun LedgerEntriesPreview() {
             onSaveDraft = {},
             onEstimateChanged = {},
             onSaveEstimate = {},
-            onClearEstimate = {},
-            onDismissError = {},
-        )
-    }
-}
+                        onClearEstimate = {},
+                        onDismissError = {},
+                        onOpenMonthly = {},
+                    )
+                }
+            }
