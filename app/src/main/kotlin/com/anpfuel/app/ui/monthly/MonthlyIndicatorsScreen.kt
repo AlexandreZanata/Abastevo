@@ -198,6 +198,48 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                     text = stringResource(R.string.monthly_charge, money(row.chargeCostCentavos)),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Text(
+                    text = stringResource(
+                        R.string.monthly_energy_purchased,
+                        java.text.NumberFormat.getIntegerInstance(locale).format(row.chargeEnergyWh),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (row.energyMeasured.unknown.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_measured, row.energyMeasured.whPerKm),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_unavailable, row.energyMeasured.unknown),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                if (row.energyReference.unknown.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_reference, row.energyReference.whPerKm),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_reference_unavailable, row.energyReference.unknown),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (row.energyComparison.unknown.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_comparison, row.energyComparison.changePercent),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.monthly_energy_comparison_unknown, row.energyComparison.unknown),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (row.measured.unknown.isEmpty()) {
                 Text(

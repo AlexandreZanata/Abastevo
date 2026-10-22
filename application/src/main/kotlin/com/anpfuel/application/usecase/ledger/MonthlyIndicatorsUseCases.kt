@@ -56,6 +56,9 @@ data class MonthlyVehicleIndicators(
     val estimatedKmPerL: String?,
     val comparisonChangePercent: String,
     val comparisonUnknown: String,
+    val energyMeasured: com.anpfuel.domain.premium.PremiumEnergyResult = com.anpfuel.domain.premium.PremiumEnergyResult(),
+    val energyReference: com.anpfuel.domain.premium.PremiumEnergyResult = com.anpfuel.domain.premium.PremiumEnergyResult(),
+    val energyComparison: com.anpfuel.domain.premium.PremiumEnergyComparison = com.anpfuel.domain.premium.PremiumEnergyComparison(),
     val windowNote: MonthlyWindowNote,
 )
 
@@ -138,9 +141,12 @@ class GetMonthlyIndicatorsUseCase(
         var chargeFees = 0L
         val byCategory = mutableMapOf<ExpenseCategory, Long>()
         val fills = mutableListOf<Pair<java.time.Instant, RefuelDraft>>()
+        val chargeOdos = mutableListOf<Pair<java.time.Instant, Long>>()
         var energyStated = 0
         var chargeSessions = 0
+        var socBad = false
         var missingOdo = false
+        var energyOdoMissing = false
         for (stored in rows) {
             when (val d = stored.draft) {
                 is RefuelDraft -> {
@@ -162,8 +168,16 @@ class GetMonthlyIndicatorsUseCase(
                         energyStated++
                         chargeEnergy = checkedAdd(chargeEnergy, energyWh)
                             ?: throw PremiumValidationException("input-out-of-bounds")
-                        if (d.odometerMetres == null) missingOdo = true
+                        if (d.odometerMetres == null) {
+                            missingOdo = true
+                            energyOdoMissing = true
+                        }
                     }
+                    val socStart = d.socStart
+                    val socEnd = d.socEnd
+                    if (socStart != null && socEnd != null && socEnd < socStart) socBad = true
+                    val chargeOdo = d.odometerMetres
+                    if (chargeOdo != null) chargeOdos.add(d.occurredAt to chargeOdo)
                     val chargeTotal = d.totalCentavos
                     if (chargeTotal != null) {
                         chargeCost = checkedAdd(chargeCost, chargeTotal)
@@ -185,8 +199,7 @@ class GetMonthlyIndicatorsUseCase(
         }
         val ordered = fills.sortedBy { it.first }
         val odos = ordered.mapNotNull { it.second.odometerMetres }
-        val sharedOdos = (ordered.map { it.first to it.second.odometerMetres } +
-            rows.mapNotNull { (it.draft as? ChargeDraft)?.let { c -> c.occurredAt to c.odometerMetres } })
+        val sharedOdos = (ordered.map { it.first to it.second.odometerMetres } + chargeOdos)
             .sortedBy { it.first }.mapNotNull { it.second }
         val distance = if (sharedOdos.size >= 2) sharedOdos.last() - sharedOdos.first() else 0L
         val measured = if (fills.isEmpty()) {
@@ -208,7 +221,34 @@ class GetMonthlyIndicatorsUseCase(
         } else {
             PremiumCostResult(unknown = measured.unknown)
         }
-        val combined = combinedCost(purchase, chargeCost, distance, missingOdo, gapHit, fills.isEmpty() && chargeSessions == 0)
+        val combined = if (fills.isEmpty() && chargeSessions == 0) {
+            Triple("", "", "no-records")
+        } else if (missingOdo) {
+            Triple("", "", "odometer-missing")
+        } else if (gapHit) {
+            Triple("", "", "declared-fill-gap")
+        } else {
+            // Shared distance, counted once: exact money even for PHEV.
+            val result = com.anpfuel.domain.premium.PremiumEnergy
+                .combinedPurchasePerKm(purchase, chargeCost, distance)
+            Triple(result.centavosPerKm, result.method, result.unknown)
+        }
+        // EE-23 energy bases: purchased sums are exact; measured needs an
+        // unshared odometer distance; reference reuses the same engine over
+        // the whole history; PHEV months refuse per-carrier ratios.
+        val energyMeasured = if (chargeSessions == 0 && fills.isEmpty()) {
+            // No movement at all: unknown basis, never a zero-filled ratio.
+            com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "no-records")
+        } else {
+            energyWindow(
+                purchasedWh = chargeEnergy, costCentavos = chargeCost,
+                sharedOdos = sharedOdos, hasEnergy = energyStated > 0,
+                complete = energyStated == chargeSessions,
+                hasGap = gapHit, gapOdoMissing = energyOdoMissing, socBad = socBad, mixed = hasMixedCarrier,
+            )
+        }
+        val energyReference = energyReference(vehicle, all, queuedGaps)
+        val energyComparison = com.anpfuel.domain.premium.PremiumEnergy.compare(energyReference, energyMeasured)
         val estimated = if (measured.unknown.isNotEmpty()) {
             runCatching { efficiency.get(vehicle.id.value)?.let { EstimatedEfficiency.of(it).toPlainString() } }.getOrNull()
         } else {
@@ -225,24 +265,81 @@ class GetMonthlyIndicatorsUseCase(
             combinedCentavosPerKm = combined.first, combinedMethod = combined.second, combinedUnknown = combined.third,
             estimatedKmPerL = estimated,
             comparisonChangePercent = comparison.changePercent, comparisonUnknown = comparison.unknown,
+            energyMeasured = energyMeasured, energyReference = energyReference, energyComparison = energyComparison,
             windowNote = MonthlyWindowNote(rows.size, fills.size, missingOdo, distance, hasMixedCarrier),
         )
     }
 
-    private fun combinedCost(
-        fuelCost: Long, chargeCost: Long, distance: Long,
-        odometerMissing: Boolean, hasGap: Boolean, empty: Boolean,
-    ): Triple<String, String, String> {
-        if (empty) return Triple("", "", "no-records")
-        if (odometerMissing) return Triple("", "", "odometer-missing")
-        if (hasGap) return Triple("", "", "declared-fill-gap")
-        if (distance <= 0) return Triple("", "", "distance-nonpositive")
-        val total = checkedAdd(fuelCost, chargeCost)
-            ?: return Triple("", "", "input-out-of-bounds")
-        return Triple(
-            PremiumBounds.scaledRational(total, 1000, distance),
-            "combined-purchase-interval",
-            "",
+    private fun energyReference(
+        vehicle: Vehicle,
+        all: List<com.anpfuel.domain.repository.StoredLedgerDraft>,
+        queuedGaps: List<com.anpfuel.domain.premium.PremiumCommand>,
+    ): com.anpfuel.domain.premium.PremiumEnergyResult {
+        val vehicleRows = all.filter { rowVehicle(it.draft) == vehicle.id.value }
+        if (vehicleRows.isEmpty()) return com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "no-records")
+        var purchased = 0L
+        var cost = 0L
+        var stated = 0
+        var sessions = 0
+        var socBad = false
+        var odoMissing = false
+        var fuelEver = false
+        val odos = mutableListOf<Pair<java.time.Instant, Long>>()
+        for (stored in vehicleRows) {
+            when (val d = stored.draft) {
+                is RefuelDraft -> fuelEver = true
+                is ChargeDraft -> {
+                    sessions++
+                    val energyWh = d.energyWh
+                    if (energyWh != null) {
+                        stated++
+                        purchased = checkedAdd(purchased, energyWh) ?: return com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "input-out-of-bounds")
+                        if (d.odometerMetres == null) odoMissing = true
+                    }
+                    val total = d.totalCentavos
+                    if (total != null) {
+                        cost = checkedAdd(cost, total) ?: return com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "input-out-of-bounds")
+                    }
+                    val socStart = d.socStart
+                    val socEnd = d.socEnd
+                    if (socStart != null && socEnd != null && socEnd < socStart) socBad = true
+                    val odo = d.odometerMetres
+                    if (odo != null) odos.add(d.occurredAt to odo)
+                }
+                is ExpenseDraft -> Unit
+            }
+        }
+        val ids = vehicleRows.map { it.draft.recordId }.toSet()
+        val gapHit = queuedGaps.any { gap -> ids.any { id -> gap.payloadJson.contains(id) } }
+        // Historical reference over the whole held history; never a guarantee.
+        return energyWindow(
+            purchasedWh = purchased, costCentavos = cost,
+            sharedOdos = odos.sortedBy { it.first }.map { it.second },
+            hasEnergy = stated > 0, complete = stated == sessions,
+            hasGap = gapHit, gapOdoMissing = odoMissing, socBad = socBad,
+            mixed = fuelEver && stated > 0,
+        )
+    }
+
+    private fun energyWindow(
+        purchasedWh: Long,
+        costCentavos: Long,
+        sharedOdos: List<Long>,
+        hasEnergy: Boolean,
+        complete: Boolean,
+        hasGap: Boolean,
+        gapOdoMissing: Boolean,
+        socBad: Boolean,
+        mixed: Boolean,
+    ): com.anpfuel.domain.premium.PremiumEnergyResult {
+        val distance = if (sharedOdos.size >= 2) sharedOdos.last() - sharedOdos.first() else 0L
+        return com.anpfuel.domain.premium.PremiumEnergy.compute(
+            com.anpfuel.domain.premium.PremiumEnergyInterval(
+                purchasedWh = purchasedWh, costCentavos = costCentavos,
+                distanceMetres = distance, hasEnergy = hasEnergy, complete = complete,
+                hasGap = hasGap, odometerMissing = gapOdoMissing,
+                socInconsistent = socBad, mixedCarrier = mixed,
+            ),
         )
     }
 
@@ -314,6 +411,17 @@ object MonthlyIndicatorsCsv {
                 line("unknown", escape(row.measured.unknown))
             }
             if (row.combinedUnknown.isNotEmpty()) line("combined_unknown", escape(row.combinedUnknown))
+            else line("combined_centavos_per_km", row.combinedCentavosPerKm)
+            if (row.energyMeasured.unknown.isNotEmpty()) line("energy_unknown", escape(row.energyMeasured.unknown))
+            else {
+                line("energy_purchased_wh", row.energyMeasured.purchasedWh.toString())
+                line("energy_measured_wh_per_km", row.energyMeasured.whPerKm)
+            }
+            if (row.energyReference.unknown.isNotEmpty()) line("energy_reference_unknown", escape(row.energyReference.unknown))
+            else line("energy_reference_wh_per_km", row.energyReference.whPerKm)
+            if (row.energyComparison.unknown.isNotEmpty()) line("energy_comparison_unknown", escape(row.energyComparison.unknown))
+            else line("energy_comparison_change_percent", row.energyComparison.changePercent)
+            line("charge_fees_centavos", row.chargeFeesCentavos.toString())
         }
         return out.toString()
     }

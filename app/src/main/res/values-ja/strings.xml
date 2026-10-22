@@ -105,6 +105,13 @@
     <string name="monthly_export_subject">月次指標</string>
     <string name="monthly_export_title">月次指標を共有</string>
     <string name="monthly_empty">今月の記録がありません。</string>
+    <string name="monthly_energy_purchased">購入: %1$s Wh</string>
+    <string name="monthly_energy_measured">実測: %1$s Wh/km</string>
+    <string name="monthly_energy_unavailable">エネルギー不明: %1$s</string>
+    <string name="monthly_energy_reference">基準: %1$s Wh/km</string>
+    <string name="monthly_energy_reference_unavailable">基準不明: %1$s</string>
+    <string name="monthly_energy_comparison">基準比: %1$s%%</string>
+    <string name="monthly_energy_comparison_unknown">エネルギー比較不可: %1$s</string>
     <string name="charging_explore_title">充電器を探す</string>
     <string name="charging_explore_cached_notice">保存済みスナップショット: オフラインの空き状況は常に不明です。ライブ状態は表示されません。</string>
     <string name="charging_explore_source">ソース %1$s · 更新 %2$s</string>

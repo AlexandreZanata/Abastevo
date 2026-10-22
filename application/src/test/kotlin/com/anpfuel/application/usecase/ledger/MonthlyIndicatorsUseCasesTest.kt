@@ -91,6 +91,9 @@ class MonthlyIndicatorsUseCasesTest {
         assertEquals("5", got.measured.kmPerUnit)
         assertEquals("124", got.measured.centavosPerKm)
         assertEquals("fuel-purchase-interval", got.costPerKmMethod)
+        // Fuel-only month: bought energy is zero, measured energy is unmeasured.
+        assertEquals(0L, got.chargeEnergyWh)
+        assertEquals("energy-unmeasured", got.energyMeasured.unknown)
     }
 
     @Test fun `crossing months timezones and stale correction`() = runTest {
@@ -127,6 +130,8 @@ class MonthlyIndicatorsUseCasesTest {
         val csv = MonthlyIndicatorsCsv.build("=cmd|'/c calc.exe", rows)
         assertTrue(csv.lines()[1].startsWith("\"'=cmd"))
         assertTrue(rows.single().comparisonUnknown.isNotEmpty())
+        assertTrue(csv.lines().any { it.endsWith(",energy_unknown,no-records") })
+        assertTrue(csv.lines().any { it.endsWith(",charge_fees_centavos,0") })
     }
 
     @Test fun `estimate fills unknown measured and zero baseline stays unknown`() = runTest {
@@ -171,5 +176,29 @@ class MonthlyIndicatorsUseCasesTest {
         assertEquals("1043/4", got.combinedCentavosPerKm)
         // Comparison against the empty previous month stays unknown, never zero-filled.
         assertTrue(got.comparisonUnknown.isNotEmpty())
+        assertEquals("no-records", useCase(vehicleId, 2026, 3, "UTC").single().energyMeasured.unknown)
+    }
+
+    @Test fun `charge-only month measures exact energy with historical reference`() = runTest {
+        val bevId = DomainId.from("55555555-5555-4555-8555-555555555555")
+        val bev = Vehicle.create(
+            displayName = "Dolphin", tankCapacity = null, fuelProduct = null,
+            priceSource = VehiclePriceSource.cheapest(), id = bevId,
+            propulsion = com.anpfuel.domain.valueobject.Propulsion.BEV,
+            batteryCapacity = com.anpfuel.domain.valueobject.BatteryCapacity.ofWh(38000),
+        )
+        coEvery { vehicles.findById(bevId) } returns bev
+        coEvery { vehicles.listAll() } returns listOf(bev)
+        fun charge(id: String, wh: Long, total: Long, odo: Long, at: java.time.Instant) =
+            com.anpfuel.domain.premium.ChargeDraft(id, bevId.value, at, "UTC", wh, total, 20, 80, odo, null, null, null, null)
+        drafts.save("local", "o", charge("aaaaaaaa-1111-4111-8111-111111111111", 10000, 1000, 100000, at1), 0, 1)
+        drafts.save("local", "o", charge("bbbbbbbb-2222-4222-8222-222222222222", 30000, 3000, 250000, at2), 0, 2)
+        val got = useCase(bevId, 2026, 3, "UTC").single()
+        assertEquals(40000L, got.chargeEnergyWh)
+        assertEquals("", got.energyMeasured.unknown)
+        assertEquals("800/3", got.energyMeasured.whPerKm)
+        // Reference reuses the whole held history; comparison is exact.
+        assertEquals("800/3", got.energyReference.whPerKm)
+        assertEquals("0", got.energyComparison.changePercent)
     }
 }

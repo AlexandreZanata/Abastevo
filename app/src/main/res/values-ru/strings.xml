@@ -105,6 +105,13 @@
     <string name="monthly_export_subject">Месячные показатели</string>
     <string name="monthly_export_title">Поделиться показателями</string>
     <string name="monthly_empty">В этом месяце записей нет.</string>
+    <string name="monthly_energy_purchased">Куплено: %1$s Вт·ч</string>
+    <string name="monthly_energy_measured">Замерено: %1$s Вт·ч/км</string>
+    <string name="monthly_energy_unavailable">Энергия недоступна: %1$s</string>
+    <string name="monthly_energy_reference">Ориентир: %1$s Вт·ч/км</string>
+    <string name="monthly_energy_reference_unavailable">Ориентир недоступен: %1$s</string>
+    <string name="monthly_energy_comparison">к ориентиру: %1$s%%</string>
+    <string name="monthly_energy_comparison_unknown">Сравнение энергии недоступно: %1$s</string>
     <string name="charging_explore_title">Найти зарядки</string>
     <string name="charging_explore_cached_notice">Сохранённый снимок: доступность вне сети всегда неизвестна. Нет live-статуса.</string>
     <string name="charging_explore_source">Источник %1$s · обновлено %2$s</string>

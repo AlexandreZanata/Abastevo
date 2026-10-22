@@ -105,6 +105,13 @@
     <string name="monthly_export_subject">月度指标</string>
     <string name="monthly_export_title">分享月度指标</string>
     <string name="monthly_empty">本月暂无记录。</string>
+    <string name="monthly_energy_purchased">已购: %1$s Wh</string>
+    <string name="monthly_energy_measured">实测: %1$s Wh/km</string>
+    <string name="monthly_energy_unavailable">能量不可用: %1$s</string>
+    <string name="monthly_energy_reference">基准: %1$s Wh/km</string>
+    <string name="monthly_energy_reference_unavailable">基准不可用: %1$s</string>
+    <string name="monthly_energy_comparison">与基准比: %1$s%%</string>
+    <string name="monthly_energy_comparison_unknown">能量比较不可用: %1$s</string>
     <string name="charging_explore_title">查找充电桩</string>
     <string name="charging_explore_cached_notice">已缓存快照:离线时可用性始终未知。不显示实时状态。</string>
     <string name="charging_explore_source">来源 %1$s · 更新于 %2$s</string>

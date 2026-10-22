@@ -189,6 +189,13 @@
     <string name="monthly_export_subject">Indicadores mensais</string>
     <string name="monthly_export_title">Compartilhar indicadores mensais</string>
     <string name="monthly_empty">Sem lançamentos neste mês.</string>
+    <string name="monthly_energy_purchased">Comprado: %1$s Wh</string>
+    <string name="monthly_energy_measured">Medido: %1$s Wh/km</string>
+    <string name="monthly_energy_unavailable">Energia indisponível: %1$s</string>
+    <string name="monthly_energy_reference">Referência: %1$s Wh/km</string>
+    <string name="monthly_energy_reference_unavailable">Referência indisponível: %1$s</string>
+    <string name="monthly_energy_comparison">vs referência: %1$s%%</string>
+    <string name="monthly_energy_comparison_unknown">Comparação de energia indisponível: %1$s</string>
     <string name="charging_explore_title">Buscar recargas</string>
     <string name="charging_explore_cached_notice">Foto salva: disponibilidade sempre desconhecida offline. Nenhum status ao vivo é exibido.</string>
     <string name="charging_explore_source">Fonte %1$s · atualizado em %2$s</string>
