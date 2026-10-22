@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-10 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentf08b6740. [Hosted vehicle energy-capability migration](../backend/evidence/ev-support/EE-10.md): propulsion/battery pointers on Vehicle with BEV/PHEV/HEV/ICE rules, no backfill, merge-preserving partial updates with revision-guarded races; owner BEV, legacy merge, concurrent conflict and account isolation PASS with PostGIS; domain, vet, staticcheck green. No migration (JSONB), HTTP or activation.
+
 - EE-09 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentda7a9551. [Public charging/reference APIs](../backend/evidence/ev-support/EE-09.md): bounded pages/detail/coverage under explicit profiles with keyset/cursors/ETags, kill switch (default true, false answers 404), OpenAPI paths/schemas; traversal/coverage/malformed/OpenAPI tests PASS with PostGIS; charging module, vet, staticcheck, sqlc vet/diff, vacuum zero errors green. No ingestion/activation.
 
 - EE-08 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent2a0f39e7. [Verified ingestion jobs](../backend/evidence/ev-support/EE-08.md): bounded Runner (workspace, trusted binaries, cleanup, dead budgets, idempotent replay by manifest hash) plus allowlisted Discover (https/TLS12/no-redirect/1 MB/30 s, no SSRF) and pure merge/split review flags; queue handlers without auto-actions; config gate default-off; Dockerfile + CI with both preparers as nonroot. Seven job tests plus integration PASS; vet/staticcheck green. No dispatcher/schedule activation.
