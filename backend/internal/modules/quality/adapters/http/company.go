@@ -24,6 +24,12 @@ func eventQuery(w http.ResponseWriter, r *http.Request, source string, detail bo
 		allowed["cursor"] = true
 		if source == actionSource {
 			allowed["scope"] = true
+			allowed["uf"] = true
+			allowed["municipality"] = true
+			allowed["segment"] = true
+			allowed["subject_kind"] = true
+			allowed["from_day"] = true
+			allowed["to_day"] = true
 		}
 	}
 	if e == nil {

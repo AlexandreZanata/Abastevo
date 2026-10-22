@@ -13,6 +13,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
 
@@ -45,6 +46,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/quality/assays", h.assays)
 	r.Get("/v1/quality/samples/{sample_ref}", h.sample)
 	r.Get("/v1/quality/actions", h.actions)
+	r.Get("/v1/quality/actions/coverage", h.actionCoverage)
 	r.Get("/v1/quality/actions/{id}", h.actionOne)
 	r.Get("/v1/quality/sanctions", h.sanctions)
 	r.Get("/v1/quality/sanctions/{id}", h.sanctionOne)
@@ -331,6 +333,53 @@ func (h Handler) actions(w http.ResponseWriter, r *http.Request) {
 	h.events(w, r, actionSource, actionStream, "actions")
 }
 
+// enforcementFacets validates the native-source facet params. Empty means
+// no filter; every set facet must be exact and well-formed. Unknown facet
+// values return empty pages, malformed values return 400.
+func enforcementFacets(w http.ResponseWriter, r *http.Request) (read.EnforcementFilter, bool) {
+	q := r.URL.Query()
+	var filter read.EnforcementFilter
+	bad := func(field, code string) (read.EnforcementFilter, bool) {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", field+" filter invalid",
+			[]httpapi.Detail{{Field: field, Code: code}})
+		return read.EnforcementFilter{}, false
+	}
+	if uf := q.Get("uf"); uf != "" {
+		if len(uf) != 2 || uf[0] < 'A' || uf[0] > 'Z' || uf[1] < 'A' || uf[1] > 'Z' {
+			return bad("uf", "shape")
+		}
+		filter.UF = uf
+	}
+	if city, err := application.ValidateTextFilter("municipality", q.Get("municipality"), 256); err != nil || (q.Get("municipality") != "" && city == "") {
+		return bad("municipality", "length")
+	} else {
+		filter.Municipality = city
+	}
+	if segment, err := application.ValidateTextFilter("segment", q.Get("segment"), 256); err != nil {
+		return bad("segment", "length")
+	} else {
+		filter.Segment = segment
+	}
+	switch kind := q.Get("subject_kind"); kind {
+	case "", "company-shaped", "personal-shaped", "other":
+		filter.SubjectKind = kind
+	default:
+		return bad("subject_kind", "vocabulary")
+	}
+	from, to := q.Get("from_day"), q.Get("to_day")
+	if from != "" && !domain.ValidDay(from) {
+		return bad("from_day", "calendar")
+	}
+	if to != "" && !domain.ValidDay(to) {
+		return bad("to_day", "calendar")
+	}
+	if from != "" && to != "" && from > to {
+		return bad("from_day", "range")
+	}
+	filter.FromDay, filter.ToDay = from, to
+	return filter, true
+}
+
 func (h Handler) sanctions(w http.ResponseWriter, r *http.Request) {
 	h.events(w, r, sanctionSource, sanctionStream, "sanctions")
 }
@@ -380,7 +429,15 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "legacy status/scope unavailable for this source", nil)
 		return
 	}
-	fh := httpapi.FilterHash("quality-"+name, status, scope, strconv.Itoa(limit), lease.RevisionID)
+	var filter read.EnforcementFilter
+	if lease.SourceInputContract == application.EnforcementSourceProfile {
+		var ok bool
+		if filter, ok = enforcementFacets(w, r); !ok {
+			return
+		}
+	}
+	fh := httpapi.FilterHash("quality-"+name, status, scope, strconv.Itoa(limit), lease.RevisionID,
+		filter.UF, filter.Municipality, filter.Segment, filter.SubjectKind, filter.FromDay, filter.ToDay)
 	lastKey, err := httpapi.ParseCursor(h.Secrets, q.Get("cursor"), fh, h.now())
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-cursor", "cursor invalid, expired or changed",
@@ -391,7 +448,14 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 	wire := make([]map[string]any, 0)
 	var nextKey string
 	if name == "actions" {
-		rows, next, _, err := h.Read.EnforcementAtLease(r.Context(), lease, status, scope, afterNative, afterID, limit)
+		var rows []read.EnforcementEvent
+		var next string
+		var err error
+		if lease.SourceInputContract == application.EnforcementSourceProfile {
+			rows, next, _, err = h.Read.EnforcementFilteredAtLease(r.Context(), lease, filter, afterNative, afterID, limit)
+		} else {
+			rows, next, _, err = h.Read.EnforcementAtLease(r.Context(), lease, status, scope, afterNative, afterID, limit)
+		}
 		if err != nil {
 			sourceDown(w, r)
 			return
@@ -430,6 +494,40 @@ func (h Handler) leaseOf(r *http.Request, source, stream string) (read.Lease, er
 
 func (h Handler) actionOne(w http.ResponseWriter, r *http.Request) {
 	h.eventOne(w, r, actionSource, actionStream)
+}
+
+// actionCoverage reports the leased enforcement revision's valid counts:
+// distinct retained observations versus distinct source-stated cases, with
+// the document-day bounds and basis. Counts only, never subject identifiers.
+func (h Handler) actionCoverage(w http.ResponseWriter, r *http.Request) {
+	if h.disabled(w, r) {
+		return
+	}
+	if !h.selectRevision(w, r) {
+		return
+	}
+	lease, err := h.leaseOf(r, actionSource, actionStream)
+	if err != nil {
+		h.readErr(w, r, err)
+		return
+	}
+	if lease.SourceInputContract != application.EnforcementSourceProfile {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-coverage", "coverage unavailable for this source", nil)
+		return
+	}
+	coverage, _, err := h.Read.EnforcementCoverageAtLease(r.Context(), lease)
+	if err != nil {
+		sourceDown(w, r)
+		return
+	}
+	body, _ := json.Marshal(map[string]any{
+		"observations": coverage.Observations, "cases": coverage.Cases,
+		"first_day": coverage.FirstDay, "last_day": coverage.LastDay,
+		"date_basis": coverage.DateBasis,
+		"lease":      wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
+	})
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage, "lease": wireLeaseOf(lease)})))
 }
 
 func (h Handler) sanctionOne(w http.ResponseWriter, r *http.Request) {
@@ -519,6 +617,7 @@ func wireEnforcement(e read.EnforcementEvent) map[string]any {
 		out["municipality"] = e.Municipality
 		out["segment"] = e.Segment
 		out["document_day"] = e.DocumentDay
+		out["date_basis"] = domain.DateBasisDocumentDay
 		out["document_number"] = e.DocumentNumber
 		out["procedure"] = e.Procedure
 		out["result"] = e.Result

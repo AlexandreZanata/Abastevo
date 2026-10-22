@@ -1627,6 +1627,30 @@ paths:
           in: query
           description: Optional verbatim scope filter.
           schema: {type: string, maxLength: 64}
+        - name: uf
+          in: query
+          description: Optional exact two-letter UF facet (native source only).
+          schema: {type: string, pattern: '^[A-Z]{2}$'}
+        - name: municipality
+          in: query
+          description: Optional exact municipality facet (native source only).
+          schema: {type: string, maxLength: 256}
+        - name: segment
+          in: query
+          description: Optional exact segment facet (native source only).
+          schema: {type: string, maxLength: 256}
+        - name: subject_kind
+          in: query
+          description: Optional subject-kind facet (native source only).
+          schema: {type: string, enum: [company-shaped, personal-shaped, other]}
+        - name: from_day
+          in: query
+          description: Optional document-day lower bound, document_day basis (native source only).
+          schema: {type: string, format: date}
+        - name: to_day
+          in: query
+          description: Optional document-day upper bound, document_day basis (native source only).
+          schema: {type: string, format: date}
         - name: limit
           in: query
           description: Action page size.
@@ -1648,6 +1672,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityActionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/quality/actions/coverage:
+    get:
+      summary: Leased enforcement revision coverage counts (anonymous).
+      operationId: qualityActionsCoverage
+      tags: [quality]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/QualityRevisionSelector'
+      responses:
+        '200':
+          description: Distinct observations versus distinct source-stated cases with the document-day bounds and basis. Counts only.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityActionCoverage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '503':
@@ -7806,6 +7854,7 @@ components:
         municipality: {type: string, maxLength: 256}
         segment: {type: string, maxLength: 256}
         document_day: {type: string, format: date, description: Source document day only; no occurrence or legal finality inference.}
+        date_basis: {type: string, enum: [document_day], description: Declared clock basis of document_day.}
         document_number: {type: string, maxLength: 128}
         procedure: {type: string, maxLength: 65536}
         result: {type: string, maxLength: 65536}
@@ -7820,6 +7869,18 @@ components:
           type: array
           items: {$ref: '#/components/schemas/QualityAction'}
         next_cursor: {type: [string, 'null']}
+        lease: {$ref: '#/components/schemas/QualityLease'}
+        generated_at: {type: string, format: date-time}
+    QualityActionCoverage:
+      description: Leased revision observation versus case counts with the document-day bounds and basis. Counts only, never subject identifiers.
+      type: object
+      required: [observations, cases, first_day, last_day, date_basis, lease, generated_at]
+      properties:
+        observations: {type: integer, minimum: 0, description: Distinct retained source records.}
+        cases: {type: integer, minimum: 0, description: Distinct source-stated documents.}
+        first_day: {type: [string, 'null'], format: date}
+        last_day: {type: [string, 'null'], format: date}
+        date_basis: {type: string, enum: [document_day]}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:

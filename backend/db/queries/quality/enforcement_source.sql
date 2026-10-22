@@ -35,3 +35,23 @@ ORDER BY native_key,id::text LIMIT @limit_plus_one::int;
 -- name: EnforcementSourceByID :one
 SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
 FROM quality_enforcement_source_records WHERE revision_id = @revision_id AND id = @id;
+
+-- name: EnforcementSourceFilteredPage :many
+SELECT id,native_key,subject_kind,uf,municipality,segment,document_day,document_number,procedure,result,evidence_ref
+FROM quality_enforcement_source_records
+WHERE revision_id = @revision_id
+ AND (uf = sqlc.narg(uf)::text OR sqlc.narg(uf)::text IS NULL)
+ AND (municipality = sqlc.narg(municipality)::text OR sqlc.narg(municipality)::text IS NULL)
+ AND (segment = sqlc.narg(segment)::text OR sqlc.narg(segment)::text IS NULL)
+ AND (subject_kind = sqlc.narg(subject_kind)::text OR sqlc.narg(subject_kind)::text IS NULL)
+ AND (document_day >= sqlc.narg(from_day)::date OR sqlc.narg(from_day)::date IS NULL)
+ AND (document_day <= sqlc.narg(to_day)::date OR sqlc.narg(to_day)::date IS NULL)
+ AND ((native_key,id::text) > (@after_native::text,@after_id::text) OR @after_id::text = '')
+ORDER BY native_key,id::text LIMIT @limit_plus_one::int;
+
+-- name: EnforcementSourceCoverage :one
+SELECT count(*) AS observations,
+ count(DISTINCT document_number) AS cases,
+ min(document_day) AS first_day,
+ max(document_day) AS last_day
+FROM quality_enforcement_source_records WHERE revision_id = @revision_id;
