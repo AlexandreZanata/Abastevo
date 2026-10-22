@@ -46,7 +46,8 @@ pub use enforcement::{
 };
 pub use enforcement_xlsx::{
     parse_enforcement_xlsx, EnforcementCensus, EnforcementSourceRecord, EnforcementXlsxError,
-    EnforcementXlsxRun, ENFORCEMENT_XLSX_HEADERS, ENFORCEMENT_XLSX_SOURCE, ENFORCEMENT_XLSX_WIDTH,
+    EnforcementXlsxRun, ENFORCEMENT_XLSX_HEADERS, ENFORCEMENT_XLSX_PROFILE,
+    ENFORCEMENT_XLSX_SOURCE, ENFORCEMENT_XLSX_WIDTH,
 };
 pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};

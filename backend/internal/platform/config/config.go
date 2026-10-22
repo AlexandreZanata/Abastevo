@@ -82,9 +82,11 @@ const (
 	keyPriceRankingCacheTTLSeconds = "ANPFUEL_PRICE_RANKING_CACHE_TTL_SECONDS"
 	// Source discovery/revalidation schedules are independent and default
 	// off. Installing a schedule never enables native imports.
-	keyQualitySanctionsDiscoveryEnabled = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
-	keyQualityDiscoveryEnabled          = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
-	keyQualityRevalidationEnabled       = "ANPFUEL_QUALITY_REVALIDATION_ENABLED"
+	keyQualityEnforcementImportsEnabled   = "ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED"
+	keyQualityEnforcementDiscoveryEnabled = "ANPFUEL_QUALITY_ENFORCEMENT_DISCOVERY_ENABLED"
+	keyQualitySanctionsDiscoveryEnabled   = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
+	keyQualityDiscoveryEnabled            = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
+	keyQualityRevalidationEnabled         = "ANPFUEL_QUALITY_REVALIDATION_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -122,9 +124,11 @@ type Config struct {
 	QualityImportsEnabled bool
 	// Bounded source schedules are independent and default off. Handlers
 	// still require the native imports switch; a schedule alone only queues.
-	QualitySanctionsDiscoveryEnabled bool
-	QualityDiscoveryEnabled          bool
-	QualityRevalidationEnabled       bool
+	QualityEnforcementImportsEnabled   bool
+	QualityEnforcementDiscoveryEnabled bool
+	QualitySanctionsDiscoveryEnabled   bool
+	QualityDiscoveryEnabled            bool
+	QualityRevalidationEnabled         bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -197,9 +201,11 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.QualityImportsEnabled = enabled
 	}
 	for key, target := range map[string]*bool{
-		keyQualitySanctionsDiscoveryEnabled: &cfg.QualitySanctionsDiscoveryEnabled,
-		keyQualityDiscoveryEnabled:          &cfg.QualityDiscoveryEnabled,
-		keyQualityRevalidationEnabled:       &cfg.QualityRevalidationEnabled,
+		keyQualityEnforcementImportsEnabled:   &cfg.QualityEnforcementImportsEnabled,
+		keyQualityEnforcementDiscoveryEnabled: &cfg.QualityEnforcementDiscoveryEnabled,
+		keyQualitySanctionsDiscoveryEnabled:   &cfg.QualitySanctionsDiscoveryEnabled,
+		keyQualityDiscoveryEnabled:            &cfg.QualityDiscoveryEnabled,
+		keyQualityRevalidationEnabled:         &cfg.QualityRevalidationEnabled,
 	} {
 		if raw, present := getenv(key); present {
 			enabled, err := strconv.ParseBool(raw)

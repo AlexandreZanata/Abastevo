@@ -67,7 +67,7 @@ func TestFineStorageUpgradeKeepsLegacySnapshotsAndPublication(t *testing.T) {
 		t.Fatal(e)
 	}
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000106", "000107", "000108", "000109", "000110"}) {
+	if e != nil || !slices.Equal(applied, []string{"000106", "000107", "000108", "000109", "000110", "000111"}) {
 		t.Fatal("native storage upgrade", applied, e)
 	}
 	if again, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files); e != nil || len(again) != 0 {

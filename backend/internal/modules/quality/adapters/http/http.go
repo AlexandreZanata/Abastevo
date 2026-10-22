@@ -375,6 +375,11 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		h.readErr(w, r, err)
 		return
 	}
+
+	if lease.SourceInputContract == application.EnforcementSourceProfile && (status != "" || scope != "") {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "legacy status/scope unavailable for this source", nil)
+		return
+	}
 	fh := httpapi.FilterHash("quality-"+name, status, scope, strconv.Itoa(limit), lease.RevisionID)
 	lastKey, err := httpapi.ParseCursor(h.Secrets, q.Get("cursor"), fh, h.now())
 	if err != nil {
@@ -393,11 +398,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 		}
 		nextKey = next
 		for _, e := range rows {
-			wire = append(wire, map[string]any{
-				"id": e.ID, "native_key": e.NativeKey, "scope": e.Scope,
-				"status": e.Status, "occurred_on": nullableString(e.OccurredOn),
-				"as_of": e.AsOf, "evidence_ref": e.EvidenceRef,
-			})
+			wire = append(wire, wireEnforcement(e))
 		}
 	} else {
 		rows, next, _, err := h.Read.SanctionsAtLease(r.Context(), lease, status, afterNative, afterID, limit)
@@ -463,12 +464,10 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 			h.readErr(w, r, err)
 			return
 		}
-		body, _ := json.Marshal(map[string]any{
-			"id": event.ID, "native_key": event.NativeKey, "scope": event.Scope,
-			"status": event.Status, "occurred_on": nullableString(event.OccurredOn),
-			"as_of": event.AsOf, "evidence_ref": event.EvidenceRef,
-			"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
-		})
+		wire := wireEnforcement(event)
+		wire["lease"] = wireLeaseOf(lease)
+		wire["generated_at"] = generatedAt(h.now())
+		body, _ := json.Marshal(wire)
 		httpapi.WriteJSON(w, r, http.StatusOK, "public, max-age=60", body)
 		return
 	}
@@ -506,4 +505,23 @@ func nullableString(s string) *string {
 
 func wireSanction(e read.SanctionEvent) map[string]any {
 	return map[string]any{"id": e.ID, "native_key": e.NativeKey, "identity_kind": e.IdentityKind, "proceeding_ref": e.ProceedingRef, "amount_minor": e.AmountMinor, "status": e.Status, "decided_on": nullableString(e.DecidedOn), "as_of": nullableString(e.AsOf), "as_of_precision": e.ClockPrecision, "extraction_month": nullableString(e.ExtractionMonth), "report_year": e.ReportYear, "duf_ref": nullableString(e.DUFRef), "department": nullableString(e.Department), "due_on": nullableString(e.DueOn), "amount_text": nullableString(e.AmountText), "paid_text": nullableString(e.PaidText), "paid_minor": e.PaidMinor, "evidence_ref": e.EvidenceRef, "input_contract": nullableString(e.InputContract), "source_period": nullableString(e.SourcePeriod), "source_clock_value": nullableString(e.SourceClockValue), "reference_label": nullableString(e.ReferenceLabel), "reference_ref": nullableString(e.ReferenceRef), "source_transit_on": nullableString(e.SourceTransitOn), "unlabelled_field": nullableString(e.UnlabelledField)}
+}
+
+// wireEnforcement keeps native source facts separate from legacy event semantics.
+func wireEnforcement(e read.EnforcementEvent) map[string]any {
+	out := map[string]any{"id": e.ID, "native_key": e.NativeKey, "scope": e.Scope, "status": e.Status, "occurred_on": nullableString(e.OccurredOn), "as_of": nullableString(e.AsOf), "evidence_ref": e.EvidenceRef}
+	if e.SourceProfile != "" {
+		out["scope"] = nil
+		out["status"] = nil
+		out["source_profile"] = e.SourceProfile
+		out["subject_kind"] = e.SubjectKind
+		out["uf"] = e.UF
+		out["municipality"] = e.Municipality
+		out["segment"] = e.Segment
+		out["document_day"] = e.DocumentDay
+		out["document_number"] = e.DocumentNumber
+		out["procedure"] = e.Procedure
+		out["result"] = e.Result
+	}
+	return out
 }

@@ -160,13 +160,14 @@ type SampleDetail struct {
 
 // EnforcementEvent is one published fiscal action without party identifiers.
 type EnforcementEvent struct {
-	ID          string
-	NativeKey   string
-	Scope       string
-	Status      string
-	OccurredOn  string
-	AsOf        string
-	EvidenceRef string
+	SourceProfile, SubjectKind, UF, Municipality, Segment, DocumentDay, DocumentNumber, Procedure, Result string
+	ID                                                                                                    string
+	NativeKey                                                                                             string
+	Scope                                                                                                 string
+	Status                                                                                                string
+	OccurredOn                                                                                            string
+	AsOf                                                                                                  string
+	EvidenceRef                                                                                           string
 }
 
 // SanctionEvent is one published snapshot without party identifiers.
@@ -241,6 +242,24 @@ func (r *Reader) lease(ctx context.Context, source, stream string, now time.Time
 		},
 		ManifestHash: row.ManifestHash,
 		Stale:        stale, StaleReason: reason,
+	}
+
+	if source == "enforcement" && stream == domain.StreamEnforcement {
+		c, e := q.EnforcementSourceContext(ctx, row.RevisionID)
+		if e == nil {
+			if int(c.InputCount) != lease.Counts.Input || int(c.AcceptedCount) != lease.Counts.Accepted || int(c.DuplicateCount) != lease.Counts.Duplicates || lease.Counts.Quarantined != 0 {
+				return Lease{}, pgtype.UUID{}, errors.New("read: enforcement census unavailable")
+			}
+			lease.SourceInputContract = c.SourceProfile
+			lease.SourceClockPrecision = "UNAVAILABLE"
+			records, metadata := int(c.InputCount), 0
+			lease.SourceRecordCount = &records
+			lease.SourceMetadataRecords = &metadata
+			lease.Stale = true
+			lease.StaleReason = "source extraction clock unavailable"
+		} else if !errors.Is(e, pgx.ErrNoRows) {
+			return Lease{}, pgtype.UUID{}, e
+		}
 	}
 	if source == "sanctions" && stream == domain.StreamSanction {
 		clock, cerr := q.NativeFineRevisionClock(ctx, row.RevisionID)
@@ -470,6 +489,25 @@ func (r *Reader) EnforcementAtLease(ctx context.Context, lease Lease, status, sc
 	if err != nil {
 		return nil, "", lease, err
 	}
+
+	if lease.SourceInputContract == application.EnforcementSourceProfile {
+		if status != "" || scope != "" {
+			return nil, "", lease, errors.New("read: legacy filters unavailable for native source")
+		}
+		rows, e := quality.New(r.pool).EnforcementSourcePage(ctx, quality.EnforcementSourcePageParams{RevisionID: revisionID, AfterNative: afterNative, AfterID: afterID, LimitPlusOne: int32(limit + 1)})
+		if e != nil {
+			return nil, "", lease, e
+		}
+		out := make([]EnforcementEvent, 0, min(limit, len(rows)))
+		for i, row := range rows {
+			if i == limit {
+				last := rows[limit-1]
+				return out, last.NativeKey + "|" + uuidString(last.ID), lease, nil
+			}
+			out = append(out, EnforcementEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, SourceProfile: application.EnforcementSourceProfile, SubjectKind: row.SubjectKind, UF: row.Uf, Municipality: row.Municipality, Segment: row.Segment, DocumentDay: dateString(row.DocumentDay), DocumentNumber: row.DocumentNumber, Procedure: row.Procedure, Result: row.Result, EvidenceRef: row.EvidenceRef})
+		}
+		return out, "", lease, nil
+	}
 	rows, err := quality.New(r.pool).ActionPageByRevision(ctx, quality.ActionPageByRevisionParams{
 		RevisionID: revisionID, Status: status, Scope: scope,
 		AfterNative: afterNative, AfterID: afterID, LimitPlusOne: int32(limit + 1),
@@ -532,6 +570,17 @@ func (r *Reader) EnforcementOne(ctx context.Context, now time.Time, source, stre
 	rowID, err := mustUUID(id)
 	if err != nil {
 		return EnforcementEvent{}, lease, err
+	}
+
+	if lease.SourceInputContract == application.EnforcementSourceProfile {
+		row, e := quality.New(r.pool).EnforcementSourceByID(ctx, quality.EnforcementSourceByIDParams{RevisionID: revisionID, ID: rowID})
+		if errors.Is(e, pgx.ErrNoRows) {
+			e = ErrNotFound
+		}
+		if e != nil {
+			return EnforcementEvent{}, lease, e
+		}
+		return EnforcementEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, SourceProfile: application.EnforcementSourceProfile, SubjectKind: row.SubjectKind, UF: row.Uf, Municipality: row.Municipality, Segment: row.Segment, DocumentDay: dateString(row.DocumentDay), DocumentNumber: row.DocumentNumber, Procedure: row.Procedure, Result: row.Result, EvidenceRef: row.EvidenceRef}, lease, nil
 	}
 	row, err := quality.New(r.pool).EnforcementByID(ctx, quality.EnforcementByIDParams{
 		ID: rowID, RevisionID: revisionID,

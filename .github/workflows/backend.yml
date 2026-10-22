@@ -12,6 +12,10 @@ on:
       - infra/**
       - scripts/check-backend-fast.sh
       - scripts/scan-secrets.sh
+      - scripts/audit-anp-source-census.py
+      - scripts/audit-enforcement-privacy.py
+      - scripts/tests/test-anp-source-census.py
+      - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -23,6 +27,10 @@ on:
       - infra/**
       - scripts/check-backend-fast.sh
       - scripts/scan-secrets.sh
+      - scripts/audit-anp-source-census.py
+      - scripts/audit-enforcement-privacy.py
+      - scripts/tests/test-anp-source-census.py
+      - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
 
 env:
@@ -63,6 +71,10 @@ jobs:
           GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
           go install github.com/daveshanley/vacuum@${{ env.VACUUM_VERSION }}
           GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+      - name: Synthetic source census and privacy regressions
+        run: |
+          python3 scripts/tests/test-anp-source-census.py
+          python3 scripts/tests/test-enforcement-privacy.py
       - name: Fast gate (no database)
         run: bash scripts/check-backend-fast.sh
       - name: Vulnerability scan
@@ -98,7 +110,7 @@ jobs:
       - name: Build locked Rust source preparers
         run: |
           rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal
-          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir "$RUNNER_TEMP/station-prep-target"
+          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --target-dir "$RUNNER_TEMP/station-prep-target"
           echo "ANPFUEL_TEST_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_registry" >> "$GITHUB_ENV"
           chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_quality"
           echo "ANPFUEL_TEST_QUALITY_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_quality" >> "$GITHUB_ENV"
@@ -106,6 +118,8 @@ jobs:
           echo "ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_sanctions" >> "$GITHUB_ENV"
           chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_fine_history"
           echo "ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_fine_history" >> "$GITHUB_ENV"
+          chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_enforcement"
+          echo "ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_enforcement" >> "$GITHUB_ENV"
       - name: Enable PostGIS via the migrator
         run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
       - name: Integration tests (real PostGIS, race detector)

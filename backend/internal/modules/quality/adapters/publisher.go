@@ -46,6 +46,7 @@ func (p *Publisher) WithCompanyGuard(guard func(context.Context, pgx.Tx, []appli
 // editionRequest is the shared edition/manifest envelope for assay and
 // event publications. Row staging differs per stream and arrives as stage.
 type editionRequest struct {
+	EnforcementContext    *application.EnforcementSourceContext
 	CompanyAssociations   *application.CompanyAssociationInput
 	CompanyBindings       []application.CompanyBinding
 	NativeFineClock       *application.NativeFineClock
@@ -419,7 +420,8 @@ func (r editionRequest) publicationKey() string {
 		NativeFineClock                   *application.NativeFineClock            `json:",omitempty"`
 		HistoricalFineContext             *application.FineHistoryContext         `json:",omitempty"`
 		CompanyAssociations               *application.CompanyAssociationIdentity `json:",omitempty"`
-	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links, r.NativeFineClock, r.HistoricalFineContext, r.CompanyAssociations.PublicationIdentity()})
+		EnforcementContext                *application.EnforcementSourceContext   `json:",omitempty"`
+	}{r.Source, r.Stream, r.Edition, r.ManifestHash, r.Counts, resources, periods, links, r.NativeFineClock, r.HistoricalFineContext, r.CompanyAssociations.PublicationIdentity(), r.EnforcementContext})
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }

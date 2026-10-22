@@ -1,7 +1,9 @@
 //! Bounded native preparation of the official enforcement workbook.
 //! Private artifacts; counts-only stdout.
 use sha2::{Digest, Sha256};
-use station_prep::enforcement_xlsx::{parse_enforcement_xlsx, EnforcementXlsxError};
+use station_prep::enforcement_xlsx::{
+    parse_enforcement_xlsx, EnforcementXlsxError, ENFORCEMENT_XLSX_PROFILE,
+};
 use station_prep::Limits;
 use std::io::{BufWriter, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
@@ -45,11 +47,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 EnforcementXlsxError::Contract(format!("record encoding refused: {error}"))
             })?;
             line.push(b'\n');
-            writer
-                .write_all(&line)
-                .map_err(|error| EnforcementXlsxError::Truncated(format!("write: {error}")))?;
-            hash.update(&line);
-            written += line.len() as u64;
+            write_bounded_record(&mut writer, &mut hash, &mut written, &line, 200 << 20)?;
             Ok(())
         })?;
         summary = (
@@ -67,6 +65,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         });
         let manifest = serde_json::json!({
             "schema_version": "enforcement-native-manifest-v1",
+            "source_profile": ENFORCEMENT_XLSX_PROFILE,
             "source_file": name,
             "input_bytes": input_bytes,
             "input_sha256": input_hash,
@@ -103,10 +102,56 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// Bound expansion at the writer, before bytes reach disk. The Go bridge uses
+// the same 200 MiB artifact ceiling; a deadline alone cannot bound disk usage.
+fn write_bounded_record<W: Write>(
+    writer: &mut W,
+    hash: &mut Sha256,
+    written: &mut u64,
+    line: &[u8],
+    limit: u64,
+) -> Result<(), EnforcementXlsxError> {
+    let next = written
+        .checked_add(line.len() as u64)
+        .filter(|n| *n <= limit)
+        .ok_or_else(|| EnforcementXlsxError::Contract("output byte budget".into()))?;
+    writer
+        .write_all(line)
+        .map_err(|_| EnforcementXlsxError::Truncated("artifact write refused".into()))?;
+    hash.update(line);
+    *written = next;
+    Ok(())
+}
+
 fn main() {
     if run().is_err() {
         // Source paths, rows and records never enter process logs.
         eprintln!("prepare_enforcement: source contract or artifact operation refused");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn output_budget_refuses_before_writing_or_advancing_identity() {
+        let mut bytes = Vec::new();
+        let mut hash = Sha256::new();
+        let mut written = 0;
+        write_bounded_record(&mut bytes, &mut hash, &mut written, b"1234", 4).unwrap();
+        let before = hash.clone().finalize();
+        assert!(write_bounded_record(&mut bytes, &mut hash, &mut written, b"5", 4).is_err());
+        assert_eq!(bytes, b"1234");
+        assert_eq!(written, 4);
+        assert_eq!(hash.finalize(), before);
+    }
+    #[test]
+    fn output_size_arithmetic_overflow_is_refused() {
+        let mut bytes = Vec::new();
+        let mut hash = Sha256::new();
+        let mut written = u64::MAX;
+        assert!(write_bounded_record(&mut bytes, &mut hash, &mut written, b"x", u64::MAX).is_err());
+        assert!(bytes.is_empty());
     }
 }

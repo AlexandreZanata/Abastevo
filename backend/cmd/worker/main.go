@@ -840,6 +840,12 @@ func run() error {
 	}
 	nativeKinds := []string{}
 	if cfg.QualityImportsEnabled {
+
+		if cfg.QualityEnforcementImportsEnabled {
+			handlers[qualityjobs.EnforcementImportKind] = nativeEnforcementImport(raw, bundledEnforcementPreparer, "")
+			handlers[qualityjobs.EnforcementDiscoveryKind] = nativeEnforcementLiveDiscovery(raw)
+			nativeKinds = append(nativeKinds, qualityjobs.EnforcementImportKind, qualityjobs.EnforcementDiscoveryKind)
+		}
 		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
 		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
@@ -904,6 +910,8 @@ func run() error {
 			Interval: 24 * time.Hour, Enabled: cfg.QualitySanctionsDiscoveryEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
 		},
+
+		{Name: "quality-enforcement-discovery-daily", Kind: qualityjobs.EnforcementDiscoveryKind, Version: 1, Interval: 24 * time.Hour, Enabled: cfg.QualityEnforcementDiscoveryEnabled, Reason: "disabled by configuration", Build: func(period string) map[string]any { return map[string]any{"period": period} }},
 		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{

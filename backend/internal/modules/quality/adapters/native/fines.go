@@ -99,6 +99,10 @@ func (r FineHistoryRunner) Prepare(ctx context.Context, req FineRequest) (prepar
 }
 
 func prepareFineBatch[T any](r FineRunner, ctx context.Context, req FineRequest, selection func(string, string) error, load func(context.Context, []byte, prepared.OpenStream, prepared.InputIdentity) (T, error)) (result T, err error) {
+	return prepareFileBatch(r, ctx, req, selection, load, func(snapshot, edition, out string) []string { return []string{snapshot, edition, out} }, prepared.MaxBytes, false)
+}
+
+func prepareFileBatch[T any](r FineRunner, ctx context.Context, req FineRequest, selection func(string, string) error, load func(context.Context, []byte, prepared.OpenStream, prepared.InputIdentity) (T, error), arguments func(string, string, string) []string, artifactMax int64, privateArtifacts bool) (result T, err error) {
 	if e := ctx.Err(); e != nil {
 		return result, e
 	}
@@ -165,7 +169,7 @@ func prepareFineBatch[T any](r FineRunner, ctx context.Context, req FineRequest,
 		return result, e
 	}
 	out := filepath.Join(workspace, "prepared")
-	command := exec.CommandContext(ctx, r.Binary, snapshot, req.Edition, out)
+	command := exec.CommandContext(ctx, r.Binary, arguments(snapshot, req.Edition, out)...)
 	command.Dir = workspace
 	command.Env = []string{"LANG=C.UTF-8", "HOME=" + workspace, "TMPDIR=" + workspace}
 	command.Stdout = io.Discard
@@ -179,7 +183,11 @@ func prepareFineBatch[T any](r FineRunner, ctx context.Context, req FineRequest,
 	if e = verify(ctx, source, req.Identity); e != nil {
 		return result, e
 	}
-	manifest, e := openArtifact(out, "manifest.json", 1<<20)
+	artifactOpen := openArtifact
+	if privateArtifacts {
+		artifactOpen = openPrivateArtifact
+	}
+	manifest, e := artifactOpen(out, "manifest.json", 1<<20)
 	if e != nil {
 		return result, e
 	}
@@ -188,7 +196,7 @@ func prepareFineBatch[T any](r FineRunner, ctx context.Context, req FineRequest,
 	if e != nil || closed != nil || len(raw) > 1<<20 {
 		return result, refused("fine manifest read")
 	}
-	batch, e := load(ctx, raw, func(name string) (io.ReadCloser, error) { return openArtifact(out, name, prepared.MaxBytes) }, req.Identity)
+	batch, e := load(ctx, raw, func(name string) (io.ReadCloser, error) { return artifactOpen(out, name, artifactMax) }, req.Identity)
 	if e != nil {
 		return result, refused("fine artifacts refused")
 	}
