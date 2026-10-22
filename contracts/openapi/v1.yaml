@@ -7982,8 +7982,8 @@ components:
       type: object
       required: [stations, records, lease, generated_at]
       properties:
-        stations: {type: integer, minimum: 0, description: Distinct bound stations, live at read.}
-        records: {type: integer, minimum: 0, description: Distinct bound records.}
+        stations: {type: integer, minimum: 0, description: 'Distinct bound stations, live at read.'}
+        records: {type: integer, minimum: 0, description: 'Distinct bound records.'}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:
