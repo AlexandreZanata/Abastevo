@@ -38,6 +38,7 @@ type EnforcementBatch struct {
 	ManifestHash  string
 	SourceFile    string
 	SourceProfile string
+	Context       application.EnforcementSourceContext
 }
 type enforcementCensus struct {
 	Rows            *int64           `json:"rows"`
@@ -105,7 +106,7 @@ func parseEnforcementManifest(raw []byte, identity InputIdentity) (enforcementMa
 		return m, refused("enforcement manifest contract")
 	}
 	if len(m.SourceFile) == 0 || len(m.SourceFile) > 255 || m.SourceFile == "." || m.SourceFile == ".." ||
-		strings.Contains(m.SourceFile, "\\") || strings.IndexFunc(m.SourceFile, unicode.IsControl) >= 0 {
+		strings.ContainsAny(m.SourceFile, "/\\") || strings.IndexFunc(m.SourceFile, unicode.IsControl) >= 0 {
 		return m, refused("enforcement source name")
 	}
 	if !validHash(identity.SHA256) || identity.Bytes <= 0 || identity.Bytes > MaxBytes ||
@@ -222,7 +223,14 @@ func LoadEnforcement(ctx context.Context, raw []byte, open OpenStream, identity 
 	}
 	out := EnforcementBatch{
 		SourceFile: m.SourceFile, SourceProfile: m.Profile, ManifestHash: m.ManifestHash,
-		Counts: domain.Counts{Input: int(*m.Counts.Input), Accepted: int(*m.Counts.Accepted), Duplicates: int(*m.Counts.Duplicates), Quarantined: int(*m.Counts.Quarantined)},
+		Context: application.EnforcementSourceContext{Profile: m.Profile, SourceFile: m.SourceFile, DateSystem: m.Census.DateSystem},
+		Counts:  domain.Counts{Input: int(*m.Counts.Input), Accepted: int(*m.Counts.Accepted), Duplicates: int(*m.Counts.Duplicates), Quarantined: int(*m.Counts.Quarantined)},
+	}
+	if m.Census.FirstDate != nil {
+		out.Context.FirstDocumentDay = *m.Census.FirstDate
+	}
+	if m.Census.LastDate != nil {
+		out.Context.LastDocumentDay = *m.Census.LastDate
 	}
 	outputs := map[string]output{}
 	for _, o := range m.Outputs {
@@ -302,7 +310,7 @@ func LoadEnforcement(ctx context.Context, raw []byte, open OpenStream, identity 
 		return EnforcementBatch{}, e
 	}
 	s := m.Census
-	if int64(len(locators)) != *m.Counts.Input || int64(len(documents)) != *s.DistinctDocs ||
+	if len(out.Records) != out.Counts.Accepted || out.Counts.Input-len(out.Records) != out.Counts.Duplicates || out.Counts.Quarantined != 0 || int64(len(locators)) != *m.Counts.Input || int64(len(documents)) != *s.DistinctDocs ||
 		int64(len(tuples)) != *s.DistinctTuples || int64(len(results)) != *s.ResultVocab ||
 		maxChars != *s.ResultMaxChars || over64 != *s.ResultsOver64 || admitted != *s.Admitted ||
 		!equalCounts(segments, s.Segments) || !equalCounts(shapes, s.SubjectShapes) {

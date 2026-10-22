@@ -220,3 +220,17 @@ func TestLoadEnforcementReturnsNoPartialBatch(t *testing.T) {
 		t.Fatal("missing stream port accepted")
 	}
 }
+
+func TestLoadEnforcementRefusesForgedAcceptanceCounts(t *testing.T) {
+	f := enforcementFixture{records: sampleEnforcementRecords(), identity: InputIdentity{SHA256: strings.Repeat("a", 64), Bytes: 10}}
+	raw, files := sealEnforcement(t, f)
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["counts"] = map[string]int{"input": 2, "accepted": 1, "duplicates": 1, "quarantined": 0}
+	raw, _ = json.Marshal(m)
+	if b, err := LoadEnforcement(context.Background(), raw, openEnforcement(files), f.identity); err == nil || len(b.Records) != 0 {
+		t.Fatal("forged accepted/duplicate census admitted")
+	}
+}

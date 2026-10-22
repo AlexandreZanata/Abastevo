@@ -145,6 +145,37 @@ type QualityEnforcementEvent struct {
 	EvidenceRef string      `json:"evidence_ref"`
 }
 
+type QualityEnforcementSourceRecord struct {
+	ID               pgtype.UUID `json:"id"`
+	RevisionID       pgtype.UUID `json:"revision_id"`
+	NativeKey        string      `json:"native_key"`
+	SubjectCnpj      pgtype.Text `json:"subject_cnpj"`
+	SubjectKind      string      `json:"subject_kind"`
+	Uf               string      `json:"uf"`
+	Municipality     string      `json:"municipality"`
+	Segment          string      `json:"segment"`
+	DocumentDay      pgtype.Date `json:"document_day"`
+	DocumentNumber   string      `json:"document_number"`
+	Procedure        string      `json:"procedure"`
+	Result           string      `json:"result"`
+	EvidenceRef      string      `json:"evidence_ref"`
+	Fingerprint      string      `json:"fingerprint"`
+	FirstDocumentDay pgtype.Date `json:"first_document_day"`
+	LastDocumentDay  pgtype.Date `json:"last_document_day"`
+}
+
+type QualityEnforcementSourceRevision struct {
+	RevisionID       pgtype.UUID `json:"revision_id"`
+	SourceProfile    string      `json:"source_profile"`
+	SourceFile       string      `json:"source_file"`
+	DateSystem       string      `json:"date_system"`
+	InputCount       int32       `json:"input_count"`
+	AcceptedCount    int32       `json:"accepted_count"`
+	DuplicateCount   int32       `json:"duplicate_count"`
+	FirstDocumentDay pgtype.Date `json:"first_document_day"`
+	LastDocumentDay  pgtype.Date `json:"last_document_day"`
+}
+
 type QualityHistoricalFineNote struct {
 	RevisionID   pgtype.UUID `json:"revision_id"`
 	SourcePeriod string      `json:"source_period"`

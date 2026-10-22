@@ -306,6 +306,7 @@ sql:
       - db/migrations/000107_quality_native_fine_revision_clock.sql
       - db/migrations/000108_quality_historical_fine_profiles.sql
       - db/migrations/000109_quality_company_association_scope.sql
+      - db/migrations/000111_quality_enforcement_source.sql
     gen:
       go:
         package: quality

@@ -116,7 +116,7 @@ func TestHistoricalFineStorageUpgradeKeepsLegacyNativeValuesAndPointers(t *testi
 	}
 	before := snapshot()
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000108", "000109", "000110"}) {
+	if e != nil || !slices.Equal(applied, []string{"000108", "000109", "000110", "000111"}) {
 		t.Fatal("historical storage upgrade", applied, e)
 	}
 	if again, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files); e != nil || len(again) != 0 {

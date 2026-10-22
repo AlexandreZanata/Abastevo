@@ -1,5 +1,11 @@
 # Resume mobile expansion from the current local checkpoint
 
+Current override 2026-10-22: maintained dev inherited PR141/142/143 and
+MEX-20a/b. The new authorized batch is MEX-20c/d/e/f; c is locally tested
+with migration000111, next d. Use current PROGRESS over the historical guidance
+below. Preserve the occupied primary checkout; use .worktrees/main-reconciliation.
+No intermediate PR/merge/CI wait; source activation remains OFF.
+
 Current checkpoint, 2026-10-22: MEX-00–07, MEX-09, MEX-10, MEX-17/18/19,
 EE-00–03 and reviewed EE-11 are LOCAL_DONE / INTEGRATION_PENDING; use
 [current PROGRESS](PROGRESS.md) and their linked evidence. The authorized
