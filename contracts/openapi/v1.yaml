@@ -1233,6 +1233,57 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+  /v1/prices/ranking:
+    get:
+      summary: Typed ANP weekly price ranking (anonymous).
+      operationId: priceRanking
+      tags: [official]
+      security: []
+      description: |
+        Exact typed ranking over one current published ANP survey revision.
+        ANP weekly observations remain separate from community prices. Coverage
+        is sampled and never a national-completeness claim. ETag and cursor
+        bind every filter and the source revision, so a revision switch
+        invalidates both.
+      parameters:
+        - {name: source, in: query, required: true, schema: {type: string, enum: [ANP_WEEKLY]}}
+        - {name: survey_week_start, in: query, required: true, schema: {type: string, format: date}}
+        - {name: fuel, in: query, required: true, schema: {$ref: '#/components/schemas/FuelProduct'}}
+        - {name: unit, in: query, required: true, schema: {type: string, enum: [L, M3, KG_13]}}
+        - {name: condition, in: query, schema: {type: string, enum: [STANDARD], default: STANDARD}}
+        - {name: geography, in: query, required: true, schema: {type: string, enum: [COUNTRY, STATE, MUNICIPALITY]}}
+        - {name: uf, in: query, schema: {type: string, enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]}}
+        - {name: ibge_code, in: query, schema: {type: string, pattern: '^[0-9]{7}$'}}
+        - {name: metric, in: query, required: true, schema: {type: string, enum: [OBSERVATION_PRICE, AREA_MEAN]}}
+        - {name: group_by, in: query, required: true, schema: {type: string, enum: [STATION, MUNICIPALITY, STATE]}}
+        - {name: sort, in: query, required: true, schema: {type: string, enum: [ASC, DESC]}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, schema: {type: string, minLength: 1, maxLength: 4096}}
+      responses:
+        '200':
+          description: Typed page with source revision, coverage and stable ordering.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=0, must-revalidate'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRankingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Ranking source unavailable; retry later. No stale page is served.
+          headers:
+            Cache-Control:
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /v1/quality/reports/commands:
     post:
       tags:
@@ -9431,6 +9482,125 @@ components:
           type: string
           format: date-time
           example: '2026-09-30T12:00:00Z'
+    PriceRankingRational:
+      type: object
+      additionalProperties: false
+      required: [numerator, denominator]
+      properties:
+        numerator: {type: string, pattern: '^[0-9]+$'}
+        denominator: {type: string, pattern: '^[1-9][0-9]*$'}
+    PriceRankingInterpretation:
+      type: object
+      additionalProperties: false
+      required: [source, product, condition, geography, metric, policy_version]
+      properties:
+        source:
+          type: object
+          additionalProperties: false
+          required: [kind, survey_week_start]
+          properties:
+            kind: {type: string, enum: [ANP_WEEKLY]}
+            survey_week_start: {type: string, format: date}
+        product:
+          type: object
+          additionalProperties: false
+          required: [fuel, unit]
+          properties:
+            fuel: {$ref: '#/components/schemas/FuelProduct'}
+            unit: {type: string, enum: [L, M3, KG_13]}
+        condition:
+          type: object
+          additionalProperties: false
+          required: [kind]
+          properties:
+            kind: {type: string, enum: [STANDARD]}
+        geography:
+          type: object
+          additionalProperties: false
+          required: [level, country]
+          properties:
+            level: {type: string, enum: [COUNTRY, STATE, MUNICIPALITY]}
+            country: {type: string, enum: [BR]}
+            uf: {type: string, enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]}
+            ibge_code: {type: string, pattern: '^[0-9]{7}$'}
+        metric:
+          type: object
+          additionalProperties: false
+          required: [kind, group_by, sort]
+          properties:
+            kind: {type: string, enum: [OBSERVATION_PRICE, AREA_MEAN]}
+            group_by: {type: string, enum: [STATION, MUNICIPALITY, STATE]}
+            sort: {type: string, enum: [ASC, DESC]}
+            weighting: {type: string, enum: [ELIGIBLE_SOURCE_OBSERVATIONS]}
+        policy_version: {type: string, enum: [mex-exploration-v1]}
+    PriceRankingSource:
+      type: object
+      additionalProperties: false
+      required: [kind, survey_week_start, survey_week_end, revision_id, published_at, source_url, source_checksum]
+      properties:
+        kind: {type: string, enum: [ANP_WEEKLY]}
+        survey_week_start: {type: string, format: date}
+        survey_week_end: {type: string, format: date}
+        revision_id: {type: string, format: uuid}
+        published_at: {type: string, format: date-time}
+        source_url: {type: string}
+        source_checksum: {type: string}
+    PriceRankingCoverage:
+      type: object
+      additionalProperties: false
+      required: [source_observations, stations_with_price, source_stations, municipalities, states, unlocated_observations, sampled, national_completeness_claimed]
+      properties:
+        source_observations: {type: integer, minimum: 0}
+        stations_with_price: {type: integer, minimum: 0}
+        source_stations: {type: integer, minimum: 0}
+        municipalities: {type: integer, minimum: 0}
+        states: {type: integer, minimum: 0}
+        unlocated_observations: {type: integer, minimum: 0}
+        sampled: {type: boolean, enum: [true]}
+        national_completeness_claimed: {type: boolean, enum: [false]}
+    PriceRankingStation:
+      type: object
+      additionalProperties: false
+      required: [station_id, amount_milli_brl, currency, collected_on, state, ibge_code]
+      properties:
+        station_id: {type: string, format: uuid}
+        amount_milli_brl: {type: integer, minimum: 1}
+        currency: {type: string, enum: [BRL]}
+        collected_on: {type: string, format: date}
+        state: {type: [string, 'null']}
+        ibge_code: {type: [string, 'null']}
+    PriceRankingArea:
+      type: object
+      additionalProperties: false
+      required: [level, state, ibge_code, mean, min_milli_brl, max_milli_brl, variation_milli_brl, observations, currency]
+      properties:
+        level: {type: string, enum: [MUNICIPALITY, STATE]}
+        state: {type: string}
+        ibge_code: {type: string, pattern: '^([0-9]{7})?$'}
+        mean: {$ref: '#/components/schemas/PriceRankingRational'}
+        min_milli_brl: {type: integer, minimum: 1}
+        max_milli_brl: {type: integer, minimum: 1}
+        variation_milli_brl: {type: integer, minimum: 0}
+        observations: {type: integer, minimum: 1}
+        currency: {type: string, enum: [BRL]}
+    PriceRankingResponse:
+      type: object
+      additionalProperties: false
+      required: [interpretation, source, coverage, stations, areas, next_cursor, generated_at]
+      properties:
+        interpretation: {$ref: '#/components/schemas/PriceRankingInterpretation'}
+        source: {$ref: '#/components/schemas/PriceRankingSource'}
+        coverage: {$ref: '#/components/schemas/PriceRankingCoverage'}
+        stations:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/PriceRankingStation'}
+        areas:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/PriceRankingArea'}
+        next_cursor: {type: [string, 'null'], maxLength: 4096}
+        generated_at: {type: string, format: date-time}
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

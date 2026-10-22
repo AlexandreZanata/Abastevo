@@ -290,3 +290,29 @@ func TestMEX19CompanyReadSwitchIsIndependentAndDefaultsOff(t *testing.T) {
 		t.Fatal("invalid company switch admitted")
 	}
 }
+
+func TestMEX29RankingSwitchAndCacheBounds(t *testing.T) {
+	cfg, e := load(envFunc(nil))
+	if e != nil || !cfg.PriceRankingEnabled || cfg.PriceRankingCacheEntries != 128 || cfg.PriceRankingCacheTTLSeconds != 60 {
+		t.Fatal("ranking defaults", e)
+	}
+	cfg, e = load(envFunc(map[string]string{
+		keyPriceRankingEnabled:         "false",
+		keyPriceRankingCacheEntries:    "0",
+		keyPriceRankingCacheTTLSeconds: "5",
+	}))
+	if e != nil || cfg.PriceRankingEnabled || cfg.PriceRankingCacheEntries != 0 || cfg.PriceRankingCacheTTLSeconds != 5 {
+		t.Fatal("ranking overrides", e)
+	}
+	for _, env := range []map[string]string{
+		{keyPriceRankingEnabled: "invalid"},
+		{keyPriceRankingCacheEntries: "-1"},
+		{keyPriceRankingCacheEntries: "4097"},
+		{keyPriceRankingCacheTTLSeconds: "0"},
+		{keyPriceRankingCacheTTLSeconds: "3601"},
+	} {
+		if _, e := load(envFunc(env)); e == nil {
+			t.Fatalf("invalid ranking env admitted: %v", env)
+		}
+	}
+}

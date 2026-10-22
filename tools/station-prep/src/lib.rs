@@ -14,7 +14,9 @@
 
 pub mod cnpj;
 pub mod datasets;
+pub mod deflate;
 pub mod enforcement;
+pub mod enforcement_xlsx;
 pub mod ev_contract;
 pub mod ev_tariff;
 pub mod join;
@@ -28,6 +30,9 @@ pub mod sanction;
 pub mod sanction_anp;
 pub mod sanction_history;
 pub mod types;
+pub mod xlsx;
+pub mod xml;
+pub mod zip;
 
 pub use cnpj::{normalize_cnpj, InvalidCnpj};
 pub use datasets::{
@@ -38,6 +43,10 @@ pub use datasets::{
 };
 pub use enforcement::{
     parse_enforcement, EnforcementAction, EnforcementBatch, EnforcementError, ENFORCEMENT_SOURCE,
+};
+pub use enforcement_xlsx::{
+    parse_enforcement_xlsx, EnforcementCensus, EnforcementSourceRecord, EnforcementXlsxError,
+    EnforcementXlsxRun, ENFORCEMENT_XLSX_HEADERS, ENFORCEMENT_XLSX_SOURCE, ENFORCEMENT_XLSX_WIDTH,
 };
 pub use join::{join_candidates, JoinedBatch, JoinedCandidate, MatchState};
 pub use municipality::{AliasError, AliasTable, MunicipalityError};

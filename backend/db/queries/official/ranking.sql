@@ -91,6 +91,12 @@ FROM latest AS l
 JOIN directory_stations AS d ON d.id = l.station_id
 WHERE (@uf::text = '' OR d.state = @uf)
     AND (@municipality_code::text = '' OR d.municipality_code = @municipality_code)
+    AND (@has_after::boolean = FALSE OR
+        (CASE WHEN @sort_asc::boolean
+              THEN (l.amount_milli_brl, l.station_id) > (@after_amount::bigint, @after_id::uuid)
+              ELSE (l.amount_milli_brl < @after_amount::bigint OR
+                    (l.amount_milli_brl = @after_amount::bigint AND l.station_id > @after_id::uuid))
+         END))
 ORDER BY
     CASE WHEN @sort_asc::boolean THEN l.amount_milli_brl ELSE -l.amount_milli_brl END ASC,
     l.station_id ASC

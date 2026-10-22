@@ -281,6 +281,14 @@ func run() error {
 			return station.DisplayName, station.LocationQuality, lat, lon, nil
 		},
 	}.RegisterRoutes(router)
+	rankingCache := officialhttp.NewRankingCache(
+		cfg.PriceRankingCacheEntries, 10_000,
+		time.Duration(cfg.PriceRankingCacheTTLSeconds)*time.Second, time.Now,
+	)
+	officialhttp.RankingHandler{
+		Read: prices, Enabled: cfg.PriceRankingEnabled,
+		Secrets: cfg.CursorSecret, Cache: rankingCache,
+	}.RegisterRoutes(router)
 	officialhttp.Handler{
 		Prices:  prices,
 		Secrets: cfg.CursorSecret,
