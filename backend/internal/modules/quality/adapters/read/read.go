@@ -65,6 +65,14 @@ func dateString(d pgtype.Date) string {
 	return d.Time.Format("2006-01-02")
 }
 
+func readDay(s string) (pgtype.Date, error) {
+	day, err := time.Parse("2006-01-02", s)
+	if err != nil || day.Format("2006-01-02") != s {
+		return pgtype.Date{}, errors.New("read: invalid calendar day")
+	}
+	return pgtype.Date{Time: day, Valid: true}, nil
+}
+
 func timeString(t pgtype.Timestamptz) (time.Time, bool) {
 	if !t.Valid {
 		return time.Time{}, false
@@ -529,6 +537,208 @@ func (r *Reader) EnforcementAtLease(ctx context.Context, lease Lease, status, sc
 		})
 	}
 	return out, "", lease, nil
+}
+
+// EnforcementFilter carries the supported native-source facets. Empty
+// fields mean no filter; every set field must already be validated by the
+// caller (UF shape, known subject kind, calendar days, from <= to).
+type EnforcementFilter struct {
+	UF, Municipality, Segment, SubjectKind, FromDay, ToDay string
+}
+
+// EnforcementCoverage reports the leased revision's valid counts: distinct
+// retained observations versus distinct source-stated cases (documents),
+// with the document-day bounds. Counts only, never subject identifiers.
+type EnforcementCoverage struct {
+	Observations int64
+	Cases        int64
+	FirstDay     string
+	LastDay      string
+	DateBasis    string
+}
+
+// EnforcementFilteredAtLease pages native source facts under the leased
+// revision with exact facet matches. Unmatched and unknown records stay
+// included unless a facet excludes them; an absent facet never excludes.
+func (r *Reader) EnforcementFilteredAtLease(ctx context.Context, lease Lease, filter EnforcementFilter, afterNative, afterID string, limit int) ([]EnforcementEvent, string, Lease, error) {
+	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
+		return nil, "", lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return nil, "", lease, err
+	}
+	params := quality.EnforcementSourceFilteredPageParams{RevisionID: revisionID, AfterNative: afterNative, AfterID: afterID, LimitPlusOne: int32(limit + 1)}
+	if filter.UF != "" {
+		params.Uf = pgtype.Text{String: filter.UF, Valid: true}
+	}
+	if filter.Municipality != "" {
+		params.Municipality = pgtype.Text{String: filter.Municipality, Valid: true}
+	}
+	if filter.Segment != "" {
+		params.Segment = pgtype.Text{String: filter.Segment, Valid: true}
+	}
+	if filter.SubjectKind != "" {
+		params.SubjectKind = pgtype.Text{String: filter.SubjectKind, Valid: true}
+	}
+	if filter.FromDay != "" {
+		from, err := readDay(filter.FromDay)
+		if err != nil {
+			return nil, "", lease, err
+		}
+		params.FromDay = from
+	}
+	if filter.ToDay != "" {
+		to, err := readDay(filter.ToDay)
+		if err != nil {
+			return nil, "", lease, err
+		}
+		params.ToDay = to
+	}
+	rows, e := quality.New(r.pool).EnforcementSourceFilteredPage(ctx, params)
+	if e != nil {
+		return nil, "", lease, e
+	}
+	out := make([]EnforcementEvent, 0, min(limit, len(rows)))
+	for i, row := range rows {
+		if i == limit {
+			last := rows[limit-1]
+			return out, last.NativeKey + "|" + uuidString(last.ID), lease, nil
+		}
+		out = append(out, EnforcementEvent{ID: uuidString(row.ID), NativeKey: row.NativeKey, SourceProfile: application.EnforcementSourceProfile, SubjectKind: row.SubjectKind, UF: row.Uf, Municipality: row.Municipality, Segment: row.Segment, DocumentDay: dateString(row.DocumentDay), DocumentNumber: row.DocumentNumber, Procedure: row.Procedure, Result: row.Result, EvidenceRef: row.EvidenceRef})
+	}
+	return out, "", lease, nil
+}
+
+// EnforcementCoverageAtLease reports the leased revision's observation and
+// case counts with the document-day bounds and basis. A concurrent
+// publication cannot substitute a second revision.
+func (r *Reader) EnforcementCoverageAtLease(ctx context.Context, lease Lease) (EnforcementCoverage, Lease, error) {
+	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
+		return EnforcementCoverage{}, lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return EnforcementCoverage{}, lease, err
+	}
+	row, e := quality.New(r.pool).EnforcementSourceCoverage(ctx, revisionID)
+	if e != nil {
+		return EnforcementCoverage{}, lease, e
+	}
+	out := EnforcementCoverage{Observations: row.Observations, Cases: row.Cases, DateBasis: domain.DateBasisDocumentDay}
+	out.FirstDay = coverageDay(row.FirstDay)
+	out.LastDay = coverageDay(row.LastDay)
+	return out, lease, nil
+}
+
+// EnforcementStationFilter carries the supported station-occurrence
+// facets. Empty fields mean no filter; every set field must already be
+// validated by the caller (state shape, calendar days, from <= to).
+type EnforcementStationFilter struct {
+	State, Segment, FromDay, ToDay string
+}
+
+// EnforcementStation is one distinctly associated station with its bound
+// occurrence count. Display data is read live; a station retired in the
+// Directory at read time is excluded, never served stale.
+type EnforcementStation struct {
+	ID           string
+	DisplayName  string
+	Municipality string
+	State        string
+	Status       string
+	RecordCount  int64
+}
+
+// EnforcementStationCoverage reports distinct bound stations versus
+// distinct bound records for the leased revision. Counts only.
+type EnforcementStationCoverage struct {
+	Stations int64
+	Records  int64
+}
+
+// EnforcementStationsAtLease pages distinctly associated stations under
+// the leased revision. Only exact current bindings qualify; ambiguous,
+// unmatched and retired links never surface. Stations without price
+// observations are included: this page is about occurrences, not prices.
+func (r *Reader) EnforcementStationsAtLease(ctx context.Context, lease Lease, filter EnforcementStationFilter, afterID string, limit int) ([]EnforcementStation, string, Lease, error) {
+	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
+		return nil, "", lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return nil, "", lease, err
+	}
+	params := quality.EnforcementStationPageParams{RevisionID: revisionID, AfterID: afterID, LimitPlusOne: int32(limit + 1)}
+	if filter.State != "" {
+		params.State = pgtype.Text{String: filter.State, Valid: true}
+	}
+	if filter.Segment != "" {
+		params.Segment = pgtype.Text{String: filter.Segment, Valid: true}
+	}
+	if filter.FromDay != "" {
+		from, err := readDay(filter.FromDay)
+		if err != nil {
+			return nil, "", lease, err
+		}
+		params.FromDay = from
+	}
+	if filter.ToDay != "" {
+		to, err := readDay(filter.ToDay)
+		if err != nil {
+			return nil, "", lease, err
+		}
+		params.ToDay = to
+	}
+	rows, e := quality.New(r.pool).EnforcementStationPage(ctx, params)
+	if e != nil {
+		return nil, "", lease, e
+	}
+	out := make([]EnforcementStation, 0, min(limit, len(rows)))
+	for i, row := range rows {
+		if i == limit {
+			return out, uuidString(rows[limit-1].ID), lease, nil
+		}
+		municipality := ""
+		if row.MunicipalityCode.Valid {
+			municipality = row.MunicipalityCode.String
+		}
+		state := ""
+		if row.State.Valid {
+			state = row.State.String
+		}
+		out = append(out, EnforcementStation{ID: uuidString(row.ID), DisplayName: row.DisplayName, Municipality: municipality, State: state, Status: row.Status, RecordCount: row.RecordCount})
+	}
+	return out, "", lease, nil
+}
+
+// EnforcementStationCoverageAtLease reports the leased revision's bound
+// station and record counts. A concurrent publication cannot substitute
+// a second revision.
+func (r *Reader) EnforcementStationCoverageAtLease(ctx context.Context, lease Lease) (EnforcementStationCoverage, Lease, error) {
+	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
+		return EnforcementStationCoverage{}, lease, nil
+	}
+	revisionID, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return EnforcementStationCoverage{}, lease, err
+	}
+	row, e := quality.New(r.pool).EnforcementStationCoverage(ctx, revisionID)
+	if e != nil {
+		return EnforcementStationCoverage{}, lease, e
+	}
+	return EnforcementStationCoverage{Stations: row.Stations, Records: row.Records}, lease, nil
+}
+
+func coverageDay(value any) string {
+	switch day := value.(type) {
+	case pgtype.Date:
+		return dateString(day)
+	case time.Time:
+		return day.Format("2006-01-02")
+	default:
+		return ""
+	}
 }
 
 // Sanctions pages one stream's published snapshots with the same keyset.
