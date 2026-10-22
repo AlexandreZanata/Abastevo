@@ -70,6 +70,40 @@ func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurr
 		canonical, _ = json.Marshal(normalized)
 		return normalized.VehicleID, normalized.OccurredAt, normalized.OdometerMetres, canonical, nil
 	}
+	if dataset == "charge" {
+		var wire struct {
+			ID             string `json:"id"`
+			VehicleID      string `json:"vehicle_id"`
+			OccurredAt     string `json:"occurred_at"`
+			Timezone       string `json:"timezone"`
+			EnergyWh       *int64 `json:"energy_wh"`
+			TotalCentavos  *int64 `json:"total_centavos"`
+			SocStart       *int   `json:"soc_start_percent"`
+			SocEnd         *int   `json:"soc_end_percent"`
+			OdometerMetres *int64 `json:"odometer_metres"`
+			FeesCentavos   *int64 `json:"fees_centavos"`
+			TariffID       string `json:"tariff_id"`
+			TariffRevision string `json:"tariff_revision"`
+			Note           string `json:"note"`
+		}
+		if err := dec.Decode(&wire); err != nil {
+			return "", time.Time{}, nil, nil, errInvalid()
+		}
+		if _, err := dec.Token(); err != io.EOF {
+			return "", time.Time{}, nil, nil, errInvalid()
+		}
+		at, err := time.Parse(time.RFC3339, wire.OccurredAt)
+		if err != nil {
+			return "", time.Time{}, nil, nil, errInvalid()
+		}
+		c := ledgerdomain.Charge{ID: wire.ID, VehicleID: wire.VehicleID, OccurredAt: at, Timezone: wire.Timezone, EnergyWh: wire.EnergyWh, TotalCentavos: wire.TotalCentavos, SocStart: wire.SocStart, SocEnd: wire.SocEnd, OdometerMetres: wire.OdometerMetres, FeesCentavos: wire.FeesCentavos, TariffID: wire.TariffID, TariffRevision: wire.TariffRevision, Note: wire.Note}
+		normalized, err := ledgerdomain.NormalizeCharge(c)
+		if err != nil {
+			return "", time.Time{}, nil, nil, err
+		}
+		canonical, _ = json.Marshal(normalized)
+		return normalized.VehicleID, normalized.OccurredAt, normalized.OdometerMetres, canonical, nil
+	}
 	var wire struct {
 		ID             string `json:"id"`
 		VehicleID      string `json:"vehicle_id"`
@@ -108,7 +142,7 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		return application.BatchResult{}, errInvalid()
 	}
 	for _, c := range batch.Commands {
-		if !validLedgerID(c.OperationID) || !validLedgerID(c.ID) || c.ExpectedRevision < 0 || (c.Dataset != "refuel" && c.Dataset != "expense") || (c.Delete && c.Void) {
+		if !validLedgerID(c.OperationID) || !validLedgerID(c.ID) || c.ExpectedRevision < 0 || (c.Dataset != "refuel" && c.Dataset != "expense" && c.Dataset != "charge") || (c.Delete && c.Void) {
 			return application.BatchResult{}, errInvalid()
 		}
 		if c.Delete || c.Void {

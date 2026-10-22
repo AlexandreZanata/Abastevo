@@ -86,6 +86,27 @@ type Expense struct {
 	Note           string    `json:"note,omitempty"`
 }
 
+// Charge is one private electric session. Energy, total, SOC, odometer,
+// fees and tariff reference are all optional (null measurements stay
+// null, never zero-filled); IDs, vehicle and event clock are required.
+// Tariff references pin revisions (later tariff changes never rewrite
+// history). Sessions never become public observations.
+type Charge struct {
+	ID             string    `json:"id"`
+	VehicleID      string    `json:"vehicle_id"`
+	OccurredAt     time.Time `json:"occurred_at"`
+	Timezone       string    `json:"timezone"`
+	EnergyWh       *int64    `json:"energy_wh"`
+	TotalCentavos  *int64    `json:"total_centavos"`
+	SocStart       *int      `json:"soc_start_percent"`
+	SocEnd         *int      `json:"soc_end_percent"`
+	OdometerMetres *int64    `json:"odometer_metres"`
+	FeesCentavos   *int64    `json:"fees_centavos"`
+	TariffID       string    `json:"tariff_id,omitempty"`
+	TariffRevision string    `json:"tariff_revision,omitempty"`
+	Note           string    `json:"note,omitempty"`
+}
+
 func validID(s string) bool {
 	if s == "00000000-0000-0000-0000-000000000000" || len(s) != 36 || s[8] != '-' || s[13] != '-' || s[18] != '-' || s[23] != '-' || strings.ToLower(s) != s {
 		return false
@@ -137,6 +158,43 @@ func checkOdometer(odometer *int64) error {
 		return ErrInvalidOdometer
 	}
 	return nil
+}
+
+func NormalizeCharge(c Charge) (Charge, error) {
+	if err := checkIdentity(c.ID, c.VehicleID); err != nil {
+		return Charge{}, err
+	}
+	if err := checkTime(c.OccurredAt, c.Timezone); err != nil {
+		return Charge{}, err
+	}
+	if c.EnergyWh != nil && (*c.EnergyWh < 0 || *c.EnergyWh > 1000000000) {
+		return Charge{}, ErrInvalidQuantity
+	}
+	if c.TotalCentavos != nil && (*c.TotalCentavos < 0 || *c.TotalCentavos > MaxTotalCentavos) {
+		return Charge{}, ErrInvalidTotal
+	}
+	if c.SocStart != nil && (*c.SocStart < 0 || *c.SocStart > 100) {
+		return Charge{}, ErrInvalidQuantity
+	}
+	if c.SocEnd != nil && (*c.SocEnd < 0 || *c.SocEnd > 100) {
+		return Charge{}, ErrInvalidQuantity
+	}
+	if c.OdometerMetres != nil && (*c.OdometerMetres < 0 || *c.OdometerMetres > 1000000000) {
+		return Charge{}, ErrInvalidQuantity
+	}
+	if c.FeesCentavos != nil && (*c.FeesCentavos < 0 || *c.FeesCentavos > MaxTotalCentavos) {
+		return Charge{}, ErrInvalidTotal
+	}
+	if (c.TariffID == "") != (c.TariffRevision == "") {
+		return Charge{}, ErrInvalidFuel
+	}
+	if c.TariffID != "" && !validID(c.TariffID) {
+		return Charge{}, ErrInvalidFuel
+	}
+	if !validNote(c.Note) {
+		return Charge{}, ErrInvalidNote
+	}
+	return c, nil
 }
 
 func NormalizeRefuel(r Refuel) (Refuel, error) {

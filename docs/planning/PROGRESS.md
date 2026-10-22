@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-15 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent7b2c6a95. [Private electric session backend](../backend/evidence/ev-support/EE-15.md): Charge type with optional energy/total/SOC/odometer/fees/tariff-revision pins in owned ledger (new charge dataset + consent bit via append-only migrations); PHEV/fuel coexistence, nulls preserved, revision idempotency, concurrent conflicts, account isolation, no public leak. CRUD integration PASS with PostGIS; ledger module, vet, staticcheck green. No activation.
+
 - EE-14 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent48a8f555. [Tariff and observation reads](../backend/evidence/ev-support/EE-14.md): exact tariff ranking by scenario total (rational arithmetic, stable ties, unknowns last, member-target isolation) plus community history pages with tallies; OpenAPI paths; ranking tests PASS; charging module, vet, staticcheck, vacuum zero errors green. No stored tariffs or activation.
 
 - EE-13 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6abb3479. [EV community projection and moderation](../backend/evidence/ev-support/EE-13.md): helpfulness votes/reports with idempotent convergence, projection with tallies excluding hidden/deleted/expired (no writes for expiry), conflicting votes coexist; integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No verified-price claims or lifecycle automation.
