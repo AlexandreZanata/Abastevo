@@ -142,6 +142,16 @@
     <string name="vehicle_validation_name_required">Enter a vehicle name</string>
     <string name="vehicle_validation_tank_capacity">Enter a valid tank capacity (1–200 L)</string>
     <string name="vehicle_validation_station_required">Select a station</string>
+    <string name="vehicle_propulsion_label">Propulsion</string>
+    <string name="vehicle_propulsion_ice">Combustion (ICE)</string>
+    <string name="vehicle_propulsion_bev">Electric (BEV)</string>
+    <string name="vehicle_propulsion_phev">Plug-in hybrid (PHEV)</string>
+    <string name="vehicle_propulsion_hev">Hybrid (HEV)</string>
+    <string name="vehicle_propulsion_mhev">Mild hybrid (MHEV)</string>
+    <string name="vehicle_battery_capacity_hint">Battery capacity (kWh)</string>
+    <string name="vehicle_charge_connector_label">Charge connector (optional)</string>
+    <string name="vehicle_validation_battery_capacity">Enter a valid battery capacity in kWh</string>
+    <string name="vehicle_battery_kwh_format">%1$s kWh</string>
 
     <string name="home_empty_message">No fuel price data synced yet.</string>
     <string name="home_empty_hint">Complete onboarding or sync to load ANP weekly tables.</string>

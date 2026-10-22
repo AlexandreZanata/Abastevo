@@ -53,14 +53,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.mapper.PropulsionI18n
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.model.Vehicle
 import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.Propulsion
 import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
@@ -113,6 +116,9 @@ fun VehicleScreen(
         onDisplayNameChanged = viewModel::onDisplayNameChanged,
         onTankCapacityChanged = viewModel::onTankCapacityChanged,
         onFuelProductSelected = { product -> viewModel.onFuelProductSelected(product, locale) },
+        onPropulsionSelected = viewModel::onPropulsionSelected,
+        onBatteryCapacityChanged = viewModel::onBatteryCapacityChanged,
+        onChargeConnectorSelected = viewModel::onChargeConnectorSelected,
         onPriceSourceModeSelected = { mode -> viewModel.onPriceSourceModeSelected(mode, locale) },
         onStationSelected = viewModel::onStationSelected,
         onPriceDropAlertChanged = viewModel::onPriceDropAlertChanged,
@@ -140,6 +146,9 @@ internal fun VehicleContent(
     onDisplayNameChanged: (String) -> Unit,
     onTankCapacityChanged: (String) -> Unit,
     onFuelProductSelected: (FuelProduct) -> Unit,
+    onPropulsionSelected: (Propulsion) -> Unit,
+    onBatteryCapacityChanged: (String) -> Unit,
+    onChargeConnectorSelected: (ChargingConnector?) -> Unit,
     onPriceSourceModeSelected: (VehiclePriceSourceMode) -> Unit,
     onStationSelected: (com.anpfuel.domain.valueobject.Cnpj) -> Unit,
     onPriceDropAlertChanged: (Boolean) -> Unit,
@@ -249,6 +258,9 @@ internal fun VehicleContent(
                         onDisplayNameChanged = onDisplayNameChanged,
                         onTankCapacityChanged = onTankCapacityChanged,
                         onFuelProductSelected = onFuelProductSelected,
+                        onPropulsionSelected = onPropulsionSelected,
+                        onBatteryCapacityChanged = onBatteryCapacityChanged,
+                        onChargeConnectorSelected = onChargeConnectorSelected,
                         onPriceSourceModeSelected = onPriceSourceModeSelected,
                         onStationSelected = onStationSelected,
                         onPriceDropAlertChanged = onPriceDropAlertChanged,
@@ -333,14 +345,13 @@ private fun VehicleListItem(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fuelLabel = stringResource(FuelProductI18n.toStringRes(vehicle.fuelProduct))
+    val locale = LocalConfiguration.current.locales[0]
     val priceSourceLabel = when (vehicle.priceSource.mode) {
         VehiclePriceSourceMode.CHEAPEST_STATION ->
             stringResource(R.string.vehicle_price_source_cheapest)
         VehiclePriceSourceMode.SPECIFIC_STATION ->
             stringResource(R.string.vehicle_price_source_specific)
     }
-    val liters = vehicle.tankCapacity.liters.toInt()
 
     Card(
         onClick = onClick,
@@ -387,16 +398,27 @@ private fun VehicleListItem(
                     }
                 }
                 Text(
-                    text = stringResource(
-                        R.string.home_tank_fill_cost_liters_format,
-                        fuelLabel,
-                        liters,
-                    ),
+                    text = if (vehicle.propulsion == Propulsion.BEV) {
+                        stringResource(
+                            R.string.vehicle_battery_kwh_format,
+                            formatBatteryKwh(vehicle.batteryCapacity?.wattHours ?: 0, locale),
+                        )
+                    } else {
+                        stringResource(
+                            R.string.home_tank_fill_cost_liters_format,
+                            vehicle.fuelProduct?.let { stringResource(FuelProductI18n.toStringRes(it)) }.orEmpty(),
+                            vehicle.tankCapacity?.liters?.toInt() ?: 0,
+                        )
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = priceSourceLabel,
+                    text = if (vehicle.propulsion == Propulsion.BEV) {
+                        stringResource(PropulsionI18n.toStringRes(vehicle.propulsion))
+                    } else {
+                        priceSourceLabel
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -432,6 +454,9 @@ private fun VehicleListPreview() {
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
             onFuelProductSelected = {},
+            onPropulsionSelected = {},
+            onBatteryCapacityChanged = {},
+            onChargeConnectorSelected = {},
             onPriceSourceModeSelected = {},
             onStationSelected = {},
             onPriceDropAlertChanged = {},
@@ -461,6 +486,9 @@ private fun VehicleEmptyPreview() {
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
             onFuelProductSelected = {},
+            onPropulsionSelected = {},
+            onBatteryCapacityChanged = {},
+            onChargeConnectorSelected = {},
             onPriceSourceModeSelected = {},
             onStationSelected = {},
             onPriceDropAlertChanged = {},

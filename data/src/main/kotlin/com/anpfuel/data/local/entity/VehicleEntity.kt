@@ -8,11 +8,14 @@ import androidx.room.PrimaryKey
 data class VehicleEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "display_name") val displayName: String,
-    @ColumnInfo(name = "tank_capacity_liters") val tankCapacityLiters: Double,
-    @ColumnInfo(name = "fuel_product") val fuelProduct: String,
+    @ColumnInfo(name = "tank_capacity_liters") val tankCapacityLiters: Double?,
+    @ColumnInfo(name = "fuel_product") val fuelProduct: String?,
     @ColumnInfo(name = "price_source_mode") val priceSourceMode: String,
     @ColumnInfo(name = "specific_station_cnpj") val specificStationCnpj: String?,
     @ColumnInfo(name = "price_drop_alert_enabled") val priceDropAlertEnabled: Boolean,
     @ColumnInfo(name = "sort_order") val sortOrder: Int,
     @ColumnInfo(name = "photo_path") val photoPath: String? = null,
+    @ColumnInfo(name = "propulsion") val propulsion: String = "ICE",
+    @ColumnInfo(name = "battery_wh") val batteryWh: Long? = null,
+    @ColumnInfo(name = "charge_connector") val chargeConnector: String? = null,
 )

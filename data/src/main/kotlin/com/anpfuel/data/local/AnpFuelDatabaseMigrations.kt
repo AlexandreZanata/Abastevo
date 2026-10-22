@@ -578,4 +578,40 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_19_20: Migration = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // EE-19 energy-capable vehicles: propulsion plus optional
+            // battery/connector, with tank and fuel relaxed for BEV.
+            // Rebuild preserves every row (legacy rows read back as ICE
+            // with no battery, never backfilled) and no row is dropped.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `vehicle_new` (
+                    `id` TEXT NOT NULL,
+                    `display_name` TEXT NOT NULL,
+                    `tank_capacity_liters` REAL,
+                    `fuel_product` TEXT,
+                    `price_source_mode` TEXT NOT NULL,
+                    `specific_station_cnpj` TEXT,
+                    `price_drop_alert_enabled` INTEGER NOT NULL,
+                    `sort_order` INTEGER NOT NULL,
+                    `propulsion` TEXT NOT NULL DEFAULT 'ICE',
+                    `battery_wh` INTEGER,
+                    `charge_connector` TEXT,
+                    `photo_path` TEXT,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO `vehicle_new` (`id`, `display_name`, `tank_capacity_liters`, `fuel_product`, `price_source_mode`, `specific_station_cnpj`, `price_drop_alert_enabled`, `sort_order`, `propulsion`, `battery_wh`, `charge_connector`, `photo_path`)
+                SELECT `id`, `display_name`, `tank_capacity_liters`, `fuel_product`, `price_source_mode`, `specific_station_cnpj`, `price_drop_alert_enabled`, `sort_order`, 'ICE', NULL, NULL, `photo_path` FROM `vehicle`
+                """.trimIndent(),
+            )
+            db.execSQL("DROP TABLE `vehicle`")
+            db.execSQL("ALTER TABLE `vehicle_new` RENAME TO `vehicle`")
+        }
+    }
+
 }

@@ -17,12 +17,17 @@ import com.anpfuel.domain.rule.MaxRegisteredVehiclesRule
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.Propulsion
+import com.anpfuel.domain.valueobject.BatteryCapacity
 import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 import com.anpfuel.app.mapper.StationPriceUiMapper
 import com.anpfuel.data.local.media.VehiclePhotoStore
+import com.anpfuel.domain.charging.ChargingConnector
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.math.BigDecimal
+import java.text.DecimalFormatSymbols
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +51,9 @@ data class VehicleFormState(
     val displayName: String = "",
     val tankCapacityInput: String = "",
     val fuelProduct: FuelProduct = FuelProduct.GASOLINE_REGULAR,
+    val propulsion: Propulsion = Propulsion.ICE,
+    val batteryCapacityInput: String = "",
+    val chargeConnector: ChargingConnector? = null,
     val priceSourceMode: VehiclePriceSourceMode = VehiclePriceSourceMode.CHEAPEST_STATION,
     val selectedStationCnpj: Cnpj? = null,
     val priceDropAlertEnabled: Boolean = false,
@@ -57,6 +65,7 @@ data class VehicleFormState(
 enum class VehicleFormValidationError {
     NAME_REQUIRED,
     TANK_CAPACITY_INVALID,
+    BATTERY_CAPACITY_INVALID,
     STATION_REQUIRED,
 }
 
@@ -148,8 +157,11 @@ class VehicleViewModel @Inject constructor(
                 editingVehicleId = vehicle.id,
                 form = VehicleFormState(
                     displayName = vehicle.displayName,
-                    tankCapacityInput = vehicle.tankCapacity.liters.stripTrailingZeros().toPlainString(),
-                    fuelProduct = vehicle.fuelProduct,
+                    tankCapacityInput = vehicle.tankCapacity?.liters?.stripTrailingZeros()?.toPlainString().orEmpty(),
+                    fuelProduct = vehicle.fuelProduct ?: FuelProduct.GASOLINE_REGULAR,
+                    propulsion = vehicle.propulsion,
+                    batteryCapacityInput = vehicle.batteryCapacity?.let { formatBatteryKwh(it.wattHours, locale) }.orEmpty(),
+                    chargeConnector = vehicle.chargeConnector,
                     priceSourceMode = vehicle.priceSource.mode,
                     selectedStationCnpj = vehicle.priceSource.specificStationCnpj,
                     priceDropAlertEnabled = vehicle.priceDropAlertEnabled,
@@ -220,8 +232,7 @@ class VehicleViewModel @Inject constructor(
         }
     }
 
-    fun onFuelProductSelected(fuelProduct: FuelProduct, locale: Locale) {
-        _uiState.update {
+    fun onFuelProductSelected(fuelProduct: FuelProduct, locale: Locale) {        _uiState.update {
             it.copy(
                 form = it.form.copy(
                     fuelProduct = fuelProduct,
@@ -232,6 +243,44 @@ class VehicleViewModel @Inject constructor(
         }
         if (_uiState.value.form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION) {
             loadStationOptions(locale)
+        }
+    }
+
+    fun onPropulsionSelected(propulsion: Propulsion) {
+        _uiState.update {
+            val cleared = when (propulsion) {
+                Propulsion.BEV -> it.form.copy(
+                    tankCapacityInput = "",
+                    priceSourceMode = VehiclePriceSourceMode.CHEAPEST_STATION,
+                    selectedStationCnpj = null,
+                    priceDropAlertEnabled = false,
+                )
+                Propulsion.PHEV -> it.form
+                Propulsion.ICE, Propulsion.HEV, Propulsion.MHEV -> it.form.copy(
+                    batteryCapacityInput = "",
+                    chargeConnector = null,
+                )
+            }
+            it.copy(form = cleared.copy(propulsion = propulsion, validationErrorKey = null))
+        }
+        if (propulsion != Propulsion.BEV &&
+            _uiState.value.form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION
+        ) {
+            loadStationOptions(java.util.Locale.getDefault())
+        } else {
+            _uiState.update { state -> state.copy(stationOptions = emptyList()) }
+        }
+    }
+
+    fun onBatteryCapacityChanged(value: String) {
+        _uiState.update {
+            it.copy(form = it.form.copy(batteryCapacityInput = value, validationErrorKey = null))
+        }
+    }
+
+    fun onChargeConnectorSelected(connector: ChargingConnector?) {
+        _uiState.update {
+            it.copy(form = it.form.copy(chargeConnector = connector, validationErrorKey = null))
         }
     }
 
@@ -362,13 +411,30 @@ class VehicleViewModel @Inject constructor(
             return
         }
 
-        val tankCapacity = parseTankCapacity(form.tankCapacityInput)
-            ?: run {
-                _uiState.update {
-                    it.copy(form = it.form.copy(validationErrorKey = VehicleFormValidationError.TANK_CAPACITY_INVALID))
+        val isBev = form.propulsion == Propulsion.BEV
+        val isElectric = isBev || form.propulsion == Propulsion.PHEV
+        val tankCapacity = if (isBev) {
+            null
+        } else {
+            parseTankCapacity(form.tankCapacityInput)
+                ?: run {
+                    _uiState.update {
+                        it.copy(form = it.form.copy(validationErrorKey = VehicleFormValidationError.TANK_CAPACITY_INVALID))
+                    }
+                    return
                 }
-                return
-            }
+        }
+        val batteryCapacity = if (isElectric) {
+            parseBatteryCapacity(form.batteryCapacityInput)
+                ?: run {
+                    _uiState.update {
+                        it.copy(form = it.form.copy(validationErrorKey = VehicleFormValidationError.BATTERY_CAPACITY_INVALID))
+                    }
+                    return
+                }
+        } else {
+            null
+        }
 
         val priceSource = when (form.priceSourceMode) {
             VehiclePriceSourceMode.CHEAPEST_STATION -> VehiclePriceSource.cheapest()
@@ -398,19 +464,28 @@ class VehicleViewModel @Inject constructor(
                     Vehicle.create(
                         displayName = form.displayName,
                         tankCapacity = tankCapacity,
-                        fuelProduct = form.fuelProduct,
+                        fuelProduct = if (isBev) null else form.fuelProduct,
                         priceSource = priceSource,
-                        priceDropAlertEnabled = form.priceDropAlertEnabled,
+                        // Fuel drop alerts never apply to a BEV (no fuel to track).
+                        priceDropAlertEnabled = if (isBev) false else form.priceDropAlertEnabled,
                         sortOrder = _uiState.value.vehicles.size,
                         id = targetId,
+                        propulsion = form.propulsion,
+                        batteryCapacity = batteryCapacity,
+                        chargeConnector = if (isElectric) form.chargeConnector else null,
                         photoPath = photoPath,
                     )
                 } else {
                     val existing = _uiState.value.vehicles.first { it.id == editingId }
                     existing
                         .withDisplayName(form.displayName)
-                        .withTankCapacity(tankCapacity)
-                        .withFuelProduct(form.fuelProduct)
+                        .withEnergyVariant(
+                            propulsion = form.propulsion,
+                            tankCapacity = tankCapacity,
+                            fuelProduct = if (isBev) null else form.fuelProduct,
+                            batteryCapacity = batteryCapacity,
+                            chargeConnector = if (isElectric) form.chargeConnector else null,
+                        )
                         .withPriceSource(priceSource)
                         .withPriceDropAlertEnabled(form.priceDropAlertEnabled)
                         .withPhotoPath(photoPath)
@@ -494,10 +569,16 @@ class VehicleViewModel @Inject constructor(
         if (form.displayName.isBlank()) {
             return VehicleFormValidationError.NAME_REQUIRED
         }
-        if (parseTankCapacity(form.tankCapacityInput) == null) {
+        val isBev = form.propulsion == Propulsion.BEV
+        val isElectric = isBev || form.propulsion == Propulsion.PHEV
+        if (isElectric) {
+            if (parseBatteryCapacity(form.batteryCapacityInput) == null) {
+                return VehicleFormValidationError.BATTERY_CAPACITY_INVALID
+            }
+        } else if (parseTankCapacity(form.tankCapacityInput) == null) {
             return VehicleFormValidationError.TANK_CAPACITY_INVALID
         }
-        if (form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION &&
+        if (!isBev && form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION &&
             form.selectedStationCnpj == null
         ) {
             return VehicleFormValidationError.STATION_REQUIRED
@@ -509,4 +590,27 @@ class VehicleViewModel @Inject constructor(
         runCatching {
             TankCapacity.of(input.trim().replace(',', '.').toDouble())
         }.getOrNull()
+
+    /**
+     * Localized kWh input (comma or dot decimals) to whole watt-hours.
+     * Fractional watt-hours are refused; bounds mirror [BatteryCapacity].
+     */
+    internal fun parseBatteryCapacity(input: String): BatteryCapacity? =
+        runCatching {
+            val scaled = BigDecimal(input.trim().replace(',', '.')).movePointRight(3)
+            if (scaled.stripTrailingZeros().scale() > 0) return@runCatching null
+            if (scaled < BigDecimal.ONE || scaled > BigDecimal.valueOf(BatteryCapacity.MAX_WH)) {
+                return@runCatching null
+            }
+            BatteryCapacity.ofWh(scaled.toLong())
+        }.getOrNull()
+}
+
+/**
+ * Localized kWh rendering for battery inputs and lists (EE-19): the UI
+ * locale owns the decimal separator; Wh stay exact integers underneath.
+ */
+internal fun formatBatteryKwh(wattHours: Long, locale: Locale): String {
+    val separator = DecimalFormatSymbols.getInstance(locale).decimalSeparator
+    return BigDecimal.valueOf(wattHours, 3).stripTrailingZeros().toPlainString().replace('.', separator)
 }

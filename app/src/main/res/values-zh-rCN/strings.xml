@@ -58,6 +58,16 @@
     <string name="vehicle_validation_name_required">请输入车辆名称</string>
     <string name="vehicle_validation_tank_capacity">请输入有效容量（1–200 升）</string>
     <string name="vehicle_validation_station_required">请选择加油站</string>
+    <string name="vehicle_propulsion_label">动力类型</string>
+    <string name="vehicle_propulsion_ice">燃油 (ICE)</string>
+    <string name="vehicle_propulsion_bev">纯电动 (BEV)</string>
+    <string name="vehicle_propulsion_phev">插电混动 (PHEV)</string>
+    <string name="vehicle_propulsion_hev">混动 (HEV)</string>
+    <string name="vehicle_propulsion_mhev">轻混 (MHEV)</string>
+    <string name="vehicle_battery_capacity_hint">电池容量 (kWh)</string>
+    <string name="vehicle_charge_connector_label">充电接口 (可选)</string>
+    <string name="vehicle_validation_battery_capacity">请输入有效的电池容量 (kWh)</string>
+    <string name="vehicle_battery_kwh_format">%1$s kWh</string>
 
     <string name="home_empty_message">尚未同步燃油价格数据。</string>
     <string name="home_empty_hint">完成引导或同步以加载 ANP 每周数据表。</string>

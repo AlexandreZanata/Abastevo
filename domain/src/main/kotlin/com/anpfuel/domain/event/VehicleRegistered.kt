@@ -13,7 +13,7 @@ data class VehicleRegistered(
     data class Payload(
         val vehicleId: DomainId,
         val displayName: String,
-        val fuelProduct: FuelProduct,
+        val fuelProduct: FuelProduct?,
     )
 
     companion object {

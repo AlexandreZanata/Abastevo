@@ -58,6 +58,16 @@
     <string name="vehicle_validation_name_required">車両名を入力してください</string>
     <string name="vehicle_validation_tank_capacity">有効な容量を入力してください（1–200 L）</string>
     <string name="vehicle_validation_station_required">スタンドを選択してください</string>
+    <string name="vehicle_propulsion_label">駆動方式</string>
+    <string name="vehicle_propulsion_ice">内燃 (ICE)</string>
+    <string name="vehicle_propulsion_bev">電気 (BEV)</string>
+    <string name="vehicle_propulsion_phev">プラグインハイブリッド (PHEV)</string>
+    <string name="vehicle_propulsion_hev">ハイブリッド (HEV)</string>
+    <string name="vehicle_propulsion_mhev">マイルドハイブリッド (MHEV)</string>
+    <string name="vehicle_battery_capacity_hint">バッテリー容量 (kWh)</string>
+    <string name="vehicle_charge_connector_label">充電コネクタ (任意)</string>
+    <string name="vehicle_validation_battery_capacity">有効なバッテリー容量をkWhで入力してください</string>
+    <string name="vehicle_battery_kwh_format">%1$s kWh</string>
 
     <string name="home_empty_message">燃料価格データはまだ同期されていません。</string>
     <string name="home_empty_hint">オンボーディングを完了するか同期して、ANPの週次テーブルを読み込みます。</string>

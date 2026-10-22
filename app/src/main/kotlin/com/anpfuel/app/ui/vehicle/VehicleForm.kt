@@ -53,8 +53,11 @@ import com.anpfuel.app.ui.components.ActionCardStyle
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.mapper.PropulsionI18n
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.Propulsion
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 import java.util.Locale
 
@@ -70,6 +73,9 @@ fun VehicleForm(
     onDisplayNameChanged: (String) -> Unit,
     onTankCapacityChanged: (String) -> Unit,
     onFuelProductSelected: (FuelProduct) -> Unit,
+    onPropulsionSelected: (Propulsion) -> Unit,
+    onBatteryCapacityChanged: (String) -> Unit,
+    onChargeConnectorSelected: (ChargingConnector?) -> Unit,
     onPriceSourceModeSelected: (VehiclePriceSourceMode) -> Unit,
     onStationSelected: (Cnpj) -> Unit,
     onPriceDropAlertChanged: (Boolean) -> Unit,
@@ -80,6 +86,8 @@ fun VehicleForm(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isBev = form.propulsion == Propulsion.BEV
+    val isElectric = isBev || form.propulsion == Propulsion.PHEV
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -101,20 +109,78 @@ fun VehicleForm(
             },
         )
 
-        OutlinedTextField(
-            value = form.tankCapacityInput,
-            onValueChange = onTankCapacityChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(text = stringResource(R.string.vehicle_tank_capacity_hint)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            isError = form.validationErrorKey == VehicleFormValidationError.TANK_CAPACITY_INVALID,
-            supportingText = if (form.validationErrorKey == VehicleFormValidationError.TANK_CAPACITY_INVALID) {
-                { Text(text = stringResource(R.string.vehicle_validation_tank_capacity)) }
-            } else {
-                null
-            },
+        Text(
+            text = stringResource(R.string.vehicle_propulsion_label),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
         )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Propulsion.entries.forEach { propulsion ->
+                FilterChip(
+                    selected = form.propulsion == propulsion,
+                    onClick = { onPropulsionSelected(propulsion) },
+                    label = { Text(text = stringResource(PropulsionI18n.toStringRes(propulsion))) },
+                )
+            }
+        }
+
+        if (!isBev) {
+            OutlinedTextField(
+                value = form.tankCapacityInput,
+                onValueChange = onTankCapacityChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = stringResource(R.string.vehicle_tank_capacity_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                isError = form.validationErrorKey == VehicleFormValidationError.TANK_CAPACITY_INVALID,
+                supportingText = if (form.validationErrorKey == VehicleFormValidationError.TANK_CAPACITY_INVALID) {
+                    { Text(text = stringResource(R.string.vehicle_validation_tank_capacity)) }
+                } else {
+                    null
+                },
+            )
+        }
+
+        if (isElectric) {
+            OutlinedTextField(
+                value = form.batteryCapacityInput,
+                onValueChange = onBatteryCapacityChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = stringResource(R.string.vehicle_battery_capacity_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                isError = form.validationErrorKey == VehicleFormValidationError.BATTERY_CAPACITY_INVALID,
+                supportingText = if (form.validationErrorKey == VehicleFormValidationError.BATTERY_CAPACITY_INVALID) {
+                    { Text(text = stringResource(R.string.vehicle_validation_battery_capacity)) }
+                } else {
+                    null
+                },
+            )
+            Text(
+                text = stringResource(R.string.vehicle_charge_connector_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ChargingConnector.entries.forEach { connector ->
+                    FilterChip(
+                        selected = form.chargeConnector == connector,
+                        onClick = {
+                            onChargeConnectorSelected(if (form.chargeConnector == connector) null else connector)
+                        },
+                        label = { Text(text = connector.name) },
+                    )
+                }
+            }
+        }
 
         VehicleFormPhotoSection(
             existingPhotoPath = existingPhotoPath,
@@ -124,17 +190,19 @@ fun VehicleForm(
         )
 
         var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
-        Text(
-            text = stringResource(R.string.vehicle_fuel_product_label),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        FuelProductSelectorButton(
-            selected = form.fuelProduct,
-            onClick = { fuelPickerOpen = true },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (fuelPickerOpen) {
+        if (!isBev) {
+            Text(
+                text = stringResource(R.string.vehicle_fuel_product_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FuelProductSelectorButton(
+                selected = form.fuelProduct,
+                onClick = { fuelPickerOpen = true },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (!isBev && fuelPickerOpen) {
             FuelProductSelectorDialog(
                 selected = form.fuelProduct,
                 onSelect = { product ->
@@ -145,29 +213,31 @@ fun VehicleForm(
             )
         }
 
-        Text(
-            text = stringResource(R.string.vehicle_price_source_label),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = form.priceSourceMode == VehiclePriceSourceMode.CHEAPEST_STATION,
-                onClick = { onPriceSourceModeSelected(VehiclePriceSourceMode.CHEAPEST_STATION) },
-                label = { Text(text = stringResource(R.string.vehicle_price_source_cheapest)) },
+        if (!isBev) {
+            Text(
+                text = stringResource(R.string.vehicle_price_source_label),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            FilterChip(
-                selected = form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION,
-                onClick = { onPriceSourceModeSelected(VehiclePriceSourceMode.SPECIFIC_STATION) },
-                label = { Text(text = stringResource(R.string.vehicle_price_source_specific)) },
-            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = form.priceSourceMode == VehiclePriceSourceMode.CHEAPEST_STATION,
+                    onClick = { onPriceSourceModeSelected(VehiclePriceSourceMode.CHEAPEST_STATION) },
+                    label = { Text(text = stringResource(R.string.vehicle_price_source_cheapest)) },
+                )
+                FilterChip(
+                    selected = form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION,
+                    onClick = { onPriceSourceModeSelected(VehiclePriceSourceMode.SPECIFIC_STATION) },
+                    label = { Text(text = stringResource(R.string.vehicle_price_source_specific)) },
+                )
+            }
         }
 
-        if (form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION) {
+        if (!isBev && form.priceSourceMode == VehiclePriceSourceMode.SPECIFIC_STATION) {
             Text(
                 text = stringResource(R.string.vehicle_select_station),
                 style = MaterialTheme.typography.titleSmall,
@@ -212,35 +282,37 @@ fun VehicleForm(
             }
         }
 
-        OutlinedCard(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+        if (!isBev) {
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.vehicle_price_drop_alert_label),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.vehicle_price_drop_alert_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.vehicle_price_drop_alert_label),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.vehicle_price_drop_alert_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = form.priceDropAlertEnabled,
+                        onCheckedChange = onPriceDropAlertChanged,
                     )
                 }
-                Switch(
-                    checked = form.priceDropAlertEnabled,
-                    onCheckedChange = onPriceDropAlertChanged,
-                )
             }
         }
         if (showNotificationPermissionHint) {

@@ -142,6 +142,16 @@
     <string name="vehicle_validation_name_required">Informe o nome do veículo</string>
     <string name="vehicle_validation_tank_capacity">Informe uma capacidade válida (1–200 L)</string>
     <string name="vehicle_validation_station_required">Selecione um posto</string>
+    <string name="vehicle_propulsion_label">Propulsão</string>
+    <string name="vehicle_propulsion_ice">Combustão (ICE)</string>
+    <string name="vehicle_propulsion_bev">Elétrico (BEV)</string>
+    <string name="vehicle_propulsion_phev">Híbrido plug-in (PHEV)</string>
+    <string name="vehicle_propulsion_hev">Híbrido (HEV)</string>
+    <string name="vehicle_propulsion_mhev">Híbrido leve (MHEV)</string>
+    <string name="vehicle_battery_capacity_hint">Capacidade da bateria (kWh)</string>
+    <string name="vehicle_charge_connector_label">Conector de recarga (opcional)</string>
+    <string name="vehicle_validation_battery_capacity">Informe uma capacidade de bateria válida em kWh</string>
+    <string name="vehicle_battery_kwh_format">%1$s kWh</string>
 
     <string name="home_empty_message">Nenhum dado de preço sincronizado ainda.</string>
     <string name="home_empty_hint">Conclua a introdução ou sincronize para carregar as tabelas semanais da ANP.</string>

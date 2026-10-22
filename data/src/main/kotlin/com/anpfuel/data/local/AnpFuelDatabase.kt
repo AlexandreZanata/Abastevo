@@ -52,7 +52,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity::class,
         com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

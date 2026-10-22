@@ -58,6 +58,16 @@
     <string name="vehicle_validation_name_required">Ingrese un nombre de vehículo</string>
     <string name="vehicle_validation_tank_capacity">Ingrese una capacidad válida (1–200 L)</string>
     <string name="vehicle_validation_station_required">Seleccione una estación</string>
+    <string name="vehicle_propulsion_label">Propulsión</string>
+    <string name="vehicle_propulsion_ice">Combustión (ICE)</string>
+    <string name="vehicle_propulsion_bev">Eléctrico (BEV)</string>
+    <string name="vehicle_propulsion_phev">Híbrido enchufable (PHEV)</string>
+    <string name="vehicle_propulsion_hev">Híbrido (HEV)</string>
+    <string name="vehicle_propulsion_mhev">Híbrido suave (MHEV)</string>
+    <string name="vehicle_battery_capacity_hint">Capacidad de batería (kWh)</string>
+    <string name="vehicle_charge_connector_label">Conector de carga (opcional)</string>
+    <string name="vehicle_validation_battery_capacity">Ingrese una capacidad de batería válida en kWh</string>
+    <string name="vehicle_battery_kwh_format">%1$s kWh</string>
 
     <string name="home_empty_message">Aún no se han sincronizado datos de precios de combustible.</string>
     <string name="home_empty_hint">Complete la introducción o sincronice para cargar las tablas semanales de la ANP.</string>

@@ -24,13 +24,16 @@ object TankFillCostRule {
     )
 
     fun estimate(vehicle: Vehicle, context: PriceContext): TankFillCostEstimate? {
+        // BEV carries no tank and no fuel, so no tank fill exists to price.
+        val tankCapacity = vehicle.tankCapacity ?: return null
+        val fuelProduct = vehicle.fuelProduct ?: return null
         val resolved = resolveUnitPrice(vehicle, context) ?: return null
-        val totalCost = multiply(resolved.unitPrice, vehicle.tankCapacity)
+        val totalCost = multiply(resolved.unitPrice, tankCapacity)
         return TankFillCostEstimate(
             vehicleId = vehicle.id,
             displayName = vehicle.displayName,
-            tankCapacity = vehicle.tankCapacity,
-            fuelProduct = vehicle.fuelProduct,
+            tankCapacity = tankCapacity,
+            fuelProduct = fuelProduct,
             unitPrice = resolved.unitPrice,
             totalCost = totalCost,
             unitPriceSource = resolved.source,
@@ -40,8 +43,9 @@ object TankFillCostRule {
     }
 
     fun resolveUnitPrice(vehicle: Vehicle, context: PriceContext): ResolvedUnitPrice? {
-        VehicleFuelProductRule.requireVehicleFuelProduct(vehicle)
-        val matchingStations = context.stationPrices.filter { it.isForProduct(vehicle.fuelProduct) }
+        val fuelProduct = vehicle.fuelProduct ?: return null
+        VehicleFuelProductRule.requireFuelProduct(fuelProduct)
+        val matchingStations = context.stationPrices.filter { it.isForProduct(fuelProduct) }
 
         return when (vehicle.priceSource.mode) {
             VehiclePriceSourceMode.CHEAPEST_STATION -> {
