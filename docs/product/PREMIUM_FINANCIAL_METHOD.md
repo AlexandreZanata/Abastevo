@@ -1,6 +1,12 @@
 # Premium financial method v1
 
-State: frozen source examples for PRM00-T03; the professional engine is not implemented in this batch. [Golden vectors](../../contracts/testdata/premium/financial-v1.json) are synthetic and shared by later Go/Kotlin consumers.
+**Selected EV extension, 2026-10-20:** [EV method](EV_FINANCIAL_METHOD.md) adds
+electric measurement/tariff/PHEV monetary-window contracts. It does not silently
+extend the homogeneous-liquid full-to-full method below or reinterpret frozen
+financial-v1 vectors. Bought energy, battery measurement and reference values
+have distinct bases; exact shared tests precede implementation acceptance.
+
+State: frozen source examples for PRM00-T03, implemented by the existing PRM06/PRM09 pure engines and reconciled in [MEX-09](../backend/evidence/mobile-expansion/MEX-09.md). The original [golden vectors](../../contracts/testdata/premium/financial-v1.json) remain unchanged. The [executable corpus](../../contracts/testdata/premium/financial-execution-v1.csv) supplies identical inputs and exact outputs to Go and Kotlin, including the formerly unexecuted month/comparison cases. This source checkpoint does not accept the later hosted-report/mobile-ledger journeys or commercial rollout.
 
 Actual BRL total is authoritative integer centavos. Quantity is integer milli-litres or milli-cubic-metres; odometer is integer metres. Optional advertised unit price uses existing milli-BRL vocabulary. Discounts/rounding may make the advertised product differ from actual paid total; preserve and flag, never rewrite actual amount. Parse Brazilian decimal text exactly; checked intermediates/rational arithmetic, half-up only at display boundary. Input ceilings: total 1e12 centavos, quantity 1e9 milli-units, odometer 1e12 metres, unit price 1e6 milli-BRL (existing wire bound); reject negative/overflow/noncanonical precision.
 
@@ -10,4 +16,6 @@ Weighted vehicles: 100km/10L plus 900km/60L gives 1000/70 = 100/7 km/L, not the 
 
 Missing fills/odometers, partial-only sequences, zero distance, odometer reset boundaries and unavailable month endpoints yield UNKNOWN. Open a new odometer segment on replacement/reset. Correcting old data invalidates derived revisions. Never divide full-month costs by a partial-month distance; label a separate matched observed window instead. Monthly BRL totals use event time in a selected IANA timezone and half-open calendar-month bounds. Comparison needs matching metric/unit/version and nonzero baseline. No estimated route/tank fill or price lookup establishes measured travel, consumption, profit or realized savings.
 
-Reviewed cases include partial/full baseline exclusion, discount, fractional odometer/quantity, unequal vehicle weights, gaps/reset/missing inputs, mixed units/fuels/GNV, partial-period denominators, zero baseline and bounds. Future consumers must execute these same vectors before claiming financial behavior.
+Reviewed cases include partial/full baseline exclusion, discount, fractional odometer/quantity, unequal vehicle weights, gaps/reset/missing inputs, mixed units/fuels/GNV, partial-period denominators, zero baseline and bounds. Both engines require initial and final full anchors and include the excluded anchor in fuel/unit compatibility checks. Integer totals use checked addition; rational scaling uses arbitrary-precision intermediates. An unrepresentable final integer sum returns `input-out-of-bounds` without a partial result.
+
+The [raw-value corpus](../../contracts/testdata/premium/financial-wire-v1.csv) pins seven fuels, their existing L/M3 units and quantity/centavo bounds. CNG/M3 remains a valid raw entry with unsupported derived consumption; FLEX describes vehicle capability, not an eighth fill fuel. Electric energy does not enter this liquid ledger by aliasing a fuel/unit. Existing command payloads remain opaque and owner/origin scoped; typed ledger transport/persistence extensions belong to their later MEX tasks. Future consumers must execute these same vectors before claiming financial behavior.

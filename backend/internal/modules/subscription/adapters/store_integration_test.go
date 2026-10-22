@@ -431,7 +431,7 @@ func TestAdmissionExactReplayAndDeniedProofRecovery(t *testing.T) {
 	})
 	cmd := app.Command{OperationID: newid(t), Token: "synthetic-proof", Kind: "verify"}
 	got, err := svc.Admit(context.Background(), p, cmd)
-	if err != nil || len(got.Status.Capabilities) != 6 || got.Replayed {
+	if err != nil || len(got.Status.Capabilities) != 7 || got.Replayed {
 		t.Fatal("verified admission", err)
 	}
 	got, err = svc.Admit(context.Background(), p, cmd)
@@ -570,7 +570,7 @@ func TestPendingReplacementKeepsOldPaidAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(domain.Evaluate(status, time.Now(), true).Capabilities) != 6 {
+	if len(domain.Evaluate(status, time.Now(), true).Capabilities) != 7 {
 		t.Fatal("pending replacement prematurely retired paid predecessor")
 	}
 }
@@ -608,7 +608,7 @@ func TestReplacementReconciliationAndCanonicalRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	before, err := svc.Status(ctx, owner)
-	if err != nil || len(before.Capabilities) != 6 {
+	if err != nil || len(before.Capabilities) != 7 {
 		t.Fatal("pending replacement removed rights", err)
 	}
 	pending = false
@@ -764,7 +764,7 @@ func TestRestorePurchaseSameOwnerNeverTransfersOrRecoversSession(t *testing.T) {
 	restore.OperationID = newid(t)
 	restore.Kind = "restore"
 	got, err := svc.Admit(ctx, p, restore)
-	if err != nil || got.Replayed || len(got.Status.Capabilities) != 6 || lookups != 2 {
+	if err != nil || got.Replayed || len(got.Status.Capabilities) != 7 || lookups != 2 {
 		t.Fatal("same owner restore failed", err)
 	}
 	got, err = svc.Admit(ctx, p, restore)

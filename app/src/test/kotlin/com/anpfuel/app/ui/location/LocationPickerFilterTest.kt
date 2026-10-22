@@ -66,6 +66,45 @@ class LocationPickerFilterTest {
         assertTrue(filtered.all { it.municipality.startsWith("ALTO") })
     }
 
+    @Test
+    fun indexedFilterMatchesPlainFilter() {
+        val municipalities = listOf(
+            municipality("ACORIZAL"),
+            municipality("ALTA FLORESTA"),
+            municipality("ALTO ARAGUAIA"),
+            municipality("SÃO PAULO"),
+            municipality("SOROCABA"),
+        )
+        val index = LocationPickerFilter.indexMunicipalities(municipalities)
+
+        for (query in listOf("  ", "sao paul", "alto", "SOROC", "xyz", "ã")) {
+            assertEquals(
+                LocationPickerFilter.filterMunicipalities(municipalities, query),
+                LocationPickerFilter.filterIndexed(index, query),
+                "query=$query",
+            )
+        }
+    }
+
+    @Test
+    fun indexedFilterPreservesLoadedOrder() {
+        val municipalities = listOf(
+            municipality("SOROCABA"),
+            municipality("SÃO PAULO"),
+            municipality("ACORIZAL"),
+        )
+        val index = LocationPickerFilter.indexMunicipalities(municipalities)
+
+        assertEquals(
+            municipalities,
+            LocationPickerFilter.filterIndexed(index, ""),
+        )
+        assertEquals(
+            listOf(municipality("SÃO PAULO")),
+            LocationPickerFilter.filterIndexed(index, "sao"),
+        )
+    }
+
     private fun municipality(name: String): CatalogMunicipalityItem =
         CatalogMunicipalityItem(
             municipality = name,

@@ -3,6 +3,8 @@ package application
 import "context"
 
 type LedgerRecord struct {
+	SegmentNo int64
+	HasGap    bool
 	Dataset   string
 	ID        string
 	VehicleID string

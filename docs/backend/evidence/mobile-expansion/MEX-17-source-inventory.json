@@ -1,0 +1,617 @@
+{
+  "coverage_gaps": {
+    "enforcement_1998_2018": "LISTED_NOT_CENSUSED",
+    "pmqc_listed_not_censused": [
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2016.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2017.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2018.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2019.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2020.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2021.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2022.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2023.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2024.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2025.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_01.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_03.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_04.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_05.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_06.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_07.zip",
+      "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_08.zip"
+    ],
+    "pmqc_missing_month": "2026-02",
+    "pmqc_repeated_link_month": "2026-07",
+    "registry_snapshot": "EXISTING_APPROVED_DIRECTORY_PORT_ONLY_NO_NEW_CENSUS",
+    "sanctions_alternative_xlsx": "LISTED_NOT_CENSUSED"
+  },
+  "covered": {
+    "enforcement": {
+      "bytes": 16188087,
+      "date1904": false,
+      "date_precision": "EXCEL_SERIAL_WITHOUT_TIMEZONE",
+      "distinct_documents": 141290,
+      "distinct_subject_date_document_procedure": 180661,
+      "exact_duplicate_rows": 0,
+      "expanded_bytes": 127781352,
+      "headers": [
+        "UF",
+        "Município",
+        "Bairro",
+        "ENDEREÇO",
+        "CNPJ/CPF",
+        "Agente Econômico",
+        "Segmento Fiscalizado",
+        "DATA DO DF",
+        "Número do Documento",
+        "Procedimento de Fiscalização",
+        "Resultado"
+      ],
+      "members": 18,
+      "nonnumeric_dates": 0,
+      "result_max_chars": 116,
+      "result_vocabulary_size": 495,
+      "results_over_64_chars": 32822,
+      "rows": 244247,
+      "runtime_admitted": false,
+      "segments": {
+        "": 342,
+        "Agente Não Regulado": 3720,
+        "Agente de Comércio Exterior": 111,
+        "Coletor de OLUC": 318,
+        "Consumidor Industrial de Solventes": 36,
+        "Distribuidor de Asfaltos": 184,
+        "Distribuidor de Aviação": 214,
+        "Distribuidor de Combustíveis Líquidos": 7743,
+        "Distribuidor de GLP": 1147,
+        "Distribuidor de Solventes": 136,
+        "Empresa Comercial Exportadora": 1,
+        "Empresa Comercializadora de Etanol": 2,
+        "Empresa de Navegação": 16,
+        "Formulador": 36,
+        "Importador": 15,
+        "Importador de Asfaltos": 3,
+        "Importador de Óleo Acabado": 33,
+        "Importador de Óleo Básico": 3,
+        "Inutilizador": 5,
+        "Ponto de Abastecimento": 2059,
+        "Produtor de Biodiesel": 432,
+        "Produtor de Biometano": 1,
+        "Produtor de Etanol": 735,
+        "Produtor de Solventes": 52,
+        "Produtor de Óleo Acabado": 1724,
+        "Produtor de Óleo Básico": 33,
+        "Refinaria": 112,
+        "Requalificador": 5,
+        "Rerrefinador": 67,
+        "Revenda de Aviação": 1374,
+        "Revenda de Combustíveis": 190282,
+        "Revenda de Combustíveis Marítimo": 9,
+        "Revenda de GLP": 30073,
+        "TRR": 2695,
+        "TRRNI": 174,
+        "Terminal": 350,
+        "Transportador Dutoviário": 5
+      },
+      "sha256": "952743f3fa2b83094ad2011c5a4a1bffc14222eabde1bb4ee3bf4816e2f7db40",
+      "subject_shapes": {
+        "company-shaped": 242948,
+        "other": 5,
+        "personal-shaped": 1294
+      }
+    },
+    "pmqc": {
+      "assay_rows": 66225,
+      "blank_results": 7,
+      "bytes": 838040,
+      "collection_clock_precision": {
+        "DAY": 66225
+      },
+      "conformity": {
+        "Não": 437,
+        "Sim": 65788
+      },
+      "empty_results": 0,
+      "exact_duplicate_rows": 0,
+      "expanded_bytes": 20686740,
+      "headers": [
+        "DataColeta",
+        "IdNumeric",
+        "GrupoProduto",
+        "Produto",
+        "RazaoSocialPosto",
+        "CnpjPosto",
+        "Distribuidora",
+        "Endereço",
+        "Complemento",
+        "Bairro",
+        "Município",
+        "Latitude",
+        "Longitude",
+        "Uf",
+        "RegiaoPolitica",
+        "Ensaio",
+        "Resultado",
+        "UnidadeEnsaio",
+        "Conforme"
+      ],
+      "member": "PMQC_2026_09.csv",
+      "native_sample_product_groups": 4164,
+      "products": {
+        "ETANOL HIDRATADO ADITIVADO": 1309,
+        "ETANOL HIDRATADO COMUM": 13904,
+        "GASOLINA C COMUM": 24327,
+        "GASOLINA C COMUM ADITIVADA": 5063,
+        "GASOLINA C PREMIUM": 37,
+        "ÓLEO DIESEL B S10 - ADITIVADO": 4817,
+        "ÓLEO DIESEL B S10 - COMUM": 11331,
+        "ÓLEO DIESEL B S500 - ADITIVADO": 215,
+        "ÓLEO DIESEL B S500 - COMUM": 5222
+      },
+      "sha256": "98721074799569affbbcbd99e173f42e26cb1107fceed707af7fe4975e95c6ab",
+      "unknown_conformity": 0
+    },
+    "sanctions": [
+      {
+        "bytes": 2301471,
+        "counts": {
+          "accepted": 16290,
+          "duplicates": 0,
+          "input": 16440,
+          "quarantined": 150
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 16241,
+        "encoding": "utf-8-sig",
+        "fields_max_chars": {
+          "department": 6,
+          "duf_ref": 0,
+          "proceeding_ref": 19,
+          "status": 38
+        },
+        "file": "multas-aplicadas-2016a2019.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 5,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Auto de Infração",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Data Transito Julgado",
+          "Vencimento ",
+          "Valor da Multa Aplicada",
+          "Valor Total Pago (*) (**)"
+        ],
+        "input_contract": "anp-sicom-utf8bom-group-2016-2019-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2016-2019",
+        "segment_classification": "UNKNOWN",
+        "sha256": "15ccbf54367881946104dc6baf65c246b6189638cb306ab06662570451989f25",
+        "source_clock": {
+          "precision": "DAY",
+          "value": "2020-02-06"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2016a2019.csv",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 304268,
+        "counts": {
+          "accepted": 2001,
+          "duplicates": 0,
+          "input": 2026,
+          "quarantined": 25
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 2001,
+        "encoding": "utf-8-sig",
+        "fields_max_chars": {
+          "department": 9,
+          "duf_ref": 0,
+          "proceeding_ref": 20,
+          "status": 47
+        },
+        "file": "multas-aplicadas-2020.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 7,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Auto de Infração",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Data Transito Julgado",
+          "Vencimento",
+          " Valor  da Multa Aplicada ",
+          " Valor Total Pago (*) (**)  "
+        ],
+        "input_contract": "anp-sicom-utf8bom-2020-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2020",
+        "segment_classification": "UNKNOWN",
+        "sha256": "aef7fce874b29db234ab7779019c0bc9fcf13d1bdb2de7d59bbf09f51e32654f",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2021-02"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2020.csv",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 720842,
+        "counts": {
+          "accepted": 4929,
+          "duplicates": 0,
+          "input": 4976,
+          "quarantined": 47
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 4921,
+        "encoding": "utf-8-sig",
+        "fields_max_chars": {
+          "department": 6,
+          "duf_ref": 0,
+          "proceeding_ref": 17,
+          "status": 30
+        },
+        "file": "multas-2021-junho22.xlsx",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 7,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Auto de Infração",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Data Transito Julgado",
+          "Vencimento",
+          "Valor  da Multa Aplicada",
+          "Valor Total Pago (*) (**) "
+        ],
+        "input_contract": "anp-sicom-utf8bom-csv-named-xlsx-2021-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2021",
+        "segment_classification": "UNKNOWN",
+        "sha256": "85122d0d1ae999173bac2c772ffb4e14ec414aec3c2f8e30bf7203187936a92d",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2022-06"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-2021-junho22.xlsx",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 436282,
+        "counts": {
+          "accepted": 2970,
+          "duplicates": 0,
+          "input": 2996,
+          "quarantined": 26
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 2898,
+        "encoding": "utf-8-sig",
+        "fields_max_chars": {
+          "department": 6,
+          "duf_ref": 0,
+          "proceeding_ref": 17,
+          "status": 45
+        },
+        "file": "multas-aplicadas-2022.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 7,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Número do DUF",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Data Transito Julgado",
+          "Vencimento",
+          "Valor da Multa",
+          "Valor Total Pago"
+        ],
+        "input_contract": "anp-sicom-utf8bom-2022-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2022",
+        "segment_classification": "UNKNOWN",
+        "sha256": "5ee3df1d9188f273fbf3fbeb7e95f2cea0bc2171fdda23bc4af3cce9478251b5",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2022-04"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2022.csv",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 445861,
+        "counts": {
+          "accepted": 3053,
+          "duplicates": 0,
+          "input": 3074,
+          "quarantined": 21
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 3043,
+        "encoding": "cp850",
+        "fields_max_chars": {
+          "department": 6,
+          "duf_ref": 0,
+          "proceeding_ref": 17,
+          "status": 45
+        },
+        "file": "multas-aplicadas-2023.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 6,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Número do DUF",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Vencimento da Multa",
+          " Valor da Multa ",
+          " Valor Total Pago "
+        ],
+        "input_contract": "anp-sicom-cp850-2023-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2023",
+        "segment_classification": "UNKNOWN",
+        "sha256": "3865025eb04a82ee5d937d703f063d617843eb7a9f5cbf4c18f989caa33839bb",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2024-06"
+        },
+        "unknown_paid": 1303,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2023.csv",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 416653,
+        "counts": {
+          "accepted": 2994,
+          "duplicates": 0,
+          "input": 3004,
+          "quarantined": 10
+        },
+        "distinct_duf_refs": 1,
+        "distinct_proceeding_refs": 2993,
+        "encoding": "utf-8-sig",
+        "fields_max_chars": {
+          "department": 8,
+          "duf_ref": 0,
+          "proceeding_ref": 17,
+          "status": 45
+        },
+        "file": "multas-aplicadas-2024.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 7,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Número do DUF",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Vencimento",
+          "Valor da Multa",
+          "Valor Total Pago",
+          ""
+        ],
+        "input_contract": "anp-sicom-utf8bom-2024-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2024",
+        "segment_classification": "UNKNOWN",
+        "sha256": "0723561b182ac0cc3d031a77050049844e3b29ec098472383b0229051cb67dcd",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2025-03"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2024.csv",
+        "whole_source_oracle": "PASS"
+      },
+      {
+        "bytes": 450504,
+        "counts": {
+          "accepted": 3375,
+          "duplicates": 0,
+          "input": 3395,
+          "quarantined": 20
+        },
+        "distinct_duf_refs": 3371,
+        "distinct_proceeding_refs": 3367,
+        "encoding": "cp850",
+        "fields_max_chars": {
+          "department": 8,
+          "duf_ref": 22,
+          "proceeding_ref": 15,
+          "status": 45
+        },
+        "file": "multas-aplicadas-2025.csv",
+        "fuel": "UNAVAILABLE",
+        "geography": "UNAVAILABLE",
+        "header_record": 7,
+        "headers": [
+          "Status Processo",
+          "Superintendência",
+          "Número do Processo",
+          "Número do DUF",
+          "CNPJ/CPF",
+          "Razão Social",
+          "Vencimento GRM",
+          "Valor da Multa",
+          "Valor Total Pago"
+        ],
+        "input_contract": "anp-sicom-cp850-9-v1",
+        "native_case_identity": "CONTENT_OBSERVATION",
+        "period": "2025",
+        "segment_classification": "UNKNOWN",
+        "sha256": "277f6cf5c59716581c42c5068fde47827c28eb693ee643c75d7841bda191fe96",
+        "source_clock": {
+          "precision": "MONTH",
+          "value": "2026-01"
+        },
+        "unknown_paid": 0,
+        "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.csv",
+        "whole_source_oracle": "PASS"
+      }
+    ]
+  },
+  "filter_capabilities": {
+    "enforcement": [
+      "source_subject",
+      "source_geography",
+      "source_segment",
+      "document",
+      "procedure",
+      "result",
+      "excel_serial_day"
+    ],
+    "enforcement_runtime": "HELD_MEX_20",
+    "pmqc": [
+      "source_revision",
+      "sample_product_identity",
+      "fuel",
+      "assay",
+      "conformity",
+      "collection_day_or_unzoned_clock"
+    ],
+    "pmqc_unsupported": [
+      "national_completeness",
+      "raw_assay_count_as_station_score"
+    ],
+    "sanctions": [
+      "source_revision",
+      "report_year",
+      "due_on",
+      "source_status",
+      "exact_current_company_scope"
+    ],
+    "sanctions_unsupported": [
+      "incident_day",
+      "source_geography",
+      "source_segment",
+      "fuel",
+      "balance",
+      "unique_fine_count",
+      "business_succession"
+    ]
+  },
+  "listing_snapshots": {
+    "enforcement": {
+      "resource_links": [
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/paineis-dinamicos-da-anp/arquivos-dados-brutos-do-painel-dinamico-da-fiscalizacao-do-abastecimento-da-sfi/dados-fisc-1998-2018.xlsx",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/paineis-dinamicos-da-anp/arquivos-dados-brutos-do-painel-dinamico-da-fiscalizacao-do-abastecimento-da-sfi/dados-fisc-a-partir-2019.xlsx"
+      ],
+      "sha256": "e16b00dbacbc832c0f31157fafc0d7efb6587b296b5f3142696b1bb654c0c1d2",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/acoes-de-fiscalizacao"
+    },
+    "pmqc": {
+      "resource_links": [
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_09.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_08.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_07.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_06.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_05.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_04.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_03.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_07.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2026_01.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2025.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2024.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2023.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2022.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2021.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2020.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2019.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2018.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2017.zip",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/pmqc/pmqc_2016.zip"
+      ],
+      "sha256": "dde1914cf1a7f1a30416a09bfb7a3ca30dd46b09ed0e9b3ada176651768f022c",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/pmqc-programa-de-monitoramento-da-qualidade-dos-combustiveis"
+    },
+    "sanctions": {
+      "resource_links": [
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/metadados-multas-aplicadas-2016a2019.pdf",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.csv",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.xlsx",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2024.csv",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2024-excel.xlsx",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2023.csv",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2022.csv",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-2021-junho22.xlsx",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2020.csv",
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2016a2019.csv"
+      ],
+      "sha256": "164fd7f953fa30652dba80f8335e72f2a629952b4dad4a7ea8c27f1f25164b2f",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/multas-aplicadas-com-vencimento-a-partir-de-2016"
+    }
+  },
+  "schema": "anp-source-filter-inventory-v1",
+  "segment_policy": {
+    "non_automotive_retail_exact_labels": [
+      "Agente de Comércio Exterior",
+      "Coletor de OLUC",
+      "Consumidor Industrial de Solventes",
+      "Distribuidor de Asfaltos",
+      "Distribuidor de Aviação",
+      "Distribuidor de Combustíveis Líquidos",
+      "Distribuidor de GLP",
+      "Distribuidor de Solventes",
+      "Empresa Comercial Exportadora",
+      "Empresa Comercializadora de Etanol",
+      "Empresa de Navegação",
+      "Formulador",
+      "Importador",
+      "Importador de Asfaltos",
+      "Importador de Óleo Acabado",
+      "Importador de Óleo Básico",
+      "Inutilizador",
+      "Ponto de Abastecimento",
+      "Produtor de Biodiesel",
+      "Produtor de Biometano",
+      "Produtor de Etanol",
+      "Produtor de Solventes",
+      "Produtor de Óleo Acabado",
+      "Produtor de Óleo Básico",
+      "Refinaria",
+      "Requalificador",
+      "Rerrefinador",
+      "Revenda de Aviação",
+      "Revenda de Combustíveis Marítimo",
+      "Revenda de GLP",
+      "TRR",
+      "TRRNI",
+      "Terminal",
+      "Transportador Dutoviário"
+    ],
+    "retail_label": "Revenda de Combustíveis",
+    "retail_meaning": "SOURCE_CATEGORY_ONLY_NOT_STATION_IDENTITY",
+    "station_identity": "SEPARATE_EXACT_CURRENT_DIRECTORY_PROOF",
+    "unknown_labels": [
+      "",
+      "Agente Não Regulado"
+    ],
+    "unrecognized": "UNKNOWN"
+  },
+  "source_activation": false,
+  "verified_on": "2026-10-22"
+}

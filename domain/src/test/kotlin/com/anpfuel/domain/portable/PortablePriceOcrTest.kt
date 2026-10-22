@@ -12,6 +12,15 @@ import org.junit.jupiter.api.Test
 class PortablePriceOcrTest {
 
     @Test
+    fun currencyRecognitionHintsPreserveExactCandidateAmount() {
+        for ((text, marker) in listOf("BRL 5,89" to true, "RS 5,89" to true, "$ 5,89" to true, "5,89 R" to false)) {
+            val candidate = PortablePriceOcr.parseCandidates(text).single()
+            assertEquals(marker, candidate.hasCurrencyMarker)
+            assertEquals(5890L, candidate.priceMilli)
+        }
+    }
+
+    @Test
     fun `parses single marked price in milli-BRL`() {
         val out = PortablePriceOcr.parseCandidates("R$ 5,89")
         assertEquals(1, out.size)

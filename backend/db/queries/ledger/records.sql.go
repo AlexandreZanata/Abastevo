@@ -12,7 +12,11 @@ import (
 )
 
 const baseLedgerUpdated = `-- name: BaseLedgerUpdated :one
-SELECT MAX(updated_at)::timestamptz FROM ledger_records WHERE account_id=$1
+SELECT MAX(changed_at)::timestamptz FROM (
+ SELECT lr.updated_at AS changed_at FROM ledger_records lr WHERE lr.account_id=$1
+ UNION ALL SELECT lg.created_at FROM ledger_gaps lg WHERE lg.account_id=$1
+ UNION ALL SELECT ls.created_at FROM ledger_segments ls WHERE ls.account_id=$1
+) AS changes
 `
 
 func (q *Queries) BaseLedgerUpdated(ctx context.Context, accountID pgtype.UUID) (pgtype.Timestamptz, error) {
@@ -28,6 +32,15 @@ DELETE FROM ledger_gaps WHERE account_id=$1
 
 func (q *Queries) ClearLedgerGaps(ctx context.Context, accountID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, clearLedgerGaps, accountID)
+	return err
+}
+
+const clearLedgerReports = `-- name: ClearLedgerReports :exec
+DELETE FROM ledger_reports WHERE account_id=$1
+`
+
+func (q *Queries) ClearLedgerReports(ctx context.Context, accountID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearLedgerReports, accountID)
 	return err
 }
 
@@ -231,6 +244,22 @@ func (q *Queries) GetReport(ctx context.Context, arg GetReportParams) (GetReport
 	return i, err
 }
 
+const ledgerFingerprint = `-- name: LedgerFingerprint :one
+SELECT encode(sha256(convert_to(COALESCE(string_agg(token, ',' ORDER BY token), ''), 'UTF8')), 'hex')::text
+FROM (
+ SELECT 'r|'||r.dataset||'|'||r.id::text||'|'||r.revision::text AS token FROM ledger_records r WHERE r.account_id=$1
+ UNION ALL SELECT 'g|'||g.gap_id::text FROM ledger_gaps g WHERE g.account_id=$1
+ UNION ALL SELECT 's|'||s.vehicle_id::text||'|'||s.segment_no::text FROM ledger_segments s WHERE s.account_id=$1
+) AS versions
+`
+
+func (q *Queries) LedgerFingerprint(ctx context.Context, accountID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, ledgerFingerprint, accountID)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const ledgerVehicle = `-- name: LedgerVehicle :one
 SELECT id FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND id=$2
 `
@@ -322,6 +351,17 @@ func (q *Queries) ListLedger(ctx context.Context, arg ListLedgerParams) ([]ListL
 	return items, nil
 }
 
+const lockLedgerOwner = `-- name: LockLedgerOwner :one
+SELECT revision FROM ledger_consent WHERE account_id=$1 FOR UPDATE
+`
+
+func (q *Queries) LockLedgerOwner(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, lockLedgerOwner, accountID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
 const lockReport = `-- name: LockReport :one
 SELECT pg_advisory_xact_lock(hashtext($1))::text
 `
@@ -389,6 +429,69 @@ func (q *Queries) MaxSegmentOdometerExcluding(ctx context.Context, arg MaxSegmen
 	return column_1, err
 }
 
+const metricRows = `-- name: MetricRows :many
+SELECT r.id,r.vehicle_id,r.payload,r.segment_no,
+ EXISTS (SELECT 1 FROM ledger_gaps g
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
+ AND (a.occurred_at IS NULL OR a.occurred_at<$1::timestamptz)
+ AND (b.occurred_at IS NULL OR b.occurred_at>=$2::timestamptz)) AS has_gap
+FROM ledger_records r
+WHERE r.account_id=$3::uuid AND r.vehicle_id=$4::uuid AND r.dataset='refuel'
+AND NOT r.deleted AND NOT r.voided
+AND r.occurred_at>=$2::timestamptz AND r.occurred_at<$1::timestamptz
+ORDER BY r.occurred_at,r.id LIMIT $5::int
+`
+
+type MetricRowsParams struct {
+	ToTime    pgtype.Timestamptz `json:"to_time"`
+	FromTime  pgtype.Timestamptz `json:"from_time"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	VehicleID pgtype.UUID        `json:"vehicle_id"`
+	RowLimit  int32              `json:"row_limit"`
+}
+
+type MetricRowsRow struct {
+	ID        pgtype.UUID `json:"id"`
+	VehicleID pgtype.UUID `json:"vehicle_id"`
+	Payload   []byte      `json:"payload"`
+	SegmentNo int64       `json:"segment_no"`
+	HasGap    bool        `json:"has_gap"`
+}
+
+func (q *Queries) MetricRows(ctx context.Context, arg MetricRowsParams) ([]MetricRowsRow, error) {
+	rows, err := q.db.Query(ctx, metricRows,
+		arg.ToTime,
+		arg.FromTime,
+		arg.AccountID,
+		arg.VehicleID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MetricRowsRow
+	for rows.Next() {
+		var i MetricRowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VehicleID,
+			&i.Payload,
+			&i.SegmentNo,
+			&i.HasGap,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const openSegment = `-- name: OpenSegment :one
 INSERT INTO ledger_segments(account_id,vehicle_id,segment_no,reason) VALUES($1,$2,$3,$4) RETURNING segment_no
 `
@@ -422,8 +525,15 @@ func (q *Queries) PurgeLedgerOperations(ctx context.Context, accountID pgtype.UU
 }
 
 const reportRows = `-- name: ReportRows :many
-SELECT dataset,id,vehicle_id,occurred_at,payload FROM ledger_records
-WHERE account_id=$1 AND NOT deleted AND NOT voided AND occurred_at>=$2 AND occurred_at<$3 ORDER BY occurred_at,id
+SELECT r.dataset,r.id,r.vehicle_id,r.occurred_at,r.payload,r.segment_no,
+ EXISTS (SELECT 1 FROM ledger_gaps g
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
+ AND (a.occurred_at IS NULL OR a.occurred_at<$3)
+ AND (b.occurred_at IS NULL OR b.occurred_at>=$2)) AS has_gap
+FROM ledger_records r
+WHERE r.account_id=$1 AND NOT r.deleted AND NOT r.voided AND r.occurred_at>=$2 AND r.occurred_at<$3 ORDER BY r.occurred_at,r.id
 `
 
 type ReportRowsParams struct {
@@ -438,6 +548,8 @@ type ReportRowsRow struct {
 	VehicleID  pgtype.UUID        `json:"vehicle_id"`
 	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
 	Payload    []byte             `json:"payload"`
+	SegmentNo  int64              `json:"segment_no"`
+	HasGap     bool               `json:"has_gap"`
 }
 
 func (q *Queries) ReportRows(ctx context.Context, arg ReportRowsParams) ([]ReportRowsRow, error) {
@@ -455,6 +567,8 @@ func (q *Queries) ReportRows(ctx context.Context, arg ReportRowsParams) ([]Repor
 			&i.VehicleID,
 			&i.OccurredAt,
 			&i.Payload,
+			&i.SegmentNo,
+			&i.HasGap,
 		); err != nil {
 			return nil, err
 		}

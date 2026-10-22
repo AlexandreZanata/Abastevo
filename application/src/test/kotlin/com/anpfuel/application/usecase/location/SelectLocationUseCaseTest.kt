@@ -8,6 +8,7 @@ import com.anpfuel.domain.repository.DomainEventPublisher
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.UserPreferencesRepository
+import com.anpfuel.domain.valueobject.AvailabilitySnapshot
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.DataAvailability
 import com.anpfuel.domain.valueobject.DomainId
@@ -62,8 +63,7 @@ class SelectLocationUseCaseTest {
             ),
         )
         coEvery { userPreferencesRepository.getPreferences() } returns UserPreferences()
-        coEvery { municipalityCatalogRepository.getLocationKeysWithDataForWeek(any()) } returns emptySet()
-        coEvery { municipalityCatalogRepository.getLocationKeysEverInAnp() } returns emptySet()
+        coEvery { municipalityCatalogRepository.resolveAvailabilitySnapshot(any()) } returns AvailabilitySnapshot.empty()
         coEvery { eventPublisher.publish(any()) } returns Unit
     }
 
@@ -93,11 +93,11 @@ class SelectLocationUseCaseTest {
             campinasEntry,
         )
         coEvery {
-            municipalityCatalogRepository.getLocationKeysWithDataForWeek(surveyWeek)
-        } returns setOf(catalogEntry.locationKey)
-        coEvery {
-            municipalityCatalogRepository.getLocationKeysEverInAnp()
-        } returns setOf(catalogEntry.locationKey, campinasEntry.locationKey)
+            municipalityCatalogRepository.resolveAvailabilitySnapshot(surveyWeek)
+        } returns AvailabilitySnapshot(
+            withDataThisWeek = setOf(catalogEntry.locationKey),
+            everInAnp = setOf(catalogEntry.locationKey, campinasEntry.locationKey),
+        )
 
         val result = useCase.getMunicipalities(state)
 
@@ -110,8 +110,10 @@ class SelectLocationUseCaseTest {
             ),
             result.municipalities,
         )
-        coVerify(exactly = 1) { municipalityCatalogRepository.getLocationKeysWithDataForWeek(surveyWeek) }
-        coVerify(exactly = 1) { municipalityCatalogRepository.getLocationKeysEverInAnp() }
+        // MEX-04: one batch snapshot replaces the two per-call availability sets.
+        coVerify(exactly = 1) { municipalityCatalogRepository.resolveAvailabilitySnapshot(surveyWeek) }
+        coVerify(exactly = 0) { municipalityCatalogRepository.getLocationKeysWithDataForWeek(any()) }
+        coVerify(exactly = 0) { municipalityCatalogRepository.getLocationKeysEverInAnp() }
     }
 
     @Test
@@ -162,12 +164,67 @@ class SelectLocationUseCaseTest {
     }
 
     @Test
+    fun listsStatesWhenNoImportedData() = runTest {
+        // MEX-04 (B-BR-MEX-07/BUC-MEX-05): state discovery works without an
+        // imported week; the week is null and states are still listed.
+        coEvery { priceTableRepository.getImportedPriceSurveys() } returns emptyList()
+        coEvery { municipalityCatalogRepository.getCatalogStates() } returns listOf(
+            BrazilianState.SAO_PAULO,
+            BrazilianState.RIO_DE_JANEIRO,
+        )
+
+        val result = useCase.getStatesWithData()
+
+        assertNull(result.surveyWeek)
+        assertEquals(2, result.states.size)
+        coVerify(exactly = 1) { municipalityCatalogRepository.getCatalogStates() }
+    }
+
+    @Test
+    fun marksAllNeverInAnpWhenNoImportedWeek() = runTest {
+        // MEX-04: without a week, municipalities resolve as unavailable;
+        // previously imported locations keep NO_DATA_THIS_WEEK.
+        coEvery { priceTableRepository.getImportedPriceSurveys() } returns emptyList()
+        val campinasEntry = MunicipalityCatalogEntry(
+            state = state,
+            municipality = "CAMPINAS",
+            ibgeCode = "3509502",
+        )
+        coEvery { municipalityCatalogRepository.getCatalogMunicipalities(state) } returns listOf(
+            catalogEntry,
+            campinasEntry,
+        )
+        coEvery {
+            municipalityCatalogRepository.resolveAvailabilitySnapshot(null)
+        } returns AvailabilitySnapshot(
+            withDataThisWeek = emptySet(),
+            everInAnp = setOf(campinasEntry.locationKey),
+        )
+
+        val result = useCase.getMunicipalities(state)
+
+        assertNull(result.surveyWeek)
+        assertEquals(
+            listOf(
+                CatalogMunicipalityItem(municipality, DataAvailability.NEVER_IN_ANP),
+                CatalogMunicipalityItem("CAMPINAS", DataAvailability.NO_DATA_THIS_WEEK),
+            ),
+            result.municipalities,
+        )
+    }
+
+    @Test
     fun rejectsSelectionWhenNoImportedData() = runTest {
+        // MEX-04 boundary: selection still requires an imported week because
+        // the CitySelected event carries a surveyWeekId.
         coEvery { priceTableRepository.countImportedSurveyWeeks() } returns 0
 
         assertThrows<DomainException> {
-            useCase.getStatesWithData()
+            useCase.selectLocation(state, municipality)
         }
+
+        coVerify(exactly = 0) { userPreferencesRepository.savePreferences(any()) }
+        coVerify(exactly = 0) { eventPublisher.publish(any()) }
     }
 
     @Test

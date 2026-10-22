@@ -1,5 +1,14 @@
 # Fuel quality evidence and station reliability implementation plan
 
+**2026-10-20 official-record exploration extension:**
+[MEX plan](MOBILE_EXPANSION_EXECUTION_PLAN.md) coordinates remaining real FQ-06
+source/runtime acceptance, scoped FQ-07/08 attribution and FQ-14/16/17 consumers
+for national records plus station occurrence filters. [MEX rules](../product/MOBILE_EXPANSION_CONTRACT.md)
+separate assays/actions/source-reported infractions/fine records, current-company
+association and proven site history, with honest dates/census/unknown coverage.
+Existing FQ ownership remains canonical; no duplicate ledger, numeric score,
+national completeness, activation or D override is established by this plan.
+
 **2026-10-14 D deferral — adopted maintainer restriction:** [Future D](FUTURE_EVIDENCE_BUSINESS_PLAN.md) supersedes earlier timing for FQ-10 and document attachment in FQ-15. They are DEFERRED_FUTURE until the app is extremely consolidated and has thousands of real clients, unless the maintainer explicitly requests earlier named D scope. FQ-00–08 source evidence remains intact; official history/non-document reporting need not wait. The dependency slices below prevent deferred proof work from blocking selected document-free delivery or being implemented under another label.
 
 Status: PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED.

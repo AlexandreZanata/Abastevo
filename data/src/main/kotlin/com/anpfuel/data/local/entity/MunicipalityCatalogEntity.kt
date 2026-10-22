@@ -13,6 +13,7 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["state", "normalized_name"], unique = true),
         Index(value = ["ibge_code"], unique = true),
+        Index(value = ["normalized_name"], name = "idx_municipality_catalog_normalized"),
     ],
 )
 data class MunicipalityCatalogEntity(

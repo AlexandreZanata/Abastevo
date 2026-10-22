@@ -74,3 +74,18 @@ func NormalizeVehicle(v Vehicle) (Vehicle, error) {
 	}
 	return v, nil
 }
+
+// RequireVehicleRegistration counts retained/archived IDs as registrations.
+// Existing-ID edits/replays never invoke this admission rule.
+func RequireVehicleRegistration(current int64, multiple bool) error {
+	if current < 0 {
+		return ErrInvalid
+	}
+	if current >= 3 {
+		return ErrQuota
+	}
+	if current >= 1 && !multiple {
+		return ErrDenied
+	}
+	return nil
+}

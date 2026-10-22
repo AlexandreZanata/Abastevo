@@ -26,6 +26,35 @@ Existing phase tasks below retain their detailed scoped checks; “all earlier p
 
 **Fuel quality planning overlay (2026-10-14):** [FQ-00–FQ-17](#fuel-quality-evidence-and-station-reliability) adds official quality history, Rust preparation extensions, structured consumer reports and calibrated station/fuel reliability targets. Planning is local-only; implementation selection must reconcile the existing app-first/safety checkpoints. No phase reorder, score publication or new runtime acceptance follows from this overlay.
 
+**Mobile expansion overlay (2026-10-20):** [MEX-00–MEX-39](docs/planning/MOBILE_EXPANSION_EXECUTION_PLAN.md)
+coordinates the requested one-free-vehicle/Premium amendment, existing PRM
+financial/cloud Android completion, local place-search optimization, national
+price questions and FQ official-record/station filters. MEX-20 has six mandatory
+real-enforcement children. This is planning-only, with canonical PRM/FQ/OPT task
+reuse, no source activation or release inference, preserved retained data and
+future D still held. [Product rules](docs/product/MOBILE_EXPANSION_CONTRACT.md),
+[agent prompt](docs/planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md).
+
+**Foundation/contracts (2026-10-21):** [MEX-00](docs/backend/evidence/mobile-expansion/MEX-00.md),
+[MEX-01](docs/backend/evidence/mobile-expansion/MEX-01.md) and
+[MEX-02](docs/backend/evidence/mobile-expansion/MEX-02.md) are LOCAL_DONE /
+INTEGRATION_PENDING. [Continuation](docs/planning/MOBILE_EXPANSION_CONTINUATION.md)
+also records [MEX-03 baselines](docs/backend/evidence/mobile-expansion/MEX-03.md)
+and [EE-00/01/02 inventory/qualification/contracts](docs/backend/evidence/ev-support/EE-02.md)
+as LOCAL_DONE / INTEGRATION_PENDING. Next EE-03 or independent MEX-04; product runtime
+quota/query/UI behavior remains pending its owning units.
+
+**Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
+adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing
+owners. [Source research](docs/planning/EV_SOURCE_RESEARCH.md),
+[EV rules](docs/product/EV_SUPPORT_CONTRACT.md),
+[combined dependencies](docs/planning/EV_MEX_DEPENDENCIES.json) and
+[agent prompt](docs/planning/EV_SUPPORT_EXECUTION_PROMPT.md) govern initial source
+qualification, Rust batches, Go contracts, community prices, Room/offline and
+private EV ledger/report/sync. Planning only; 77 combined execution units include
+one conditional operator-access unit. No all-chargers/live-coverage claim, provider
+purchase, charging control/payment, D override or release/activation is implied.
+
 ## P00 — Project identity documentation and visual preview
 
 Entry: maintainer-selected name/logo (2026-10-01). Exit: publish the approved identity/assets/README via guarded phase merge and wiki mirror. Maintainer approved V2 publication on 2026-10-01. This task does not block or alter the ongoing functional phase.

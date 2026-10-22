@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.anpfuel.data.local.entity.AveragePriceEntity
+import com.anpfuel.data.local.model.MunicipalityLocationAvailabilityRow
 import com.anpfuel.data.local.model.MunicipalityLocationRow
 
 @Dao
@@ -77,6 +78,16 @@ interface AveragePriceDao {
         """,
     )
     suspend fun findDistinctLocationsBySurveyWeek(surveyWeekId: String): List<MunicipalityLocationRow>
+
+    @Query(
+        """
+        SELECT state AS state, municipality AS municipality,
+               MAX(CASE WHEN survey_week_id = :surveyWeekId THEN 1 ELSE 0 END) AS hasWeekData
+        FROM average_price
+        GROUP BY state, municipality
+        """,
+    )
+    suspend fun findLocationAvailability(surveyWeekId: String): List<MunicipalityLocationAvailabilityRow>
 
     @Query(
         """

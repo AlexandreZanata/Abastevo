@@ -79,7 +79,6 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
-	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
@@ -129,13 +128,16 @@ func newUUID() (string, error) {
 type metricsLedgerReader struct{ store *ledgeradapters.Store }
 
 func (m metricsLedgerReader) ListRecords(ctx context.Context, accountID, dataset, vehicleID, from, to string, limit int) ([]metricsapp.LedgerRecord, error) {
-	rows, err := m.store.List(ctx, accountID, dataset, vehicleID, "", from, to, "", "", limit)
+	if dataset != "refuel" {
+		return nil, errors.New("metrics: invalid input")
+	}
+	rows, err := m.store.ConsumptionRows(ctx, accountID, vehicleID, from, to, limit)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]metricsapp.LedgerRecord, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, metricsapp.LedgerRecord{Dataset: row.Dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload})
+		out = append(out, metricsapp.LedgerRecord{Dataset: dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload, SegmentNo: row.SegmentNo, HasGap: row.HasGap})
 	}
 	return out, nil
 }
@@ -337,7 +339,7 @@ func run() error {
 	// handler gets station existence as a closure so modules never
 	// cross-read. Disabled by ANPFUEL_QUALITY_READS_ENABLED=false, which
 	// answers 404 without touching storage.
-	qualityReads := qualityread.NewReader(pool.Underlying())
+	qualityReads := companyQualityReader(pool.Underlying())
 	qualityReadsEnabled := cfg.QualityReadsEnabled
 	qualityhttp.Handler{
 		Read:    qualityReads,
@@ -352,7 +354,8 @@ func run() error {
 			}
 			return false, err
 		},
-		Enabled: func() bool { return qualityReadsEnabled },
+		Enabled:        func() bool { return qualityReadsEnabled },
+		CompanyEnabled: func() bool { return cfg.QualityCompanyReadsEnabled },
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.
@@ -715,6 +718,12 @@ func run() error {
 			return clouddomain.ErrDenied
 		}
 		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
+	}
+	cloudStore.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return clouddomain.ErrDenied
+		}
+		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "vehicles.multiple"))
 	}
 	cloudhttp.Handler{
 		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,

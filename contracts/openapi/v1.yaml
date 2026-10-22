@@ -1635,6 +1635,7 @@ paths:
       security: []
       parameters:
         - $ref: '#/components/parameters/QualityRevisionSelector'
+        - $ref: '#/components/parameters/QualityCompanyStationSelector'
         - name: status
           in: query
           description: Optional verbatim extraction-time status filter.
@@ -1648,7 +1649,10 @@ paths:
           in: query
           description: Opaque page cursor from the previous response.
           schema: {type: string}
+      description: Current-company scoped responses require fresh Directory proof before conditional304 and use public max-age=0,must-revalidate. Global requests retain their source-only behavior. Cursor/ETag binds source revision, station, exact filters and fresh private company fingerprint. Unknown/duplicate filters are refused; actions do not support station_id.
       responses:
+        '304':
+          description: Unchanged representation after fresh scope and guarded row validation.
         '200':
           description: Extraction-time snapshots with no finality inference.
           headers:
@@ -1662,6 +1666,8 @@ paths:
                 $ref: '#/components/schemas/QualitySanctionPage'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/quality/sanctions/{id}:
@@ -1672,12 +1678,16 @@ paths:
       security: []
       parameters:
         - $ref: '#/components/parameters/QualityRevisionSelector'
+        - $ref: '#/components/parameters/QualityCompanyStationSelector'
         - name: id
           in: path
           required: true
           description: Snapshot identifier.
           schema: {type: string, format: uuid}
+      description: Current-company scoped responses require fresh Directory proof before conditional304 and use public max-age=0,must-revalidate. Global requests retain their source-only behavior. Cursor/ETag binds source revision, station, exact filters and fresh private company fingerprint. Unknown/duplicate filters are refused; actions do not support station_id.
       responses:
+        '304':
+          description: Unchanged representation after fresh scope and guarded row validation.
         '200':
           description: The snapshot with its lease.
           content:
@@ -5239,6 +5249,12 @@ paths:
           $ref: '#/components/responses/Unavailable'
 components:
   parameters:
+    QualityCompanyStationSelector:
+      name: station_id
+      in: query
+      required: false
+      description: Exact current-company scope at this canonical station. No historical business window or incident attribution. Separate default-off company-read switch; never falls back to global rows. Duplicate or empty parameters are rejected.
+      schema: {type: string, format: uuid}
     QualityRevisionSelector:
       name: revision_id
       in: query
@@ -6979,6 +6995,7 @@ components:
       - alerts.advanced
       - professional.write
       - professional.report
+      - vehicles.multiple
     PremiumStatusResponse:
       type: object
       additionalProperties: false
@@ -7745,11 +7762,25 @@ components:
         next_cursor: {type: [string, 'null']}
         lease: {$ref: '#/components/schemas/QualityLease'}
         generated_at: {type: string, format: date-time}
+    QualityCompanyScope:
+      type: object
+      additionalProperties: false
+      required: [station_id, available, reason, historical_business_window_known]
+      description: Current exact company evidence only; no CNPJ, succession or historical station ownership proof. Empty or unavailable scope never implies a clean station.
+      properties:
+        station_id: {type: string, format: uuid}
+        available: {type: boolean}
+        reason: {type: string, enum: [SOURCE_UNAVAILABLE, ASSOCIATION_EVIDENCE_UNAVAILABLE, NO_CURRENT_COMPANY_MATCH, CURRENT_COMPANY_MATCH]}
+        policy_version: {type: string, enum: [current-company-v1]}
+        association_scope: {type: string, enum: [CURRENT_COMPANY_ONLY]}
+        decision_day: {type: string, format: date}
+        historical_business_window_known: {type: boolean, enum: [false]}
     QualitySanction:
       description: One published snapshot with source-time facts only; extraction retains the actual day/month precision and grouped period. Due and source-declared transit dates never become decided_on. Unknown paid remains null; raw unlabelled data has no inferred meaning. Content observation keys are not source-issued fine numbers. Page items omit lease and generated_at; detail responses include them.
       type: object
       required: [id, native_key, proceeding_ref, status, as_of, evidence_ref]
       properties:
+        company_scope: {$ref: '#/components/schemas/QualityCompanyScope'}
         id: {type: string, format: uuid}
         native_key: {type: string, example: MULTA-001}
         proceeding_ref: {type: string}
@@ -7788,6 +7819,7 @@ components:
       type: object
       required: [items, next_cursor, lease, generated_at]
       properties:
+        company_scope: {$ref: '#/components/schemas/QualityCompanyScope'}
         items:
           type: array
           items: {$ref: '#/components/schemas/QualitySanction'}

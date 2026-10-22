@@ -19,6 +19,10 @@ func (h *Handler) selectRevision(w http.ResponseWriter, r *http.Request) bool {
 		httpapi.WriteError(w, r, 400, "quality.bad-revision", "revision id must be a UUID", nil)
 		return false
 	}
+	if h.Read == nil {
+		sourceDown(w, r)
+		return false
+	}
 	h.Read = h.Read.AtRevision(id)
 	return true
 }

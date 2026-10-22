@@ -1,0 +1,195 @@
+{
+  "state": "QUALIFICATION_ONLY_NOT_SOURCE_ADMISSION",
+  "reference_sha256": "71c7ea6f70e8f360ff13cc64ada578d07c05af0bf9e92b5efeda591ff695f7e8",
+  "samples": [
+    {
+      "file": "OCM-154527.json",
+      "sha256": "3bbcf2f3193fd3413bcf3a37736c07e1b6d2d55e1270f9c8aca4f0fc0d3bb4eb",
+      "bytes": 1108,
+      "top_level_fields": [
+        "AddressInfo",
+        "Connections",
+        "DataProviderID",
+        "DateCreated",
+        "DateLastStatusUpdate",
+        "DateLastVerified",
+        "ID",
+        "NumberOfPoints",
+        "OperatorID",
+        "StatusTypeID",
+        "SubmissionStatusTypeID",
+        "UUID",
+        "UsageCost",
+        "UsageTypeID"
+      ],
+      "country_code": "BR",
+      "provider_id": 1,
+      "provider_license_sha256": "44880f94a1b591f3c9fbb69daf42ce7d1c703454fe930d0a26c2653743d9e4f7",
+      "provider_reported_license": "CC-BY-4.0",
+      "provider_open_data_flag": true,
+      "connection_rows": 1,
+      "connection_fields": [
+        "Amps",
+        "ConnectionTypeID",
+        "CurrentTypeID",
+        "ID",
+        "LevelID",
+        "PowerKW",
+        "Quantity",
+        "StatusTypeID",
+        "Voltage"
+      ],
+      "clock_fields_present": [
+        "DateLastVerified",
+        "DateLastStatusUpdate",
+        "DateCreated"
+      ],
+      "source_clock_values": {
+        "DateLastVerified": "2020-03-17T08:10:00Z",
+        "DateLastStatusUpdate": "2020-03-17T08:10:00Z",
+        "DateCreated": "2020-03-16T14:33:00Z"
+      },
+      "qualification": "SAMPLE_VERIFIED",
+      "admission_enabled": false
+    },
+    {
+      "file": "OCM-154528.json",
+      "sha256": "90e5e502f852a0b53cee6f0b365b073e08e0ec32583be662bf1950d541cc04a1",
+      "bytes": 1496,
+      "top_level_fields": [
+        "AddressInfo",
+        "Connections",
+        "DataProviderID",
+        "DateCreated",
+        "DateLastStatusUpdate",
+        "DateLastVerified",
+        "ID",
+        "NumberOfPoints",
+        "OperatorID",
+        "StatusTypeID",
+        "SubmissionStatusTypeID",
+        "UUID",
+        "UsageCost",
+        "UsageTypeID"
+      ],
+      "country_code": "BR",
+      "provider_id": 1,
+      "provider_license_sha256": "44880f94a1b591f3c9fbb69daf42ce7d1c703454fe930d0a26c2653743d9e4f7",
+      "provider_reported_license": "CC-BY-4.0",
+      "provider_open_data_flag": true,
+      "connection_rows": 3,
+      "connection_fields": [
+        "ConnectionTypeID",
+        "CurrentTypeID",
+        "ID",
+        "LevelID",
+        "PowerKW",
+        "Quantity",
+        "StatusTypeID"
+      ],
+      "clock_fields_present": [
+        "DateLastVerified",
+        "DateLastStatusUpdate",
+        "DateCreated"
+      ],
+      "source_clock_values": {
+        "DateLastVerified": "2020-03-17T08:17:00Z",
+        "DateLastStatusUpdate": "2020-03-17T08:17:00Z",
+        "DateCreated": "2020-03-16T14:37:00Z"
+      },
+      "qualification": "SAMPLE_VERIFIED",
+      "admission_enabled": false
+    },
+    {
+      "file": "OCM-15468.json",
+      "sha256": "17fc3e2dc6a29765123894dd3fccc18b1d52638ba9bb53f805cf45b652222030",
+      "bytes": 1657,
+      "top_level_fields": [
+        "AddressInfo",
+        "Connections",
+        "DataProviderID",
+        "DateCreated",
+        "DateLastStatusUpdate",
+        "DateLastVerified",
+        "GeneralComments",
+        "ID",
+        "NumberOfPoints",
+        "OperatorID",
+        "StatusTypeID",
+        "SubmissionStatusTypeID",
+        "UUID",
+        "UsageCost",
+        "UsageTypeID",
+        "UserComments"
+      ],
+      "country_code": "BR",
+      "provider_id": 1,
+      "provider_license_sha256": "44880f94a1b591f3c9fbb69daf42ce7d1c703454fe930d0a26c2653743d9e4f7",
+      "provider_reported_license": "CC-BY-4.0",
+      "provider_open_data_flag": true,
+      "connection_rows": 1,
+      "connection_fields": [
+        "ConnectionTypeID",
+        "ID",
+        "Quantity",
+        "StatusTypeID"
+      ],
+      "clock_fields_present": [
+        "DateLastVerified",
+        "DateLastStatusUpdate",
+        "DateCreated"
+      ],
+      "source_clock_values": {
+        "DateLastVerified": "2021-08-24T17:46:00Z",
+        "DateLastStatusUpdate": "2021-08-24T17:46:00Z",
+        "DateCreated": "2013-01-10T14:00:00Z"
+      },
+      "qualification": "SAMPLE_VERIFIED",
+      "admission_enabled": false
+    }
+  ],
+  "pbe": {
+    "sha256": "43e928f89a526f7b59013faca3501b2b0716e5a8cdc2e097b8653638aa688ba0",
+    "bytes": 3387564,
+    "pages": 9,
+    "extracted_text_sha256": "033a5cf99261e6f2ff020dbbaa587bab1650842488b6546e303ea1d6b45d4371",
+    "profile": "PDF_LAYOUT_NOT_CSV",
+    "qualified_as": "LAB_REFERENCE_NOT_CHARGING_CATALOG",
+    "qualification": "SAMPLE_VERIFIED",
+    "rights": "RIGHTS_PENDING",
+    "full_vehicle_census": "NOT_PERFORMED",
+    "admission_enabled": false
+  },
+  "checked_on": "2026-10-21",
+  "ocm_commit": "8e3bedca48ca94807d96b2f5e7ee02cffe63ae54",
+  "ocm_tree_sha": "b15714e1b39186816904731d1fc9f29c3e01bdfa",
+  "br_tree_entry_count": 1298,
+  "br_tree_truncated": false,
+  "ocm_reference_url": "https://github.com/openchargemap/ocm-export/blob/8e3bedca48ca94807d96b2f5e7ee02cffe63ae54/data/referencedata.json",
+  "source_urls": {
+    "OCM-154527.json": "https://github.com/openchargemap/ocm-export/blob/8e3bedca48ca94807d96b2f5e7ee02cffe63ae54/data/BR/OCM-154527.json",
+    "OCM-154528.json": "https://github.com/openchargemap/ocm-export/blob/8e3bedca48ca94807d96b2f5e7ee02cffe63ae54/data/BR/OCM-154528.json",
+    "OCM-15468.json": "https://github.com/openchargemap/ocm-export/blob/8e3bedca48ca94807d96b2f5e7ee02cffe63ae54/data/BR/OCM-15468.json"
+  },
+  "rights_decisions": {
+    "ocm_provider_1": {
+      "reported_license": "CC-BY-4.0",
+      "status": "CONDITIONAL_REUSE_NOT_SOURCE_ADMISSION",
+      "required": [
+        "provider-specific provenance retained",
+        "attribution/license/change notice",
+        "contact/comment/home candidate minimization",
+        "public-access eligibility verified"
+      ],
+      "bulk_census": "NOT_PERFORMED"
+    },
+    "pbe": {
+      "status": "RIGHTS_PENDING",
+      "reason": "Resource and publisher identified; redistribution/offline/derived-data permission basis not frozen from PDF alone."
+    },
+    "optional_operators": {
+      "status": "ACCESS_PENDING",
+      "scope": "No signup, contact, payment, credentials or private API used."
+    }
+  }
+}

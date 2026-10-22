@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"time"
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/ledger"
@@ -54,7 +55,7 @@ func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurr
 		if err := dec.Decode(&wire); err != nil {
 			return "", time.Time{}, nil, nil, errInvalid()
 		}
-		if _, err := dec.Token(); err == nil {
+		if _, err := dec.Token(); err != io.EOF {
 			return "", time.Time{}, nil, nil, errInvalid()
 		}
 		at, err := time.Parse(time.RFC3339, wire.OccurredAt)
@@ -82,7 +83,7 @@ func parsePayload(dataset string, raw json.RawMessage) (vehicleID string, occurr
 	if err := dec.Decode(&wire); err != nil {
 		return "", time.Time{}, nil, nil, errInvalid()
 	}
-	if _, err := dec.Token(); err == nil {
+	if _, err := dec.Token(); err != io.EOF {
 		return "", time.Time{}, nil, nil, errInvalid()
 	}
 	at, err := time.Parse(time.RFC3339, wire.OccurredAt)
@@ -140,6 +141,9 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 		}
 	}
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return application.BatchResult{}, err
+	}
 	if err = query.EnsureLedgerConsent(ctx, uid(accountID)); err != nil {
 		return application.BatchResult{}, errUnavailable()
 	}

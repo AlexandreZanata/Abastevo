@@ -1,6 +1,6 @@
 # Open source and business boundaries
 
-The [Premium plan](../planning/PREMIUM_BACKEND_APP_PLAN.md) covers optional cloud services and private individual vehicle-work tools. Three local vehicles/history/basic alerts, free recovery/export/deletion and community trust stay independent of payment. The first ten backend tasks are authorized; real payments remain OFF pending the future payment module.
+The [Premium plan](../planning/PREMIUM_BACKEND_APP_PLAN.md) covers optional cloud services and private individual vehicle-work tools. [Registration v2](VEHICLE_REGISTRATION_POLICY.md) freezes one free new vehicle and Premium extras, preserving held vehicles/history/basic alerts, free recovery/export/deletion and community trust. Runtime admission remains pending MEX-07/08; real payments remain OFF pending the future payment module.
 
 Status: planning. Preserve the existing MIT license and attribution. The project name is **abastevo**, selected on 2026-10-01; the maintainer supplied its logo. The README composition is pending visual approval. This documentation task does not rename packages, publish a new mobile app identity or register marks/domains.
 

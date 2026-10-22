@@ -10,6 +10,16 @@ import org.junit.jupiter.api.Test
 
 class StationAddressNormalizationRuleTest {
 
+    @Test
+    fun navigationPreservesPortugueseCountrySuffixWithoutDuplicatingIt() {
+        val station = RetailStation.create(
+            cnpj = Cnpj.parse("12345678000195"), legalName = "Synthetic SA", tradeName = "Posto Centro",
+            address = "Rua A, 100, Curitiba - PR, Brasil", municipality = "CURITIBA",
+            state = BrazilianState.PARANA, brand = null,
+        )
+        assertEquals("Posto Centro, Rua A, 100, Curitiba - PR, Brasil", StationAddressNormalizationRule.buildNavigationQuery(station))
+    }
+
     private val campoGrandeStation = RetailStation.create(
         cnpj = Cnpj.parse("61602199002409"),
         legalName = "COMPANHIA ULTRAGAZ S A",

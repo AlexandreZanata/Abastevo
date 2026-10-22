@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"strings"
 	"time"
 
@@ -48,6 +47,10 @@ func parseSideRecords(rows []application.LedgerRecord) (metrics.Interval, string
 		}
 		if i == 0 {
 			unit = payload.Unit
+		}
+		in.HasGap = in.HasGap || row.HasGap
+		if i > 0 && row.SegmentNo != rows[0].SegmentNo {
+			in.CrossesSegment = true
 		}
 		full := payload.Fill == "full"
 		in.Fills = append(in.Fills, metrics.Fill{QuantityMilli: payload.QuantityMilli, TotalCentavos: payload.TotalCentavos, Full: full, Fuel: payload.Fuel, Unit: payload.Unit})
@@ -104,7 +107,7 @@ func (s *Store) Compare(ctx context.Context, accountID string, baseline, current
 		}
 		_ = from
 	}
-	if baseline.Method != current.Method || (baseline.Method != "fuel-purchase-interval" && baseline.Method != "matched-window") {
+	if baseline.Method != current.Method || baseline.Method != "fuel-purchase-interval" {
 		return application.Comparison{Compatible: false, Issue: "mismatched-method"}, nil
 	}
 	if baseline.Timezone != current.Timezone {
@@ -147,26 +150,8 @@ func (s *Store) Compare(ctx context.Context, accountID string, baseline, current
 		return application.Comparison{Compatible: false, Issue: "current-incomplete: " + currentRes.Unknown}, nil
 	}
 	out := application.Comparison{Compatible: true, Baseline: baseRes.KmPerUnit, Current: currentRes.KmPerUnit}
-	if baseRes.EligibleCostCentavos == 0 {
-		out.Issue = "comparison-baseline-zero"
-		return out, nil
-	}
-	out.ChangePercent = percentChange(baseRes, currentRes)
+	change := metrics.CompareConsumption(baseRes, currentRes)
+	out.Issue = change.Unknown
+	out.ChangePercent = change.ChangePercent
 	return out, nil
-}
-
-func percentChange(base, current metrics.Result) string {
-	num := new(big.Int).Sub(new(big.Int).Mul(big.NewInt(current.DistanceMetres), big.NewInt(base.EligibleQuantityMilli)), new(big.Int).Mul(big.NewInt(base.DistanceMetres), big.NewInt(current.EligibleQuantityMilli)))
-	num.Mul(num, big.NewInt(100))
-	den := new(big.Int).Mul(big.NewInt(base.DistanceMetres), big.NewInt(current.EligibleQuantityMilli))
-	if den.Sign() == 0 {
-		return ""
-	}
-	gcd := new(big.Int).GCD(nil, nil, new(big.Int).Abs(num), new(big.Int).Abs(den))
-	num.Quo(num, gcd)
-	den.Quo(den, gcd)
-	if den.Cmp(big.NewInt(1)) == 0 {
-		return num.String()
-	}
-	return num.String() + "/" + den.String()
 }

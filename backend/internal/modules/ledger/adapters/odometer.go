@@ -28,6 +28,9 @@ func (s *Store) OpenSegment(ctx context.Context, accountID, vehicleID, reason st
 	}
 	defer rollback(tx)
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return 0, err
+	}
 	if _, err = query.LedgerVehicle(ctx, q.LedgerVehicleParams{AccountID: uid(accountID), ID: uid(vehicleID)}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, errInvalid()
@@ -68,6 +71,9 @@ func (s *Store) DeclareGap(ctx context.Context, accountID, vehicleID, gapID, aft
 	}
 	defer rollback(tx)
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return "", err
+	}
 	if _, err = query.LedgerVehicle(ctx, q.LedgerVehicleParams{AccountID: uid(accountID), ID: uid(vehicleID)}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", errInvalid()

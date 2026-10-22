@@ -78,16 +78,13 @@ func journeyRevision(t *testing.T, body string) int64 {
 type journeyLedgerReader struct{ store *ledgeradapters.Store }
 
 func (r journeyLedgerReader) ListRecords(ctx context.Context, accountID, dataset, vehicleID, from, to string, limit int) ([]metricsapp.LedgerRecord, error) {
-	if limit > 100 {
-		limit = 100
-	}
-	rows, err := r.store.List(ctx, accountID, dataset, vehicleID, "", from, to, "", "", limit)
+	rows, err := r.store.ConsumptionRows(ctx, accountID, vehicleID, from, to, limit)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]metricsapp.LedgerRecord, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, metricsapp.LedgerRecord{Dataset: row.Dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload})
+		out = append(out, metricsapp.LedgerRecord{Dataset: dataset, ID: row.ID, VehicleID: row.VehicleID, Payload: row.Payload, SegmentNo: row.SegmentNo, HasGap: row.HasGap})
 	}
 	return out, nil
 }

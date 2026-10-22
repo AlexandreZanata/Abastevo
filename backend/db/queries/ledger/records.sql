@@ -53,11 +53,22 @@ DELETE FROM ledger_operations WHERE account_id=$1;
 SELECT pg_advisory_xact_lock(hashtext($1))::text;
 
 -- name: BaseLedgerUpdated :one
-SELECT MAX(updated_at)::timestamptz FROM ledger_records WHERE account_id=$1;
+SELECT MAX(changed_at)::timestamptz FROM (
+ SELECT lr.updated_at AS changed_at FROM ledger_records lr WHERE lr.account_id=$1
+ UNION ALL SELECT lg.created_at FROM ledger_gaps lg WHERE lg.account_id=$1
+ UNION ALL SELECT ls.created_at FROM ledger_segments ls WHERE ls.account_id=$1
+) AS changes;
 
 -- name: ReportRows :many
-SELECT dataset,id,vehicle_id,occurred_at,payload FROM ledger_records
-WHERE account_id=$1 AND NOT deleted AND NOT voided AND occurred_at>=$2 AND occurred_at<$3 ORDER BY occurred_at,id;
+SELECT r.dataset,r.id,r.vehicle_id,r.occurred_at,r.payload,r.segment_no,
+ EXISTS (SELECT 1 FROM ledger_gaps g
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
+ AND (a.occurred_at IS NULL OR a.occurred_at<$3)
+ AND (b.occurred_at IS NULL OR b.occurred_at>=$2)) AS has_gap
+FROM ledger_records r
+WHERE r.account_id=$1 AND NOT r.deleted AND NOT r.voided AND r.occurred_at>=$2 AND r.occurred_at<$3 ORDER BY r.occurred_at,r.id;
 
 -- name: GetReport :one
 SELECT totals,revision,base_updated_at,generated_at FROM ledger_reports WHERE account_id=$1 AND year=$2 AND month=$3 AND timezone=$4;
@@ -95,3 +106,31 @@ AND (sqlc.narg(from_time)::timestamptz IS NULL OR occurred_at>=sqlc.narg(from_ti
 AND (sqlc.narg(to_time)::timestamptz IS NULL OR occurred_at<sqlc.narg(to_time)::timestamptz)
 AND (sqlc.narg(after_time)::timestamptz IS NULL OR occurred_at>sqlc.narg(after_time)::timestamptz OR (occurred_at=sqlc.narg(after_time)::timestamptz AND id>sqlc.narg(after_id)::uuid))
 ORDER BY occurred_at,id LIMIT $3;
+
+-- name: LockLedgerOwner :one
+SELECT revision FROM ledger_consent WHERE account_id=$1 FOR UPDATE;
+
+-- name: ClearLedgerReports :exec
+DELETE FROM ledger_reports WHERE account_id=$1;
+
+-- name: MetricRows :many
+SELECT r.id,r.vehicle_id,r.payload,r.segment_no,
+ EXISTS (SELECT 1 FROM ledger_gaps g
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
+ AND (a.occurred_at IS NULL OR a.occurred_at<sqlc.arg(to_time)::timestamptz)
+ AND (b.occurred_at IS NULL OR b.occurred_at>=sqlc.arg(from_time)::timestamptz)) AS has_gap
+FROM ledger_records r
+WHERE r.account_id=sqlc.arg(account_id)::uuid AND r.vehicle_id=sqlc.arg(vehicle_id)::uuid AND r.dataset='refuel'
+AND NOT r.deleted AND NOT r.voided
+AND r.occurred_at>=sqlc.arg(from_time)::timestamptz AND r.occurred_at<sqlc.arg(to_time)::timestamptz
+ORDER BY r.occurred_at,r.id LIMIT sqlc.arg(row_limit)::int;
+
+-- name: LedgerFingerprint :one
+SELECT encode(sha256(convert_to(COALESCE(string_agg(token, ',' ORDER BY token), ''), 'UTF8')), 'hex')::text
+FROM (
+ SELECT 'r|'||r.dataset||'|'||r.id::text||'|'||r.revision::text AS token FROM ledger_records r WHERE r.account_id=$1
+ UNION ALL SELECT 'g|'||g.gap_id::text FROM ledger_gaps g WHERE g.account_id=$1
+ UNION ALL SELECT 's|'||s.vehicle_id::text||'|'||s.segment_no::text FROM ledger_segments s WHERE s.account_id=$1
+) AS versions;

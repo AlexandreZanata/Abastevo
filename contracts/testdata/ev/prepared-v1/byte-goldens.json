@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "canonical": [
+    {
+      "value": null,
+      "expected_utf8": "null"
+    },
+    {
+      "value": {
+        "z": null,
+        "a": "São <&>  ",
+        "b": "\b\t\n\f\r\u0001\"\\/"
+      },
+      "expected_utf8": "{\"a\":\"São <&>  \",\"b\":\"\\b\\t\\n\\f\\r\\u0001\\\"\\\\/\",\"z\":null}"
+    },
+    {
+      "value": {
+        "arr": [
+          0,
+          -1,
+          9007199254740991,
+          true,
+          false,
+          {}
+        ]
+      },
+      "expected_utf8": "{\"arr\":[0,-1,9007199254740991,true,false,{}]}"
+    }
+  ],
+  "identities": [
+    {
+      "namespace": "ocm",
+      "kind": "PLACE",
+      "external_id": "154527",
+      "sha256": "1f296d32e5aea5010f75bd91bd3c2d4e28105ef9cb0c4887e02780cd65bfe871"
+    },
+    {
+      "namespace": "ocm",
+      "kind": "CONNECTION_GROUP",
+      "external_id": "154527:822001",
+      "sha256": "4543dcec026780d71d2bf14e546413a754c2ea947bcf240cac0e3e69d43f2ef1"
+    },
+    {
+      "namespace": "ee-test",
+      "kind": "EVSE",
+      "external_id": "e1",
+      "sha256": "2c3faf546610cc965ab300ae1a2c43defe84d1835f1a214a73f2591854a8b247"
+    },
+    {
+      "namespace": "ee-test",
+      "kind": "PLACE",
+      "external_id": "ç/á",
+      "sha256": "151fdd936e7b9e65ad4fd2732e731ba2e27278e1c38cd4d543bcb06954b3f30c"
+    }
+  ]
+}

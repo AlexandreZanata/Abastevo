@@ -5,7 +5,8 @@ package metrics
 
 import (
 	"errors"
-	"fmt"
+	"math"
+	"math/big"
 )
 
 const (
@@ -40,32 +41,21 @@ type Result struct {
 	Unknown               string
 }
 
-func gcd(a, b int64) int64 {
-	if a < 0 {
-		a = -a
-	}
-	if b < 0 {
-		b = -b
-	}
-	for b != 0 {
-		a, b = b, a%b
-	}
-	if a == 0 {
-		return 1
-	}
-	return a
-}
+func rational(num, den int64) string { return scaledRational(num, 1, den) }
 
-func rational(num, den int64) string {
+func scaledRational(num, scale, den int64) string {
 	if den <= 0 {
 		return ""
 	}
-	g := gcd(num, den)
-	num, den = num/g, den/g
-	if den == 1 {
-		return fmt.Sprintf("%d", num)
+	numerator := new(big.Int).Mul(big.NewInt(num), big.NewInt(scale))
+	return new(big.Rat).SetFrac(numerator, big.NewInt(den)).RatString()
+}
+
+func addNonNegative(a, b int64) (int64, bool) {
+	if a < 0 || b < 0 || a > math.MaxInt64-b {
+		return 0, false
 	}
-	return fmt.Sprintf("%d/%d", num, den)
+	return a + b, true
 }
 
 var errBounds = errors.New("metrics: input-out-of-bounds")
@@ -93,7 +83,19 @@ func (in Interval) Compute() (Result, error) {
 	}
 	units := map[string]bool{}
 	fuels := map[string]bool{}
-	for _, f := range in.Fills {
+	for _, f := range append([]Fill{in.StartingFillExcluded}, in.Fills...) {
+		switch f.Fuel {
+		case "CNG":
+			if f.Unit != "M3" {
+				return Result{Unknown: "incompatible-unit"}, nil
+			}
+		case "ETHANOL", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED", "GASOLINE_PREMIUM_GRADE", "DIESEL_S500", "DIESEL_S10":
+			if f.Unit != "L" {
+				return Result{Unknown: "incompatible-unit"}, nil
+			}
+		default:
+			return Result{Unknown: "input-out-of-bounds"}, errBounds
+		}
 		units[f.Unit] = true
 		fuels[f.Fuel] = true
 	}
@@ -108,22 +110,20 @@ func (in Interval) Compute() (Result, error) {
 	if len(fuels) > 1 {
 		return Result{Unknown: "unsupported-mixed-method"}, nil
 	}
-	fullAnchors := 0
-	if in.StartingFillExcluded.Full {
-		fullAnchors++
-	}
-	for _, f := range in.Fills {
-		if f.Full {
-			fullAnchors++
-		}
-	}
-	if fullAnchors < 2 {
+	if !in.StartingFillExcluded.Full || len(in.Fills) == 0 || !in.Fills[len(in.Fills)-1].Full {
 		return Result{Unknown: "full-anchors-required"}, nil
 	}
 	var quantity, cost int64
 	for _, f := range in.Fills {
-		quantity += f.QuantityMilli
-		cost += f.TotalCentavos
+		var ok bool
+		quantity, ok = addNonNegative(quantity, f.QuantityMilli)
+		if !ok {
+			return Result{Unknown: "input-out-of-bounds"}, errBounds
+		}
+		cost, ok = addNonNegative(cost, f.TotalCentavos)
+		if !ok {
+			return Result{Unknown: "input-out-of-bounds"}, errBounds
+		}
 	}
 	if quantity <= 0 {
 		return Result{Unknown: "full-anchors-required"}, nil
@@ -133,6 +133,32 @@ func (in Interval) Compute() (Result, error) {
 		EligibleCostCentavos:  cost,
 		DistanceMetres:        in.DistanceMetres,
 		KmPerUnit:             rational(in.DistanceMetres, quantity),
-		CentavosPerKm:         rational(cost*1000, in.DistanceMetres),
+		CentavosPerKm:         scaledRational(cost, 1000, in.DistanceMetres),
 	}, nil
+}
+
+// CompareConsumption reuses the existing PRM comparison math; method/unit/
+// period compatibility remains the caller's typed contract responsibility.
+type ConsumptionComparison struct {
+	ChangePercent string
+	Unknown       string
+}
+
+func CompareConsumption(base, current Result) ConsumptionComparison {
+	if base.Unknown != "" {
+		return ConsumptionComparison{Unknown: "baseline-incomplete: " + base.Unknown}
+	}
+	if current.Unknown != "" {
+		return ConsumptionComparison{Unknown: "current-incomplete: " + current.Unknown}
+	}
+	if base.EligibleCostCentavos == 0 {
+		return ConsumptionComparison{Unknown: "comparison-baseline-zero"}
+	}
+	if base.DistanceMetres <= 0 || base.EligibleQuantityMilli <= 0 || current.DistanceMetres <= 0 || current.EligibleQuantityMilli <= 0 || base.EligibleCostCentavos < 0 || current.EligibleCostCentavos < 0 {
+		return ConsumptionComparison{Unknown: "input-out-of-bounds"}
+	}
+	numerator := new(big.Int).Sub(new(big.Int).Mul(big.NewInt(current.DistanceMetres), big.NewInt(base.EligibleQuantityMilli)), new(big.Int).Mul(big.NewInt(base.DistanceMetres), big.NewInt(current.EligibleQuantityMilli)))
+	numerator.Mul(numerator, big.NewInt(100))
+	denominator := new(big.Int).Mul(big.NewInt(base.DistanceMetres), big.NewInt(current.EligibleQuantityMilli))
+	return ConsumptionComparison{ChangePercent: new(big.Rat).SetFrac(numerator, denominator).RatString()}
 }

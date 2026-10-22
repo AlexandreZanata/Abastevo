@@ -1,5 +1,7 @@
 package com.anpfuel.domain.premium
 
+import java.math.BigInteger
+
 /**
  * PRM09-T01 exact integer bounds shared by ledger inputs.
  *
@@ -55,26 +57,19 @@ object PremiumBounds {
         }
     }
 
-    internal fun gcd(a: Long, b: Long): Long {
-        var x = if (a < 0) -a else a
-        var y = if (b < 0) -b else b
-        while (y != 0L) {
-            val t = x % y
-            x = y
-            y = t
-        }
-        return if (x == 0L) 1L else x
+    internal fun addNonNegative(a: Long, b: Long): Long? =
+        if (a < 0 || b < 0 || a > Long.MAX_VALUE - b) null else a + b
+
+    /** Exact intermediates may exceed Long even when every input is bounded. */
+    fun scaledRational(num: Long, scale: Long, den: Long): String {
+        if (den <= 0L) return ""
+        val numerator = BigInteger.valueOf(num) * BigInteger.valueOf(scale)
+        val denominator = BigInteger.valueOf(den)
+        val divisor = numerator.gcd(denominator)
+        val n = numerator / divisor
+        val d = denominator / divisor
+        return if (d == BigInteger.ONE) n.toString() else "$n/$d"
     }
 
-    /**
-     * Reduced rational string mirroring Go `rational()`: `10` when the
-     * denominator reduces to 1, otherwise `num/den`. Empty when den <= 0.
-     */
-    fun rational(num: Long, den: Long): String {
-        if (den <= 0L) return ""
-        val g = gcd(num, den)
-        val n = num / g
-        val d = den / g
-        return if (d == 1L) n.toString() else "$n/$d"
-    }
+    fun rational(num: Long, den: Long): String = scaledRational(num, 1, den)
 }

@@ -37,3 +37,10 @@ WHERE a.revision_id = @revision_id AND a.station_id = @station_id AND a.resoluti
  AND NOT c.historical_business_window_known
  AND v.source_contract!='sanction-prepared-8-v1'
  AND v.party_cnpj=ANY(@allowed_cnpjs::text[]) AND v.id = @id;
+
+-- name: LockCompanyReadRevision :one
+SELECT r.id FROM quality_revisions r
+JOIN quality_editions e ON e.id=r.edition_id
+WHERE r.id=sqlc.arg(revision_id)::uuid AND e.source='sanctions' AND e.stream='sanction-v1'
+AND r.status IN ('published','superseded')
+FOR SHARE OF r;

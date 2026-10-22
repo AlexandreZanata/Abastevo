@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test
 /**
  * PRM09-T01 Go/Kotlin parity: frozen `contracts/testdata/premium/financial-v1.json`
  * vectors must compute identical eligible sums and rational strings.
- * Month/comparison vectors ride later tasks and are skipped here, mirroring
- * the backend `vectors_test.go` selection.
+ * The executable shared corpus, including month/comparison cases, now runs in
+ * FinancialExecutionVectorsTest; these focused examples retain local diagnostics.
  */
 class PremiumConsumptionTest {
 

@@ -210,3 +210,18 @@ func (q *Queries) CompanyStationCandidates(ctx context.Context, arg CompanyStati
 	}
 	return items, nil
 }
+
+const lockCompanyReadRevision = `-- name: LockCompanyReadRevision :one
+SELECT r.id FROM quality_revisions r
+JOIN quality_editions e ON e.id=r.edition_id
+WHERE r.id=$1::uuid AND e.source='sanctions' AND e.stream='sanction-v1'
+AND r.status IN ('published','superseded')
+FOR SHARE OF r
+`
+
+func (q *Queries) LockCompanyReadRevision(ctx context.Context, revisionID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockCompanyReadRevision, revisionID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}

@@ -1,16 +1,22 @@
 # Premium source policy v1
 
+**2026-10-21 frozen registration amendment:** [registration v2](VEHICLE_REGISTRATION_POLICY.md)
+and the additive machine-policy amendment select one new free vehicle and planned
+`vehicles.multiple` for extras, preserving held data and the technical ceiling3.
+MEX-01 freezes contracts/examples; MEX-07/08 still owe actual capability and atomic
+hosted/local enforcement. `runtime_enforced=false` explicitly records that gap.
+
 State: source contract frozen for PRM00-T02, 2026-10-13. [Machine-readable limits](../../contracts/premium/policy-v1.json) own exact source bounds; [Premium contract](PREMIUM_PRODUCT_CONTRACT.md) owns behavior. These are conservative implementation ceilings, not measured VPS capacity, product prices or an enabled paid service. User explicitly deferred payment-module/catalog setup and real provider evidence; deployment admission remains zero. Measure workload/cost/headroom before any later activation.
 
 ## Capability and cancellation matrix
 
 ACTIVE and canceled-renewal-but-paid-through may grant only inside a fresh verified provider expiry. Provider GRACE preserves access through the provider's current expiry, with no locally invented extension. PENDING, pending-canceled, PAUSED, ON_HOLD, EXPIRED, REVOKED and unknown grant none. Every server operation rechecks active account, unrevoked session (for interactive commands), token-chain retirement, verified expiry and proof freshness. A provider outage cannot refresh proof. Freshness is 900s; boundary is exclusive. Future local offline lease is at most 24h and always clipped to verified paid-through time; server writes never use that lease. Clock rollback/future verification is refused.
 
-Existing data read/export/correction/delete rights are independent of paid capability. No paid flag is read by community, moderation, account registration/recovery, local vehicles/history or basic alerts. Renew-cancel is distinct from immediate revocation. Financial/cloud metadata is owner-only, with no-store responses. Request account IDs never determine authority; derive owner from existing live session proof.
+Existing data read/export/correction/delete rights are independent of paid capability. Community, moderation, account registration/recovery, held local vehicles/history and basic alerts never read a paid flag. Only additional new vehicle registrations acquire the staged v2 capability check. Renew-cancel is distinct from immediate revocation. Financial/cloud metadata is owner-only, with no-store responses. Request account IDs never determine authority; derive owner from existing live session proof.
 
 ## Consent, retention and recovery
 
-Cloud domains require explicit per-dataset opt-in. Credentials/keys/purchase tokens/permissions/precise GPS/photos/caches never enter user snapshots. Only acknowledged server revisions are protected. Snapshot cadence 24h, seven snapshots at most, 10 MiB each; three devices/vehicles, ten advanced rules, 50-operation batches/100-row pages, 20k ledger records and 12-month report query bounds are source ceilings. They are neither advertised entitlements nor capacity measurements. No extra vehicle slot is introduced.
+Cloud domains require explicit per-dataset opt-in. Credentials/keys/purchase tokens/permissions/precise GPS/photos/caches never enter user snapshots. Only acknowledged server revisions are protected. Snapshot cadence 24h, seven snapshots at most, 10 MiB each; three devices, technical vehicle ceiling3, ten advanced rules, 50-operation batches/100-row pages, 20k ledger records and 12-month report query bounds are source ceilings. They are neither advertised entitlements nor capacity measurements. The staged free registration limit is1; the vehicle ceiling is not increased.
 
 Cloud expiry allows 30 days of owner-only exit download before scheduled cloud purge; retained local data is not purged. Live cloud/snapshot/report bytes become inaccessible immediately on erasure and are physically purged within the 24h active-storage objective; failed receipts remain tracked. Infrastructure backups have a separate maximum seven-day rotation and a deletion ledger outside the restored dataset; before serving restored data replay erasure/revocation and purge expired objects. This does not extend the existing operational photo cap. Actual provider/deletion deadline proofs are required before collection/paid activation. No new snapshot service is built by this batch.
 

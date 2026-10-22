@@ -25,4 +25,21 @@ object MunicipalityDataAvailabilityRule {
                 DataAvailability.NEVER_IN_ANP
         }
     }
+
+    /**
+     * MEX-04 — Availability when no survey week is selected. Without a week
+     * there is no HAS_DATA; a catalog entry imported before is still
+     * distinguished from one never seen in ANP history.
+     */
+    fun resolveWithoutWeek(
+        entry: MunicipalityCatalogEntry,
+        municipalitiesEverInAnp: Set<MunicipalityLocationKey>,
+    ): DataAvailability {
+        return when {
+            entry.locationKey in municipalitiesEverInAnp ->
+                DataAvailability.NO_DATA_THIS_WEEK
+            else ->
+                DataAvailability.NEVER_IN_ANP
+        }
+    }
 }

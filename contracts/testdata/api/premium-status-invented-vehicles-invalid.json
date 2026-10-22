@@ -1,0 +1,16 @@
+{
+  "id": "premium-status-invented-vehicles-invalid",
+  "schema": "PremiumStatusResponse",
+  "valid": false,
+  "value": {
+    "policy_version": 1,
+    "state": "ACTIVE",
+    "reason": "verified",
+    "capabilities": [
+      "vehicles.unlimited"
+    ],
+    "valid_until": "2026-10-21T13:00:00Z",
+    "retained_data_access": true,
+    "payments_configured": true
+  }
+}

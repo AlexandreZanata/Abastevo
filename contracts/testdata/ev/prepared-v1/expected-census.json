@@ -1,0 +1,43 @@
+{
+  "fixture": "nested",
+  "input_roots": 4,
+  "input_units": 14,
+  "accepted": 6,
+  "duplicates": 5,
+  "quarantined": 3,
+  "physical_connector_assertions": 2,
+  "reported_group_quantity": 3,
+  "aliases": 1,
+  "counts": {
+    "PLACE": {
+      "input": 3,
+      "accepted": 1,
+      "duplicates": 1,
+      "quarantined": 1
+    },
+    "EVSE": {
+      "input": 3,
+      "accepted": 1,
+      "duplicates": 1,
+      "quarantined": 1
+    },
+    "CONNECTOR": {
+      "input": 5,
+      "accepted": 2,
+      "duplicates": 2,
+      "quarantined": 1
+    },
+    "CONNECTION_GROUP": {
+      "input": 2,
+      "accepted": 1,
+      "duplicates": 1,
+      "quarantined": 0
+    },
+    "VEHICLE_REFERENCE": {
+      "input": 1,
+      "accepted": 1,
+      "duplicates": 0,
+      "quarantined": 0
+    }
+  }
+}

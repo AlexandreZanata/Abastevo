@@ -1,0 +1,995 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EV local preparation contract (planned)",
+    "version": "1"
+  },
+  "paths": {},
+  "x-implementation-status": "CONTRACT_FROZEN_RUNTIME_PENDING",
+  "components": {
+    "schemas": {
+      "PreparedManifest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "byte_profile",
+          "identity_profile",
+          "privacy_profile",
+          "profile_id",
+          "profile_sha256",
+          "rights_sha256",
+          "source_revision",
+          "reference_sha256",
+          "inputs",
+          "artifacts",
+          "counts",
+          "content_sha256"
+        ],
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "charging-prepared-v1",
+              "vehicle-energy-reference-v1"
+            ]
+          },
+          "byte_profile": {
+            "type": "string",
+            "enum": [
+              "ev-json-v1"
+            ]
+          },
+          "identity_profile": {
+            "type": "string",
+            "enum": [
+              "ev-source-key-v1"
+            ]
+          },
+          "privacy_profile": {
+            "type": "string",
+            "enum": [
+              "ev-minimal-v1"
+            ]
+          },
+          "profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+          },
+          "profile_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "rights_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "source_revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+          },
+          "reference_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "nullable": true
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file",
+                "sha256",
+                "bytes",
+                "roots"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 104857600
+                },
+                "roots": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 500000
+                }
+              }
+            },
+            "maxItems": 500000
+          },
+          "artifacts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entities.ndjson",
+              "decisions.ndjson",
+              "aliases.ndjson"
+            ],
+            "properties": {
+              "entities.ndjson": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sha256",
+                  "bytes",
+                  "records"
+                ],
+                "properties": {
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 104857600
+                  },
+                  "records": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "decisions.ndjson": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sha256",
+                  "bytes",
+                  "records"
+                ],
+                "properties": {
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 104857600
+                  },
+                  "records": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "aliases.ndjson": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sha256",
+                  "bytes",
+                  "records"
+                ],
+                "properties": {
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 104857600
+                  },
+                  "records": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "PLACE",
+              "EVSE",
+              "CONNECTOR",
+              "CONNECTION_GROUP",
+              "VEHICLE_REFERENCE"
+            ],
+            "properties": {
+              "PLACE": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "accepted",
+                  "duplicates",
+                  "quarantined"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "accepted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "duplicates": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "quarantined": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "EVSE": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "accepted",
+                  "duplicates",
+                  "quarantined"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "accepted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "duplicates": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "quarantined": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "CONNECTOR": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "accepted",
+                  "duplicates",
+                  "quarantined"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "accepted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "duplicates": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "quarantined": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "CONNECTION_GROUP": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "accepted",
+                  "duplicates",
+                  "quarantined"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "accepted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "duplicates": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "quarantined": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              },
+              "VEHICLE_REFERENCE": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input",
+                  "accepted",
+                  "duplicates",
+                  "quarantined"
+                ],
+                "properties": {
+                  "input": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "accepted": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "duplicates": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  },
+                  "quarantined": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000
+                  }
+                }
+              }
+            }
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "PreparedEntity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "key",
+          "parent_key",
+          "external_id",
+          "unit",
+          "payload",
+          "field_provenance",
+          "rights_sha256",
+          "source_clocks",
+          "assertion_sha256"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PLACE",
+              "EVSE",
+              "CONNECTOR",
+              "CONNECTION_GROUP",
+              "VEHICLE_REFERENCE"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "parent_key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "nullable": true
+          },
+          "external_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[a-zA-Z0-9_.-]+#[0-9]+(?:/[a-zA-Z0-9_~-]+)*$"
+          },
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "public_access",
+                  "name",
+                  "country",
+                  "latitude_decimal",
+                  "longitude_decimal",
+                  "reported_point_count"
+                ],
+                "properties": {
+                  "public_access": {
+                    "type": "string",
+                    "enum": [
+                      "PUBLIC",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "nullable": true
+                  },
+                  "country": {
+                    "type": "string",
+                    "enum": [
+                      "BR"
+                    ]
+                  },
+                  "latitude_decimal": {
+                    "type": "string",
+                    "pattern": "^-?(?:0|[1-9][0-9]?)(?:\\.[0-9]{1,16})?$",
+                    "maxLength": 21,
+                    "nullable": true
+                  },
+                  "longitude_decimal": {
+                    "type": "string",
+                    "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,16})?$",
+                    "maxLength": 22,
+                    "nullable": true
+                  },
+                  "reported_point_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 500000,
+                    "nullable": true
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "power_w"
+                ],
+                "properties": {
+                  "power_w": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000,
+                    "nullable": true
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "connector_code",
+                  "raw_connector_code",
+                  "current",
+                  "power_w"
+                ],
+                "properties": {
+                  "connector_code": {
+                    "type": "string",
+                    "enum": [
+                      "CCS2",
+                      "TYPE2",
+                      "CHADEMO",
+                      "NACS",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "raw_connector_code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                    "nullable": true
+                  },
+                  "current": {
+                    "type": "string",
+                    "enum": [
+                      "AC",
+                      "DC",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "power_w": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000,
+                    "nullable": true
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "connector_code",
+                  "raw_connector_code",
+                  "current",
+                  "power_w",
+                  "reported_quantity"
+                ],
+                "properties": {
+                  "connector_code": {
+                    "type": "string",
+                    "enum": [
+                      "CCS2",
+                      "TYPE2",
+                      "CHADEMO",
+                      "NACS",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "raw_connector_code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                    "nullable": true
+                  },
+                  "current": {
+                    "type": "string",
+                    "enum": [
+                      "AC",
+                      "DC",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "power_w": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000000000,
+                    "nullable": true
+                  },
+                  "reported_quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000,
+                    "nullable": true
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model_code"
+                ],
+                "properties": {
+                  "model_code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+                  }
+                }
+              }
+            ]
+          },
+          "field_provenance": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field",
+                "path"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^/[a-zA-Z0-9_~/.-]+$",
+                  "maxLength": 256
+                }
+              }
+            },
+            "maxItems": 32
+          },
+          "rights_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "source_clocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field",
+                "value"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "enum": [
+                    "created_at",
+                    "verified_at",
+                    "status_at"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                  "nullable": true
+                }
+              }
+            },
+            "maxItems": 3
+          },
+          "assertion_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "PreparedDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit",
+          "kind",
+          "source_file",
+          "root",
+          "pointer",
+          "parent_unit",
+          "outcome",
+          "key",
+          "external_id",
+          "assertion_sha256",
+          "duplicate_of",
+          "reason",
+          "raw_sha256"
+        ],
+        "properties": {
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[a-zA-Z0-9_.-]+#[0-9]+(?:/[a-zA-Z0-9_~-]+)*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PLACE",
+              "EVSE",
+              "CONNECTOR",
+              "CONNECTION_GROUP",
+              "VEHICLE_REFERENCE"
+            ]
+          },
+          "source_file": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+          },
+          "root": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 499999
+          },
+          "pointer": {
+            "type": "string",
+            "pattern": "^(?:/[a-zA-Z0-9_~-]+)*$",
+            "maxLength": 256
+          },
+          "parent_unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[a-zA-Z0-9_.-]+#[0-9]+(?:/[a-zA-Z0-9_~-]+)*$",
+            "nullable": true
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "DUPLICATE",
+              "QUARANTINED"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "nullable": true
+          },
+          "external_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "nullable": true
+          },
+          "assertion_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "nullable": true
+          },
+          "duplicate_of": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[a-zA-Z0-9_.-]+#[0-9]+(?:/[a-zA-Z0-9_~-]+)*$",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NON_PUBLIC",
+              "PARENT_QUARANTINED",
+              "INVALID_ID",
+              "UNSUPPORTED_PRECISION",
+              "UNKNOWN_REQUIRED_FIELD"
+            ],
+            "nullable": true
+          },
+          "raw_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "PreparedAlias": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alias_key",
+          "target_key",
+          "kind",
+          "external_id",
+          "proof",
+          "proof_sha256"
+        ],
+        "properties": {
+          "alias_key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "target_key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PLACE",
+              "EVSE",
+              "CONNECTOR",
+              "CONNECTION_GROUP",
+              "VEHICLE_REFERENCE"
+            ]
+          },
+          "external_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+          },
+          "proof": {
+            "type": "string",
+            "enum": [
+              "REVIEWED_SOURCE_ID"
+            ]
+          },
+          "proof_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "PayloadPLACE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "public_access",
+          "name",
+          "country",
+          "latitude_decimal",
+          "longitude_decimal",
+          "reported_point_count"
+        ],
+        "properties": {
+          "public_access": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "UNKNOWN"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "enum": [
+              "BR"
+            ]
+          },
+          "latitude_decimal": {
+            "type": "string",
+            "pattern": "^-?(?:0|[1-9][0-9]?)(?:\\.[0-9]{1,16})?$",
+            "maxLength": 21,
+            "nullable": true
+          },
+          "longitude_decimal": {
+            "type": "string",
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,16})?$",
+            "maxLength": 22,
+            "nullable": true
+          },
+          "reported_point_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500000,
+            "nullable": true
+          }
+        }
+      },
+      "PayloadEVSE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "power_w"
+        ],
+        "properties": {
+          "power_w": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          }
+        }
+      },
+      "PayloadCONNECTOR": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "connector_code",
+          "raw_connector_code",
+          "current",
+          "power_w"
+        ],
+        "properties": {
+          "connector_code": {
+            "type": "string",
+            "enum": [
+              "CCS2",
+              "TYPE2",
+              "CHADEMO",
+              "NACS",
+              "UNKNOWN"
+            ]
+          },
+          "raw_connector_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "nullable": true
+          },
+          "current": {
+            "type": "string",
+            "enum": [
+              "AC",
+              "DC",
+              "UNKNOWN"
+            ]
+          },
+          "power_w": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          }
+        }
+      },
+      "PayloadCONNECTION_GROUP": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "connector_code",
+          "raw_connector_code",
+          "current",
+          "power_w",
+          "reported_quantity"
+        ],
+        "properties": {
+          "connector_code": {
+            "type": "string",
+            "enum": [
+              "CCS2",
+              "TYPE2",
+              "CHADEMO",
+              "NACS",
+              "UNKNOWN"
+            ]
+          },
+          "raw_connector_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "nullable": true
+          },
+          "current": {
+            "type": "string",
+            "enum": [
+              "AC",
+              "DC",
+              "UNKNOWN"
+            ]
+          },
+          "power_w": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000,
+            "nullable": true
+          },
+          "reported_quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500000,
+            "nullable": true
+          }
+        }
+      },
+      "PayloadVEHICLE_REFERENCE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model_code"
+        ],
+        "properties": {
+          "model_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+          }
+        }
+      }
+    }
+  }
+}

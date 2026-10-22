@@ -519,4 +519,11 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_17_18: Migration = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-05 prefix index; canonical v17 community snapshots survive.
+            db.execSQL("CREATE INDEX IF NOT EXISTS `idx_municipality_catalog_normalized` ON `municipality_catalog` (`normalized_name`)")
+        }
+    }
+
 }

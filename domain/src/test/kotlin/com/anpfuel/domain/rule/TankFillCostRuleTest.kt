@@ -23,6 +23,19 @@ import java.math.BigDecimal
 
 class TankFillCostRuleTest {
 
+    @Test
+    fun missingSelectedStationPreservesFallbackMeaningAndUnknownWithoutData() {
+        val selected = vehicle(FuelProduct.ETHANOL, VehiclePriceSource.specific(Cnpj.parse("11222333000181")), 40.0)
+        val other = stationPrice(FuelProduct.ETHANOL, "3.20", "Other synthetic station")
+        val fallback = TankFillCostRule.estimate(selected, TankFillCostRule.PriceContext(listOf(other), averagePrice("3.30")))
+        assertEquals(PriceAmount.of("3.20"), fallback?.unitPrice)
+        assertEquals(TankFillCostUnitPriceSource.CHEAPEST_STATION, fallback?.unitPriceSource)
+        val average = TankFillCostRule.estimate(selected, TankFillCostRule.PriceContext(emptyList(), averagePrice("3.30")))
+        assertEquals(TankFillCostUnitPriceSource.AVERAGE_MINIMUM, average?.unitPriceSource)
+        assertEquals(PriceAmount.of("132.00"), average?.totalCost)
+        assertNull(TankFillCostRule.estimate(selected, TankFillCostRule.PriceContext(emptyList(), null)))
+    }
+
     private val surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
     private val priceSurveyId = DomainId.forSurveyWeek(surveyWeek)
 

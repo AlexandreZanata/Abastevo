@@ -29,11 +29,12 @@ const (
 
 // Handler serves anonymous quality reads.
 type Handler struct {
-	Read          *read.Reader
-	Secrets       []byte
-	StationsExist func(ctx context.Context, id string) (bool, error)
-	Enabled       func() bool
-	Now           func() time.Time
+	Read           *read.Reader
+	Secrets        []byte
+	StationsExist  func(ctx context.Context, id string) (bool, error)
+	Enabled        func() bool
+	CompanyEnabled func() bool
+	Now            func() time.Time
 }
 
 // RegisterRoutes mounts the quality reads under /v1/quality.
@@ -127,6 +128,10 @@ func (h Handler) disabled(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (h Handler) exists(w http.ResponseWriter, r *http.Request, id string) bool {
+	if h.StationsExist == nil {
+		sourceDown(w, r)
+		return false
+	}
 	ok, err := h.StationsExist(r.Context(), id)
 	if err != nil {
 		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "quality.source-down", "try again later", nil)
@@ -334,7 +339,16 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request, source, stream, 
 	if h.disabled(w, r) {
 		return
 	}
+	qValues, ok := eventQuery(w, r, source, false)
+	if !ok {
+		return
+	}
 	if !h.selectRevision(w, r) {
+		return
+	}
+
+	if _, scoped := qValues["station_id"]; scoped {
+		h.companyEvents(w, r)
 		return
 	}
 	q := r.URL.Query()
@@ -425,7 +439,16 @@ func (h Handler) eventOne(w http.ResponseWriter, r *http.Request, source, stream
 	if h.disabled(w, r) {
 		return
 	}
+	qValues, ok := eventQuery(w, r, source, true)
+	if !ok {
+		return
+	}
 	if !h.selectRevision(w, r) {
+		return
+	}
+
+	if _, scoped := qValues["station_id"]; scoped {
+		h.companyOne(w, r)
 		return
 	}
 	id, err := application.ValidateStationID(chi.URLParam(r, "id"))

@@ -1,0 +1,237 @@
+{
+  "version": 2,
+  "state": "CONTRACT_EXAMPLES_NOT_RUNTIME_ACCEPTANCE",
+  "provenance": "Synthetic reviewed MEX-01 arithmetic; concurrency rows describe a serialized result, not an executed concurrent persistence test.",
+  "cases": [
+    {
+      "id": "free-first",
+      "registered_before": 0,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "free-second",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "legacy-two-correct",
+      "registered_before": 2,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 2,
+      "held_data_preserved": true
+    },
+    {
+      "id": "legacy-three-read",
+      "registered_before": 3,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 3,
+      "held_data_preserved": true
+    },
+    {
+      "id": "expired-three-new",
+      "registered_before": 3,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "EXPIRED",
+      "outcome": "CAPACITY_EXCEEDED",
+      "registered_after": 3,
+      "held_data_preserved": true
+    },
+    {
+      "id": "expired-two-correct",
+      "registered_before": 2,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "EXPIRED",
+      "outcome": "ACCEPT",
+      "registered_after": 2,
+      "held_data_preserved": true
+    },
+    {
+      "id": "expired-first-new-second",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "EXPIRED",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "premium-third",
+      "registered_before": 2,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "SERVER_VERIFIED",
+      "outcome": "ACCEPT",
+      "registered_after": 3,
+      "held_data_preserved": true
+    },
+    {
+      "id": "premium-fourth",
+      "registered_before": 3,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "SERVER_VERIFIED",
+      "outcome": "CAPACITY_EXCEEDED",
+      "registered_after": 3,
+      "held_data_preserved": true
+    },
+    {
+      "id": "concurrent-free-first",
+      "registered_before": 0,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "concurrent-free-second",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "import-two-atomic-refusal",
+      "registered_before": 0,
+      "new_distinct_ids": 2,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 0,
+      "held_data_preserved": true
+    },
+    {
+      "id": "restore-same-ids",
+      "registered_before": 3,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "EXPIRED",
+      "outcome": "ACCEPT",
+      "registered_after": 3,
+      "held_data_preserved": true
+    },
+    {
+      "id": "replay-same-id",
+      "registered_before": 1,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "offline-valid",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "LOCAL_VALID_LEASE",
+      "outcome": "ACCEPT",
+      "registered_after": 2,
+      "held_data_preserved": true
+    },
+    {
+      "id": "offline-expired",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "EXPIRED",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "clock-rollback",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "CLOCK_ROLLBACK",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "offline-hosted-refused",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "HOSTED",
+      "authority": "LOCAL_VALID_LEASE",
+      "outcome": "HOSTED_AUTHORITY_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "free-hosted-first",
+      "registered_before": 0,
+      "new_distinct_ids": 1,
+      "scope": "HOSTED",
+      "authority": "NONE",
+      "outcome": "HOSTED_AUTHORITY_REQUIRED",
+      "registered_after": 0,
+      "held_data_preserved": true
+    },
+    {
+      "id": "premium-hosted-first",
+      "registered_before": 0,
+      "new_distinct_ids": 1,
+      "scope": "HOSTED",
+      "authority": "SERVER_VERIFIED",
+      "outcome": "ACCEPT",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "stale-proof-second",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "PROOF_STALE",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "unknown-policy-second",
+      "registered_before": 1,
+      "new_distinct_ids": 1,
+      "scope": "LOCAL",
+      "authority": "UNKNOWN_POLICY",
+      "outcome": "PREMIUM_REQUIRED",
+      "registered_after": 1,
+      "held_data_preserved": true
+    },
+    {
+      "id": "legacy-over-ceiling-correct",
+      "registered_before": 4,
+      "new_distinct_ids": 0,
+      "scope": "LOCAL",
+      "authority": "NONE",
+      "outcome": "ACCEPT",
+      "registered_after": 4,
+      "held_data_preserved": true
+    }
+  ]
+}

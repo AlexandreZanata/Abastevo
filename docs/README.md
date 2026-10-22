@@ -1,5 +1,21 @@
 # abastevo documentation
 
+[Full EV/hybrid extension](planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md),
+[25-source research register](planning/EV_SOURCE_RESEARCH.md),
+[EV product rules](product/EV_SUPPORT_CONTRACT.md),
+[energy/cost method](product/EV_FINANCIAL_METHOD.md) and
+[combined MEX/EV agent prompt](planning/EV_SUPPORT_EXECUTION_PROMPT.md) extend
+mobile expansion with Rust preparation, source/licensing boundaries, community
+charging prices, Android local data and private energy costs/sync. Planning only;
+complete declared journeys are distinct from national/live-provider coverage.
+
+[Mobile expansion plan](planning/MOBILE_EXPANSION_EXECUTION_PLAN.md),
+[product amendment](product/MOBILE_EXPANSION_CONTRACT.md) and
+[implementation-agent prompt](planning/MOBILE_EXPANSION_EXECUTION_PROMPT.md)
+coordinate one-free-vehicle/Premium rules, professional Android tools, fast place
+search, national price exploration and safely attributed ANP occurrence filters.
+Planning only; PRM/FQ/OPT ownership and external activation gates remain intact.
+
 [Notification content/OneSignal plan](product/NOTIFICATION_CONTENT_CONTRACT.md) defines proposed bodies and PRM11–PRM14; implementation and live sends remain deferred.
 
 [Premium execution plan](planning/PREMIUM_BACKEND_APP_PLAN.md), [product contract](product/PREMIUM_PRODUCT_CONTRACT.md) and [first-ten evidence](backend/evidence/premium/PRM_FIRST_TEN.md) track the isolated backend batch and deferred real payments.

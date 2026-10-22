@@ -81,6 +81,7 @@ func (s *Store) RestoreCommit(ctx context.Context, p app.Principal, snapshotID, 
 	if meta.Epoch != state.Epoch {
 		return app.RestoreResult{}, domain.ErrResnapshot
 	}
+	admission := vehicleAdmission{}
 	pre := state.Revision
 	post := state.Revision
 	results := []app.CommandResult{}
@@ -129,15 +130,8 @@ func (s *Store) RestoreCommit(ctx context.Context, p app.Principal, snapshotID, 
 			if err != nil {
 				return app.RestoreResult{}, domain.ErrUnavailable
 			}
-			maximum := int64(1000)
-			if r.Dataset == "vehicles" {
-				maximum = 3
-			}
-			if r.Dataset == "preferences" {
-				maximum = 1
-			}
-			if count >= maximum {
-				return app.RestoreResult{}, domain.ErrQuota
+			if err = s.admitRecord(ctx, tx, p.AccountID, r.Dataset, count, &admission); err != nil {
+				return app.RestoreResult{}, err
 			}
 			row, err := query.SaveRecord(ctx, q.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: r.Dataset, ID: uid(r.ID), Payload: payload})
 			if err != nil {
@@ -160,6 +154,9 @@ func (s *Store) RestoreCommit(ctx context.Context, p app.Principal, snapshotID, 
 		return app.RestoreResult{}, domain.ErrUnavailable
 	}
 	if err = s.checkPaid(ctx, tx, p.AccountID); err != nil {
+		return app.RestoreResult{}, err
+	}
+	if err = s.recheckVehicleAdmission(ctx, tx, p.AccountID, admission); err != nil {
 		return app.RestoreResult{}, err
 	}
 	if _, err = query.DeviceSuccess(ctx, q.DeviceSuccessParams{ID: uid(p.DeviceID), AccountID: uid(p.AccountID), Origin: s.Origin}); err != nil {

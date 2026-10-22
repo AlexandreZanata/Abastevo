@@ -1,5 +1,17 @@
 # Current execution state
 
+- MEX-19 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentf0b8b1a9. [Scoped sanctions HTTP](../backend/evidence/mobile-expansion/MEX-19.md): optional station_id page/detail is exact current-company-only with no global fallback; fresh revision/station/Directory proof before304; cursor/ETag seal revision, station, filters, limit and private fingerprint; independent default-off `ANPFUEL_QUALITY_COMPANY_READS_ENABLED`; global/source routes unchanged. Five pre-fix filter assertions RED; targeted HTTP/PostGIS, final12-package race matrix, root loopback factory, config/API/OpenAPI (zero errors, existing392 warnings/103 informs), vet/static/sqlc, gofmt/diff/secrets PASS. Final regressions: stale detail ETag after Directory change404 (never304), foreign-stream revision404, empty NO_CURRENT_COMPANY_MATCH scope explicit with no fallback. Four-unit local batch MEX-10/17/18/19 complete; PR140/Go/wiki already integrated separately. Next: push dev, protected batch PR, current-head checks and guarded merge; no MEX-20/EE-04–10.
+
+- MEX-18 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentfa7632f4. [Scoped reader acceptance](../backend/evidence/mobile-expansion/MEX-18.md): four RED cancellation/withdrawal defects fixed; revision validity held through reads. Eight observed PostGIS Directory writer page/detail commit/cancel cases, six historical profiles, empty/legacy/outage/census negatives and exact indexed plans with20000 unrelated rows PASS. Full quality/Directory race9 packages, vet/static/sqlc/diff/secrets PASS. No source/HTTP activation; next MEX-19.
+
+- MEX-17 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6e679820. [Source/census freeze](../backend/evidence/mobile-expansion/MEX-17.md): fresh official listings and nine whole selected resources; native+independent fine oracles7/7, current enforcement244247 rows and PMQC66225 assays independently counted. Enforcement new hash held for MEX-20; unknown segments, nonunique case keys, seven blank PMQC results and missing/repeated month links explicit. Five oracle tests/repeat artifacts/diff/secrets PASS; no source activation. Next MEX-18 then19.
+
+- MEX-10 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent597f5e95. [Ledger/report reacceptance](../backend/evidence/mobile-expansion/MEX-10.md): seven real RED assertions closed, exact category sums, erase/stale refusal, gap/reset/missing-odo evidence and revision fingerprint independent of clocks. Owner-lock correction/commit/cancellation observed on PostGIS; complete bounded comparison replaces broken public-page wiring. Final ledger/metrics/cloudsync/private signed journey/API race matrix, vet/static/sqlc/contracts/diff/secrets PASS. No migration/dependency/activation; next MEX-17, then18/19.
+
+- Expansion/main reconciliation 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING. [Evidence](../backend/evidence/mobile-expansion/MAIN_RECONCILIATION_20261022.md): audited expansion retained on maintained dev, canonical Room17 preserved; additive prefix index moved to18. Physical 16→17→18 and17→18 retention/reopen/index tests2/2 PASS; combined JVM638/390/465(two existing skips)/400, APKs/lint, Go affected race/contracts/root compilation, SQLite oracle/diff/secrets PASS. Next authorized MEX-10 then17/18/19; blocked source gates unchanged.
+
+- PR140 integrated 2026-10-22 as `2480d2cc`, all four current-head remote checks passed; guarded finish ran local Quick once, dev retained/synchronized. Original commits/review fixes/Go1.27.3 correction remain ancestors. Wiki published once from merged SHA as `ac6bf04`; heartbeat PAUSED. Signed staging contribution/full manual/production obligations remain OWED.
+
 - Go1.27.3 security reconciliation 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent550c5e12. [Audit](../backend/GO1273_SECURITY_REVALIDATION.md): latest stable official Go/CI/Docker/smoke pins aligned, manifest digest verified, govulncheck clean and stale-runtime refusal tested (security11/11). Full backend unit race/vet/static/sqlc/OpenAPI PASS; tagged real PostGIS/S3 matrix112 packages PASS plus worker PASS after correcting mode775 native-fixture prerequisites to755. Four explicit opt-in proofs remain separate. Four nonroot images built and actual migrate/API live/ready PASS; no deployment. App inputs unchanged. Next publish existing PR140 head and require current-head remote checks/guarded finish/wiki; heartbeat stays paused during the requested audit.
 
 - OPT feed independent delivery review 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, reconciled submitted `8bb652fa` with dev `a2f8925c` at `438833a1`; protected dev → main PR #140 reused. [Corrections and acceptance](../mobile/opt-home-community-feed-review-20261021.md): ten reproduced defects corrected (delay/lifecycle/retention/retry/pagination/cancellation/corrupt snapshot and reconnect cursor state); concurrency and permanent 300 s call-count scenarios PASS. Full JVM 1,777 cases (two pre-existing opt-in skips), build/lint zero errors, physical Room upgrade/reopen 1 + Compose 7 + prior Room/migration 12 PASS; HTTP contract, Directory fault race/PostGIS ×3, public staging empty reads, diff/secret review PASS. Next: publish validated head to dev, current-head remote checks, guarded finish and one wiki mirror. Contribution staging E2E/full manual/production measurements remain OWED.
@@ -9,6 +21,146 @@
 - OPT home/community loading Phase 3 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING. [Evidence](../mobile/opt-home-community-feed-phase3.md). Verified `no-store`, no ETag/304, advisory hint only; no backend change. Added Room v17 `community_feed_cache` (scope-keyed first-page/summary snapshots, original dates, expiry filtered at read, 64-entry/7-day bounds, cursor pages excluded). 18 new tests green; domain/app/data suites, assembleDebug, lintDebug (0 errors), diff-check and secret review green. Device reopen pending.
 - OPT home/community loading Phase 4 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING. [Evidence](../mobile/opt-home-community-feed-phase4.md). Local-first paint (snapshot, else retained content, never blanked); fixed 15 s polling removed from both surfaces; central `CommunityRefreshPolicy` (60 s stale window candidate, doubling backoff, 5-retry budget, 30 s local sweep, 5 s loop floor) evaluated on open/return, scope change, reconnect and manual refresh; no off-screen/offline polling; Home failure now retains validated prices; pagination preservation unchanged. Fixed a real zero-delay busy-loop found during testing. 14 new tests green; domain 549 + app 95 + data 23 green; assembleDebug, lintDebug (0 errors), diff-check and secret review green. Device rendering/reopen pending.
 - OPT home/community loading Phase 5 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING. [Evidence](../mobile/opt-home-community-feed-phase5.md). Acceptance matrix (open with/without cache, offline reopen, slow/failure retention, valid-empty, expiry, fast scope switch, simultaneous triggers, exit/return, reconnect, manual, pagination, contribution-via-return, isolation) green on JVM. Final tree: domain 549, data 448, app community/home/stations 95, assembleDebug, lintDebug (0 errors), backend http contract, diff-check and secret review green; backend untouched. Measured 5-min foreground feed: 21→6 calls fresh (−71%), 21→0 offline, 21→5 outage-then-silence; first paint with snapshot needs 0 network calls. No latency/battery/capacity claims. Device rendering/reopen, staging E2E and production measurement remain pending. Scope implemented, validated and committed locally; other fronts preserved.
+- EE-11 independent audit + existing domain boundaries 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentd9b31fe4. [Review](../backend/evidence/ev-support/EE-11-REVIEW.md) repaired real Rust intermediate overflow/calendar/nanosecond defects and Go/Kotlin UUID/Unicode/unused-quantity validation;53 shared vectors PASS across Go/Kotlin/Rust, no dependency/schema/provider activation. [Domain audit](../backend/evidence/mobile-expansion/DOMAIN_AUDIT_20261021.md) closes the existing90% coverage gate at90.0607% through meaningful money/privacy/source/OCR/fallback tests; threshold/exclusions unchanged. Full JVM632/390/450(two pre-existing skips)/375, APKs/lint, Go race/contracts/vet/static/Go1.27.3 govuln zero findings, Rust test/fmt/clippy and diff/secrets PASS. Separate dev security commit3c80c1ab updates Go1.27.3 pins for PR140; source history reconciliation remains pending. Newly authorized four-unit batch: MEX-10/17/18/19 subject to actual prerequisites; MEX-08/EE-04–10 remain blocked on their owning gates.
+
+- EE-11 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent2afc77bf. [Tariff engine](../backend/evidence/ev-support/EE-11.md):
+  pure exact tariff scenario calculation in Go/Kotlin + Rust parity over 42
+  shared synthetic vectors: only INCLUDED/complete/no-min-max/final-half-up
+  yields KNOWN centavos; absent energy, unknown fees, eligibility mismatch,
+  partial validity windows and overflow are explicit refusals/UNKNOWN. Go
+  race/vet/static PASS; domain 615 tests zero failures (charging 100%
+  coverage; repo-wide 0.90 JaCoCo gate remains pre-existing failing for
+  unrelated packages); Rust lib+integration, fmt/clippy PASS; APK compile/
+  assemble, diff/secret PASS. No persistence/API/provider activation.
+  EE-04–10 blocked on admitted sources; next ready MEX-10 (needs EE-11+MEX-09).
+
+- MEX-09 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentb71f2732. [Exact financial/wire parity](../backend/evidence/mobile-expansion/MEX-09.md): repaired both full anchors, excluded-anchor fuel/unit checks, negative matched-window money and overflow in existing Go/Kotlin engines; checked sums and exact rational intermediates. Actual RED→GREEN, 36 shared execution vectors covering all15 frozen examples plus22 raw-value vectors, Go race/API/contracts/vet/static/build PASS. JVM domain608/application390/data450 (two existing skips)/app375, APKs and lint zero errors PASS; diff/secret checks PASS. No new API/dependency/schema or publication; retained raw/estimate/UNKNOWN distinctions. Two-unit request MEX-07/09 complete locally. MEX-08 needs EE-19; next ready MEX-10 or independent EE-04 needs new authorization. Global Go vulnerability integration gate remains separate.
+
+- MEX-07 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent9f05bdc1. [Hosted vehicle admission](../backend/evidence/mobile-expansion/MEX-07.md): live vehicles.multiple and central atomic 1-free/3-ceiling rule reused in cloud creation/import/restore; final proof recheck, retained legacy IDs and honest previews. Three RED defects closed; actual PostGIS race/rollback/retry and full cloud/subscription/API/contract matrix PASS, vet/build/static/OpenAPI/diff/secret checks PASS. MEX-06 location13 independently re-executed PASS. No schema/dependency/activation change. Global Go vulnerability CI remains blocked separately. MEX-08 needs EE-19; next ready MEX-09.
+
+- MEX-06 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent3c6a9878. [Evidence](../backend/evidence/mobile-expansion/MEX-06.md):
+  fast picker UI: generation fencing on catalog loads (obsolete responses
+  cannot land or error), memoized composition filters over a precomputed
+  normalized index, measured zero-debounce policy (indexed keystroke p95
+  0.35ms vs 5.13ms before, host JVM). app 375 tests incl. 5 new ViewModel
+  fencing/retention cases — zero failures; assemble/lint/diff/secrets
+  PASS. Native keystroke timing stays OWED. Next MEX-07.
+
+- MEX-05 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent431b935a. [Evidence](../backend/evidence/mobile-expansion/MEX-05.md):
+  bound typo search, retired per-keystroke findAll: one indexed
+  normalized-prefix range per stem (migration 16→17 additive, schema 17),
+  normalized FTS tokens, ranking on Default dispatcher with cancellation.
+  Documented exact/accent/typo probes keep visible top results; mid-token
+  substring retrieval retired (rule unchanged). Real-SQLite plan/count
+  oracle + asset parity benchmark PASS. data 449 (2 pre-existing skips),
+  application 390, domain 547, app 367 — zero failures; assemble/lint/
+  diff-check/secrets PASS. Next MEX-06 fast state/city UI.
+
+- MEX-04 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentd23aebc1. [Evidence](../backend/evidence/mobile-expansion/MEX-04.md):
+  batch place lookup/availability: discovery reads without mandatory imported
+  week (unavailable flags, never error), one grouped availability query + one
+  indexed state read per involved state, per-result N+1 eliminated with
+  identical accent/unknown-state semantics. Real-SQLite oracle PASS;
+  data 440 (2 pre-existing skips), application 390, domain 547, app 367 —
+  zero failures; assemble/lint/diff-check/secrets PASS. Selection write
+  still requires a week (week-bound event). Next MEX-05 typo search.
+
+- EE-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent49b8be2d. [Evidence](../backend/evidence/ev-support/EE-03.md):
+  versioned preparation/census envelope frozen (charging-prepared-v1,
+  vehicle-energy-reference-v1): pinned OCM-candidate/PBE-held/synthetic
+  profiles, 4 planned schemas + 5 payloads, byte/identity goldens, 14-unit
+  hand-counted synthetic census (6 accepted/5 duplicates/3 quarantined).
+  Python oracle 17/17, Rust lib 12 + vectors 1 + prepared 2, Go apicontract
+  race, fmt/clippy/gofmt/vet/staticcheck and docs/secrets PASS. Admission
+  stays false everywhere (OCM candidate, PBE rights/layout pending);
+  OCM Quantity is reported group count, never physical EVSE proof.
+  Next EE-04 OCM preparation or independent MEX-04.
+
+- EE-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent22adc7b8. [Evidence](../backend/evidence/ev-support/EE-02.md):
+  typed vehicle/propulsion/source/place-EVSE-connector/tariff/private-session/port
+  contract,15 planned components (zero paths),46 shape examples and24 exact shared
+  CSV examples PASS in Go/Kotlin/Rust. Full apicontract race/vet/static, JVM test/
+  compile, Rust test/fmt/clippy and document/secrets PASS. No runtime engine,
+  migration or app/source/sales activation. Four requested units complete:
+  MEX-03,EE-00/01/02; EE-01 is qualification only, PBE rights/source admission
+  pending. [Handoff](MOBILE_EXPANSION_CONTINUATION.md): EE-03 or independent MEX-04.
+
+- EE-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING as qualification only,
+  parent83897983. [Evidence/register](../backend/evidence/ev-support/EE-01.md):
+  three real commit-pinned Brazilian OCM samples/reference and actual9-page PBE
+  bytes/hash/profile verified; seven privacy/failure tests PASS. Only minimized
+  metadata committed. Provider1 reports CC-BY4.0; source admission remains OFF,
+  PBE RIGHTS_PENDING and full corpus/privacy/provider gates owed. Next EE-02,
+  independently; EE-03/source activation cannot infer approval from this checkpoint.
+
+- EE-00 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent42e4efe7. [Inventory](../backend/evidence/ev-support/EE-00.md)
+  pins12 source files/eight ancestor checkpoints, actual liquid-only vehicle/Room16/
+  hosted model and PRM/FQ/community/Rust owners. No accepted EV source/parser/session
+  implementation found; no runtime mutation. Hash/ancestry/docs checks PASS.
+  Next authorized EE-01 qualification and EE-02 contracts; rights/runtime stay separate.
+
+- MEX-03 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent5cb8e660 on
+  codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-03.md):
+  pinned5,571-city SQLite/actual JVM fallback and dense synthetic model baselines,
+  structural budgets and actual picker-versus-unused-search distinction. Host
+  probes/JVM compile/test PASS; native UI/network/PostGIS measurements OWED.
+  Next authorized units EE-00/01/02; no runtime optimization or publication.
+
+- Mobile expansion MEX-02 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
+  d61ccc4c on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-02.md):
+  typed exploration/official-source/company-site/filter/cache/Android-copy contract,
+  20 planned schemas (zero live paths), 54 shape and three counting examples.
+  Full apicontract race (including MEX-01/live goldens), vet/static/docs/secrets PASS.
+  No runtime parser/query/UI or source activation claim. Requested two microtasks
+  complete; [continuation](MOBILE_EXPANSION_CONTINUATION.md) starts at MEX-03,
+  or independently EE-00. No publication/device/deploy; other work preserved.
+
+- Mobile expansion MEX-01 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent
+  0e7af9d5 on codex/mobile-expansion-plan. [Evidence](../backend/evidence/mobile-expansion/MEX-01.md):
+  registration v2/machine amendment, retained legacy data, planned vehicles.multiple,
+  unchanged ceiling3 and professional capability matrix; 23 contract examples,
+  full apicontract/subscription domain race, vet/build/static/document checks PASS.
+  Runtime quotas/capability grants remain MEX-07/08 pending. Next MEX-02 only;
+  no publication, native run or commercial/source activation.
+
+- Mobile expansion MEX-00 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING on isolated
+  codex/mobile-expansion-plan. [Foundation audit](../backend/evidence/mobile-expansion/MEX-00.md)
+  reconciles planning 35accb9e with committed dev a2f8925c, preserving Home and
+  foreign work. Ownership, 30 PRM evidence base pins, app-first/FQ/OPT gaps,
+  source defaults and tools inventoried; documentation checks PASS. Separate OPT
+  copy/cache commits exist but are not blindly accepted (no-store/SQLite gates).
+  Remote freshness unverified (DNS); no new runtime behavior or publication.
+  Stopped after the requested first microtask. [Handoff](MOBILE_EXPANSION_CONTINUATION.md):
+  next MEX-01, or independently EE-00; both still unexecuted.
+
+- Full EV extension EE-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING
+  on isolated codex/mobile-expansion-plan, parent 47fded8c. [Research](EV_SOURCE_RESEARCH.md)
+  records 25 source/data families (23 external, two first-party), actual access/
+  rights/coverage limits and no presumed national live feed. [EE plan](EV_FULL_SUPPORT_EXECUTION_PLAN.md),
+  [rules](../product/EV_SUPPORT_CONTRACT.md), [financial method](../product/EV_FINANCIAL_METHOD.md),
+  [combined prompt](EV_SUPPORT_EXECUTION_PROMPT.md), [validation](EV_SUPPORT_PLAN_VALIDATION.md).
+  Adds 32 EE units and an acyclic MEX splice (77 combined execution units,
+  conditional live-provider access separate), preserving existing IDs/data/free
+  boundaries. Includes BEV/PHEV/HEV, Rust source prep, community tariffs, local
+  Room processing and private electric ledger/report/sync. No implementation,
+  provider/account/contact/purchase, source activation, native run or publication;
+  D/iOS/charging-control/payment remain outside scope. Next: submit combined prompt
+  and reconcile current accepted MEX/EE prerequisites before schema/UI work.
+
+- Mobile expansion MEX-PLAN 2026-10-20: PLANNING_LOCAL_DONE / INTEGRATION_PENDING,
+  isolated codex/mobile-expansion-plan from dev fb85d4d1; occupied Home/week-picker/
+  manual-sync and primary work preserved. [Plan](MOBILE_EXPANSION_EXECUTION_PLAN.md),
+  [contract](../product/MOBILE_EXPANSION_CONTRACT.md),
+  [agent prompt](MOBILE_EXPANSION_EXECUTION_PROMPT.md),
+  [validation](MOBILE_EXPANSION_PLAN_VALIDATION.md). Forty parent tasks with six
+  enforcement children (45 execution units) reuse PRM/FQ/OPT owners. Confirmed:
+  one free vehicle, additional vehicles Premium, retained legacy data; existing
+  technical ceiling and professional capability matrix preserved. Includes fast
+  local places, financial/cloud Android, national price exploration and separate
+  source-global/current-company/site ANP occurrence filters. Implementation and
+  remote/runtime/provider/native acceptance remain pending; no publication or D
+  override. Next implementation candidate MEX-00 after human submits the prompt.
+
 - Fuel quality FQ-07R6E1 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING, parent c9ffbbf6. [Lease-bound current-company read ports](../backend/evidence/fuel-quality/FQ07R6E1_SCOPED_COMPANY_READS.md): frozen lease/current-company scope sealed in fingerprint without CNPJs; page/detail derive bindings and hold Directory guard through read Tx, retire/successor/suspend between scope and rows fails closed with no leaked rows; source-global history stays reachable. Real PostGIS retire/successor/suspend plus global accessibility PASS; 14 read tests and company adapter matrix PASS. No HTTP/OpenAPI/activation/deployment/D claim. Next FQ-07R6E2.
 
 - P35/quality final delivery 2026-10-20: LOCAL_DONE / INTEGRATION_PENDING in the independent `mobile-pagination-integration` checkout, private maintained `dev`; PR138 reused. Captured mobile `d0918d03`, committed quality `9737b22f`, main `08a54dc4`, preserving both histories and the occupied quality/evidence drafts. [Reconciliation and CI repairs](mobile-pagination-main-delivery-20261020.md): Docker filter classifier RED→GREEN; deterministic alert schedule fixtures including Sunday/window refusal; historic index-upgrade boundary retained; real-PostGIS snapshot upload barrier reproduced duplicate admission, fixed with an owner session lease and pool-one/cancel/retry acceptance. Combined109 Go acceptance covers113 packages (112 full-matrix passes plus corrected Caddy/race rerun); four optional cases skipped, no known failure remains. Classifier/SQLite checks PASS. Final current-head CI/guarded finish pending; no merge/release claim.

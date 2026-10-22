@@ -22,3 +22,17 @@ func TestVehicleKeepsLegacyIdentityAndFuelPrecision(t *testing.T) {
 		}
 	}
 }
+
+func TestVehicleRegistrationV2RetainsOneFreeAndThreeCeiling(t *testing.T) {
+	for _, tc := range []struct {
+		count    int64
+		multiple bool
+		want     error
+	}{
+		{-1, false, ErrInvalid}, {0, false, nil}, {1, false, ErrDenied}, {2, false, ErrDenied}, {1, true, nil}, {2, true, nil}, {3, true, ErrQuota}, {4, true, ErrQuota}, {4, false, ErrQuota},
+	} {
+		if got := RequireVehicleRegistration(tc.count, tc.multiple); got != tc.want {
+			t.Fatalf("count %d multiple %v got %v want %v", tc.count, tc.multiple, got, tc.want)
+		}
+	}
+}
