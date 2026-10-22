@@ -87,6 +87,7 @@ object TariffCalculator {
     private val NUMERATOR = Regex("^(0|[1-9][0-9]{0,11}|1000000000000)$")
     private val DENOMINATOR = Regex("^([1-9][0-9]{0,8}|1000000000)$")
     private val CURRENCY = Regex("^[A-Z]{3}$")
+    private val UUID = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     private val ONE = BigInteger.ONE
     private val MAX_CENTAVOS_BIG = BigInteger.valueOf(MAX_CENTAVOS)
 
@@ -169,9 +170,8 @@ object TariffCalculator {
         TariffEstimate(state = "UNKNOWN", reason = reason)
 
     private fun validateTariff(tariff: Tariff) {
-        if (tariff.version != 1 || tariff.id.isBlank() || tariff.revision.isBlank() ||
-            tariff.revision.length > 128 || tariff.targetId.isBlank() ||
-            tariff.timezone.isBlank() || tariff.timezone.length > 128
+        if (tariff.version != 1 || !UUID.matches(tariff.id) || !UUID.matches(tariff.targetId) ||
+            !boundedText(tariff.revision) || !boundedText(tariff.timezone)
         ) {
             throw TariffValidationException("invalid-tariff")
         }
@@ -237,14 +237,22 @@ object TariffCalculator {
         if (!scenario.windowEnd.isAfter(scenario.windowStart)) {
             throw TariffValidationException("invalid-scenario")
         }
+        listOf(
+            "ENERGY_WH" to scenario.energyWh, "CHARGING_SECOND" to scenario.chargingSeconds,
+            "IDLE_SECOND" to scenario.idleSeconds, "SESSION" to scenario.sessionCount,
+            "PARKING_SECOND" to scenario.parkingSeconds,
+        ).forEach { (dimension, quantity) -> if (quantity != null) validateQuantity(dimension, quantity) }
         validateCondition(scenario.condition, scenario.qualifierId, "invalid-scenario")
     }
+
+    private fun boundedText(value: String): Boolean =
+        value.isNotEmpty() && value.codePointCount(0, value.length) <= 128
 
     private fun validateCondition(condition: String, qualifierId: String?, code: String) {
         when (condition) {
             "STANDARD" -> if (qualifierId != null) throw TariffValidationException(code)
             "APP", "MEMBER", "EMPLOYER" ->
-                if (qualifierId.isNullOrEmpty() || qualifierId.length > 128) {
+                if (qualifierId == null || !boundedText(qualifierId)) {
                     throw TariffValidationException(code)
                 }
             "UNKNOWN" -> if (qualifierId != null) throw TariffValidationException(code)

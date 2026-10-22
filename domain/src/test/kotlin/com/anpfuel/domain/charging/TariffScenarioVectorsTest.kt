@@ -21,7 +21,7 @@ class TariffScenarioVectorsTest {
         val lines = File("../contracts/testdata/ev/tariff-v1.csv")
             .readLines()
             .filter { it.isNotBlank() }
-        assertEquals(43, lines.size)
+        assertEquals(54, lines.size)
         val seen = mutableSetOf<String>()
         for (line in lines.drop(1)) {
             val row = line.split(',')

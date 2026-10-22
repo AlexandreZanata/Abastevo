@@ -49,7 +49,7 @@ func TestTariffScenarioVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	const columns = 22
-	if len(rows) != 43 || len(rows[0]) != columns {
+	if len(rows) != 54 || len(rows[0]) != columns {
 		t.Fatalf("unexpected fixture shape: %d rows, %d columns", len(rows), len(rows[0]))
 	}
 	seen := make(map[string]bool, len(rows)-1)

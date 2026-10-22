@@ -9,6 +9,14 @@ import org.junit.jupiter.api.assertThrows
 /** EE-11 structural refusals outside the shared scenario vectors. */
 class TariffValidationTest {
 
+    @Test
+    fun frozenUuidAndUnicodeBounds() {
+        refused("invalid-tariff", tariff().copy(id = "not-a-uuid"))
+        refused("invalid-tariff", tariff().copy(targetId = "not-a-uuid"))
+        val result = TariffCalculator.calculate(tariff().copy(revision = "😀".repeat(128)), scenario())
+        assertEquals("KNOWN", result.state)
+    }
+
     private val start = Instant.parse("2026-10-01T00:00:00Z")
     private val energy = TariffComponent(
         dimension = "ENERGY_WH",

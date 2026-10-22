@@ -1,9 +1,9 @@
 //! EE-11 shared tariff wire/arithmetic parity.
 //!
 //! This module is a reviewed parity oracle for the shared Go/Kotlin vectors,
-//! not the production billing service. It uses bounded checked `i128`
-//! arithmetic sized for the reviewed input envelope; product intermediates
-//! outside that envelope are refused as overflow instead of wrapping.
+//! not the production billing service. Checked 256-bit positive intermediates
+//! cover all five distinct dimensions under the frozen bounds, even when
+//! denominators are coprime; a large intermediate is not a monetary overflow.
 
 const MAX_ENERGY_WH: i64 = 1_000_000_000;
 const MAX_SECONDS: i64 = 31_622_400;
@@ -84,8 +84,8 @@ pub struct Tariff {
     pub condition: Condition,
     pub qualifier: Option<String>,
     pub currency: String,
-    pub valid_from: i64,
-    pub valid_until: Option<i64>,
+    pub valid_from: i128,
+    pub valid_until: Option<i128>,
     pub tax_basis: String,
     pub mandatory_components_complete: bool,
     pub components: Vec<TariffComponent>,
@@ -98,8 +98,8 @@ pub struct Tariff {
 pub struct Scenario {
     pub condition: Condition,
     pub qualifier: Option<String>,
-    pub window_start: i64,
-    pub window_end: i64,
+    pub window_start: i128,
+    pub window_end: i128,
     pub energy_wh: Option<i64>,
     pub charging_seconds: Option<i64>,
     pub idle_seconds: Option<i64>,
@@ -192,16 +192,21 @@ pub fn calculate(tariff: &Tariff, scenario: &Scenario) -> Result<Estimate, Tarif
         return Ok(Estimate::Unknown(UnknownReason::UnknownFees));
     }
 
-    let mut sum = (0i128, 1i128);
+    let mut sum = (Wide::from(0), Wide::from(1));
     for (index, component) in tariff.components.iter().enumerate() {
-        let quantity = i128::from(quantities[index]);
-        let numerator = component
-            .rate
-            .numerator
-            .checked_mul(quantity)
-            .ok_or(TariffError::InvalidTariff)?;
-        let denominator = component.rate.denominator;
-        let Some(next) = add(sum, (numerator, denominator)) else {
+        let quantity = quantities[index] as u64;
+        let denominator = component.rate.denominator as u64;
+        let next = sum
+            .0
+            .checked_mul(denominator)
+            .and_then(|left| {
+                sum.1
+                    .checked_mul(component.rate.numerator as u64)?
+                    .checked_mul(quantity)?
+                    .checked_add(left)
+            })
+            .zip(sum.1.checked_mul(denominator));
+        let Some(next) = next else {
             return Ok(Estimate::Unknown(UnknownReason::Overflow));
         };
         sum = next;
@@ -226,7 +231,7 @@ fn validate_tariff(tariff: &Tariff) -> Result<(), TariffError> {
     if tariff
         .qualifier
         .as_ref()
-        .is_some_and(|q| q.is_empty() || q.len() > 128)
+        .is_some_and(|q| q.is_empty() || q.chars().count() > 128)
     {
         return Err(TariffError::InvalidTariff);
     }
@@ -311,10 +316,21 @@ fn validate_scenario(scenario: &Scenario) -> Result<(), TariffError> {
     if scenario.window_end <= scenario.window_start {
         return Err(TariffError::InvalidScenario);
     }
+    for (dimension, quantity) in [
+        (Dimension::EnergyWh, scenario.energy_wh),
+        (Dimension::ChargingSecond, scenario.charging_seconds),
+        (Dimension::IdleSecond, scenario.idle_seconds),
+        (Dimension::Session, scenario.session_count),
+        (Dimension::ParkingSecond, scenario.parking_seconds),
+    ] {
+        if let Some(quantity) = quantity {
+            validate_quantity(dimension, quantity)?;
+        }
+    }
     if scenario
         .qualifier
         .as_ref()
-        .is_some_and(|q| q.is_empty() || q.len() > 128)
+        .is_some_and(|q| q.is_empty() || q.chars().count() > 128)
     {
         return Err(TariffError::InvalidScenario);
     }
@@ -364,23 +380,9 @@ fn charged_quantity(component: &TariffComponent, scenario: &Scenario) -> Result<
         Dimension::ParkingSecond => scenario.parking_seconds,
     }
     .ok_or(TariffError::MissingScenarioQuantity)?;
-    match component.dimension {
-        Dimension::EnergyWh => {
-            if !(0..=MAX_ENERGY_WH).contains(&quantity) {
-                return Err(TariffError::InvalidScenario);
-            }
-        }
-        Dimension::Session => {
-            if quantity != 1 {
-                return Err(TariffError::InvalidScenario);
-            }
-            return Ok(1);
-        }
-        _ => {
-            if !(0..=MAX_SECONDS).contains(&quantity) {
-                return Err(TariffError::InvalidScenario);
-            }
-        }
+    validate_quantity(component.dimension, quantity)?;
+    if component.dimension == Dimension::Session {
+        return Ok(1);
     }
     let mut value = quantity;
     if component.dimension.is_time() && component.grace_seconds > 0 {
@@ -398,24 +400,92 @@ fn charged_quantity(component: &TariffComponent, scenario: &Scenario) -> Result<
     Ok(value)
 }
 
-fn add(a: (i128, i128), b: (i128, i128)) -> Option<(i128, i128)> {
-    let numerator = a.0.checked_mul(b.1)?.checked_add(b.0.checked_mul(a.1)?)?;
-    let denominator = a.1.checked_mul(b.1)?;
-    Some((numerator, denominator))
+fn validate_quantity(dimension: Dimension, quantity: i64) -> Result<(), TariffError> {
+    match dimension {
+        Dimension::EnergyWh => {
+            if !(0..=MAX_ENERGY_WH).contains(&quantity) {
+                return Err(TariffError::InvalidScenario);
+            }
+        }
+        Dimension::Session => {
+            if quantity != 1 {
+                return Err(TariffError::InvalidScenario);
+            }
+        }
+        _ => {
+            if !(0..=MAX_SECONDS).contains(&quantity) {
+                return Err(TariffError::InvalidScenario);
+            }
+        }
+    }
+    Ok(())
 }
 
-/// floor(sum + 1/2) for a nonnegative exact sum, refusing nonpositive den.
-fn half_up(sum: (i128, i128)) -> Option<i128> {
-    if sum.1 <= 0 {
+// At most five unique dimensions, each den<=1e9: common denominator <2^150.
+// num<=1e12 and rounded quantity<2e9 yield total numerator <2^193.
+// Four limbs cover the entire accepted envelope without a dependency.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Wide([u64; 4]);
+
+impl Wide {
+    fn from(value: u64) -> Self {
+        Self([value, 0, 0, 0])
+    }
+    fn checked_add(self, other: Self) -> Option<Self> {
+        let mut words = [0; 4];
+        let mut carry = 0u128;
+        for (index, word) in words.iter_mut().enumerate() {
+            let value = u128::from(self.0[index]) + u128::from(other.0[index]) + carry;
+            *word = value as u64;
+            carry = value >> 64;
+        }
+        (carry == 0).then_some(Self(words))
+    }
+    fn checked_mul(self, factor: u64) -> Option<Self> {
+        let mut words = [0; 4];
+        let mut carry = 0u128;
+        for (index, word) in words.iter_mut().enumerate() {
+            let value = u128::from(self.0[index]) * u128::from(factor) + carry;
+            *word = value as u64;
+            carry = value >> 64;
+        }
+        (carry == 0).then_some(Self(words))
+    }
+    fn at_least(self, other: Self) -> bool {
+        for index in (0..4).rev() {
+            if self.0[index] != other.0[index] {
+                return self.0[index] > other.0[index];
+            }
+        }
+        true
+    }
+}
+
+/// Exact half-up using monotone integer comparisons; never round intermediates.
+fn half_up(sum: (Wide, Wide)) -> Option<i128> {
+    if sum.1 == Wide::from(0) {
         return None;
     }
-    let numerator = sum.0.checked_mul(2)?.checked_add(sum.1)?;
-    let denominator = sum.1.checked_mul(2)?;
-    Some(numerator / denominator)
+    let twice = sum.0.checked_mul(2)?;
+    let maximum = MAX_CENTAVOS as u64;
+    if twice.at_least(sum.1.checked_mul(2 * maximum + 1)?) {
+        return Some(MAX_CENTAVOS + 1);
+    }
+    let (mut low, mut high) = (0, maximum);
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        if twice.at_least(sum.1.checked_mul(2 * middle - 1)?) {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    Some(i128::from(low))
 }
 
-/// Minimal RFC3339 instant parser for the reviewed vectors (Z or ±HH:MM).
-pub fn parse_instant(value: &str) -> Option<i64> {
+/// RFC3339 instants at nanosecond precision, including calendar validation.
+/// Only the typed shared decoder uses this helper; it never normalizes bad dates.
+pub fn parse_instant(value: &str) -> Option<i128> {
     let bytes = value.as_bytes();
     if bytes.len() < 20
         || bytes[4] != b'-'
@@ -428,31 +498,53 @@ pub fn parse_instant(value: &str) -> Option<i64> {
     }
     let number = |range: std::ops::Range<usize>| -> Option<i64> {
         let text = value.get(range)?;
-        if !text.bytes().all(|b| b.is_ascii_digit()) {
+        if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
             return None;
         }
         text.parse().ok()
     };
     let (year, month, day) = (number(0..4)?, number(5..7)?, number(8..10)?);
     let (hour, minute, second) = (number(11..13)?, number(14..16)?, number(17..19)?);
-    if !(1..=12).contains(&month)
-        || !(1..=31).contains(&day)
-        || hour > 23
-        || minute > 59
-        || second > 59
-    {
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let last_day = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if leap {
+                29
+            } else {
+                28
+            }
+        }
+        _ => return None,
+    };
+    if !(1..=last_day).contains(&day) || hour > 23 || minute > 59 || second > 59 {
         return None;
     }
-    let (offset, rest) = match bytes.get(19)? {
-        b'Z' => (0, 20),
+    let mut index = 19;
+    let mut nanos = 0;
+    if bytes.get(index) == Some(&b'.') {
+        index += 1;
+        let start = index;
+        while bytes.get(index).is_some_and(u8::is_ascii_digit) {
+            index += 1;
+        }
+        let length = index - start;
+        if length == 0 || length > 9 {
+            return None;
+        }
+        nanos = number(start..index)? * 10i64.pow((9 - length) as u32);
+    }
+    let (offset, rest) = match bytes.get(index)? {
+        b'Z' => (0, index + 1),
         b'+' | b'-' => {
-            let sign = if bytes[19] == b'-' { -1 } else { 1 };
-            let hours = number(20..22)?;
-            let minutes = number(23..25)?;
-            if hours > 23 || minutes > 59 || bytes.get(22) != Some(&b':') {
+            let sign = if bytes[index] == b'-' { -1 } else { 1 };
+            let hours = number(index + 1..index + 3)?;
+            let minutes = number(index + 4..index + 6)?;
+            if hours > 23 || minutes > 59 || bytes.get(index + 3) != Some(&b':') {
                 return None;
             }
-            (sign * (hours * 3600 + minutes * 60), 25)
+            (sign * (hours * 3600 + minutes * 60), index + 6)
         }
         _ => return None,
     };
@@ -460,7 +552,10 @@ pub fn parse_instant(value: &str) -> Option<i64> {
         return None;
     }
     let days = days_from_civil(year, month, day);
-    Some(days * 86_400 + hour * 3_600 + minute * 60 + second - offset)
+    Some(
+        i128::from(days * 86_400 + hour * 3_600 + minute * 60 + second - offset) * 1_000_000_000
+            + i128::from(nanos),
+    )
 }
 
 /// Howard Hinnant's exact days-from-civil algorithm.
@@ -478,6 +573,55 @@ fn days_from_civil(mut year: i64, month: i64, day: i64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wide_money_boundary_and_carries() {
+        assert_eq!(
+            Wide::from(u64::MAX).checked_mul(2),
+            Some(Wide([u64::MAX - 1, 1, 0, 0]))
+        );
+        assert_eq!(Wide([u64::MAX; 4]).checked_add(Wide::from(1)), None);
+        assert_eq!(Wide([u64::MAX; 4]).checked_mul(2), None);
+        assert_eq!(half_up((Wide::from(3), Wide::from(2))), Some(2));
+        assert_eq!(half_up((Wide::from(1), Wide::from(0))), None);
+        let denominator = Wide([0, 0, 1, 0]);
+        assert_eq!(
+            half_up((
+                denominator.checked_mul(MAX_CENTAVOS as u64).unwrap(),
+                denominator
+            )),
+            Some(MAX_CENTAVOS)
+        );
+        assert_eq!(
+            half_up((
+                denominator.checked_mul(MAX_CENTAVOS as u64 + 1).unwrap(),
+                denominator
+            )),
+            Some(MAX_CENTAVOS + 1)
+        );
+    }
+
+    #[test]
+    fn instant_decoder_preserves_nanos_and_rejects_impossible_dates() {
+        for invalid in [
+            "2026-02-31T10:00:00Z",
+            "2026-04-31T10:00:00Z",
+            "1900-02-29T10:00:00Z",
+            "2026-02-29T10:00:00Z",
+            "2026-10-21T10:00:00.Z",
+            "2026-10-21T10:00:00.0000000001Z",
+        ] {
+            assert_eq!(parse_instant(invalid), None, "{invalid}");
+        }
+        assert!(parse_instant("2000-02-29T10:00:00Z").is_some());
+        let a = parse_instant("2026-10-21T10:00:00.000000001Z").unwrap();
+        let b = parse_instant("2026-10-21T07:00:00.000000001-03:00").unwrap();
+        assert_eq!(a, b);
+        assert_eq!(
+            a + 1,
+            parse_instant("2026-10-21T10:00:00.000000002Z").unwrap()
+        );
+    }
 
     #[test]
     fn rate_parser_requires_canonical_reduced_values() {
@@ -508,7 +652,10 @@ mod tests {
             parse_instant("2026-10-21T10:00:00Z"),
             parse_instant("2026-10-21T07:00:00-03:00")
         );
-        assert_eq!(parse_instant("2026-10-21T10:00:00Z"), Some(1_792_576_800));
+        assert_eq!(
+            parse_instant("2026-10-21T10:00:00Z"),
+            Some(1_792_576_800_000_000_000)
+        );
         assert_eq!(parse_instant("2026-10-21T10:00:00"), None);
         assert_eq!(parse_instant("2026-13-21T10:00:00Z"), None);
     }

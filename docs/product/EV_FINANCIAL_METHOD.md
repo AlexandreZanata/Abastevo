@@ -1,10 +1,18 @@
-# EV energy and cost method — proposed exact cross-language vectors
+# EV energy and cost method — exact cross-language contracts
 
-Date: 2026-10-20. State: CONTRACT_PROPOSED / IMPLEMENTATION_NOT_STARTED.
+Date: 2026-10-20. EE-11 is LOCAL_DONE / INTEGRATION_PENDING; other runtime
+methods remain unimplemented until their owning acceptance.
 Owner: [EV rules](EV_SUPPORT_CONTRACT.md), EE-02/11/15/16/23. Extends, never
 reinterprets, [financial-v1](PREMIUM_FINANCIAL_METHOD.md). Freeze machine vectors
 before code; numeric input ceilings/rounding precision follow a recorded need
 and existing bounds, not arbitrary guesses or provider float examples.
+
+**Independent review, 2026-10-21:** [audited EE-11 checkpoint](../backend/evidence/ev-support/EE-11-REVIEW.md)
+repairs false Rust overflow, fractional/calendar decoding and typed-input
+validation.53 shared vectors now execute in Go/Kotlin/Rust without new
+dependencies. Large rational intermediates remain exact; only the rounded
+money result is subject to the existing centavo ceiling. No provider/source,
+session persistence, public API or production acceptance follows from this.
 
 **EE-02 checkpoint, 2026-10-21:** [exact policy/data contract](EV_TYPED_DATA_CONTRACT.md)
 and24 shared CSV arithmetic vectors are frozen and validated in Go/Kotlin/Rust.

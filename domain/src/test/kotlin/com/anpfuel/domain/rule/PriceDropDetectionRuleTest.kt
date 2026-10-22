@@ -20,6 +20,20 @@ import org.junit.jupiter.api.Test
 
 class PriceDropDetectionRuleTest {
 
+    @Test
+    fun missingSelectedStationUsesDocumentedFallbackWithoutInventingAnAlert() {
+        val selected = vehicle(VehiclePriceSource.specific(Cnpj.parse("11222333000181")))
+        val other = weekContext(currentWeek, currentSurveyId, listOf(station(currentSurveyId, currentWeek, "5.40")), "5.50")
+        val averageOnly = weekContext(previousWeek, previousSurveyId, emptyList(), "5.70")
+        assertEquals(PriceAmount.of("5.40"), PriceDropDetectionRule.resolvePrice(selected, other))
+        assertEquals(PriceAmount.of("5.70"), PriceDropDetectionRule.resolvePrice(selected, averageOnly))
+        assertEquals(PriceAmount.of("5.70"), PriceDropDetectionRule.resolvePrice(vehicle(VehiclePriceSource.cheapest()), averageOnly))
+        val absent = PriceDropDetectionRule.WeekPriceContext(emptyList(), null)
+        org.junit.jupiter.api.Assertions.assertNull(PriceDropDetectionRule.resolvePrice(selected, absent))
+        org.junit.jupiter.api.Assertions.assertNull(PriceDropDetectionRule.resolvePrice(vehicle(VehiclePriceSource.cheapest()), absent))
+        assertFalse(PriceDropDetectionRule.shouldNotify(null, PriceAmount.of("5.70")))
+    }
+
     private val currentWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
     private val previousWeek = SurveyWeek.fromIsoDates("2026-05-31", "2026-06-06")
     private val currentSurveyId = DomainId.forSurveyWeek(currentWeek)

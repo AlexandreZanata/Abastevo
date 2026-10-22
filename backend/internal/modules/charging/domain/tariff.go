@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"regexp"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -95,6 +96,7 @@ var (
 	numeratorPattern   = regexp.MustCompile(`^(0|[1-9][0-9]{0,11}|1000000000000)$`)
 	denominatorPattern = regexp.MustCompile(`^([1-9][0-9]{0,8}|1000000000)$`)
 	currencyPattern    = regexp.MustCompile(`^[A-Z]{3}$`)
+	uuidPattern        = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 )
 
 var dimensions = map[string]bool{
@@ -200,9 +202,9 @@ func sameQualifier(a, b *string) bool {
 }
 
 func validateTariff(t Tariff) error {
-	if t.Version != TariffVersion || t.ID == "" || t.Revision == "" ||
-		len(t.Revision) > 128 || t.TargetID == "" || t.Timezone == "" ||
-		len(t.Timezone) > 128 || t.ValidFrom.IsZero() {
+	if t.Version != TariffVersion || !uuidPattern.MatchString(t.ID) ||
+		!uuidPattern.MatchString(t.TargetID) || !boundedText(t.Revision) ||
+		!boundedText(t.Timezone) || t.ValidFrom.IsZero() {
 		return invalid("invalid-tariff")
 	}
 	switch t.TargetKind {
@@ -274,7 +276,25 @@ func validateScenario(s Scenario) error {
 	if s.WindowStart.IsZero() || s.WindowEnd.IsZero() || !s.WindowEnd.After(s.WindowStart) {
 		return invalid("invalid-scenario")
 	}
+	for _, declared := range []struct {
+		dimension string
+		quantity  *int64
+	}{
+		{"ENERGY_WH", s.EnergyWh}, {"CHARGING_SECOND", s.ChargingSeconds},
+		{"IDLE_SECOND", s.IdleSeconds}, {"SESSION", s.SessionCount}, {"PARKING_SECOND", s.ParkingSeconds},
+	} {
+		if declared.quantity != nil {
+			if err := validateQuantity(declared.dimension, *declared.quantity); err != nil {
+				return err
+			}
+		}
+	}
 	return validateCondition(s.Condition, s.QualifierID, "invalid-scenario")
+}
+
+// OpenAPI maxLength counts Unicode scalar values, not UTF-8 bytes.
+func boundedText(s string) bool {
+	return s != "" && utf8.ValidString(s) && utf8.RuneCountInString(s) <= 128
 }
 
 func validateCondition(condition string, qualifier *string, code string) error {
@@ -284,7 +304,7 @@ func validateCondition(condition string, qualifier *string, code string) error {
 			return invalid(code)
 		}
 	case "APP", "MEMBER", "EMPLOYER":
-		if qualifier == nil || *qualifier == "" || len(*qualifier) > 128 {
+		if qualifier == nil || !boundedText(*qualifier) {
 			return invalid(code)
 		}
 	case "UNKNOWN":

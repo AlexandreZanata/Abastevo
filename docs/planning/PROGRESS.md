@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-11 independent audit + existing domain boundaries 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parentd9b31fe4. [Review](../backend/evidence/ev-support/EE-11-REVIEW.md) repaired real Rust intermediate overflow/calendar/nanosecond defects and Go/Kotlin UUID/Unicode/unused-quantity validation;53 shared vectors PASS across Go/Kotlin/Rust, no dependency/schema/provider activation. [Domain audit](../backend/evidence/mobile-expansion/DOMAIN_AUDIT_20261021.md) closes the existing90% coverage gate at90.0607% through meaningful money/privacy/source/OCR/fallback tests; threshold/exclusions unchanged. Full JVM632/390/450(two pre-existing skips)/375, APKs/lint, Go race/contracts/vet/static/Go1.27.3 govuln zero findings, Rust test/fmt/clippy and diff/secrets PASS. Separate dev security commit3c80c1ab updates Go1.27.3 pins for PR140; source history reconciliation remains pending. Newly authorized four-unit batch: MEX-10/17/18/19 subject to actual prerequisites; MEX-08/EE-04–10 remain blocked on their owning gates.
+
 - EE-11 2026-10-21: LOCAL_DONE / INTEGRATION_PENDING, parent2afc77bf. [Tariff engine](../backend/evidence/ev-support/EE-11.md):
   pure exact tariff scenario calculation in Go/Kotlin + Rust parity over 42
   shared synthetic vectors: only INCLUDED/complete/no-min-max/final-half-up

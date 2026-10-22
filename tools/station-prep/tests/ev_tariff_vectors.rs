@@ -58,7 +58,7 @@ fn shared_tariff_vectors() {
             );
         }
     }
-    assert_eq!(count, 42);
+    assert_eq!(count, 53);
 }
 
 fn decode(row: &[&str]) -> (Tariff, Scenario) {

@@ -1,12 +1,15 @@
 # Resume mobile expansion from the current local checkpoint
 
-Current checkpoint, 2026-10-21: MEX-00–07, MEX-09 and EE-00–03 are
+Current checkpoint, 2026-10-21: MEX-00–07, MEX-09, EE-00–03 and reviewed EE-11 are
 LOCAL_DONE / INTEGRATION_PENDING; use [current PROGRESS](PROGRESS.md) and
 their linked evidence. The latest two-unit request delivered
 [MEX-07 hosted admission](../backend/evidence/mobile-expansion/MEX-07.md) and
 [MEX-09 exact parity](../backend/evidence/mobile-expansion/MEX-09.md).
-MEX-08 remains blocked by EE-19. Next ready work is MEX-10 or independent
-EE-04, only on a new authorization. Current source checkpoints do not accept
+The subsequent [EE-11 audit](../backend/evidence/ev-support/EE-11-REVIEW.md)
+repairs exactness/typed-input gaps; the domain90% gate now passes. The human
+authorized four further units: MEX-10, then MEX-17/18/19 as their actual
+prerequisites permit. MEX-08 still requires EE-19; EE-04/05 require their
+unmet source-admission/rights gates. Current source checkpoints do not accept
 source admission, later mobile journeys or production/commercial readiness.
 
 ## Foundation history
@@ -36,9 +39,10 @@ This file is continuation guidance, not additional execution authorization.
 3. Refresh remote refs when available. The foundation's remote check failed DNS;
    no remote current-head/CI acceptance was established. Work on maintained dev
    when available; otherwise isolate and reconcile normally under ADR-020.
-4. **MEX-10** can reuse the accepted pure financial checkpoint to reaccept
-   hosted ledger/reports; independent **EE-04** can prepare OCM within actual
-   EE-01 rights/profile/admission limits. **MEX-08 requires EE-19**, not just
+4. **MEX-10** reuses the audited pure financial checkpoint to reaccept
+   hosted ledger/reports. The current requested batch then selects
+   **MEX-17/18/19**, respecting actual approved-source prerequisites.
+   **MEX-08 requires EE-19**, not just
    MEX-07. Select one authorized bounded task,
    complete actual acceptance and commit before the next. No schema/UI changes
    before their owning dependencies; required source gates cannot be mocked away.
