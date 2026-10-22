@@ -9,9 +9,12 @@ import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.application.usecase.vehicle.DeleteVehicleUseCase
+import com.anpfuel.application.usecase.vehicle.GetVehicleAdmissionStatusUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.application.usecase.vehicle.SaveVehicleUseCase
 import com.anpfuel.domain.exception.DomainException
+import com.anpfuel.domain.premium.AdmissionOutcome
+import com.anpfuel.domain.premium.VehicleAdmissionRefused
 import com.anpfuel.domain.model.Vehicle
 import com.anpfuel.domain.rule.MaxRegisteredVehiclesRule
 import com.anpfuel.domain.valueobject.Cnpj
@@ -79,6 +82,7 @@ data class VehicleUiState(
     val isLoadingStations: Boolean = false,
     val showDeleteConfirm: Boolean = false,
     val vehicleToDelete: DomainId? = null,
+    val showPremiumRequired: Boolean = false,
     val canAddVehicle: Boolean = true,
     val isSaving: Boolean = false,
     val showNotificationPermissionHint: Boolean = false,
@@ -93,6 +97,7 @@ class VehicleViewModel @Inject constructor(
     private val deleteVehicleUseCase: DeleteVehicleUseCase,
     private val getStationPricesUseCase: GetStationPricesUseCase,
     private val configurePriceDropAlertUseCase: ConfigurePriceDropAlertUseCase,
+    private val getVehicleAdmissionStatusUseCase: GetVehicleAdmissionStatusUseCase,
     private val notificationPermissionHandler: NotificationPermissionHandler,
     private val vehiclePhotoStore: VehiclePhotoStore,
 ) : ViewModel() {
@@ -107,16 +112,21 @@ class VehicleViewModel @Inject constructor(
     private val _notificationPermissionRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val notificationPermissionRequest: SharedFlow<Unit> = _notificationPermissionRequest.asSharedFlow()
 
+    private var lastAdmissionOutcome: AdmissionOutcome? = null
+
     fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorMessage = null) }
             runCatching {
                 val vehicles = listVehiclesUseCase()
+                val admission = runCatching { getVehicleAdmissionStatusUseCase() }.getOrNull()
+                lastAdmissionOutcome = admission?.outcomeForNew
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         vehicles = vehicles,
-                        canAddVehicle = vehicles.size < MaxRegisteredVehiclesRule.MAX_VEHICLES,
+                        canAddVehicle = admission?.outcomeForNew != AdmissionOutcome.CAPACITY_EXCEEDED &&
+                            vehicles.size < MaxRegisteredVehiclesRule.MAX_VEHICLES,
                     )
                 }
             }.onFailure { error ->
@@ -136,6 +146,14 @@ class VehicleViewModel @Inject constructor(
         if (!_uiState.value.canAddVehicle) {
             return
         }
+        // MEX-08 honest Premium entry: a second distinct vehicle needs
+        // the vehicles.multiple capability; the form stays closed and
+        // held data is untouched. Never a fake grant. Enforcement still
+        // happens atomically on save.
+        if (lastAdmissionOutcome == AdmissionOutcome.PREMIUM_REQUIRED) {
+            _uiState.update { it.copy(showPremiumRequired = true) }
+            return
+        }
         _uiState.update {
             it.copy(
                 showForm = true,
@@ -147,6 +165,10 @@ class VehicleViewModel @Inject constructor(
                 errorMessage = null,
             )
         }
+    }
+
+    fun dismissPremiumRequired() {
+        _uiState.update { it.copy(showPremiumRequired = false) }
     }
 
     fun startEditVehicle(vehicleId: DomainId, locale: Locale) {
@@ -497,8 +519,19 @@ class VehicleViewModel @Inject constructor(
                 dismissForm()
                 load()
             }.onFailure { error ->
+                // MEX-08: an atomic race refusal surfaces honestly without
+                // weakening the gate — premium shows the entry, ceiling
+                // stays silent, anything else is a normal error.
+                if (error is VehicleAdmissionRefused &&
+                    error.outcome == AdmissionOutcome.PREMIUM_REQUIRED
+                ) {
+                    _uiState.update { it.copy(isSaving = false, showPremiumRequired = true) }
+                    return@onFailure
+                }
                 val appError = if (error is DomainException &&
-                    error.message?.contains("Cannot register more than") == true
+                    (error.message?.contains("Cannot register more than") == true ||
+                        (error is VehicleAdmissionRefused &&
+                            error.outcome == AdmissionOutcome.CAPACITY_EXCEEDED))
                 ) {
                     null
                 } else {

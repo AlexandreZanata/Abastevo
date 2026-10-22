@@ -614,4 +614,27 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_20_21: Migration = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-08 owner/origin capability lease table. No
+            // existing table is altered; every vehicle and private row
+            // survives untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `vehicle_capability_lease` (
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `policy_version` INTEGER NOT NULL,
+                    `capability` TEXT NOT NULL,
+                    `verified_at_millis` INTEGER NOT NULL,
+                    `paid_through_millis` INTEGER NOT NULL,
+                    `revoked` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`owner_account`, `origin`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
 }

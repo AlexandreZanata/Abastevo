@@ -142,6 +142,9 @@
     <string name="vehicle_validation_name_required">Enter a vehicle name</string>
     <string name="vehicle_validation_tank_capacity">Enter a valid tank capacity (1–200 L)</string>
     <string name="vehicle_validation_station_required">Select a station</string>
+    <string name="vehicle_premium_required_title">Extra vehicles need Premium</string>
+    <string name="vehicle_premium_required_message">Your first vehicle is free. A second or third vehicle needs the Premium vehicles capability. Your vehicles and data are preserved.</string>
+    <string name="vehicle_premium_required_dismiss">Got it</string>
     <string name="vehicle_propulsion_label">Propulsion</string>
     <string name="vehicle_propulsion_ice">Combustion (ICE)</string>
     <string name="vehicle_propulsion_bev">Electric (BEV)</string>

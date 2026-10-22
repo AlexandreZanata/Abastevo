@@ -58,6 +58,9 @@
     <string name="vehicle_validation_name_required">Введите название транспорта</string>
     <string name="vehicle_validation_tank_capacity">Введите допустимый объём (1–200 л)</string>
     <string name="vehicle_validation_station_required">Выберите АЗС</string>
+    <string name="vehicle_premium_required_title">Дополнительные автомобили требуют Premium</string>
+    <string name="vehicle_premium_required_message">Первый автомобиль бесплатен. Для второго или третьего нужна возможность Premium для автомобилей. Ваши автомобили и данные сохранены.</string>
+    <string name="vehicle_premium_required_dismiss">Понятно</string>
     <string name="vehicle_propulsion_label">Тип привода</string>
     <string name="vehicle_propulsion_ice">ДВС (ICE)</string>
     <string name="vehicle_propulsion_bev">Электро (BEV)</string>

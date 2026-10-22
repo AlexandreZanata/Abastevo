@@ -166,6 +166,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindVehicleAdmissionRepository(
+        impl: com.anpfuel.data.repository.VehicleAdmissionRepositoryImpl,
+    ): com.anpfuel.domain.repository.VehicleAdmissionRepository
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

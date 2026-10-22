@@ -4,6 +4,7 @@ import com.anpfuel.app.notification.NotificationPermissionHandler
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.vehicle.DeleteVehicleUseCase
+import com.anpfuel.application.usecase.vehicle.GetVehicleAdmissionStatusUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.application.usecase.vehicle.SaveVehicleUseCase
 import com.anpfuel.domain.charging.ChargingConnector
@@ -28,7 +29,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -42,6 +45,7 @@ class VehicleEnergyViewModelTest {
     private val deleteVehicleUseCase = mockk<DeleteVehicleUseCase>()
     private val getStationPricesUseCase = mockk<GetStationPricesUseCase>()
     private val configurePriceDropAlertUseCase = mockk<ConfigurePriceDropAlertUseCase>(relaxed = true)
+    private val admissionStatusUseCase = mockk<GetVehicleAdmissionStatusUseCase>()
     private val notificationPermissionHandler = mockk<NotificationPermissionHandler>()
     private val vehiclePhotoStore = mockk<com.anpfuel.data.local.media.VehiclePhotoStore>(relaxed = true)
 
@@ -51,12 +55,14 @@ class VehicleEnergyViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         coEvery { notificationPermissionHandler.hasPostNotificationsPermission() } returns true
+        coEvery { admissionStatusUseCase.invoke() } returns com.anpfuel.application.usecase.vehicle.VehicleAdmissionStatus(0, com.anpfuel.domain.premium.AdmissionOutcome.ACCEPT)
         viewModel = VehicleViewModel(
             listVehiclesUseCase = listVehiclesUseCase,
             saveVehicleUseCase = saveVehicleUseCase,
             deleteVehicleUseCase = deleteVehicleUseCase,
             getStationPricesUseCase = getStationPricesUseCase,
             configurePriceDropAlertUseCase = configurePriceDropAlertUseCase,
+        getVehicleAdmissionStatusUseCase = admissionStatusUseCase,
             notificationPermissionHandler = notificationPermissionHandler,
             vehiclePhotoStore = vehiclePhotoStore,
         )
@@ -135,9 +141,9 @@ class VehicleEnergyViewModelTest {
         assertEquals("", form.batteryCapacityInput)
         assertEquals("50", form.tankCapacityInput)
     }
-
     @Test fun `PHEV requires battery while MHEV behaves like HEV`() = runTest(dispatcher) {
         viewModel.startAddVehicle()
+        advanceUntilIdle()
         viewModel.onDisplayNameChanged("GWM")
         viewModel.onPropulsionSelected(Propulsion.PHEV)
         viewModel.onTankCapacityChanged("55")
@@ -149,5 +155,42 @@ class VehicleEnergyViewModelTest {
         viewModel.saveVehicle(Locale.US)
         // MHEV needs no battery: no validation error (save itself fails on the unstubbed use case).
         assertNull(viewModel.uiState.value.form.validationErrorKey)
+    }
+
+    @Test fun `second distinct vehicle without capability shows honest premium entry`() = runTest(dispatcher) {
+        coEvery { listVehiclesUseCase.invoke() } returns listOf(
+            Vehicle.create(
+                displayName = "Gol", tankCapacity = TankCapacity.of(50.0),
+                fuelProduct = FuelProduct.GASOLINE_REGULAR,
+                priceSource = VehiclePriceSource.cheapest(),
+            ),
+        )
+        coEvery { admissionStatusUseCase.invoke() } returns com.anpfuel.application.usecase.vehicle.VehicleAdmissionStatus(
+            1, com.anpfuel.domain.premium.AdmissionOutcome.PREMIUM_REQUIRED,
+        )
+        viewModel.load()
+        advanceUntilIdle()
+        viewModel.startAddVehicle()
+        assertTrue(viewModel.uiState.value.showPremiumRequired)
+        assertFalse(viewModel.uiState.value.showForm)
+        viewModel.dismissPremiumRequired()
+        assertFalse(viewModel.uiState.value.showPremiumRequired)
+    }
+
+    @Test fun `racing premium refusal surfaces the entry without losing the form`() = runTest(dispatcher) {
+        coEvery { listVehiclesUseCase.invoke() } returns emptyList()
+        coEvery { saveVehicleUseCase.invoke(any()) } throws
+            com.anpfuel.domain.premium.VehicleAdmissionRefused(com.anpfuel.domain.premium.AdmissionOutcome.PREMIUM_REQUIRED)
+        viewModel.load()
+        advanceUntilIdle()
+        viewModel.startAddVehicle()
+        advanceUntilIdle()
+        viewModel.onDisplayNameChanged("GWM")
+        viewModel.onPropulsionSelected(Propulsion.PHEV)
+        viewModel.onTankCapacityChanged("55")
+        viewModel.onBatteryCapacityChanged("20")
+        viewModel.saveVehicle(Locale.US)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showPremiumRequired)
     }
 }

@@ -73,6 +73,7 @@ import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
 import com.anpfuel.application.sync.SyncExecutionLock
 import com.anpfuel.application.usecase.sync.SyncPriceTablesUseCase
 import com.anpfuel.application.usecase.vehicle.DeleteVehicleUseCase
+import com.anpfuel.application.usecase.vehicle.GetVehicleAdmissionStatusUseCase
 import com.anpfuel.application.usecase.vehicle.GetVehicleUseCase
 import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
@@ -462,9 +463,27 @@ object UseCaseModule {
     fun provideSaveVehicleUseCase(
         vehicleRepository: VehicleRepository,
         eventPublisher: DomainEventPublisher,
+        admissionRepository: com.anpfuel.domain.repository.VehicleAdmissionRepository,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
     ): SaveVehicleUseCase = SaveVehicleUseCase(
         vehicleRepository = vehicleRepository,
         eventPublisher = eventPublisher,
+        admissionRepository = admissionRepository,
+        sessions = sessions,
+        origin = environment.origin,
+    )
+
+    @Provides
+    @Singleton
+    fun provideGetVehicleAdmissionStatusUseCase(
+        admissionRepository: com.anpfuel.domain.repository.VehicleAdmissionRepository,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): GetVehicleAdmissionStatusUseCase = GetVehicleAdmissionStatusUseCase(
+        admissionRepository = admissionRepository,
+        sessions = sessions,
+        origin = environment.origin,
     )
 
     @Provides

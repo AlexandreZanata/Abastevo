@@ -58,6 +58,9 @@
     <string name="vehicle_validation_name_required">请输入车辆名称</string>
     <string name="vehicle_validation_tank_capacity">请输入有效容量（1–200 升）</string>
     <string name="vehicle_validation_station_required">请选择加油站</string>
+    <string name="vehicle_premium_required_title">更多车辆需要 Premium</string>
+    <string name="vehicle_premium_required_message">您的第一辆车免费。第二或第三辆车需要 Premium 车辆功能。您的车辆和数据将保留。</string>
+    <string name="vehicle_premium_required_dismiss">知道了</string>
     <string name="vehicle_propulsion_label">动力类型</string>
     <string name="vehicle_propulsion_ice">燃油 (ICE)</string>
     <string name="vehicle_propulsion_bev">纯电动 (BEV)</string>

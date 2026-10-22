@@ -1,12 +1,18 @@
 package com.anpfuel.application.usecase.vehicle
 
+import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.event.PriceDropAlertConfigured
 import com.anpfuel.domain.event.VehicleRegistered
 import com.anpfuel.domain.event.VehicleRemoved
 import com.anpfuel.domain.event.VehicleUpdated
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.Vehicle
+import com.anpfuel.domain.premium.AdmissionOutcome
+import com.anpfuel.domain.premium.VehicleAdmissionRefused
+import com.anpfuel.domain.premium.VehicleAdmissionResult
+import com.anpfuel.domain.premium.VehicleServerProof
 import com.anpfuel.domain.repository.DomainEventPublisher
+import com.anpfuel.domain.repository.VehicleAdmissionRepository
 import com.anpfuel.domain.repository.VehicleRepository
 import com.anpfuel.domain.rule.MaxRegisteredVehiclesRule
 import com.anpfuel.domain.valueobject.Cnpj
@@ -31,6 +37,8 @@ class VehicleUseCasesTest {
 
     private val vehicleRepository = mockk<VehicleRepository>()
     private val eventPublisher = mockk<DomainEventPublisher>()
+    private val admissionRepository = mockk<VehicleAdmissionRepository>()
+    private val sessions = mockk<AuthSessionStore>()
 
     private lateinit var listVehiclesUseCase: ListVehiclesUseCase
     private lateinit var getVehicleUseCase: GetVehicleUseCase
@@ -44,6 +52,9 @@ class VehicleUseCasesTest {
         saveVehicleUseCase = SaveVehicleUseCase(
             vehicleRepository = vehicleRepository,
             eventPublisher = eventPublisher,
+            admissionRepository = admissionRepository,
+            sessions = sessions,
+            origin = "https://api.example.test",
         )
         deleteVehicleUseCase = DeleteVehicleUseCase(
             vehicleRepository = vehicleRepository,
@@ -75,13 +86,16 @@ class VehicleUseCasesTest {
     fun saveNewVehiclePublishesVehicleRegistered() = runTest {
         val vehicle = sampleVehicle()
         coEvery { vehicleRepository.findById(vehicle.id) } returns null
-        coEvery { vehicleRepository.count() } returns 0
+        coEvery { admissionRepository.countVehicles() } returns 0
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.loadLease(any(), any()) } returns null
+        coEvery { admissionRepository.admit(vehicle, false) } returns VehicleAdmissionResult.AdmittedAsNew
 
         val result = saveVehicleUseCase.invoke(vehicle)
 
         assertEquals(vehicle, result.vehicle)
         assertTrue(result.events.any { it is VehicleRegistered })
-        coVerify(exactly = 1) { vehicleRepository.save(vehicle) }
+        coVerify(exactly = 1) { admissionRepository.admit(vehicle, false) }
     }
 
     @Test
@@ -89,18 +103,25 @@ class VehicleUseCasesTest {
         val existing = sampleVehicle(displayName = "Gol")
         val updated = existing.withDisplayName("Gol 1.0")
         coEvery { vehicleRepository.findById(updated.id) } returns existing
+        coEvery { admissionRepository.countVehicles() } returns 1
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.loadLease(any(), any()) } returns null
+        coEvery { admissionRepository.admit(updated, false) } returns VehicleAdmissionResult.Replayed
 
         val result = saveVehicleUseCase.invoke(updated)
 
         assertTrue(result.events.any { it is VehicleUpdated })
-        coVerify(exactly = 1) { vehicleRepository.save(updated) }
+        coVerify(exactly = 1) { admissionRepository.admit(updated, false) }
     }
 
     @Test
     fun saveVehicleWithAlertEnabledPublishesPriceDropAlertConfigured() = runTest {
         val vehicle = sampleVehicle(priceDropAlertEnabled = true)
         coEvery { vehicleRepository.findById(vehicle.id) } returns null
-        coEvery { vehicleRepository.count() } returns 0
+        coEvery { admissionRepository.countVehicles() } returns 0
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.loadLease(any(), any()) } returns null
+        coEvery { admissionRepository.admit(vehicle, false) } returns VehicleAdmissionResult.AdmittedAsNew
 
         val result = saveVehicleUseCase.invoke(vehicle)
 
@@ -108,16 +129,57 @@ class VehicleUseCasesTest {
     }
 
     @Test
-    fun saveVehicleRejectsFourthRegistration() = runTest {
+    fun saveSecondVehicleWithoutCapabilityRequiresPremium() = runTest {
         val vehicle = sampleVehicle()
         coEvery { vehicleRepository.findById(vehicle.id) } returns null
-        coEvery { vehicleRepository.count() } returns MaxRegisteredVehiclesRule.MAX_VEHICLES
+        coEvery { admissionRepository.countVehicles() } returns 1
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.loadLease(any(), any()) } returns null
 
-        assertThrows(DomainException::class.java) {
+        val error = assertThrows(VehicleAdmissionRefused::class.java) {
             runBlocking {
                 saveVehicleUseCase.invoke(vehicle)
             }
         }
+        assertEquals(AdmissionOutcome.PREMIUM_REQUIRED, error.outcome)
+    }
+
+    @Test
+    fun saveVehicleRejectsFourthRegistration() = runTest {
+        val vehicle = sampleVehicle()
+        coEvery { vehicleRepository.findById(vehicle.id) } returns null
+        coEvery { admissionRepository.countVehicles() } returns MaxRegisteredVehiclesRule.MAX_VEHICLES
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.loadLease(any(), any()) } returns null
+
+        val error = assertThrows(VehicleAdmissionRefused::class.java) {
+            runBlocking {
+                saveVehicleUseCase.invoke(vehicle)
+            }
+        }
+        assertEquals(AdmissionOutcome.CAPACITY_EXCEEDED, error.outcome)
+    }
+
+    @Test
+    fun freshServerProofAdmitsSecondVehicleWithoutLocalLease() = runTest {
+        val vehicle = sampleVehicle()
+        val proven = SaveVehicleUseCase(
+            vehicleRepository = vehicleRepository,
+            eventPublisher = eventPublisher,
+            admissionRepository = admissionRepository,
+            sessions = sessions,
+            origin = "https://api.example.test",
+            serverProof = VehicleServerProof.Fresh(java.time.Instant.now()),
+        )
+        coEvery { vehicleRepository.findById(vehicle.id) } returns null
+        coEvery { admissionRepository.countVehicles() } returns 1
+        coEvery { sessions.load() } returns null
+        coEvery { admissionRepository.admit(vehicle, true) } returns VehicleAdmissionResult.AdmittedAsNew
+
+        val result = proven.invoke(vehicle)
+
+        assertEquals(vehicle, result.vehicle)
+        coVerify(exactly = 1) { admissionRepository.admit(vehicle, true) }
     }
 
     @Test

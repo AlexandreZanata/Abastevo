@@ -112,6 +112,7 @@ fun VehicleScreen(
         onRequestDeleteVehicle = viewModel::requestDeleteVehicle,
         onConfirmDeleteVehicle = viewModel::confirmDeleteVehicle,
         onDismissDeleteConfirm = viewModel::dismissDeleteConfirm,
+        onDismissPremiumRequired = viewModel::dismissPremiumRequired,
         onDismissForm = viewModel::dismissForm,
         onDisplayNameChanged = viewModel::onDisplayNameChanged,
         onTankCapacityChanged = viewModel::onTankCapacityChanged,
@@ -142,6 +143,7 @@ internal fun VehicleContent(
     onRequestDeleteVehicle: (DomainId) -> Unit,
     onConfirmDeleteVehicle: () -> Unit,
     onDismissDeleteConfirm: () -> Unit,
+    onDismissPremiumRequired: () -> Unit,
     onDismissForm: () -> Unit,
     onDisplayNameChanged: (String) -> Unit,
     onTankCapacityChanged: (String) -> Unit,
@@ -184,6 +186,20 @@ internal fun VehicleContent(
             dismissButton = {
                 TextButton(onClick = onDismissDeleteConfirm) {
                     Text(text = stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    // MEX-08 honest Premium entry: explains the capability requirement,
+    // preserves every held row, and offers no fake grant.
+    if (uiState.showPremiumRequired) {
+        AlertDialog(
+            onDismissRequest = onDismissPremiumRequired,
+            title = { Text(text = stringResource(R.string.vehicle_premium_required_title)) },
+            text = { Text(text = stringResource(R.string.vehicle_premium_required_message)) },
+            confirmButton = {
+                TextButton(onClick = onDismissPremiumRequired) {
+                    Text(text = stringResource(R.string.vehicle_premium_required_dismiss))
                 }
             },
         )
@@ -450,6 +466,7 @@ private fun VehicleListPreview() {
             onRequestDeleteVehicle = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
+            onDismissPremiumRequired = {},
             onDismissForm = {},
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
@@ -482,6 +499,7 @@ private fun VehicleEmptyPreview() {
             onRequestDeleteVehicle = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
+            onDismissPremiumRequired = {},
             onDismissForm = {},
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
