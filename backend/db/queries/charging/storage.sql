@@ -32,3 +32,6 @@ FROM (
  UNION ALL SELECT 'group' FROM charging_connection_groups WHERE batch_id = @batch_id::uuid
  UNION ALL SELECT 'vehicle' FROM charging_vehicle_references WHERE batch_id = @batch_id::uuid
 ) AS census;
+
+-- name: FindChargingBatchByManifest :one
+SELECT id FROM charging_batches WHERE manifest_sha256 = @manifest_sha256 LIMIT 1;

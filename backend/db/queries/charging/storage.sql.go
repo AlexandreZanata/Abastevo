@@ -35,6 +35,17 @@ func (q *Queries) ChargingBatchCounts(ctx context.Context, batchID pgtype.UUID) 
 	return i, err
 }
 
+const findChargingBatchByManifest = `-- name: FindChargingBatchByManifest :one
+SELECT id FROM charging_batches WHERE manifest_sha256 = $1 LIMIT 1
+`
+
+func (q *Queries) FindChargingBatchByManifest(ctx context.Context, manifestSha256 string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, findChargingBatchByManifest, manifestSha256)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const recordChargingBatch = `-- name: RecordChargingBatch :one
 
 INSERT INTO charging_batches(id,format,profile_id,source_revision,manifest_sha256,input_count,accepted_count)
