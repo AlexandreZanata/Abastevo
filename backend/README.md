@@ -137,6 +137,27 @@ It runs no migrations, canonical publication or location review. Exact snapshot
 replay reuses stored results; new source editions need new snapshot identities.
 Do not use a persistent database for integration tests.
 
+## Official price ranking (MEX-28/29)
+
+`GET /v1/prices/ranking` is the anonymous typed ANP weekly ranking. Required
+query parameters are `source=ANP_WEEKLY`, `survey_week_start`, `fuel`, `unit`,
+`geography` (`COUNTRY`/`STATE`/`MUNICIPALITY`), `metric`
+(`OBSERVATION_PRICE`/`AREA_MEAN`), `group_by` (`STATION`/`MUNICIPALITY`/`STATE`)
+and `sort` (`ASC`/`DESC`); optional `uf`, `ibge_code`, `condition=STANDARD`,
+`limit` (1..100, default20) and `cursor`. Only ANP weekly STANDARD observations
+are ranked; community prices and other conditions are refused, never
+substituted. Results bind the exact source revision, coverage and
+fuel/unit/geography/time, with exact rational means and max-min variation.
+`Sampled=true` and `national_completeness_claimed=false` are always explicit.
+
+ETag and cursors bind every filter, the policy and the source revision: a
+correction that switches the current revision invalidates both. The in-process
+cache is bounded (`ANPFUEL_PRICE_RANKING_CACHE_ENTRIES`, default128, `0`
+disables) and TTL-bound (`..._TTL_SECONDS`, default60); every request still
+resolves the current published revision, and an outage answers `503` no-store
+instead of a cached page. `ANPFUEL_PRICE_RANKING_ENABLED=false` disables the
+route. See [MEX-29](../docs/backend/evidence/mobile-expansion/MEX-29.md).
+
 ## Fuel quality source reads (FQ-08/FQ-08H)
 
 The additive public quality API has a live bounded revision catalog:

@@ -75,6 +75,11 @@ const (
 	keyQualityCompanyReadsEnabled = "ANPFUEL_QUALITY_COMPANY_READS_ENABLED"
 	keyQualityReadsEnabled        = "ANPFUEL_QUALITY_READS_ENABLED"
 	keyQualityReportsEnabled      = "ANPFUEL_QUALITY_REPORTS_ENABLED"
+	// Anonymous ANP weekly ranking. The cache is in-process and bounded;
+	// zero entries is the documented uncached recovery.
+	keyPriceRankingEnabled         = "ANPFUEL_PRICE_RANKING_ENABLED"
+	keyPriceRankingCacheEntries    = "ANPFUEL_PRICE_RANKING_CACHE_ENTRIES"
+	keyPriceRankingCacheTTLSeconds = "ANPFUEL_PRICE_RANKING_CACHE_TTL_SECONDS"
 	// Source discovery/revalidation schedules are independent and default
 	// off. Installing a schedule never enables native imports.
 	keyQualitySanctionsDiscoveryEnabled = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
@@ -124,6 +129,11 @@ type Config struct {
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
 	QualityReportsEnabled      bool
+	// PriceRankingEnabled gates /v1/prices/ranking. The in-process cache is
+	// bounded; PriceRankingCacheEntries=0 runs the exact uncached query.
+	PriceRankingEnabled         bool
+	PriceRankingCacheEntries    int
+	PriceRankingCacheTTLSeconds int
 	// TrainingTermsDigest is the published digest fresh training
 	// grants must present; served to owners on the status read, never
 	// logged as anything but configured/unset.
@@ -221,6 +231,31 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_READS_ENABLED must be boolean")
 		}
 		cfg.QualityReadsEnabled = enabled
+	}
+
+	cfg.PriceRankingEnabled = true
+	if raw, present := getenv(keyPriceRankingEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_PRICE_RANKING_ENABLED must be boolean")
+		}
+		cfg.PriceRankingEnabled = enabled
+	}
+	cfg.PriceRankingCacheEntries = 128
+	if raw, present := getenv(keyPriceRankingCacheEntries); present {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > 4096 {
+			return Config{}, fmt.Errorf("ANPFUEL_PRICE_RANKING_CACHE_ENTRIES must be 0..4096")
+		}
+		cfg.PriceRankingCacheEntries = n
+	}
+	cfg.PriceRankingCacheTTLSeconds = 60
+	if raw, present := getenv(keyPriceRankingCacheTTLSeconds); present {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > 3600 {
+			return Config{}, fmt.Errorf("ANPFUEL_PRICE_RANKING_CACHE_TTL_SECONDS must be 1..3600")
+		}
+		cfg.PriceRankingCacheTTLSeconds = n
 	}
 
 	env, _ := getenv(keyEnv)

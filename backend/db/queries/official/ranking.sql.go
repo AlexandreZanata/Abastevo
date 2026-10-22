@@ -187,9 +187,9 @@ WITH latest AS (
     SELECT DISTINCT ON (p.station_id)
         p.station_id, p.amount_milli_brl, p.collected_on
     FROM official_station_prices AS p
-    WHERE p.revision_id = $5::uuid
-        AND p.fuel_product = $6::text
-        AND p.unit = $7::text
+    WHERE p.revision_id = $8::uuid
+        AND p.fuel_product = $9::text
+        AND p.unit = $10::text
     ORDER BY p.station_id, p.collected_on DESC, p.id
 )
 SELECT l.station_id, l.amount_milli_brl, l.collected_on,
@@ -198,16 +198,25 @@ FROM latest AS l
 JOIN directory_stations AS d ON d.id = l.station_id
 WHERE ($1::text = '' OR d.state = $1)
     AND ($2::text = '' OR d.municipality_code = $2)
+    AND ($3::boolean = FALSE OR
+        (CASE WHEN $4::boolean
+              THEN (l.amount_milli_brl, l.station_id) > ($5::bigint, $6::uuid)
+              ELSE (l.amount_milli_brl < $5::bigint OR
+                    (l.amount_milli_brl = $5::bigint AND l.station_id > $6::uuid))
+         END))
 ORDER BY
-    CASE WHEN $3::boolean THEN l.amount_milli_brl ELSE -l.amount_milli_brl END ASC,
+    CASE WHEN $4::boolean THEN l.amount_milli_brl ELSE -l.amount_milli_brl END ASC,
     l.station_id ASC
-LIMIT $4::int
+LIMIT $7::int
 `
 
 type RankingStationObservationsParams struct {
 	Uf               string      `json:"uf"`
 	MunicipalityCode string      `json:"municipality_code"`
+	HasAfter         bool        `json:"has_after"`
 	SortAsc          bool        `json:"sort_asc"`
+	AfterAmount      int64       `json:"after_amount"`
+	AfterID          pgtype.UUID `json:"after_id"`
 	LimitPlusOne     int32       `json:"limit_plus_one"`
 	RevisionID       pgtype.UUID `json:"revision_id"`
 	FuelProduct      string      `json:"fuel_product"`
@@ -227,7 +236,10 @@ func (q *Queries) RankingStationObservations(ctx context.Context, arg RankingSta
 	rows, err := q.db.Query(ctx, rankingStationObservations,
 		arg.Uf,
 		arg.MunicipalityCode,
+		arg.HasAfter,
 		arg.SortAsc,
+		arg.AfterAmount,
+		arg.AfterID,
 		arg.LimitPlusOne,
 		arg.RevisionID,
 		arg.FuelProduct,

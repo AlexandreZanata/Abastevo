@@ -86,6 +86,19 @@ type RankingQuery struct {
 	Metric        RankingMetric
 	Limit         int
 	PolicyVersion string
+	// After is the decoded keyset position from a sealed HTTP cursor. It is
+	// not part of the frozen wire query and never comes from raw user input.
+	After *RankingPosition
+}
+
+// RankingPosition is the stable sort position used by opaque cursors.
+type RankingPosition struct {
+	AmountMilliBrl   int64
+	StationID        string
+	MeanNumerator    int64
+	MeanDenominator  int64
+	State            string
+	MunicipalityCode string
 }
 
 type RankingRevision struct {
@@ -128,7 +141,8 @@ type RankingData struct {
 }
 
 type RankingReader interface {
-	ReadRanking(ctx context.Context, q RankingQuery) (RankingData, error)
+	ResolveRankingRevision(ctx context.Context, surveyWeekStart string) (RankingRevision, error)
+	ReadRankingAt(ctx context.Context, q RankingQuery, revision RankingRevision) (RankingData, error)
 }
 
 type RankingSource struct {
@@ -181,6 +195,8 @@ type RankingResult struct {
 	Coverage RankingCoverage
 	Stations []StationObservation
 	Areas    []AreaAggregate
+	// Next is the last returned sort position when another page exists.
+	Next *RankingPosition
 }
 
 // ValidateRanking accepts only the frozen typed combinations this backend can
@@ -248,7 +264,11 @@ func RankPrices(ctx context.Context, reader RankingReader, q RankingQuery) (Rank
 	if err != nil {
 		return RankingResult{}, err
 	}
-	data, err := reader.ReadRanking(ctx, validated)
+	revision, err := reader.ResolveRankingRevision(ctx, validated.Source.SurveyWeekStart)
+	if err != nil {
+		return RankingResult{}, err
+	}
+	data, err := reader.ReadRankingAt(ctx, validated, revision)
 	if err != nil {
 		return RankingResult{}, err
 	}
@@ -284,7 +304,18 @@ func BuildRanking(q RankingQuery, data RankingData) (RankingResult, error) {
 			}
 			return stations[i].StationID < stations[j].StationID
 		})
+		if q.After != nil {
+			filtered := stations[:0]
+			for _, station := range stations {
+				if compareStationPosition(station, *q.After, q.Metric.Sort) > 0 {
+					filtered = append(filtered, station)
+				}
+			}
+			stations = filtered
+		}
 		if len(stations) > q.Limit {
+			next := stationPosition(stations[q.Limit-1])
+			result.Next = &next
 			stations = stations[:q.Limit]
 		}
 		result.Stations = stations
@@ -293,7 +324,18 @@ func BuildRanking(q RankingQuery, data RankingData) (RankingResult, error) {
 		if err != nil {
 			return RankingResult{}, err
 		}
+		if q.After != nil {
+			filtered := areas[:0]
+			for _, area := range areas {
+				if compareAreaPosition(area, *q.After, q.Metric.Sort) > 0 {
+					filtered = append(filtered, area)
+				}
+			}
+			areas = filtered
+		}
 		if len(areas) > q.Limit {
+			next := areaPosition(areas[q.Limit-1])
+			result.Next = &next
 			areas = areas[:q.Limit]
 		}
 		result.Areas = areas
@@ -434,6 +476,52 @@ func gcdInt64(a, b int64) int64 {
 		return 1
 	}
 	return a
+}
+
+func stationPosition(station StationObservation) RankingPosition {
+	return RankingPosition{AmountMilliBrl: station.AmountMilliBrl, StationID: station.StationID}
+}
+
+func areaPosition(area AreaAggregate) RankingPosition {
+	return RankingPosition{
+		MeanNumerator: area.MeanNumerator, MeanDenominator: area.MeanDenominator,
+		State: area.State, MunicipalityCode: area.MunicipalityCode,
+	}
+}
+
+// compareStationPosition orders a station against a cursor position in the
+// final page order (amount asc/desc, station UUID ascending).
+func compareStationPosition(station StationObservation, position RankingPosition, sort string) int {
+	if station.AmountMilliBrl != position.AmountMilliBrl {
+		if sort == "DESC" {
+			if station.AmountMilliBrl > position.AmountMilliBrl {
+				return -1
+			}
+			return 1
+		}
+		if station.AmountMilliBrl < position.AmountMilliBrl {
+			return -1
+		}
+		return 1
+	}
+	return strings.Compare(station.StationID, position.StationID)
+}
+
+// compareAreaPosition orders an area against a cursor position exactly.
+func compareAreaPosition(area AreaAggregate, position RankingPosition, sort string) int {
+	areaMean := big.NewRat(area.MeanNumerator, area.MeanDenominator)
+	positionMean := big.NewRat(position.MeanNumerator, position.MeanDenominator)
+	comparison := areaMean.Cmp(positionMean)
+	if sort == "DESC" {
+		comparison = -comparison
+	}
+	if comparison != 0 {
+		return comparison
+	}
+	if area.State != position.State {
+		return strings.Compare(area.State, position.State)
+	}
+	return strings.Compare(area.MunicipalityCode, position.MunicipalityCode)
 }
 
 // normalizeRanking trims the typed strings without changing case-sensitive
