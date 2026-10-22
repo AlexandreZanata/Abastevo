@@ -9,7 +9,6 @@ import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.UserPreferencesRepository
 import com.anpfuel.domain.rule.EmptyMunicipalityResultRule
 import com.anpfuel.domain.rule.MunicipalityDataAvailabilityRule
-import com.anpfuel.domain.rule.SearchRequiresImportedDataRule
 import com.anpfuel.domain.rule.ActiveSurveyWeekRule
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.DataAvailability
@@ -17,7 +16,7 @@ import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.SurveyWeek
 
 data class LocationStatesResult(
-    val surveyWeek: SurveyWeek,
+    val surveyWeek: SurveyWeek?,
     val states: List<BrazilianState>,
 )
 
@@ -27,7 +26,7 @@ data class CatalogMunicipalityItem(
 )
 
 data class LocationMunicipalitiesResult(
-    val surveyWeek: SurveyWeek,
+    val surveyWeek: SurveyWeek?,
     val state: BrazilianState,
     val municipalities: List<CatalogMunicipalityItem>,
 ) {
@@ -53,7 +52,7 @@ class SelectLocationUseCase(
 ) {
 
     suspend fun getStatesWithData(): LocationStatesResult {
-        requireImportedData()
+        // MEX-04: state discovery works without an imported ANP week.
         val surveyWeek = resolveDisplaySurveyWeek()
         val states = municipalityCatalogRepository.getCatalogStates()
 
@@ -64,22 +63,28 @@ class SelectLocationUseCase(
     }
 
     suspend fun getMunicipalities(state: BrazilianState): LocationMunicipalitiesResult {
-        requireImportedData()
+        // MEX-04: municipality discovery works without an imported ANP week;
+        // availability is separate enrichment resolved in one batch snapshot.
         val surveyWeek = resolveDisplaySurveyWeek()
-        val surveyWeekId = DomainId.forSurveyWeek(surveyWeek)
+        val surveyWeekId = surveyWeek?.let(DomainId::forSurveyWeek)
         val entries = municipalityCatalogRepository.getCatalogMunicipalities(state)
-        val municipalitiesWithDataThisWeek =
-            municipalityCatalogRepository.getLocationKeysWithDataForWeek(surveyWeek)
-        val municipalitiesEverInAnp = municipalityCatalogRepository.getLocationKeysEverInAnp()
+        val snapshot = municipalityCatalogRepository.resolveAvailabilitySnapshot(surveyWeek)
         val municipalities = entries.map { entry ->
             CatalogMunicipalityItem(
                 municipality = entry.municipality,
-                dataAvailability = MunicipalityDataAvailabilityRule.resolve(
-                    entry = entry,
-                    surveyWeekId = surveyWeekId,
-                    municipalitiesWithDataThisWeek = municipalitiesWithDataThisWeek,
-                    municipalitiesEverInAnp = municipalitiesEverInAnp,
-                ),
+                dataAvailability = if (surveyWeekId == null) {
+                    MunicipalityDataAvailabilityRule.resolveWithoutWeek(
+                        entry = entry,
+                        municipalitiesEverInAnp = snapshot.everInAnp,
+                    )
+                } else {
+                    MunicipalityDataAvailabilityRule.resolve(
+                        entry = entry,
+                        surveyWeekId = surveyWeekId,
+                        municipalitiesWithDataThisWeek = snapshot.withDataThisWeek,
+                        municipalitiesEverInAnp = snapshot.everInAnp,
+                    )
+                },
             )
         }
 
@@ -107,6 +112,7 @@ class SelectLocationUseCase(
     ): SelectLocationResult {
         requireImportedData()
         val surveyWeek = resolveDisplaySurveyWeek()
+            ?: throw DomainException("BR-006: No successfully imported SurveyWeek is available")
         validateMunicipalitySelection(
             state = state,
             municipality = municipality,
@@ -136,18 +142,20 @@ class SelectLocationUseCase(
     }
 
     private suspend fun requireImportedData() {
-        SearchRequiresImportedDataRule.validate(
-            priceTableRepository.countImportedSurveyWeeks(),
-        )
+        // MEX-04: only week-bound writes (selection event) require imported
+        // data. Discovery reads resolve a null week instead of throwing.
+        if (priceTableRepository.countImportedSurveyWeeks() < 1) {
+            throw DomainException("BR-006: No successfully imported SurveyWeek is available")
+        }
     }
 
-    private suspend fun resolveDisplaySurveyWeek(): SurveyWeek {
+    private suspend fun resolveDisplaySurveyWeek(): SurveyWeek? {
         val preferences = userPreferencesRepository.getPreferences()
         val importedSurveys = priceTableRepository.getImportedPriceSurveys()
         return ActiveSurveyWeekRule.resolveDisplayWeek(
             activeSurveyWeek = preferences.activeSurveyWeek,
             importedSurveys = importedSurveys,
-        ) ?: throw DomainException("BR-006: No successfully imported SurveyWeek is available")
+        )
     }
 
     private suspend fun validateMunicipalitySelection(

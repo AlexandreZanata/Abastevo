@@ -1,14 +1,16 @@
 package com.anpfuel.application.usecase.location
 
 import com.anpfuel.application.error.AppError
-import com.anpfuel.domain.exception.DomainException
+import com.anpfuel.domain.model.EnrichedSearchCandidate
 import com.anpfuel.domain.model.MunicipalitySearchResult
 import com.anpfuel.domain.model.PriceSurvey
+import com.anpfuel.domain.model.SearchEnrichment
 import com.anpfuel.domain.model.UserPreferences
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.MunicipalitySearchRepository
 import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.UserPreferencesRepository
+import com.anpfuel.domain.valueobject.AvailabilitySnapshot
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.DataAvailability
 import com.anpfuel.domain.valueobject.DomainId
@@ -22,7 +24,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 
 class SearchMunicipalityUseCaseTest {
 
@@ -75,41 +76,33 @@ class SearchMunicipalityUseCaseTest {
 
     @Test
     fun annotatesResultsWithDataAvailability() = runTest {
-        val matches = listOf(
-            MunicipalitySearchResult(
-                municipality = "SÃO PAULO",
-                state = BrazilianState.SAO_PAULO,
-                dataAvailability = DataAvailability.HAS_DATA,
-            ),
-            MunicipalitySearchResult(
-                municipality = "ACRELÂNDIA",
-                state = BrazilianState.ACRE,
-                dataAvailability = DataAvailability.HAS_DATA,
-            ),
+        val saoPaulo = MunicipalitySearchResult(
+            municipality = "SÃO PAULO",
+            state = BrazilianState.SAO_PAULO,
+            dataAvailability = DataAvailability.HAS_DATA,
         )
-        coEvery { municipalitySearchRepository.search("sao", 20) } returns matches
-        coEvery {
-            municipalityCatalogRepository.findCatalogEntry(BrazilianState.SAO_PAULO, "SÃO PAULO")
-        } returns MunicipalityCatalogEntry(
+        val acrelandia = MunicipalitySearchResult(
+            municipality = "ACRELÂNDIA",
+            state = BrazilianState.ACRE,
+            dataAvailability = DataAvailability.HAS_DATA,
+        )
+        val saoPauloEntry = MunicipalityCatalogEntry(
             state = BrazilianState.SAO_PAULO,
             municipality = "SÃO PAULO",
             ibgeCode = "3550308",
         )
+        coEvery { municipalitySearchRepository.search("sao", 20) } returns listOf(saoPaulo, acrelandia)
         coEvery {
-            municipalityCatalogRepository.findCatalogEntry(BrazilianState.ACRE, "ACRELÂNDIA")
-        } returns MunicipalityCatalogEntry(
-            state = BrazilianState.ACRE,
-            municipality = "ACRELÂNDIA",
-            ibgeCode = "1200013",
-        )
-        coEvery {
-            municipalityCatalogRepository.getLocationKeysWithDataForWeek(surveyWeek)
-        } returns setOf(
-            MunicipalityCatalogEntry(
-                state = BrazilianState.SAO_PAULO,
-                municipality = "SÃO PAULO",
-                ibgeCode = "3550308",
-            ).locationKey,
+            municipalityCatalogRepository.enrichSearchResults(listOf(saoPaulo, acrelandia), surveyWeek)
+        } returns SearchEnrichment(
+            candidates = listOf(
+                EnrichedSearchCandidate(result = saoPaulo, entry = saoPauloEntry),
+                EnrichedSearchCandidate(result = acrelandia, entry = null),
+            ),
+            snapshot = AvailabilitySnapshot(
+                withDataThisWeek = setOf(saoPauloEntry.locationKey),
+                everInAnp = setOf(saoPauloEntry.locationKey),
+            ),
         )
 
         val outcome = useCase.search("  sao ")
@@ -119,6 +112,13 @@ class SearchMunicipalityUseCaseTest {
         assertEquals(DataAvailability.HAS_DATA, results[0].dataAvailability)
         assertEquals(DataAvailability.NEVER_IN_ANP, results[1].dataAvailability)
         coVerify(exactly = 1) { municipalitySearchRepository.search("sao", 20) }
+        coVerify(exactly = 1) {
+            municipalityCatalogRepository.enrichSearchResults(listOf(saoPaulo, acrelandia), surveyWeek)
+        }
+        // MEX-04: no per-result database lookup for enrichment.
+        coVerify(exactly = 0) {
+            municipalityCatalogRepository.findCatalogEntry(any(), any())
+        }
     }
 
     @Test
@@ -135,14 +135,74 @@ class SearchMunicipalityUseCaseTest {
     }
 
     @Test
-    fun rejectsSearchWhenNoImportedData() = runTest {
-        coEvery { priceTableRepository.countImportedSurveyWeeks() } returns 0
+    fun discoversResultsWhenNoImportedData() = runTest {
+        // MEX-04 (B-BR-MEX-07/BUC-MEX-05): discovery works without an imported
+        // week; every result is reported unavailable, never an error.
+        coEvery { priceTableRepository.getImportedPriceSurveys() } returns emptyList()
+        val match = MunicipalitySearchResult(
+            municipality = "SÃO PAULO",
+            state = BrazilianState.SAO_PAULO,
+            dataAvailability = DataAvailability.HAS_DATA,
+        )
+        coEvery { municipalitySearchRepository.search("sao", 20) } returns listOf(match)
+        coEvery {
+            municipalityCatalogRepository.enrichSearchResults(listOf(match), null)
+        } returns SearchEnrichment(
+            candidates = listOf(
+                EnrichedSearchCandidate(
+                    result = match,
+                    entry = MunicipalityCatalogEntry(
+                        state = BrazilianState.SAO_PAULO,
+                        municipality = "SÃO PAULO",
+                        ibgeCode = "3550308",
+                    ),
+                ),
+            ),
+            snapshot = AvailabilitySnapshot.empty(),
+        )
 
-        assertThrows<DomainException> {
-            useCase.search("sao")
+        val outcome = useCase.search("sao")
+
+        assertInstanceOf(SearchMunicipalityOutcome.Success::class.java, outcome)
+        val results = (outcome as SearchMunicipalityOutcome.Success).results
+        assertEquals(DataAvailability.NEVER_IN_ANP, results[0].dataAvailability)
+        coVerify(exactly = 1) { municipalitySearchRepository.search("sao", 20) }
+        coVerify(exactly = 1) {
+            municipalityCatalogRepository.enrichSearchResults(listOf(match), null)
         }
+    }
 
-        coVerify(exactly = 0) { municipalitySearchRepository.search(any(), any()) }
+    @Test
+    fun reportsPreviouslyImportedLocationWithoutWeek() = runTest {
+        // MEX-04: without a selected week, a location seen in ANP history is
+        // NO_DATA_THIS_WEEK, distinct from NEVER_IN_ANP.
+        coEvery { priceTableRepository.getImportedPriceSurveys() } returns emptyList()
+        val match = MunicipalitySearchResult(
+            municipality = "CAMPINAS",
+            state = BrazilianState.SAO_PAULO,
+            dataAvailability = DataAvailability.HAS_DATA,
+        )
+        val entry = MunicipalityCatalogEntry(
+            state = BrazilianState.SAO_PAULO,
+            municipality = "CAMPINAS",
+            ibgeCode = "3509502",
+        )
+        coEvery { municipalitySearchRepository.search("camp", 20) } returns listOf(match)
+        coEvery {
+            municipalityCatalogRepository.enrichSearchResults(listOf(match), null)
+        } returns SearchEnrichment(
+            candidates = listOf(EnrichedSearchCandidate(result = match, entry = entry)),
+            snapshot = AvailabilitySnapshot(
+                withDataThisWeek = emptySet(),
+                everInAnp = setOf(entry.locationKey),
+            ),
+        )
+
+        val outcome = useCase.search("camp")
+
+        assertInstanceOf(SearchMunicipalityOutcome.Success::class.java, outcome)
+        val results = (outcome as SearchMunicipalityOutcome.Success).results
+        assertEquals(DataAvailability.NO_DATA_THIS_WEEK, results[0].dataAvailability)
     }
 
     @Test

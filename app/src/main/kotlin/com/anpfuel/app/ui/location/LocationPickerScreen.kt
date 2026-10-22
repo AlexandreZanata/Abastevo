@@ -226,14 +226,19 @@ private fun StateListContent(
     onSearchQueryChange: (String) -> Unit,
     onUseCurrentLocation: () -> Unit,
 ) {
-    val stateLabels = states.associateWith { state ->
+    // MEX-06: display labels resolve in composition for the visible rows;
+    // the filter itself only recomputes when its inputs change. remember
+    // compares map keys structurally, so locale changes still refresh it.
+    val displayLabels = states.associateWith { state ->
         stringResource(BrazilianStateI18n.toStringRes(state))
     }
-    val filteredStates = LocationPickerFilter.filterStates(
-        states = states,
-        query = searchQuery,
-        stateLabel = stateLabels::getValue,
-    )
+    val filteredStates = remember(states, searchQuery, displayLabels) {
+        LocationPickerFilter.filterStates(
+            states = states,
+            query = searchQuery,
+            stateLabel = displayLabels::getValue,
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedButton(
@@ -300,7 +305,7 @@ private fun StateListContent(
                 items(filteredStates, key = { it.name }) { state ->
                     ListItem(
                         headlineContent = {
-                            Text(text = stateLabels.getValue(state))
+                            Text(text = displayLabels.getValue(state))
                         },
                         supportingContent = {
                             Text(text = state.abbreviation)
@@ -347,8 +352,13 @@ internal fun MunicipalityListContent(
     onSearchQueryChange: (String) -> Unit,
     errorMessage: String?,
 ) {
-    val filteredMunicipalities = remember(municipalities, searchQuery) {
-        LocationPickerFilter.filterMunicipalities(municipalities, searchQuery)
+    // MEX-06: normalized names are computed once per loaded list; each
+    // keystroke then costs one query normalization plus substring checks.
+    val filterIndex = remember(municipalities) {
+        LocationPickerFilter.indexMunicipalities(municipalities)
+    }
+    val filteredMunicipalities = remember(filterIndex, searchQuery) {
+        LocationPickerFilter.filterIndexed(filterIndex, searchQuery)
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

@@ -130,6 +130,16 @@ func paidStore(t *testing.T, pool *pgxpool.Pool, p app.Principal) *Store {
 		}
 		return err
 	}
+	store.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		err := subStore.RequireCapability(ctx, tx, owner, "vehicles.multiple")
+		if errors.Is(err, subdomain.ErrDenied) {
+			return domain.ErrDenied
+		}
+		if errors.Is(err, subdomain.ErrUnauthorized) {
+			return domain.ErrUnauthorized
+		}
+		return err
+	}
 	return store
 }
 func vehicle(t *testing.T) domain.Vehicle {

@@ -12,7 +12,7 @@ func TestVerifiedCapabilitiesBoundaries(t *testing.T) {
 			s := Snapshot{State: state, VerifiedAt: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour)}
 			got := Evaluate(&s, now, true)
 			want := state == Active || state == Canceled || state == Grace
-			if (len(got.Capabilities) == 6) != want {
+			if (len(got.Capabilities) == 7) != want {
 				t.Fatalf("state %s rights %+v", state, got)
 			}
 			if !got.RetainedDataAccess {
@@ -75,5 +75,19 @@ func TestCapabilityResultsDoNotShareMutableSlice(t *testing.T) {
 	second := Evaluate(&s, now, true)
 	if second.Capabilities[0] != "cloud.sync" {
 		t.Fatal("caller mutated global policy")
+	}
+}
+
+func TestMultipleVehicleCapabilityUsesLiveVerifiedPremium(t *testing.T) {
+	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
+	for _, state := range []State{Active, Canceled, Grace, Pending, Hold, Paused, Expired, Revoked, Unknown} {
+		snapshot := &Snapshot{State: state, VerifiedAt: now, ValidUntil: now.Add(time.Hour)}
+		found := false
+		for _, c := range Evaluate(snapshot, now, true).Capabilities {
+			found = found || c == "vehicles.multiple"
+		}
+		if want := state == Active || state == Canceled || state == Grace; found != want {
+			t.Fatalf("%s multiple=%v want=%v", state, found, want)
+		}
 	}
 }

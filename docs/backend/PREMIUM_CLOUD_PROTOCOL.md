@@ -43,3 +43,16 @@ PRM04-T04 restore preview: owner-only listing of READY snapshots plus staged Pre
 PRM04-T05 restore commit: POST /v1/cloud/restore/commit applies a READY snapshot atomically with live owner, epoch and entitlement checks plus explicit merge policy and recoverable pre-restore revision. No security material import. Double confirmation with the same restore ID converges with replayed receipts. Stale previews, revoked devices and lapsed entitlement fail closed. Conflicts return base, current and proposed data without resurrecting erased UUIDs. Receipts carry only metadata.
 
 PRM04-T06 snapshot erasure: Erase purges snapshot and restore metadata in the same transaction as record fences and deletes objects best-effort before commit. Outages fail closed with inventory preserved. Old snapshot IDs and stale devices stay blocked. Restored bytes beside purge receipts remain fenced via cloud_erased_ids. Unconfirmed bytes stay inventoried for retry. Staging provider proof remains owed.
+
+
+MEX-07 registration-v2 admission: hosted writes still require live cloud.sync
+authority. Creating a second/third distinct retained vehicle also requires
+vehicles.multiple, checked inside the existing owner-locked transaction and
+again before commit. Archived IDs count; current ceiling3 is unchanged.
+Same-ID edits/receipts/restores do not allocate slots, and old over-limit rows
+remain readable/correctable. Batch rejection rolls back every record/change/
+receipt. Import preview reports quota for an unavailable additional slot and
+does not double-count an identical command; restore preview reports incompatible
+vehicle-quota/vehicle-capability-required without deleting rows. Commit always
+rechecks live authority and current revision. Sales/provider gates stay OFF;
+local registration enforcement is separately MEX-08 after EE-19.

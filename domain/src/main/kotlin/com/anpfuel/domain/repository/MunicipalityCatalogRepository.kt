@@ -1,7 +1,11 @@
 package com.anpfuel.domain.repository
 
+import com.anpfuel.domain.model.MunicipalitySearchResult
+import com.anpfuel.domain.model.SearchEnrichment
+import com.anpfuel.domain.valueobject.AvailabilitySnapshot
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.DataAvailability
+import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.MunicipalityCatalogEntry
 import com.anpfuel.domain.valueobject.MunicipalityLocationKey
 import com.anpfuel.domain.valueobject.SurveyWeek
@@ -29,6 +33,23 @@ interface MunicipalityCatalogRepository {
     suspend fun getLocationKeysWithDataForWeek(surveyWeek: SurveyWeek): Set<MunicipalityLocationKey>
 
     suspend fun getLocationKeysEverInAnp(): Set<MunicipalityLocationKey>
+
+    /**
+     * MEX-04 — Batch availability for one survey week (or none) in a bounded
+     * number of indexed reads. A null week yields an empty week set; locations
+     * imported without any registered week still appear in [everInAnp].
+     */
+    suspend fun resolveAvailabilitySnapshot(surveyWeek: SurveyWeek?): AvailabilitySnapshot
+
+    /**
+     * MEX-04 — Single-pass catalog/availability enrichment for search results.
+     * Replaces per-result [findCatalogEntry] lookups; performs no per-result
+     * database read.
+     */
+    suspend fun enrichSearchResults(
+        results: List<MunicipalitySearchResult>,
+        surveyWeek: SurveyWeek?,
+    ): SearchEnrichment
 
     /**
      * Operational warning for the survey week when published by ANP (Phase 12 enrichment).

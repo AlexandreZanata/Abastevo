@@ -91,7 +91,7 @@ func Evaluate(s *Snapshot, now time.Time, live bool) Status {
 	switch s.State {
 	case Active, Canceled, Grace:
 		result.Reason = "verified"
-		result.Capabilities = []string{"cloud.sync", "cloud.backup", "cloud.restore", "alerts.advanced", "professional.write", "professional.report"}
+		result.Capabilities = []string{"cloud.sync", "cloud.backup", "cloud.restore", "alerts.advanced", "professional.write", "professional.report", "vehicles.multiple"}
 	default:
 		result.Reason = "state-ineligible"
 	}

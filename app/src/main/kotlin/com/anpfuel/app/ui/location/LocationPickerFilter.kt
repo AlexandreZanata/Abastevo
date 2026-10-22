@@ -37,6 +37,30 @@ internal object LocationPickerFilter {
         }
     }
 
+    /**
+     * MEX-06 precomputed filter index: normalized names are computed once
+     * per loaded list instead of once per item per keystroke. The filtered
+     * result is identical to [filterMunicipalities]; only the repeated
+     * normalization work is removed from composition.
+     */
+    fun indexMunicipalities(
+        municipalities: List<CatalogMunicipalityItem>,
+    ): Map<CatalogMunicipalityItem, String> =
+        municipalities.associateWith { item ->
+            MunicipalitySearchTextNormalizer.normalize(item.municipality)
+        }
+
+    fun filterIndexed(
+        index: Map<CatalogMunicipalityItem, String>,
+        query: String,
+    ): List<CatalogMunicipalityItem> {
+        val normalizedQuery = normalizeQuery(query)
+            ?: return index.keys.toList()
+        return index.filterValues { normalizedName ->
+            normalizedName.contains(normalizedQuery)
+        }.keys.toList()
+    }
+
     private fun normalizeQuery(query: String): String? {
         val normalized = MunicipalitySearchTextNormalizer.normalize(query)
         return normalized.takeIf { it.isNotEmpty() }

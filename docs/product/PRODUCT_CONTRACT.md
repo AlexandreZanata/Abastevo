@@ -33,7 +33,7 @@ Existing Android regression may run anytime. New app work requires G09-LOCAL int
 
 SHOULD after pilot: refine consensus from labelled review outcomes, improve geocoding coverage, optional integrity signals, richer operational summaries and additional localization. LATER: optional paid hosted backup/migration, cross-device sync, advanced alerts/statistics, optional hosted benefits, API commercial plans and fleets. No subscription machinery, multi-tenancy or enterprise services in the community MVP.
 
-Payment buys hosted convenience; it never increases confidence or reputation. Do not move currently free features behind a paywall as part of integration. Selling “multiple vehicles” needs a product decision that preserves the existing free allowance of three.
+Payment never increases confidence or reputation. The maintainer explicitly amended vehicle registration to one free vehicle plus Premium extras under [registration v2](VEHICLE_REGISTRATION_POLICY.md), preserving existing vehicles/history and the technical ceiling. All other free features and professional capability boundaries remain unchanged; runtime enforcement is pending its owning tasks.
 
 ## Product truth
 

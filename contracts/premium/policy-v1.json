@@ -21,6 +21,16 @@
   "snapshot_max_bytes": 10485760,
   "max_devices_per_account": 3,
   "max_vehicles_per_account": 3,
+  "vehicle_registration_amendment": {
+    "version": 2,
+    "state": "CONTRACT_FROZEN_RUNTIME_PENDING",
+    "free_vehicle_limit": 1,
+    "premium_vehicle_limit": 3,
+    "additional_vehicle_capability": "vehicles.multiple",
+    "count_basis": "distinct_non_deleted_vehicle_ids_in_owner_partition",
+    "preserve_held_data": true,
+    "runtime_enforced": false
+  },
   "max_advanced_rules_per_account": 10,
   "sync_batch_max_operations": 50,
   "sync_page_max_records": 100,

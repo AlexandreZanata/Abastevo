@@ -1,7 +1,6 @@
 package com.anpfuel.application.usecase.location
 
 import com.anpfuel.application.error.AppError
-import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.MunicipalitySearchResult
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.MunicipalitySearchRepository
@@ -9,7 +8,6 @@ import com.anpfuel.domain.repository.PriceTableRepository
 import com.anpfuel.domain.repository.UserPreferencesRepository
 import com.anpfuel.domain.rule.MinimumSearchLengthRule
 import com.anpfuel.domain.rule.MunicipalityDataAvailabilityRule
-import com.anpfuel.domain.rule.SearchRequiresImportedDataRule
 import com.anpfuel.domain.rule.ActiveSurveyWeekRule
 import com.anpfuel.domain.valueobject.DataAvailability
 import com.anpfuel.domain.valueobject.DomainId
@@ -41,54 +39,55 @@ class SearchMunicipalityUseCase(
         query: String,
         limit: Int = MunicipalitySearchRepository.DEFAULT_LIMIT,
     ): SearchMunicipalityOutcome {
-        SearchRequiresImportedDataRule.validate(
-            priceTableRepository.countImportedSurveyWeeks(),
-        )
-
         if (!MinimumSearchLengthRule.isSearchAllowed(query)) {
             return SearchMunicipalityOutcome.QueryTooShort
         }
 
+        // MEX-04: location discovery never requires an imported ANP week.
+        // Availability is separate enrichment; without a week every catalog
+        // result is reported as unavailable, never as an error.
         val surveyWeek = resolveDisplaySurveyWeek()
-        val surveyWeekId = DomainId.forSurveyWeek(surveyWeek)
-        val municipalitiesWithDataThisWeek =
-            municipalityCatalogRepository.getLocationKeysWithDataForWeek(surveyWeek)
-        val municipalitiesEverInAnp = municipalityCatalogRepository.getLocationKeysEverInAnp()
+        val surveyWeekId = surveyWeek?.let(DomainId::forSurveyWeek)
 
-        val results = municipalitySearchRepository.search(
+        val matches = municipalitySearchRepository.search(
             query = query.trim(),
             limit = limit,
-        ).map { result ->
-            val entry = municipalityCatalogRepository.findCatalogEntry(
-                state = result.state,
-                municipality = result.municipality,
-            )
-            val dataAvailability = if (entry == null) {
-                DataAvailability.NEVER_IN_ANP
-            } else {
-                MunicipalityDataAvailabilityRule.resolve(
-                    entry = entry,
-                    surveyWeekId = surveyWeekId,
-                    municipalitiesWithDataThisWeek = municipalitiesWithDataThisWeek,
-                    municipalitiesEverInAnp = municipalitiesEverInAnp,
-                )
-            }
-            result.copy(dataAvailability = dataAvailability)
+        )
+        if (matches.isEmpty()) {
+            return SearchMunicipalityOutcome.NoResults()
         }
 
-        if (results.isEmpty()) {
-            return SearchMunicipalityOutcome.NoResults()
+        val enrichment = municipalityCatalogRepository.enrichSearchResults(matches, surveyWeek)
+        val results = enrichment.candidates.map { candidate ->
+            val entry = candidate.entry
+            val dataAvailability = when {
+                entry == null ->
+                    DataAvailability.NEVER_IN_ANP
+                surveyWeekId == null ->
+                    MunicipalityDataAvailabilityRule.resolveWithoutWeek(
+                        entry = entry,
+                        municipalitiesEverInAnp = enrichment.snapshot.everInAnp,
+                    )
+                else ->
+                    MunicipalityDataAvailabilityRule.resolve(
+                        entry = entry,
+                        surveyWeekId = surveyWeekId,
+                        municipalitiesWithDataThisWeek = enrichment.snapshot.withDataThisWeek,
+                        municipalitiesEverInAnp = enrichment.snapshot.everInAnp,
+                    )
+            }
+            candidate.result.copy(dataAvailability = dataAvailability)
         }
 
         return SearchMunicipalityOutcome.Success(results = results)
     }
 
-    private suspend fun resolveDisplaySurveyWeek(): SurveyWeek {
+    private suspend fun resolveDisplaySurveyWeek(): SurveyWeek? {
         val preferences = userPreferencesRepository.getPreferences()
         val importedSurveys = priceTableRepository.getImportedPriceSurveys()
         return ActiveSurveyWeekRule.resolveDisplayWeek(
             activeSurveyWeek = preferences.activeSurveyWeek,
             importedSurveys = importedSurveys,
-        ) ?: throw DomainException("BR-006: No successfully imported SurveyWeek is available")
+        )
     }
 }

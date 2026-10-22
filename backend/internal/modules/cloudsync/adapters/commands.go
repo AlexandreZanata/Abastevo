@@ -105,6 +105,7 @@ func (s *Store) Apply(ctx context.Context, p app.Principal, b app.Batch) (app.Ba
 	if b.ConsentRevision != state.ConsentRevision {
 		return app.BatchResult{}, domain.ErrDenied
 	}
+	vehicleSlots := vehicleAdmission{}
 	result := app.BatchResult{Epoch: state.Epoch, Revision: state.Revision, Results: []app.CommandResult{}}
 	for _, c := range b.Commands {
 		if state.ConsentMask&datasetBit(c.Dataset) == 0 {
@@ -140,7 +141,7 @@ func (s *Store) Apply(ctx context.Context, p app.Principal, b app.Batch) (app.Ba
 		if admission.Total >= 10000 || admission.Hourly >= 600 {
 			return app.BatchResult{}, domain.ErrQuota
 		}
-		revision, e := s.applyOne(ctx, tx, query, p, c)
+		revision, e := s.applyOne(ctx, tx, query, p, c, &vehicleSlots)
 		if e != nil {
 			var conflict *app.ConflictError
 			if errors.As(e, &conflict) {
@@ -168,6 +169,9 @@ func (s *Store) Apply(ctx context.Context, p app.Principal, b app.Batch) (app.Ba
 	if err = s.checkPaid(ctx, tx, p.AccountID); err != nil {
 		return app.BatchResult{}, err
 	}
+	if err = s.recheckVehicleAdmission(ctx, tx, p.AccountID, vehicleSlots); err != nil {
+		return app.BatchResult{}, err
+	}
 	if _, err = query.DeviceSuccess(ctx, q.DeviceSuccessParams{ID: uid(p.DeviceID), AccountID: uid(p.AccountID), Origin: s.Origin}); err != nil {
 		return app.BatchResult{}, domain.ErrUnavailable
 	}
@@ -183,7 +187,7 @@ func proposedForConflict(c app.Command) json.RawMessage {
 	return json.RawMessage(append([]byte(nil), c.Payload...))
 }
 
-func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app.Principal, c app.Command) (int64, error) {
+func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app.Principal, c app.Command, admission *vehicleAdmission) (int64, error) {
 	erased, err := query.ErasedID(ctx, q.ErasedIDParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID)})
 	if err != nil {
 		return 0, domain.ErrUnavailable
@@ -208,15 +212,8 @@ func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app
 		if e != nil {
 			return 0, domain.ErrUnavailable
 		}
-		maximum := int64(1000)
-		if c.Dataset == "vehicles" {
-			maximum = 3
-		}
-		if c.Dataset == "preferences" {
-			maximum = 1
-		}
-		if count >= maximum {
-			return 0, domain.ErrQuota
+		if e = s.admitRecord(ctx, tx, p.AccountID, c.Dataset, count, admission); e != nil {
+			return 0, e
 		}
 	} else {
 		return 0, domain.ErrUnavailable

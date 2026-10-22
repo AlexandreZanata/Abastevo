@@ -716,6 +716,12 @@ func run() error {
 		}
 		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
 	}
+	cloudStore.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return clouddomain.ErrDenied
+		}
+		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "vehicles.multiple"))
+	}
 	cloudhttp.Handler{
 		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {

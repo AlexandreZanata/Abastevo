@@ -41,12 +41,14 @@ class CommunityCacheMigration16To17Test {
             close()
         }
         try {
-            val first = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name).build()
+            val first = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name)
+                .addMigrations(AnpFuelDatabaseMigrations.MIGRATION_17_18).build()
             try {
                 first.communityFeedCacheDao().upsert(row("feed|origin-a|city-a", 1000))
                 first.communityFeedCacheDao().upsert(row("feed|origin-b|city-a", 2000))
             } finally { first.close() }
-            val reopened = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name).build()
+            val reopened = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name)
+                .addMigrations(AnpFuelDatabaseMigrations.MIGRATION_17_18).build()
             try {
                 val dao = reopened.communityFeedCacheDao()
                 assertEquals("{}", dao.findByKey("feed|origin-a|city-a")?.payloadJson)

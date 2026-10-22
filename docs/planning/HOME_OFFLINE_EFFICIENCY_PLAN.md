@@ -1,5 +1,11 @@
 # Stage A — Home offline and operational efficiency
 
+**2026-10-20 consumer coordination:** [MEX](MOBILE_EXPANSION_EXECUTION_PLAN.md)
+reuses OPT-A persistence/refresh ownership for Home/Community and new discovery
+consumers. Reconcile other agents' actual accepted work instead of duplicating
+it. Fixed 15-second frequency copy is removed from affected mobile locales;
+source age and manual refresh remain useful. No implementation is claimed here.
+
 State: PLANNED / NOT_IMPLEMENTED_BY_THIS_PLAN, 2026-10-14.
 Owner: [master](APP_CONSOLIDATION_PLAN.md). Tasks OPT-A00–A07.
 Rules: B-BR-OPT-01–05/12/18. Use cases: BUC-OPT-01/02/10.

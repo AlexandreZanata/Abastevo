@@ -1,0 +1,37 @@
+id,operation,anchor,fills,distance,fuel_cost,expenses,window_start_odo,window_end_odo,window_start_ms,window_end_ms,has_gap,crosses_segment,odometer_missing,expected_quantity,expected_cost,expected_distance,expected_efficiency,expected_cost_per_km,expected_change,expected_unknown
+full-partial-full,INTERVAL,50000:30000:1:ETHANOL:L,20000:12000:0:ETHANOL:L;20000:12400:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,40000,24400,400000,10,61,,
+discount-actual-total,INTERVAL,1:1:1:ETHANOL:L,20000:11500:0:ETHANOL:L;20000:11500:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,40000,23000,400000,10,115/2,,
+weighted-vehicles,SUM,1:1:1:ETHANOL:L,100000:10000:6000:_;900000:60000:36000:_,400000,,,100000,500000,1000,2000,0,0,0,70000,42000,1000000,100/7,42,,
+noninteger-distance,INTERVAL,1:1:1:ETHANOL:L,12345:7406:1:ETHANOL:L,123450,,,100000,500000,1000,2000,0,0,0,12345,7406,123450,10,148120/2469,,
+partial-only,INTERVAL,1:1:0:ETHANOL:L,1:1:0:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,full-anchors-required
+missing-start,INTERVAL,1:1:0:ETHANOL:L,1:1:1:ETHANOL:L;1:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,full-anchors-required
+trailing-partial,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L;1:1:0:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,full-anchors-required
+missing-odometer,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,1,,,,,,,odometer-missing
+known-fill-gap,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,1,0,0,,,,,,,declared-fill-gap
+reset-segment,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,1,0,,,,,,,odometer-segment-boundary
+zero-distance,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L,0,,,100000,500000,1000,2000,0,0,0,,,,,,,distance-nonpositive
+mixed-fuel,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L;1:1:1:GASOLINE_REGULAR:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,unsupported-mixed-method
+anchor-fuel-mismatch,INTERVAL,1:1:1:GASOLINE_REGULAR:L,1:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,unsupported-mixed-method
+gnv-pressure,INTERVAL,1:1:1:CNG:M3,1:1:1:CNG:M3,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,unsupported-gnv-method
+mixed-unit,INTERVAL,1:1:1:ETHANOL:L,1:1:1:ETHANOL:L;1:1:1:CNG:M3,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,incompatible-unit
+invalid-sole-unit,INTERVAL,1:1:1:ETHANOL:M3,1:1:1:ETHANOL:M3,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,incompatible-unit
+overflow-input,INTERVAL,1:1:1:ETHANOL:L,1000000001:1:1:ETHANOL:L,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+large-valid-cost-scaling,INTERVAL,1:1:1:ETHANOL:L,10000*1:1000000000000:1:ETHANOL:L,1,,,100000,500000,1000,2000,0,0,0,10000,10000000000000000,1,1/10000,10000000000000000000,,
+large-weighted-scaling,SUM,1:1:1:ETHANOL:L,10000*1:1:1000000000000:_,400000,,,100000,500000,1000,2000,0,0,0,10000,10000000000000000,10000,1,1000000000000000,,
+sum-overflow,SUM,1:1:1:ETHANOL:L,1:1:9223372036854775807:_;1:1:1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+unknown-interval-excluded,SUM,1:1:1:ETHANOL:L,100000:10000:6000:_;0:0:0:odometer-missing;900000:60000:36000:_,400000,,,100000,500000,1000,2000,0,0,0,70000,42000,1000000,100/7,42,,
+month-partial-distance,MATCHED,1:1:1:ETHANOL:L,,300000,24400,,100000,500000,1000,2000,0,0,0,,,,,,,unmatched-period-window
+matched-negative-cost,MATCHED,1:1:1:ETHANOL:L,,400000,-1,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+matched-invalid-odometer,MATCHED,1:1:1:ETHANOL:L,,400000,24400,,-9223372036854775808,9223372036854775807,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+matched-window-and-dedup,MATCHED,1:1:1:ETHANOL:L,,400000,23000,e:5000:1000:200000;e:5000:1500:200000;late:9000:2000:200000,100000,500000,1000,2000,0,0,0,,28000,400000,,70,,
+matched-large-scaling,MATCHED,1:1:1:ETHANOL:L,,1,0,10000*e#:1000000000000:1500:_,1,2,1000,2000,0,0,0,,10000000000000000,1,,10000000000000000000,,
+single-cost-max,COST,1:1:1:ETHANOL:L,,1,1000000000000,,100000,500000,1000,2000,0,0,0,,1000000000000,1,,1000000000000000,,
+zero-baseline,COMPARE,1:1:1:ETHANOL:L,100000:10000:0:_;900000:60000:36000:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,comparison-baseline-zero
+comparison-positive,COMPARE,1:1:1:ETHANOL:L,100000:10000:6000:_;900000:60000:36000:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,50,
+comparison-negative,COMPARE,1:1:1:ETHANOL:L,900000:60000:36000:_;100000:10000:6000:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,-100/3,
+comparison-incomplete-base,COMPARE,1:1:1:ETHANOL:L,0:0:0:odometer-missing;1:1:1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,baseline-incomplete: odometer-missing
+comparison-incomplete-current,COMPARE,1:1:1:ETHANOL:L,1:1:1:_;0:0:0:declared-fill-gap,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,current-incomplete: declared-fill-gap
+comparison-invalid-numerator,COMPARE,1:1:1:ETHANOL:L,1:1:1:_;0:1:1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+sum-distance-overflow,SUM,1:1:1:ETHANOL:L,9223372036854775807:1:1:_;1:1:1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+sum-quantity-overflow,SUM,1:1:1:ETHANOL:L,1:9223372036854775807:1:_;1:1:1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds
+sum-negative-input,SUM,1:1:1:ETHANOL:L,1:1:-1:_,400000,,,100000,500000,1000,2000,0,0,0,,,,,,,input-out-of-bounds

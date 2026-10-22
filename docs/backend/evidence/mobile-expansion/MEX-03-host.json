@@ -1,0 +1,78 @@
+{
+  "scope": "HOST_COMPONENTS_NOT_ANDROID_ACCEPTANCE",
+  "python": "3.12.2",
+  "sqlite": "3.45.1",
+  "catalog_sha256": "00c7ea4f76a6b90b3cdf6427cb5fe210fa4c0c5e95cf6ef5da8d43f606a086a6",
+  "schema_sha256": "f4ffcc5d29301d81d771e538e151a656e7d80be9fa141422ce1ce20ce2d0b882",
+  "source_head": "5cb8e66068d6761310e7ede389f657e671fd0446",
+  "catalog_rows": 5571,
+  "MunicipalityCatalogDao_sha256": "229886d2cdf2a8922cdec85282191d509eeb0253b4609ed1030b7f1e446200bd",
+  "MunicipalityFtsDao_sha256": "68eab2267187dd197ba7b56cf3a4e8099060aae8a789767db7557fa72b4b8d65",
+  "temporary_database_bytes": 8237056,
+  "measurements": {
+    "catalog_full_scan": {
+      "reopened_ms": 4.9556,
+      "warm_p50_ms": 5.2516,
+      "warm_p95_ms": 5.5413,
+      "rows": 5571,
+      "json_array_bytes": 343872,
+      "plan": [
+        "SCAN municipality_catalog"
+      ]
+    },
+    "states": {
+      "reopened_ms": 0.3853,
+      "warm_p50_ms": 0.1725,
+      "warm_p95_ms": 0.1915,
+      "rows": 27,
+      "json_array_bytes": 190,
+      "plan": [
+        "SCAN municipality_catalog USING COVERING INDEX index_municipality_catalog_state_normalized_name"
+      ]
+    },
+    "fts_sao": {
+      "reopened_ms": 0.8197,
+      "warm_p50_ms": 0.5289,
+      "warm_p95_ms": 0.6178,
+      "rows": 200,
+      "json_array_bytes": 6045,
+      "plan": [
+        "SCAN municipality_fts VIRTUAL TABLE INDEX 5:",
+        "USE TEMP B-TREE FOR DISTINCT",
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    },
+    "exact_sorriso": {
+      "reopened_ms": 0.0954,
+      "warm_p50_ms": 0.0149,
+      "warm_p95_ms": 0.0203,
+      "rows": 1,
+      "json_array_bytes": 53,
+      "plan": [
+        "SEARCH municipality_catalog USING INDEX index_municipality_catalog_state_normalized_name (state=?)"
+      ]
+    },
+    "model_occurrences_page": {
+      "reopened_ms": 0.0952,
+      "warm_p50_ms": 0.0327,
+      "warm_p95_ms": 0.0381,
+      "rows": 100,
+      "json_array_bytes": 788,
+      "plan": [
+        "SEARCH model_occurrences USING COVERING INDEX model_scope (source=? AND station=? AND revision=? AND record_key>?)"
+      ]
+    },
+    "model_private_month": {
+      "reopened_ms": 0.5322,
+      "warm_p50_ms": 0.3101,
+      "warm_p95_ms": 0.3335,
+      "rows": 1,
+      "json_array_bytes": 15,
+      "plan": [
+        "SEARCH model_private_history USING INDEX model_owner_month (owner=? AND day>? AND day<?)"
+      ]
+    }
+  },
+  "process_peak_rss_kib_linux": 33016,
+  "native_ui_network_postgis_status": "OWED_NOT_MEASURED_BY_HOST_PROBES"
+}

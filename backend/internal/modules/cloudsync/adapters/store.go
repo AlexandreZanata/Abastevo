@@ -16,11 +16,12 @@ import (
 )
 
 type Store struct {
-	Origin  string
-	Station func(context.Context, pgx.Tx, string) (bool, error)
-	Pool    *pgxpool.Pool
-	Paid    func(context.Context, pgx.Tx, string) error
-	Objects app.SnapshotObjectStore
+	Origin           string
+	Station          func(context.Context, pgx.Tx, string) (bool, error)
+	Pool             *pgxpool.Pool
+	Paid             func(context.Context, pgx.Tx, string) error
+	MultipleVehicles func(context.Context, pgx.Tx, string) error
+	Objects          app.SnapshotObjectStore
 }
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }
@@ -130,6 +131,7 @@ func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id strin
 			return app.Record{}, domain.ErrInvalid
 		}
 	}
+	admission := vehicleAdmission{}
 	old, err := q.GetRecord(ctx, qcloud.GetRecordParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(id)})
 	if err == nil {
 		// JSONB reorders fields; compare typed canonical bytes.
@@ -150,15 +152,8 @@ func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id strin
 		if e != nil {
 			return app.Record{}, domain.ErrUnavailable
 		}
-		maxCount := int64(1000)
-		if dataset == "vehicles" {
-			maxCount = 3
-		}
-		if dataset == "preferences" {
-			maxCount = 1
-		}
-		if n >= maxCount {
-			return app.Record{}, domain.ErrQuota
+		if e = s.admitRecord(ctx, tx, p.AccountID, dataset, n, &admission); e != nil {
+			return app.Record{}, e
 		}
 	}
 	row, err := q.SaveRecord(ctx, qcloud.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(id), Payload: body})
@@ -166,6 +161,9 @@ func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id strin
 		return app.Record{}, domain.ErrUnavailable
 	}
 	if err = s.checkPaid(ctx, tx, p.AccountID); err != nil {
+		return app.Record{}, err
+	}
+	if err = s.recheckVehicleAdmission(ctx, tx, p.AccountID, admission); err != nil {
 		return app.Record{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
