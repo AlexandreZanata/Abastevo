@@ -32,6 +32,24 @@ sealed interface LedgerDraft {
     fun bodyJson(): String
 }
 
+/**
+ * Vehicle fuel to ledger fuel: the additive premium grade is distinct
+ * (backend canonicalizes legacy premium separately); LPG has no ledger
+ * unit and stays unavailable instead of aliasing.
+ */
+fun PremiumFuel.Companion.fromVehicleProduct(
+    fuel: com.anpfuel.domain.valueobject.FuelProduct,
+): PremiumFuel? = when (fuel) {
+    com.anpfuel.domain.valueobject.FuelProduct.ETHANOL -> PremiumFuel.ETHANOL
+    com.anpfuel.domain.valueobject.FuelProduct.GASOLINE_REGULAR -> PremiumFuel.GASOLINE_REGULAR
+    com.anpfuel.domain.valueobject.FuelProduct.GASOLINE_PREMIUM -> PremiumFuel.GASOLINE_ADDITIVED
+    com.anpfuel.domain.valueobject.FuelProduct.GASOLINE_PREMIUM_GRADE -> PremiumFuel.GASOLINE_PREMIUM_GRADE
+    com.anpfuel.domain.valueobject.FuelProduct.DIESEL_S500 -> PremiumFuel.DIESEL_S500
+    com.anpfuel.domain.valueobject.FuelProduct.DIESEL_S10 -> PremiumFuel.DIESEL_S10
+    com.anpfuel.domain.valueobject.FuelProduct.CNG -> PremiumFuel.CNG
+    com.anpfuel.domain.valueobject.FuelProduct.LPG_P13 -> null
+}
+
 private fun checkId(value: String, code: String): String {
     if (!canonicalId.matches(value)) throw PremiumValidationException(code)
     return value
@@ -244,6 +262,24 @@ object LedgerCommandFactory {
             recordId = draft.recordId,
             expectedRevision = expectedRevision,
             payloadJson = body,
+        )
+    }
+
+    /** Stable tombstone for a record removal (payload stays empty; the
+     * transport sends no payload for deletes). */
+    fun deleteCommand(
+        scope: PremiumOwnerScope,
+        dataset: LedgerDataset,
+        recordId: String,
+    ): PremiumCommand {
+        val seed = "ledger-delete|${scope.accountId}|${scope.origin}|${dataset.wire}|$recordId"
+        return PremiumCommand(
+            operationId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString(),
+            scope = scope,
+            dataset = dataset.wire,
+            recordId = recordId,
+            expectedRevision = 0,
+            delete = true,
         )
     }
 }

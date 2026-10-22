@@ -222,6 +222,21 @@ fun AnpNavGraph(
         composable(Routes.VEHICLES) {
             VehicleScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onOpenEntries = { vehicleId ->
+                    navController.navigate(Routes.vehicleEntries(vehicleId.value))
+                },
+            )
+        }
+        composable(
+            route = Routes.VEHICLE_ENTRIES,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.ledger.LedgerEntriesScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(

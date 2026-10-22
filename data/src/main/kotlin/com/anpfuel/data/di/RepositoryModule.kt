@@ -178,6 +178,24 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindPremiumCommandStore(
+        impl: com.anpfuel.data.repository.PremiumCommandStoreImpl,
+    ): com.anpfuel.domain.repository.PremiumCommandStore
+
+    @Binds
+    @Singleton
+    abstract fun bindPremiumCursorStore(
+        impl: com.anpfuel.data.repository.PremiumCursorStoreImpl,
+    ): com.anpfuel.domain.repository.PremiumCursorStore
+
+    @Binds
+    @Singleton
+    abstract fun bindEstimatedEfficiencyStore(
+        impl: com.anpfuel.data.local.preferences.EstimatedEfficiencyPreferenceStore,
+    ): com.anpfuel.application.port.EstimatedEfficiencyStore
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

@@ -19,6 +19,12 @@ object Routes {
     const val HELP = "help"
     const val PRIVACY = "privacy"
     const val VEHICLES = "vehicles"
+    const val VEHICLE_ENTRIES = "vehicle-entries/{vehicleId}"
+
+    fun vehicleEntries(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "vehicle-entries/$vehicleId"
+    }
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"
     const val CONTRIBUTIONS = "contributions"

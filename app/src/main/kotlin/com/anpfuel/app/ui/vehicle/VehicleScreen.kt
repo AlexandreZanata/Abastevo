@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -71,6 +72,7 @@ import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 @Composable
 fun VehicleScreen(
     onNavigateBack: () -> Unit,
+    onOpenEntries: (DomainId) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: VehicleViewModel = hiltViewModel(),
 ) {
@@ -108,6 +110,7 @@ fun VehicleScreen(
         locale = locale,
         onNavigateBack = onNavigateBack,
         onAddVehicle = viewModel::startAddVehicle,
+        onOpenEntries = onOpenEntries,
         onEditVehicle = { id -> viewModel.startEditVehicle(id, locale) },
         onRequestDeleteVehicle = viewModel::requestDeleteVehicle,
         onConfirmDeleteVehicle = viewModel::confirmDeleteVehicle,
@@ -141,6 +144,7 @@ internal fun VehicleContent(
     onAddVehicle: () -> Unit,
     onEditVehicle: (DomainId) -> Unit,
     onRequestDeleteVehicle: (DomainId) -> Unit,
+    onOpenEntries: (DomainId) -> Unit,
     onConfirmDeleteVehicle: () -> Unit,
     onDismissDeleteConfirm: () -> Unit,
     onDismissPremiumRequired: () -> Unit,
@@ -313,6 +317,7 @@ internal fun VehicleContent(
                                 vehicle = vehicle,
                                 onClick = { onEditVehicle(vehicle.id) },
                                 onDelete = { onRequestDeleteVehicle(vehicle.id) },
+                                onOpenEntries = { onOpenEntries(vehicle.id) },
                             )
                         }
                         if (!uiState.canAddVehicle) {
@@ -359,6 +364,7 @@ private fun VehicleListItem(
     vehicle: Vehicle,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onOpenEntries: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val locale = LocalConfiguration.current.locales[0]
@@ -406,7 +412,13 @@ private fun VehicleListItem(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = onOpenEntries) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = stringResource(R.string.ledger_entries_title),
+                    )
+                }
+                IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = stringResource(R.string.vehicle_delete),
@@ -464,6 +476,7 @@ private fun VehicleListPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
+        onOpenEntries = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},
@@ -497,6 +510,7 @@ private fun VehicleEmptyPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
+        onOpenEntries = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},
