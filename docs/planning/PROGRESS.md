@@ -1,5 +1,7 @@
 # Current execution state
 
+- MEX-20b 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6a04d1ac. [Verified typed enforcement artifacts](../backend/evidence/mobile-expansion/MEX-20b.md): Go typed boundary in quality/prepared reusing the bridge pattern, no new package; strict versioned manifest (schema plus pinned anp-enforcement-xlsx-2019-v1 profile), bounded stream bridge (200 MB output budget), per-record exact validation with recomputed record_hash/tuple_hash, locator census, repeat/twin accounting, full census recomputation and canonical enforcement-source IDs; no station binding, persistence or publication. Native contract fixed in-commit (source_profile plus tuple_hash, additive). Five synthetic Go tests plus Rust→Go round-trip (synthetic XLSX, CI) and full-source oracle (244,247 records, census match, 42 s, local) PASS; quality module, vet, staticcheck, 168 Rust tests, fmt/clippy green; prepare_enforcement added to CI with its test path. No storage/publication/worker/acceptance, no source admission.
+
 - Batch delivery rule 2026-10-22 (user-directed): one cumulative dev → main
   PR (#143) carries every microphase of the authorized batch. Each microphase
   is one atomic dev commit pushed normally; the PR stays open and green, with

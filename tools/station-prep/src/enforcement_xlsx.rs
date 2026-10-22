@@ -20,6 +20,11 @@ use std::collections::{BTreeMap, HashSet};
 
 /// Source label of the enforcement workbook stream.
 pub const ENFORCEMENT_XLSX_SOURCE: &str = "anp-enforcement-xlsx";
+/// Pinned source profile of the enforcement workbook. The typed boundary
+/// (MEX-20b) requires this exact profile; a workbook revision that changes
+/// the columns needs a new profile and a new acceptance, never an
+/// automatic adaptation.
+pub const ENFORCEMENT_XLSX_PROFILE: &str = "anp-enforcement-xlsx-2019-v1";
 /// Frozen column order of the pinned enforcement profile.
 pub const ENFORCEMENT_XLSX_HEADERS: [&str; 11] = [
     "UF",
@@ -76,6 +81,10 @@ pub struct EnforcementSourceRecord {
     pub row_locator: String,
     /// Content identity of the minimized record.
     pub record_hash: String,
+    /// Census key of the source tuple (subject, date, document, procedure).
+    /// The raw subject is hashed so the typed boundary can verify the
+    /// distinct-tuple census without ever receiving a personal identifier.
+    pub tuple_hash: String,
     /// Company identifier, present only for a valid CNPJ.
     pub subject_cnpj: Option<String>,
     /// Shape of the source subject: company-shaped, personal-shaped or other.
@@ -330,12 +339,9 @@ where
         let result = cells[10].clone();
 
         documents.insert(document_number.clone());
-        tuples.insert(digest16(
-            subject_raw,
-            date_text,
-            &document_number,
-            &procedure,
-        ));
+        let tuple = digest16(subject_raw, date_text, &document_number, &procedure);
+        tuples.insert(tuple);
+        let tuple_hash = bytes_to_hex(&tuple);
 
         results.insert(result.clone());
         let result_chars = result.chars().count();
@@ -388,6 +394,7 @@ where
             source: ENFORCEMENT_XLSX_SOURCE,
             row_locator: format!("{file}#row:{}", row.number),
             record_hash,
+            tuple_hash,
             subject_cnpj,
             subject_kind: shape,
             uf,
@@ -471,6 +478,16 @@ fn hex_to_bytes(hex: &str) -> Vec<u8> {
         let low = (bytes[index + 1] as char).to_digit(16).unwrap_or(0) as u8;
         out.push((high << 4) | low);
         index += 2;
+    }
+    out
+}
+
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(TABLE[(byte >> 4) as usize] as char);
+        out.push(TABLE[(byte & 0x0F) as usize] as char);
     }
     out
 }
@@ -658,6 +675,14 @@ mod tests {
         assert_eq!(records[1].subject_cnpj, None);
         assert_eq!(records[1].subject_kind, "personal-shaped");
         assert_eq!(records[1].document_date, "2019-01-03");
+        for record in &records {
+            assert_eq!(record.tuple_hash.len(), 32);
+            assert!(record
+                .tuple_hash
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit()));
+        }
+        assert_ne!(records[0].tuple_hash, records[1].tuple_hash);
 
         let emitted = serde_json::to_string(&records).unwrap();
         for excluded in [

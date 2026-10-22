@@ -98,7 +98,7 @@ jobs:
       - name: Build locked Rust source preparers
         run: |
           rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal
-          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir "$RUNNER_TEMP/station-prep-target"
+          cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --target-dir "$RUNNER_TEMP/station-prep-target"
           echo "ANPFUEL_TEST_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_registry" >> "$GITHUB_ENV"
           chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_quality"
           echo "ANPFUEL_TEST_QUALITY_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_quality" >> "$GITHUB_ENV"
@@ -106,6 +106,8 @@ jobs:
           echo "ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_sanctions" >> "$GITHUB_ENV"
           chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_fine_history"
           echo "ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_fine_history" >> "$GITHUB_ENV"
+          chmod 755 "$RUNNER_TEMP/station-prep-target/debug/prepare_enforcement"
+          echo "ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=$RUNNER_TEMP/station-prep-target/debug/prepare_enforcement" >> "$GITHUB_ENV"
       - name: Enable PostGIS via the migrator
         run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
       - name: Integration tests (real PostGIS, race detector)

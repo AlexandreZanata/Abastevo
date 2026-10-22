@@ -1,7 +1,9 @@
 //! Bounded native preparation of the official enforcement workbook.
 //! Private artifacts; counts-only stdout.
 use sha2::{Digest, Sha256};
-use station_prep::enforcement_xlsx::{parse_enforcement_xlsx, EnforcementXlsxError};
+use station_prep::enforcement_xlsx::{
+    parse_enforcement_xlsx, EnforcementXlsxError, ENFORCEMENT_XLSX_PROFILE,
+};
 use station_prep::Limits;
 use std::io::{BufWriter, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
@@ -67,6 +69,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         });
         let manifest = serde_json::json!({
             "schema_version": "enforcement-native-manifest-v1",
+            "source_profile": ENFORCEMENT_XLSX_PROFILE,
             "source_file": name,
             "input_bytes": input_bytes,
             "input_sha256": input_hash,
