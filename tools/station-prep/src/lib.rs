@@ -19,6 +19,7 @@ pub mod enforcement;
 pub mod enforcement_xlsx;
 pub mod ev_contract;
 pub mod ev_ocm;
+pub mod ev_output;
 pub mod ev_pbe;
 pub mod ev_tariff;
 pub mod join;

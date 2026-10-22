@@ -89,6 +89,7 @@ pub struct OcmFileRun {
     pub duplicates: usize,
     pub quarantined: usize,
     pub quarantine: Vec<QuarantineRow>,
+    pub duplicate_units: Vec<(String, String)>,
 }
 
 fn get_i64(value: &Value, field: &str) -> Option<i64> {
@@ -119,6 +120,7 @@ pub fn parse_ocm_poi(
         duplicates: 0,
         quarantined: 0,
         quarantine: Vec::new(),
+        duplicate_units: Vec::new(),
     };
     let value: Value =
         serde_json::from_slice(raw).map_err(|e| OcmError::Truncated(format!("{file}: {e}")))?;
@@ -162,6 +164,8 @@ pub fn parse_ocm_poi(
         .map_err(|e| OcmError::Contract(format!("{file}: {e}")))?;
     if !seen.insert(place_key.clone()) {
         run.duplicates += 1;
+        run.duplicate_units
+            .push((format!("{file}#place:{id}"), place_key));
         return Ok(run);
     }
     let usage_public = match get_i64(&value, "UsageTypeID") {
@@ -188,11 +192,11 @@ pub fn parse_ocm_poi(
         "longitude_decimal": longitude,
         "reported_point_count": get_i64(&value, "NumberOfPoints").unwrap_or(0),
     });
-    let clocks = json!({
-        "created_at": clock(&value, "DateCreated"),
-        "verified_at": clock(&value, "DateLastVerified"),
-        "status_at": clock(&value, "DateLastStatusUpdate"),
-    });
+    let clocks = json!([
+        {"field": "created_at", "value": clock(&value, "DateCreated")},
+        {"field": "verified_at", "value": clock(&value, "DateLastVerified")},
+        {"field": "status_at", "value": clock(&value, "DateLastStatusUpdate")},
+    ]);
     let assertion_input = json!({
         "kind": "PLACE",
         "key": place_key,
@@ -230,6 +234,8 @@ pub fn parse_ocm_poi(
                 .map_err(|e| OcmError::Contract(format!("{file}: {e}")))?;
             if !seen.insert(group_key.clone()) {
                 run.duplicates += 1;
+                run.duplicate_units
+                    .push((format!("{file}#connection:{connection_id}"), group_key));
                 continue;
             }
             let raw_code = get_i64(connection, "ConnectionTypeID").unwrap_or(0);
@@ -251,11 +257,11 @@ pub fn parse_ocm_poi(
                 "reported_quantity": quantity,
             });
             let _ = index;
-            let clocks = json!({
-                "created_at": Value::Null,
-                "verified_at": clock(&value, "DateLastVerified"),
-                "status_at": clock(&value, "DateLastStatusUpdate"),
-            });
+            let clocks = json!([
+                {"field": "created_at", "value": Value::Null},
+                {"field": "verified_at", "value": clock(&value, "DateLastVerified")},
+                {"field": "status_at", "value": clock(&value, "DateLastStatusUpdate")},
+            ]);
             let assertion_input = json!({
                 "kind": "CONNECTION_GROUP",
                 "key": group_key,
