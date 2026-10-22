@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">公式記録</string>
+    <string name="occurrence_filter_type">種類</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">期間</string>
+    <string name="occurrence_empty">選択したソースと期間に記録が見つかりません</string>
+    <string name="occurrence_unavailable">このクエリではソースを利用できません</string>
+    <string name="occurrence_unsupported_filter">このソースではフィルターを利用できません</string>
+    <string name="occurrence_stale">保存済みデータ；現在の関連付けは未確認</string>
+    <string name="occurrence_coverage">%2$d件の文書に%1$d件の記録</string>
+    <string name="occurrence_document_day">文書の日付：%1$s</string>
+    <string name="occurrence_no_guilt">ソースの記録；違反、責任、安全を証明するものではありません</string>
+    <string name="occurrence_company_note">現在の企業に関連付け；この住所での発生を証明するものではありません</string>
+    <string name="occurrence_unmatched">関連付けなし</string>
+    <string name="occurrence_retry">再試行</string>
+    <string name="occurrence_detail_title">記録の詳細</string>
+    <string name="occurrence_action_label">検査措置</string>
+    <string name="occurrence_infra_label">ソースが報告した違反</string>
+    <string name="occurrence_assay_label">品質分析</string>
+    <string name="occurrence_fine_label">罰金記録</string>
+</resources>

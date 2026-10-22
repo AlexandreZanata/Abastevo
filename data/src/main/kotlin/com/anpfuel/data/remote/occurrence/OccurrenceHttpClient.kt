@@ -75,6 +75,70 @@ class OccurrenceHttpClient(http: OkHttpClient, baseUrl: String, private val cach
         return result to lease
     }
 
+    override suspend fun record(id: String, revisionId: String?): Pair<OccurrenceRecord, OccurrenceLease> {
+        if (!Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").matches(id)) throw OccurrenceReadUnavailable()
+        val response = readDetail("actions", id, mapOf("revision_id" to revisionId))
+        val root = response.body
+        val lease = root.lease(revisionId)
+        val result = record(root)
+        response.accept()
+        return result to lease
+    }
+
+    private suspend fun readDetail(route: String, id: String, params: Map<String, String?>): PublicRead {
+        val url = origin.newBuilder().addPathSegments("v1/quality/$route").addPathSegment(id).apply {
+            params.forEach { (key, value) -> value?.let { addQueryParameter(key, it) } }
+        }.build()
+        val cached = if (cache == null) null else withContext(Dispatchers.IO) { runCatching { cache.load(url.toString()) }.getOrNull() }
+        var etag: String? = null
+        var cacheable = true
+        val body = try {
+            suspendCancellableCoroutine<JSONObject> { continuation ->
+                val request = Request.Builder().url(url).header("Accept", "application/json").header("Cache-Control", "no-cache")
+                cached?.etag?.let { request.header("If-None-Match", it) }
+                val call = client.newCall(request.get().build())
+                continuation.invokeOnCancellation { call.cancel() }
+                call.enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        if (continuation.isActive) continuation.resumeWithException(TransportFailure())
+                    }
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use {
+                            if (!continuation.isActive) return
+                            val parsed = try {
+                                cacheable = !response.cacheControl.noStore
+                                etag = if (response.code == 304) response.header("ETag") ?: cached?.etag else response.header("ETag")
+                                if (response.code == 304 && cached != null) {
+                                    continuation.resume(JSONObject(cached.body))
+                                    return
+                                }
+                                if (response.code >= 500) throw TransportFailure()
+                                if (!response.isSuccessful) throw OccurrenceReadUnavailable(response.code == 404)
+                                val source = response.body?.source() ?: invalid()
+                                if (source.request(1024L * 1024L + 1)) invalid()
+                                JSONObject(source.readUtf8())
+                            } catch (e: Exception) {
+                                if (continuation.isActive) continuation.resumeWithException(when (e) { is OccurrenceReadUnavailable -> e; is IOException -> TransportFailure(); else -> OccurrenceReadUnavailable() })
+                                return
+                            }
+                            continuation.resume(parsed)
+                        }
+                    }
+                })
+            }
+        } catch (e: CancellationException) { throw e }
+        catch (e: OccurrenceReadUnavailable) {
+            if (e.disabled) withContext(Dispatchers.IO) { runCatching { cache?.clearOrigin(origin.toString()) } }
+            throw e
+        } catch (_: TransportFailure) {
+            val fallback = withContext(Dispatchers.IO) { runCatching { cache?.load(url.toString()) }.getOrNull() } ?: throw OccurrenceReadUnavailable()
+            val stale = try { JSONObject(fallback.body) } catch (_: Exception) { throw OccurrenceReadUnavailable() }
+            stale.optJSONObject("lease")?.put("stale", true)
+            return PublicRead(stale, true, {})
+        }
+        return PublicRead(body, false, { withContext(Dispatchers.IO) { runCatching { if (cacheable) cache?.save(url.toString(), body.toString(), etag) } }; Unit })
+    }
+
     private fun record(row: JSONObject): OccurrenceRecord {
         if (row.optString("source_profile", "") != "anp-enforcement-xlsx-2019-v1") invalid()
         return OccurrenceRecord(row.uuid("id"), row.text("native_key"), row.text("subject_kind"),

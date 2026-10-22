@@ -30,4 +30,6 @@ interface OccurrenceGateway {
     ): OccurrencePage<OccurrenceStation>
 
     suspend fun stationCoverage(revisionId: String? = null): Pair<StationCoverage, OccurrenceLease>
+
+    suspend fun record(id: String, revisionId: String? = null): Pair<OccurrenceRecord, OccurrenceLease>
 }

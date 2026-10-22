@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="occurrence_title">Registros oficiais</string>
+    <string name="occurrence_filter_type">Tipo</string>
+    <string name="occurrence_filter_uf">UF</string>
+    <string name="occurrence_filter_period">Período</string>
+    <string name="occurrence_empty">Nenhum registro encontrado nas fontes e no período selecionados</string>
+    <string name="occurrence_unavailable">Fonte indisponível para esta consulta</string>
+    <string name="occurrence_unsupported_filter">Filtro não disponível nesta fonte</string>
+    <string name="occurrence_stale">Dados salvos; vínculo atual não verificado</string>
+    <string name="occurrence_coverage">%1$d registros em %2$d documentos</string>
+    <string name="occurrence_document_day">Data do documento: %1$s</string>
+    <string name="occurrence_no_guilt">Registro da fonte; não comprova infração, culpa ou segurança</string>
+    <string name="occurrence_company_note">Associado à empresa atual; não comprova ocorrência neste endereço</string>
+    <string name="occurrence_unmatched">Sem vínculo apurado</string>
+    <string name="occurrence_retry">Tentar novamente</string>
+    <string name="occurrence_detail_title">Detalhe do registro</string>
+    <string name="occurrence_action_label">Ação de fiscalização</string>
+    <string name="occurrence_infra_label">Infração informada pela fonte</string>
+    <string name="occurrence_assay_label">Análise de qualidade</string>
+    <string name="occurrence_fine_label">Registro de multa</string>
+</resources>

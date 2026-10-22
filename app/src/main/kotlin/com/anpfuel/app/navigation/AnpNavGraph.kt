@@ -184,6 +184,16 @@ fun AnpNavGraph(
         )) {
             com.anpfuel.app.ui.quality.QualityReportsScreen(onBack={navController.popBackStack()},onSignIn={navController.navigate(Routes.AUTH)})
         }
+        composable(Routes.OCCURRENCE_EXPLORER) {
+            com.anpfuel.app.ui.occurrence.OccurrenceExplorerScreen(
+                onBack = { navController.popBackStack() },
+                onDetail = { recordId -> navController.navigate(Routes.occurrenceDetail(recordId)) },
+            )
+        }
+        composable(Routes.OCCURRENCE_DETAIL, arguments = listOf(navArgument("recordId") { type = NavType.StringType })) {
+            val recordId = it.arguments?.getString("recordId").orEmpty()
+            com.anpfuel.app.ui.occurrence.OccurrenceDetailScreen(recordId = recordId, onBack = { navController.popBackStack() })
+        }
         composable(Routes.STATION_PROFILE, arguments = listOf(navArgument("stationId") { type = NavType.StringType })) {
             com.anpfuel.app.ui.stationprofile.StationProfileScreen(
                 onBack = { navController.popBackStack() },
