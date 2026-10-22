@@ -1,5 +1,7 @@
 # Current execution state
 
+- EE-14 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent48a8f555. [Tariff and observation reads](../backend/evidence/ev-support/EE-14.md): exact tariff ranking by scenario total (rational arithmetic, stable ties, unknowns last, member-target isolation) plus community history pages with tallies; OpenAPI paths; ranking tests PASS; charging module, vet, staticcheck, vacuum zero errors green. No stored tariffs or activation.
+
 - EE-13 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6abb3479. [EV community projection and moderation](../backend/evidence/ev-support/EE-13.md): helpfulness votes/reports with idempotent convergence, projection with tallies excluding hidden/deleted/expired (no writes for expiry), conflicting votes coexist; integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No verified-price claims or lifecycle automation.
 
 - EE-12 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentc8490dae. [Signed community EV observation commands](../backend/evidence/ev-support/EE-12.md): account-scoped observations (connector/price/condition/day/note) with quotas, revision-guarded correction/withdrawal, idempotent replay by ID, session-authenticated POST/PUT/DELETE; forged/cross-owner/malformed refuse. HTTP→DB integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No projections/moderation lifecycle (EE-13).

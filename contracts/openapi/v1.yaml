@@ -1869,6 +1869,65 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/charging/tariffs/rank:
+    post:
+      summary: Rank tariffs by exact scenario total (anonymous).
+      operationId: chargingTariffsRank
+      tags: [charging]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tariffs, scenario]
+              properties:
+                tariffs: {type: array, minItems: 1, maxItems: 50, items: {type: object}}
+                scenario: {type: object}
+      responses:
+        '200':
+          description: Ranked estimates with exact values; unknowns last.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {type: object}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /v1/charging/observations/history:
+    get:
+      summary: Public community observation history with tallies (anonymous).
+      operationId: chargingObservationsHistory
+      tags: [charging]
+      security: []
+      parameters:
+        - name: place_id
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Visible observations with helpfulness; no reporter identities.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=60'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {type: object}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/actions/{id}:
     get:
       summary: One enforcement action within the current lease (anonymous).
