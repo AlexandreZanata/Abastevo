@@ -1,0 +1,49 @@
+{
+  "behavior_parent": "91d86a05",
+  "counts": {
+    "accepted": 244247,
+    "duplicates": 0,
+    "input": 244247,
+    "metadata": 0,
+    "quarantined": 0
+  },
+  "dataset_edition": "enforcement-source-v1",
+  "discovery_enabled": false,
+  "distinct_documents": 141290,
+  "document_days": [
+    "2019-01-02",
+    "2026-10-04"
+  ],
+  "extraction_clock": "UNAVAILABLE",
+  "full_frozen_traversals": 2,
+  "imports_enabled": false,
+  "pages_per_traversal": 2443,
+  "privacy": {
+    "excluded_columns_emitted": 0,
+    "name_address_wording_matches": 0,
+    "personal_identifier_matches": 0,
+    "personal_identifiers_checked": 401,
+    "records_checked": 244247,
+    "schema": "enforcement-privacy-acceptance-v1",
+    "sha256": "952743f3fa2b83094ad2011c5a4a1bffc14222eabde1bb4ee3bf4816e2f7db40",
+    "source_addresses_checked": 45007,
+    "source_names_checked": 40530,
+    "temporary_artifacts_removed": true
+  },
+  "privacy_audit_sha256": "b9346221cb55517b6d3ec052088d75e880fb817961a5f95c62ea9072d409520c",
+  "published_revisions": 2,
+  "raw_workspaces_remaining": 0,
+  "records_per_traversal": 244247,
+  "result_max_chars": 116,
+  "result_vocabulary": 495,
+  "results_over64": 32822,
+  "runtime_admitted": false,
+  "schema": "enforcement-whole-source-acceptance-v1",
+  "segments": 37,
+  "source_bytes": 16188087,
+  "source_profile": "anp-enforcement-xlsx-2019-v1",
+  "source_sha256": "952743f3fa2b83094ad2011c5a4a1bffc14222eabde1bb4ee3bf4816e2f7db40",
+  "source_tuples": 180661,
+  "worker_acceptance_test_sha256": "679e1c5be994449b0920ef3362952b929a15c05f4d5b5e017c46b61713988cb7",
+  "worker_native_preparations": 3
+}

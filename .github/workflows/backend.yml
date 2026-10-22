@@ -12,6 +12,10 @@ on:
       - infra/**
       - scripts/check-backend-fast.sh
       - scripts/scan-secrets.sh
+      - scripts/audit-anp-source-census.py
+      - scripts/audit-enforcement-privacy.py
+      - scripts/tests/test-anp-source-census.py
+      - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -23,6 +27,10 @@ on:
       - infra/**
       - scripts/check-backend-fast.sh
       - scripts/scan-secrets.sh
+      - scripts/audit-anp-source-census.py
+      - scripts/audit-enforcement-privacy.py
+      - scripts/tests/test-anp-source-census.py
+      - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
 
 env:
@@ -63,6 +71,10 @@ jobs:
           GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
           go install github.com/daveshanley/vacuum@${{ env.VACUUM_VERSION }}
           GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+      - name: Synthetic source census and privacy regressions
+        run: |
+          python3 scripts/tests/test-anp-source-census.py
+          python3 scripts/tests/test-enforcement-privacy.py
       - name: Fast gate (no database)
         run: bash scripts/check-backend-fast.sh
       - name: Vulnerability scan
