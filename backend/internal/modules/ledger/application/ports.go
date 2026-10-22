@@ -88,3 +88,11 @@ type ReportStore interface {
 	BuildReport(ctx context.Context, accountID string, year, month int, timezone string) (Report, error)
 	GetReport(ctx context.Context, accountID string, year, month int, timezone string) (Report, error)
 }
+
+// ConsumptionRecord is internal projection evidence; it is never a public DTO.
+type ConsumptionRecord struct {
+	ID, VehicleID string
+	Payload       []byte
+	SegmentNo     int64
+	HasGap        bool
+}

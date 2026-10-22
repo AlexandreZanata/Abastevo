@@ -1,5 +1,7 @@
 # Current execution state
 
+- MEX-10 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent597f5e95. [Ledger/report reacceptance](../backend/evidence/mobile-expansion/MEX-10.md): seven real RED assertions closed, exact category sums, erase/stale refusal, gap/reset/missing-odo evidence and revision fingerprint independent of clocks. Owner-lock correction/commit/cancellation observed on PostGIS; complete bounded comparison replaces broken public-page wiring. Final ledger/metrics/cloudsync/private signed journey/API race matrix, vet/static/sqlc/contracts/diff/secrets PASS. No migration/dependency/activation; next MEX-17, then18/19.
+
 - Expansion/main reconciliation 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING. [Evidence](../backend/evidence/mobile-expansion/MAIN_RECONCILIATION_20261022.md): audited expansion retained on maintained dev, canonical Room17 preserved; additive prefix index moved to18. Physical 16→17→18 and17→18 retention/reopen/index tests2/2 PASS; combined JVM638/390/465(two existing skips)/400, APKs/lint, Go affected race/contracts/root compilation, SQLite oracle/diff/secrets PASS. Next authorized MEX-10 then17/18/19; blocked source gates unchanged.
 
 - PR140 integrated 2026-10-22 as `2480d2cc`, all four current-head remote checks passed; guarded finish ran local Quick once, dev retained/synchronized. Original commits/review fixes/Go1.27.3 correction remain ancestors. Wiki published once from merged SHA as `ac6bf04`; heartbeat PAUSED. Signed staging contribution/full manual/production obligations remain OWED.

@@ -97,3 +97,30 @@ func TestCompareUnequalCoverageNoWinner(t *testing.T) {
 		t.Fatalf("no winner fabricated %+v", got)
 	}
 }
+
+func TestMEX10CompareRefusesGapResetAndUnimplementedMatchedWindow(t *testing.T) {
+	v := "11111111-1111-4111-8111-111111111111"
+	side := application.Side{VehicleID: v, From: "2026-01-01T00:00:00Z", To: "2026-04-01T00:00:00Z", Timezone: "UTC", Method: "fuel-purchase-interval"}
+	for _, kind := range []string{"gap", "segment", "matched"} {
+		t.Run(kind, func(t *testing.T) {
+			rows := []application.LedgerRecord{refuelRow(v, "a", 20000, 100000, true), refuelRow(v, "b", 20000, 300000, true)}
+			want := "baseline-incomplete: declared-fill-gap"
+			if kind == "gap" {
+				rows[1].HasGap = true
+			}
+			if kind == "segment" {
+				rows[1].SegmentNo = 2
+				want = "baseline-incomplete: odometer-segment-boundary"
+			}
+			s := side
+			if kind == "matched" {
+				s.Method = "matched-window"
+				want = "mismatched-method"
+			}
+			got, e := NewStore(&fakeReader{rows: map[string][]application.LedgerRecord{v: rows}}).Compare(context.Background(), "owner", s, s)
+			if e != nil || got.Compatible || got.Issue != want {
+				t.Fatalf("%+v %v", got, e)
+			}
+		})
+	}
+}

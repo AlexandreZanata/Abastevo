@@ -48,6 +48,10 @@ func parseSideRecords(rows []application.LedgerRecord) (metrics.Interval, string
 		if i == 0 {
 			unit = payload.Unit
 		}
+		in.HasGap = in.HasGap || row.HasGap
+		if i > 0 && row.SegmentNo != rows[0].SegmentNo {
+			in.CrossesSegment = true
+		}
 		full := payload.Fill == "full"
 		in.Fills = append(in.Fills, metrics.Fill{QuantityMilli: payload.QuantityMilli, TotalCentavos: payload.TotalCentavos, Full: full, Fuel: payload.Fuel, Unit: payload.Unit})
 		if payload.OdometerMetres == nil {
@@ -103,7 +107,7 @@ func (s *Store) Compare(ctx context.Context, accountID string, baseline, current
 		}
 		_ = from
 	}
-	if baseline.Method != current.Method || (baseline.Method != "fuel-purchase-interval" && baseline.Method != "matched-window") {
+	if baseline.Method != current.Method || baseline.Method != "fuel-purchase-interval" {
 		return application.Comparison{Compatible: false, Issue: "mismatched-method"}, nil
 	}
 	if baseline.Timezone != current.Timezone {

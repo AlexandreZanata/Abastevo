@@ -15,3 +15,14 @@ Verification selectors: existing backend/internal/platform/apicontract for v1/pl
 No new runtime dependency is necessary for this batch: net/http, crypto/aes/cipher/rand/hmac/sha256/rsa and encoding/json implement transport and established standard primitives behind ports. Reuse existing pgx/sqlc/chi/job composition. Future OAuth credentials/JWKS lifecycle and real billing/push deployment belong to the user-deferred payment module; no dev-grant flag or permissive provider is wired.
 
 PRM01-T06 source implementation: POST /v1/premium/export pages only owned subscription metadata (product/base-plan/state/expiry/verification/retirement/acknowledgement). Default 20, maximum 100 rows, 15-minute authenticated owner-bound cursor. It operates without a provider, token encryption key or paid capability, including expired subscriptions. No raw token/cipher/digest/session/key is an export item. Future cloud/professional records need their owning export/erasure implementation; this route does not claim those datasets. Status includes the fixed official Play subscription-management destination. Every private success/error uses no-store; subscription success has no ETag. Existing free account deletion remains authoritative and synchronously destroys subscription provider-token bytes.
+
+
+MEX-10 projection correction: monthly `by_category` and `by_vehicle` values are
+integer centavos; `record_count` alone counts rows. Held report reads refuse
+stale or obsolete calculation versions until an authorized rebuild. Erasure
+purges derived reports atomically. Report consumption includes explicit gap,
+segment and missing-odometer evidence. Comparison currently supports the
+implemented `fuel-purchase-interval` projection; `matched-window` is refused
+until its own expenses/distance evidence port exists (never mislabeled as
+fuel-only consumption). Its private bounded reader refuses truncation and
+excludes void/deleted records, independently of public 101-row pagination.

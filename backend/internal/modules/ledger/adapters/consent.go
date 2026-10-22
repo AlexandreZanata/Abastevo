@@ -40,6 +40,9 @@ func (s *Store) SetConsent(ctx context.Context, accountID string, datasets []str
 	}
 	defer rollback(tx)
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return application.ConsentStatus{}, err
+	}
 	if err = query.EnsureLedgerConsent(ctx, uid(accountID)); err != nil {
 		return application.ConsentStatus{}, errUnavailable()
 	}
@@ -68,10 +71,16 @@ func (s *Store) EraseAll(ctx context.Context, accountID string) error {
 	}
 	defer rollback(tx)
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return err
+	}
 	if err = query.EnsureLedgerConsent(ctx, uid(accountID)); err != nil {
 		return errUnavailable()
 	}
 	if err = query.EraseLedgerRecords(ctx, uid(accountID)); err != nil {
+		return errUnavailable()
+	}
+	if err = query.ClearLedgerReports(ctx, uid(accountID)); err != nil {
 		return errUnavailable()
 	}
 	if err = query.ClearLedgerGaps(ctx, uid(accountID)); err != nil {

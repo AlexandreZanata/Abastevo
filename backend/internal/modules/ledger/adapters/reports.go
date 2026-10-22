@@ -5,14 +5,33 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/ledger"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const reportProjectionVersion = 2
+
+type storedReportTotals struct {
+	application.ReportTotals
+	ProjectionVersion int    `json:"_projection_version"`
+	SourceFingerprint string `json:"_source_fingerprint"`
+}
+
+func currentProjection(raw []byte, fingerprint string) bool {
+	var v storedReportTotals
+	return json.Unmarshal(raw, &v) == nil && v.ProjectionVersion == reportProjectionVersion && v.SourceFingerprint == fingerprint
+}
+func checkedReportSum(a, b int64) (int64, error) {
+	if a < 0 || b < 0 || a > math.MaxInt64-b {
+		return 0, errUnavailable()
+	}
+	return a + b, nil
+}
 
 func monthBounds(year, month int, timezone string) (time.Time, time.Time, error) {
 	if year < 2000 || year > 2100 || month < 1 || month > 12 {
@@ -44,6 +63,9 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 		}
 	}
 	query := q.New(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return application.Report{}, err
+	}
 	lockKey := fmt.Sprintf("%s|%d|%d|%s", accountID, year, month, timezone)
 	if _, err = query.LockReport(ctx, lockKey); err != nil {
 		return application.Report{}, errUnavailable()
@@ -52,14 +74,12 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 	if err != nil {
 		return application.Report{}, errUnavailable()
 	}
-	sameBase := func(a, b pgtype.Timestamptz) bool {
-		if !a.Valid && !b.Valid {
-			return true
-		}
-		return a.Valid && b.Valid && a.Time.Equal(b.Time)
+	fingerprint, err := query.LedgerFingerprint(ctx, uid(accountID))
+	if err != nil {
+		return application.Report{}, errUnavailable()
 	}
 	if existing, err := query.GetReport(ctx, q.GetReportParams{AccountID: uid(accountID), Year: int32(year), Month: int32(month), Timezone: timezone}); err == nil {
-		if sameBase(existing.BaseUpdatedAt, base) {
+		if currentProjection(existing.Totals, fingerprint) {
 			return decodeReport(year, month, timezone, existing.Totals, existing.Revision, existing.GeneratedAt.Time)
 		}
 	} else if !errors.Is(err, pgx.ErrNoRows) {
@@ -72,6 +92,8 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 	totals := application.ReportTotals{ByVehicle: map[string]int64{}, ByCategory: map[string]int64{}, Coverage: map[string]string{}}
 	byVehicleFills := map[string][]metrics.Fill{}
 	byVehicleOdo := map[string][]int64{}
+	byVehicleSegment := map[string]int64{}
+	byVehicleFlags := map[string]metrics.Interval{}
 	for _, row := range rows {
 		var payload struct {
 			TotalCentavos  int64  `json:"total_centavos"`
@@ -90,16 +112,40 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 		vehicle := ledgerIDString(row.VehicleID)
 		totals.RecordCount++
 		if row.Dataset == "refuel" {
-			totals.PurchaseCentavos += payload.TotalCentavos
-			totals.ByVehicle[vehicle] += payload.TotalCentavos
+			totals.PurchaseCentavos, err = checkedReportSum(totals.PurchaseCentavos, payload.TotalCentavos)
+			if err != nil {
+				return application.Report{}, err
+			}
+			totals.ByVehicle[vehicle], err = checkedReportSum(totals.ByVehicle[vehicle], payload.TotalCentavos)
+			if err != nil {
+				return application.Report{}, err
+			}
+			flags := byVehicleFlags[vehicle]
+			flags.OdometerMissing = flags.OdometerMissing || payload.OdometerMetres == nil
+			flags.HasGap = flags.HasGap || row.HasGap
+			if first, ok := byVehicleSegment[vehicle]; ok {
+				flags.CrossesSegment = flags.CrossesSegment || first != row.SegmentNo
+			} else {
+				byVehicleSegment[vehicle] = row.SegmentNo
+			}
+			byVehicleFlags[vehicle] = flags
 			byVehicleFills[vehicle] = append(byVehicleFills[vehicle], metrics.Fill{QuantityMilli: payload.QuantityMilli, TotalCentavos: payload.TotalCentavos, Full: payload.Fill == "full", Fuel: payload.Fuel, Unit: payload.Unit})
 			if payload.OdometerMetres != nil {
 				byVehicleOdo[vehicle] = append(byVehicleOdo[vehicle], *payload.OdometerMetres)
 			}
 		} else {
-			totals.ExpenseCentavos += payload.AmountCentavos
-			totals.ByVehicle[vehicle] += payload.AmountCentavos
-			totals.ByCategory[payload.Category]++
+			totals.ExpenseCentavos, err = checkedReportSum(totals.ExpenseCentavos, payload.AmountCentavos)
+			if err != nil {
+				return application.Report{}, err
+			}
+			totals.ByVehicle[vehicle], err = checkedReportSum(totals.ByVehicle[vehicle], payload.AmountCentavos)
+			if err != nil {
+				return application.Report{}, err
+			}
+			totals.ByCategory[payload.Category], err = checkedReportSum(totals.ByCategory[payload.Category], payload.AmountCentavos)
+			if err != nil {
+				return application.Report{}, err
+			}
 		}
 	}
 	for vehicle, fills := range byVehicleFills {
@@ -114,7 +160,7 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 			continue
 		}
 		odos := byVehicleOdo[vehicle]
-		if len(odos) < 2 {
+		if byVehicleFlags[vehicle].OdometerMissing || len(odos) < 2 {
 			totals.Coverage[vehicle] = "odometer-missing"
 			continue
 		}
@@ -123,7 +169,9 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 			totals.Coverage[vehicle] = "distance-nonpositive"
 			continue
 		}
-		in := metrics.Interval{Fills: fills[1:], DistanceMetres: distance}
+		in := byVehicleFlags[vehicle]
+		in.Fills = fills[1:]
+		in.DistanceMetres = distance
 		if len(fills) > 0 {
 			in.StartingFillExcluded = fills[0]
 			in.Fills = fills[1:]
@@ -135,12 +183,12 @@ func (s *Store) BuildReport(ctx context.Context, accountID string, year, month i
 			totals.Coverage[vehicle] = res.KmPerUnit
 		}
 	}
-	rawTotals, _ := json.Marshal(totals)
-	fresh, err := query.BaseLedgerUpdated(ctx, uid(accountID))
+	rawTotals, _ := json.Marshal(storedReportTotals{ReportTotals: totals, ProjectionVersion: reportProjectionVersion, SourceFingerprint: fingerprint})
+	fresh, err := query.LedgerFingerprint(ctx, uid(accountID))
 	if err != nil {
 		return application.Report{}, errUnavailable()
 	}
-	if !sameBase(fresh, base) {
+	if fresh != fingerprint {
 		return application.Report{}, errConflict()
 	}
 	upserted, err := query.UpsertReport(ctx, q.UpsertReportParams{AccountID: uid(accountID), Year: int32(year), Month: int32(month), Timezone: timezone, Totals: rawTotals, BaseUpdatedAt: base})
@@ -186,12 +234,22 @@ func (s *Store) GetReport(ctx context.Context, accountID string, year, month int
 		return application.Report{}, errUnavailable()
 	}
 	defer rollback(tx)
+	if err = lockLedgerOwner(ctx, tx, accountID); err != nil {
+		return application.Report{}, err
+	}
+	fingerprint, err := q.New(tx).LedgerFingerprint(ctx, uid(accountID))
+	if err != nil {
+		return application.Report{}, errUnavailable()
+	}
 	row, err := q.New(tx).GetReport(ctx, q.GetReportParams{AccountID: uid(accountID), Year: int32(year), Month: int32(month), Timezone: timezone})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return application.Report{}, errNotFound()
 		}
 		return application.Report{}, errUnavailable()
+	}
+	if !currentProjection(row.Totals, fingerprint) {
+		return application.Report{}, errConflict()
 	}
 	return decodeReport(year, month, timezone, row.Totals, row.Revision, row.GeneratedAt.Time)
 }
