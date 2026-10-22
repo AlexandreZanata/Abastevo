@@ -83,6 +83,9 @@ interface ChargingSnapshotDao {
     @Query("SELECT * FROM charging_snapshot_place WHERE profile = :profile AND generation = :generation AND tombstone = 0 ORDER BY place_id LIMIT :limit OFFSET :offset")
     suspend fun readPlaces(profile: String, generation: Long, limit: Int, offset: Int): List<ChargingSnapshotPlaceEntity>
 
+    @Query("SELECT * FROM charging_snapshot_place WHERE place_id = :placeId AND profile = :profile AND generation = :generation AND tombstone = 0 LIMIT 1")
+    suspend fun findPlace(placeId: String, profile: String, generation: Long): ChargingSnapshotPlaceEntity?
+
     @Query("SELECT COUNT(*) FROM charging_snapshot_place WHERE generation = :generation AND tombstone = 0")
     suspend fun countPlaces(generation: Long): Long
 

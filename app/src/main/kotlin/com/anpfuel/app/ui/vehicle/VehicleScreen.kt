@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -73,6 +74,7 @@ import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 fun VehicleScreen(
     onNavigateBack: () -> Unit,
     onOpenEntries: (DomainId) -> Unit = {},
+    onOpenCharging: (DomainId) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: VehicleViewModel = hiltViewModel(),
 ) {
@@ -111,6 +113,7 @@ fun VehicleScreen(
         onNavigateBack = onNavigateBack,
         onAddVehicle = viewModel::startAddVehicle,
         onOpenEntries = onOpenEntries,
+        onOpenCharging = onOpenCharging,
         onEditVehicle = { id -> viewModel.startEditVehicle(id, locale) },
         onRequestDeleteVehicle = viewModel::requestDeleteVehicle,
         onConfirmDeleteVehicle = viewModel::confirmDeleteVehicle,
@@ -142,6 +145,7 @@ internal fun VehicleContent(
     locale: java.util.Locale,
     onNavigateBack: () -> Unit,
     onAddVehicle: () -> Unit,
+    onOpenCharging: (DomainId) -> Unit,
     onEditVehicle: (DomainId) -> Unit,
     onRequestDeleteVehicle: (DomainId) -> Unit,
     onOpenEntries: (DomainId) -> Unit,
@@ -318,6 +322,7 @@ internal fun VehicleContent(
                                 onClick = { onEditVehicle(vehicle.id) },
                                 onDelete = { onRequestDeleteVehicle(vehicle.id) },
                                 onOpenEntries = { onOpenEntries(vehicle.id) },
+                        onOpenCharging = { onOpenCharging(vehicle.id) },
                             )
                         }
                         if (!uiState.canAddVehicle) {
@@ -365,6 +370,7 @@ private fun VehicleListItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onOpenEntries: () -> Unit,
+    onOpenCharging: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val locale = LocalConfiguration.current.locales[0]
@@ -417,6 +423,14 @@ private fun VehicleListItem(
                         imageVector = Icons.Default.List,
                         contentDescription = stringResource(R.string.ledger_entries_title),
                     )
+                }
+                if (vehicle.propulsion == Propulsion.BEV || vehicle.propulsion == Propulsion.PHEV) {
+                    IconButton(onClick = onOpenCharging) {
+                        Icon(
+                            imageVector = Icons.Default.EvStation,
+                            contentDescription = stringResource(R.string.charging_explore_title),
+                        )
+                    }
                 }
                 IconButton(onClick = onDelete) {
                         Icon(
@@ -477,6 +491,7 @@ private fun VehicleListPreview() {
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
         onOpenEntries = {},
+        onOpenCharging = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},
@@ -511,6 +526,7 @@ private fun VehicleEmptyPreview() {
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
         onOpenEntries = {},
+        onOpenCharging = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},

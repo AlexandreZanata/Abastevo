@@ -17,6 +17,8 @@ private val canonicalId = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 /** Validated storage row: identity plus generation plus payload or tombstone. */
 data class StoredChargingPlace(
     val placeId: String,
+    val entityKey: String?,
+    val externalId: String?,
     val generation: Long,
     val profile: String,
     val sourceRevision: String,
@@ -60,8 +62,8 @@ data class CommittedPack(
 class PackSession internal constructor(
     val meta: ChargingPackMeta,
     val newGeneration: Long,
-    val expectedHashes: List<String>,
-    val expectedPlaces: Long,
+    val expectedHashes: List<String>?,
+    val expectedPlaces: Long?,
     private val seenHashes: MutableList<String> = mutableListOf(),
     private val rows: MutableList<StoredChargingPlace> = mutableListOf(),
     private var cursor: String? = null,
@@ -97,14 +99,34 @@ object ChargingSnapshotImport {
         currentGeneration: Long,
         expectedHashes: List<String>,
         expectedPlaces: Long,
+    ): PackSession = begin(meta, expectedOrigin, currentGeneration, expectedHashes, expectedPlaces)
+
+    /**
+     * EE-21 live packs: same gates without a pre-published manifest (page
+     * hashes are recorded but have nothing to match; the count converges
+     * when the server cursor drains). TLS plus strict decode remain the
+     * integrity boundary; budgets, duplicates and base checks still apply.
+     */
+    fun beginLivePack(
+        meta: ChargingPackMeta,
+        expectedOrigin: String,
+        currentGeneration: Long,
+    ): PackSession = begin(meta, expectedOrigin, currentGeneration, null, null)
+
+    private fun begin(
+        meta: ChargingPackMeta,
+        expectedOrigin: String,
+        currentGeneration: Long,
+        expectedHashes: List<String>?,
+        expectedPlaces: Long?,
     ): PackSession {
         check(meta.profile in ADMITTED_CHARGING_PROFILES) { "profile ${meta.profile} not admitted" }
         check(meta.origin == expectedOrigin) { "pack origin mismatch" }
         check(meta.schemaVersion == SCHEMA_VERSION) { "pack schema ${meta.schemaVersion} unsupported" }
         check(meta.license.isNotBlank()) { "pack license missing" }
         check(meta.baseGeneration == currentGeneration) { "pack base ${meta.baseGeneration} != current $currentGeneration" }
-        check(expectedPlaces in 0..PLACES_BUDGET) { "pack size out of budget" }
-        check(expectedHashes.all { it.length == 64 }) { "pack manifest hash malformed" }
+        expectedPlaces?.let { check(it in 0..PLACES_BUDGET) { "pack size out of budget" } }
+        expectedHashes?.let { hashes -> check(hashes.all { it.length == 64 }) { "pack manifest hash malformed" } }
         return PackSession(meta, currentGeneration + 1, expectedHashes, expectedPlaces)
     }
 
@@ -126,8 +148,12 @@ object ChargingSnapshotImport {
 
     fun commitPack(session: PackSession, tombstonedIds: List<String>, coverage: ChargingCoverage?): CommittedPack {
         val (seen, rows, cursor) = session.snapshot()
-        check(seen == session.expectedHashes) { "pack manifest incomplete" }
-        check(rows.size.toLong() == session.expectedPlaces) { "pack places mismatch" }
+        session.expectedHashes?.let { expected ->
+            check(seen == expected) { "pack manifest incomplete" }
+        }
+        session.expectedPlaces?.let { expected ->
+            check(rows.size.toLong() == expected) { "pack places mismatch" }
+        }
         tombstonedIds.forEach { check(canonicalId.matches(it)) { "tombstone id malformed" } }
         val added = rows.map { it.placeId }.toSet()
         check(tombstonedIds.none { it in added }) { "tombstone overlaps added place" }
@@ -139,7 +165,7 @@ object ChargingSnapshotImport {
         }
         val now = System.currentTimeMillis()
         val tombstones = tombstonedIds.map { id ->
-            StoredChargingPlace(id, session.newGeneration, session.meta.profile, session.meta.sourceRevision,
+            StoredChargingPlace(id, null, null, session.newGeneration, session.meta.profile, session.meta.sourceRevision,
                 session.meta.origin, session.meta.license, "", "BR", null, null, "UNKNOWN", 0, "[]", true, now)
         }
         val groupCount = rows.sumOf { countGroups(it.groupsJson) }
@@ -169,7 +195,8 @@ object ChargingSnapshotImport {
                 .put("reported_quantity", group.reportedQuantity))
         }
         return StoredChargingPlace(
-            placeId = place.id, generation = session.newGeneration,
+            placeId = place.id, entityKey = place.entityKey, externalId = place.externalId,
+            generation = session.newGeneration,
             profile = session.meta.profile, sourceRevision = session.meta.sourceRevision,
             origin = session.meta.origin, license = session.meta.license,
             name = place.name, country = place.country, latitude = place.latitude,

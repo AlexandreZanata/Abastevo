@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test
 class ChargingSnapshotDaoTest {
 
     private class FakeDao : ChargingSnapshotDao {
+        override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
+            places.values.singleOrNull { it.placeId == placeId && it.profile == profile && it.generation == generation && !it.tombstone }
+
         val places = mutableMapOf<Pair<String, Long>, ChargingSnapshotPlaceEntity>()
         val metas = mutableMapOf<String, ChargingSnapshotMetaEntity>()
         var tombstoneCalls = 0
@@ -67,7 +70,7 @@ class ChargingSnapshotDaoTest {
     )
 
     private fun place(generation: Long = 4, id: String = "11111111-1111-4111-8111-111111111111") = ChargingSnapshotPlaceEntity(
-        placeId = id, generation = generation,
+        placeId = id, entityKey = "e".repeat(64), externalId = "OCM-1", generation = generation,
         profile = "ocm-br-20261021-v1", sourceRevision = "rev-1",
         origin = "https://api.example.test", license = "CC-BY-4.0 (provider metadata, attribution required)",
         name = "Eletroposto DF-7", country = "BR", latitude = null, longitude = null,

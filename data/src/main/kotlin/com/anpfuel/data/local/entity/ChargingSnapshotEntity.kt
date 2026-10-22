@@ -25,6 +25,8 @@ import androidx.room.PrimaryKey
 )
 data class ChargingSnapshotPlaceEntity(
     @ColumnInfo(name = "place_id") val placeId: String,
+    @ColumnInfo(name = "entity_key") val entityKey: String?,
+    @ColumnInfo(name = "external_id") val externalId: String?,
     @ColumnInfo(name = "generation") val generation: Long,
     @ColumnInfo(name = "profile") val profile: String,
     @ColumnInfo(name = "source_revision") val sourceRevision: String,

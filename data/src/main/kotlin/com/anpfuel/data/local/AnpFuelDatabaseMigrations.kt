@@ -670,4 +670,15 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_23_24: Migration = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-21 snapshot identity columns (source entity key
+            // and external ID travel with the pack instead of being
+            // re-derived). No rows are touched; existing nulls stay null
+            // and only live rows decode (tombstones keep null identity).
+            db.execSQL("ALTER TABLE `charging_snapshot_place` ADD COLUMN `entity_key` TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE `charging_snapshot_place` ADD COLUMN `external_id` TEXT DEFAULT NULL")
+        }
+    }
+
 }

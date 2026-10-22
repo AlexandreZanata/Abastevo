@@ -25,6 +25,13 @@ object Routes {
         require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
         return "vehicle-entries/$vehicleId"
     }
+
+    const val CHARGING_EXPLORE = "charging-explore/{vehicleId}"
+
+    fun chargingExplore(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "charging-explore/$vehicleId"
+    }
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"
     const val CONTRIBUTIONS = "contributions"

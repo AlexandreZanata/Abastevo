@@ -225,6 +225,21 @@ fun AnpNavGraph(
                 onOpenEntries = { vehicleId ->
                     navController.navigate(Routes.vehicleEntries(vehicleId.value))
                 },
+                onOpenCharging = { vehicleId ->
+                    navController.navigate(Routes.chargingExplore(vehicleId.value))
+                },
+            )
+        }
+        composable(
+            route = Routes.CHARGING_EXPLORE,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.charging.ChargingExploreScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(

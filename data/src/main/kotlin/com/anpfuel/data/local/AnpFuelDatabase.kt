@@ -54,7 +54,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.VehicleCapabilityLeaseEntity::class,
         com.anpfuel.data.local.entity.LedgerDraftEntity::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
