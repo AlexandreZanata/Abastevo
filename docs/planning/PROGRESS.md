@@ -1,5 +1,7 @@
 # Current execution state
 
+- MEX-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent6d195688. [Private sync transport + constrained worker](../backend/evidence/mobile-expansion/MEX-14.md): explicit opt-in (default OFF), typed ledger POST with live proof, atomic claim/ack/conflict/backoff on reused outbox, one-command Hilt worker + unique CONNECTED/backoff scheduling, pausing keeps rows. Full suites (2038 tests, 0 failures; 2 pre-existing live skips), app/data lint, diff, secrets green; device reopen deferred. Two-device/reconnect runs stay staging-gated.
+
 - MEX-31 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4d6. [Master discovery journeys](../backend/evidence/mobile-expansion/MEX-31.md): on-device interpreter port (golden parity), typed ranking client (no-store, cancellable, bounded), IBGE-exact municipal resolution, master screen (suggestions, interpretation, NEEDS_CHOICE, ranking results, official deep-link), 11 strings x 8 locales. Full suites (2029 tests, 0 failures), lint, diff, secrets green; device reopen deferred.
 
 - EE-25 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4b6. [Electric master questions](../backend/evidence/ev-support/EE-25.md): typed EV intents (compatible places, reported energy price, complete scenario cost) with pinned source/bounded pages, NEEDS_CHOICE for ambiguous/missing, refusals without guessing; deterministic vectors green, no liquid/official regressions. Backend vet/static/diff green; no OpenAPI/SQL change.

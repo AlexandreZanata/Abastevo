@@ -208,6 +208,18 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindLedgerSyncGateway(
+        impl: com.anpfuel.data.remote.ledger.LedgerSyncHttpClient,
+    ): com.anpfuel.domain.repository.LedgerSyncGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncFlag(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncFlagStore,
+    ): com.anpfuel.application.port.LedgerSyncFlagProvider
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

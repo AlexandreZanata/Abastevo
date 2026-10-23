@@ -56,6 +56,10 @@ class LedgerEntriesUseCasesTest {
             rows.clear()
         }
         override suspend fun releaseExpired(nowMillis: Long) = 0
+        override suspend fun claim(operationId: String, scope: com.anpfuel.domain.premium.PremiumOwnerScope, nonce: String, leaseUntilMillis: Long) = true
+        override suspend fun failTransient(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String, nonce: String, nowMillis: Long) = Unit
+        override suspend fun markConflict(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String, reason: String) = Unit
+        override suspend fun acknowledge(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String) = Unit
     }
 
     private val drafts = FakeDrafts()

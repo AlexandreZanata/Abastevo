@@ -525,6 +525,23 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideDispatchLedgerCommandUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        gateway: com.anpfuel.domain.repository.LedgerSyncGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        flags: com.anpfuel.application.port.LedgerSyncFlagProvider,
+    ): com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase =
+        com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase(
+            outbox = commands,
+            gateway = gateway,
+            sessions = sessions,
+            origin = environment.origin,
+            enabled = flags::isEnabled,
+        )
+
+    @Provides
+    @Singleton
     fun provideListLedgerEntriesUseCase(
         drafts: com.anpfuel.domain.repository.LedgerDraftStore,
         commands: com.anpfuel.domain.repository.PremiumCommandStore,

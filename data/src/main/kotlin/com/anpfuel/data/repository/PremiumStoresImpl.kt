@@ -60,6 +60,33 @@ class PremiumCommandStoreImpl @Inject constructor(
 
     override suspend fun releaseExpired(nowMillis: Long): Int =
         outbox.releaseExpired(nowMillis)
+
+    override suspend fun claim(
+        operationId: String,
+        scope: PremiumOwnerScope,
+        nonce: String,
+        leaseUntilMillis: Long,
+    ): Boolean = outbox.claim(operationId, scope.accountId, scope.origin, nonce, leaseUntilMillis) > 0
+
+    override suspend fun failTransient(
+        scope: PremiumOwnerScope,
+        operationId: String,
+        nonce: String,
+        nowMillis: Long,
+    ) {
+        val current = outbox.findById(operationId, scope.accountId, scope.origin) ?: return
+        val attempts = current.attempts + 1
+        val backoff = minOf(30_000L shl minOf(attempts, 7), 3_600_000L)
+        outbox.failClaim(operationId, scope.accountId, scope.origin, nonce, attempts, nowMillis + backoff)
+    }
+
+    override suspend fun markConflict(scope: PremiumOwnerScope, operationId: String, reason: String) {
+        outbox.markConflict(operationId, scope.accountId, scope.origin)
+    }
+
+    override suspend fun acknowledge(scope: PremiumOwnerScope, operationId: String) {
+        outbox.deleteById(operationId, scope.accountId, scope.origin)
+    }
 }
 
 class PremiumCursorStoreImpl @Inject constructor(

@@ -86,6 +86,18 @@ interface PremiumOutboxDao {
     suspend fun deleteById(commandId: String, ownerAccount: String, origin: String)
 
     /**
+     * MEX-14 terminal conflict parking: an IN_FLIGHT claim whose server
+     * revision moved on becomes CONFLICT (never dispatchable again)
+     * without deleting held work. A released claim is left alone so a
+     * legitimate retry still converges.
+     */
+    @Query(
+        "UPDATE premium_outbox SET state = 'CONFLICT', nonce = '' WHERE command_id = :commandId " +
+            "AND owner_account = :ownerAccount AND origin = :origin AND state = 'IN_FLIGHT'",
+    )
+    suspend fun markConflict(commandId: String, ownerAccount: String, origin: String): Int
+
+    /**
      * MEX-11 restart recovery: crashed IN_FLIGHT claims whose lease
      * expired return to QUEUED with their original operation IDs, so a
      * lost acknowledgement retries without minting a duplicate command.

@@ -25,6 +25,22 @@ interface PremiumCommandStore {
      * Returns the released count.
      */
     suspend fun releaseExpired(nowMillis: Long): Int
+
+    /**
+     * MEX-14 atomic claim: at most one worker owns a command until the
+     * lease lapses. Returns false when another worker won the race.
+     */
+    suspend fun claim(operationId: String, scope: PremiumOwnerScope, nonce: String, leaseUntilMillis: Long): Boolean
+
+    /** Transient failure: bounded backoff, stays dispatchable. */
+    suspend fun failTransient(scope: PremiumOwnerScope, operationId: String, nonce: String, nowMillis: Long)
+
+    /** Terminal conflict (e.g. stale expected revision): never
+     * dispatchable again, held for an explicit correction. */
+    suspend fun markConflict(scope: PremiumOwnerScope, operationId: String, reason: String)
+
+    /** Server acknowledgement: the command is durable remotely. */
+    suspend fun acknowledge(scope: PremiumOwnerScope, operationId: String)
 }
 
 interface PremiumCursorStore {
