@@ -94,5 +94,41 @@ class OccurrenceExplorerViewModelTest {
         assertTrue(viewModel.state.value.stale)
     }
 
+    @Test fun `coverage and continuation use the page revision and filter survives recreation`() = runTest(dispatcher) {
+        val revision = "eeeeeeee-6666-4666-8666-000000000010"
+        val scopedLease = lease.copy(revision = SourceRevision("enforcement", "enforcement-v1", "enforcement-source-v1", revision))
+        val saved = fakeSavedState()
+        val calls = mutableListOf<Pair<String?, String?>>()
+        val base = gateway(next = "next")
+        val api = object : OccurrenceGateway by base {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?): OccurrencePage<OccurrenceRecord> {
+                calls.add(cursor to revisionId)
+                return OccurrencePage(listOf(record), if (cursor == null) "next" else null, scopedLease)
+            }
+            override suspend fun recordCoverage(revisionId: String?): Pair<RecordCoverage, OccurrenceLease> {
+                assertEquals(revision, revisionId, "coverage must describe the displayed revision")
+                return RecordCoverage(1, 1, null, null, "document_day") to scopedLease
+            }
+        }
+        val vm = OccurrenceExplorerViewModel(saved, api)
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.coverage)
+        vm.nextPage(); advanceUntilIdle()
+        assertEquals("next" to revision, calls.last())
+        vm.selectFilter(OccurrenceFilter(uf = "SP")); advanceUntilIdle()
+        assertEquals("SP", saved.get<String>("uf"))
+    }
+
+    @Test fun `unavailable source is not an empty successful search`() = runTest(dispatcher) {
+        val base = gateway()
+        val api = object : OccurrenceGateway by base {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?) =
+                OccurrencePage<OccurrenceRecord>(emptyList(), null, lease.copy(available = false))
+        }
+        val vm = OccurrenceExplorerViewModel(fakeSavedState(), api)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.unavailable)
+    }
+
     private fun fakeSavedState(): androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle()
 }

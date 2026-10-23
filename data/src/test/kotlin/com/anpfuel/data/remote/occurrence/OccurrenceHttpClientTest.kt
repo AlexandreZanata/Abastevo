@@ -97,4 +97,88 @@ class OccurrenceHttpClientTest {
             assertNull(cache.load(server.url("/v1/quality/actions?limit=20").toString()))
         }
     }
+    @Test fun `offline cache is explicitly stale`(@TempDir dir: File) = runTest {
+        MockWebServer().use { server ->
+            val api = OccurrenceHttpClient(OkHttpClient(), server.url("/").toString(), QualityPublicCache(File(dir, "cache")))
+            server.enqueue(MockResponse().setBody(page()).setHeader("ETag", "v1"))
+            api.records()
+            server.enqueue(MockResponse().setResponseCode(503))
+            val offline = api.records()
+            assertTrue(offline.stale)
+            assertTrue(offline.lease.stale)
+        }
+    }
+
+    @Test fun `revocation and no-store evict previously cached evidence`(@TempDir dir: File) = runTest {
+        MockWebServer().use { server ->
+            for (status in listOf(200, 304, 400, 403, 404, 410)) {
+                val api = OccurrenceHttpClient(OkHttpClient(), server.url("/prefix/").toString(), QualityPublicCache(File(dir, "cache$status")))
+                server.enqueue(MockResponse().setBody(page()).setHeader("ETag", "v1"))
+                api.records()
+                server.enqueue(MockResponse().setResponseCode(status).setHeader("Cache-Control", "no-store").setBody(if (status == 200) page() else ""))
+                if (status == 200 || status == 304) api.records()
+                else assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.records() } }
+                server.enqueue(MockResponse().setResponseCode(503))
+                assertThrows(OccurrenceReadUnavailable::class.java, { runBlocking { api.records() } }, "status $status must revoke the old entry")
+            }
+        }
+    }
+
+    @Test fun `detail refuses a different record and mixed private payload`(@TempDir dir: File) = runTest {
+        MockWebServer().use { server ->
+            val cache = QualityPublicCache(File(dir, "cache"))
+            val api = OccurrenceHttpClient(OkHttpClient(), server.url("/").toString(), cache)
+            server.enqueue(MockResponse().setBody(record(stationId).dropLast(1) + ",\"lease\":" + lease() + "}"))
+            assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.record(recordId) } }
+            server.enqueue(MockResponse().setBody(page().replace("\"native_key\":", "\"reporter\":\"private-user\",\"native_key\":")))
+            assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.records() } }
+            assertNull(cache.load(server.url("/v1/quality/actions?limit=20").toString()))
+        }
+    }
+
+    @Test fun `successful conditional validation and detail share the cache policy`(@TempDir dir: File) = runTest {
+        MockWebServer().use { server ->
+            val api = OccurrenceHttpClient(OkHttpClient(), server.url("/").toString(), QualityPublicCache(File(dir, "cache")))
+            server.enqueue(MockResponse().setBody(record().dropLast(1) + ",\"lease\":" + lease() + "}").setHeader("ETag", "v1"))
+            api.record(recordId)
+            server.takeRequest(1, TimeUnit.SECONDS)
+            server.enqueue(MockResponse().setResponseCode(304))
+            assertEquals(recordId, api.record(recordId).first.id)
+            assertEquals("v1", server.takeRequest(1, TimeUnit.SECONDS)?.getHeader("If-None-Match"))
+            server.enqueue(MockResponse().setResponseCode(503))
+            assertTrue(api.record(recordId).second.stale)
+            server.enqueue(MockResponse().setResponseCode(410))
+            assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.record(recordId) } }
+            server.enqueue(MockResponse().setResponseCode(503))
+            assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.record(recordId) } }
+        }
+    }
+
+    @Test fun `withdrawn unavailable and invalid bodies revoke old snapshots`(@TempDir dir: File) = runTest {
+        MockWebServer().use { server ->
+            val api = OccurrenceHttpClient(OkHttpClient(), server.url("/").toString(), QualityPublicCache(File(dir, "cache")))
+            for (bad in listOf(page().replace("published\"", "withdrawn\""), page().replace("\"available\":true", "\"available\":false"), page().replace("\"uf\":\"DF\"", "\"uf\":\"bad\""))) {
+                server.enqueue(MockResponse().setBody(page()))
+                api.records()
+                server.enqueue(MockResponse().setBody(bad))
+                assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.records() } }
+                server.enqueue(MockResponse().setResponseCode(503))
+                assertThrows(OccurrenceReadUnavailable::class.java) { runBlocking { api.records() } }
+            }
+        }
+    }
+
+    @Test fun `canonical Go source wire fields are accepted`() = runTest {
+        val fixture = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
+            .map { File(it, "contracts/testdata/quality/enforcement-source-record-valid.json") }
+            .first { it.isFile }.readText().trim()
+        MockWebServer().use { server ->
+            val api = OccurrenceHttpClient(OkHttpClient(), server.url("/").toString())
+            server.enqueue(MockResponse().setBody(page().replace(record(), fixture)))
+            assertEquals(recordId, api.records().items.single().id)
+            server.enqueue(MockResponse().setBody(fixture.dropLast(1) + ",\"lease\":" + lease() + "}"))
+            assertEquals(recordId, api.record(recordId).first.id)
+        }
+    }
+
 }

@@ -59,7 +59,7 @@ data class OccurrenceUiState(
 
 @HiltViewModel
 class OccurrenceExplorerViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val gateway: OccurrenceGateway,
 ) : ViewModel() {
     private val enabled = com.anpfuel.app.BuildConfig.OCCURRENCE_UI_ENABLED
@@ -81,13 +81,17 @@ class OccurrenceExplorerViewModel @Inject constructor(
 
     fun refresh() {
         if (!enabled) return
-        mutable.update { it.copy(items = emptyList(), cursor = null, coverage = null) }
         load(first = true)
     }
 
     fun selectFilter(filter: OccurrenceFilter) {
         if (!enabled) return
-        mutable.update { it.copy(filter = filter, items = emptyList(), cursor = null, coverage = null) }
+        savedStateHandle["uf"] = filter.uf
+        savedStateHandle["segment"] = filter.segment
+        savedStateHandle["subjectKind"] = filter.subjectKind
+        savedStateHandle["fromDay"] = filter.fromDay
+        savedStateHandle["toDay"] = filter.toDay
+        mutable.value = OccurrenceUiState(filter = filter)
         load(first = true)
     }
 
@@ -98,7 +102,7 @@ class OccurrenceExplorerViewModel @Inject constructor(
     fun nextPage() {
         if (!enabled) return
         val current = mutable.value
-        if (current.loadingMore || current.cursor == null) return
+        if (current.loading || current.loadingMore || current.cursor == null) return
         load(first = false)
     }
 
@@ -106,31 +110,38 @@ class OccurrenceExplorerViewModel @Inject constructor(
         readJob?.cancel()
         val myGeneration = ++generation
         readJob = viewModelScope.launch {
-            mutable.update { if (first) it.copy(loading = true, unavailable = false) else it.copy(loadingMore = true, unavailable = false) }
+            mutable.update { if (first) it.copy(loading = true, loadingMore = false, unavailable = false) else it.copy(loadingMore = true, unavailable = false) }
             try {
-                val filter = mutable.value.filter
+                val before = mutable.value
+                val filter = before.filter
+                val revision = if (first) null else before.lease?.revision?.revisionId
                 val page = gateway.records(
                     uf = filter.uf, segment = filter.segment, subjectKind = filter.subjectKind,
                     fromDay = filter.fromDay, toDay = filter.toDay,
-                    limit = 20, cursor = if (first) null else mutable.value.cursor)
+                    limit = 20, cursor = if (first) null else before.cursor, revisionId = revision)
                 if (myGeneration != generation) return@launch
-                val (coverage, lease) = try {
-                    gateway.recordCoverage()
-                } catch (_: Exception) { null to null }
+                if (revision != null && page.lease.revision?.revisionId != revision) throw java.io.IOException("occurrence revision changed")
+                val (coverage, coverageLease) = try {
+                    if (first) gateway.recordCoverage(page.lease.revision?.revisionId)
+                    else before.coverage to before.lease
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { null to null }
+                val matchingCoverage = coverageLease?.revision == page.lease.revision
                 if (myGeneration != generation) return@launch
                 mutable.update {
                     it.copy(
                         items = if (first) page.items else it.items + page.items,
                         cursor = page.nextCursor, loading = false, loadingMore = false,
-                        stale = page.stale, coverage = coverage,
-                        lease = lease ?: page.lease,
-                        unavailable = false,
+                        stale = page.stale || page.lease.stale || (!first && before.stale),
+                        coverage = if (matchingCoverage) coverage else null,
+                        lease = page.lease,
+                        unavailable = !page.lease.available,
                     )
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
                 if (myGeneration != generation) return@launch
-                mutable.update { it.copy(loading = false, loadingMore = false, unavailable = it.items.isEmpty()) }
+                mutable.update { it.copy(loading = false, loadingMore = false, unavailable = it.items.isEmpty(), stale = it.items.isNotEmpty()) }
             }
         }
     }

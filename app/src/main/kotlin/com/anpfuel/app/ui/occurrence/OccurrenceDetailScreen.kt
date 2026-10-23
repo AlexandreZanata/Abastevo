@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,16 +40,25 @@ class OccurrenceDetailViewModel @Inject constructor(
     private val mutable = MutableStateFlow(OccurrenceDetailState())
     val state = mutable.asStateFlow()
     private var job: Job? = null
+    private var generation = 0L
+    private var currentId: String? = null
 
     fun load(id: String) {
+        val myGeneration = ++generation
         job?.cancel()
+        if (currentId != id) mutable.value = OccurrenceDetailState()
+        currentId = id
         job = viewModelScope.launch {
             mutable.update { it.copy(loading = true, unavailable = false) }
             try {
-                val (record, _) = gateway.record(id)
-                mutable.update { it.copy(record = record, loading = false) }
-            } catch (_: Exception) {
-                mutable.update { it.copy(loading = false, unavailable = true) }
+                val (record, lease) = gateway.record(id)
+                if (myGeneration != generation) return@launch
+                check(record.id == id)
+                mutable.update { it.copy(record = record, loading = false, stale = lease.stale) }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) {
+                if (myGeneration != generation) return@launch
+                mutable.update { it.copy(loading = false, unavailable = it.record == null, stale = it.record != null) }
             }
         }
     }
