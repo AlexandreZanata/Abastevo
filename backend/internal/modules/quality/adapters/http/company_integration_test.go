@@ -28,6 +28,9 @@ import (
 )
 
 type companyHTTPFixture struct {
+	txProbe        qualityread.CompanyIdentityTxProbe
+	probe          qualityread.CompanyIdentityProbe
+	guard          qualityread.CompanyIdentityGuard
 	p              *pgxpool.Pool
 	h              Handler
 	r              chi.Router
@@ -62,6 +65,14 @@ func newCompanyHTTPFixture(t *testing.T) *companyHTTPFixture {
 		}
 		return out, e
 	}
+	txProbe := func(ctx context.Context, tx pgx.Tx, ids []string) ([]domain.IdentityEvidence, error) {
+		rows, err := identity.EvidenceAt(ctx, tx, ids)
+		out := []domain.IdentityEvidence{}
+		for _, r := range rows {
+			out = append(out, domain.IdentityEvidence{CNPJ: r.CNPJ, StationID: r.StationID, Current: r.Current, StationActive: r.StationActive})
+		}
+		return out, err
+	}
 	guard := func(ctx context.Context, tx pgx.Tx, b []application.CompanyBinding) error {
 		out := make([]directoryapp.SourceBinding, 0, len(b))
 		for _, v := range b {
@@ -69,7 +80,7 @@ func newCompanyHTTPFixture(t *testing.T) *companyHTTPFixture {
 		}
 		return identity.Guard(ctx, tx, out)
 	}
-	reader := qualityread.NewReader(p).WithCompanyIdentity(probe, guard)
+	reader := qualityread.NewReader(p).WithCompanyIdentity(probe, guard).WithCompanyIdentityTx(txProbe)
 	pub := parent.NewPublisher(p).WithCompanyGuard(guard)
 	in := application.NativeFineInput{Edition: "2025", Clock: application.NativeFineClock{ReportYear: 2025, ExtractionMonth: "2026-01"}, Counts: domain.Counts{Input: 3, Accepted: 3}, ManifestHash: strings.Repeat("a", 64), Resources: []application.Resource{{URL: "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.csv", SHA256: strings.Repeat("b", 64), Bytes: 100}}}
 	records := []domain.CompanyObservationRecord{}
@@ -104,7 +115,7 @@ func newCompanyHTTPFixture(t *testing.T) *companyHTTPFixture {
 	}}
 	router := chi.NewRouter()
 	h.RegisterRoutes(router)
-	return &companyHTTPFixture{p: p, h: h, r: router, reader: reader, repo: repo, pub: pub, in: in, a: a.ID, b: b.ID, revision: rev, next: next, enabled: &enabled}
+	return &companyHTTPFixture{txProbe: txProbe, probe: probe, guard: guard, p: p, h: h, r: router, reader: reader, repo: repo, pub: pub, in: in, a: a.ID, b: b.ID, revision: rev, next: next, enabled: &enabled}
 }
 func companyRequest(router chi.Router, path, tag string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()

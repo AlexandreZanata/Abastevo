@@ -1,0 +1,19 @@
+{
+  "id": "eeeeeeee-6666-4666-8666-000000000002",
+  "native_key": "enforcement-source:abc",
+  "scope": null,
+  "status": null,
+  "occurred_on": null,
+  "as_of": null,
+  "evidence_ref": "synthetic.xlsx#row:2",
+  "source_profile": "anp-enforcement-xlsx-2019-v1",
+  "subject_kind": "company-shaped",
+  "uf": "DF",
+  "municipality": "BRASILIA",
+  "segment": "Revenda de Combustíveis",
+  "document_day": "2026-10-04",
+  "date_basis": "document_day",
+  "document_number": "712508",
+  "procedure": "Inspection",
+  "result": "Resultado"
+}
