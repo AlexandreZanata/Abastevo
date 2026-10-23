@@ -1,0 +1,220 @@
+{
+  "pinnedMain": "c3de5c03bce626300da3f10c1b64820d6451f1fc",
+  "prs": [
+    {
+      "pr": 140,
+      "merged": true,
+      "sha": "3c80c1ab98c575233f3c6fd247d996e4c1d1a17b",
+      "base": "2b9cf1e48944839f7c5252068da4f732de0b9bd1",
+      "merge": "2480d2cc2b4de4f181da666cc3f169fd812a88f1",
+      "mergedAt": "2026-10-22T09:43:55Z",
+      "checks": [
+        {
+          "name": "test",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39707634265/job/119591293607"
+        },
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39707634122/job/119591293297"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39707634122/job/119591293061"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39707634128/job/119591292911"
+        }
+      ]
+    },
+    {
+      "pr": 141,
+      "merged": true,
+      "sha": "b473e10e9ca896e6e1996eeddf44ba1060ac958c",
+      "base": "2480d2cc2b4de4f181da666cc3f169fd812a88f1",
+      "merge": "d64eb98b82a7244412657c552675900f1629e8dd",
+      "mergedAt": "2026-10-22T11:49:15Z",
+      "checks": [
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39767901444/job/119787826964"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39767901444/job/119787826625"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39767901422/job/119787826204"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39767901424/job/119787825666"
+        }
+      ]
+    },
+    {
+      "pr": 142,
+      "merged": true,
+      "sha": "612b9196530ac169a0f9c1b55fd345935913b9e1",
+      "base": "d64eb98b82a7244412657c552675900f1629e8dd",
+      "merge": "eb168dbe1be77e3e5b63ee2faea9a53a7ead6f0a",
+      "mergedAt": "2026-10-22T12:26:12Z",
+      "checks": [
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39777774444/job/119820998878"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "failure",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39777774444/job/119820998453"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39777774448/job/119820998234"
+        }
+      ]
+    },
+    {
+      "pr": 143,
+      "merged": true,
+      "sha": "e266b373cdcac964d98f0befa76e8614c7e5480e",
+      "base": "eb168dbe1be77e3e5b63ee2faea9a53a7ead6f0a",
+      "merge": "6a04d1ac2f00c4be4a7ef18bd493b35a16a3232f",
+      "mergedAt": "2026-10-22T15:19:09Z",
+      "checks": [
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39802130653/job/119905412415"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39802130749/job/119905412151"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39802130653/job/119905411974"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39802130711/job/119905411176"
+        }
+      ]
+    },
+    {
+      "pr": 144,
+      "merged": true,
+      "sha": "8e989107d14e56b21ff01c743d0cb41bf039038d",
+      "base": "6a04d1ac2f00c4be4a7ef18bd493b35a16a3232f",
+      "merge": "08495125595f646034829c3131d0c01fd040958d",
+      "mergedAt": "2026-10-22T18:11:12Z",
+      "checks": [
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39828344439/job/119997511594"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39828344425/job/119997511024"
+        },
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39828344425/job/119997510446"
+        },
+        {
+          "name": "test",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39828344435/job/119997509431"
+        }
+      ]
+    },
+    {
+      "pr": 145,
+      "merged": true,
+      "sha": "57e2585721db150a7b4b71ecb85c297a6d77cfe7",
+      "base": "08495125595f646034829c3131d0c01fd040958d",
+      "merge": "a5b08ef5b3d73515028c6d7da5653799705760bb",
+      "mergedAt": "2026-10-22T18:57:41Z",
+      "checks": [
+        {
+          "name": "integration",
+          "status": "completed",
+          "result": "failure",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39835513636/job/120023290159"
+        },
+        {
+          "name": "fast",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39835513636/job/120023289439"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39835513644/job/120022660179"
+        }
+      ]
+    },
+    {
+      "pr": 146,
+      "merged": true,
+      "sha": "cfa436c050f71557e4e2a180e4091a95034f5499",
+      "base": "a5b08ef5b3d73515028c6d7da5653799705760bb",
+      "merge": "c3de5c03bce626300da3f10c1b64820d6451f1fc",
+      "mergedAt": "2026-10-22T19:25:58Z",
+      "checks": [
+        {
+          "name": "test",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39839631255/job/120036973119"
+        },
+        {
+          "name": "Quick verification",
+          "status": "completed",
+          "result": "success",
+          "url": "https://github.com/AlexandreZanata/Abastevo/actions/runs/39839631229/job/120036906426"
+        }
+      ]
+    }
+  ],
+  "note": "One bounded historical check read; this is evidence for merged heads only, not CI acceptance of audit corrections."
+}
