@@ -95,24 +95,30 @@ func (s *Store) writeTx(ctx context.Context, p app.Principal) (pgx.Tx, *qcloud.Q
 }
 func (s *Store) PutVehicle(ctx context.Context, p app.Principal, v domain.Vehicle, expected int64) (app.Record, error) {
 	// Older clients omit energy fields; preserve stored values instead of
-	// erasing. Best-effort read; the revision check in putTyped guards races
-	// (a concurrent update fails with conflict, never silent loss).
-	if v.Propulsion == nil && v.BatteryWh == nil {
-		if stored := s.storedVehicle(ctx, p.AccountID, v.ID); stored != nil {
-			v = domain.MergeVehicleEnergy(*stored, v)
-		}
+	// erasing. Unknown newer fields are carried over as well. Best-effort
+	// read; the revision check in putTyped guards races (a concurrent update
+	// fails with conflict, never silent loss).
+	stored, storedRaw := s.storedVehicle(ctx, p.AccountID, v.ID)
+	if v.Propulsion == nil && v.BatteryWh == nil && stored != nil {
+		v = domain.MergeVehicleEnergy(*stored, v)
 	}
 	v, err := domain.NormalizeVehicle(v)
 	if err != nil || expected < 0 {
 		return app.Record{}, domain.ErrInvalid
 	}
 	body, _ := json.Marshal(v)
+	if storedRaw != nil {
+		body, err = domain.MergeStoredVehiclePayload(storedRaw, body)
+		if err != nil {
+			return app.Record{}, err
+		}
+	}
 	return s.putTyped(ctx, p, "vehicles", v.ID, body, expected)
 }
 
-func (s *Store) storedVehicle(ctx context.Context, accountID, vehicleID string) *domain.Vehicle {
+func (s *Store) storedVehicle(ctx context.Context, accountID, vehicleID string) (*domain.Vehicle, []byte) {
 	if s.Pool == nil {
-		return nil
+		return nil, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -120,13 +126,13 @@ func (s *Store) storedVehicle(ctx context.Context, accountID, vehicleID string) 
 	var deleted bool
 	err := s.Pool.QueryRow(ctx, `SELECT payload, deleted FROM cloud_records WHERE account_id=$1 AND dataset='vehicles' AND id=$2`, uid(accountID), uid(vehicleID)).Scan(&payload, &deleted)
 	if err != nil || deleted || len(payload) == 0 {
-		return nil
+		return nil, nil
 	}
 	var stored domain.Vehicle
 	if json.Unmarshal(payload, &stored) != nil {
-		return nil
+		return nil, nil
 	}
-	return &stored
+	return &stored, payload
 }
 func (s *Store) putTyped(ctx context.Context, p app.Principal, dataset, id string, body []byte, expected int64) (app.Record, error) {
 	if expected < 0 {

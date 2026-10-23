@@ -13,6 +13,18 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-24 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `af32cea5`.
+  [EV sync/privacy allowlist](../backend/evidence/ev-support/EE-24.md): MHEV
+  is a first-class hosted kind (tank-only, same as HEV); vehicle payloads use
+  the frozen allowlist and preserve unknown newer/energy fields through both
+  `PutVehicle` and sync `Apply` for legacy partial updates. Existing MEX-14/15
+  ledger transport, account/origin and erasure guards reused. One RED
+  regression (sync Apply erased stored energy/unknown fields) closed; cloudsync
+  unit/HTTP suites, targeted real-PostGIS MHEV/preservation/concurrency tests,
+  vet/gofmt/diff/secrets PASS. Android vehicle cloud transport is absent from
+  this codebase and remains an explicit product gap, not claimed. Next
+  MEX-32/EE-26.
+
 - MEX-16 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `a5c4ed37`.
   [Premium status](../backend/evidence/mobile-expansion/MEX-16.md): signed-in
   owner sees server-verified state/capabilities/paid-through/retained-data,

@@ -42,9 +42,10 @@ type Vehicle struct {
 	// Energy propulsion and storage (EE-10, optional for legacy ICE).
 	// Pointers distinguish absent (preserve on partial update) from set.
 	// BEV carries battery without tank (CapacityMilli 0); PHEV carries
-	// one battery and one tank; HEV carries tank without external
-	// charge; ICE carries tank without battery. Unknown propulsion is
-	// refused; battery is never backfilled.
+	// one battery and one tank; HEV/MHEV carry tank without external
+	// charge; ICE carries tank without battery. MHEV is stored as its
+	// own kind (EE-24), never silently rewritten to HEV. Unknown
+	// propulsion is refused; battery is never backfilled.
 	Propulsion *string `json:"propulsion,omitempty"`
 	BatteryWh  *int64  `json:"battery_wh,omitempty"`
 }
@@ -55,6 +56,7 @@ const (
 	PropulsionBEV  = "BEV"
 	PropulsionPHEV = "PHEV"
 	PropulsionHEV  = "HEV"
+	PropulsionMHEV = "MHEV"
 )
 
 func NormalizeVehicle(v Vehicle) (Vehicle, error) {
@@ -124,7 +126,7 @@ func normalizeEnergy(v *Vehicle) error {
 		if v.CapacityMilli < 10 || v.CapacityMilli > 200000 || v.CapacityMilli%10 != 0 {
 			return ErrInvalid
 		}
-	case PropulsionHEV:
+	case PropulsionHEV, PropulsionMHEV:
 		if v.BatteryWh != nil {
 			return ErrInvalid
 		}
