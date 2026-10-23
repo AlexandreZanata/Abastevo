@@ -1,5 +1,7 @@
 package com.anpfuel.data.di
 
+import androidx.room.withTransaction
+
 import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
@@ -531,6 +533,9 @@ object UseCaseModule {
         sessions: com.anpfuel.application.portable.AuthSessionStore,
         @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
         flags: com.anpfuel.application.port.LedgerSyncFlagProvider,
+        syncScope: com.anpfuel.domain.repository.LedgerSyncScope,
+        acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
     ): com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase =
         com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase(
             outbox = commands,
@@ -538,6 +543,97 @@ object UseCaseModule {
             sessions = sessions,
             origin = environment.origin,
             enabled = flags::isEnabled,
+            syncScope = syncScope,
+            acks = acks,
+            erasures = erasures,
+        )
+
+    @Provides
+    @Singleton
+    fun provideResolveLedgerConflictUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        decoder: com.anpfuel.domain.repository.LedgerDraftDecoder,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
+    ): com.anpfuel.application.usecase.ledger.ResolveLedgerConflictUseCase =
+        com.anpfuel.application.usecase.ledger.ResolveLedgerConflictUseCase(
+            drafts = drafts,
+            commands = commands,
+            records = records,
+            sessions = sessions,
+            origin = environment.origin,
+            erasures = erasures,
+            decoder = decoder,
+            localTransaction = { block -> database.withTransaction { block() } },
+        )
+
+    @Provides
+    @Singleton
+    fun providePreviewLedgerRestoreUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.PreviewLedgerRestoreUseCase =
+        com.anpfuel.application.usecase.ledger.PreviewLedgerRestoreUseCase(
+            drafts = drafts,
+            commands = commands,
+            erasures = erasures,
+            records = records,
+            sessions = sessions,
+            scope = scope,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideConfirmLedgerRestoreUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        decoder: com.anpfuel.domain.repository.LedgerDraftDecoder,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
+    ): com.anpfuel.application.usecase.ledger.ConfirmLedgerRestoreUseCase =
+        com.anpfuel.application.usecase.ledger.ConfirmLedgerRestoreUseCase(
+            drafts = drafts,
+            commands = commands,
+            erasures = erasures,
+            records = records,
+            sessions = sessions,
+            scope = scope,
+            origin = environment.origin,
+            decoder = decoder,
+            localTransaction = { block -> database.withTransaction { block() } },
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetLedgerSyncStatusUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        flags: com.anpfuel.application.port.LedgerSyncFlagProvider,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+    ): com.anpfuel.application.usecase.ledger.GetLedgerSyncStatusUseCase =
+        com.anpfuel.application.usecase.ledger.GetLedgerSyncStatusUseCase(
+            commands = commands,
+            acks = acks,
+            sessions = sessions,
+            origin = environment.origin,
+            flags = flags,
+            scope = scope,
         )
 
     @Provides
@@ -563,6 +659,8 @@ object UseCaseModule {
         drafts: com.anpfuel.domain.repository.LedgerDraftStore,
         commands: com.anpfuel.domain.repository.PremiumCommandStore,
         sessions: com.anpfuel.application.portable.AuthSessionStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
         @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
     ): com.anpfuel.application.usecase.ledger.DeleteLedgerEntryUseCase =
         com.anpfuel.application.usecase.ledger.DeleteLedgerEntryUseCase(
@@ -570,6 +668,8 @@ object UseCaseModule {
             commands = commands,
             sessions = sessions,
             origin = environment.origin,
+            erasures = erasures,
+            localTransaction = { block -> database.withTransaction { block() } },
         )
 
     @Provides

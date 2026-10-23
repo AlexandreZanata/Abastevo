@@ -978,4 +978,33 @@
     <string name="home_community_updated">Community · updated %1$s</string>
     <string name="feed_restart_list">Back to the start of the list</string>
     <string name="settings_public_catalog_size">Estimated public cache: %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">Private backup and sync</string>
+    <string name="ledger_sync_explanation">Pending local edits are not backed up. Controls keep local records; uploads require explicit participation. Restore imports missing records and preserves existing local work.</string>
+    <string name="ledger_sync_master">Participate in private sync</string>
+    <string name="ledger_sync_device">Allow sync on this device</string>
+    <string name="ledger_sync_counts">Pending: %1$d · Conflicts shown: %2$d</string>
+    <string name="ledger_sync_last_ack">Last server acknowledgement: revision %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">No server acknowledgement yet</string>
+    <string name="ledger_sync_no_conflicts">No conflicts awaiting a choice</string>
+    <string name="ledger_sync_conflict">%1$s · Record %2$s</string>
+    <string name="ledger_sync_keep_mine">Keep my version</string>
+    <string name="ledger_sync_take_server">Use server version</string>
+    <string name="ledger_sync_preview">Preview restore</string>
+    <string name="ledger_sync_diff">Import: %1$d · Local records kept: %2$d · Erased skipped: %3$d · Voided skipped: %4$d</string>
+    <string name="ledger_sync_truncated">Preview limit reached. Refine the backup before confirming.</string>
+    <string name="ledger_sync_empty">Nothing to import</string>
+    <string name="ledger_sync_confirm">Confirm restore</string>
+    <string name="ledger_sync_sign_in">Sign in to view private backup status.</string>
+    <string name="ledger_sync_offline">Offline. Local work is safe. Retry when connected.</string>
+    <string name="ledger_sync_error">Unable to complete. Local work is retained; retry or cancel.</string>
+    <string name="ledger_sync_stale">Preview expired or data/account changed. Preview again.</string>
+    <string name="ledger_sync_partial">Restore completed with unreadable items skipped. Review and retry.</string>
+    <string name="ledger_sync_restored">Restore completed. Local records were retained.</string>
+    <string name="ledger_sync_resolved">Choice applied. Queued changes still await server acknowledgement.</string>
+    <string name="ledger_sync_refuel">Refuels</string>
+    <string name="ledger_sync_expense">Expenses</string>
+    <string name="ledger_sync_charge">Charging</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · revision %3$d</string>
 </resources>

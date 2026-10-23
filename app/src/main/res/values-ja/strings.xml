@@ -959,4 +959,33 @@
     <string name="home_community_updated">コミュニティ · 更新 %1$s</string>
     <string name="feed_restart_list">一覧の先頭に戻る</string>
     <string name="settings_public_catalog_size">公開キャッシュの推定サイズ: %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">非公開バックアップと同期</string>
+    <string name="ledger_sync_explanation">保留中のローカル編集はまだバックアップされていません。ローカル記録は保持され、送信には明示的な参加が必要です。復元は不足する記録を取り込み、既存の作業を保持します。</string>
+    <string name="ledger_sync_master">非公開同期に参加</string>
+    <string name="ledger_sync_device">この端末で同期を許可</string>
+    <string name="ledger_sync_counts">保留中: %1$d · 表示中の競合: %2$d</string>
+    <string name="ledger_sync_last_ack">最後のサーバー確認: リビジョン %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">サーバー確認はまだありません</string>
+    <string name="ledger_sync_no_conflicts">選択待ちの競合はありません</string>
+    <string name="ledger_sync_conflict">%1$s · 記録 %2$s</string>
+    <string name="ledger_sync_keep_mine">自分の版を保持</string>
+    <string name="ledger_sync_take_server">サーバーの版を使用</string>
+    <string name="ledger_sync_preview">復元プレビュー</string>
+    <string name="ledger_sync_diff">取り込み: %1$d · 保持するローカル記録: %2$d · 削除済みを除外: %3$d · 無効を除外: %4$d</string>
+    <string name="ledger_sync_truncated">プレビューの上限に達しました。確認前にバックアップを絞り込んでください。</string>
+    <string name="ledger_sync_empty">取り込む記録はありません</string>
+    <string name="ledger_sync_confirm">復元を確認</string>
+    <string name="ledger_sync_sign_in">非公開バックアップを確認するにはログインしてください。</string>
+    <string name="ledger_sync_offline">オフラインです。ローカル作業は安全です。接続後に再試行してください。</string>
+    <string name="ledger_sync_error">完了できませんでした。ローカル作業は保持されます。再試行するかキャンセルしてください。</string>
+    <string name="ledger_sync_stale">プレビューが期限切れ、またはデータやアカウントが変更されました。再作成してください。</string>
+    <string name="ledger_sync_partial">読めない項目を除外して復元しました。確認して再試行してください。</string>
+    <string name="ledger_sync_restored">復元が完了しました。ローカル記録は保持されました。</string>
+    <string name="ledger_sync_resolved">選択を適用しました。送信待ちの変更はまだサーバー確認待ちです。</string>
+    <string name="ledger_sync_refuel">給油</string>
+    <string name="ledger_sync_expense">支出</string>
+    <string name="ledger_sync_charge">充電</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · リビジョン %3$d</string>
 </resources>

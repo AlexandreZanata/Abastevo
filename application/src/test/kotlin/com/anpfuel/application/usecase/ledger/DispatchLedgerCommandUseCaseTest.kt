@@ -103,4 +103,86 @@ class DispatchLedgerCommandUseCaseTest {
         assertEquals(LedgerDispatchOutcome.DONE, gated.invoke(null))
         coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
     }
+    private val syncScope = mockk<com.anpfuel.domain.repository.LedgerSyncScope>()
+    private val acks = mockk<com.anpfuel.domain.repository.LedgerSyncAckStore>(relaxed = true)
+
+    private fun gated() = DispatchLedgerCommandUseCase(commands, gateway, sessions, scope.origin,
+        nowMillis = { 1000L }, syncScope = syncScope, acks = acks)
+
+    @Test fun `revoked head is skipped for allowed dataset`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled("refuel") } returns false
+        every { syncScope.isDatasetEnabled("expense") } returns true
+        val allowed = command("op-2").copy(dataset = "expense")
+        coEvery { commands.listPending(any(), 1) } returns listOf(command())
+        coEvery { commands.listPending(any(), 50) } returns listOf(command(), allowed)
+        coEvery { gateway.submit(any(), any(), any(), any(), any()) } returns LedgerSyncReceipt("op-2", 4, false)
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke(null))
+        coVerify(exactly = 1) { gateway.submit(any(), allowed, any(), any(), any()) }
+    }
+
+    @Test fun `disabled device performs no session or outbox io`() = runTest {
+        every { syncScope.isDeviceEnabled() } returns false
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke(null))
+        io.mockk.verify(exactly = 0) { sessions.load() }
+        coVerify(exactly = 0) { commands.listPending(any(), any()) }
+    }
+
+    @Test fun `receipt revision is recorded only for accepted non-delete`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns true
+        coEvery { commands.listPending(any(), any()) } returns listOf(command())
+        coEvery { gateway.submit(any(), any(), any(), any(), any()) } returns LedgerSyncReceipt("op-1", 7, false)
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke(null))
+        coVerify(exactly = 1) { acks.recordAck("acct-1", scope.origin, "refuel", 7, 1000L) }
+    }
+
+    @Test fun `accepted delete never records backup ack`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns true
+        coEvery { commands.listPending(any(), any()) } returns listOf(command().copy(delete = true))
+        coEvery { gateway.submit(any(), any(), any(), any(), any()) } returns LedgerSyncReceipt("op-1", 8, false)
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke(null))
+        coVerify(exactly = 0) { acks.recordAck(any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `requested command cannot bypass revoked dataset`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns false
+        coEvery { commands.findPending(any(), "op-1") } returns command()
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke("op-1"))
+        coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `dataset revoked while claim suspends prevents transport`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns true
+        coEvery { commands.listPending(any(), any()) } returns listOf(command())
+        coEvery { commands.claim(any(), any(), any(), any()) } answers {
+            every { syncScope.isDatasetEnabled("refuel") } returns false
+            true
+        }
+        assertEquals(LedgerDispatchOutcome.DONE, gated().invoke(null))
+        coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { commands.acknowledge(any(), any()) }
+    }
+
+    @Test fun `owner switched during claim never sends the old proof`() = runTest {
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns true
+        coEvery { commands.listPending(any(), any()) } returns listOf(command())
+        coEvery { commands.claim(any(), any(), any(), any()) } answers {
+            every { sessions.load() } returns session().copy(accountId = "other")
+            true
+        }
+        assertEquals(LedgerDispatchOutcome.REFUSED, gated().invoke(null))
+        coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+    }
+
 }

@@ -298,8 +298,12 @@ fun AnpNavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
+        composable(Routes.LEDGER_SYNC) {
+            com.anpfuel.app.ui.sync.LedgerSyncScreen(onNavigateBack = { navController.popBackStack() })
+        }
         composable(Routes.ACCOUNT) {
             AccountScreen(
+                onNavigateToLedgerSync = { navController.navigate(Routes.LEDGER_SYNC) },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAuth = { navController.navigate(Routes.AUTH) },
             )

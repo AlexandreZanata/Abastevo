@@ -63,6 +63,7 @@ import com.anpfuel.app.ui.components.SkeletonGroup
 fun AccountScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAuth: () -> Unit,
+    onNavigateToLedgerSync: () -> Unit = {},
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
@@ -132,6 +133,12 @@ fun AccountScreen(
                     }
                 }
                 return@Column
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                AccountActionRow(icon = Icons.Default.PersonOutline,
+                    title = stringResource(R.string.ledger_sync_title),
+                    subtitle = stringResource(R.string.ledger_sync_explanation),
+                    onClick = onNavigateToLedgerSync)
             }
             SignedInAccountContent(
                 state = authState,

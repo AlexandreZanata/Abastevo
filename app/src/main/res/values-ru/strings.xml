@@ -959,4 +959,33 @@
     <string name="home_community_updated">Сообщество · обновлено %1$s</string>
     <string name="feed_restart_list">Вернуться к началу списка</string>
     <string name="settings_public_catalog_size">Примерный размер публичного кеша: %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">Личная копия и синхронизация</string>
+    <string name="ledger_sync_explanation">Ожидающие локальные изменения ещё не сохранены в копии. Локальные записи сохраняются; отправка требует явного согласия. Восстановление импортирует отсутствующие записи и сохраняет локальную работу.</string>
+    <string name="ledger_sync_master">Участвовать в личной синхронизации</string>
+    <string name="ledger_sync_device">Разрешить синхронизацию на устройстве</string>
+    <string name="ledger_sync_counts">Ожидают: %1$d · Показанные конфликты: %2$d</string>
+    <string name="ledger_sync_last_ack">Последнее подтверждение сервера: версия %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">Подтверждения сервера пока нет</string>
+    <string name="ledger_sync_no_conflicts">Нет конфликтов, требующих выбора</string>
+    <string name="ledger_sync_conflict">%1$s · Запись %2$s</string>
+    <string name="ledger_sync_keep_mine">Оставить мою версию</string>
+    <string name="ledger_sync_take_server">Использовать версию сервера</string>
+    <string name="ledger_sync_preview">Предпросмотр восстановления</string>
+    <string name="ledger_sync_diff">Импорт: %1$d · Сохранено локальных: %2$d · Пропущено удалённых: %3$d · Пропущено отменённых: %4$d</string>
+    <string name="ledger_sync_truncated">Достигнут предел предпросмотра. Сузьте копию перед подтверждением.</string>
+    <string name="ledger_sync_empty">Нечего импортировать</string>
+    <string name="ledger_sync_confirm">Подтвердить восстановление</string>
+    <string name="ledger_sync_sign_in">Войдите для просмотра личной копии.</string>
+    <string name="ledger_sync_offline">Нет сети. Локальная работа сохранена. Повторите после подключения.</string>
+    <string name="ledger_sync_error">Не удалось завершить. Локальная работа сохранена; повторите или отмените.</string>
+    <string name="ledger_sync_stale">Предпросмотр устарел либо изменились данные или аккаунт. Создайте новый.</string>
+    <string name="ledger_sync_partial">Восстановление завершено с пропуском нечитаемых записей. Проверьте и повторите.</string>
+    <string name="ledger_sync_restored">Восстановление завершено. Локальные записи сохранены.</string>
+    <string name="ledger_sync_resolved">Выбор применён. Изменения в очереди ещё ожидают подтверждения сервера.</string>
+    <string name="ledger_sync_refuel">Заправки</string>
+    <string name="ledger_sync_expense">Расходы</string>
+    <string name="ledger_sync_charge">Зарядки</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · версия %3$d</string>
 </resources>

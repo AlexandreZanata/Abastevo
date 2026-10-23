@@ -959,4 +959,33 @@
     <string name="home_community_updated">Comunidad · actualizado %1$s</string>
     <string name="feed_restart_list">Volver al inicio de la lista</string>
     <string name="settings_public_catalog_size">Caché pública estimada: %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">Copia y sincronización privadas</string>
+    <string name="ledger_sync_explanation">Los cambios locales pendientes aún no tienen copia. Los controles conservan los registros locales; el envío requiere participación explícita. La restauración importa registros ausentes y conserva el trabajo local.</string>
+    <string name="ledger_sync_master">Participar en sincronización privada</string>
+    <string name="ledger_sync_device">Permitir sincronización en este dispositivo</string>
+    <string name="ledger_sync_counts">Pendientes: %1$d · Conflictos mostrados: %2$d</string>
+    <string name="ledger_sync_last_ack">Última confirmación del servidor: revisión %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">Sin confirmación del servidor</string>
+    <string name="ledger_sync_no_conflicts">No hay conflictos pendientes</string>
+    <string name="ledger_sync_conflict">%1$s · Registro %2$s</string>
+    <string name="ledger_sync_keep_mine">Conservar mi versión</string>
+    <string name="ledger_sync_take_server">Usar versión del servidor</string>
+    <string name="ledger_sync_preview">Vista previa de restauración</string>
+    <string name="ledger_sync_diff">Importar: %1$d · Locales conservados: %2$d · Eliminados omitidos: %3$d · Anulados omitidos: %4$d</string>
+    <string name="ledger_sync_truncated">Se alcanzó el límite de vista previa. Limite la copia antes de confirmar.</string>
+    <string name="ledger_sync_empty">Nada que importar</string>
+    <string name="ledger_sync_confirm">Confirmar restauración</string>
+    <string name="ledger_sync_sign_in">Inicia sesión para consultar la copia privada.</string>
+    <string name="ledger_sync_offline">Sin conexión. El trabajo local está seguro. Reintenta al conectar.</string>
+    <string name="ledger_sync_error">No se pudo completar. El trabajo local se conserva; reintenta o cancela.</string>
+    <string name="ledger_sync_stale">La vista previa caducó o cambiaron los datos o la cuenta. Genera otra.</string>
+    <string name="ledger_sync_partial">Restauración completada omitiendo elementos ilegibles. Revisa y reintenta.</string>
+    <string name="ledger_sync_restored">Restauración completada. Se conservaron los registros locales.</string>
+    <string name="ledger_sync_resolved">Elección aplicada. Los cambios en cola aún esperan confirmación del servidor.</string>
+    <string name="ledger_sync_refuel">Repostajes</string>
+    <string name="ledger_sync_expense">Gastos</string>
+    <string name="ledger_sync_charge">Recargas</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · revisión %3$d</string>
 </resources>

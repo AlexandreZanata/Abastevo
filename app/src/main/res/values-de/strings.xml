@@ -959,4 +959,33 @@
     <string name="home_community_updated">Community · aktualisiert %1$s</string>
     <string name="feed_restart_list">Zurück zum Listenanfang</string>
     <string name="settings_public_catalog_size">Geschätzter öffentlicher Cache: %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">Private Sicherung und Synchronisierung</string>
+    <string name="ledger_sync_explanation">Ausstehende lokale Änderungen sind noch nicht gesichert. Lokale Einträge bleiben erhalten; Uploads erfordern ausdrückliche Teilnahme. Die Wiederherstellung importiert fehlende Einträge und behält lokale Arbeit.</string>
+    <string name="ledger_sync_master">An privater Synchronisierung teilnehmen</string>
+    <string name="ledger_sync_device">Synchronisierung auf diesem Gerät erlauben</string>
+    <string name="ledger_sync_counts">Ausstehend: %1$d · Angezeigte Konflikte: %2$d</string>
+    <string name="ledger_sync_last_ack">Letzte Serverbestätigung: Revision %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">Noch keine Serverbestätigung</string>
+    <string name="ledger_sync_no_conflicts">Keine offenen Konflikte</string>
+    <string name="ledger_sync_conflict">%1$s · Eintrag %2$s</string>
+    <string name="ledger_sync_keep_mine">Meine Version behalten</string>
+    <string name="ledger_sync_take_server">Serverversion verwenden</string>
+    <string name="ledger_sync_preview">Wiederherstellung prüfen</string>
+    <string name="ledger_sync_diff">Importieren: %1$d · Lokal behalten: %2$d · Gelöschte übersprungen: %3$d · Stornierte übersprungen: %4$d</string>
+    <string name="ledger_sync_truncated">Vorschaulimit erreicht. Sicherung vor der Bestätigung eingrenzen.</string>
+    <string name="ledger_sync_empty">Nichts zu importieren</string>
+    <string name="ledger_sync_confirm">Wiederherstellung bestätigen</string>
+    <string name="ledger_sync_sign_in">Anmelden, um die private Sicherung anzuzeigen.</string>
+    <string name="ledger_sync_offline">Offline. Lokale Arbeit bleibt sicher. Bei Verbindung erneut versuchen.</string>
+    <string name="ledger_sync_error">Vorgang fehlgeschlagen. Lokale Arbeit bleibt erhalten; erneut versuchen oder abbrechen.</string>
+    <string name="ledger_sync_stale">Vorschau abgelaufen oder Daten/Konto geändert. Neue Vorschau erstellen.</string>
+    <string name="ledger_sync_partial">Wiederherstellung mit übersprungenen unlesbaren Einträgen abgeschlossen. Prüfen und erneut versuchen.</string>
+    <string name="ledger_sync_restored">Wiederherstellung abgeschlossen. Lokale Einträge bleiben erhalten.</string>
+    <string name="ledger_sync_resolved">Auswahl angewendet. Änderungen warten noch auf die Serverbestätigung.</string>
+    <string name="ledger_sync_refuel">Tankvorgänge</string>
+    <string name="ledger_sync_expense">Ausgaben</string>
+    <string name="ledger_sync_charge">Ladevorgänge</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · Revision %3$d</string>
 </resources>

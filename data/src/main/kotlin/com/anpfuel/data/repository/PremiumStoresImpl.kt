@@ -58,6 +58,14 @@ class PremiumCommandStoreImpl @Inject constructor(
         outbox.clearOwner(scope.accountId, scope.origin)
     }
 
+    override suspend fun hasHeldRecord(scope: PremiumOwnerScope, dataset: String, recordId: String): Boolean =
+        outbox.hasHeldRecord(scope.accountId, scope.origin, dataset, recordId)
+
+    override suspend fun removeRecord(scope: PremiumOwnerScope, dataset: String, recordId: String) {
+        check(outbox.countActiveRecord(scope.accountId, scope.origin, dataset, recordId) == 0) { "ledger.active-claim" }
+        outbox.deleteRecord(scope.accountId, scope.origin, dataset, recordId)
+    }
+
     override suspend fun releaseExpired(nowMillis: Long): Int =
         outbox.releaseExpired(nowMillis)
 
@@ -86,6 +94,16 @@ class PremiumCommandStoreImpl @Inject constructor(
 
     override suspend fun acknowledge(scope: PremiumOwnerScope, operationId: String) {
         outbox.deleteById(operationId, scope.accountId, scope.origin)
+    }
+
+    override suspend fun countPending(scope: PremiumOwnerScope, limit: Int, dataset: String?): Int {
+        val count = outbox.countPending(scope.accountId, scope.origin, dataset)
+        return minOf(count, limit.coerceAtLeast(0))
+    }
+
+    override suspend fun listConflicts(scope: PremiumOwnerScope, limit: Int): List<PremiumCommand> {
+        if (limit <= 0) return emptyList()
+        return outbox.listConflicts(scope.accountId, scope.origin, limit).map(PremiumMapper::toDomain)
     }
 }
 

@@ -959,4 +959,33 @@
     <string name="home_community_updated">Communauté · mis à jour %1$s</string>
     <string name="feed_restart_list">Revenir au début de la liste</string>
     <string name="settings_public_catalog_size">Cache public estimé : %1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">Sauvegarde et synchronisation privées</string>
+    <string name="ledger_sync_explanation">Les modifications locales en attente ne sont pas sauvegardées. Les contrôles conservent les données locales ; les envois exigent une participation explicite. La restauration importe les éléments absents et préserve le travail local.</string>
+    <string name="ledger_sync_master">Participer à la synchronisation privée</string>
+    <string name="ledger_sync_device">Autoriser la synchronisation sur cet appareil</string>
+    <string name="ledger_sync_counts">En attente : %1$d · Conflits affichés : %2$d</string>
+    <string name="ledger_sync_last_ack">Dernier accusé du serveur : révision %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">Aucun accusé du serveur</string>
+    <string name="ledger_sync_no_conflicts">Aucun conflit en attente</string>
+    <string name="ledger_sync_conflict">%1$s · Élément %2$s</string>
+    <string name="ledger_sync_keep_mine">Garder ma version</string>
+    <string name="ledger_sync_take_server">Utiliser la version du serveur</string>
+    <string name="ledger_sync_preview">Aperçu de restauration</string>
+    <string name="ledger_sync_diff">Importer : %1$d · Locaux conservés : %2$d · Supprimés ignorés : %3$d · Annulés ignorés : %4$d</string>
+    <string name="ledger_sync_truncated">Limite atteinte. Réduisez la sauvegarde avant de confirmer.</string>
+    <string name="ledger_sync_empty">Rien à importer</string>
+    <string name="ledger_sync_confirm">Confirmer la restauration</string>
+    <string name="ledger_sync_sign_in">Connectez-vous pour consulter la sauvegarde privée.</string>
+    <string name="ledger_sync_offline">Hors connexion. Le travail local est préservé. Réessayez une fois connecté.</string>
+    <string name="ledger_sync_error">Impossible de terminer. Le travail local est conservé ; réessayez ou annulez.</string>
+    <string name="ledger_sync_stale">Aperçu expiré ou données/compte modifiés. Créez un nouvel aperçu.</string>
+    <string name="ledger_sync_partial">Restauration terminée avec des éléments illisibles ignorés. Vérifiez et réessayez.</string>
+    <string name="ledger_sync_restored">Restauration terminée. Les éléments locaux sont conservés.</string>
+    <string name="ledger_sync_resolved">Choix appliqué. Les modifications attendent encore un accusé du serveur.</string>
+    <string name="ledger_sync_refuel">Pleins</string>
+    <string name="ledger_sync_expense">Dépenses</string>
+    <string name="ledger_sync_charge">Recharges</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · révision %3$d</string>
 </resources>

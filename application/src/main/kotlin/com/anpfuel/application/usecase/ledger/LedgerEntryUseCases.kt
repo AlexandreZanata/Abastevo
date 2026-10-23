@@ -135,14 +135,19 @@ class DeleteLedgerEntryUseCase(
     private val commands: PremiumCommandStore,
     private val sessions: AuthSessionStore,
     private val origin: String,
+    private val erasures: com.anpfuel.domain.repository.LedgerErasureLog? = null,
+    private val localTransaction: suspend (suspend () -> PremiumCommand) -> PremiumCommand = { it() },
 ) {
 
     suspend operator fun invoke(dataset: LedgerDataset, recordId: String): PremiumCommand {
         val accountId = sessions.load()?.accountId ?: "local"
-        drafts.delete(accountId, origin, dataset, recordId)
-        val tombstone = LedgerCommandFactory.deleteCommand(PremiumOwnerScope(accountId, origin), dataset, recordId)
-        commands.enqueue(tombstone)
-        return tombstone
+        return localTransaction {
+            erasures?.recordErased(accountId, origin, dataset.wire, recordId, System.currentTimeMillis())
+            drafts.delete(accountId, origin, dataset, recordId)
+            val tombstone = LedgerCommandFactory.deleteCommand(PremiumOwnerScope(accountId, origin), dataset, recordId)
+            commands.enqueue(tombstone)
+            tombstone
+        }
     }
 }
 

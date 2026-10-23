@@ -47,6 +47,13 @@ class EnqueuePremiumCommandUseCaseTest {
         override suspend fun failTransient(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String, nonce: String, nowMillis: Long) = Unit
         override suspend fun markConflict(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String, reason: String) = Unit
         override suspend fun acknowledge(scope: com.anpfuel.domain.premium.PremiumOwnerScope, operationId: String) = Unit
+        override suspend fun hasHeldRecord(scope: com.anpfuel.domain.premium.PremiumOwnerScope, dataset: String, recordId: String) =
+            rows.values.any { it.scope == scope && it.dataset == dataset && it.recordId == recordId }
+        override suspend fun removeRecord(scope: com.anpfuel.domain.premium.PremiumOwnerScope, dataset: String, recordId: String) {
+            rows.values.filter { it.scope == scope && it.dataset == dataset && it.recordId == recordId }.toList().forEach { remove(scope, it.operationId) }
+        }
+        override suspend fun countPending(scope: com.anpfuel.domain.premium.PremiumOwnerScope, limit: Int, dataset: String?) = rows.values.count { it.scope == scope && (dataset == null || it.dataset == dataset) }.coerceAtMost(limit)
+        override suspend fun listConflicts(scope: com.anpfuel.domain.premium.PremiumOwnerScope, limit: Int) = emptyList<com.anpfuel.domain.premium.PremiumCommand>()
     }
 
     @Test

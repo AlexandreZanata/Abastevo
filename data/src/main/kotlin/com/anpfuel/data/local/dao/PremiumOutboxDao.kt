@@ -98,6 +98,34 @@ interface PremiumOutboxDao {
     suspend fun markConflict(commandId: String, ownerAccount: String, origin: String): Int
 
     /**
+     * MEX-15 sync status + conflict surfacing (bounded reads, no payload
+     * loading): dispatchable-but-unacked count plus held CONFLICT rows.
+     */
+    @Query(
+        "SELECT COUNT(*) FROM premium_outbox WHERE owner_account = :ownerAccount AND origin = :origin " +
+            "AND state IN ('QUEUED', 'IN_FLIGHT', 'FAILED') AND (:dataset IS NULL OR dataset = :dataset)",
+    )
+    suspend fun countPending(ownerAccount: String, origin: String, dataset: String?): Int
+
+    @Query(
+        "SELECT * FROM premium_outbox WHERE owner_account = :ownerAccount AND origin = :origin " +
+            "AND state = 'CONFLICT' ORDER BY rowid ASC LIMIT :limit",
+    )
+    suspend fun listConflicts(ownerAccount: String, origin: String, limit: Int): List<PremiumOutboxEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM premium_outbox WHERE owner_account = :owner AND origin = :origin " +
+        "AND dataset = :dataset AND record_id = :recordId)")
+    suspend fun hasHeldRecord(owner: String, origin: String, dataset: String, recordId: String): Boolean
+
+    @Query("SELECT COUNT(*) FROM premium_outbox WHERE owner_account = :owner AND origin = :origin " +
+        "AND dataset = :dataset AND record_id = :recordId AND state = 'IN_FLIGHT'")
+    suspend fun countActiveRecord(owner: String, origin: String, dataset: String, recordId: String): Int
+
+    @Query("DELETE FROM premium_outbox WHERE owner_account = :owner AND origin = :origin " +
+        "AND dataset = :dataset AND record_id = :recordId")
+    suspend fun deleteRecord(owner: String, origin: String, dataset: String, recordId: String)
+
+    /**
      * MEX-11 restart recovery: crashed IN_FLIGHT claims whose lease
      * expired return to QUEUED with their original operation IDs, so a
      * lost acknowledgement retries without minting a duplicate command.

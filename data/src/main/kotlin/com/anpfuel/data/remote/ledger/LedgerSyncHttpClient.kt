@@ -40,7 +40,7 @@ private val JSON = "application/json; charset=utf-8".toMediaType()
 class LedgerSyncHttpClient(
     http: OkHttpClient,
     baseUrl: String,
-) : LedgerSyncGateway {
+) : LedgerSyncGateway, com.anpfuel.domain.repository.LedgerRecordsGateway {
 
     private val origin = baseUrl.toHttpUrl()
     private val client = http.newBuilder().followRedirects(false).followSslRedirects(false)
@@ -94,6 +94,113 @@ class LedgerSyncHttpClient(
         }
     }
 
+    override suspend fun list(
+        familyId: String,
+        accessToken: String,
+        dataset: String,
+        vehicleId: String?,
+        limit: Int,
+        cursor: String?,
+    ): com.anpfuel.domain.repository.LedgerRecordsPage {
+        if (familyId.isBlank() || accessToken.isBlank()) throw LedgerSyncDenied("ledger.no-proof")
+        if (dataset !in setOf("refuel", "expense", "charge")) throw LedgerSyncDenied("ledger.unknown-dataset")
+        if (limit !in 1..100) throw LedgerSyncDenied("ledger.bad-limit")
+        val body = JSONObject()
+            .put("family_id", familyId)
+            .put("access_token", accessToken)
+            .put("dataset", dataset)
+            .put("limit", limit)
+        if (!vehicleId.isNullOrBlank()) body.put("vehicle_id", vehicleId)
+        if (!cursor.isNullOrBlank()) body.put("cursor", cursor)
+        val root = postRecords(body.toString())
+        return try {
+            val items = root.optJSONArray("items") ?: throw LedgerSyncDenied("ledger.invalid-records")
+            if (items.length() > limit) throw LedgerSyncDenied("ledger.over-budget")
+            val seen = mutableSetOf<String>()
+            val rows = (0 until items.length()).map { index ->
+                val row = items.getJSONObject(index)
+                val rowDataset = row.optString("dataset", "")
+                if (rowDataset != dataset) throw LedgerSyncDenied("ledger.cross-dataset")
+                val recordId = row.optString("id", "")
+                val owner = row.optString("vehicle_id", "")
+                if (!validId(recordId) || !validId(owner) || !seen.add(recordId) ||
+                    (vehicleId != null && vehicleId != owner)) throw LedgerSyncDenied("ledger.invalid-record")
+                val rawRevision = row.opt("revision")
+                if (rawRevision !is Long && rawRevision !is Int) throw LedgerSyncDenied("ledger.invalid-revision")
+                val payload = row.optJSONObject("payload") ?: throw LedgerSyncDenied("ledger.invalid-payload")
+                val decoded = com.anpfuel.data.mapper.LedgerDraftCodec.decode(
+                    com.anpfuel.domain.premium.LedgerDataset.parse(dataset), payload.toString())
+                if (decoded.recordId != recordId || payload.optString("vehicle_id") != owner) {
+                    throw LedgerSyncDenied("ledger.invalid-payload")
+                }
+                java.time.Instant.parse(row.getString("occurred_at"))
+                if (row.opt("voided") !is Boolean) throw LedgerSyncDenied("ledger.invalid-record")
+                com.anpfuel.domain.repository.LedgerServerRecord(
+                    dataset = rowDataset,
+                    id = recordId,
+                    vehicleId = owner,
+                    occurredAt = row.optString("occurred_at", ""),
+                    revision = row.optLong("revision", -1).also {
+                        if (it < 0) throw LedgerSyncDenied("ledger.invalid-record")
+                    },
+                    voided = row.optBoolean("voided", false),
+                    payloadJson = decoded.bodyJson(),
+                )
+            }
+            if (!root.isNull("next_cursor") && root.opt("next_cursor") !is String) throw LedgerSyncDenied("ledger.invalid-cursor")
+            val next = if (root.isNull("next_cursor")) null else root.getString("next_cursor").takeIf { it.isNotEmpty() }
+            com.anpfuel.domain.repository.LedgerRecordsPage(rows, next)
+        } catch (e: LedgerSyncDenied) {
+            throw e
+        } catch (e: Exception) {
+            throw LedgerSyncDenied("ledger.invalid-records")
+        }
+    }
+
+    private fun validId(value: String): Boolean = try {
+        java.util.UUID.fromString(value).toString() == value
+    } catch (_: IllegalArgumentException) { false }
+
+    private suspend fun postRecords(body: String): JSONObject {
+        val url = origin.newBuilder().addPathSegments("v1/ledger/records").build()
+        return try {
+            withContext(Dispatchers.IO) {
+                suspendCancellableCoroutine { continuation ->
+                    val request = Request.Builder().url(url)
+                        .header("Accept", "application/json")
+                        .header("Cache-Control", "no-store")
+                        .post(body.toByteArray(Charsets.UTF_8).toRequestBody(JSON)).build()
+                    val call = client.newCall(request)
+                    continuation.invokeOnCancellation { call.cancel() }
+                    call.enqueue(object : Callback {
+                        override fun onFailure(call: Call, e: IOException) {
+                            if (continuation.isActive) continuation.resumeWithException(e)
+                        }
+
+                        override fun onResponse(call: Call, response: Response) {
+                            response.use {
+                                if (!continuation.isActive) return
+                                try {
+                                    when (response.code) {
+                                        200 -> Unit
+                                        in 400..499 -> throw LedgerSyncDenied("ledger.denied")
+                                        else -> throw IOException("ledger.unavailable")
+                                    }
+                                    val source = response.body?.source() ?: throw IOException("ledger.empty")
+                                    if (source.request(BODY_BUDGET)) throw IOException("ledger.over-budget")
+                                    continuation.resume(JSONObject(source.readUtf8()))
+                                } catch (e: Exception) {
+                                    if (continuation.isActive) continuation.resumeWithException(e)
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        }
+    }
     private suspend fun post(body: String): JSONObject {
         val url = origin.newBuilder().addPathSegments("v1/ledger/commands").build()
         return try {

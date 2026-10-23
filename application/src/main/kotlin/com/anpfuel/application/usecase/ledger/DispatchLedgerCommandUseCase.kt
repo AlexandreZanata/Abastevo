@@ -6,6 +6,8 @@ import com.anpfuel.domain.premium.PremiumOwnerScope
 import com.anpfuel.domain.repository.LedgerSyncConflict
 import com.anpfuel.domain.repository.LedgerSyncDenied
 import com.anpfuel.domain.repository.LedgerSyncGateway
+import com.anpfuel.domain.repository.LedgerSyncAckStore
+import com.anpfuel.domain.repository.LedgerSyncScope
 import com.anpfuel.domain.repository.PremiumCommandStore
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
@@ -31,6 +33,9 @@ class DispatchLedgerCommandUseCase(
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val attemptId: () -> String = { UUID.randomUUID().toString() },
     private val enabled: () -> Boolean = { true },
+    private val syncScope: LedgerSyncScope? = null,
+    private val acks: LedgerSyncAckStore? = null,
+    private val erasures: com.anpfuel.domain.repository.LedgerErasureLog? = null,
 ) {
 
     companion object {
@@ -40,35 +45,57 @@ class DispatchLedgerCommandUseCase(
 
     suspend fun invoke(requestedId: String?): LedgerDispatchOutcome {
         if (!enabled()) return LedgerDispatchOutcome.DONE
+        if (syncScope != null && !syncScope.isDeviceEnabled()) return LedgerDispatchOutcome.DONE
         val session = sessions.load() ?: return LedgerDispatchOutcome.REFUSED
-        val scope = PremiumOwnerScope(session.accountId, origin)
+        val ownerScope = PremiumOwnerScope(session.accountId, origin)
         val next = if (requestedId.isNullOrBlank()) {
-            outbox.listPending(scope, 1).firstOrNull()
+            pickHead(ownerScope)
         } else {
-            outbox.findPending(scope, requestedId)?.takeIf { it.operationId.isNotEmpty() }
+            outbox.findPending(ownerScope, requestedId)?.takeIf { it.operationId.isNotEmpty() }
         } ?: return LedgerDispatchOutcome.DONE
+        if (syncScope?.isDatasetEnabled(next.dataset) == false) return LedgerDispatchOutcome.DONE
+        if (sessions.load()?.accountId != session.accountId) return LedgerDispatchOutcome.REFUSED
         val attempt = attemptId()
-        if (!outbox.claim(next.operationId, scope, attempt, nowMillis() + CLAIM_LEASE_MILLIS)) {
+        if (!outbox.claim(next.operationId, ownerScope, attempt, nowMillis() + CLAIM_LEASE_MILLIS)) {
             return LedgerDispatchOutcome.RETRY
         }
+        // A Room claim can suspend while account or participation changes.
+        // Leave its bounded lease intact; no intent is removed or sent after revocation.
+        if (!enabled() || syncScope?.isDeviceEnabled() == false || syncScope?.isDatasetEnabled(next.dataset) == false) {
+            return LedgerDispatchOutcome.DONE
+        }
+        if (sessions.load()?.accountId != session.accountId) return LedgerDispatchOutcome.REFUSED
         return try {
-            val receipt = gateway.submit(scope, next, attempt, session.familyId, session.accessToken)
+            val receipt = gateway.submit(ownerScope, next, attempt, session.familyId, session.accessToken)
             if (receipt.operationId != next.operationId) {
                 throw LedgerSyncDenied("ledger.invalid-receipt")
             }
-            outbox.acknowledge(scope, next.operationId)
+            if (next.delete) {
+                erasures?.recordErased(session.accountId, origin, next.dataset, next.recordId, nowMillis())
+            }
+            outbox.acknowledge(ownerScope, next.operationId)
+            if (!next.delete) {
+                acks?.recordAck(session.accountId, origin, next.dataset, receipt.revision, nowMillis())
+            }
             LedgerDispatchOutcome.DONE
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (conflict: LedgerSyncConflict) {
-            outbox.markConflict(scope, next.operationId, conflict.message ?: "ledger.conflict")
+            outbox.markConflict(ownerScope, next.operationId, conflict.message ?: "ledger.conflict")
             LedgerDispatchOutcome.REFUSED
         } catch (denied: LedgerSyncDenied) {
-            outbox.failTransient(scope, next.operationId, attempt, nowMillis())
+            outbox.failTransient(ownerScope, next.operationId, attempt, nowMillis())
             LedgerDispatchOutcome.REFUSED
         } catch (_: Exception) {
-            outbox.failTransient(scope, next.operationId, attempt, nowMillis())
+            outbox.failTransient(ownerScope, next.operationId, attempt, nowMillis())
             LedgerDispatchOutcome.RETRY
         }
+    }
+
+    private suspend fun pickHead(scope: PremiumOwnerScope): PremiumCommand? {
+        val head = outbox.listPending(scope, 1).firstOrNull() ?: return null
+        val gate = syncScope ?: return head
+        if (gate.isDatasetEnabled(head.dataset)) return head
+        return outbox.listPending(scope, 50).firstOrNull { gate.isDatasetEnabled(it.dataset) }
     }
 }

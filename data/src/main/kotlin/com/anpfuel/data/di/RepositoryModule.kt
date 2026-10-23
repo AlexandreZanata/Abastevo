@@ -214,6 +214,36 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindLedgerRecordsGateway(
+        impl: com.anpfuel.data.remote.ledger.LedgerSyncHttpClient,
+    ): com.anpfuel.domain.repository.LedgerRecordsGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerErasureLog(
+        impl: com.anpfuel.data.repository.LedgerErasureLogImpl,
+    ): com.anpfuel.domain.repository.LedgerErasureLog
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerDraftDecoder(
+        impl: com.anpfuel.data.repository.LedgerDraftDecoderImpl,
+    ): com.anpfuel.domain.repository.LedgerDraftDecoder
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncScope(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncScopeStore,
+    ): com.anpfuel.domain.repository.LedgerSyncScope
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncAckStore(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncAckMemory,
+    ): com.anpfuel.domain.repository.LedgerSyncAckStore
+
+    @Binds
+    @Singleton
     abstract fun bindLedgerSyncFlag(
         impl: com.anpfuel.data.local.preferences.LedgerSyncFlagStore,
     ): com.anpfuel.application.port.LedgerSyncFlagProvider

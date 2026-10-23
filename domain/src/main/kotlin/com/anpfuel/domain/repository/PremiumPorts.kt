@@ -19,6 +19,12 @@ interface PremiumCommandStore {
     suspend fun remove(scope: PremiumOwnerScope, operationId: String)
     suspend fun clearOwner(scope: PremiumOwnerScope)
 
+    /** Includes queued, failed, in-flight and conflicted intents, including legacy deletes. */
+    suspend fun hasHeldRecord(scope: PremiumOwnerScope, dataset: String, recordId: String): Boolean
+
+    /** Remove held work for exactly one record; refuse if a live claim owns it. */
+    suspend fun removeRecord(scope: PremiumOwnerScope, dataset: String, recordId: String)
+
     /**
      * MEX-11 restart recovery: crashed IN_FLIGHT claims whose lease
      * expired return to QUEUED with their original operation IDs.
@@ -41,6 +47,12 @@ interface PremiumCommandStore {
 
     /** Server acknowledgement: the command is durable remotely. */
     suspend fun acknowledge(scope: PremiumOwnerScope, operationId: String)
+
+    /** Dispatchable-but-unacked count for sync status (bounded read). */
+    suspend fun countPending(scope: PremiumOwnerScope, limit: Int, dataset: String? = null): Int
+
+    /** Held conflicts awaiting an explicit resolution (bounded read). */
+    suspend fun listConflicts(scope: PremiumOwnerScope, limit: Int): List<PremiumCommand>
 }
 
 interface PremiumCursorStore {

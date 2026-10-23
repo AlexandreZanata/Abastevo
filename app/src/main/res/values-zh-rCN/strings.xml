@@ -959,4 +959,33 @@
     <string name="home_community_updated">社区 · 更新于 %1$s</string>
     <string name="feed_restart_list">返回列表开头</string>
     <string name="settings_public_catalog_size">公共缓存估计大小：%1$s</string>
+
+    <!-- MEX-15 explicit private backup controls. -->
+    <string name="ledger_sync_title">私人备份与同步</string>
+    <string name="ledger_sync_explanation">待处理的本地编辑尚未备份。控制选项会保留本地记录；上传需要明确参与。恢复只导入缺少的记录并保留现有本地工作。</string>
+    <string name="ledger_sync_master">参与私人同步</string>
+    <string name="ledger_sync_device">允许此设备同步</string>
+    <string name="ledger_sync_counts">待处理：%1$d · 显示的冲突：%2$d</string>
+    <string name="ledger_sync_last_ack">最近服务器确认：修订版 %1$d · %2$s</string>
+    <string name="ledger_sync_no_ack">尚无服务器确认</string>
+    <string name="ledger_sync_no_conflicts">没有等待选择的冲突</string>
+    <string name="ledger_sync_conflict">%1$s · 记录 %2$s</string>
+    <string name="ledger_sync_keep_mine">保留我的版本</string>
+    <string name="ledger_sync_take_server">使用服务器版本</string>
+    <string name="ledger_sync_preview">预览恢复</string>
+    <string name="ledger_sync_diff">导入：%1$d · 保留本地记录：%2$d · 跳过已删除：%3$d · 跳过已作废：%4$d</string>
+    <string name="ledger_sync_truncated">已达到预览上限。请缩小备份范围后确认。</string>
+    <string name="ledger_sync_empty">没有可导入的记录</string>
+    <string name="ledger_sync_confirm">确认恢复</string>
+    <string name="ledger_sync_sign_in">请登录以查看私人备份状态。</string>
+    <string name="ledger_sync_offline">当前离线。本地工作安全保留。连接后请重试。</string>
+    <string name="ledger_sync_error">无法完成。本地工作已保留；请重试或取消。</string>
+    <string name="ledger_sync_stale">预览已过期，或数据或账户已更改。请重新预览。</string>
+    <string name="ledger_sync_partial">恢复完成，已跳过无法读取的项目。请检查后重试。</string>
+    <string name="ledger_sync_restored">恢复完成。本地记录已保留。</string>
+    <string name="ledger_sync_resolved">选择已应用。队列中的更改仍等待服务器确认。</string>
+    <string name="ledger_sync_refuel">加油</string>
+    <string name="ledger_sync_expense">费用</string>
+    <string name="ledger_sync_charge">充电</string>
+    <string name="ledger_sync_pull_item">%1$s · %2$s · 修订版 %3$d</string>
 </resources>

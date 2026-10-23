@@ -681,4 +681,23 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_24_25: Migration = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-15 local erasure log (tombstone memory for
+            // restore-old-after-erase). No rows are touched; restore
+            // consults before adopting any server row.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ledger_erased` (
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `record_id` TEXT NOT NULL,
+                    `erased_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`owner_account`, `origin`, `dataset`, `record_id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

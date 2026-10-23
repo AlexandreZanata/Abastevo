@@ -62,6 +62,7 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_21_22,
                 AnpFuelDatabaseMigrations.MIGRATION_22_23,
                 AnpFuelDatabaseMigrations.MIGRATION_23_24,
+                AnpFuelDatabaseMigrations.MIGRATION_24_25,
             )
             .build()
 
@@ -98,8 +99,14 @@ object DatabaseModule {
         database.vehicleCapabilityLeaseDao()
 
     @Provides
+    @Singleton
     fun provideLedgerDraftDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.LedgerDraftDao =
         database.ledgerDraftDao()
+
+    @Provides
+    @Singleton
+    fun provideLedgerErasedDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.LedgerErasedDao =
+        database.ledgerErasedDao()
 
     @Provides
     fun provideChargingSnapshotDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.ChargingSnapshotDao =
