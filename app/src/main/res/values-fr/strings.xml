@@ -961,6 +961,24 @@
     <string name="settings_public_catalog_size">Cache public estimé : %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">Premium</string>
+    <string name="premium_status_active">Premium actif</string>
+    <string name="premium_status_pending">Vérification en attente</string>
+    <string name="premium_status_canceled">Résilié — accès payé</string>
+    <string name="premium_status_grace">Période de grâce</string>
+    <string name="premium_status_inactive">Aucun Premium actif</string>
+    <string name="premium_status_expired">Premium expiré</string>
+    <string name="premium_status_revoked">Premium révoqué</string>
+    <string name="premium_status_unknown">Statut Premium inconnu</string>
+    <string name="premium_valid_until">Accès jusqu’au %1$s</string>
+    <string name="premium_retained">Vos données restent accessibles sans Premium.</string>
+    <string name="premium_manage">Gérer l’abonnement</string>
+    <string name="premium_restore">Restaurer l’achat</string>
+    <string name="premium_restore_note">Restaure un abonnement vérifié par la boutique. L’achat payant est désactivé dans cette version.</string>
+    <string name="premium_restore_unavailable">Les achats ne sont pas disponibles dans cette version. Aucun achat ni droit local n’a été créé.</string>
+    <string name="premium_offline">Impossible de vérifier Premium pour le moment. Réessayez.</string>
+    <string name="premium_denied">Reconnectez-vous pour vérifier Premium.</string>
+    <string name="premium_error">Le statut Premium n’a pas pu être vérifié.</string>
     <string name="ledger_sync_title">Sauvegarde et synchronisation privées</string>
     <string name="ledger_sync_explanation">Les modifications locales en attente ne sont pas sauvegardées. Les contrôles conservent les données locales ; les envois exigent une participation explicite. La restauration importe les éléments absents et préserve le travail local.</string>
     <string name="ledger_sync_master">Participer à la synchronisation privée</string>

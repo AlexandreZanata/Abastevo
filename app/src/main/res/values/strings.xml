@@ -980,6 +980,24 @@
     <string name="settings_public_catalog_size">Estimated public cache: %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">Premium</string>
+    <string name="premium_status_active">Premium active</string>
+    <string name="premium_status_pending">Verification pending</string>
+    <string name="premium_status_canceled">Canceled — paid-through access</string>
+    <string name="premium_status_grace">Grace period</string>
+    <string name="premium_status_inactive">No active Premium</string>
+    <string name="premium_status_expired">Premium expired</string>
+    <string name="premium_status_revoked">Premium revoked</string>
+    <string name="premium_status_unknown">Premium status unknown</string>
+    <string name="premium_valid_until">Access until %1$s</string>
+    <string name="premium_retained">Your data stays accessible without Premium.</string>
+    <string name="premium_manage">Manage subscription</string>
+    <string name="premium_restore">Restore purchase</string>
+    <string name="premium_restore_note">Restores a subscription verified by the store. Paid acquisition is disabled in this build.</string>
+    <string name="premium_restore_unavailable">Purchases are not available in this build. No purchase or local entitlement was created.</string>
+    <string name="premium_offline">Could not verify Premium right now. Try again.</string>
+    <string name="premium_denied">Sign in again to verify Premium.</string>
+    <string name="premium_error">Premium status could not be verified.</string>
     <string name="ledger_sync_title">Private backup and sync</string>
     <string name="ledger_sync_explanation">Pending local edits are not backed up. Controls keep local records; uploads require explicit participation. Restore imports missing records and preserves existing local work.</string>
     <string name="ledger_sync_master">Participate in private sync</string>

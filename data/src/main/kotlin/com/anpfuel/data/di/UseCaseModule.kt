@@ -987,4 +987,15 @@ object UseCaseModule {
             gateway = gateway,
             catalog = catalog,
         )
+
+    @Provides
+    @Singleton
+    fun provideGetPremiumStatusUseCase(
+        gateway: com.anpfuel.domain.repository.PremiumStatusGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase =
+        com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
 }

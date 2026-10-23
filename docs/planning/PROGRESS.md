@@ -1,5 +1,28 @@
 # Current execution state
 
+- EV/Android batch map 2026-10-23 (authorized, sequential): MEX-16 (Premium
+  status), EE-24 (EV sync/privacy), MEX-32/EE-26 (shared refresh), EE-22
+  (community EV), EE-25/MEX-31 carried gaps (scenario execution/vehicle
+  context), EE-27 (end-to-end), MEX-33/34, EE-28/MEX-35 (measurements),
+  EE-29/MEX-36/37 (regression/privacy/union), EE-30/MEX-38 (manifest/handoff),
+  EE-31/MEX-39 (combined overview). MEX-16, MEX-32+EE-26, EE-22 and the
+  acceptance units have real gaps; already-accepted EE-00–21/23/25 and
+  MEX-14/15 code is reused, not reimplemented. Delivery: one atomic commit
+  and normal dev push per unit, no CI wait during construction; final
+  inventory/reconciliation of all open PRs and guarded dev → main integration
+  happen after the union. Native/device, staging, provider, sales and
+  deployment remain separately OWED.
+
+- MEX-16 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `a5c4ed37`.
+  [Premium status](../backend/evidence/mobile-expansion/MEX-16.md): signed-in
+  owner sees server-verified state/capabilities/paid-through/retained-data,
+  manage link, manual refresh and honest offline/denied/error states; restore
+  is explicitly unavailable because no Play Billing token source ships. No
+  local entitlement derivation, purchase or provider activation. 12 targeted
+  tests (5 data, 2 application, 5 app) plus debug APK/lint PASS; 18 strings ×
+  8 locales; diff/secret clean. Sandbox/provider quotes remain
+  EXTERNAL_PROOF_OWED. Next EE-24 EV sync/privacy.
+
 - MEX-15 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, parent `52c994b3`. [Conflict, backup controls and restore](../backend/evidence/mobile-expansion/MEX-15.md): explicit keep/take/cancel, device/dataset gates, honest last-ack status, owner-bound expiring restore preview/confirm, transactional local apply, erasure/legacy-delete guards and 27 strings × 8 locales. Full JVM 2093 tests, 0 failures/errors (2 pre-existing live skips), six real SQLite cases, lint/debug APK/diff/secrets PASS. Tested source fingerprint in evidence; local task tracking, issue/PR unchanged and remote checks NOT_RUN. One local atomic commit only; no push/PR/merge. Native process/Room and signed two-device/staging/private-object receipts remain OWED. Next: MEX-16 bounded source phase; final integration separate.
 
 - MEX-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent6d195688. [Private sync transport + constrained worker](../backend/evidence/mobile-expansion/MEX-14.md): explicit opt-in (default OFF), typed ledger POST with live proof, atomic claim/ack/conflict/backoff on reused outbox, one-command Hilt worker + unique CONNECTED/backoff scheduling, pausing keeps rows. Full suites (2038 tests, 0 failures; 2 pre-existing live skips), app/data lint, diff, secrets green; device reopen deferred. Two-device/reconnect runs stay staging-gated.

@@ -961,6 +961,24 @@
     <string name="settings_public_catalog_size">Geschätzter öffentlicher Cache: %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">Premium</string>
+    <string name="premium_status_active">Premium aktiv</string>
+    <string name="premium_status_pending">Prüfung ausstehend</string>
+    <string name="premium_status_canceled">Gekündigt — bezahlter Zugang</string>
+    <string name="premium_status_grace">Kulanzzeit</string>
+    <string name="premium_status_inactive">Kein aktives Premium</string>
+    <string name="premium_status_expired">Premium abgelaufen</string>
+    <string name="premium_status_revoked">Premium widerrufen</string>
+    <string name="premium_status_unknown">Premium-Status unbekannt</string>
+    <string name="premium_valid_until">Zugang bis %1$s</string>
+    <string name="premium_retained">Ihre Daten bleiben ohne Premium zugänglich.</string>
+    <string name="premium_manage">Abo verwalten</string>
+    <string name="premium_restore">Kauf wiederherstellen</string>
+    <string name="premium_restore_note">Stellt ein vom Store bestätigtes Abo wieder her. Der kostenpflichtige Erwerb ist in dieser Version deaktiviert.</string>
+    <string name="premium_restore_unavailable">Käufe sind in dieser Version nicht verfügbar. Es wurde kein Kauf und kein lokales Recht erstellt.</string>
+    <string name="premium_offline">Premium konnte gerade nicht bestätigt werden. Erneut versuchen.</string>
+    <string name="premium_denied">Melden Sie sich erneut an, um Premium zu bestätigen.</string>
+    <string name="premium_error">Der Premium-Status konnte nicht bestätigt werden.</string>
     <string name="ledger_sync_title">Private Sicherung und Synchronisierung</string>
     <string name="ledger_sync_explanation">Ausstehende lokale Änderungen sind noch nicht gesichert. Lokale Einträge bleiben erhalten; Uploads erfordern ausdrückliche Teilnahme. Die Wiederherstellung importiert fehlende Einträge und behält lokale Arbeit.</string>
     <string name="ledger_sync_master">An privater Synchronisierung teilnehmen</string>

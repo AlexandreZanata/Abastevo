@@ -961,6 +961,24 @@
     <string name="settings_public_catalog_size">Примерный размер публичного кеша: %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">Premium</string>
+    <string name="premium_status_active">Premium активен</string>
+    <string name="premium_status_pending">Проверка ожидается</string>
+    <string name="premium_status_canceled">Отменено — оплаченный доступ</string>
+    <string name="premium_status_grace">Льготный период</string>
+    <string name="premium_status_inactive">Нет активного Premium</string>
+    <string name="premium_status_expired">Premium истёк</string>
+    <string name="premium_status_revoked">Premium отозван</string>
+    <string name="premium_status_unknown">Статус Premium неизвестен</string>
+    <string name="premium_valid_until">Доступ до %1$s</string>
+    <string name="premium_retained">Ваши данные остаются доступны без Premium.</string>
+    <string name="premium_manage">Управлять подпиской</string>
+    <string name="premium_restore">Восстановить покупку</string>
+    <string name="premium_restore_note">Восстанавливает подписку, подтверждённую магазином. Платная покупка отключена в этой сборке.</string>
+    <string name="premium_restore_unavailable">Покупки недоступны в этой сборке. Покупка или локальное право не создавались.</string>
+    <string name="premium_offline">Не удалось проверить Premium. Повторите попытку.</string>
+    <string name="premium_denied">Войдите снова, чтобы проверить Premium.</string>
+    <string name="premium_error">Не удалось проверить статус Premium.</string>
     <string name="ledger_sync_title">Личная копия и синхронизация</string>
     <string name="ledger_sync_explanation">Ожидающие локальные изменения ещё не сохранены в копии. Локальные записи сохраняются; отправка требует явного согласия. Восстановление импортирует отсутствующие записи и сохраняет локальную работу.</string>
     <string name="ledger_sync_master">Участвовать в личной синхронизации</string>

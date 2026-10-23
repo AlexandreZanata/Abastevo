@@ -961,6 +961,24 @@
     <string name="settings_public_catalog_size">Caché pública estimada: %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">Premium</string>
+    <string name="premium_status_active">Premium activo</string>
+    <string name="premium_status_pending">Verificación pendiente</string>
+    <string name="premium_status_canceled">Cancelado — acceso pagado</string>
+    <string name="premium_status_grace">Periodo de gracia</string>
+    <string name="premium_status_inactive">Sin Premium activo</string>
+    <string name="premium_status_expired">Premium vencido</string>
+    <string name="premium_status_revoked">Premium revocado</string>
+    <string name="premium_status_unknown">Estado de Premium desconocido</string>
+    <string name="premium_valid_until">Acceso hasta %1$s</string>
+    <string name="premium_retained">Tus datos siguen accesibles sin Premium.</string>
+    <string name="premium_manage">Gestionar suscripción</string>
+    <string name="premium_restore">Restaurar compra</string>
+    <string name="premium_restore_note">Restaura una suscripción verificada por la tienda. La compra de pago está desactivada en esta versión.</string>
+    <string name="premium_restore_unavailable">Las compras no están disponibles en esta versión. No se creó ninguna compra ni derecho local.</string>
+    <string name="premium_offline">No se pudo verificar Premium ahora. Inténtalo de nuevo.</string>
+    <string name="premium_denied">Vuelve a iniciar sesión para verificar Premium.</string>
+    <string name="premium_error">No se pudo verificar el estado de Premium.</string>
     <string name="ledger_sync_title">Copia y sincronización privadas</string>
     <string name="ledger_sync_explanation">Los cambios locales pendientes aún no tienen copia. Los controles conservan los registros locales; el envío requiere participación explícita. La restauración importa registros ausentes y conserva el trabajo local.</string>
     <string name="ledger_sync_master">Participar en sincronización privada</string>

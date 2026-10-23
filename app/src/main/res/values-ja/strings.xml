@@ -961,6 +961,24 @@
     <string name="settings_public_catalog_size">公開キャッシュの推定サイズ: %1$s</string>
 
     <!-- MEX-15 explicit private backup controls. -->
+    <string name="premium_section_title">プレミアム</string>
+    <string name="premium_status_active">プレミアム有効</string>
+    <string name="premium_status_pending">確認待ち</string>
+    <string name="premium_status_canceled">解約済み — 支払い期間中</string>
+    <string name="premium_status_grace">猶予期間</string>
+    <string name="premium_status_inactive">有効なプレミアムなし</string>
+    <string name="premium_status_expired">プレミアム期限切れ</string>
+    <string name="premium_status_revoked">プレミアム失効</string>
+    <string name="premium_status_unknown">プレミアム状態不明</string>
+    <string name="premium_valid_until">%1$s まで利用可能</string>
+    <string name="premium_retained">プレミアムがなくてもデータは利用できます。</string>
+    <string name="premium_manage">サブスクリプションを管理</string>
+    <string name="premium_restore">購入を復元</string>
+    <string name="premium_restore_note">ストアで確認されたサブスクリプションを復元します。このビルドでは有料購入は無効です。</string>
+    <string name="premium_restore_unavailable">このビルドでは購入を利用できません。購入やローカル権利は作成されていません。</string>
+    <string name="premium_offline">現在プレミアムを確認できません。もう一度お試しください。</string>
+    <string name="premium_denied">プレミアムを確認するには再度ログインしてください。</string>
+    <string name="premium_error">プレミアム状態を確認できませんでした。</string>
     <string name="ledger_sync_title">非公開バックアップと同期</string>
     <string name="ledger_sync_explanation">保留中のローカル編集はまだバックアップされていません。ローカル記録は保持され、送信には明示的な参加が必要です。復元は不足する記録を取り込み、既存の作業を保持します。</string>
     <string name="ledger_sync_master">非公開同期に参加</string>
