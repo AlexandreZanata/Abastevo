@@ -138,7 +138,8 @@ real PMQC methodology. None is claimed as runtime acceptance.
   govulncheck zero vulnerabilities and focused security suites PASS.
 - Git-flow real-temporary-Git/fake-GitHub harness:49 PASS/0 failures;
   JSON/pagination/head/state parser:7 matrix tests PASS; project-batch/worktree
-  isolation harness PASS. Old helper reproduced two no-quick/no-merge failures.
+  isolation harness PASS. `make test-flow` now includes the parser matrix and
+  passed its two CI-cadence tests. Old helper reproduced two no-quick/no-merge failures.
   New parser also accepts the real completed PR146 check-response shape without
   performing any remote mutation.
 - Diff/secrets review includes staged new files. No source flag, SDK/runtime
@@ -164,9 +165,7 @@ cd ..
 cargo +1.99.0 test --offline --locked --manifest-path tools/station-prep/Cargo.toml
 cargo +1.99.0 fmt --manifest-path tools/station-prep/Cargo.toml --check
 cargo +1.99.0 clippy --offline --locked --manifest-path tools/station-prep/Cargo.toml --all-targets -- -D warnings
-python3 scripts/tests/test-merge-checks.py
-bash scripts/tests/test-git-flow.sh
-bash scripts/tests/test-project-batch-flow.sh
+make test-flow
 bash scripts/check-security.sh
 bash scripts/scan-secrets.sh
 git diff --check

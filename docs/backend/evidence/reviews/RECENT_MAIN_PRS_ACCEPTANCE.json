@@ -86,7 +86,9 @@
   "delivery_guard": {
     "harness_passed": 49,
     "harness_failed": 0,
-    "json_contract_tests": 7
+    "json_contract_tests": 7,
+    "flow_target_includes_parser": true,
+    "ci_cadence_tests": 2
   },
   "external_acceptance_owed": [
     "new correction CI and protected maintained-dev integration",
