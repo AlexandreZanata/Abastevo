@@ -33,6 +33,8 @@ object Routes {
         return "charging-explore/$vehicleId"
     }
 
+    const val MASTER_EXPLORE = "master-explore"
+
     const val MONTHLY_INDICATORS = "monthly-indicators/{vehicleId}"
 
     fun monthlyIndicators(vehicleId: String): String {

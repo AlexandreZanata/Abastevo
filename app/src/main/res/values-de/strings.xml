@@ -86,6 +86,17 @@
     <string name="ledger_entry_odometer">Kilometerstand (km)</string>
     <string name="ledger_entry_station">Tankstellen-ID (optional)</string>
     <string name="ledger_entry_note">Notiz (optional)</string>
+    <string name="master_explore_title">Entdecken</string>
+    <string name="master_explore_hint">Fragen Sie nach Preisen, Datensätzen oder Laden…</string>
+    <string name="master_explore_ask">Fragen</string>
+    <string name="master_explore_suggestions">Probieren Sie eine davon</string>
+    <string name="master_explore_alternatives">Meinten Sie:</string>
+    <string name="master_explore_results">Ergebnisse</string>
+    <string name="master_explore_revision">Revision %1$s</string>
+    <string name="master_explore_empty">Noch keine Ergebnisse. Stellen Sie oben eine Frage.</string>
+    <string name="master_explore_more">Mehr anzeigen</string>
+    <string name="master_explore_open_official">Offizielle Datensätze öffnen</string>
+    <string name="master_explore_no_results">Nichts für diese Interpretation gefunden.</string>
     <string name="monthly_open">Monatlich</string>
     <string name="monthly_title">Monatsindikatoren</string>
     <string name="monthly_previous">Vorheriger Monat</string>
@@ -618,6 +629,7 @@
     <string name="suggest_refresh_status">Status aktualisieren</string>
     <string name="suggest_cancel">Vorschlag zurückziehen</string>
     <string name="suggest_open_action">Fehlende Tankstelle vorschlagen</string>
+    <string name="master_explore_open">Nach Preisen fragen</string>
     <string name="capture_target_label">Meldung für Tankstelle %1$s · %2$s</string>
     <string name="capture_target_invalid">Ungültige Tankstellenreferenz · zurückgehen und erneut wählen.</string>
     <string name="capture_submit_failed">Warteschlange nicht erstellt (%1$s). Nichts gesendet.</string>

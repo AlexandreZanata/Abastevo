@@ -859,4 +859,15 @@ object UseCaseModule {
         gateway = gateway,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetPriceRankingUseCase(
+        gateway: com.anpfuel.domain.repository.PriceRankingGateway,
+        catalog: com.anpfuel.domain.repository.MunicipalityIbgeLookup,
+    ): com.anpfuel.application.usecase.ranking.GetPriceRankingUseCase =
+        com.anpfuel.application.usecase.ranking.GetPriceRankingUseCase(
+            gateway = gateway,
+            catalog = catalog,
+        )
 }

@@ -196,6 +196,18 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindPriceRankingGateway(
+        impl: com.anpfuel.data.repository.PriceRankingGatewayImpl,
+    ): com.anpfuel.domain.repository.PriceRankingGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindMunicipalityIbgeLookup(
+        impl: com.anpfuel.data.repository.MunicipalityIbgeLookupImpl,
+    ): com.anpfuel.domain.repository.MunicipalityIbgeLookup
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

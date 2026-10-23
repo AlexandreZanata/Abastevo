@@ -86,6 +86,17 @@
     <string name="ledger_entry_odometer">オドメーター (km)</string>
     <string name="ledger_entry_station">スタンドID (任意)</string>
     <string name="ledger_entry_note">メモ (任意)</string>
+    <string name="master_explore_title">探索</string>
+    <string name="master_explore_hint">価格・記録・充電について質問…</string>
+    <string name="master_explore_ask">質問する</string>
+    <string name="master_explore_suggestions">こちらをお試しください</string>
+    <string name="master_explore_alternatives">もしかして:</string>
+    <string name="master_explore_results">結果</string>
+    <string name="master_explore_revision">リビジョン %1$s</string>
+    <string name="master_explore_empty">まだ結果がありません。上で質問してください。</string>
+    <string name="master_explore_more">さらに表示</string>
+    <string name="master_explore_open_official">公式記録を開く</string>
+    <string name="master_explore_no_results">この解釈では何も見つかりませんでした。</string>
     <string name="monthly_open">月次</string>
     <string name="monthly_title">月次指標</string>
     <string name="monthly_previous">前の月</string>
@@ -618,6 +629,7 @@
     <string name="suggest_refresh_status">状況を更新</string>
     <string name="suggest_cancel">提案を取消</string>
     <string name="suggest_open_action">未登録の給油所を提案</string>
+    <string name="master_explore_open">価格について質問</string>
     <string name="capture_target_label">投稿先：給油所%1$s・%2$s</string>
     <string name="capture_target_invalid">給油所の参照が無効です。戻って選び直してください。</string>
     <string name="capture_submit_failed">送信待ちに追加できませんでした（%1$s）。何も送信されていません。</string>

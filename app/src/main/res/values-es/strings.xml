@@ -86,6 +86,17 @@
     <string name="ledger_entry_odometer">Odómetro (km)</string>
     <string name="ledger_entry_station">ID de estación (opcional)</string>
     <string name="ledger_entry_note">Nota (opcional)</string>
+    <string name="master_explore_title">Explorar</string>
+    <string name="master_explore_hint">Pregunte por precios, registros o recarga…</string>
+    <string name="master_explore_ask">Preguntar</string>
+    <string name="master_explore_suggestions">Pruebe una de estas</string>
+    <string name="master_explore_alternatives">Quiso decir:</string>
+    <string name="master_explore_results">Resultados</string>
+    <string name="master_explore_revision">Revisión %1$s</string>
+    <string name="master_explore_empty">Aún sin resultados. Haga una pregunta arriba.</string>
+    <string name="master_explore_more">Mostrar más</string>
+    <string name="master_explore_open_official">Abrir registros oficiales</string>
+    <string name="master_explore_no_results">Nada encontrado para esta interpretación.</string>
     <string name="monthly_open">Mensual</string>
     <string name="monthly_title">Indicadores mensuales</string>
     <string name="monthly_previous">Mes anterior</string>
@@ -618,6 +629,7 @@
     <string name="suggest_refresh_status">Actualizar estado</string>
     <string name="suggest_cancel">Cancelar sugerencia</string>
     <string name="suggest_open_action">Sugerir estación que falta</string>
+    <string name="master_explore_open">Preguntar por precios</string>
     <string name="capture_target_label">Publicando para estación %1$s · %2$s</string>
     <string name="capture_target_invalid">Referencia inválida; vuelve atrás y selecciona la estación de nuevo.</string>
     <string name="capture_submit_failed">No se pudo poner en cola (%1$s). No se envió nada.</string>

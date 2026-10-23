@@ -170,6 +170,17 @@
     <string name="ledger_entry_odometer">Odômetro (km)</string>
     <string name="ledger_entry_station">ID do posto (opcional)</string>
     <string name="ledger_entry_note">Nota (opcional)</string>
+    <string name="master_explore_title">Explorar</string>
+    <string name="master_explore_hint">Pergunte sobre preços, registros ou recarga…</string>
+    <string name="master_explore_ask">Perguntar</string>
+    <string name="master_explore_suggestions">Experimente uma destas</string>
+    <string name="master_explore_alternatives">Você quis dizer:</string>
+    <string name="master_explore_results">Resultados</string>
+    <string name="master_explore_revision">Revisão %1$s</string>
+    <string name="master_explore_empty">Sem resultados ainda. Faça uma pergunta acima.</string>
+    <string name="master_explore_more">Mostrar mais</string>
+    <string name="master_explore_open_official">Abrir registros oficiais</string>
+    <string name="master_explore_no_results">Nada encontrado para esta interpretação.</string>
     <string name="monthly_open">Mensal</string>
     <string name="monthly_title">Indicadores mensais</string>
     <string name="monthly_previous">Mês anterior</string>
@@ -631,6 +642,7 @@
     <string name="suggest_refresh_status">Atualizar status</string>
     <string name="suggest_cancel">Cancelar sugestão</string>
     <string name="suggest_open_action">Sugerir posto ausente</string>
+    <string name="master_explore_open">Perguntar sobre preços</string>
 
     <!-- Confirmar/contestar (P10-T07, beta, atrás de flag) -->
     <string name="community_vote_title">Confirmar ou contestar este preço</string>

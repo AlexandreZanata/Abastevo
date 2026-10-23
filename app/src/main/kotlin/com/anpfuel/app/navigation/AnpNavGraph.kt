@@ -204,6 +204,7 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
@@ -216,7 +217,14 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
+            )
+        }
+        composable(Routes.MASTER_EXPLORE) {
+            com.anpfuel.app.ui.master.MasterExploreScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenOccurrences = { navController.navigate(Routes.OCCURRENCE_EXPLORER) },
             )
         }
         composable(Routes.VEHICLES) {

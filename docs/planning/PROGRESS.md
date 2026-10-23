@@ -1,5 +1,7 @@
 # Current execution state
 
+- MEX-31 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4d6. [Master discovery journeys](../backend/evidence/mobile-expansion/MEX-31.md): on-device interpreter port (golden parity), typed ranking client (no-store, cancellable, bounded), IBGE-exact municipal resolution, master screen (suggestions, interpretation, NEEDS_CHOICE, ranking results, official deep-link), 11 strings x 8 locales. Full suites (2029 tests, 0 failures), lint, diff, secrets green; device reopen deferred.
+
 - EE-25 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4b6. [Electric master questions](../backend/evidence/ev-support/EE-25.md): typed EV intents (compatible places, reported energy price, complete scenario cost) with pinned source/bounded pages, NEEDS_CHOICE for ambiguous/missing, refusals without guessing; deterministic vectors green, no liquid/official regressions. Backend vet/static/diff green; no OpenAPI/SQL change.
 
 - EE-23 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentb26c5547. [Energy comparisons](../backend/evidence/ev-support/EE-23.md): Go/Kotlin golden parity corpus (11 vectors, both engines green), pure energy engine with weighted compare + km/L-equivalent refusal, monthly measured/reference/comparison/combined, formula-safe CSV export, energy UI block (7 strings × 8 locales). Full suites (2009 tests, 0 failures) + backend metrics, lint, diff, secrets green; device reopen deferred.

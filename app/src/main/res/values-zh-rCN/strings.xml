@@ -86,6 +86,17 @@
     <string name="ledger_entry_odometer">里程表 (km)</string>
     <string name="ledger_entry_station">油站ID (可选)</string>
     <string name="ledger_entry_note">备注 (可选)</string>
+    <string name="master_explore_title">探索</string>
+    <string name="master_explore_hint">询问价格、记录或充电…</string>
+    <string name="master_explore_ask">提问</string>
+    <string name="master_explore_suggestions">试试这些</string>
+    <string name="master_explore_alternatives">您的意思是:</string>
+    <string name="master_explore_results">结果</string>
+    <string name="master_explore_revision">版本 %1$s</string>
+    <string name="master_explore_empty">暂无结果。请在上方提问。</string>
+    <string name="master_explore_more">显示更多</string>
+    <string name="master_explore_open_official">打开官方记录</string>
+    <string name="master_explore_no_results">此解读未找到任何内容。</string>
     <string name="monthly_open">月度</string>
     <string name="monthly_title">月度指标</string>
     <string name="monthly_previous">上个月</string>
@@ -618,6 +629,7 @@
     <string name="suggest_refresh_status">更新状态</string>
     <string name="suggest_cancel">取消建议</string>
     <string name="suggest_open_action">建议添加缺失的加油站</string>
+    <string name="master_explore_open">询问价格</string>
     <string name="capture_target_label">发布至加油站%1$s · %2$s</string>
     <string name="capture_target_invalid">加油站标识无效，请返回并重新选择。</string>
     <string name="capture_submit_failed">无法加入队列（%1$s），尚未发送任何内容。</string>
