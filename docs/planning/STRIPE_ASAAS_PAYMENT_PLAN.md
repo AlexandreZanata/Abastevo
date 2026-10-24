@@ -183,6 +183,9 @@ PAY-03 is LOCAL_DONE: `backend/internal/modules/payments/domain` now owns pure
 order/attempt/settlement/contract/mandate/refund/dispute/grant transitions,
 exact BRL periods and source allocation. Existing Play/free exits are unchanged;
 persistence/providers/runtime remain PAY-04+.
+PAY-04 is LOCAL_DONE: migration 000123 and the payment sqlc/store layer persist
+idempotent operations, attempts, settlements/grants, cycles, inbox and job_queue
+outbox with lease/generation fences. Provider/runtime work remains PAY-05+.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

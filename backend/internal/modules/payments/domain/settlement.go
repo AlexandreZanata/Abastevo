@@ -387,7 +387,7 @@ func (e *Entitlement) ApplySettlement(offer Offer, order *Order, attempt *Attemp
 	}
 	if order.AccountID != e.AccountID || order.ID != settlement.OrderID ||
 		order.Channel != settlement.Channel || !order.Amount.Equal(settlement.Amount) ||
-		!order.Amount.Equal(offer.Price) {
+		!order.Amount.Equal(offer.Price) || !sameStringSet(order.Capabilities, offer.Capabilities) {
 		return SettlementResult{}, fmt.Errorf("%w: order settlement", ErrBinding)
 	}
 	if settlement.SettledAt.Before(order.QuotedAt) {
@@ -474,7 +474,7 @@ func (e *Entitlement) ApplySettlement(offer Offer, order *Order, attempt *Attemp
 		Start:           period.Start,
 		End:             period.End,
 		AnchorDay:       period.AnchorDay,
-		Capabilities:    copyStrings(offer.Capabilities),
+		Capabilities:    copyStrings(order.Capabilities),
 		State:           GrantActive,
 		PolicyVersion:   PolicyVersion,
 	}

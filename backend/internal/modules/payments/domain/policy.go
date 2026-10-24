@@ -38,6 +38,7 @@ var (
 	ErrBinding            = errors.New("payments: binding mismatch")
 	ErrRefundBounds       = errors.New("payments: refund bounds")
 	ErrStale              = errors.New("payments: stale")
+	ErrBusy               = errors.New("payments: busy")
 	ErrUnavailable        = errors.New("payments: unavailable")
 )
 
@@ -370,6 +371,23 @@ func copyStrings(values []string) []string {
 	out := make([]string, len(values))
 	copy(out, values)
 	return out
+}
+
+func sameStringSet(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	seen := make(map[string]int, len(left))
+	for _, value := range left {
+		seen[value]++
+	}
+	for _, value := range right {
+		if seen[value] == 0 {
+			return false
+		}
+		seen[value]--
+	}
+	return true
 }
 
 func validText(value string, max int) bool {

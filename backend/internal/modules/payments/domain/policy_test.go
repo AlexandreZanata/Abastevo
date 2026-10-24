@@ -510,6 +510,13 @@ func TestSettlementCannotGrantWithoutVerifiedAuthority(t *testing.T) {
 		t.Fatal("invalid settlement granted")
 	}
 
+	tampered := validOffer()
+	tampered.Capabilities = append([]string(nil), tampered.Capabilities...)
+	tampered.Capabilities[0] = "invented.capability"
+	if _, err := entitlement.ApplySettlement(tampered, &order, &attempt, base, testNow.Add(2*time.Minute)); !errors.Is(err, ErrBinding) {
+		t.Fatalf("tampered capabilities err=%v", err)
+	}
+
 	result, err := entitlement.ApplySettlement(validOffer(), &order, &attempt, base, testNow.Add(2*time.Minute))
 	if err != nil || result.Grant == nil || order.State != OrderPaid {
 		t.Fatalf("valid settlement result=%+v err=%v order=%s", result, err, order.State)

@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-04 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-03 `22feac69`. Migration
+  `000123_payment_intents` (MAP owns 122) and `db/queries/payments` persist
+  customers/orders/operations/attempts/settlements/grants/cycles/inbox; outbox
+  reuses transactional `job_queue`. Store fences claims by unique key, payload
+  hash, lease and generation; webhook-before-reply, unknown outcomes and stale
+  workers are tested; concurrent claims/settlements produce one grant. [PAY-04
+  evidence](../backend/evidence/payments/PAY-04.md): 10 PostGIS integration tests,
+  race, migration upgrade/replay, forced rollback, vet/staticcheck/sqlc/diff/secret
+  PASS. No provider/HTTP/runtime/sale. Next: PAY-05 config/activation only after
+  maintainer authorization.
+
 - Stripe/Asaas payment PAY-03 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-02 `efe5f170`. New pure
   `backend/internal/modules/payments/domain` implements order/attempt/settlement/

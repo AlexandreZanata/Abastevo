@@ -57,6 +57,7 @@ type Order struct {
 	Channel        Channel
 	Term           Term
 	Amount         Money
+	Capabilities   []string
 	State          OrderState
 
 	QuotedAt     time.Time
@@ -94,6 +95,7 @@ func NewOrder(id, accountID string, quote Quote, now time.Time) (Order, error) {
 		Channel:        quote.Channel,
 		Term:           quote.Term,
 		Amount:         quote.Amount,
+		Capabilities:   copyStrings(quote.Capabilities),
 		State:          OrderQuoted,
 		QuotedAt:       quote.QuotedAt.UTC(),
 		ExpiresAt:      quote.ExpiresAt.UTC(),

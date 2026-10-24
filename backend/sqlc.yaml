@@ -317,6 +317,19 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
   - engine: postgresql
+    queries: db/queries/payments
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000123_payment_intents.sql
+    gen:
+      go:
+        package: payments
+        out: db/queries/payments
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
     queries: db/queries/charging
     schema:
       - db/migrations/000001_enable_postgis.sql
