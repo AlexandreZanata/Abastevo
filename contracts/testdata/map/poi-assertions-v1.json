@@ -1,0 +1,223 @@
+{
+  "format": "abastevo.map-assertions-v1",
+  "version": 1,
+  "generation": "overlay-2026-10-24.1",
+  "assertions": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "source": "ANP",
+      "kind": "COMBINED_SITE",
+      "name": "Posto e Recarga Contrato",
+      "identities": {
+        "station_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "cnpj": "01122233300018",
+        "place_id": null,
+        "equipment_id": null,
+        "connector_id": null,
+        "osm_type": "node",
+        "osm_id": 123456789
+      },
+      "location": {
+        "latitude_deg": "-15.7939",
+        "longitude_deg": "-47.8828",
+        "quality": "reviewed",
+        "display_point": "station",
+        "entrance_latitude_deg": "-15.7941",
+        "entrance_longitude_deg": "-47.8825"
+      },
+      "services": ["FUEL", "CHARGING"],
+      "prices": [
+        {
+          "source": "ANP",
+          "station_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "product": "GASOLINE_REGULAR",
+          "unit": "L",
+          "amount_milli_brl": 5890,
+          "observed_at": "2026-10-20",
+          "period_start": "2026-10-18",
+          "period_end": "2026-10-24"
+        }
+      ],
+      "charging": null,
+      "clocks": {
+        "observed_at": "2026-10-20T12:00:00Z",
+        "published_at": "2026-10-21T08:00:00Z",
+        "fetched_at": "2026-10-24T09:00:00Z"
+      },
+      "rights": {
+        "source": "ANP",
+        "license": "ADMITTED",
+        "attribution": "ANP — Levantamento de Preços de Combustíveis",
+        "source_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "capabilities": {
+        "price_known": true,
+        "pin_eligible": true,
+        "entrance_known": true,
+        "live_status": false
+      }
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "source": "COMMUNITY",
+      "kind": "COMBINED_SITE",
+      "name": "Posto e Recarga Contrato",
+      "identities": {
+        "station_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "cnpj": "01122233300018",
+        "place_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "equipment_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "connector_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        "osm_type": null,
+        "osm_id": null
+      },
+      "location": {
+        "latitude_deg": "-15.7939",
+        "longitude_deg": "-47.8828",
+        "quality": "reviewed",
+        "display_point": "station",
+        "entrance_latitude_deg": "-15.7941",
+        "entrance_longitude_deg": "-47.8825"
+      },
+      "services": ["FUEL", "CHARGING"],
+      "prices": [
+        {
+          "source": "COMMUNITY",
+          "station_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "product": "ETHANOL_HYDRATED",
+          "unit": "L",
+          "amount_milli_brl": 4270,
+          "observed_at": "2026-10-24",
+          "period_start": null,
+          "period_end": null
+        }
+      ],
+      "charging": {
+        "place_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "equipment_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "connector_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        "connector_code": "CCS2",
+        "power_w": 50000,
+        "access": "public",
+        "status": "unknown",
+        "tariff_milli_brl_per_kwh": 1850,
+        "tariff_condition": "STANDARD",
+        "observed_at": "2026-10-24T10:00:00Z"
+      },
+      "clocks": {
+        "observed_at": "2026-10-24T10:00:00Z",
+        "published_at": "2026-10-24T10:05:00Z",
+        "fetched_at": "2026-10-24T10:06:00Z"
+      },
+      "rights": {
+        "source": "COMMUNITY",
+        "license": "ADMITTED",
+        "attribution": "Abastevo community reports",
+        "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "capabilities": {
+        "price_known": true,
+        "pin_eligible": true,
+        "entrance_known": true,
+        "live_status": false
+      }
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "source": "OCM",
+      "kind": "CHARGING_SITE",
+      "name": "Recarga Referência Sem Preço",
+      "identities": {
+        "station_uuid": null,
+        "cnpj": null,
+        "place_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "equipment_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+        "connector_id": "99999999-9999-4999-8999-999999999999",
+        "osm_type": null,
+        "osm_id": null
+      },
+      "location": {
+        "latitude_deg": "-23.5505",
+        "longitude_deg": "-46.6333",
+        "quality": "reviewed",
+        "display_point": "station",
+        "entrance_latitude_deg": null,
+        "entrance_longitude_deg": null
+      },
+      "services": ["CHARGING"],
+      "prices": [],
+      "charging": {
+        "place_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        "equipment_id": "ffffffff-ffff-4fff-8fff-ffffffffffff",
+        "connector_id": "99999999-9999-4999-8999-999999999999",
+        "connector_code": "TYPE2",
+        "power_w": null,
+        "access": "unknown",
+        "status": "unknown",
+        "tariff_milli_brl_per_kwh": null,
+        "tariff_condition": null,
+        "observed_at": "2026-10-24T08:00:00Z"
+      },
+      "clocks": {
+        "observed_at": "2026-10-24T08:00:00Z",
+        "published_at": "2026-10-24T08:00:00Z",
+        "fetched_at": "2026-10-24T09:00:00Z"
+      },
+      "rights": {
+        "source": "OCM",
+        "license": "ADMITTED",
+        "attribution": "Open Charge Map contributors — CC BY 4.0 subset",
+        "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "capabilities": {
+        "price_known": false,
+        "pin_eligible": true,
+        "entrance_known": false,
+        "live_status": false
+      }
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "source": "OSM",
+      "kind": "REFERENCE_POI",
+      "name": "Posto Referência OSM",
+      "identities": {
+        "station_uuid": null,
+        "cnpj": null,
+        "place_id": null,
+        "equipment_id": null,
+        "connector_id": null,
+        "osm_type": "way",
+        "osm_id": 987654321
+      },
+      "location": {
+        "latitude_deg": null,
+        "longitude_deg": null,
+        "quality": "unknown",
+        "display_point": null,
+        "entrance_latitude_deg": null,
+        "entrance_longitude_deg": null
+      },
+      "services": ["FUEL"],
+      "prices": [],
+      "charging": null,
+      "clocks": {
+        "observed_at": "2026-10-24T00:00:00Z",
+        "published_at": "2026-10-24T00:00:00Z",
+        "fetched_at": "2026-10-24T00:00:00Z"
+      },
+      "rights": {
+        "source": "OSM",
+        "license": "ADMITTED",
+        "attribution": "© OpenStreetMap contributors — ODbL 1.0",
+        "source_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "capabilities": {
+        "price_known": false,
+        "pin_eligible": false,
+        "entrance_known": false,
+        "live_status": false
+      }
+    }
+  ]
+}

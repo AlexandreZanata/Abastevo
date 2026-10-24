@@ -24,6 +24,26 @@ Two independently versioned public products share admission/provenance:
 Private state (favorites, trips, precise location, charge history) is a third,
 account-scoped product and is never published.
 
+## Frozen artifact formats (MAP-03)
+
+- `contracts/map/poi-assertions-v1.schema.json` freezes source-specific site
+  assertions: canonical UUIDs, CNPJ text, station/charging identities, separate
+  display/entrance/road points, exact `amount_milli_brl`, product/unit pairs,
+  clocks, rights and derived capability flags. One site may have several
+  source-specific assertions merged by explicit identity, never by proximity.
+- `contracts/map/native-map-manifest-v1.schema.json` freezes the pinned engine
+  and generator SHA, `.mwm` format version, region/bbox, package digests,
+  overview/neighbor dependencies and ODbL/Apache attribution. Missing or
+  mismatched dependencies block activation.
+- `contracts/map/prepared-envelope-v1.schema.json` reuses the existing
+  `charging-prepared-v1` manifest/hash/census fields. `product_class` and
+  `visibility` keep `REFERENCE`, `PUBLIC_OVERLAY` and `PRIVATE_STATE` artifacts
+  separate; private state can never be `PUBLIC`.
+- Goldens live in `contracts/testdata/map/`. Rust, Go and Kotlin reject unknown
+  fields, duplicate IDs, wrong hashes/rights/profiles, product/unit mismatches,
+  overflow, centroid-as-pin, truncated streams and unsupported versions.
+  Validation is all-or-nothing; no partial overlay is published.
+
 ## Mandatory behavior rules
 
 ### B-BR-MAP-01 — Identity and location

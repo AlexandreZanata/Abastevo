@@ -1,0 +1,71 @@
+{
+  "format": "abastevo.native-map-manifest-v1",
+  "version": 1,
+  "generation": "native-2026-10-24.1",
+  "engine": {
+    "name": "comaps",
+    "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+    "generator_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+    "format_version": "2601"
+  },
+  "region": {
+    "id": "br-df",
+    "name": "Distrito Federal",
+    "bbox": {
+      "min_lon_deg": -48.3,
+      "min_lat_deg": -16.1,
+      "max_lon_deg": -47.3,
+      "max_lat_deg": -15.5
+    },
+    "overview": "world"
+  },
+  "packages": [
+    {
+      "id": "br-df",
+      "role": "REGION",
+      "path": "2601/br-df.mwm",
+      "bytes": 1048576,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "id": "world",
+      "role": "OVERVIEW",
+      "path": "2601/World.mwm",
+      "bytes": 2097152,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "id": "br-go",
+      "role": "REGION",
+      "path": "2601/br-go.mwm",
+      "bytes": 1572864,
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "dependencies": [
+    "world",
+    "br-go"
+  ],
+  "sources": [
+    {
+      "id": "osm-geofabrik-brazil-20261024",
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors — ODbL 1.0",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "id": "comaps-4587b8ad",
+      "license": "Apache-2.0",
+      "attribution": "CoMaps contributors — Apache-2.0",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "rights": {
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors — ODbL 1.0",
+    "commercial": true,
+    "offline": true,
+    "redistribution": true
+  },
+  "generated_at": "2026-10-24T12:00:00Z"
+}

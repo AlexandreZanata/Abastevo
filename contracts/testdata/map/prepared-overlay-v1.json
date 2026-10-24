@@ -1,0 +1,37 @@
+{
+  "format": "abastevo.map-prepared-v1",
+  "version": 1,
+  "product_class": "PUBLIC_OVERLAY",
+  "visibility": "PUBLIC",
+  "profile_id": "map-overlay-br-20261024-v1",
+  "profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "rights_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "source_revision": "overlay-2026-10-24.1",
+  "inputs": [
+    {
+      "file": "poi-assertions-v1.json",
+      "bytes": 8192,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "roots": 4
+    }
+  ],
+  "artifacts": {
+    "assertions": {
+      "bytes": 8192,
+      "records": 4,
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "decisions": {
+      "bytes": 512,
+      "records": 4,
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  "counts": {
+    "input": 4,
+    "accepted": 4,
+    "duplicates": 0,
+    "quarantined": 0
+  },
+  "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+}

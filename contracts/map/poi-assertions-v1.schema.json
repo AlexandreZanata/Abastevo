@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://abastevo.com.br/contracts/map/poi-assertions-v1.schema.json",
+  "title": "Abastevo map assertion corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "generation", "assertions"],
+  "properties": {
+    "format": {"const": "abastevo.map-assertions-v1"},
+    "version": {"const": 1},
+    "generation": {"type": "string", "minLength": 1, "maxLength": 128},
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/assertion"}
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "nullableUuid": {"oneOf": [{"$ref": "#/$defs/uuid"}, {"type": "null"}]},
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "source", "kind", "name", "identities", "location",
+        "services", "prices", "charging", "clocks", "rights", "capabilities"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/uuid"},
+        "source": {"enum": ["ANP", "COMMUNITY", "OSM", "OCM"]},
+        "kind": {"enum": ["FUEL_STATION", "CHARGING_SITE", "COMBINED_SITE", "REFERENCE_POI"]},
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "identities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["station_uuid", "cnpj", "place_id", "equipment_id", "connector_id", "osm_type", "osm_id"],
+          "properties": {
+            "station_uuid": {"$ref": "#/$defs/nullableUuid"},
+            "cnpj": {"oneOf": [
+              {"type": "string", "pattern": "^[0-9A-Za-z]{14}$"},
+              {"type": "null"}
+            ]},
+            "place_id": {"$ref": "#/$defs/nullableUuid"},
+            "equipment_id": {"$ref": "#/$defs/nullableUuid"},
+            "connector_id": {"$ref": "#/$defs/nullableUuid"},
+            "osm_type": {"oneOf": [{"enum": ["node", "way", "relation"]}, {"type": "null"}]},
+            "osm_id": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]}
+          }
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "latitude_deg", "longitude_deg", "quality", "display_point",
+            "entrance_latitude_deg", "entrance_longitude_deg"
+          ],
+          "properties": {
+            "latitude_deg": {"oneOf": [{"type": "string", "pattern": "^-?[0-9]{1,2}(\\.[0-9]{1,7})?$"}, {"type": "null"}]},
+            "longitude_deg": {"oneOf": [{"type": "string", "pattern": "^-?[0-9]{1,3}(\\.[0-9]{1,7})?$"}, {"type": "null"}]},
+            "quality": {"enum": ["reviewed", "unknown", "city-centroid"]},
+            "display_point": {"oneOf": [{"enum": ["station", "entrance", "city_centroid"]}, {"type": "null"}]},
+            "entrance_latitude_deg": {"oneOf": [{"type": "string"}, {"type": "null"}]},
+            "entrance_longitude_deg": {"oneOf": [{"type": "string"}, {"type": "null"}]}
+          }
+        },
+        "services": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["FUEL", "CHARGING"]}
+        },
+        "prices": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/price"}
+        },
+        "charging": {
+          "oneOf": [{"$ref": "#/$defs/charging"}, {"type": "null"}]
+        },
+        "clocks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["observed_at", "published_at", "fetched_at"],
+          "properties": {
+            "observed_at": {"type": "string", "format": "date-time"},
+            "published_at": {"type": "string", "format": "date-time"},
+            "fetched_at": {"type": "string", "format": "date-time"}
+          }
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "license", "attribution", "source_sha256"],
+          "properties": {
+            "source": {"enum": ["ANP", "COMMUNITY", "OSM", "OCM"]},
+            "license": {"const": "ADMITTED"},
+            "attribution": {"type": "string", "minLength": 1, "maxLength": 500},
+            "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["price_known", "pin_eligible", "entrance_known", "live_status"],
+          "properties": {
+            "price_known": {"type": "boolean"},
+            "pin_eligible": {"type": "boolean"},
+            "entrance_known": {"type": "boolean"},
+            "live_status": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "price": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source", "station_uuid", "product", "unit", "amount_milli_brl",
+        "observed_at", "period_start", "period_end"
+      ],
+      "properties": {
+        "source": {"enum": ["ANP", "COMMUNITY"]},
+        "station_uuid": {"$ref": "#/$defs/uuid"},
+        "product": {
+          "enum": [
+            "ETHANOL_HYDRATED", "GASOLINE_REGULAR", "GASOLINE_ADDITIVED",
+            "GASOLINE_PREMIUM_GRADE", "DIESEL_S500", "DIESEL_S10", "CNG", "LPG_P13"
+          ]
+        },
+        "unit": {"enum": ["L", "M3", "KG_13"]},
+        "amount_milli_brl": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "observed_at": {"type": "string", "format": "date"},
+        "period_start": {"oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "period_end": {"oneOf": [{"type": "string", "format": "date"}, {"type": "null"}]}
+      }
+    },
+    "charging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "place_id", "equipment_id", "connector_id", "connector_code",
+        "power_w", "access", "status", "tariff_milli_brl_per_kwh",
+        "tariff_condition", "observed_at"
+      ],
+      "properties": {
+        "place_id": {"$ref": "#/$defs/uuid"},
+        "equipment_id": {"$ref": "#/$defs/uuid"},
+        "connector_id": {"$ref": "#/$defs/uuid"},
+        "connector_code": {"type": "string", "minLength": 1, "maxLength": 64},
+        "power_w": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000}, {"type": "null"}]},
+        "access": {"enum": ["public", "private", "unknown"]},
+        "status": {"enum": ["unknown", "available", "unavailable"]},
+        "tariff_milli_brl_per_kwh": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 1000000000}, {"type": "null"}]},
+        "tariff_condition": {"oneOf": [{"enum": ["STANDARD", "MEMBER", "SESSION", "PARKING"]}, {"type": "null"}]},
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}
