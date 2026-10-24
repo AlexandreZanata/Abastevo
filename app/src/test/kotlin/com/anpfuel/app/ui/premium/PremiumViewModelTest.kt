@@ -31,6 +31,7 @@ class PremiumViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val useCase = mockk<GetPremiumStatusUseCase>()
     private val sessions = mockk<AuthSessionStore>()
+    private val cache = PremiumStatusCache()
     private val session = PortableAuth.Session("fam", "acct", "token", "refresh", Long.MAX_VALUE, Long.MAX_VALUE)
     private val active = PremiumStatus(
         policyVersion = 1, state = PremiumState.ACTIVE, reason = "verified",
@@ -42,7 +43,7 @@ class PremiumViewModelTest {
     @BeforeEach fun setup() { Dispatchers.setMain(dispatcher) }
     @AfterEach fun teardown() { Dispatchers.resetMain() }
 
-    private fun model() = PremiumViewModel(useCase, sessions)
+    private fun model() = PremiumViewModel(useCase, sessions, cache)
 
     @Test fun `signed out state makes no private call`() = runTest(dispatcher) {
         every { sessions.load() } returns null
@@ -124,6 +125,52 @@ class PremiumViewModelTest {
         assertTrue(vm.uiState.value.signedOut)
         assertNull(vm.uiState.value.status)
         coVerify(exactly = 1) { useCase.invoke() }
+    }
+
+    @Test fun `re-entering within the cache ttl does not call the private endpoint again`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        model().refresh()
+        advanceUntilIdle()
+
+        val second = model()
+        second.refresh()
+        advanceUntilIdle()
+
+        assertEquals(PremiumState.ACTIVE, second.uiState.value.status!!.state)
+        assertFalse(second.uiState.value.loading)
+        coVerify(exactly = 1) { useCase.invoke() }
+    }
+
+    @Test fun `explicit refresh bypasses the cache`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        val vm = model()
+        vm.refresh()
+        advanceUntilIdle()
+
+        vm.forceRefresh()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { useCase.invoke() }
+    }
+
+    @Test fun `logout clears the cache before another account signs in`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        model().refresh()
+        advanceUntilIdle()
+
+        every { sessions.load() } returns null
+        model().refresh()
+        advanceUntilIdle()
+
+        every { sessions.load() } returns session
+        val afterLogout = model()
+        afterLogout.refresh()
+        advanceUntilIdle()
+
+        coVerify(exactly = 2) { useCase.invoke() }
     }
 
     @Test fun `restore stays explicitly unavailable without a provider token`() = runTest(dispatcher) {

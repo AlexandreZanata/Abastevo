@@ -5,13 +5,16 @@
   [Evidence](../mobile/premium-area-organization.md). Dedicated Premium and
   Manage subscription pages/routes, Profile category below the signed-in card,
   compact Manage-account shortcut, old account Premium section/query removed,
-  owner-fenced VM moved, resume-scoped status refresh, fixed light/dark gold
-  palette, local crown, 25 strings × 8 locales and three-tab Profile context
-  preserved. Follow-up container-shape pass standardizes Premium entry,
-  private-reports button and Manage-account cards on the active medium shape.
-  483 app tests 0 failures/errors/skips; lint 0 errors (257 existing warnings);
-  debug APK 28,272,706 bytes, SHA-256 `cbdc985d…`, installed via `adb install -r`
-  on 2311DRK48G without data clear. Purchase/restore remain unavailable by design;
+  owner-fenced VM moved, resume-scoped status refresh, 60s account-scoped
+  display cache, structural Premium/Management loading skeletons, fixed
+  light/dark gold palette, local crown, 25 strings × 8 locales and three-tab
+  Profile context preserved. Profile loading now uses a full-page skeleton with
+  no mount animation; Auth login crossfade untouched. App-wide content-card
+  shape standardized on the active medium radius (12dp), with one-offs limited
+  to dialogs, dropdowns, sheets, badges and controls. 490 app tests 0
+  failures/errors/skips; lint 0 errors (257 existing warnings); debug APK
+  28,272,706 bytes, SHA-256 `f2869b78…`, installed via `adb install -r` on
+  2311DRK48G without data clear. Purchase/restore remain unavailable by design;
   no backend/billing change. Rendered visual/font/TalkBack review remains
   VISUAL_VALIDATION_PENDING for the owner; no production or release claim.
 

@@ -123,3 +123,18 @@ Premium status, capability, notice and action cards use the neutral
 `AnpContainerDefaults` outline like other content cards. The palette test
 requires 4.5:1 for text and 3:1 for the accent/control boundary. Do not spread
 gold hex values or copy this palette into screens.
+
+## App-wide shape result
+
+The shared 12dp medium shape is now the content-container default across
+Home, Community, Stations, Settings, Vehicles, Auth, Games, contributions,
+account and Premium. One-off 20/24/28dp radii remain only for dialogs,
+dropdowns, bottom-sheet surfaces, branded banners, badges and controls that
+already have their own Material shape. Skeleton cards and skeleton buttons use
+the same 12dp radius so loading previews do not jump into a different container
+shape.
+
+Profile no longer animates the signed-in account, Premium, tools or reference
+sections into place: a full-page skeleton holds the layout while the session
+resolves, then content appears directly. The login page keeps its existing step
+crossfade; this rule does not alter that flow.

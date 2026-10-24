@@ -37,6 +37,18 @@ impossible.
   and strengthened so a refresh for a new owner clears the previous status before
   the response. Both pages refresh once on initial resume and again on each
   return to resumed, including after the store.
+- `ui/premium/PremiumStatusCache.kt`: 60-second, account-scoped display cache.
+  Re-entering within the TTL reuses the last verified status without a private
+  call; explicit refresh bypasses it; logout, errors, account switches and store
+  handoff clear it. It never creates or extends an entitlement.
+- Premium and Manage-subscription loading states now render a structural
+  skeleton preview: section titles, crown, default "access until" placeholder,
+  retained-data text, capability placeholder rows and the real action labels.
+  Only the verified status/capability values are replaced when the server
+  responds.
+- Profile loading renders a full-page skeleton and the signed-in account,
+  Premium, reference and tools sections no longer mount with crossfade/expand
+  animations. The login step crossfade was not changed.
 - Fixed light/dark Premium palette in `ui/theme/PremiumColors.kt`, selected by the
   app theme via `LocalAnpDarkTheme`; dynamic colors still drive general surfaces.
 - Local crown vector, shared `ProfileActionRow`, 25 new strings in eight locales.
@@ -51,10 +63,11 @@ impossible.
 
 ## State and navigation coverage
 
-- JVM PremiumViewModel tests: signed-out no private call, active render, offline/
-  denied without stale grant, account switch during request, new-owner refresh
-  clears old status, logout clears verified status, restore unavailable, store
-  link failure recoverable.
+- JVM PremiumViewModel/cache tests: signed-out no private call, active render,
+  offline/denied without stale grant, account switch during request, new-owner
+  refresh clears old status, logout clears verified status, restore unavailable,
+  store link failure recoverable, TTL hit avoids a second private call, explicit
+  refresh bypasses the cache, logout clears cached data.
 - Presentation tests: distinct labels for all ten states (including HOLD, PAUSED,
   NONE, UNKNOWN), access date only for ACTIVE/CANCELED/GRACE, known capabilities
   only, deterministic order, store-failure message.
@@ -65,14 +78,14 @@ impossible.
 ## Actual checks
 
 - `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain`
-  PASS: 483 tests, 0 failures/errors/skips; lint 0 errors, 257 warnings (none in
+  PASS: 490 tests, 0 failures/errors/skips; lint 0 errors, 257 warnings (none in
   the new Premium files); debug APK produced (28,272,706 bytes).
 - Focused Premium/navigation/color tests PASS before the union.
 - `git diff --check` clean; secret-surface review found no credentials/PII added.
-- Debug APK SHA-256 `cbdc985d8c016f0a8a3060d5459c1ff5237b6468f58428efb4638f925e07bd15`.
+- Debug APK SHA-256 `f2869b784b0fe65ee1e1032b46873300c2384bb73bd493fd2eec174768b1596b`.
 - Device update: `adb install -r app/build/outputs/apk/debug/app-debug.apk` succeeded
   on 2311DRK48G; package `com.anpfuel.app.debug`, version `3.1.0-debug`,
-  lastUpdateTime `2026-10-24 08:28:23`. firstInstallTime remained
+  lastUpdateTime `2026-10-24 08:46:13`. firstInstallTime remained
   `2026-10-05 16:00:02` (no data clear). No settings change or UI automation.
 
 ## Limits and manual review
@@ -89,4 +102,7 @@ impossible.
 - Manual script: Profile -> Premium -> Manage subscription -> back -> Premium ->
   back -> Profile; Manage account -> compact Premium -> back -> Manage account;
   switch light/dark and app theme; test offline/error; switch account and confirm
-  no previous status is shown.
+  no previous status is shown. Cold-open Premium to see the field skeleton, then
+  leave and re-enter within 60s to confirm the verified preview is reused. On
+  Profile, confirm the full loading skeleton and no mount animation; confirm the
+  login step crossfade still works.
