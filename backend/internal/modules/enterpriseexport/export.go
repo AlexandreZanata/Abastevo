@@ -117,7 +117,7 @@ type Manifest struct {
 	ContentSHA256     string       `json:"content_sha256"`
 }
 
-type publicStation struct {
+type Station struct {
 	StationID          string               `json:"station_id"`
 	CNPJ               string               `json:"cnpj,omitempty"`
 	DisplayName        string               `json:"display_name"`
@@ -130,7 +130,7 @@ type publicStation struct {
 	IdentityRevisionID string               `json:"identity_revision_id,omitempty"`
 }
 
-type publicRevision struct {
+type Revision struct {
 	RevisionID           string `json:"revision_id"`
 	SurveyStart          string `json:"survey_start"`
 	SurveyEnd            string `json:"survey_end"`
@@ -141,7 +141,7 @@ type publicRevision struct {
 	ParserVersion        string `json:"parser_version"`
 }
 
-type publicPrice struct {
+type Price struct {
 	PriceID        string `json:"price_id"`
 	RevisionID     string `json:"revision_id"`
 	StationID      string `json:"station_id"`
@@ -245,7 +245,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 				return Manifest{}, fmt.Errorf("export: station %s has no status", station.ID)
 			}
 			statusCounts[status]++
-			row := publicStation{
+			row := Station{
 				StationID:          station.ID,
 				CNPJ:               station.CNPJ,
 				DisplayName:        station.DisplayName,
@@ -318,7 +318,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 	revisionsEnc := json.NewEncoder(revisionsFile)
 	revisionsEnc.SetEscapeHTML(false)
 	for _, revision := range revisions {
-		row := publicRevision{
+		row := Revision{
 			RevisionID:           revision.ID,
 			SurveyStart:          revision.SurveyStart,
 			SurveyEnd:            revision.SurveyEnd,
@@ -356,7 +356,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 				if price.RevisionID != revision.ID {
 					return Manifest{}, fmt.Errorf("export: price revision mismatch")
 				}
-				row := publicPrice{
+				row := Price{
 					PriceID:        price.ID,
 					RevisionID:     price.RevisionID,
 					StationID:      price.StationID,
