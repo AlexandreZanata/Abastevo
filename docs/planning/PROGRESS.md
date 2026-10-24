@@ -1,5 +1,15 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-09 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-08 `bb200890`. Asaas webhook handler
+  uses a separate 32–255 char rotating token in constant time, optional TLS,
+  1 MiB bound, merchant binding and durable hashed inbox before HTTP 200. Unknown
+  events, duplicates/conflicts, token rotation/API-key separation, backlog retry
+  and DB outage are tested. No provider call/grant/runtime. [PAY-09 evidence](../backend/evidence/payments/PAY-09.md):
+  handler/race/full backend/vet/staticcheck/govulncheck/sqlc/security gates PASS.
+  No runtime wiring/sale. Next: PAY-10 settlement/access only after maintainer
+  authorization.
+
 - Stripe/Asaas payment PAY-08 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-07 `0af7918e`. Stripe webhook handler
   verifies exact raw body via SDK, 300s tolerance, pinned API version/livemode/

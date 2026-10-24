@@ -198,6 +198,9 @@ creation and external-reference recovery; no auto-debit/settlement is added.
 PAY-08 is LOCAL_DONE: Stripe webhooks use exact raw-body SDK verification, mode/
 version/account binding, bounded input and a durable inbox before HTTP 200;
 unknown/duplicate/conflicting events are safe and runtime wiring remains PAY-19.
+PAY-09 is LOCAL_DONE: Asaas webhooks use the separate constant-time token with
+rotation, TLS/bounds/account binding and durable inbox before HTTP 200; unknown/
+duplicate/conflicting delivery and DB retry are safe.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
