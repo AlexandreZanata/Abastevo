@@ -85,6 +85,7 @@ import com.anpfuel.app.ui.components.TankFillCostCard
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.state.DataReadinessState
 import com.anpfuel.domain.valueobject.BrazilianState
@@ -464,13 +465,15 @@ private fun HomePriceSortDialog(
  */
 @Composable
 private fun VehicleCarouselSkeleton(modifier: Modifier = Modifier) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 112.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier

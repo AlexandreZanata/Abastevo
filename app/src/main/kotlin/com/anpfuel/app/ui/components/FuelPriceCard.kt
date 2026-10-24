@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.model.AveragePriceUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.valueobject.FuelProduct
 
@@ -38,6 +39,7 @@ fun FuelPriceCard(
     val fuelLabel = stringResource(FuelProductI18n.toStringRes(price.fuelProduct))
     val average = price.averageFormatted ?: stringResource(R.string.prices_not_available)
     val cardDescription = stringResource(R.string.a11y_fuel_price_card, fuelLabel, average)
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Card(
         modifier = modifier
@@ -50,8 +52,9 @@ fun FuelPriceCard(
             }
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier
@@ -91,6 +94,7 @@ fun MunicipalityPriceDetailRow(
     val fuelLabel = stringResource(FuelProductI18n.toStringRes(price.fuelProduct))
     val average = price.averageFormatted ?: stringResource(R.string.prices_not_available)
     val cardDescription = stringResource(R.string.a11y_fuel_price_card, fuelLabel, average)
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Card(
         modifier = modifier
@@ -103,8 +107,9 @@ fun MunicipalityPriceDetailRow(
             }
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier

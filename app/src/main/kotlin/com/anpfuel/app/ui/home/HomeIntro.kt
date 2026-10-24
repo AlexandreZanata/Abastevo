@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 internal object HomeHeroColors {
     val Navy = Color(0xFF061E2C)
@@ -125,9 +126,11 @@ internal fun HomeBenefits(onDismiss: () -> Unit) {
         HomeBenefit(R.drawable.ic_home_trust, R.string.home_benefit_trust, Color(0xFFF57C00)),
     )
     Box(modifier = Modifier.fillMaxWidth()) {
+        val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         Card(
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            border = AnpContainerDefaults.borderStroke(containerColor),
         ) {
             Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 16.dp)) {
             benefits.forEachIndexed { index, benefit ->
