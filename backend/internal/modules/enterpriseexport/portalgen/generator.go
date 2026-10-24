@@ -312,9 +312,13 @@ func Generate(opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	var latestCoverage analytics.Coverage
 	if latest != nil {
-		if coverage, ok := coverageFor(projection, latest.RevisionID); ok && coverage.IncludedObservations != len(observations) {
-			return Result{}, fmt.Errorf("portalgen: analytics coverage and snapshot observations disagree")
+		if coverage, ok := coverageFor(projection, latest.RevisionID); ok {
+			latestCoverage = coverage
+			if coverage.IncludedObservations != len(observations) {
+				return Result{}, fmt.Errorf("portalgen: analytics coverage and snapshot observations disagree")
+			}
 		}
 	}
 	obsByStation := map[string][]observation{}
@@ -348,10 +352,23 @@ func Generate(opts Options) (Result, error) {
 	}
 	latestSummaries := summariesFor(projection, latest)
 	latestRankings := rankingsFor(projection, latest)
+	previous := previousRevision(snapshot.Revisions, latest)
+	previousSummaries := summariesForRevision(projection, previous)
 	published := publicationLabel(manifest.BuiltAt)
 	period := ""
 	if latest != nil {
 		period = periodLabel(latest.SurveyStart, latest.SurveyEnd)
+	}
+	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, manifest.ContentSHA256)
+	if err != nil {
+		return Result{}, err
+	}
+	cards := buildInsights(latest, previous, latestSummaries, previousSummaries, latestCoverage, observations, municipalityStations, published)
+	if err := g.generateCuriosidades(cards, period, published, manifest.ContentSHA256); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateDownloads(downloadFiles, manifestLink, period, release, published, manifest.ContentSHA256); err != nil {
+		return Result{}, err
 	}
 
 	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, release, period, published, manifest.ContentSHA256); err != nil {
@@ -510,9 +527,16 @@ func summariesFor(projection analytics.Projection, latest *enterpriseexport.Revi
 	if latest == nil {
 		return nil
 	}
+	return summariesForRevision(projection, latest)
+}
+
+func summariesForRevision(projection analytics.Projection, revision *enterpriseexport.Revision) []analytics.Summary {
+	if revision == nil {
+		return nil
+	}
 	out := make([]analytics.Summary, 0)
 	for _, summary := range projection.Summaries {
-		if summary.RevisionID == latest.RevisionID {
+		if summary.RevisionID == revision.RevisionID {
 			out = append(out, summary)
 		}
 	}
@@ -951,6 +975,22 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 		}
 	}
 	return nil
+}
+
+func (g *generator) generateCuriosidades(cards []insightCard, period, published, inputHash string) error {
+	data := curiosidadesPage{
+		pageBase: g.base("Perguntas aprovadas sobre os dados", "Respostas determinísticas sobre amostra, preços e cobertura da pesquisa ANP, com fórmula e fonte.", "curiosidades", period, published, inputHash, []crumb{{Label: "Curiosidades", Current: true}}),
+		Cards:    cards, DownloadsHref: "/dados/",
+	}
+	return g.writePage("curiosidades/index.html", "curiosidades", data)
+}
+
+func (g *generator) generateDownloads(files []downloadFile, manifest downloadFile, period, release, published, inputHash string) error {
+	data := dadosPage{
+		pageBase: g.base("Baixar dados públicos", "Downloads CSV e manifesto da pesquisa ANP mais recente, com amostra, período, fonte e limites.", "", period, published, inputHash, []crumb{{Label: "Dados para download", Current: true}}),
+		Release:  release, Period: period, Files: files, Manifest: manifest, Notes: downloadNotes,
+	}
+	return g.writePage("dados/index.html", "dados", data)
 }
 
 func (g *generator) generateStatic(period, published, inputHash string) error {

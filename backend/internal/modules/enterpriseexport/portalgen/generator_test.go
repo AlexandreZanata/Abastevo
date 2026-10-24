@@ -3,6 +3,7 @@ package portalgen
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ const (
 	stG = "00000000-0000-4000-8000-000000000005"
 	stC = "00000000-0000-4000-8000-000000000006"
 	stD = "00000000-0000-4000-8000-000000000007"
+	stH = "00000000-0000-4000-8000-000000000008"
 	r1  = "00000000-0000-4000-8000-000000000011"
 	r2  = "00000000-0000-4000-8000-000000000012"
 )
@@ -69,8 +71,16 @@ func fixture() ([]enterpriseexport.Station, []enterpriseexport.Revision, []enter
 
 func writeFixture(t *testing.T) string {
 	t.Helper()
+	return writeFixtureWith(t, nil)
+}
+
+func writeFixtureWith(t *testing.T, mutate func(*[]enterpriseexport.Station, *[]enterpriseexport.Price)) string {
+	t.Helper()
 	dir := t.TempDir()
 	stations, revisions, prices := fixture()
+	if mutate != nil {
+		mutate(&stations, &prices)
+	}
 	manifest := enterpriseexport.Manifest{
 		SchemaVersion: enterpriseexport.SchemaVersion, ContentVersion: enterpriseexport.ContentVersion,
 		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy,
@@ -149,8 +159,8 @@ func TestGenerateFixturePages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Pages != 16 || result.Files != 22 {
-		t.Fatalf("result = %+v, want 16 pages and 22 files", result)
+	if result.Pages != 18 || result.Files != 28 {
+		t.Fatalf("result = %+v, want 18 pages and 28 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
@@ -158,9 +168,12 @@ func TestGenerateFixturePages(t *testing.T) {
 		"precos/uf/MG/municipio/3106200/index.html",
 		"postos/" + stA + "/index.html", "postos/" + stD + "/index.html",
 		"metodologia/index.html", "fiscalizacao/index.html", "404.html",
+		"curiosidades/index.html", "dados/index.html",
 		"assets/portal.css", "robots.txt", "portal-manifest.json",
 		"dados/busca/fixture/SP.json", "dados/busca/fixture/MG.json",
 		"dados/busca/fixture/sem-uf.json",
+		"dados/fixture/estacoes.csv", "dados/fixture/precos.csv",
+		"dados/fixture/resumos.csv", "dados/fixture/manifest.json",
 	} {
 		if _, err := os.Stat(filepath.Join(out, page)); err != nil {
 			t.Errorf("missing %s: %v", page, err)
@@ -218,6 +231,30 @@ func TestGenerateFixturePages(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(out, "dados/busca/fixture/all.json")); err == nil {
 		t.Error("national shard must not be generated")
+	}
+	curiosidades := readPortal(t, out, "curiosidades/index.html")
+	for _, want := range []string{
+		"Perguntas aprovadas sobre os dados", "Quantos postos tinham preço",
+		"A pesquisa de 11/10/2026 a 17/10/2026 tem 7 postos",
+		"aumentou R$ 0,300", "ficou igual", "1 de 2 municípios",
+		"Nenhuma observação da revisão foi descartada",
+	} {
+		if !strings.Contains(curiosidades, want) {
+			t.Errorf("curiosidades missing %q", want)
+		}
+	}
+	if strings.Contains(curiosidades, "mais barato") || strings.Contains(curiosidades, "preço atual") {
+		t.Errorf("curiosidades contains a prohibited claim")
+	}
+	dados := readPortal(t, out, "dados/index.html")
+	for _, want := range []string{
+		"Baixar dados públicos", "/dados/fixture/estacoes.csv",
+		"/dados/fixture/precos.csv", "/dados/fixture/resumos.csv",
+		"/dados/fixture/manifest.json", "UTF-8", "direitos",
+	} {
+		if !strings.Contains(dados, want) {
+			t.Errorf("dados missing %q", want)
+		}
 	}
 	precos := readPortal(t, out, "precos/index.html")
 	for _, want := range []string{"R$ 6,099", "R$ 6,399", "R$ 0,300", "Menores preços encontrados", "7 postos"} {
@@ -291,7 +328,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 21 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 27 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -520,4 +557,78 @@ func gzipLen(data []byte) int {
 	_, _ = writer.Write(data)
 	_ = writer.Close()
 	return buf.Len()
+}
+
+func TestDownloadsCensusAndCSVSafety(t *testing.T) {
+	snapshot := writeFixture(t)
+	out := filepath.Join(t.TempDir(), "portal")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	parse := func(name string) [][]string {
+		raw, err := os.ReadFile(filepath.Join(out, "dados/fixture", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, err := csv.NewReader(strings.NewReader(string(raw))).ReadAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rows
+	}
+	stations := parse("estacoes.csv")
+	prices := parse("precos.csv")
+	summaries := parse("resumos.csv")
+	if len(stations) != 8 || len(prices) != 9 || len(summaries) != 9 {
+		t.Errorf("download census = %d/%d/%d, want 8/9/9 including headers", len(stations), len(prices), len(summaries))
+	}
+	var manifest downloadManifest
+	if err := json.Unmarshal([]byte(readPortal(t, out, "dados/fixture/manifest.json")), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Schema != DownloadsSchema || manifest.InputContentSHA256 != "sha256:fixture" ||
+		manifest.Release != "fixture" || len(manifest.Files) != 3 {
+		t.Errorf("download manifest = %+v", manifest)
+	}
+	wantRows := map[string]int{"estacoes.csv": 7, "precos.csv": 8, "resumos.csv": 8}
+	for _, file := range manifest.Files {
+		if file.Rows != wantRows[file.Name] || file.SHA256 == "" || file.Bytes == 0 {
+			t.Errorf("download file census = %+v", file)
+		}
+	}
+	for _, value := range []string{"=cmd", "+1", "-2", "@x", "\tfoo", "a\rb", "a\nb", "normal"} {
+		got := csvSafe(value)
+		if strings.ContainsAny(got, "\r\n") {
+			t.Errorf("csvSafe left newline in %q", got)
+		}
+		if strings.Contains("=+-@\t", string(value[0])) && !strings.HasPrefix(got, "'") {
+			t.Errorf("csvSafe did not neutralize %q -> %q", value, got)
+		}
+	}
+}
+
+func TestInsightsExplainSampleChange(t *testing.T) {
+	snapshot := writeFixtureWith(t, func(stations *[]enterpriseexport.Station, prices *[]enterpriseexport.Price) {
+		*stations = append(*stations, enterpriseexport.Station{
+			StationID: stH, DisplayName: "Posto Eta", CNPJ: "11444777000161",
+			State: "SP", MunicipalityCode: "3550308", OperationStatus: "active", LocationQuality: "unknown",
+		})
+		for i := range *prices {
+			if (*prices)[i].RevisionID == r2 && (*prices)[i].StationID == stD {
+				(*prices)[i].StationID = stH
+			}
+		}
+	})
+	out := filepath.Join(t.TempDir(), "portal")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	page := readPortal(t, out, "curiosidades/index.html")
+	if !strings.Contains(page, "A amostra de postos mudou") ||
+		!strings.Contains(page, "não calculamos variação") {
+		t.Errorf("sample-change explanation missing")
+	}
+	if strings.Contains(page, "A amostra de postos foi a mesma") {
+		t.Errorf("sample change was compared as if unchanged")
+	}
 }

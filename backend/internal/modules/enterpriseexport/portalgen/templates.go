@@ -20,6 +20,7 @@ const templates = `
         <a href="/consultar/" {{if eq .ActiveNav "consultar"}}aria-current="page"{{end}}>Consultar</a>
         <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
         <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
+        <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
         <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
       </nav>
     </div>
@@ -32,6 +33,7 @@ const templates = `
       <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
       <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
       <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
+      <p><a href="/dados/">Baixar dados públicos</a> · <a href="/curiosidades/">Perguntas aprovadas</a></p>
     </div>
   </footer>
   {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
@@ -195,6 +197,38 @@ const templates = `
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
   </div>
   <div class="links"><a href="/consultar/">Voltar à consulta</a><a href="/precos/">Resumo por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "curiosidades"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Perguntas aprovadas</p>
+  <h1>Perguntas aprovadas sobre os dados</h1>
+  <p class="lead">Respostas determinísticas sobre a amostra, os preços e a cobertura da pesquisa mais recente. Não são previsões nem conclusões geradas automaticamente.</p>
+  <div class="grid cards">
+    {{range .Cards}}<article class="card"><h2>{{.Question}}</h2><p>{{.Answer}}</p>{{if .Caveat}}<p class="muted">{{.Caveat}}</p>{{end}}<p class="muted">{{.Formula}} <a href="{{.SourceHref}}">Método e fonte</a></p></article>{{end}}
+  </div>
+  <div class="notice" style="margin-top: 1.5rem;"><strong>Impressão e dados abertos</strong><p>Esta página foi preparada para impressão; a navegação e os formulários não aparecem no papel. Os mesmos recortes estão disponíveis em CSV no <a href="{{.DownloadsHref}}">diretório de downloads</a>.</p></div>
+  <div class="links"><a href="/dados/">Baixar dados públicos</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "dados"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Dados públicos</p>
+  <h1>Baixar dados públicos</h1>
+  <p class="lead">CSV e manifesto derivados da pesquisa ANP mais recente. Amostra datada, sem preço ao vivo.</p>
+  <p class="synthetic" role="note">Publicação candidata. A redistribuição de preços/cadastro depende de direitos compatíveis e da política de precisão monetária; os arquivos não são publicados por esta geração.</p>
+  <h2>Arquivos desta versão</h2>
+  <p class="muted">Versão: {{.Release}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
+  <ul class="station-list">
+    {{range .Files}}<li><a href="{{.Href}}">{{.Label}}</a> — {{.Rows}} linhas · {{.Bytes}} bytes</li>{{end}}
+    <li><a href="{{.Manifest.Href}}">{{.Manifest.Label}}</a> — hashes, contagens e notas</li>
+  </ul>
+  <h2>Notas</h2>
+  <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
+  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p></div>
+  <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
 

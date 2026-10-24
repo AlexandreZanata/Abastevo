@@ -20,7 +20,8 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/precos/uf/{uf}/municipio/{ibge}/` | Municipality summary and cheapest-in-sample list | indexable when the municipality has at least five priced stations; otherwise `noindex,follow` | Official current revisions + Directory geography |
 | `/combustiveis/{fuel}/` | Fuel/unit definitions and period context | indexable | Official metadata; reserved for ESP-09/12 |
 | `/fiscalizacao/` | Source-reported official events | `noindex,follow` until the selected FQ source/runtime is accepted | FQ-06/07 public reads; currently gated |
-| `/curiosidades/` | Deterministic data questions | indexable only after ESP-12 formula approval | ESP-04/11/12 metrics |
+| `/curiosidades/` | Approved deterministic data questions | formulas approved in ESP-12; candidate builds `noindex` until publication | ESP-04 metrics; official-record questions remain blocked by ESP-11 |
+| `/dados/` | Bounded CSV downloads and download manifest | indexable when publication is authorized; candidate builds `noindex` | Latest ESP-03/04 snapshot |
 | `/metodologia/` | Sources, dates, clocks, methods, rights and corrections | indexable | Source admission register + metrics definitions |
 | `/404.html` | Unknown route or unknown station UUID | noindex | none |
 
@@ -32,6 +33,24 @@ operator's prices or official records.
 Search URLs (`/consultar/?q=...`, `?uf=...`) are not indexable variants and
 carry a canonical link to `/consultar/`. Empty search queries and filter
 combinations are not generated as indexable pages.
+
+### Insights and downloads (ESP-12)
+
+`/curiosidades/` renders a fixed, approved catalog of deterministic questions over
+the same frozen revision: coverage count, national gasoline minimum/maximum
+comparison (or an explicit sample-change explanation), fuel coverage, municipality
+sample sufficiency, source dates and an exclusion census. Each card shows its
+formula and methodology link. There is no generative article, forecast,
+“worst station” label or official-record claim while ESP-11 is blocked. The page
+is print-friendly through the existing `@media print` rules.
+
+`/dados/` links bounded exports from the latest revision: station identity CSV,
+latest station prices CSV and national/state/municipality summary CSV, plus a
+JSON manifest with hashes, byte/row counts and notes. CSVs are UTF-8, carry source
+and period columns, omit private fields and prefix dangerous leading spreadsheet
+characters (`=`, `+`, `-`, `@`, tab) with an apostrophe. Downloads do not include
+history, user media, CPF, contributor GPS or internal documents, and the page
+states the pending rights and precision gates.
 
 ### Search implementation (ESP-10)
 

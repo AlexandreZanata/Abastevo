@@ -1,5 +1,17 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-12 2026-10-24: LOCAL_DONE / PARTIAL;
+  official-record insights blocked by ESP-11 (FQ-06/07 runtime/safe links).
+  [Evidence](../backend/evidence/enterprise-static/ESP-12.md).
+  `/curiosidades/` has six approved deterministic questions with formulas,
+  sample-change explanation and exclusion census; `/dados/` exports latest
+  station/price/summary CSVs plus a hashed manifest, with safe spreadsheet text,
+  attribution and no private fields. Fixture 18 pages/28 files; download census
+  7/8/8; Go/race, Portalgen 8 tests + 5 subtests, real PostGIS build→portal and
+  static checks PASS. No official records, API, source activation or publication.
+  Real prices remain blocked by ESP-07/rights. Next: ESP-13 artifacts; ESP-11
+  remains the gating phase.
+
 - Enterprise data/static portal ESP-10 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-10.md).
   Accent-insensitive name and numeric/alphanumeric CNPJ search over one immutable
