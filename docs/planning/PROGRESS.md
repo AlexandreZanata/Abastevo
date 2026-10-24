@@ -1,5 +1,15 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-04 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-04.md).
+  Pure `enterpriseexport/analytics` metrics: per-revision census/coverage,
+  national/state/municipality summaries with sample hash, national/state
+  cheapest rankings with explicit ties/cutoff/population, station history with
+  gaps and summary change only for matching samples. Golden tests cover ties,
+  missing units/periods/identity, sample changes, exclusion reconciliation and
+  input-order independence. No DB/network/clock dependency, migration, route or
+  artifact publication. Next: ESP-05 enterprise offering boundary.
+
 - Enterprise data/static portal ESP-03 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-03.md).
   Directory/Official now expose bounded export ports; `enterpriseexport` writes
