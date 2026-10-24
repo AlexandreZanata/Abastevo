@@ -13,6 +13,15 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-33 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `c9c7d13a`.
+  [Private E2E/free boundary](../backend/evidence/mobile-expansion/MEX-33.md):
+  real PostGIS ledger/cloud journeys (two-device conflict/delete/replay,
+  consent revoke, late correction invalidation, report/erase, backup lapse/
+  isolation, privacy delete/restore, free export/erasure/foreign refusal) and
+  JVM/real-SQLite selectors PASS. Append-only migration expectation repaired
+  to derive ≥000109. Staging/two-device/object receipts and physical Room
+  remain OWED.
+
 - EE-27 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `f46a7f2c`.
   [End-to-end acceptance](../backend/evidence/ev-support/EE-27.md): actual
   admitted OCM Rust artifact → strict Go bridge → PostGIS publication → full
