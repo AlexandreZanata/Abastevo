@@ -114,6 +114,9 @@ Provider retries must be admitted with the relevant supported retry policy.
 PAY-13 keeps the provider-owned `SUBSCRIPTION` flow: instructions and received
 payments are reconciled locally, never re-created; cancellation/expiry and
 eligibility loss stop future authority while verified paid periods remain.
+PAY-14 fences source changes: Stripe renewal is stopped with a confirmed
+`cancel_at_period_end`; Pix Automático mandates are confirmed canceled before a
+new source may start; immediate/prorated plan changes are refused.
 
 [FAQ](https://docs.asaas.com/docs/faq-2) describes merchant eligibility requirements
 and loss of eligibility. Initial payment can succeed even when authorization is

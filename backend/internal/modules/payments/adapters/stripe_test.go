@@ -470,3 +470,26 @@ func TestStripeLifecycleRefusals(t *testing.T) {
 		t.Fatalf("portal missing config err=%v", err)
 	}
 }
+
+func TestStripeCancelRenewalKeepsPaidThrough(t *testing.T) {
+	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/subscriptions/sub_1" {
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if r.Form.Get("cancel_at_period_end") != "true" {
+			t.Fatalf("form=%v", r.Form)
+		}
+		if r.Header.Get("Idempotency-Key") != "switch-key" {
+			t.Fatalf("idempotency=%q", r.Header.Get("Idempotency-Key"))
+		}
+		body := stripeSubscription("sub_1", "active")
+		body["cancel_at_period_end"] = true
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	if err := provider.CancelRenewal(context.Background(), "sub_1", "switch-key"); err != nil {
+		t.Fatal(err)
+	}
+}

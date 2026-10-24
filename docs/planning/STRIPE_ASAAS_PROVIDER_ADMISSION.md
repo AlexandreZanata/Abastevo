@@ -125,6 +125,9 @@ Subscription statuses `active`, `past_due`, `canceled`, `paused`, `unpaid` and
 `requires_action`, `succeeded`, `failed`, `canceled` and dispute statuses
 `needs_response`, `under_review`, `won`, `lost`, `prevented`, `warning_*` are
 mapped explicitly; unknown values have no effect.
+A source switch stops renewal with
+`POST /v1/subscriptions/{id}` and `cancel_at_period_end=true`, then confirms the
+canonical subscription before another automatic source may start.
 
 ## Asaas v3 contract
 
@@ -228,7 +231,8 @@ Selected mode remains provider-owned `SUBSCRIPTION`, matching PAY-01.
 - Cancellation/expiry stops future instructions; already scheduled instructions
   may be canceled and must be reconciled. The application records the local
   cancellation intent before calling the provider and keeps an unknown outcome
-  pending until canonical retrieval confirms it.
+  pending until canonical retrieval confirms it. A source switch uses the same
+  path and cannot start another automatic source before confirmation.
 - Instruction status `DONE` reports provider processing, not financial
   settlement. Only `PAYMENT_RECEIVED` after canonical verification grants a
   period. No application-side retry instruction is created under `NOT_ALLOWED`.

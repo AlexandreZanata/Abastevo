@@ -334,3 +334,59 @@ INSERT INTO payment_attempts(
  'SUCCEEDED',sqlc.arg(remote_id),sqlc.arg(lease_until)::timestamptz,
  sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz
 );
+
+-- name: InsertPaymentSourceSwitch :one
+INSERT INTO payment_source_switches(
+ id,account_id,offer_id,environment,merchant,operation_key,old_source,old_offer_id,new_source,
+ old_local_id,old_remote_id,target_catalog_version,target_amount_centavos,
+ target_capabilities,current_end,first_debit_at,state,old_cancellation,
+ requested_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(environment),
+ sqlc.arg(merchant),sqlc.arg(operation_key),sqlc.arg(old_source),sqlc.arg(old_offer_id),sqlc.arg(new_source),
+ sqlc.narg(old_local_id),sqlc.narg(old_remote_id),sqlc.arg(target_catalog_version),
+ sqlc.arg(target_amount_centavos)::bigint,sqlc.arg(target_capabilities)::text[],
+ sqlc.narg(current_end)::timestamptz,sqlc.narg(first_debit_at)::timestamptz,
+ sqlc.arg(state),sqlc.arg(old_cancellation),sqlc.arg(requested_at)::timestamptz,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (account_id,environment,merchant,operation_key) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentSourceSwitchByOperation :one
+SELECT * FROM payment_source_switches
+WHERE account_id=sqlc.arg(account_id)::uuid AND environment=sqlc.arg(environment)
+  AND merchant=sqlc.arg(merchant) AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetOpenPaymentSourceSwitch :one
+SELECT * FROM payment_source_switches
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id)
+  AND state IN ('PENDING','CANCELING','READY')
+ORDER BY updated_at DESC,id DESC LIMIT 1;
+
+-- name: ClaimPaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CANCELING',worker_id=sqlc.arg(worker_id),lease_until=sqlc.arg(lease_until)::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20;
+
+-- name: ResolvePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state=sqlc.arg(state),old_cancellation=sqlc.arg(old_cancellation),
+    first_debit_at=sqlc.narg(first_debit_at)::timestamptz,
+    last_error=sqlc.arg(last_error),last_event_at=sqlc.arg(last_event_at)::timestamptz,
+    worker_id=NULL,lease_until=NULL,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING');
+
+-- name: ConsumePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CONSUMED',updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state='READY';
+
+-- name: GetActivePaymentGrantEnd :one
+SELECT end_at
+FROM payment_grants
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND state='ACTIVE'
+ORDER BY end_at DESC LIMIT 1;

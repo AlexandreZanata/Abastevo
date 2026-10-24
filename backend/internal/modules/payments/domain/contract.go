@@ -348,6 +348,63 @@ func DecideSwitch(request SwitchRequest) (SwitchDecision, error) {
 	return SwitchDecision{Allowed: true, FirstDebitAt: first, Reason: reason}, nil
 }
 
+const (
+	ChangeNextTerm             = "next-term"
+	ChangeImmediate            = "immediate"
+	ChangeUnsupportedProration = "proration-unsupported"
+	ChangeUnsupportedOffer     = "offer-unsupported"
+	ChangeUnsupportedFamily    = "family-unsupported"
+	ChangeNoop                 = "no-change"
+)
+
+type PlanChangeRequest struct {
+	Current     Offer
+	Target      Offer
+	CurrentEnd  time.Time
+	RequestedAt time.Time
+	Proration   bool
+}
+
+type PlanChangeDecision struct {
+	Allowed     bool
+	EffectiveAt time.Time
+	Reason      string
+}
+
+// DecidePlanChange applies the v1 next-term change policy. It never prorates,
+// never changes family/term and never makes an unapproved offer sellable.
+func DecidePlanChange(request PlanChangeRequest) (PlanChangeDecision, error) {
+	if request.RequestedAt.IsZero() {
+		return PlanChangeDecision{}, fmt.Errorf("%w: change time", ErrInvalid)
+	}
+	if err := request.Current.Validate(); err != nil {
+		return PlanChangeDecision{}, err
+	}
+	if err := request.Target.Validate(); err != nil {
+		return PlanChangeDecision{}, err
+	}
+	if request.Proration {
+		return PlanChangeDecision{Reason: ChangeUnsupportedProration}, nil
+	}
+	if !request.Target.SaleEnabled || request.Target.Enterprise {
+		return PlanChangeDecision{Reason: ChangeUnsupportedOffer}, nil
+	}
+	if request.Target.Family != request.Current.Family {
+		return PlanChangeDecision{Reason: ChangeUnsupportedFamily}, nil
+	}
+	if request.Target.ID == request.Current.ID && request.Target.Price.Equal(request.Current.Price) &&
+		request.Target.Term == request.Current.Term {
+		return PlanChangeDecision{Reason: ChangeNoop}, nil
+	}
+	effective := request.RequestedAt.UTC()
+	reason := ChangeImmediate
+	if request.CurrentEnd.After(request.RequestedAt) {
+		effective = request.CurrentEnd.UTC()
+		reason = ChangeNextTerm
+	}
+	return PlanChangeDecision{Allowed: true, EffectiveAt: effective, Reason: reason}, nil
+}
+
 func ValidateFundingSources(contracts []Contract) error {
 	active := make(map[string]bool)
 	for _, contract := range contracts {

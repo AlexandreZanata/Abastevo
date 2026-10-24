@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-13 `5ba72b33`. Migration 000127 adds
+  durable switch intents and leases. Stripe card renewal uses confirmed
+  `cancel_at_period_end`; Pix Automático uses the durable mandate cancellation
+  path. New recurring starts are gated by family, paid-through boundary and a
+  matching READY target quote; unresolved old cancellation blocks activation.
+  Next-term same-family plan/price changes are supported as source replacement;
+  proration/immediate changes are refused. [PAY-14 evidence](../backend/evidence/payments/PAY-14.md):
+  two-provider/concurrent/unknown-cancel/stale-quote/excess PostGIS and full
+  race/Play suites PASS. No worker/route/provider proof/sale. Next: PAY-15 only
+  after maintainer authorization.
+
 - Stripe/Asaas payment PAY-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-12 `e60dcf60`. Migration 000126 adds
   provider-owned Pix Automático instruction/eligibility tracking, retry policy and

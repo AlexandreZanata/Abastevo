@@ -57,6 +57,10 @@ func (s *Service) Start(ctx context.Context, principal Principal, request StartR
 			return Checkout{}, domain.ErrConflict
 		}
 	} else if errors.Is(err, domain.ErrNotFound) {
+		if err := allowNewRecurringSource(ctx, s.Store, s.Catalog, principal.AccountID, quote.OfferID,
+			domain.ChannelCard, quote, now); err != nil {
+			return Checkout{}, err
+		}
 		order, err = domain.NewOrder(orderID, principal.AccountID, quote, now)
 		if err != nil {
 			return Checkout{}, err

@@ -140,6 +140,7 @@ type PixAutoProvider interface {
 }
 
 type PixAutoStore interface {
+	SourceGateStore
 	CreateOrder(context.Context, domain.Order) error
 	GetOrder(context.Context, string) (domain.Order, error)
 	Customer(context.Context, string, domain.Provider, domain.Environment, string) (string, bool, error)

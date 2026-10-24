@@ -256,3 +256,32 @@ type PaymentSettlement struct {
 	SettledAt       pgtype.Timestamptz `json:"settled_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
+
+type PaymentSourceSwitch struct {
+	ID                   pgtype.UUID        `json:"id"`
+	AccountID            pgtype.UUID        `json:"account_id"`
+	OfferID              string             `json:"offer_id"`
+	Environment          string             `json:"environment"`
+	Merchant             string             `json:"merchant"`
+	OperationKey         string             `json:"operation_key"`
+	OldSource            string             `json:"old_source"`
+	OldOfferID           string             `json:"old_offer_id"`
+	NewSource            string             `json:"new_source"`
+	OldLocalID           pgtype.Text        `json:"old_local_id"`
+	OldRemoteID          pgtype.Text        `json:"old_remote_id"`
+	TargetCatalogVersion string             `json:"target_catalog_version"`
+	TargetAmountCentavos int64              `json:"target_amount_centavos"`
+	TargetCapabilities   []string           `json:"target_capabilities"`
+	CurrentEnd           pgtype.Timestamptz `json:"current_end"`
+	FirstDebitAt         pgtype.Timestamptz `json:"first_debit_at"`
+	State                string             `json:"state"`
+	OldCancellation      string             `json:"old_cancellation"`
+	WorkerID             pgtype.Text        `json:"worker_id"`
+	LeaseUntil           pgtype.Timestamptz `json:"lease_until"`
+	Attempts             int32              `json:"attempts"`
+	LastError            string             `json:"last_error"`
+	RequestedAt          pgtype.Timestamptz `json:"requested_at"`
+	LastEventAt          pgtype.Timestamptz `json:"last_event_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}

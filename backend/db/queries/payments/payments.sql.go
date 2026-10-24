@@ -11,6 +11,108 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimPaymentSourceSwitch = `-- name: ClaimPaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CANCELING',worker_id=$1,lease_until=$2::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=$3::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20
+`
+
+type ClaimPaymentSourceSwitchParams struct {
+	WorkerID   pgtype.Text        `json:"worker_id"`
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	ID         pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ClaimPaymentSourceSwitch(ctx context.Context, arg ClaimPaymentSourceSwitchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimPaymentSourceSwitch, arg.WorkerID, arg.LeaseUntil, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const consumePaymentSourceSwitch = `-- name: ConsumePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CONSUMED',updated_at=clock_timestamp()
+WHERE id=$1::uuid AND state='READY'
+`
+
+func (q *Queries) ConsumePaymentSourceSwitch(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, consumePaymentSourceSwitch, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getActivePaymentGrantEnd = `-- name: GetActivePaymentGrantEnd :one
+SELECT end_at
+FROM payment_grants
+WHERE account_id=$1::uuid AND offer_id=$2 AND state='ACTIVE'
+ORDER BY end_at DESC LIMIT 1
+`
+
+type GetActivePaymentGrantEndParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	OfferID   string      `json:"offer_id"`
+}
+
+func (q *Queries) GetActivePaymentGrantEnd(ctx context.Context, arg GetActivePaymentGrantEndParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getActivePaymentGrantEnd, arg.AccountID, arg.OfferID)
+	var end_at pgtype.Timestamptz
+	err := row.Scan(&end_at)
+	return end_at, err
+}
+
+const getOpenPaymentSourceSwitch = `-- name: GetOpenPaymentSourceSwitch :one
+SELECT id, account_id, offer_id, environment, merchant, operation_key, old_source, old_offer_id, new_source, old_local_id, old_remote_id, target_catalog_version, target_amount_centavos, target_capabilities, current_end, first_debit_at, state, old_cancellation, worker_id, lease_until, attempts, last_error, requested_at, last_event_at, created_at, updated_at FROM payment_source_switches
+WHERE account_id=$1::uuid AND offer_id=$2
+  AND state IN ('PENDING','CANCELING','READY')
+ORDER BY updated_at DESC,id DESC LIMIT 1
+`
+
+type GetOpenPaymentSourceSwitchParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	OfferID   string      `json:"offer_id"`
+}
+
+func (q *Queries) GetOpenPaymentSourceSwitch(ctx context.Context, arg GetOpenPaymentSourceSwitchParams) (PaymentSourceSwitch, error) {
+	row := q.db.QueryRow(ctx, getOpenPaymentSourceSwitch, arg.AccountID, arg.OfferID)
+	var i PaymentSourceSwitch
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.OldSource,
+		&i.OldOfferID,
+		&i.NewSource,
+		&i.OldLocalID,
+		&i.OldRemoteID,
+		&i.TargetCatalogVersion,
+		&i.TargetAmountCentavos,
+		&i.TargetCapabilities,
+		&i.CurrentEnd,
+		&i.FirstDebitAt,
+		&i.State,
+		&i.OldCancellation,
+		&i.WorkerID,
+		&i.LeaseUntil,
+		&i.Attempts,
+		&i.LastError,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPaymentAttempt = `-- name: GetPaymentAttempt :one
 SELECT id, operation_id, order_id, attempt_no, generation, provider, environment, merchant, payload_hash, state, remote_id, lease_until, created_at, updated_at, completed_at FROM payment_attempts WHERE id=$1::uuid
 `
@@ -724,6 +826,58 @@ func (q *Queries) GetPaymentSettlementByRemote(ctx context.Context, arg GetPayme
 	return i, err
 }
 
+const getPaymentSourceSwitchByOperation = `-- name: GetPaymentSourceSwitchByOperation :one
+SELECT id, account_id, offer_id, environment, merchant, operation_key, old_source, old_offer_id, new_source, old_local_id, old_remote_id, target_catalog_version, target_amount_centavos, target_capabilities, current_end, first_debit_at, state, old_cancellation, worker_id, lease_until, attempts, last_error, requested_at, last_event_at, created_at, updated_at FROM payment_source_switches
+WHERE account_id=$1::uuid AND environment=$2
+  AND merchant=$3 AND operation_key=$4
+`
+
+type GetPaymentSourceSwitchByOperationParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	Environment  string      `json:"environment"`
+	Merchant     string      `json:"merchant"`
+	OperationKey string      `json:"operation_key"`
+}
+
+func (q *Queries) GetPaymentSourceSwitchByOperation(ctx context.Context, arg GetPaymentSourceSwitchByOperationParams) (PaymentSourceSwitch, error) {
+	row := q.db.QueryRow(ctx, getPaymentSourceSwitchByOperation,
+		arg.AccountID,
+		arg.Environment,
+		arg.Merchant,
+		arg.OperationKey,
+	)
+	var i PaymentSourceSwitch
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.OldSource,
+		&i.OldOfferID,
+		&i.NewSource,
+		&i.OldLocalID,
+		&i.OldRemoteID,
+		&i.TargetCatalogVersion,
+		&i.TargetAmountCentavos,
+		&i.TargetCapabilities,
+		&i.CurrentEnd,
+		&i.FirstDebitAt,
+		&i.State,
+		&i.OldCancellation,
+		&i.WorkerID,
+		&i.LeaseUntil,
+		&i.Attempts,
+		&i.LastError,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertPaymentAttempt = `-- name: InsertPaymentAttempt :exec
 INSERT INTO payment_attempts(
  id,operation_id,order_id,attempt_no,generation,provider,environment,merchant,payload_hash,
@@ -1093,6 +1247,103 @@ func (q *Queries) InsertPaymentSettlement(ctx context.Context, arg InsertPayment
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const insertPaymentSourceSwitch = `-- name: InsertPaymentSourceSwitch :one
+INSERT INTO payment_source_switches(
+ id,account_id,offer_id,environment,merchant,operation_key,old_source,old_offer_id,new_source,
+ old_local_id,old_remote_id,target_catalog_version,target_amount_centavos,
+ target_capabilities,current_end,first_debit_at,state,old_cancellation,
+ requested_at,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4,
+ $5,$6,$7,$8,$9,
+ $10,$11,$12,
+ $13::bigint,$14::text[],
+ $15::timestamptz,$16::timestamptz,
+ $17,$18,$19::timestamptz,
+ $20::timestamptz
+)
+ON CONFLICT (account_id,environment,merchant,operation_key) DO NOTHING
+RETURNING id, account_id, offer_id, environment, merchant, operation_key, old_source, old_offer_id, new_source, old_local_id, old_remote_id, target_catalog_version, target_amount_centavos, target_capabilities, current_end, first_debit_at, state, old_cancellation, worker_id, lease_until, attempts, last_error, requested_at, last_event_at, created_at, updated_at
+`
+
+type InsertPaymentSourceSwitchParams struct {
+	ID                   pgtype.UUID        `json:"id"`
+	AccountID            pgtype.UUID        `json:"account_id"`
+	OfferID              string             `json:"offer_id"`
+	Environment          string             `json:"environment"`
+	Merchant             string             `json:"merchant"`
+	OperationKey         string             `json:"operation_key"`
+	OldSource            string             `json:"old_source"`
+	OldOfferID           string             `json:"old_offer_id"`
+	NewSource            string             `json:"new_source"`
+	OldLocalID           pgtype.Text        `json:"old_local_id"`
+	OldRemoteID          pgtype.Text        `json:"old_remote_id"`
+	TargetCatalogVersion string             `json:"target_catalog_version"`
+	TargetAmountCentavos int64              `json:"target_amount_centavos"`
+	TargetCapabilities   []string           `json:"target_capabilities"`
+	CurrentEnd           pgtype.Timestamptz `json:"current_end"`
+	FirstDebitAt         pgtype.Timestamptz `json:"first_debit_at"`
+	State                string             `json:"state"`
+	OldCancellation      string             `json:"old_cancellation"`
+	RequestedAt          pgtype.Timestamptz `json:"requested_at"`
+	LastEventAt          pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) InsertPaymentSourceSwitch(ctx context.Context, arg InsertPaymentSourceSwitchParams) (PaymentSourceSwitch, error) {
+	row := q.db.QueryRow(ctx, insertPaymentSourceSwitch,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.Environment,
+		arg.Merchant,
+		arg.OperationKey,
+		arg.OldSource,
+		arg.OldOfferID,
+		arg.NewSource,
+		arg.OldLocalID,
+		arg.OldRemoteID,
+		arg.TargetCatalogVersion,
+		arg.TargetAmountCentavos,
+		arg.TargetCapabilities,
+		arg.CurrentEnd,
+		arg.FirstDebitAt,
+		arg.State,
+		arg.OldCancellation,
+		arg.RequestedAt,
+		arg.LastEventAt,
+	)
+	var i PaymentSourceSwitch
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.OldSource,
+		&i.OldOfferID,
+		&i.NewSource,
+		&i.OldLocalID,
+		&i.OldRemoteID,
+		&i.TargetCatalogVersion,
+		&i.TargetAmountCentavos,
+		&i.TargetCapabilities,
+		&i.CurrentEnd,
+		&i.FirstDebitAt,
+		&i.State,
+		&i.OldCancellation,
+		&i.WorkerID,
+		&i.LeaseUntil,
+		&i.Attempts,
+		&i.LastError,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const listActivePaymentMandates = `-- name: ListActivePaymentMandates :many
@@ -1539,6 +1790,39 @@ func (q *Queries) ResolvePaymentOperation(ctx context.Context, arg ResolvePaymen
 		arg.CompletedAt,
 		arg.ID,
 		arg.Generation,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resolvePaymentSourceSwitch = `-- name: ResolvePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state=$1,old_cancellation=$2,
+    first_debit_at=$3::timestamptz,
+    last_error=$4,last_event_at=$5::timestamptz,
+    worker_id=NULL,lease_until=NULL,updated_at=clock_timestamp()
+WHERE id=$6::uuid AND state IN ('PENDING','CANCELING')
+`
+
+type ResolvePaymentSourceSwitchParams struct {
+	State           string             `json:"state"`
+	OldCancellation string             `json:"old_cancellation"`
+	FirstDebitAt    pgtype.Timestamptz `json:"first_debit_at"`
+	LastError       string             `json:"last_error"`
+	LastEventAt     pgtype.Timestamptz `json:"last_event_at"`
+	ID              pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ResolvePaymentSourceSwitch(ctx context.Context, arg ResolvePaymentSourceSwitchParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resolvePaymentSourceSwitch,
+		arg.State,
+		arg.OldCancellation,
+		arg.FirstDebitAt,
+		arg.LastError,
+		arg.LastEventAt,
+		arg.ID,
 	)
 	if err != nil {
 		return 0, err

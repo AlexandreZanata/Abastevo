@@ -489,3 +489,15 @@ func TestOwnerIsolationUsesAccountBoundOrder(t *testing.T) {
 		t.Fatalf("orders %s %s create=%d", first.OrderID, second.OrderID, provider.createCount)
 	}
 }
+
+func (s *memoryStore) ActiveRecurringSource(context.Context, string, string) (app.RecurringSource, bool, error) {
+	return app.RecurringSource{}, false, nil
+}
+
+func (s *memoryStore) ActiveGrantEnd(context.Context, string, string) (time.Time, error) {
+	return time.Time{}, nil
+}
+
+func (s *memoryStore) OpenSourceSwitch(context.Context, string, string) (app.SourceSwitchRecord, bool, error) {
+	return app.SourceSwitchRecord{}, false, nil
+}

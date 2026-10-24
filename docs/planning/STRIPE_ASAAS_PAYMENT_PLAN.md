@@ -218,6 +218,11 @@ received-cycle settlement, durable cancellation and eligibility blocks are
 implemented and reconciled under concurrency; the application never creates a
 second charge owner. Provider proof remains PAY-21 and runtime wiring remains
 PAY-19.
+PAY-14 is LOCAL_DONE: next-term plan/price changes and cross-provider switches
+are durably fenced; the old card/Pix Automático source must be confirmed stopped
+before a new source may start, unknown cancellation blocks activation, and
+immediate/prorated changes are refused. Provider proof and runtime wiring remain
+PAY-21/PAY-19.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -293,6 +298,8 @@ that a nonexistent command or endpoint is available.
   LOCAL_DONE; provider-owned cycles, instructions, eligibility and durable
   cancellation tested.
 - **PAY-14:** plan/term changes and cross-provider funding-source fences.
+  LOCAL_DONE; next-term changes, confirmed old-source cancellation, stale-quote
+  and concurrency fences tested.
 - **PAY-15:** cancellation, account exit/deletion and recovery.
 - **PAY-16:** full/partial refunds, disputes/MED and restricted operator recovery.
 - **PAY-17:** Enterprise single-payer billing and capability-target isolation.

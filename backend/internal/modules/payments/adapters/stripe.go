@@ -104,6 +104,26 @@ func (p *StripeProvider) CreateCheckout(ctx context.Context, request app.Checkou
 	return result, nil
 }
 
+// CancelRenewal stops future invoices while preserving the current paid-through
+// period. It is idempotent under the caller's stable switch key; the caller must
+// still retrieve canonical state before activating another source.
+func (p *StripeProvider) CancelRenewal(ctx context.Context, subscriptionID, idempotencyKey string) error {
+	if p == nil || p.Client == nil || subscriptionID == "" || idempotencyKey == "" {
+		return domain.ErrUnavailable
+	}
+	params := &stripe.SubscriptionUpdateParams{CancelAtPeriodEnd: stripe.Bool(true)}
+	params.SetIdempotencyKey(idempotencyKey)
+	subscription, err := p.Client.V1Subscriptions.Update(ctx, subscriptionID, params)
+	if err != nil {
+		return stripeError(err)
+	}
+	if subscription == nil || subscription.ID != subscriptionID || subscription.Customer == nil ||
+		subscription.Livemode != (p.Environment == domain.EnvironmentProduction) {
+		return domain.ErrBinding
+	}
+	return nil
+}
+
 func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
 	if event.EventType != "invoice.paid" || event.ResourceType != "invoice" {
 		return app.SettlementCandidate{}, app.ErrIgnored

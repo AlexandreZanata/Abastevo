@@ -72,6 +72,10 @@ func (s *PixAutoService) Start(ctx context.Context, principal Principal, request
 			return PixAutoAuthorization{}, domain.ErrConflict
 		}
 	} else if errors.Is(err, domain.ErrNotFound) {
+		if err := allowNewRecurringSource(ctx, s.Store, s.Catalog, principal.AccountID, quote.OfferID,
+			domain.ChannelPixAutomatic, quote, now); err != nil {
+			return PixAutoAuthorization{}, err
+		}
 		order, err = domain.NewOrder(orderID, principal.AccountID, quote, now)
 		if err != nil {
 			return PixAutoAuthorization{}, err

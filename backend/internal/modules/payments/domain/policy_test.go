@@ -1046,3 +1046,65 @@ func TestExcessRemoteReplayIsRejected(t *testing.T) {
 		t.Fatalf("excess = %d", len(entitlement.Excess))
 	}
 }
+
+func TestDecidePlanChangeNextTermOnly(t *testing.T) {
+	current := validOffer()
+	target := current
+	target.ID = "premium.monthly.v2"
+	target.Price = BRL(1490)
+	target.Capabilities = append([]string(nil), current.Capabilities...)
+	decision, err := DecidePlanChange(PlanChangeRequest{
+		Current: current, Target: target,
+		CurrentEnd: testNow.Add(10 * 24 * time.Hour), RequestedAt: testNow,
+	})
+	if err != nil || !decision.Allowed || decision.Reason != ChangeNextTerm ||
+		!decision.EffectiveAt.Equal(testNow.Add(10*24*time.Hour)) {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+
+	decision, err = DecidePlanChange(PlanChangeRequest{
+		Current: current, Target: target,
+		CurrentEnd: testNow.Add(-time.Hour), RequestedAt: testNow,
+	})
+	if err != nil || !decision.Allowed || decision.Reason != ChangeImmediate ||
+		!decision.EffectiveAt.Equal(testNow) {
+		t.Fatalf("expired decision=%+v err=%v", decision, err)
+	}
+}
+
+func TestDecidePlanChangeRefusals(t *testing.T) {
+	current := validOffer()
+	higher := current
+	higher.ID = "premium.monthly.v2"
+	higher.Price = BRL(1490)
+
+	cases := []struct {
+		name    string
+		request PlanChangeRequest
+		reason  string
+		wantErr error
+	}{
+		{"proration", PlanChangeRequest{Current: current, Target: higher, CurrentEnd: testNow.Add(time.Hour), RequestedAt: testNow, Proration: true}, ChangeUnsupportedProration, nil},
+		{"same", PlanChangeRequest{Current: current, Target: current, CurrentEnd: testNow.Add(time.Hour), RequestedAt: testNow}, ChangeNoop, nil},
+		{"family", PlanChangeRequest{Current: current, Target: Offer{ID: "family.v2", Family: "other", Term: TermMonthly, Price: BRL(1490), Capabilities: PremiumCapabilityList(), Channels: map[Channel]bool{ChannelCard: true}, SaleEnabled: true}, CurrentEnd: testNow.Add(time.Hour), RequestedAt: testNow}, ChangeUnsupportedFamily, nil},
+		{"disabled", PlanChangeRequest{Current: current, Target: Offer{ID: "premium.off", Family: "premium", Term: TermMonthly, Price: BRL(1490), Capabilities: PremiumCapabilityList(), Channels: map[Channel]bool{ChannelCard: true}, SaleEnabled: false}, CurrentEnd: testNow.Add(time.Hour), RequestedAt: testNow}, ChangeUnsupportedOffer, nil},
+		{"annual", PlanChangeRequest{Current: current, Target: Offer{ID: "premium.annual", Family: "premium", Term: Term("P1Y"), Price: BRL(1490), Capabilities: PremiumCapabilityList(), Channels: map[Channel]bool{ChannelCard: true}, SaleEnabled: true}, CurrentEnd: testNow.Add(time.Hour), RequestedAt: testNow}, "", ErrTermUnsupported},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			decision, err := DecidePlanChange(tc.request)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("err=%v", err)
+				}
+				return
+			}
+			if err != nil || decision.Allowed || decision.Reason != tc.reason {
+				t.Fatalf("decision=%+v err=%v", decision, err)
+			}
+		})
+	}
+	if _, err := DecidePlanChange(PlanChangeRequest{Current: current, Target: higher}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero time err=%v", err)
+	}
+}

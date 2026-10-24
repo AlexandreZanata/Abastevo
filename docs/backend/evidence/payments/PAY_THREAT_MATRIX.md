@@ -81,7 +81,7 @@ case cannot be fully accepted without separately authorized live verification.
 | STL-02 | A manually marked-paid Stripe invoice or out-of-band status cannot grant a card entitlement without the approved policy. | OPEN | PAY-10, PAY-11 | sandbox |
 | STL-03 | Provider/merchant/customer/order/offer/currency/amount mismatch grants nothing and is surfaced. | OPEN | PAY-10 | sandbox |
 | STL-04 | Late, refunded, reversed or under/overpaid settlement follows explicit allocation; no duplicate period. | OPEN | PAY-10, PAY-16 | sandbox |
-| STL-05 | Concurrent conventional Pix and recurring/card payment creates at most one access effect; excess money is recorded. | OPEN | PAY-10, PAY-14, PAY-16 | sandbox |
+| STL-05 | Concurrent conventional Pix and recurring/card payment creates at most one access effect; excess money is recorded. | CLOSED_LOCAL | PAY-10, PAY-14, PAY-16 | sandbox |
 | STL-06 | A refused Pix Automático authorization can coexist with a successful initial Pix payment without future debit authority. | OPEN | PAY-12 | sandbox |
 
 ## Lifecycle and switching
@@ -94,7 +94,7 @@ case cannot be fully accepted without separately authorized live verification.
 | LIF-04 | Renewal/cancel/refund races cannot resurrect a revoked grant or extend access twice. | OPEN | PAY-11, PAY-14, PAY-16 | sandbox |
 | LIF-05 | Expired Pix QR is not payable/reusable and a late payment is reconciled, not blindly granted. | OPEN | PAY-07 | sandbox |
 | LIF-06 | Pix Automático refusal, retry, expiry, cancellation and merchant ineligibility stop new instructions. | CLOSED_LOCAL | PAY-12, PAY-13 | sandbox |
-| LIF-07 | Switching card/Pix remains single-funding-source; unknown old cancellation blocks a second auto-debit. | OPEN | PAY-14 | sandbox |
+| LIF-07 | Switching card/Pix remains single-funding-source; unknown old cancellation blocks a second auto-debit. | CLOSED_LOCAL | PAY-14 | sandbox |
 | LIF-08 | An operator/dashboard plan change cannot bypass the offer catalog, proration policy or cross-provider fence. | OPEN | PAY-11, PAY-14 | sandbox |
 
 ## Recovery and operations
@@ -135,6 +135,15 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-14 local closure
+
+- LIF-07: card ↔ Pix Automático and manual-period switches require a confirmed
+  old-source fence; unknown cancellation stays pending and blocks activation.
+  See [PAY-14](PAY-14.md). Actual provider cancellation/timing remains sandbox.
+- STL-05: concurrent manual and automatic settlements produced one grant per
+  payment and an explicit `EXCESS` settlement, with no duplicate grant. Provider
+  sandbox reconciliation remains PAY-21.
 
 ## PAY-13 local closure
 

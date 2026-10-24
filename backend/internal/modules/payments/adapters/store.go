@@ -1545,6 +1545,261 @@ func digestValue(value string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func (s *Store) ActiveRecurringSource(ctx context.Context, accountID, offerID string) (app.RecurringSource, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.RecurringSource{}, false, domain.ErrUnavailable
+	}
+	contract, err := s.ContractForAccount(ctx, accountID, offerID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return app.RecurringSource{}, false, err
+	}
+	if err == nil && !contractFenced(contract) {
+		return app.RecurringSource{
+			Source: contract.Source, OfferID: offerID, LocalID: contract.ID,
+			RemoteID: contract.RemoteSubscriptionID, ProviderStatus: contract.ProviderStatus,
+			CancelAtPeriodEnd: contract.CancelAtPeriodEnd,
+		}, true, nil
+	}
+	mandate, err := s.MandateForAccount(ctx, accountID, offerID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return app.RecurringSource{}, false, err
+	}
+	if err == nil && (mandate.Status == "CREATED" || mandate.Status == "ACTIVE") {
+		return app.RecurringSource{
+			Source: domain.ChannelPixAutomatic, OfferID: offerID, LocalID: mandate.ID,
+			RemoteID: mandate.RemoteAuthorizationID, ProviderStatus: mandate.Status,
+		}, true, nil
+	}
+	return app.RecurringSource{}, false, nil
+}
+
+func (s *Store) ActiveGrantEnd(ctx context.Context, accountID, offerID string) (time.Time, error) {
+	if s == nil || s.Pool == nil {
+		return time.Time{}, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(offerID) {
+		return time.Time{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetActivePaymentGrantEnd(ctx, qpay.GetActivePaymentGrantEndParams{
+		AccountID: uid, OfferID: offerID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, dbError(err)
+	}
+	if !row.Valid {
+		return time.Time{}, nil
+	}
+	return row.Time.UTC(), nil
+}
+
+func (s *Store) OpenSourceSwitch(ctx context.Context, accountID, offerID string) (app.SourceSwitchRecord, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.SourceSwitchRecord{}, false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(offerID) {
+		return app.SourceSwitchRecord{}, false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetOpenPaymentSourceSwitch(ctx, qpay.GetOpenPaymentSourceSwitchParams{
+		AccountID: uid, OfferID: offerID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.SourceSwitchRecord{}, false, nil
+	}
+	if err != nil {
+		return app.SourceSwitchRecord{}, false, dbError(err)
+	}
+	return sourceSwitchRecord(row), true, nil
+}
+
+func (s *Store) CreateSourceSwitch(ctx context.Context, input app.SourceSwitchRecord) (app.SourceSwitchRecord, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.SourceSwitchRecord{}, false, domain.ErrUnavailable
+	}
+	if err := input.Environment.Validate(); err != nil {
+		return app.SourceSwitchRecord{}, false, err
+	}
+	if !validText(input.AccountID) || !validText(input.OfferID) || !validText(input.Merchant) ||
+		!validText(input.OperationKey) || !validText(input.OldOfferID) || !validText(input.TargetCatalogVersion) ||
+		len(input.TargetCapabilities) == 0 || input.TargetAmount.Positive() != nil ||
+		input.RequestedAt.IsZero() || input.LastEventAt.IsZero() ||
+		!validSwitchSource(input.OldSource) || !validSwitchTarget(input.NewSource) ||
+		!validSwitchState(input.State) || !input.OldCancellation.Valid() {
+		return app.SourceSwitchRecord{}, false, domain.ErrInvalid
+	}
+	if input.State == app.SourceSwitchReady && input.FirstDebitAt.IsZero() {
+		return app.SourceSwitchRecord{}, false, domain.ErrInvalid
+	}
+	accountID, err := toUUID(input.AccountID)
+	if err != nil {
+		return app.SourceSwitchRecord{}, false, domain.ErrInvalid
+	}
+	id := input.ID
+	if id == "" {
+		id, err = newID()
+		if err != nil {
+			return app.SourceSwitchRecord{}, false, domain.ErrUnavailable
+		}
+	}
+	uid, err := toUUID(id)
+	if err != nil {
+		return app.SourceSwitchRecord{}, false, domain.ErrInvalid
+	}
+	var currentEnd pgtype.Timestamptz
+	if !input.CurrentEnd.IsZero() {
+		currentEnd = stamp(input.CurrentEnd)
+	}
+	var firstDebit pgtype.Timestamptz
+	if !input.FirstDebitAt.IsZero() {
+		firstDebit = stamp(input.FirstDebitAt)
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).InsertPaymentSourceSwitch(ctx, qpay.InsertPaymentSourceSwitchParams{
+		ID: uid, AccountID: accountID, OfferID: input.OfferID,
+		Environment: string(input.Environment), Merchant: input.Merchant,
+		OperationKey: input.OperationKey, OldSource: string(input.OldSource),
+		OldOfferID: input.OldOfferID, NewSource: string(input.NewSource),
+		OldLocalID:  nullableText(input.OldLocalID),
+		OldRemoteID: nullableText(input.OldRemoteID), TargetCatalogVersion: input.TargetCatalogVersion,
+		TargetAmountCentavos: input.TargetAmount.Centavos, TargetCapabilities: input.TargetCapabilities,
+		CurrentEnd: currentEnd, FirstDebitAt: firstDebit, State: input.State,
+		OldCancellation: string(input.OldCancellation), RequestedAt: stamp(input.RequestedAt),
+		LastEventAt: stamp(input.LastEventAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		existing, err := qpay.New(s.Pool).GetPaymentSourceSwitchByOperation(ctx, qpay.GetPaymentSourceSwitchByOperationParams{
+			AccountID: accountID, Environment: string(input.Environment),
+			Merchant: input.Merchant, OperationKey: input.OperationKey,
+		})
+		if err != nil {
+			return app.SourceSwitchRecord{}, false, dbError(err)
+		}
+		return sourceSwitchRecord(existing), true, nil
+	}
+	if err != nil {
+		return app.SourceSwitchRecord{}, false, dbError(err)
+	}
+	return sourceSwitchRecord(row), false, nil
+}
+
+func (s *Store) ClaimSourceSwitch(ctx context.Context, id, workerID string, leaseUntil time.Time) (bool, error) {
+	if s == nil || s.Pool == nil {
+		return false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(id)
+	if err != nil || !validText(workerID) || leaseUntil.IsZero() {
+		return false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ClaimPaymentSourceSwitch(ctx, qpay.ClaimPaymentSourceSwitchParams{
+		WorkerID: nullableText(workerID), LeaseUntil: stamp(leaseUntil), ID: uid,
+	})
+	if err != nil {
+		return false, dbError(err)
+	}
+	return rows == 1, nil
+}
+
+func (s *Store) ResolveSourceSwitch(ctx context.Context, input app.SourceSwitchRecord) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	uid, err := toUUID(input.ID)
+	if err != nil || !validSwitchState(input.State) || !input.OldCancellation.Valid() ||
+		input.LastEventAt.IsZero() || (input.State == app.SourceSwitchReady && input.FirstDebitAt.IsZero()) ||
+		len(input.LastError) > 500 {
+		return domain.ErrInvalid
+	}
+	var firstDebit pgtype.Timestamptz
+	if !input.FirstDebitAt.IsZero() {
+		firstDebit = stamp(input.FirstDebitAt)
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ResolvePaymentSourceSwitch(ctx, qpay.ResolvePaymentSourceSwitchParams{
+		State: input.State, OldCancellation: string(input.OldCancellation),
+		FirstDebitAt: firstDebit, LastError: input.LastError,
+		LastEventAt: stamp(input.LastEventAt), ID: uid,
+	})
+	if err != nil {
+		return dbError(err)
+	}
+	if rows != 1 {
+		return domain.ErrStale
+	}
+	return nil
+}
+
+func (s *Store) ConsumeSourceSwitch(ctx context.Context, id string) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	uid, err := toUUID(id)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	if _, err := qpay.New(s.Pool).ConsumePaymentSourceSwitch(ctx, uid); err != nil {
+		return dbError(err)
+	}
+	return nil
+}
+
+func sourceSwitchRecord(row qpay.PaymentSourceSwitch) app.SourceSwitchRecord {
+	record := app.SourceSwitchRecord{
+		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
+		Environment: domain.Environment(row.Environment), Merchant: row.Merchant,
+		OperationKey: row.OperationKey, OldSource: domain.Channel(row.OldSource),
+		OldOfferID: row.OldOfferID, NewSource: domain.Channel(row.NewSource),
+		OldLocalID:  textValue(row.OldLocalID),
+		OldRemoteID: textValue(row.OldRemoteID), TargetCatalogVersion: row.TargetCatalogVersion,
+		TargetAmount:       domain.BRL(row.TargetAmountCentavos),
+		TargetCapabilities: append([]string(nil), row.TargetCapabilities...),
+		State:              row.State, OldCancellation: domain.CancellationState(row.OldCancellation),
+		Attempts: int(row.Attempts), LastError: row.LastError,
+		RequestedAt: row.RequestedAt.Time, LastEventAt: row.LastEventAt.Time,
+	}
+	if row.CurrentEnd.Valid {
+		record.CurrentEnd = row.CurrentEnd.Time
+	}
+	if row.FirstDebitAt.Valid {
+		record.FirstDebitAt = row.FirstDebitAt.Time
+	}
+	return record
+}
+
+func contractFenced(contract app.ContractRecord) bool {
+	if contract.CancelAtPeriodEnd {
+		return true
+	}
+	return contract.ProviderStatus == "canceled" || contract.ProviderStatus == "incomplete_expired"
+}
+
+func validSwitchSource(source domain.Channel) bool {
+	return source == domain.ChannelCard || source == domain.ChannelPixAutomatic || source == domain.ChannelPixManual
+}
+
+func validSwitchTarget(target domain.Channel) bool {
+	return target == domain.ChannelCard || target == domain.ChannelPixAutomatic
+}
+
+func validSwitchState(state string) bool {
+	return state == app.SourceSwitchPending || state == app.SourceSwitchCanceling ||
+		state == app.SourceSwitchReady || state == app.SourceSwitchConsumed ||
+		state == app.SourceSwitchCanceled
+}
+
 func mandateRecord(row qpay.PaymentMandate) app.MandateRecord {
 	mandate := app.MandateRecord{
 		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
