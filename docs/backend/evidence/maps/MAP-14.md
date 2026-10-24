@@ -358,6 +358,10 @@ Known T06 limits:
 - A failed overlay import retains the previous category by construction; the
   failure path was not separately injected after the crash fix.
 - The list labels default to English; MAP-17 must pass localized labels.
+- The release APK remains 69,898,847 bytes because no production screen
+  references the engine yet; R8 strips the adapter until MAP-17 wires the map
+  tab. T06 is exercised in the `mapProbe` variant, engine unit tests and the
+  self-instrumenting phone test APK, not in the current release APK.
 
 Commands for the T06 checks:
 
