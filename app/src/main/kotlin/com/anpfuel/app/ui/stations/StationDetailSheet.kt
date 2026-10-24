@@ -31,6 +31,7 @@ import com.anpfuel.app.ui.components.PriceSourceKind
 import com.anpfuel.app.ui.components.SourceTimeBadge
 import com.anpfuel.app.ui.model.StationDetailUiModel
 import com.anpfuel.app.ui.model.StationPriceUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.valueobject.FuelProduct
 
@@ -113,11 +114,13 @@ internal fun StationDetailSheetContent(
                 )
             }
 
+            val officialContainer = MaterialTheme.colorScheme.surfaceContainerLow
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = officialContainer,
                 ),
+                border = AnpContainerDefaults.borderStroke(officialContainer),
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -174,7 +177,12 @@ internal fun StationDetailSheetContent(
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            val communityContainer = MaterialTheme.colorScheme.surfaceContainerHighest
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = communityContainer),
+                border = AnpContainerDefaults.borderStroke(communityContainer),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

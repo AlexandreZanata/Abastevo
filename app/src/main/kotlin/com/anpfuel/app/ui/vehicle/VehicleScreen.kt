@@ -60,6 +60,7 @@ import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.model.Vehicle
@@ -380,6 +381,7 @@ private fun VehicleListItem(
         VehiclePriceSourceMode.SPECIFIC_STATION ->
             stringResource(R.string.vehicle_price_source_specific)
     }
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Card(
         onClick = onClick,
@@ -387,8 +389,9 @@ private fun VehicleListItem(
             .fillMaxWidth()
             .defaultMinSize(minHeight = 112.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier

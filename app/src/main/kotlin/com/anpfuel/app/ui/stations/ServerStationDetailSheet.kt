@@ -35,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.community.FeedbackViewModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.feedback.FeedbackTarget
@@ -202,11 +203,13 @@ fun ServerStationDetailSheet(
                 )
             } else {
                 item(key = "detail-feedback-pending") {
+                    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            containerColor = containerColor,
                         ),
+                        border = AnpContainerDefaults.borderStroke(containerColor),
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),

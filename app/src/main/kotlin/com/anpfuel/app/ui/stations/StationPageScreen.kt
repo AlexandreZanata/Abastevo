@@ -40,6 +40,7 @@ import com.anpfuel.app.ui.components.PriceSourceKind
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SourceTimeBadge
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.data.mapper.WireFuelMapper
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.profile.ProfileBadge
@@ -256,8 +257,10 @@ internal fun StationPageContent(
                 }
             }
             item {
+                val containerColor = MaterialTheme.colorScheme.secondaryContainer
                 Card(Modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    colors = CardDefaults.cardColors(containerColor = containerColor),
+                    border = AnpContainerDefaults.borderStroke(containerColor)) {
                     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Default.Business, contentDescription = null)
                         Text(stringResource(R.string.station_page_owner_title), style = MaterialTheme.typography.titleLarge,
@@ -310,8 +313,10 @@ private fun StationDetailLoadingSkeleton() {
 
 @Composable
 internal fun StationSectionCard(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.semantics { heading() })

@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.FuelProductLabel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.FuelProduct
 
@@ -25,10 +26,12 @@ internal fun StationsListSummary(
     fuelProduct: FuelProduct,
     modifier: Modifier = Modifier,
 ) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainer
     Surface(
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = containerColor,
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
