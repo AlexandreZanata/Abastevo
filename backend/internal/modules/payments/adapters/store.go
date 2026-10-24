@@ -695,7 +695,7 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 		return SettlementOutcome{}, err
 	}
 	if result.Grant == nil && !result.Excess {
-		return SettlementOutcome{}, domain.ErrConflict
+		return SettlementOutcome{}, fmt.Errorf("%w: no grant/excess", domain.ErrConflict)
 	}
 	rows, err := q.InsertPaymentSettlement(ctx, qpay.InsertPaymentSettlementParams{
 		ID: mustUUID(settlement.ID), OrderID: orderID, AttemptID: attemptID,
@@ -709,7 +709,7 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 		return SettlementOutcome{}, dbError(err)
 	}
 	if rows != 1 {
-		return SettlementOutcome{}, domain.ErrConflict
+		return SettlementOutcome{}, fmt.Errorf("%w: settlement insert", domain.ErrConflict)
 	}
 	outcome := SettlementOutcome{SettlementID: settlement.ID, OrderID: uuidText(orderID), Excess: result.Excess}
 	if result.Grant != nil {
@@ -726,7 +726,7 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 			return SettlementOutcome{}, dbError(err)
 		}
 		if rows != 1 {
-			return SettlementOutcome{}, domain.ErrConflict
+			return SettlementOutcome{}, fmt.Errorf("%w: grant insert", domain.ErrConflict)
 		}
 		rows, err = q.InsertPaymentCycle(ctx, qpay.InsertPaymentCycleParams{
 			ID: mustUUID(grant.ID), AccountID: accountID, OfferID: orderRow.OfferID,
@@ -743,7 +743,7 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 			if getErr != nil || existing.State != "SETTLED" ||
 				!sameUUID(existing.SettlementID, mustUUID(settlement.ID)) ||
 				!sameInstant(existing.PeriodEnd, grant.End) {
-				return SettlementOutcome{}, domain.ErrConflict
+				return SettlementOutcome{}, fmt.Errorf("%w: cycle conflict", domain.ErrConflict)
 			}
 		}
 		outcome.GrantID = grant.ID
@@ -756,10 +756,10 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 			return SettlementOutcome{}, dbError(err)
 		}
 		if rows != 1 {
-			return SettlementOutcome{}, domain.ErrConflict
+			return SettlementOutcome{}, fmt.Errorf("%w: order paid update", domain.ErrConflict)
 		}
 	}
-	if err := resolveSettlement(ctx, q, attemptRow, opRow, settlement.RemotePaymentID, now, !result.Excess); err != nil {
+	if err := resolveSettlement(ctx, q, attemptRow, opRow, settlement.RemotePaymentID, now); err != nil {
 		return SettlementOutcome{}, err
 	}
 	if err := enqueueSettlement(ctx, tx, outcome); err != nil {
@@ -951,12 +951,11 @@ func settlementOutcome(excess bool) string {
 	return "GRANTED"
 }
 
-func resolveSettlement(ctx context.Context, q *qpay.Queries, attempt qpay.PaymentAttempt, operation qpay.PaymentOperation, remoteID string, now time.Time, strictRemote bool) error {
+func resolveSettlement(ctx context.Context, q *qpay.Queries, attempt qpay.PaymentAttempt, operation qpay.PaymentOperation, remoteID string, now time.Time) error {
 	switch attempt.State {
 	case "SUCCEEDED":
-		if strictRemote && attempt.RemoteID.Valid && attempt.RemoteID.String != remoteID {
-			return domain.ErrConflict
-		}
+		// The attempt may be a checkout/session/authorization while settlement is
+		// an invoice/payment; both are bound by order and unique identities.
 	case "DISPATCHED", "UNKNOWN":
 		rows, err := q.ResolvePaymentAttempt(ctx, qpay.ResolvePaymentAttemptParams{
 			State: "SUCCEEDED", RemoteID: nullableText(remoteID), CompletedAt: stamp(now),
@@ -973,9 +972,6 @@ func resolveSettlement(ctx context.Context, q *qpay.Queries, attempt qpay.Paymen
 	}
 	switch operation.State {
 	case "SUCCEEDED":
-		if strictRemote && operation.RemoteID.Valid && operation.RemoteID.String != remoteID {
-			return domain.ErrConflict
-		}
 	case "PENDING", "DISPATCHED", "OUTCOME_UNKNOWN":
 		rows, err := q.ResolvePaymentOperation(ctx, qpay.ResolvePaymentOperationParams{
 			State: "SUCCEEDED", RemoteID: nullableText(remoteID), LeaseUntil: stamp(now),
@@ -1093,6 +1089,145 @@ func (s *Store) ContractByRemote(ctx context.Context, environment domain.Environ
 		return app.ContractRecord{}, dbError(err)
 	}
 	return contractRecord(row), nil
+}
+
+func (s *Store) UpsertMandate(ctx context.Context, mandate app.MandateRecord) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	if !validText(mandate.ID) || !validText(mandate.AccountID) || !validText(mandate.OfferID) ||
+		!validText(mandate.OrderID) || !validText(mandate.Merchant) ||
+		!validText(mandate.RemoteAuthorizationID) || !validText(mandate.ContractID) ||
+		!validText(mandate.RemoteCustomerID) || !validText(mandate.Status) ||
+		mandate.Provider != domain.ProviderAsaas || mandate.Value.Centavos <= 0 ||
+		mandate.Value.Currency != "BRL" || mandate.StartDate.IsZero() ||
+		mandate.ConsentAt.IsZero() || !validText(mandate.ConsentVersion) || mandate.LastEventAt.IsZero() {
+		return domain.ErrInvalid
+	}
+	if err := mandate.Environment.Validate(); err != nil {
+		return err
+	}
+	if len(mandate.ContractID) > 35 {
+		return domain.ErrInvalid
+	}
+	uid, err := toUUID(mandate.ID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	accountID, err := toUUID(mandate.AccountID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	orderID, err := toUUID(mandate.OrderID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	_, err = qpay.New(s.Pool).UpsertPaymentMandate(ctx, qpay.UpsertPaymentMandateParams{
+		ID: uid, AccountID: accountID, OfferID: mandate.OfferID, OrderID: orderID,
+		Environment: string(mandate.Environment), Merchant: mandate.Merchant,
+		RemoteAuthorizationID: mandate.RemoteAuthorizationID,
+		RemoteSubscriptionID:  nullableText(mandate.RemoteSubscriptionID),
+		ContractID:            mandate.ContractID, RemoteCustomerID: mandate.RemoteCustomerID,
+		Status: mandate.Status, ValueCentavos: mandate.Value.Centavos,
+		StartDate: dateValue(mandate.StartDate), FinishDate: dateValue(mandate.FinishDate),
+		ConsentVersion: mandate.ConsentVersion, ConsentAt: stamp(mandate.ConsentAt),
+		LastEventAt: stamp(mandate.LastEventAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return dbError(err)
+	}
+	return nil
+}
+
+func (s *Store) MandateForAccount(ctx context.Context, accountID, offerID string) (app.MandateRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.MandateRecord{}, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(offerID) {
+		return app.MandateRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentMandateForAccount(ctx, qpay.GetPaymentMandateForAccountParams{AccountID: uid, OfferID: offerID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MandateRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.MandateRecord{}, dbError(err)
+	}
+	return mandateRecord(row), nil
+}
+
+func (s *Store) MandateByRemote(ctx context.Context, environment domain.Environment, merchant, remoteID string) (app.MandateRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.MandateRecord{}, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return app.MandateRecord{}, err
+	}
+	if !validText(merchant) || !validText(remoteID) {
+		return app.MandateRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentMandateByRemote(ctx, qpay.GetPaymentMandateByRemoteParams{
+		Environment: string(environment), Merchant: merchant, RemoteAuthorizationID: remoteID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MandateRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.MandateRecord{}, dbError(err)
+	}
+	return mandateRecord(row), nil
+}
+
+func (s *Store) MandateForSubscription(ctx context.Context, environment domain.Environment, merchant, subscriptionID string) (app.MandateRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.MandateRecord{}, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return app.MandateRecord{}, err
+	}
+	if !validText(merchant) || !validText(subscriptionID) {
+		return app.MandateRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentMandateForSubscription(ctx, qpay.GetPaymentMandateForSubscriptionParams{
+		Environment: string(environment), Merchant: merchant,
+		RemoteSubscriptionID: nullableText(subscriptionID),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MandateRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.MandateRecord{}, dbError(err)
+	}
+	return mandateRecord(row), nil
+}
+
+func mandateRecord(row qpay.PaymentMandate) app.MandateRecord {
+	mandate := app.MandateRecord{
+		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
+		OrderID: uuidText(row.OrderID), Environment: domain.Environment(row.Environment),
+		Merchant: row.Merchant, Provider: domain.Provider(row.Provider),
+		RemoteAuthorizationID: row.RemoteAuthorizationID, RemoteSubscriptionID: textValue(row.RemoteSubscriptionID),
+		ContractID: row.ContractID, RemoteCustomerID: row.RemoteCustomerID,
+		Status: row.Status, Frequency: row.Frequency, Value: domain.BRL(row.ValueCentavos),
+		StartDate: row.StartDate.Time, ConsentVersion: row.ConsentVersion,
+		ConsentAt: row.ConsentAt.Time, LastEventAt: row.LastEventAt.Time,
+	}
+	if row.FinishDate.Valid {
+		mandate.FinishDate = row.FinishDate.Time
+	}
+	return mandate
 }
 
 func contractRecord(row qpay.PaymentContract) app.ContractRecord {
@@ -1269,6 +1404,13 @@ func uuidText(id pgtype.UUID) string {
 
 func sameUUID(a, b pgtype.UUID) bool {
 	return uuidText(a) == uuidText(b)
+}
+
+func dateValue(value time.Time) pgtype.Date {
+	if value.IsZero() {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: value.UTC(), Valid: true}
 }
 
 func stamp(value time.Time) pgtype.Timestamptz {

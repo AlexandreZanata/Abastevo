@@ -1,5 +1,14 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-12 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-11 `65ffd486`. Migration 000125 adds
+  Pix Automático mandates with explicit consent audit, bounded authorization,
+  provider-owned SUBSCRIPTION mode, refusal/expiry/cancel/reconcile and lost-reply
+  recovery. Initial paid period is independent from mandate status; MERCHANT
+  eligibility remains an external gate. [PAY-12 evidence](../backend/evidence/payments/PAY-12.md):
+  Asaas adapter/PostGIS Pix-Auto and full race/Play suites PASS. No worker/route/
+  provider proof/sale. Next: PAY-13 cycles only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-11 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-10 `2529e167`. Migration 000124 adds
   provider subscription contracts separate from invoice grants; Stripe lifecycle

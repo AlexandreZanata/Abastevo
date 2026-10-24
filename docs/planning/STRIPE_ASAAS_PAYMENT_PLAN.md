@@ -209,6 +209,10 @@ PAY-11 is LOCAL_DONE: Stripe provider subscriptions are persisted separately fro
 invoice-funded grants, lifecycle/SCA/past-due/cancel/reconcile and constrained
 owner portal are implemented; cancellation preserves only paid-through and
 invoice creation grants nothing.
+PAY-12 is LOCAL_DONE: Pix Automático consent/authorization, mandate persistence,
+initial paid-period independence, refusal/expiry/cancel and lost-reply recovery
+are implemented; merchant eligibility remains an external gate and auto Pix stays
+disabled until proof.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

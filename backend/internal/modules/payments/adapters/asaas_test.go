@@ -248,6 +248,7 @@ func TestAsaasServerErrorAmbiguous(t *testing.T) {
 }
 
 func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
+	const orderID = "66666666-6666-4666-8666-666666666666"
 	event := app.InboxRecord{InboxEvent: app.InboxEvent{
 		Provider: domain.ProviderAsaas, Environment: domain.EnvironmentTest,
 		Merchant: "merchant_1", EventID: "evt_pay", EventType: "PAYMENT_RECEIVED",
@@ -259,11 +260,11 @@ func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id": "pay_1", "customer": "cus_synthetic", "status": "RECEIVED",
-			"externalReference": "order_1", "value": 12.34, "dueDate": "2026-10-24",
+			"externalReference": orderID, "value": 12.34, "dueDate": "2026-10-24",
 		})
 	}))
 	candidate, err := provider.VerifySettlement(context.Background(), event)
-	if err != nil || candidate.OrderID != "order_1" || candidate.CustomerID != "cus_synthetic" ||
+	if err != nil || candidate.OrderID != orderID || candidate.CustomerID != "cus_synthetic" ||
 		candidate.Provider != domain.ProviderAsaas || !candidate.Amount.Equal(domain.BRL(1234)) {
 		t.Fatalf("candidate=%+v err=%v", candidate, err)
 	}
@@ -271,7 +272,7 @@ func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
 	provider = asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id": "pay_1", "customer": "cus_synthetic", "status": "PENDING",
-			"externalReference": "order_1", "value": 12.34, "dueDate": "2026-10-24",
+			"externalReference": orderID, "value": 12.34, "dueDate": "2026-10-24",
 		})
 	}))
 	if _, err := provider.VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrNotSettled) {
@@ -280,5 +281,68 @@ func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
 	event.EventType = "PAYMENT_CREATED"
 	if _, err := provider.VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrIgnored) {
 		t.Fatalf("ignored err=%v", err)
+	}
+}
+
+func TestAsaasPixAutoAuthorizationContract(t *testing.T) {
+	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v3/pix/automatic/authorizations":
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			immediate, _ := body["immediateQrCode"].(map[string]any)
+			if body["frequency"] != "MONTHLY" || body["contractId"] != "contract_1" ||
+				body["customerId"] != "cus_1" || body["paymentCreationMode"] != "SUBSCRIPTION" ||
+				body["retryPolicy"] != "NOT_ALLOWED" || immediate == nil ||
+				immediate["expirationSeconds"] != float64(3600) {
+				t.Fatalf("body=%v", body)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "auth_1", "customerId": "cus_1", "contractId": "contract_1", "status": "CREATED",
+				"value": 12.34, "startDate": "2026-10-24", "finishDate": "2027-10-24",
+				"subscriptionId": "sub_1", "payload": "qr", "encodedImage": "image",
+				"immediateQrCode": map[string]any{"expirationDate": "2026-10-24 23:59:59"},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/pix/automatic/authorizations/auth_1":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "auth_1", "customerId": "cus_1", "contractId": "contract_1", "status": "REFUSED",
+				"value": 12.34, "startDate": "2026-10-24",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/pix/automatic/authorizations":
+			if r.URL.Query().Get("customerId") != "cus_1" {
+				t.Fatalf("query=%s", r.URL.RawQuery)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{"id": "auth_1", "customerId": "cus_1", "contractId": "contract_1",
+					"status": "CREATED", "value": 12.34, "startDate": "2026-10-24"}},
+				"totalCount": 1, "hasMore": false,
+			})
+		case r.Method == http.MethodDelete && r.URL.Path == "/v3/pix/automatic/authorizations/auth_1":
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	created, err := provider.CreatePixAutoAuthorization(context.Background(), app.PixAutoProviderRequest{
+		CustomerID: "cus_1", ContractID: "contract_1", Environment: domain.EnvironmentTest,
+		MerchantID: "merchant_1", Value: domain.BRL(1234), StartDate: time.Now(),
+		FinishDate: time.Now().AddDate(1, 0, 0), ImmediateExpiration: time.Hour,
+	})
+	if err != nil || created.ID != "auth_1" || created.Status != "CREATED" || created.QRCode != "qr" ||
+		created.RemoteSubscriptionID != "sub_1" || !created.Value.Equal(domain.BRL(1234)) {
+		t.Fatalf("created=%+v err=%v", created, err)
+	}
+	retrieved, err := provider.RetrievePixAutoAuthorization(context.Background(), "auth_1")
+	if err != nil || retrieved.Status != "REFUSED" {
+		t.Fatalf("retrieved=%+v err=%v", retrieved, err)
+	}
+	found, ok, definitive, err := provider.FindPixAutoAuthorization(context.Background(), "cus_1", "contract_1")
+	if err != nil || !ok || !definitive || found.ID != "auth_1" {
+		t.Fatalf("found=%+v ok=%v definitive=%v err=%v", found, ok, definitive, err)
+	}
+	if err := provider.CancelPixAutoAuthorization(context.Background(), "auth_1"); err != nil {
+		t.Fatal(err)
 	}
 }

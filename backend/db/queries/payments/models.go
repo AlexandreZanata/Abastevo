@@ -136,6 +136,30 @@ type PaymentInbox struct {
 	LastError    string             `json:"last_error"`
 }
 
+type PaymentMandate struct {
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	OfferID               string             `json:"offer_id"`
+	OrderID               pgtype.UUID        `json:"order_id"`
+	Environment           string             `json:"environment"`
+	Merchant              string             `json:"merchant"`
+	Provider              string             `json:"provider"`
+	RemoteAuthorizationID string             `json:"remote_authorization_id"`
+	RemoteSubscriptionID  pgtype.Text        `json:"remote_subscription_id"`
+	ContractID            string             `json:"contract_id"`
+	RemoteCustomerID      string             `json:"remote_customer_id"`
+	Status                string             `json:"status"`
+	Frequency             string             `json:"frequency"`
+	ValueCentavos         int64              `json:"value_centavos"`
+	StartDate             pgtype.Date        `json:"start_date"`
+	FinishDate            pgtype.Date        `json:"finish_date"`
+	ConsentVersion        string             `json:"consent_version"`
+	ConsentAt             pgtype.Timestamptz `json:"consent_at"`
+	LastEventAt           pgtype.Timestamptz `json:"last_event_at"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PaymentOperation struct {
 	ID           pgtype.UUID        `json:"id"`
 	AccountID    pgtype.UUID        `json:"account_id"`

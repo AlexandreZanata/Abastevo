@@ -70,6 +70,7 @@ type PixPaymentRequest struct {
 type PixPayment struct {
 	ID                string
 	CustomerID        string
+	SubscriptionID    string
 	ExternalReference string
 	Amount            domain.Money
 	Status            string

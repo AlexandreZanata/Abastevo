@@ -37,6 +37,13 @@ func (s *SettlementService) Process(ctx context.Context, event InboxRecord) erro
 		candidate.Merchant != event.Merchant {
 		return s.conflict(ctx, event, domain.ErrBinding)
 	}
+	if candidate.OrderID == "" && candidate.RemoteSubscriptionID != "" {
+		mandate, err := s.Store.MandateForSubscription(ctx, candidate.Environment, candidate.Merchant, candidate.RemoteSubscriptionID)
+		if err != nil {
+			return s.conflict(ctx, event, err)
+		}
+		candidate.OrderID = mandate.OrderID
+	}
 	order, err := s.Store.GetOrder(ctx, candidate.OrderID)
 	if err != nil {
 		return s.conflict(ctx, event, err)
@@ -112,11 +119,10 @@ func (s *SettlementService) ProcessPending(ctx context.Context, provider domain.
 }
 
 func (s *SettlementService) conflict(ctx context.Context, event InboxRecord, cause error) error {
-	_ = cause
 	if err := s.Store.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "settlement-binding"); err != nil {
 		return err
 	}
-	return domain.ErrConflict
+	return errors.Join(domain.ErrConflict, cause)
 }
 
 func settlementUUID(provider domain.Provider, remoteID string) string {

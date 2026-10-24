@@ -512,7 +512,7 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := migrate.Apply(ctx, dsn, target)
-	if err != nil || len(applied) != 2 || applied[0] != "000123" || applied[1] != "000124" {
+	if err != nil || len(applied) != 3 || applied[0] != "000123" || applied[1] != "000124" || applied[2] != "000125" {
 		t.Fatalf("upgrade applied=%v err=%v", applied, err)
 	}
 	again, err := migrate.Apply(ctx, dsn, target)

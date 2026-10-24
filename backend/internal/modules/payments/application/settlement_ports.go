@@ -14,16 +14,17 @@ var (
 )
 
 type SettlementCandidate struct {
-	OrderID         string
-	Provider        domain.Provider
-	Environment     domain.Environment
-	Merchant        string
-	Channel         domain.Channel
-	CustomerID      string
-	RemotePaymentID string
-	ProviderStatus  string
-	Amount          domain.Money
-	SettledAt       time.Time
+	OrderID              string
+	Provider             domain.Provider
+	Environment          domain.Environment
+	Merchant             string
+	Channel              domain.Channel
+	CustomerID           string
+	RemotePaymentID      string
+	RemoteSubscriptionID string
+	ProviderStatus       string
+	Amount               domain.Money
+	SettledAt            time.Time
 }
 
 type SettlementVerifier interface {

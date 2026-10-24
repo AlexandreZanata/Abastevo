@@ -130,6 +130,7 @@ type SettlementStore interface {
 	GetOrder(context.Context, string) (domain.Order, error)
 	AttemptForOrder(context.Context, string) (AttemptRecord, error)
 	Customer(context.Context, string, domain.Provider, domain.Environment, string) (string, bool, error)
+	MandateForSubscription(context.Context, domain.Environment, string, string) (MandateRecord, error)
 	RecordSettlement(context.Context, SettlementInput) (SettlementOutcome, error)
 	MarkInbox(context.Context, InboxEvent, string, string) error
 	RevokeGrant(context.Context, string, time.Time) error

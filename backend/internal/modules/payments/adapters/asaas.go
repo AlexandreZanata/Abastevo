@@ -146,6 +146,87 @@ func (p *AsaasProvider) FindPayment(ctx context.Context, externalReference strin
 	return app.PixPayment{}, false, complete, nil
 }
 
+func (p *AsaasProvider) CreatePixAutoAuthorization(ctx context.Context, request app.PixAutoProviderRequest) (app.PixAutoAuthorization, error) {
+	location, err := time.LoadLocation(domain.BillingTimezone)
+	if err != nil {
+		return app.PixAutoAuthorization{}, domain.ErrUnavailable
+	}
+	body := map[string]any{
+		"frequency": "MONTHLY", "contractId": request.ContractID,
+		"startDate":  request.StartDate.In(location).Format("2006-01-02"),
+		"customerId": request.CustomerID, "value": json.Number(request.Value.String()),
+		"paymentCreationMode": "SUBSCRIPTION", "retryPolicy": "NOT_ALLOWED",
+		"description": "Abastevo Premium",
+		"immediateQrCode": map[string]any{
+			"expirationSeconds": int64(request.ImmediateExpiration / time.Second),
+			"originalValue":     json.Number(request.Value.String()),
+		},
+	}
+	if !request.FinishDate.IsZero() {
+		body["finishDate"] = request.FinishDate.In(location).Format("2006-01-02")
+	}
+	var response asaasPixAuto
+	if err := p.do(ctx, http.MethodPost, "/v3/pix/automatic/authorizations", body, &response); err != nil {
+		return app.PixAutoAuthorization{}, err
+	}
+	return mapPixAuto(response, location)
+}
+
+func (p *AsaasProvider) RetrievePixAutoAuthorization(ctx context.Context, id string) (app.PixAutoAuthorization, error) {
+	if !validAsaasID(id) {
+		return app.PixAutoAuthorization{}, domain.ErrInvalid
+	}
+	var response asaasPixAuto
+	if err := p.do(ctx, http.MethodGet, "/v3/pix/automatic/authorizations/"+url.PathEscape(id), nil, &response); err != nil {
+		return app.PixAutoAuthorization{}, err
+	}
+	location, err := time.LoadLocation(domain.BillingTimezone)
+	if err != nil {
+		return app.PixAutoAuthorization{}, domain.ErrUnavailable
+	}
+	return mapPixAuto(response, location)
+}
+
+func (p *AsaasProvider) FindPixAutoAuthorization(ctx context.Context, customerID, contractID string) (app.PixAutoAuthorization, bool, bool, error) {
+	if !validAsaasID(customerID) || contractID == "" {
+		return app.PixAutoAuthorization{}, false, false, domain.ErrInvalid
+	}
+	var list asaasPixAutoList
+	query := url.Values{"customerId": {customerID}, "limit": {"100"}}
+	if err := p.do(ctx, http.MethodGet, "/v3/pix/automatic/authorizations?"+query.Encode(), nil, &list); err != nil {
+		return app.PixAutoAuthorization{}, false, false, err
+	}
+	location, err := time.LoadLocation(domain.BillingTimezone)
+	if err != nil {
+		return app.PixAutoAuthorization{}, false, false, domain.ErrUnavailable
+	}
+	var matches []asaasPixAuto
+	for _, item := range list.Data {
+		if item.ContractID == contractID {
+			matches = append(matches, item)
+		}
+	}
+	if len(matches) > 1 {
+		return app.PixAutoAuthorization{}, false, false, domain.ErrConflict
+	}
+	if len(matches) == 1 {
+		result, err := mapPixAuto(matches[0], location)
+		if err != nil {
+			return app.PixAutoAuthorization{}, false, false, err
+		}
+		return result, true, true, nil
+	}
+	complete := !list.HasMore && list.TotalCount <= len(list.Data)
+	return app.PixAutoAuthorization{}, false, complete, nil
+}
+
+func (p *AsaasProvider) CancelPixAutoAuthorization(ctx context.Context, id string) error {
+	if !validAsaasID(id) {
+		return domain.ErrInvalid
+	}
+	return p.do(ctx, http.MethodDelete, "/v3/pix/automatic/authorizations/"+url.PathEscape(id), nil, nil)
+}
+
 func (p *AsaasProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
 	if event.EventType != "PAYMENT_RECEIVED" || event.ResourceType != "payment" {
 		return app.SettlementCandidate{}, app.ErrIgnored
@@ -161,11 +242,16 @@ func (p *AsaasProvider) VerifySettlement(ctx context.Context, event app.InboxRec
 	if settledAt.IsZero() {
 		settledAt = time.Now().UTC()
 	}
+	orderID := payment.ExternalReference
+	if !domain.ValidID(orderID) {
+		orderID = ""
+	}
 	return app.SettlementCandidate{
-		OrderID: payment.ExternalReference, Provider: domain.ProviderAsaas,
+		OrderID: orderID, Provider: domain.ProviderAsaas,
 		Environment: p.Environment, Merchant: event.Merchant, Channel: domain.ChannelPixManual,
 		CustomerID: payment.CustomerID, RemotePaymentID: payment.ID,
-		ProviderStatus: payment.ProviderStatus, Amount: payment.Amount, SettledAt: settledAt,
+		RemoteSubscriptionID: payment.SubscriptionID, ProviderStatus: payment.ProviderStatus,
+		Amount: payment.Amount, SettledAt: settledAt,
 	}, nil
 }
 
@@ -280,8 +366,9 @@ func mapAsaasPayment(payment asaasPayment, location *time.Location) (app.PixPaym
 		return app.PixPayment{}, domain.ErrBinding
 	}
 	result := app.PixPayment{
-		ID: payment.ID, CustomerID: payment.Customer, ExternalReference: payment.ExternalReference,
-		Amount: domain.BRL(amount), Status: payment.Status, ProviderStatus: payment.Status,
+		ID: payment.ID, CustomerID: payment.Customer, SubscriptionID: payment.Subscription,
+		ExternalReference: payment.ExternalReference, Amount: domain.BRL(amount),
+		Status: payment.Status, ProviderStatus: payment.Status,
 		Class: asaasPixClass(payment.Status),
 	}
 	if payment.DueDate != "" {
@@ -368,6 +455,7 @@ type asaasCustomerList struct {
 type asaasPayment struct {
 	ID                string      `json:"id"`
 	Customer          string      `json:"customer"`
+	Subscription      string      `json:"subscription"`
 	Status            string      `json:"status"`
 	ExternalReference string      `json:"externalReference"`
 	Value             json.Number `json:"value"`
@@ -378,6 +466,66 @@ type asaasPaymentList struct {
 	Data       []asaasPayment `json:"data"`
 	TotalCount int            `json:"totalCount"`
 	HasMore    bool           `json:"hasMore"`
+}
+
+type asaasPixAuto struct {
+	ID              string      `json:"id"`
+	CustomerID      string      `json:"customerId"`
+	ContractID      string      `json:"contractId"`
+	Status          string      `json:"status"`
+	SubscriptionID  string      `json:"subscriptionId"`
+	Value           json.Number `json:"value"`
+	StartDate       string      `json:"startDate"`
+	FinishDate      string      `json:"finishDate"`
+	Payload         string      `json:"payload"`
+	EncodedImage    string      `json:"encodedImage"`
+	ImmediateQrCode struct {
+		ExpirationDate string `json:"expirationDate"`
+	} `json:"immediateQrCode"`
+}
+
+type asaasPixAutoList struct {
+	Data       []asaasPixAuto `json:"data"`
+	TotalCount int            `json:"totalCount"`
+	HasMore    bool           `json:"hasMore"`
+}
+
+func mapPixAuto(response asaasPixAuto, location *time.Location) (app.PixAutoAuthorization, error) {
+	if response.ID == "" || response.CustomerID == "" || response.ContractID == "" || response.Status == "" ||
+		response.Value.String() == "" || len(response.ContractID) > 35 ||
+		(response.Payload != "" && len(response.Payload) > 4096) ||
+		(response.EncodedImage != "" && len(response.EncodedImage) > 64*1024) {
+		return app.PixAutoAuthorization{}, domain.ErrBinding
+	}
+	amount, err := parseBRLMinor(response.Value)
+	if err != nil {
+		return app.PixAutoAuthorization{}, domain.ErrBinding
+	}
+	result := app.PixAutoAuthorization{
+		ID: response.ID, CustomerID: response.CustomerID, ContractID: response.ContractID,
+		RemoteSubscriptionID: response.SubscriptionID, Status: response.Status,
+		Value: domain.BRL(amount), QRCode: response.Payload, QRImage: response.EncodedImage,
+	}
+	if response.StartDate != "" {
+		if value, err := time.ParseInLocation("2006-01-02", response.StartDate, location); err == nil {
+			result.StartDate = value.UTC()
+		}
+	}
+	if response.FinishDate != "" {
+		if value, err := time.ParseInLocation("2006-01-02", response.FinishDate, location); err == nil {
+			result.FinishDate = value.UTC()
+		}
+	}
+	if response.ImmediateQrCode.ExpirationDate != "" {
+		for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
+			if value, err := time.ParseInLocation(layout, response.ImmediateQrCode.ExpirationDate, location); err == nil {
+				expires := value.UTC()
+				result.ExpiresAt = &expires
+				break
+			}
+		}
+	}
+	return result, nil
 }
 
 type asaasQR struct {

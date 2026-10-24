@@ -288,6 +288,128 @@ func (q *Queries) GetPaymentInbox(ctx context.Context, arg GetPaymentInboxParams
 	return i, err
 }
 
+const getPaymentMandateByRemote = `-- name: GetPaymentMandateByRemote :one
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+  AND remote_authorization_id=$3
+`
+
+type GetPaymentMandateByRemoteParams struct {
+	Environment           string `json:"environment"`
+	Merchant              string `json:"merchant"`
+	RemoteAuthorizationID string `json:"remote_authorization_id"`
+}
+
+func (q *Queries) GetPaymentMandateByRemote(ctx context.Context, arg GetPaymentMandateByRemoteParams) (PaymentMandate, error) {
+	row := q.db.QueryRow(ctx, getPaymentMandateByRemote, arg.Environment, arg.Merchant, arg.RemoteAuthorizationID)
+	var i PaymentMandate
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.ContractID,
+		&i.RemoteCustomerID,
+		&i.Status,
+		&i.Frequency,
+		&i.ValueCentavos,
+		&i.StartDate,
+		&i.FinishDate,
+		&i.ConsentVersion,
+		&i.ConsentAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentMandateForAccount = `-- name: GetPaymentMandateForAccount :one
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+WHERE account_id=$1::uuid AND offer_id=$2
+ORDER BY updated_at DESC LIMIT 1
+`
+
+type GetPaymentMandateForAccountParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	OfferID   string      `json:"offer_id"`
+}
+
+func (q *Queries) GetPaymentMandateForAccount(ctx context.Context, arg GetPaymentMandateForAccountParams) (PaymentMandate, error) {
+	row := q.db.QueryRow(ctx, getPaymentMandateForAccount, arg.AccountID, arg.OfferID)
+	var i PaymentMandate
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.ContractID,
+		&i.RemoteCustomerID,
+		&i.Status,
+		&i.Frequency,
+		&i.ValueCentavos,
+		&i.StartDate,
+		&i.FinishDate,
+		&i.ConsentVersion,
+		&i.ConsentAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentMandateForSubscription = `-- name: GetPaymentMandateForSubscription :one
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+  AND remote_subscription_id=$3
+`
+
+type GetPaymentMandateForSubscriptionParams struct {
+	Environment          string      `json:"environment"`
+	Merchant             string      `json:"merchant"`
+	RemoteSubscriptionID pgtype.Text `json:"remote_subscription_id"`
+}
+
+func (q *Queries) GetPaymentMandateForSubscription(ctx context.Context, arg GetPaymentMandateForSubscriptionParams) (PaymentMandate, error) {
+	row := q.db.QueryRow(ctx, getPaymentMandateForSubscription, arg.Environment, arg.Merchant, arg.RemoteSubscriptionID)
+	var i PaymentMandate
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.ContractID,
+		&i.RemoteCustomerID,
+		&i.Status,
+		&i.Frequency,
+		&i.ValueCentavos,
+		&i.StartDate,
+		&i.FinishDate,
+		&i.ConsentVersion,
+		&i.ConsentAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPaymentOperationByKey = `-- name: GetPaymentOperationByKey :one
 SELECT id, account_id, provider, environment, merchant, operation_key, kind, payload_hash, order_id, state, generation, attempt_no, lease_until, remote_id, created_at, updated_at, completed_at FROM payment_operations
 WHERE account_id=$1::uuid AND provider=$2 AND environment=$3
@@ -1232,6 +1354,94 @@ func (q *Queries) UpsertPaymentContract(ctx context.Context, arg UpsertPaymentCo
 		&i.RemoteCustomerID,
 		&i.ProviderStatus,
 		&i.CancelAtPeriodEnd,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertPaymentMandate = `-- name: UpsertPaymentMandate :one
+INSERT INTO payment_mandates(
+ id,account_id,offer_id,order_id,environment,merchant,provider,remote_authorization_id,
+ remote_subscription_id,contract_id,remote_customer_id,status,frequency,value_centavos,
+ start_date,finish_date,consent_version,consent_at,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4::uuid,
+ $5,$6,'asaas',$7,
+ $8,$9,$10,
+ $11,'MONTHLY',$12::bigint,$13::date,
+ $14::date,$15,$16::timestamptz,
+ $17::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_authorization_id) DO UPDATE SET
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_mandates.remote_subscription_id),
+ status=EXCLUDED.status,finish_date=EXCLUDED.finish_date,last_event_at=EXCLUDED.last_event_at,
+ updated_at=clock_timestamp()
+WHERE payment_mandates.last_event_at <= EXCLUDED.last_event_at
+RETURNING id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at
+`
+
+type UpsertPaymentMandateParams struct {
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	OfferID               string             `json:"offer_id"`
+	OrderID               pgtype.UUID        `json:"order_id"`
+	Environment           string             `json:"environment"`
+	Merchant              string             `json:"merchant"`
+	RemoteAuthorizationID string             `json:"remote_authorization_id"`
+	RemoteSubscriptionID  pgtype.Text        `json:"remote_subscription_id"`
+	ContractID            string             `json:"contract_id"`
+	RemoteCustomerID      string             `json:"remote_customer_id"`
+	Status                string             `json:"status"`
+	ValueCentavos         int64              `json:"value_centavos"`
+	StartDate             pgtype.Date        `json:"start_date"`
+	FinishDate            pgtype.Date        `json:"finish_date"`
+	ConsentVersion        string             `json:"consent_version"`
+	ConsentAt             pgtype.Timestamptz `json:"consent_at"`
+	LastEventAt           pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) UpsertPaymentMandate(ctx context.Context, arg UpsertPaymentMandateParams) (PaymentMandate, error) {
+	row := q.db.QueryRow(ctx, upsertPaymentMandate,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.OrderID,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteAuthorizationID,
+		arg.RemoteSubscriptionID,
+		arg.ContractID,
+		arg.RemoteCustomerID,
+		arg.Status,
+		arg.ValueCentavos,
+		arg.StartDate,
+		arg.FinishDate,
+		arg.ConsentVersion,
+		arg.ConsentAt,
+		arg.LastEventAt,
+	)
+	var i PaymentMandate
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.ContractID,
+		&i.RemoteCustomerID,
+		&i.Status,
+		&i.Frequency,
+		&i.ValueCentavos,
+		&i.StartDate,
+		&i.FinishDate,
+		&i.ConsentVersion,
+		&i.ConsentAt,
 		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

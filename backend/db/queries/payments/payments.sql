@@ -214,3 +214,38 @@ ORDER BY updated_at DESC LIMIT 1;
 SELECT * FROM payment_contracts
 WHERE provider='stripe' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
   AND remote_subscription_id=sqlc.arg(remote_subscription_id);
+
+-- name: UpsertPaymentMandate :one
+INSERT INTO payment_mandates(
+ id,account_id,offer_id,order_id,environment,merchant,provider,remote_authorization_id,
+ remote_subscription_id,contract_id,remote_customer_id,status,frequency,value_centavos,
+ start_date,finish_date,consent_version,consent_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(order_id)::uuid,
+ sqlc.arg(environment),sqlc.arg(merchant),'asaas',sqlc.arg(remote_authorization_id),
+ sqlc.narg(remote_subscription_id),sqlc.arg(contract_id),sqlc.arg(remote_customer_id),
+ sqlc.arg(status),'MONTHLY',sqlc.arg(value_centavos)::bigint,sqlc.arg(start_date)::date,
+ sqlc.narg(finish_date)::date,sqlc.arg(consent_version),sqlc.arg(consent_at)::timestamptz,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_authorization_id) DO UPDATE SET
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_mandates.remote_subscription_id),
+ status=EXCLUDED.status,finish_date=EXCLUDED.finish_date,last_event_at=EXCLUDED.last_event_at,
+ updated_at=clock_timestamp()
+WHERE payment_mandates.last_event_at <= EXCLUDED.last_event_at
+RETURNING *;
+
+-- name: GetPaymentMandateForAccount :one
+SELECT * FROM payment_mandates
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id)
+ORDER BY updated_at DESC LIMIT 1;
+
+-- name: GetPaymentMandateByRemote :one
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id);
+
+-- name: GetPaymentMandateForSubscription :one
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_subscription_id=sqlc.arg(remote_subscription_id);

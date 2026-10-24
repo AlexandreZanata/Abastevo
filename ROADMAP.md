@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–11 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-12–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–12 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-13–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3752,7 +3752,9 @@ with [evidence](docs/backend/evidence/payments/PAY-09.md), and PAY-10
 [settlement/access projection](backend/internal/modules/payments/application/settlement.go)
 with [evidence](docs/backend/evidence/payments/PAY-10.md), and PAY-11
 [Stripe lifecycle/portal](backend/internal/modules/payments/application/lifecycle.go)
-with [evidence](docs/backend/evidence/payments/PAY-11.md), are local only. The
+with [evidence](docs/backend/evidence/payments/PAY-11.md), and PAY-12
+[Pix Automático](backend/internal/modules/payments/application/pix_auto.go)
+with [evidence](docs/backend/evidence/payments/PAY-12.md), are local only. The
 checklist owns dependencies, steps, risk checks, shared-path coordination,
 evidence and commit topic.
 
@@ -3783,7 +3785,9 @@ evidence and commit topic.
   capability projection pass real PostGIS and Play-regression tests.
 - **PAY-11:** Complete Stripe recurring lifecycle. LOCAL_DONE; provider contracts
   separate from grants, SCA/past-due/cancel/reconcile and constrained portal pass.
-- **PAY-12:** Integrate Pix Automatic consent and authorization.
+- **PAY-12:** Integrate Pix Automatic consent and authorization. LOCAL_DONE;
+  explicit consent, mandate/refusal/expiry/cancel, independent first period and
+  lost-reply recovery pass; merchant eligibility remains external.
 - **PAY-13:** Complete Pix Automatic recurring cycles.
 - **PAY-14:** Fence plan changes and cross-provider switching.
 - **PAY-15:** Complete cancellation and account exits.
