@@ -1,5 +1,7 @@
 package com.anpfuel.data.di
 
+import androidx.room.withTransaction
+
 import com.anpfuel.application.port.AnonymousContributionFlagProvider
 import com.anpfuel.application.port.AnonymousDeviceKeyPort
 import com.anpfuel.application.port.CaptureOcrFlagProvider
@@ -73,6 +75,7 @@ import com.anpfuel.application.usecase.sync.SelectWeekAndSyncUseCase
 import com.anpfuel.application.sync.SyncExecutionLock
 import com.anpfuel.application.usecase.sync.SyncPriceTablesUseCase
 import com.anpfuel.application.usecase.vehicle.DeleteVehicleUseCase
+import com.anpfuel.application.usecase.vehicle.GetVehicleAdmissionStatusUseCase
 import com.anpfuel.application.usecase.vehicle.GetVehicleUseCase
 import com.anpfuel.application.usecase.vehicle.GetTankFillCostEstimatesUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
@@ -462,10 +465,279 @@ object UseCaseModule {
     fun provideSaveVehicleUseCase(
         vehicleRepository: VehicleRepository,
         eventPublisher: DomainEventPublisher,
+        admissionRepository: com.anpfuel.domain.repository.VehicleAdmissionRepository,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
     ): SaveVehicleUseCase = SaveVehicleUseCase(
         vehicleRepository = vehicleRepository,
         eventPublisher = eventPublisher,
+        admissionRepository = admissionRepository,
+        sessions = sessions,
+        origin = environment.origin,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetVehicleAdmissionStatusUseCase(
+        admissionRepository: com.anpfuel.domain.repository.VehicleAdmissionRepository,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): GetVehicleAdmissionStatusUseCase = GetVehicleAdmissionStatusUseCase(
+        admissionRepository = admissionRepository,
+        sessions = sessions,
+        origin = environment.origin,
+    )
+
+    @Provides
+    @Singleton
+    fun provideSaveLedgerDraftUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.SaveLedgerDraftUseCase =
+        com.anpfuel.application.usecase.ledger.SaveLedgerDraftUseCase(
+            drafts = drafts,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideEnqueueLedgerCommandUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.EnqueueLedgerCommandUseCase =
+        com.anpfuel.application.usecase.ledger.EnqueueLedgerCommandUseCase(
+            drafts = drafts,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideRecoverLedgerOutboxUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+    ): com.anpfuel.application.usecase.ledger.RecoverLedgerOutboxUseCase =
+        com.anpfuel.application.usecase.ledger.RecoverLedgerOutboxUseCase(
+            commands = commands,
+        )
+
+    @Provides
+    @Singleton
+    fun provideDispatchLedgerCommandUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        gateway: com.anpfuel.domain.repository.LedgerSyncGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        flags: com.anpfuel.application.port.LedgerSyncFlagProvider,
+        syncScope: com.anpfuel.domain.repository.LedgerSyncScope,
+        acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+    ): com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase =
+        com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase(
+            outbox = commands,
+            gateway = gateway,
+            sessions = sessions,
+            origin = environment.origin,
+            enabled = flags::isEnabled,
+            syncScope = syncScope,
+            acks = acks,
+            erasures = erasures,
+        )
+
+    @Provides
+    @Singleton
+    fun provideResolveLedgerConflictUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        decoder: com.anpfuel.domain.repository.LedgerDraftDecoder,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
+    ): com.anpfuel.application.usecase.ledger.ResolveLedgerConflictUseCase =
+        com.anpfuel.application.usecase.ledger.ResolveLedgerConflictUseCase(
+            drafts = drafts,
+            commands = commands,
+            records = records,
+            sessions = sessions,
+            origin = environment.origin,
+            erasures = erasures,
+            decoder = decoder,
+            localTransaction = { block -> database.withTransaction { block() } },
+        )
+
+    @Provides
+    @Singleton
+    fun providePreviewLedgerRestoreUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.PreviewLedgerRestoreUseCase =
+        com.anpfuel.application.usecase.ledger.PreviewLedgerRestoreUseCase(
+            drafts = drafts,
+            commands = commands,
+            erasures = erasures,
+            records = records,
+            sessions = sessions,
+            scope = scope,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideConfirmLedgerRestoreUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        records: com.anpfuel.domain.repository.LedgerRecordsGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        decoder: com.anpfuel.domain.repository.LedgerDraftDecoder,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
+    ): com.anpfuel.application.usecase.ledger.ConfirmLedgerRestoreUseCase =
+        com.anpfuel.application.usecase.ledger.ConfirmLedgerRestoreUseCase(
+            drafts = drafts,
+            commands = commands,
+            erasures = erasures,
+            records = records,
+            sessions = sessions,
+            scope = scope,
+            origin = environment.origin,
+            decoder = decoder,
+            localTransaction = { block -> database.withTransaction { block() } },
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetLedgerSyncStatusUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        flags: com.anpfuel.application.port.LedgerSyncFlagProvider,
+        scope: com.anpfuel.domain.repository.LedgerSyncScope,
+    ): com.anpfuel.application.usecase.ledger.GetLedgerSyncStatusUseCase =
+        com.anpfuel.application.usecase.ledger.GetLedgerSyncStatusUseCase(
+            commands = commands,
+            acks = acks,
+            sessions = sessions,
+            origin = environment.origin,
+            flags = flags,
+            scope = scope,
+        )
+
+    @Provides
+    @Singleton
+    fun provideListLedgerEntriesUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+        vehicles: com.anpfuel.domain.repository.VehicleRepository,
+    ): com.anpfuel.application.usecase.ledger.ListLedgerEntriesUseCase =
+        com.anpfuel.application.usecase.ledger.ListLedgerEntriesUseCase(
+            drafts = drafts,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+            vehicles = vehicles,
+        )
+
+    @Provides
+    @Singleton
+    fun provideDeleteLedgerEntryUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        database: com.anpfuel.data.local.AnpFuelDatabase,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.DeleteLedgerEntryUseCase =
+        com.anpfuel.application.usecase.ledger.DeleteLedgerEntryUseCase(
+            drafts = drafts,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+            erasures = erasures,
+            localTransaction = { block -> database.withTransaction { block() } },
+        )
+
+    @Provides
+    @Singleton
+    fun provideDeclareLedgerGapUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.DeclareLedgerGapUseCase =
+        com.anpfuel.application.usecase.ledger.DeclareLedgerGapUseCase(
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideResetLedgerSegmentUseCase(
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.ResetLedgerSegmentUseCase =
+        com.anpfuel.application.usecase.ledger.ResetLedgerSegmentUseCase(
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideEstimatedEfficiencyUseCase(
+        store: com.anpfuel.application.port.EstimatedEfficiencyStore,
+    ): com.anpfuel.application.usecase.ledger.EstimatedEfficiencyUseCase =
+        com.anpfuel.application.usecase.ledger.EstimatedEfficiencyUseCase(
+            store = store,
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetMonthlyIndicatorsUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        vehicles: com.anpfuel.domain.repository.VehicleRepository,
+        efficiency: com.anpfuel.application.port.EstimatedEfficiencyStore,
+        commands: com.anpfuel.domain.repository.PremiumCommandStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.GetMonthlyIndicatorsUseCase =
+        com.anpfuel.application.usecase.ledger.GetMonthlyIndicatorsUseCase(
+            drafts = drafts,
+            vehicles = vehicles,
+            efficiency = efficiency,
+            commands = commands,
+            sessions = sessions,
+            origin = environment.origin,
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetLedgerEntryDraftUseCase(
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+        @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    ): com.anpfuel.application.usecase.ledger.GetLedgerEntryDraftUseCase =
+        com.anpfuel.application.usecase.ledger.GetLedgerEntryDraftUseCase(
+            drafts = drafts,
+            sessions = sessions,
+            origin = environment.origin,
+        )
 
     @Provides
     @Singleton
@@ -704,4 +976,26 @@ object UseCaseModule {
         gateway = gateway,
         cache = cache,
     )
+
+    @Provides
+    @Singleton
+    fun provideGetPriceRankingUseCase(
+        gateway: com.anpfuel.domain.repository.PriceRankingGateway,
+        catalog: com.anpfuel.domain.repository.MunicipalityIbgeLookup,
+    ): com.anpfuel.application.usecase.ranking.GetPriceRankingUseCase =
+        com.anpfuel.application.usecase.ranking.GetPriceRankingUseCase(
+            gateway = gateway,
+            catalog = catalog,
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetPremiumStatusUseCase(
+        gateway: com.anpfuel.domain.repository.PremiumStatusGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase =
+        com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
 }

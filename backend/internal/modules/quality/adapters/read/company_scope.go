@@ -16,6 +16,8 @@ import (
 )
 
 type CompanyIdentityProbe func(context.Context, []string) ([]domain.IdentityEvidence, error)
+type CompanyIdentityTxProbe func(context.Context, pgx.Tx, []string) ([]domain.IdentityEvidence, error)
+
 type CompanyIdentityGuard func(context.Context, pgx.Tx, []application.CompanyBinding) error
 
 // WithCompanyIdentity composes Directory-owned reads/locks without sharing its
@@ -24,6 +26,14 @@ func (r *Reader) WithCompanyIdentity(probe CompanyIdentityProbe, guard CompanyId
 	clone := *r
 	clone.companyProbe = probe
 	clone.companyGuard = guard
+	return &clone
+}
+
+// WithCompanyIdentityTx supplies the Directory-owned in-transaction evidence
+// port for bounded multi-batch reads without a nested pool acquisition.
+func (r *Reader) WithCompanyIdentityTx(probe CompanyIdentityTxProbe) *Reader {
+	clone := *r
+	clone.companyTxProbe = probe
 	return &clone
 }
 

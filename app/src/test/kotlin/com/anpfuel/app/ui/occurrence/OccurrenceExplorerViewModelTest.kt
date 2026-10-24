@@ -71,6 +71,28 @@ class OccurrenceExplorerViewModelTest {
         assertTrue(viewModel.state.value.filter.isEmpty())
     }
 
+    @Test fun `repeated refresh does not restart an active equivalent read`() = runTest(dispatcher) {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var calls = 0
+        val slow = object : OccurrenceGateway by gateway() {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?): OccurrencePage<OccurrenceRecord> {
+                calls++
+                gate.await()
+                return OccurrencePage(listOf(record), null, lease, false)
+            }
+        }
+        val viewModel = OccurrenceExplorerViewModel(fakeSavedState(), slow)
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+        assertEquals(1, calls)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.state.value.items.size)
+    }
+
     @Test fun `timeline separates company and source-global records`() = runTest(dispatcher) {
         val company = record
         val global = record.copy(id = "eeeeeeee-6666-4666-8666-000000000003", subjectKind = "personal-shaped", documentDay = "2019-01-02")
@@ -92,6 +114,42 @@ class OccurrenceExplorerViewModelTest {
         val viewModel = OccurrenceExplorerViewModel(fakeSavedState(), gateway(stale = true))
         advanceUntilIdle()
         assertTrue(viewModel.state.value.stale)
+    }
+
+    @Test fun `coverage and continuation use the page revision and filter survives recreation`() = runTest(dispatcher) {
+        val revision = "eeeeeeee-6666-4666-8666-000000000010"
+        val scopedLease = lease.copy(revision = SourceRevision("enforcement", "enforcement-v1", "enforcement-source-v1", revision))
+        val saved = fakeSavedState()
+        val calls = mutableListOf<Pair<String?, String?>>()
+        val base = gateway(next = "next")
+        val api = object : OccurrenceGateway by base {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?): OccurrencePage<OccurrenceRecord> {
+                calls.add(cursor to revisionId)
+                return OccurrencePage(listOf(record), if (cursor == null) "next" else null, scopedLease)
+            }
+            override suspend fun recordCoverage(revisionId: String?): Pair<RecordCoverage, OccurrenceLease> {
+                assertEquals(revision, revisionId, "coverage must describe the displayed revision")
+                return RecordCoverage(1, 1, null, null, "document_day") to scopedLease
+            }
+        }
+        val vm = OccurrenceExplorerViewModel(saved, api)
+        advanceUntilIdle()
+        assertNotNull(vm.state.value.coverage)
+        vm.nextPage(); advanceUntilIdle()
+        assertEquals("next" to revision, calls.last())
+        vm.selectFilter(OccurrenceFilter(uf = "SP")); advanceUntilIdle()
+        assertEquals("SP", saved.get<String>("uf"))
+    }
+
+    @Test fun `unavailable source is not an empty successful search`() = runTest(dispatcher) {
+        val base = gateway()
+        val api = object : OccurrenceGateway by base {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?) =
+                OccurrencePage<OccurrenceRecord>(emptyList(), null, lease.copy(available = false))
+        }
+        val vm = OccurrenceExplorerViewModel(fakeSavedState(), api)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.unavailable)
     }
 
     private fun fakeSavedState(): androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle()

@@ -77,12 +77,14 @@ class GetTankFillCostEstimatesUseCase(
         val items = vehicles
             .sortedBy { it.sortOrder }
             .map { vehicle ->
-                val stationPrices = if (hasStationData) {
-                    stationPricesByProduct.getOrPut(vehicle.fuelProduct) {
+                // BEV carries no fuel and no tank, so no fill exists to price.
+                val fuelProduct = vehicle.fuelProduct
+                val stationPrices = if (hasStationData && fuelProduct != null) {
+                    stationPricesByProduct.getOrPut(fuelProduct) {
                         stationPriceRepository.getStationPrices(
                             state = resolvedState,
                             municipality = resolvedMunicipality,
-                            fuelProduct = vehicle.fuelProduct,
+                            fuelProduct = fuelProduct,
                             surveyWeek = resolvedSurveyWeek,
                         )
                     }
@@ -94,7 +96,7 @@ class GetTankFillCostEstimatesUseCase(
                     vehicle = vehicle,
                     context = TankFillCostRule.PriceContext(
                         stationPrices = stationPrices,
-                        averagePrice = averagePrices[vehicle.fuelProduct],
+                        averagePrice = fuelProduct?.let { averagePrices[it] },
                     ),
                 )
 

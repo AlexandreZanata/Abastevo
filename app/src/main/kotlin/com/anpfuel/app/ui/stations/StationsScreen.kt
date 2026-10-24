@@ -75,6 +75,7 @@ fun StationsScreen(
     onNavigateToUpdatePrice: () -> Unit = {},
     onNavigateToUpdatePriceWithTarget: (String, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onOpenMasterExplore: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
     onOpenStation: (String, FuelProduct) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
@@ -166,6 +167,7 @@ fun StationsScreen(
             onNavigateToUpdatePriceWithTarget(station.stationId, fuelWire)
         },
         onSuggestStation = onSuggestStation,
+        onOpenMasterExplore = onOpenMasterExplore,
         onStationProfile = onStationProfile,
         onLoadMoreServerStations = viewModel::loadMoreServerStations,
         onLoadMoreAnpStations = viewModel::loadMoreAnpStations,
@@ -193,6 +195,7 @@ internal fun StationsContent(
     onServerStationNavigate: (com.anpfuel.domain.discovery.ServerStation) -> Unit = {},
     onServerUpdatePrice: (com.anpfuel.domain.discovery.ServerStation, String) -> Unit = { _, _ -> },
     onSuggestStation: () -> Unit = {},
+    onOpenMasterExplore: () -> Unit = {},
     onStationProfile: (String) -> Unit = {},
     onLoadMoreServerStations: () -> Unit = {},
     onLoadMoreAnpStations: () -> Unit = {},
@@ -524,6 +527,14 @@ internal fun StationsContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = stringResource(R.string.suggest_open_action))
+                    }
+                }
+                item(key = "master_explore") {
+                    OutlinedButton(
+                        onClick = onOpenMasterExplore,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = stringResource(R.string.master_explore_open))
                     }
                 }
             }

@@ -14,12 +14,14 @@ func ledgerBit(dataset string) int32 {
 		return 1
 	case "expense":
 		return 2
+	case "charge":
+		return 4
 	}
 	return 0
 }
 
 func (s *Store) SetConsent(ctx context.Context, accountID string, datasets []string, enabled bool) (application.ConsentStatus, error) {
-	if len(datasets) < 1 || len(datasets) > 2 {
+	if len(datasets) < 1 || len(datasets) > 3 {
 		return application.ConsentStatus{}, errInvalid()
 	}
 	var mask int32
@@ -51,7 +53,7 @@ func (s *Store) SetConsent(ctx context.Context, accountID string, datasets []str
 		return application.ConsentStatus{}, errUnavailable()
 	}
 	enabledDatasets := []string{}
-	for _, d := range []string{"refuel", "expense"} {
+	for _, d := range []string{"refuel", "expense", "charge"} {
 		if row.Mask&ledgerBit(d) != 0 {
 			enabledDatasets = append(enabledDatasets, d)
 		}
@@ -92,7 +94,7 @@ func (s *Store) EraseAll(ctx context.Context, accountID string) error {
 	if err = query.PurgeLedgerOperations(ctx, uid(accountID)); err != nil {
 		return errUnavailable()
 	}
-	if _, err = query.SetLedgerConsent(ctx, q.SetLedgerConsentParams{AccountID: uid(accountID), Enabled: false, Mask: 3}); err != nil {
+	if _, err = query.SetLedgerConsent(ctx, q.SetLedgerConsentParams{AccountID: uid(accountID), Enabled: false, Mask: 7}); err != nil {
 		return errUnavailable()
 	}
 	if err = tx.Commit(ctx); err != nil {

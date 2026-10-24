@@ -84,18 +84,20 @@ class EvaluatePriceDropAlertsUseCase(
         val stationCache = mutableMapOf<WeekFuelKey, List<com.anpfuel.domain.model.StationPrice>>()
         var notificationsShown = 0
         for (vehicle in alertVehicles) {
+            // BEV carries no fuel, so fuel drop alerts never apply to it.
+            val fuelProduct = vehicle.fuelProduct ?: continue
             val currentContext = buildWeekContextForVehicle(
                 state = state,
                 municipality = municipality,
                 surveyWeek = currentWeek,
-                fuelProduct = vehicle.fuelProduct,
+                fuelProduct = fuelProduct,
                 stationCache = stationCache,
             )
             val previousContext = buildWeekContextForVehicle(
                 state = state,
                 municipality = municipality,
                 surveyWeek = previousWeek,
-                fuelProduct = vehicle.fuelProduct,
+                fuelProduct = fuelProduct,
                 stationCache = stationCache,
             )
             val (currentPrice, previousPrice) = PriceDropDetectionRule.resolveComparisonPrices(

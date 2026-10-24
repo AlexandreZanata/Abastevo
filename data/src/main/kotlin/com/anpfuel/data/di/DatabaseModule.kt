@@ -56,6 +56,13 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_15_16,
                 AnpFuelDatabaseMigrations.MIGRATION_16_17,
                 AnpFuelDatabaseMigrations.MIGRATION_17_18,
+                AnpFuelDatabaseMigrations.MIGRATION_18_19,
+                AnpFuelDatabaseMigrations.MIGRATION_19_20,
+                AnpFuelDatabaseMigrations.MIGRATION_20_21,
+                AnpFuelDatabaseMigrations.MIGRATION_21_22,
+                AnpFuelDatabaseMigrations.MIGRATION_22_23,
+                AnpFuelDatabaseMigrations.MIGRATION_23_24,
+                AnpFuelDatabaseMigrations.MIGRATION_24_25,
             )
             .build()
 
@@ -86,6 +93,24 @@ object DatabaseModule {
     @Provides
     fun provideVehicleDao(database: AnpFuelDatabase): VehicleDao =
         database.vehicleDao()
+
+    @Provides
+    fun provideVehicleCapabilityLeaseDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.VehicleCapabilityLeaseDao =
+        database.vehicleCapabilityLeaseDao()
+
+    @Provides
+    @Singleton
+    fun provideLedgerDraftDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.LedgerDraftDao =
+        database.ledgerDraftDao()
+
+    @Provides
+    @Singleton
+    fun provideLedgerErasedDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.LedgerErasedDao =
+        database.ledgerErasedDao()
+
+    @Provides
+    fun provideChargingSnapshotDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.ChargingSnapshotDao =
+        database.chargingSnapshotDao()
 
     @Provides
     fun provideBackendPriceCacheDao(database: AnpFuelDatabase): BackendPriceCacheDao =

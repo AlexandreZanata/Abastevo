@@ -27,6 +27,20 @@ interface MunicipalityCatalogDao {
         normalizedName: String,
     ): MunicipalityCatalogEntity?
 
+    /**
+     * MEX-31 exact global match for interpreted municipal questions.
+     * Returns up to two rows so callers can tell unique from ambiguous
+     * without a second query; ambiguous or absent names never resolve.
+     */
+    @Query(
+        """
+        SELECT * FROM municipality_catalog
+        WHERE normalized_name = :normalizedName
+        LIMIT 2
+        """,
+    )
+    suspend fun findByNormalizedNameAnywhere(normalizedName: String): List<MunicipalityCatalogEntity>
+
     @Query(
         """
         SELECT * FROM municipality_catalog

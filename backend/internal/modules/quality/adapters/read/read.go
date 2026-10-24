@@ -27,10 +27,11 @@ var ErrNotFound = errors.New("read: row outside the current lease")
 
 // Reader serves frozen-lease quality reads.
 type Reader struct {
-	companyProbe CompanyIdentityProbe
-	companyGuard CompanyIdentityGuard
-	pool         *pgxpool.Pool
-	revisionID   string
+	companyProbe   CompanyIdentityProbe
+	companyTxProbe CompanyIdentityTxProbe
+	companyGuard   CompanyIdentityGuard
+	pool           *pgxpool.Pool
+	revisionID     string
 }
 
 // NewReader wires the owned generated queries to a pool.
@@ -662,14 +663,54 @@ type EnforcementStationCoverage struct {
 // unmatched and retired links never surface. Stations without price
 // observations are included: this page is about occurrences, not prices.
 func (r *Reader) EnforcementStationsAtLease(ctx context.Context, lease Lease, filter EnforcementStationFilter, afterID string, limit int) ([]EnforcementStation, string, Lease, error) {
-	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
-		return nil, "", lease, nil
+	if limit < 1 || limit > 100 {
+		return nil, "", lease, errors.New("read: invalid station page limit")
 	}
-	revisionID, err := mustUUID(lease.RevisionID)
+	if afterID != "" {
+		if _, err := application.ValidateStationID(afterID); err != nil {
+			return nil, "", lease, err
+		}
+	}
+	out := make([]EnforcementStation, 0, limit+1)
+	err := r.walkEnforcementStations(ctx, lease, filter, afterID, func(station EnforcementStation) bool {
+		out = append(out, station)
+		return len(out) <= limit
+	})
 	if err != nil {
 		return nil, "", lease, err
 	}
-	params := quality.EnforcementStationPageParams{RevisionID: revisionID, AfterID: afterID, LimitPlusOne: int32(limit + 1)}
+	if len(out) > limit {
+		return out[:limit], out[limit-1].ID, lease, nil
+	}
+	return out, "", lease, nil
+}
+
+// Coverage traverses bounded private candidate batches under the same revision
+// lock and Directory guards as the page. No stale stored link counts as proof.
+func (r *Reader) EnforcementStationCoverageAtLease(ctx context.Context, lease Lease) (EnforcementStationCoverage, Lease, error) {
+	out := EnforcementStationCoverage{}
+	err := r.walkEnforcementStations(ctx, lease, EnforcementStationFilter{}, "", func(s EnforcementStation) bool {
+		out.Stations++
+		out.Records += s.RecordCount
+		return true
+	})
+	return out, lease, err
+}
+
+// The visitor sees complete station groups, including groups crossing a private
+// batch boundary. Memory is bounded independently of the national census.
+func (r *Reader) walkEnforcementStations(ctx context.Context, lease Lease, filter EnforcementStationFilter, afterID string, visit func(EnforcementStation) bool) error {
+	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
+		return nil
+	}
+	if lease.Source != "enforcement" || lease.Stream != domain.StreamEnforcement || r.companyTxProbe == nil || r.companyGuard == nil {
+		return errors.New("read: company identity ports unavailable")
+	}
+	rid, err := mustUUID(lease.RevisionID)
+	if err != nil {
+		return err
+	}
+	params := quality.EnforcementStationCandidatesParams{RevisionID: rid, AfterID: afterID, AfterCnpj: ""}
 	if filter.State != "" {
 		params.State = pgtype.Text{String: filter.State, Valid: true}
 	}
@@ -677,57 +718,78 @@ func (r *Reader) EnforcementStationsAtLease(ctx context.Context, lease Lease, fi
 		params.Segment = pgtype.Text{String: filter.Segment, Valid: true}
 	}
 	if filter.FromDay != "" {
-		from, err := readDay(filter.FromDay)
+		params.FromDay, err = readDay(filter.FromDay)
 		if err != nil {
-			return nil, "", lease, err
+			return err
 		}
-		params.FromDay = from
 	}
 	if filter.ToDay != "" {
-		to, err := readDay(filter.ToDay)
+		params.ToDay, err = readDay(filter.ToDay)
 		if err != nil {
-			return nil, "", lease, err
+			return err
 		}
-		params.ToDay = to
 	}
-	rows, e := quality.New(r.pool).EnforcementStationPage(ctx, params)
-	if e != nil {
-		return nil, "", lease, e
-	}
-	out := make([]EnforcementStation, 0, min(limit, len(rows)))
-	for i, row := range rows {
-		if i == limit {
-			return out, uuidString(rows[limit-1].ID), lease, nil
-		}
-		municipality := ""
-		if row.MunicipalityCode.Valid {
-			municipality = row.MunicipalityCode.String
-		}
-		state := ""
-		if row.State.Valid {
-			state = row.State.String
-		}
-		out = append(out, EnforcementStation{ID: uuidString(row.ID), DisplayName: row.DisplayName, Municipality: municipality, State: state, Status: row.Status, RecordCount: row.RecordCount})
-	}
-	return out, "", lease, nil
-}
-
-// EnforcementStationCoverageAtLease reports the leased revision's bound
-// station and record counts. A concurrent publication cannot substitute
-// a second revision.
-func (r *Reader) EnforcementStationCoverageAtLease(ctx context.Context, lease Lease) (EnforcementStationCoverage, Lease, error) {
-	if !lease.HasPublished || lease.SourceInputContract != application.EnforcementSourceProfile {
-		return EnforcementStationCoverage{}, lease, nil
-	}
-	revisionID, err := mustUUID(lease.RevisionID)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return EnforcementStationCoverage{}, lease, err
+		return err
 	}
-	row, e := quality.New(r.pool).EnforcementStationCoverage(ctx, revisionID)
-	if e != nil {
-		return EnforcementStationCoverage{}, lease, e
+	defer tx.Rollback(context.Background())
+	q := quality.New(tx)
+	if _, err = q.LockEnforcementCompanyReadRevision(ctx, rid); err != nil {
+		return errors.New("read: enforcement company revision unavailable")
 	}
-	return EnforcementStationCoverage{Stations: row.Stations, Records: row.Records}, lease, nil
+	var current EnforcementStation
+	flush := func() bool { return current.RecordCount == 0 || visit(current) }
+	for {
+		rows, err := q.EnforcementStationCandidates(ctx, params)
+		if err != nil {
+			return err
+		}
+		ids := make([]string, 0, len(rows))
+		for _, row := range rows {
+			ids = append(ids, row.SubjectCnpj.String)
+		}
+		evidence, err := r.companyTxProbe(ctx, tx, ids)
+		if err != nil {
+			return errors.New("read: company identity evidence unavailable")
+		}
+		byCNPJ := make(map[string][]domain.IdentityEvidence, len(ids))
+		for _, e := range evidence {
+			byCNPJ[e.CNPJ] = append(byCNPJ[e.CNPJ], e)
+		}
+		allowed := make([]bool, len(rows))
+		bindings := []application.CompanyBinding{}
+		for i, row := range rows {
+			decision := domain.ResolveCompanyObservation(domain.CompanyObservationRecord{RecordKey: "company:" + row.SubjectCnpj.String, CNPJ: row.SubjectCnpj.String}, time.Now().UTC().Format("2006-01-02"), byCNPJ[row.SubjectCnpj.String], false)
+			if decision.Kind == domain.ResolutionBound && decision.StationID == uuidString(row.ID) {
+				allowed[i] = true
+				bindings = append(bindings, application.CompanyBinding{CNPJ: row.SubjectCnpj.String, StationID: decision.StationID})
+			}
+		}
+		if len(bindings) > 0 {
+			if err := r.companyGuard(ctx, tx, bindings); err != nil {
+				return errors.New("read: company identity changed or unavailable")
+			}
+		}
+		for i, row := range rows {
+			id := uuidString(row.ID)
+			if id != current.ID {
+				if !flush() {
+					return tx.Commit(ctx)
+				}
+				current = EnforcementStation{ID: id, DisplayName: row.DisplayName, Municipality: row.MunicipalityCode.String, State: row.State.String, Status: row.Status}
+			}
+			if allowed[i] {
+				current.RecordCount += row.RecordCount
+			}
+			params.AfterID = id
+			params.AfterCnpj = row.SubjectCnpj.String
+		}
+		if len(rows) < 512 {
+			flush()
+			return tx.Commit(ctx)
+		}
+	}
 }
 
 func coverageDay(value any) string {

@@ -36,6 +36,7 @@ class QualityPublicCache(private val directory:File,private val now:()->Long={Sy
             val oldest=entries.removeAt(0);size-=oldest.length();oldest.delete()
         }
     }
+    fun remove(url:String)=synchronized(lock) { file(url).delete(); Unit }
     fun clearOrigin(origin:String)=synchronized(lock) {
         entries().forEach {file -> val row=read(file);if(row==null || row.optString("origin").trimEnd('/')==origin.trimEnd('/'))file.delete()}
     }

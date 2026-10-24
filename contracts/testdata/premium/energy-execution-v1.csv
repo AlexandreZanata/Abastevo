@@ -1,0 +1,12 @@
+id,purchased_wh,cost_centavos,distance_metres,has_energy,complete,has_gap,crosses_segment,odometer_missing,soc_inconsistent,mixed_carrier,expected_wh_per_km,expected_centavos_per_km,expected_unknown,fuel_cost_centavos,charge_cost_centavos,expected_combined_centavos_per_km,expected_combined_unknown
+weighted-sum-first,40000,4000,150000,true,true,false,false,false,false,false,800/3,80/3,,0,0,,
+exact-small,15000,1275,100000,true,true,false,false,false,false,false,150,51/4,,0,0,,
+phev-shared-distance,15000,1275,100000,true,true,false,false,false,false,true,,,phev-shared-distance,0,0,,
+soc-inconsistent,10000,1000,50000,true,true,false,false,false,true,false,,,soc-inconsistent,0,0,,
+partial-measurement,10000,1000,50000,true,false,false,false,false,false,false,,,partial-measurement,0,0,,
+energy-unmeasured,0,1000,50000,false,false,false,false,false,false,false,,,energy-unmeasured,0,0,,
+declared-fill-gap,10000,1000,50000,true,true,true,false,false,false,false,,,declared-fill-gap,0,0,,
+odometer-missing,10000,1000,0,true,true,false,false,true,false,false,,,odometer-missing,0,0,,
+distance-nonpositive,10000,1000,0,true,true,false,false,false,false,false,,,distance-nonpositive,0,0,,
+combined-exact,0,0,100000,false,false,false,false,false,false,false,,,,24800,1275,1043/4,
+combined-zero-distance,0,0,0,false,false,false,false,false,false,false,,,,1000,500,,distance-nonpositive

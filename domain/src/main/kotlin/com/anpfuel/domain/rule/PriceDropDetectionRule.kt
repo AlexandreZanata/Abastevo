@@ -38,7 +38,9 @@ object PriceDropDetectionRule {
     }
 
     fun resolvePrice(vehicle: Vehicle, context: WeekPriceContext): PriceAmount? {
-        val matchingStations = context.stationPrices.filter { it.isForProduct(vehicle.fuelProduct) }
+        // BEV carries no fuel, so no fuel price ever resolves for it.
+        val fuelProduct = vehicle.fuelProduct ?: return null
+        val matchingStations = context.stationPrices.filter { it.isForProduct(fuelProduct) }
         return when (vehicle.priceSource.mode) {
             VehiclePriceSourceMode.CHEAPEST_STATION -> {
                 cheapestStationPrice(matchingStations)?.price

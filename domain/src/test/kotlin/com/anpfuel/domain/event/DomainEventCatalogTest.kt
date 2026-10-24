@@ -71,6 +71,52 @@ class DomainEventCatalogTest {
         assertTrue(first.id != second.id)
     }
 
+    @Test
+    fun defaultEnvelopesAreUniqueAndUseDispatchTimeWithoutChangingSourcePayloads() {
+        // Location/cache/import consumers invoke these defaults in production.
+        // Repeated dispatch of the same payload must not reuse an event ID or
+        // inherit a source/fixture timestamp from an earlier observation.
+        val originals = sampleEvents(timestamp = Instant.parse("2000-01-01T00:00:00Z"))
+        val factories: List<() -> DomainEvent> = originals.map { original ->
+            {
+                when (original) {
+                        is PriceTableDiscovered -> PriceTableDiscovered.create(original.payload)
+                        is PriceTableDownloaded -> PriceTableDownloaded.create(original.payload)
+                        is PriceTableImported -> PriceTableImported.create(original.payload)
+                        is PriceTableImportFailed -> PriceTableImportFailed.create(original.payload)
+                        is SyncJobCompleted -> SyncJobCompleted.create(original.payload)
+                        is CitySelected -> CitySelected.create(original.payload)
+                        is FuelProductSelected -> FuelProductSelected.create(original.payload)
+                        is SyncRequested -> SyncRequested.create(original.payload)
+                        is StationDetailRequested -> StationDetailRequested.create(original.payload)
+                        is PreferencesUpdated -> PreferencesUpdated.create(original.payload)
+                        is CacheCleared -> CacheCleared.create(original.payload)
+                        is SurveyWeekSelected -> SurveyWeekSelected.create(original.payload)
+                        is VehicleRegistered -> VehicleRegistered.create(original.payload)
+                        is VehicleUpdated -> VehicleUpdated.create(original.payload)
+                        is VehicleRemoved -> VehicleRemoved.create(original.payload)
+                        is PriceDropAlertConfigured -> PriceDropAlertConfigured.create(original.payload)
+                        is DeviceLocationResolved -> DeviceLocationResolved.create(original.payload)
+                        is StationNavigationRequested -> StationNavigationRequested.create(original.payload)
+                }
+            }
+        }
+        val before = Instant.now().minusSeconds(1)
+        val first = factories.map { it() }
+        val second = factories.map { it() }
+        val after = Instant.now().plusSeconds(1)
+        val events = first + second
+        assertEquals(events.size, events.map { it.id }.toSet().size)
+        events.forEach { event ->
+            assertTrue(!event.timestamp.isBefore(before) && !event.timestamp.isAfter(after))
+        }
+        originals.indices.forEach { index ->
+            assertEquals(originals[index]::class, first[index]::class)
+            assertEquals(extractPayload(originals[index]), extractPayload(first[index]))
+            assertEquals(extractPayload(originals[index]), extractPayload(second[index]))
+        }
+    }
+
     private fun sampleEvents(
         id: DomainId = DomainId.generate(),
         timestamp: Instant = Instant.now(),

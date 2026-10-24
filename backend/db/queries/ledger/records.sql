@@ -62,8 +62,8 @@ SELECT MAX(changed_at)::timestamptz FROM (
 -- name: ReportRows :many
 SELECT r.dataset,r.id,r.vehicle_id,r.occurred_at,r.payload,r.segment_no,
  EXISTS (SELECT 1 FROM ledger_gaps g
- LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
- LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset IN ('refuel','charge') AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset IN ('refuel','charge') AND b.id=g.before_id
  WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
  AND (a.occurred_at IS NULL OR a.occurred_at<$3)
  AND (b.occurred_at IS NULL OR b.occurred_at>=$2)) AS has_gap
@@ -116,8 +116,8 @@ DELETE FROM ledger_reports WHERE account_id=$1;
 -- name: MetricRows :many
 SELECT r.id,r.vehicle_id,r.payload,r.segment_no,
  EXISTS (SELECT 1 FROM ledger_gaps g
- LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset='refuel' AND a.id=g.after_id
- LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset='refuel' AND b.id=g.before_id
+ LEFT JOIN ledger_records a ON a.account_id=g.account_id AND a.dataset IN ('refuel','charge') AND a.id=g.after_id
+ LEFT JOIN ledger_records b ON b.account_id=g.account_id AND b.dataset IN ('refuel','charge') AND b.id=g.before_id
  WHERE g.account_id=r.account_id AND g.vehicle_id=r.vehicle_id
  AND (a.occurred_at IS NULL OR a.occurred_at<sqlc.arg(to_time)::timestamptz)
  AND (b.occurred_at IS NULL OR b.occurred_at>=sqlc.arg(from_time)::timestamptz)) AS has_gap

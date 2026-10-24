@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/fs"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -98,7 +99,7 @@ func TestEnforcementStorageUpgradeRetainsLegacyHashAndReplay(t *testing.T) {
 	}
 	before := hash()
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || len(applied) != 1 || applied[0] != "000111" {
+	if e != nil || !slices.Equal(applied, expectedMigrationsFrom(t, "000111")) {
 		t.Fatal(applied, e)
 	}
 	if hash() != before {

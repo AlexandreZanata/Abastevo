@@ -29,6 +29,9 @@ func reportCSVBody(report application.Report) string {
 	b.WriteString("year,month,timezone,revision,metric,value\n")
 	fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("purchase_centavos"), report.Totals.PurchaseCentavos)
 	fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("expense_centavos"), report.Totals.ExpenseCentavos)
+	fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("charge_energy_wh"), report.Totals.ChargeEnergyWh)
+	fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("charge_cost_centavos"), report.Totals.ChargeCostCentavos)
+	fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("charge_fees_centavos"), report.Totals.ChargeFeesCentavos)
 	vehicles := make([]string, 0, len(report.Totals.ByVehicle))
 	for vehicle := range report.Totals.ByVehicle {
 		vehicles = append(vehicles, vehicle)
@@ -44,6 +47,22 @@ func reportCSVBody(report application.Report) string {
 	sort.Strings(categories)
 	for _, category := range categories {
 		fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%d\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("category:"+category), report.Totals.ByCategory[category])
+	}
+	energyVehicles := make([]string, 0, len(report.Totals.EnergyCoverage))
+	for vehicle := range report.Totals.EnergyCoverage {
+		energyVehicles = append(energyVehicles, vehicle)
+	}
+	sort.Strings(energyVehicles)
+	for _, vehicle := range energyVehicles {
+		fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%s\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("energy:"+vehicle), csvEscape(report.Totals.EnergyCoverage[vehicle]))
+	}
+	combinedVehicles := make([]string, 0, len(report.Totals.CombinedCostPerKm))
+	for vehicle := range report.Totals.CombinedCostPerKm {
+		combinedVehicles = append(combinedVehicles, vehicle)
+	}
+	sort.Strings(combinedVehicles)
+	for _, vehicle := range combinedVehicles {
+		fmt.Fprintf(&b, "%d,%d,%s,%d,%s,%s\n", report.Year, report.Month, csvEscape(report.Timezone), report.Revision, csvEscape("combined:"+vehicle), csvEscape(report.Totals.CombinedCostPerKm[vehicle]))
 	}
 	return b.String()
 }

@@ -57,6 +57,19 @@ func (r *SourceIdentityReader) OtherBranch(ctx context.Context, cnpj string) (bo
 // revalidation sweeps do not issue one round trip per record. Inputs are
 // validated before any query; invalid or empty identifiers refuse the batch.
 func (r *SourceIdentityReader) Evidence(ctx context.Context, cnpjs []string) ([]application.SourceEvidence, error) {
+	return sourceIdentityEvidence(ctx, directory.New(r.pool), cnpjs)
+}
+
+// EvidenceAt reuses the caller's read transaction. A guarded consumer must not
+// acquire a second pool connection while retaining the first one.
+func (r *SourceIdentityReader) EvidenceAt(ctx context.Context, tx pgx.Tx, cnpjs []string) ([]application.SourceEvidence, error) {
+	if tx == nil {
+		return nil, ErrSourceIdentityUnavailable
+	}
+	return sourceIdentityEvidence(ctx, directory.New(tx), cnpjs)
+}
+
+func sourceIdentityEvidence(ctx context.Context, q *directory.Queries, cnpjs []string) ([]application.SourceEvidence, error) {
 	const chunk = 512
 	out := make([]application.SourceEvidence, 0, len(cnpjs))
 	for _, cnpj := range cnpjs {
@@ -66,7 +79,7 @@ func (r *SourceIdentityReader) Evidence(ctx context.Context, cnpjs []string) ([]
 	}
 	for offset := 0; offset < len(cnpjs); offset += chunk {
 		part := cnpjs[offset:min(offset+chunk, len(cnpjs))]
-		rows, e := directory.New(r.pool).SourceEvidenceBatch(ctx, part)
+		rows, e := q.SourceEvidenceBatch(ctx, part)
 		if e != nil {
 			return nil, ErrSourceIdentityUnavailable
 		}

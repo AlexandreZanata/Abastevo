@@ -195,8 +195,12 @@ func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app
 	if erased {
 		return 0, &app.ConflictError{Conflict: app.Conflict{OperationID: c.OperationID, Dataset: c.Dataset, ID: c.ID, ExpectedRevision: c.ExpectedRevision, Erased: true, ProposedPayload: proposedForConflict(c)}}
 	}
+	var storedVehicle []byte
 	old, err := query.GetRecord(ctx, q.GetRecordParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID)})
 	if err == nil {
+		if !old.Deleted && c.Dataset == "vehicles" && len(old.Payload) > 0 {
+			storedVehicle = old.Payload
+		}
 		if old.Deleted || old.Revision != c.ExpectedRevision {
 			var current json.RawMessage
 			if !old.Deleted && len(old.Payload) > 0 {
@@ -243,7 +247,14 @@ func (s *Store) applyOne(ctx context.Context, tx pgx.Tx, query *q.Queries, p app
 			return 0, domain.ErrInvalid
 		}
 	}
-	row, err := query.SaveRecord(ctx, q.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID), Payload: c.Payload})
+	payload := c.Payload
+	if storedVehicle != nil {
+		payload, err = domain.MergeStoredVehiclePayload(storedVehicle, c.Payload)
+		if err != nil {
+			return 0, err
+		}
+	}
+	row, err := query.SaveRecord(ctx, q.SaveRecordParams{AccountID: uid(p.AccountID), Dataset: c.Dataset, ID: uid(c.ID), Payload: payload})
 	if err != nil {
 		return 0, domain.ErrUnavailable
 	}

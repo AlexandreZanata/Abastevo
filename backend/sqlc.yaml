@@ -316,3 +316,18 @@ sql:
         out: db/queries/quality
         sql_package: pgx/v5
         emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/charging
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000115_charging_reference_storage.sql
+      - db/migrations/000116_charging_batch_order.sql
+      - db/migrations/000117_charging_community_observations.sql
+      - db/migrations/000118_charging_helpfulness_reports.sql
+    gen:
+      go:
+        package: charging
+        out: db/queries/charging
+        sql_package: pgx/v5
+        emit_json_tags: true

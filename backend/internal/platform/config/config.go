@@ -83,6 +83,8 @@ const (
 	// Source discovery/revalidation schedules are independent and default
 	// off. Installing a schedule never enables native imports.
 	keyQualityEnforcementImportsEnabled   = "ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED"
+	keyChargingImportsEnabled             = "ANPFUEL_CHARGING_IMPORTS_ENABLED"
+	keyChargingReadsEnabled               = "ANPFUEL_CHARGING_READS_ENABLED"
 	keyQualityEnforcementDiscoveryEnabled = "ANPFUEL_QUALITY_ENFORCEMENT_DISCOVERY_ENABLED"
 	keyQualitySanctionsDiscoveryEnabled   = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
 	keyQualityDiscoveryEnabled            = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
@@ -125,6 +127,8 @@ type Config struct {
 	// Bounded source schedules are independent and default off. Handlers
 	// still require the native imports switch; a schedule alone only queues.
 	QualityEnforcementImportsEnabled   bool
+	ChargingImportsEnabled             bool
+	ChargingReadsEnabled               bool
 	QualityEnforcementDiscoveryEnabled bool
 	QualitySanctionsDiscoveryEnabled   bool
 	QualityDiscoveryEnabled            bool
@@ -202,6 +206,8 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	for key, target := range map[string]*bool{
 		keyQualityEnforcementImportsEnabled:   &cfg.QualityEnforcementImportsEnabled,
+		keyChargingImportsEnabled:             &cfg.ChargingImportsEnabled,
+		keyChargingReadsEnabled:               &cfg.ChargingReadsEnabled,
 		keyQualityEnforcementDiscoveryEnabled: &cfg.QualityEnforcementDiscoveryEnabled,
 		keyQualitySanctionsDiscoveryEnabled:   &cfg.QualitySanctionsDiscoveryEnabled,
 		keyQualityDiscoveryEnabled:            &cfg.QualityDiscoveryEnabled,
@@ -237,6 +243,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_READS_ENABLED must be boolean")
 		}
 		cfg.QualityReadsEnabled = enabled
+	}
+	cfg.ChargingReadsEnabled = true
+	if raw, present := getenv(keyChargingReadsEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_CHARGING_READS_ENABLED must be boolean")
+		}
+		cfg.ChargingReadsEnabled = enabled
 	}
 
 	cfg.PriceRankingEnabled = true

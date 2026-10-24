@@ -39,12 +39,33 @@ type Vehicle struct {
 	BasicAlert    bool           `json:"price_drop_alert_enabled"`
 	SortOrder     int            `json:"sort_order"`
 	Archived      bool           `json:"archived"`
+	// Energy propulsion and storage (EE-10, optional for legacy ICE).
+	// Pointers distinguish absent (preserve on partial update) from set.
+	// BEV carries battery without tank (CapacityMilli 0); PHEV carries
+	// one battery and one tank; HEV/MHEV carry tank without external
+	// charge; ICE carries tank without battery. MHEV is stored as its
+	// own kind (EE-24), never silently rewritten to HEV. Unknown
+	// propulsion is refused; battery is never backfilled.
+	Propulsion *string `json:"propulsion,omitempty"`
+	BatteryWh  *int64  `json:"battery_wh,omitempty"`
 }
+
+// Propulsion kinds. Empty/absent means legacy ICE (tank only).
+const (
+	PropulsionICE  = "ICE"
+	PropulsionBEV  = "BEV"
+	PropulsionPHEV = "PHEV"
+	PropulsionHEV  = "HEV"
+	PropulsionMHEV = "MHEV"
+)
 
 func NormalizeVehicle(v Vehicle) (Vehicle, error) {
 	v.Name = strings.TrimSpace(v.Name)
-	if !ValidID(v.ID) || !utf8.ValidString(v.Name) || utf8.RuneCountInString(v.Name) < 1 || utf8.RuneCountInString(v.Name) > 100 || v.CapacityMilli < 10 || v.CapacityMilli > 200000 || v.CapacityMilli%10 != 0 || v.SortOrder < 0 || v.SortOrder > 100000 {
+	if !ValidID(v.ID) || !utf8.ValidString(v.Name) || utf8.RuneCountInString(v.Name) < 1 || utf8.RuneCountInString(v.Name) > 100 || v.SortOrder < 0 || v.SortOrder > 100000 {
 		return Vehicle{}, ErrInvalid
+	}
+	if e := normalizeEnergy(&v); e != nil {
+		return Vehicle{}, e
 	}
 	for _, r := range v.Name {
 		if unicode.IsControl(r) {
@@ -73,6 +94,66 @@ func NormalizeVehicle(v Vehicle) (Vehicle, error) {
 		return Vehicle{}, ErrInvalid
 	}
 	return v, nil
+}
+
+// normalizeEnergy validates propulsion, battery and tank as one unit.
+// Absent propulsion means legacy ICE (tank required, no battery). Battery
+// is never defaulted: nil stays nil unless explicitly set.
+func normalizeEnergy(v *Vehicle) error {
+	propulsion := PropulsionICE
+	if v.Propulsion != nil {
+		propulsion = *v.Propulsion
+	}
+	switch propulsion {
+	case PropulsionICE:
+		if v.BatteryWh != nil {
+			return ErrInvalid
+		}
+		if v.CapacityMilli < 10 || v.CapacityMilli > 200000 || v.CapacityMilli%10 != 0 {
+			return ErrInvalid
+		}
+	case PropulsionBEV:
+		if v.BatteryWh == nil || *v.BatteryWh < 1 || *v.BatteryWh > 1000000000 {
+			return ErrInvalid
+		}
+		if v.CapacityMilli != 0 {
+			return ErrInvalid
+		}
+	case PropulsionPHEV:
+		if v.BatteryWh == nil || *v.BatteryWh < 1 || *v.BatteryWh > 1000000000 {
+			return ErrInvalid
+		}
+		if v.CapacityMilli < 10 || v.CapacityMilli > 200000 || v.CapacityMilli%10 != 0 {
+			return ErrInvalid
+		}
+	case PropulsionHEV, PropulsionMHEV:
+		if v.BatteryWh != nil {
+			return ErrInvalid
+		}
+		if v.CapacityMilli < 10 || v.CapacityMilli > 200000 || v.CapacityMilli%10 != 0 {
+			return ErrInvalid
+		}
+	default:
+		return ErrInvalid
+	}
+	return nil
+}
+
+// MergeVehicleEnergy preserves stored energy fields when the incoming
+// update omits them (nil). Older clients without propulsion/battery send
+// nil; their stored values survive instead of erasing. Explicit values
+// (including a switch to ICE with nil battery) always win. No backfill:
+// nil stays nil unless the update sets it.
+func MergeVehicleEnergy(stored, incoming Vehicle) Vehicle {
+	if incoming.Propulsion == nil && stored.Propulsion != nil {
+		propulsion := *stored.Propulsion
+		incoming.Propulsion = &propulsion
+	}
+	if incoming.BatteryWh == nil && stored.BatteryWh != nil {
+		battery := *stored.BatteryWh
+		incoming.BatteryWh = &battery
+	}
+	return incoming
 }
 
 // RequireVehicleRegistration counts retained/archived IDs as registrations.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -541,6 +542,9 @@ func (h Handler) enforcementStations(w http.ResponseWriter, r *http.Request) {
 	if h.disabled(w, r) {
 		return
 	}
+	if !validEnforcementStationQuery(w, r, false) {
+		return
+	}
 	if !h.selectRevision(w, r) {
 		return
 	}
@@ -616,7 +620,7 @@ func (h Handler) enforcementStations(w http.ResponseWriter, r *http.Request) {
 	}
 	wire := make([]map[string]any, 0, len(rows))
 	for _, station := range rows {
-		wire = append(wire, map[string]any{"id": station.ID, "display_name": station.DisplayName, "municipality": station.Municipality, "state": station.State, "status": station.Status, "record_count": station.RecordCount})
+		wire = append(wire, map[string]any{"id": station.ID, "display_name": station.DisplayName, "municipality": nullableString(station.Municipality), "state": nullableString(station.State), "status": station.Status, "record_count": station.RecordCount})
 	}
 	var nextCursor *string
 	if next != "" {
@@ -627,7 +631,7 @@ func (h Handler) enforcementStations(w http.ResponseWriter, r *http.Request) {
 		"items": wire, "next_cursor": nextCursor,
 		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
-	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "no-store", body,
 		httpapi.ETag(mustMarshal(map[string]any{"items": wire, "next_cursor": next, "lease": wireLeaseOf(lease)})))
 }
 
@@ -635,6 +639,9 @@ func (h Handler) enforcementStations(w http.ResponseWriter, r *http.Request) {
 // distinct bound records for the leased enforcement revision.
 func (h Handler) enforcementStationCoverage(w http.ResponseWriter, r *http.Request) {
 	if h.disabled(w, r) {
+		return
+	}
+	if !validEnforcementStationQuery(w, r, true) {
 		return
 	}
 	if !h.selectRevision(w, r) {
@@ -658,8 +665,33 @@ func (h Handler) enforcementStationCoverage(w http.ResponseWriter, r *http.Reque
 		"stations": coverage.Stations, "records": coverage.Records,
 		"lease": wireLeaseOf(lease), "generated_at": generatedAt(h.now()),
 	})
-	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "no-store", body,
 		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage, "lease": wireLeaseOf(lease)})))
+}
+
+func validEnforcementStationQuery(w http.ResponseWriter, r *http.Request, coverage bool) bool {
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	valid := err == nil
+	for key, values := range q {
+		if len(values) != 1 {
+			valid = false
+		}
+		if key == "revision_id" {
+			continue
+		}
+		switch key {
+		case "state", "segment", "from_day", "to_day", "limit", "cursor":
+			if coverage {
+				valid = false
+			}
+		default:
+			valid = false
+		}
+	}
+	if !valid {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "quality.bad-filter", "invalid query parameter", nil)
+	}
+	return valid
 }
 
 func (h Handler) sanctionOne(w http.ResponseWriter, r *http.Request) {

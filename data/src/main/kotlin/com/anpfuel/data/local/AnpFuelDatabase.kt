@@ -49,8 +49,13 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.QualityOwnerGateEntity::class,
         com.anpfuel.data.local.entity.QualityReportOutboxEntity::class,
         com.anpfuel.data.local.entity.CommunityFeedCacheEntity::class,
+        com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity::class,
+        com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity::class,
+        com.anpfuel.data.local.entity.VehicleCapabilityLeaseEntity::class,
+        com.anpfuel.data.local.entity.LedgerDraftEntity::class,
+        com.anpfuel.data.local.entity.LedgerErasedEntity::class,
     ],
-    version = 18,
+    version = 25,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -84,4 +89,12 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun premiumCursorDao(): PremiumCursorDao
 
     abstract fun communityFeedCacheDao(): com.anpfuel.data.local.dao.CommunityFeedCacheDao
+
+    abstract fun chargingSnapshotDao(): com.anpfuel.data.local.dao.ChargingSnapshotDao
+
+    abstract fun vehicleCapabilityLeaseDao(): com.anpfuel.data.local.dao.VehicleCapabilityLeaseDao
+
+    abstract fun ledgerDraftDao(): com.anpfuel.data.local.dao.LedgerDraftDao
+
+    abstract fun ledgerErasedDao(): com.anpfuel.data.local.dao.LedgerErasedDao
 }

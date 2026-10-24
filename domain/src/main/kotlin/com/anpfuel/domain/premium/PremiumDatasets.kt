@@ -25,6 +25,7 @@ enum class CloudDataset(val wire: String) {
 enum class LedgerDataset(val wire: String) {
     REFUEL("refuel"),
     EXPENSE("expense"),
+    CHARGE("charge"),
     ;
 
     companion object {

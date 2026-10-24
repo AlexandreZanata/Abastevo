@@ -6,6 +6,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val AUTH = "auth"
     const val ACCOUNT = "account"
+    const val LEDGER_SYNC = "ledger-sync"
     const val HOME = "home"
     const val EXPLORE = "home"
     const val COMMUNITY = "community"
@@ -19,6 +20,34 @@ object Routes {
     const val HELP = "help"
     const val PRIVACY = "privacy"
     const val VEHICLES = "vehicles"
+    const val VEHICLE_ENTRIES = "vehicle-entries/{vehicleId}"
+
+    fun vehicleEntries(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "vehicle-entries/$vehicleId"
+    }
+
+    const val CHARGING_EXPLORE = "charging-explore/{vehicleId}"
+    const val CHARGING_COMMUNITY = "charging-community/{placeId}"
+
+    fun chargingCommunity(placeId: String): String {
+        require(java.util.UUID.fromString(placeId).toString() == placeId)
+        return "charging-community/$placeId"
+    }
+
+    fun chargingExplore(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "charging-explore/$vehicleId"
+    }
+
+    const val MASTER_EXPLORE = "master-explore"
+
+    const val MONTHLY_INDICATORS = "monthly-indicators/{vehicleId}"
+
+    fun monthlyIndicators(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "monthly-indicators/$vehicleId"
+    }
     const val WEEK_PICKER = "week_picker"
     const val CAPTURE = "capture"
     const val CONTRIBUTIONS = "contributions"

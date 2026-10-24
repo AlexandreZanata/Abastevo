@@ -42,8 +42,17 @@ if [[ "${GH_AUTH_FAIL:-0}" == "1" && "$1" == "auth" ]]; then
 fi
 if [[ "$1" == "auth" ]]; then exit 0; fi
 if [[ "$1" == "pr" && "$2" == "view" ]]; then cat "$GH_PR_JSON"; exit 0; fi
-if [[ "$1" == "api" ]]; then cat "$GH_CHECKS_JSON"; exit 0; fi
-if [[ "$1" == "pr" && "$2" == "merge" ]]; then echo "fake-merge $*" >> "$GH_LOG"; exit 0; fi
+if [[ "$1" == "api" ]]; then
+    python3 - "$GH_CHECKS_JSON" "$GH_PR_JSON" <<'PYJSON'
+import json,sys
+checks=json.load(open(sys.argv[1]))
+head=json.load(open(sys.argv[2]))["headRefOid"]
+for row in checks["check_runs"]: row.setdefault("head_sha",head)
+print(json.dumps(checks,separators=(",",":")))
+PYJSON
+    exit 0
+fi
+if [[ "$1" == "pr" && "$2" == "merge" ]]; then echo "fake-merge $*" >> "$GH_LOG"; [[ "${GH_STOP_MERGE:-0}" == "0" ]] || exit 97; exit 0; fi
 echo "unexpected gh $*" >&2; exit 2
 SH
     cat > "$dir/bin/make" <<'SH'
@@ -113,6 +122,17 @@ printf '{"check_runs":[{"name":"Quick verification","status":"queued","conclusio
 if bash "$FLOW" finish --pr 7 >/dev/null 2>&1; then bad "pending final check accepted"; else ok "pending final check exits"; fi
 if [[ ! -s "$GH_LOG" ]]; then ok "pending CI runs no local aggregate or merge"; else bad "pending CI ran aggregate/merge"; fi
 if bash "$FLOW" finish --pr 7 --required ' , ' >/dev/null 2>&1; then bad "empty check list accepted"; else ok "empty check list refuses"; fi
+# A green required check cannot hide a failed or still-running enabled check.
+for optional_status in failure queued; do
+    : > "$GH_LOG"
+    if [[ "$optional_status" == "failure" ]]; then
+        printf '{"check_runs":[{"name":"Quick verification","status":"completed","conclusion":"success"},{"name":"integration","status":"completed","conclusion":"failure"}]}' > "$GH_CHECKS_JSON"
+    else
+        printf '{"check_runs":[{"name":"Quick verification","status":"completed","conclusion":"success"},{"name":"integration","status":"queued","conclusion":null}]}' > "$GH_CHECKS_JSON"
+    fi
+    if GH_STOP_MERGE=1 bash "$FLOW" finish --pr 7 >/dev/null 2>&1; then bad "optional $optional_status accepted"; else ok "optional $optional_status refuses"; fi
+    if [[ ! -s "$GH_LOG" ]]; then ok "optional $optional_status runs no quick/merge"; else bad "optional $optional_status ran quick/merge"; fi
+done
 checks_json queued "" completed success completed success > "$GH_CHECKS_JSON"
 if bash "$FLOW" finish --skip-quick --pr 7 --required "fast,integration,test" >/dev/null 2>&1; then bad "missing/queued check accepted"; else ok "missing/queued check refuses"; fi
 checks_json completed failure completed success completed success > "$GH_CHECKS_JSON"

@@ -77,7 +77,7 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
             checkEnvelope(payload)
             val page = JSONObject(payload)
             require(page.getString("state") == city.state.abbreviation && page.getString("municipality_code") == city.code)
-            require(page.getInt("refresh_after_seconds") == 15)
+            requireRefreshHint(page)
             val generated = Instant.parse(page.getString("generated_at"))
             val rows = page.getJSONArray("items"); require(rows.length() <= 8)
             fun integer(row: JSONObject, field: String): Long = row.get(field).let {
@@ -95,6 +95,11 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                 }
             }
             return CityCommunitySummary(city, items, generated)
+        }
+        internal fun requireRefreshHint(page: JSONObject) {
+            // Advisory only: bounded server hints are accepted, never used
+            // as a fixed UI refresh promise or as a cache policy.
+            require(page.getInt("refresh_after_seconds") in 0..3600)
         }
         private fun checkEnvelope(payload: String) {
             require(payload.length <= 256 * 1024)

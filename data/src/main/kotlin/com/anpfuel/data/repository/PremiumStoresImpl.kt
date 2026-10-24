@@ -57,6 +57,54 @@ class PremiumCommandStoreImpl @Inject constructor(
     override suspend fun clearOwner(scope: PremiumOwnerScope) {
         outbox.clearOwner(scope.accountId, scope.origin)
     }
+
+    override suspend fun hasHeldRecord(scope: PremiumOwnerScope, dataset: String, recordId: String): Boolean =
+        outbox.hasHeldRecord(scope.accountId, scope.origin, dataset, recordId)
+
+    override suspend fun removeRecord(scope: PremiumOwnerScope, dataset: String, recordId: String) {
+        check(outbox.countActiveRecord(scope.accountId, scope.origin, dataset, recordId) == 0) { "ledger.active-claim" }
+        outbox.deleteRecord(scope.accountId, scope.origin, dataset, recordId)
+    }
+
+    override suspend fun releaseExpired(nowMillis: Long): Int =
+        outbox.releaseExpired(nowMillis)
+
+    override suspend fun claim(
+        operationId: String,
+        scope: PremiumOwnerScope,
+        nonce: String,
+        leaseUntilMillis: Long,
+    ): Boolean = outbox.claim(operationId, scope.accountId, scope.origin, nonce, leaseUntilMillis) > 0
+
+    override suspend fun failTransient(
+        scope: PremiumOwnerScope,
+        operationId: String,
+        nonce: String,
+        nowMillis: Long,
+    ) {
+        val current = outbox.findById(operationId, scope.accountId, scope.origin) ?: return
+        val attempts = current.attempts + 1
+        val backoff = minOf(30_000L shl minOf(attempts, 7), 3_600_000L)
+        outbox.failClaim(operationId, scope.accountId, scope.origin, nonce, attempts, nowMillis + backoff)
+    }
+
+    override suspend fun markConflict(scope: PremiumOwnerScope, operationId: String, reason: String) {
+        outbox.markConflict(operationId, scope.accountId, scope.origin)
+    }
+
+    override suspend fun acknowledge(scope: PremiumOwnerScope, operationId: String) {
+        outbox.deleteById(operationId, scope.accountId, scope.origin)
+    }
+
+    override suspend fun countPending(scope: PremiumOwnerScope, limit: Int, dataset: String?): Int {
+        val count = outbox.countPending(scope.accountId, scope.origin, dataset)
+        return minOf(count, limit.coerceAtLeast(0))
+    }
+
+    override suspend fun listConflicts(scope: PremiumOwnerScope, limit: Int): List<PremiumCommand> {
+        if (limit <= 0) return emptyList()
+        return outbox.listConflicts(scope.accountId, scope.origin, limit).map(PremiumMapper::toDomain)
+    }
 }
 
 class PremiumCursorStoreImpl @Inject constructor(

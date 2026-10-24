@@ -103,88 +103,70 @@ func (q *Queries) EnforcementCompanyAssociationDecisions(ctx context.Context, re
 	return items, nil
 }
 
-const enforcementStationCoverage = `-- name: EnforcementStationCoverage :one
-SELECT count(DISTINCT a.station_id) AS stations,
- count(DISTINCT a.record_key) AS records
-FROM quality_enforcement_company_associations a
-JOIN directory_stations s ON s.id = a.station_id
-WHERE a.revision_id = $1
- AND a.resolution_kind = 'bound'
- AND s.status = 'active'
-`
-
-type EnforcementStationCoverageRow struct {
-	Stations int64 `json:"stations"`
-	Records  int64 `json:"records"`
-}
-
-func (q *Queries) EnforcementStationCoverage(ctx context.Context, revisionID pgtype.UUID) (EnforcementStationCoverageRow, error) {
-	row := q.db.QueryRow(ctx, enforcementStationCoverage, revisionID)
-	var i EnforcementStationCoverageRow
-	err := row.Scan(&i.Stations, &i.Records)
-	return i, err
-}
-
-const enforcementStationPage = `-- name: EnforcementStationPage :many
-SELECT s.id,s.display_name,s.municipality_code,s.state,s.status,
+const enforcementStationCandidates = `-- name: EnforcementStationCandidates :many
+SELECT s.id,s.display_name,s.municipality_code,s.state,s.status,v.subject_cnpj,
  count(a.record_key) AS record_count
 FROM quality_enforcement_company_associations a
-JOIN directory_stations s ON s.id = a.station_id
-JOIN quality_enforcement_source_records v ON v.revision_id = a.revision_id AND v.native_key = a.record_key
-WHERE a.revision_id = $1
- AND a.resolution_kind = 'bound'
- AND s.status = 'active'
- AND (s.state = $2::text OR $2::text IS NULL)
- AND (v.segment = $3::text OR $3::text IS NULL)
- AND (v.document_day >= $4::date OR $4::date IS NULL)
- AND (v.document_day <= $5::date OR $5::date IS NULL)
- AND (s.id::text > $6::text OR $6::text = '')
-GROUP BY s.id,s.display_name,s.municipality_code,s.state,s.status
-ORDER BY s.id::text LIMIT $7::int
+JOIN directory_stations s ON s.id=a.station_id
+JOIN quality_enforcement_source_records v ON v.revision_id=a.revision_id AND v.native_key=a.record_key
+WHERE a.revision_id= $1 AND a.resolution_kind='bound' AND s.status='active'
+ AND (s.state=$2::text OR $2::text IS NULL)
+ AND (v.segment=$3::text OR $3::text IS NULL)
+ AND (v.document_day>=$4::date OR $4::date IS NULL)
+ AND (v.document_day<=$5::date OR $5::date IS NULL)
+ AND ($6::text = '' OR a.station_id > NULLIF($6::text, '')::uuid
+  OR (a.station_id = NULLIF($6::text, '')::uuid AND $7::text <> '' AND v.subject_cnpj > $7::text))
+GROUP BY s.id,s.display_name,s.municipality_code,s.state,s.status,v.subject_cnpj
+ORDER BY s.id,v.subject_cnpj LIMIT 512
 `
 
-type EnforcementStationPageParams struct {
-	RevisionID   pgtype.UUID `json:"revision_id"`
-	State        pgtype.Text `json:"state"`
-	Segment      pgtype.Text `json:"segment"`
-	FromDay      pgtype.Date `json:"from_day"`
-	ToDay        pgtype.Date `json:"to_day"`
-	AfterID      string      `json:"after_id"`
-	LimitPlusOne int32       `json:"limit_plus_one"`
+type EnforcementStationCandidatesParams struct {
+	RevisionID pgtype.UUID `json:"revision_id"`
+	State      pgtype.Text `json:"state"`
+	Segment    pgtype.Text `json:"segment"`
+	FromDay    pgtype.Date `json:"from_day"`
+	ToDay      pgtype.Date `json:"to_day"`
+	AfterID    string      `json:"after_id"`
+	AfterCnpj  string      `json:"after_cnpj"`
 }
 
-type EnforcementStationPageRow struct {
+type EnforcementStationCandidatesRow struct {
 	ID               pgtype.UUID `json:"id"`
 	DisplayName      string      `json:"display_name"`
 	MunicipalityCode pgtype.Text `json:"municipality_code"`
 	State            pgtype.Text `json:"state"`
 	Status           string      `json:"status"`
+	SubjectCnpj      pgtype.Text `json:"subject_cnpj"`
 	RecordCount      int64       `json:"record_count"`
 }
 
-func (q *Queries) EnforcementStationPage(ctx context.Context, arg EnforcementStationPageParams) ([]EnforcementStationPageRow, error) {
-	rows, err := q.db.Query(ctx, enforcementStationPage,
+// A bounded private candidate batch; Directory's owned evidence/guard ports
+// decide current-company eligibility. Aggregate only after that proof, so a
+// stale CNPJ cannot inflate a station's count or truncate a public page.
+func (q *Queries) EnforcementStationCandidates(ctx context.Context, arg EnforcementStationCandidatesParams) ([]EnforcementStationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, enforcementStationCandidates,
 		arg.RevisionID,
 		arg.State,
 		arg.Segment,
 		arg.FromDay,
 		arg.ToDay,
 		arg.AfterID,
-		arg.LimitPlusOne,
+		arg.AfterCnpj,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []EnforcementStationPageRow
+	var items []EnforcementStationCandidatesRow
 	for rows.Next() {
-		var i EnforcementStationPageRow
+		var i EnforcementStationCandidatesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
 			&i.MunicipalityCode,
 			&i.State,
 			&i.Status,
+			&i.SubjectCnpj,
 			&i.RecordCount,
 		); err != nil {
 			return nil, err
@@ -195,6 +177,25 @@ func (q *Queries) EnforcementStationPage(ctx context.Context, arg EnforcementSta
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockEnforcementCompanyReadRevision = `-- name: LockEnforcementCompanyReadRevision :one
+SELECT r.id FROM quality_revisions r
+JOIN quality_editions e ON e.id=r.edition_id
+JOIN quality_enforcement_company_association_revisions c ON c.revision_id=r.id
+JOIN quality_enforcement_source_revisions n ON n.revision_id=r.id
+WHERE r.id=$1::uuid AND e.source='enforcement' AND e.stream='enforcement-v1'
+ AND r.status IN ('published','superseded')
+ AND c.policy_version='current-company-v1' AND c.association_scope='CURRENT_COMPANY_ONLY'
+ AND NOT c.historical_business_window_known AND c.observation_count=n.accepted_count
+FOR SHARE OF r
+`
+
+func (q *Queries) LockEnforcementCompanyReadRevision(ctx context.Context, revisionID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockEnforcementCompanyReadRevision, revisionID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const recordEnforcementCompanyAssociationContext = `-- name: RecordEnforcementCompanyAssociationContext :one

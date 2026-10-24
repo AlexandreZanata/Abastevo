@@ -1,5 +1,227 @@
 # Current execution state
 
+- Final union after PR149 merge 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING,
+  merge `9c93892c`. Re-ran the union instead of reusing pre-merge counts:
+  domain675/application454/data549/app465 = 2,143 JVM (0 failures/errors, 2
+  pre-existing skips), lint/APK, Go race/vet/staticcheck(1.27.1)/sqlc, real
+  PostGIS integration (trust transient DB-startup failure passed isolated),
+  Rust177/fmt/clippy PASS; occurrence refresh + PR149 revision fencing both
+  preserved, gofmt drift fixed `f522a884`. Next: current-head checks and
+  guarded PR147 dev → main.
+
+- EV/Android batch map 2026-10-23 (authorized, sequential): MEX-16 (Premium
+  status), EE-24 (EV sync/privacy), MEX-32/EE-26 (shared refresh), EE-22
+  (community EV), EE-25/MEX-31 carried gaps (scenario execution/vehicle
+  context), EE-27 (end-to-end), MEX-33/34, EE-28/MEX-35 (measurements),
+  EE-29/MEX-36/37 (regression/privacy/union), EE-30/MEX-38 (manifest/handoff),
+  EE-31/MEX-39 (combined overview). MEX-16, MEX-32+EE-26, EE-22 and the
+  acceptance units have real gaps; already-accepted EE-00–21/23/25 and
+  MEX-14/15 code is reused, not reimplemented. Delivery: one atomic commit
+  and normal dev push per unit, no CI wait during construction; final
+  inventory/reconciliation of all open PRs and guarded dev → main integration
+  happen after the union. Native/device, staging, provider, sales and
+  deployment remain separately OWED.
+
+- EE-31/MEX-39 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent
+  `80bd7eb2`. [Combined overview](../backend/evidence/ev-support/EE-31.md):
+  Portuguese task/commit/test/measurement map for the 17-commit batch; 2,130
+  JVM (2 pre-existing skips), Go/Rust/PostGIS/OpenAPI, real source chains and
+  operational manifest. Explicit pending: EE-25 energy/scenario execution,
+  MEX-35 combined device campaign, Android vehicle backup, exact Go-page
+  Android decode, staging/Play/native/operator/production. No release claim.
+  Next: final GitHub inventory and protected dev → main delivery.
+
+- MEX-38 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `83b77df4`.
+  [Operational handoff](../backend/evidence/mobile-expansion/MEX-38.md): reuses
+  the EE-30 source-ready manifest and local restore/erase/replay rehearsals;
+  exact external gates (Play sandbox, staging two-device/private objects,
+  operator access, physical Android, production deploy/load/restore, pilot)
+  remain OWED. No VPS/deploy/sales/source activation, no G09 claim.
+
+- EE-30 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `113d6df7`.
+  [Source-ready manifest](../backend/evidence/ev-support/EE-30.md): pins code
+  head `887d5a71`, append-only `000120`, Room 25, OpenAPI/profile/vector hashes,
+  private OCM/PBE/enforcement artifact hashes/census, feature defaults and
+  license boundaries. SOURCE_READY_LOCAL only; staging/integration/release and
+  all external proofs stay OWED. No deploy/activation.
+
+- MEX-37 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `4c8f86eb`.
+  [Final scoped union](../backend/evidence/mobile-expansion/MEX-37.md): code
+  head `887d5a71` full matrix 2,130 JVM (0 failures/errors, 2 pre-existing
+  skips), lint/APK, Go race/vet/static/sqlc/PostGIS/OpenAPI, Rust 177/fmt/
+  clippy, compat script and 8-locale parity PASS; later commits are docs only.
+  Physical TalkBack/font/offline/device Room and staging remain OWED. Next
+  EE-30/MEX-38 manifest.
+
+- MEX-36 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `54e8a021`.
+  [Privacy/all-copy recovery](../backend/evidence/mobile-expansion/MEX-36.md):
+  real PostGIS erasure reuse/outage/retry, stale/double restore, delete-during-
+  activity restore, foreign-owner/free export paths and CSV formula refusal
+  PASS; secret/PII scan clean; EE-22 wire carries no GPS/route/home/photo.
+  Real S3/staging object receipts remain OWED.
+
+- EE-29 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `887d5a71`.
+  [Retained/upgrade/privacy](../backend/evidence/ev-support/EE-29.md): full
+  matrix 2,130 JVM (0 failures/errors, 2 pre-existing skips), lint/APK, Go
+  race/vet/static/sqlc/gofmt and real PostGIS integration, Rust 177/fmt/clippy
+  PASS. PostgreSQL upgrade derives every ≥000109 migration; SQLite 24→25 6/6;
+  CSV formula refusal; source data stays outside MIT. Physical Room/device and
+  staging receipts OWED.
+
+- MEX-35 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent `dd9d9c7e`.
+  [Discovery measurement map](../backend/evidence/mobile-expansion/MEX-35.md):
+  cited prior MEX-06/OPT-A/MEX-24/28/29 measurements plus EE-28 real prep/public
+  chain; no new combined mobile workload, device p50/p95, payload/memory or
+  safety-job contention campaign. No new optimization justified; combined
+  campaign OWED, no invented numbers. Next EE-29/MEX-36/37.
+
+- EE-28 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `8ed7b1de`.
+  [Bounded measurements](../backend/evidence/ev-support/EE-28.md): real
+  `prepare_charging` 0.78 s cold / 0.66 s warm, 15.1 MiB max RSS, 3.33 MB
+  entities + 1.60 MB decisions, 3,387/3,387 accepted, byte-identical repeat;
+  real Rust→Go→PostGIS→13-page HTTP chain 1.28 s. Android device first-content/
+  scroll/cache and concurrent backend p95 remain OWED; prior MEX-06/OPT-A
+  measurements are cited, not re-run. No third-party load. Next EE-29/MEX-36.
+
+- MEX-33 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `c9c7d13a`.
+  [Private E2E/free boundary](../backend/evidence/mobile-expansion/MEX-33.md):
+  real PostGIS ledger/cloud journeys (two-device conflict/delete/replay,
+  consent revoke, late correction invalidation, report/erase, backup lapse/
+  isolation, privacy delete/restore, free export/erasure/foreign refusal) and
+  JVM/real-SQLite selectors PASS. Append-only migration expectation repaired
+  to derive ≥000109. Staging/two-device/object receipts and physical Room
+  remain OWED.
+
+- MEX-34 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `3b36e117`.
+  [Official source-to-mobile](../backend/evidence/mobile-expansion/MEX-34.md):
+  pinned 16,188,087-byte enforcement workbook + independent census + trusted
+  nonroot preparer through the real worker/source lease/PostGIS
+  replay-correction-full traversal PASS in 60.4 s; wrong workbook refused
+  first; Android occurrence/public typed selectors PASS. Exact whole-source
+  Android decode/device remains OWED; flags OFF, no activation.
+
+- EE-27 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `f46a7f2c`.
+  [End-to-end acceptance](../backend/evidence/ev-support/EE-27.md): actual
+  admitted OCM Rust artifact → strict Go bridge → PostGIS publication → full
+  public HTTP cursor traversal (1,298 places/2,089 groups/0 vehicles, coverage
+  equal, no PII) PASS; Rust→Go parity on both real batches PASS; signed
+  community PostGIS command/moderation and private ledger/cloudsync real
+  PostGIS suites PASS. Android decoding of the exact Go page and physical Room
+  import remain OWED; no mocks-only claim. Next MEX-33/34.
+
+- MEX-31/EE-25 gap 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent
+  `82ea53c3`. [Gap record](../backend/evidence/ev-support/EE-25-MEX-31-GAP.md):
+  master EV place intents now open compatible charging with a real BEV/PHEV
+  vehicle (single/choice/none-add), and energy/scenario intents show explicit
+  execution-pending notices instead of dead routes. Reported-energy ranking and
+  complete scenario cost remain OWED on missing place-level aggregate/provider
+  tariff inputs; interpretation is not counted as a result. Master tests/lint/
+  APK and eight locales PASS. Next EE-27.
+
+- EE-22 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `b5fc0277`.
+  [Community EV journeys](../backend/evidence/ev-support/EE-22.md): completed
+  EE-12/13 HTTP reads (owner revisions), helpfulness and report endpoints with
+  self-action refusal, OpenAPI; Android typed client, durable account/origin
+  pending store, use case, ViewModel and Compose journey (publish, list, edit,
+  withdraw, vote, report), offline/conflict/signed-out states and 47 strings ×
+  8 locales. Real-PostGIS command/moderation tests, client/use-case/VM tests,
+  lint/APK, vet/sqlc/OpenAPI PASS. No GPS/home/route/photo in wire. Device/
+  staging E2E and operator moderation actions remain OWED. Next EE-25/MEX-31
+  execution gaps.
+
+- EE-26 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `05c22e23`.
+  [Refresh/stale policy](../backend/evidence/ev-support/EE-26.md): charging
+  snapshot age is UNKNOWN/FRESH/STALE at a 24 h boundary, shown in eight
+  locales as dated source (never live availability); duplicate triggers stay
+  single-flight and failed refreshes keep rows; occurrence/community reuse
+  the accepted event/manual policy. Domain/app/data targeted tests and
+  compilation PASS; byte/SQL measurement and physical lifecycle evidence
+  remain OWED. Next EE-22.
+
+- MEX-32 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `188c2cdb`.
+  [Shared refresh](../backend/evidence/mobile-expansion/MEX-32.md): community
+  policy reused; advisory `refresh_after_seconds` decoupled from a fixed 15
+  (bounded 0..3600, never a policy); charging and occurrence manual refreshes
+  are single-flight and keep loaded windows; eight locales verified free of
+  fixed-interval claims. Targeted app/data tests and compilation PASS. Device
+  lifecycle and byte/SQL measurements remain OWED. Next EE-26.
+
+- EE-24 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `af32cea5`.
+  [EV sync/privacy allowlist](../backend/evidence/ev-support/EE-24.md): MHEV
+  is a first-class hosted kind (tank-only, same as HEV); vehicle payloads use
+  the frozen allowlist and preserve unknown newer/energy fields through both
+  `PutVehicle` and sync `Apply` for legacy partial updates. Existing MEX-14/15
+  ledger transport, account/origin and erasure guards reused. One RED
+  regression (sync Apply erased stored energy/unknown fields) closed; cloudsync
+  unit/HTTP suites, targeted real-PostGIS MHEV/preservation/concurrency tests,
+  vet/gofmt/diff/secrets PASS. Android vehicle cloud transport is absent from
+  this codebase and remains an explicit product gap, not claimed. Next
+  MEX-32/EE-26.
+
+- MEX-16 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `a5c4ed37`.
+  [Premium status](../backend/evidence/mobile-expansion/MEX-16.md): signed-in
+  owner sees server-verified state/capabilities/paid-through/retained-data,
+  manage link, manual refresh and honest offline/denied/error states; restore
+  is explicitly unavailable because no Play Billing token source ships. No
+  local entitlement derivation, purchase or provider activation. 12 targeted
+  tests (5 data, 2 application, 5 app) plus debug APK/lint PASS; 18 strings ×
+  8 locales; diff/secret clean. Sandbox/provider quotes remain
+  EXTERNAL_PROOF_OWED. Next EE-24 EV sync/privacy.
+
+- MEX-15 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, parent `52c994b3`. [Conflict, backup controls and restore](../backend/evidence/mobile-expansion/MEX-15.md): explicit keep/take/cancel, device/dataset gates, honest last-ack status, owner-bound expiring restore preview/confirm, transactional local apply, erasure/legacy-delete guards and 27 strings × 8 locales. Full JVM 2093 tests, 0 failures/errors (2 pre-existing live skips), six real SQLite cases, lint/debug APK/diff/secrets PASS. Tested source fingerprint in evidence; local task tracking, issue/PR unchanged and remote checks NOT_RUN. One local atomic commit only; no push/PR/merge. Native process/Room and signed two-device/staging/private-object receipts remain OWED. Next: MEX-16 bounded source phase; final integration separate.
+
+- MEX-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent6d195688. [Private sync transport + constrained worker](../backend/evidence/mobile-expansion/MEX-14.md): explicit opt-in (default OFF), typed ledger POST with live proof, atomic claim/ack/conflict/backoff on reused outbox, one-command Hilt worker + unique CONNECTED/backoff scheduling, pausing keeps rows. Full suites (2038 tests, 0 failures; 2 pre-existing live skips), app/data lint, diff, secrets green; device reopen deferred. Two-device/reconnect runs stay staging-gated.
+
+- MEX-31 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4d6. [Master discovery journeys](../backend/evidence/mobile-expansion/MEX-31.md): on-device interpreter port (golden parity), typed ranking client (no-store, cancellable, bounded), IBGE-exact municipal resolution, master screen (suggestions, interpretation, NEEDS_CHOICE, ranking results, official deep-link), 11 strings x 8 locales. Full suites (2029 tests, 0 failures), lint, diff, secrets green; device reopen deferred.
+
+- EE-25 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentd1e1b4b6. [Electric master questions](../backend/evidence/ev-support/EE-25.md): typed EV intents (compatible places, reported energy price, complete scenario cost) with pinned source/bounded pages, NEEDS_CHOICE for ambiguous/missing, refusals without guessing; deterministic vectors green, no liquid/official regressions. Backend vet/static/diff green; no OpenAPI/SQL change.
+
+- EE-23 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentb26c5547. [Energy comparisons](../backend/evidence/ev-support/EE-23.md): Go/Kotlin golden parity corpus (11 vectors, both engines green), pure energy engine with weighted compare + km/L-equivalent refusal, monthly measured/reference/comparison/combined, formula-safe CSV export, energy UI block (7 strings × 8 locales). Full suites (2009 tests, 0 failures) + backend metrics, lint, diff, secrets green; device reopen deferred.
+
+- MEX-13 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parenta5e98507. [Monthly indicators](../backend/evidence/mobile-expansion/MEX-13.md): month/vehicle totals, measured vs estimated, cost/km + combined with window explanation, stale-safe rebuilds, comparison, formula-safe CSV export, 19 strings × 8 locales. Full suites (2005 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No revenue/guessed denominators.
+
+- EE-21 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent7d2c35dd. [Compatible discovery](../backend/evidence/ev-support/EE-21.md): pure compatibility verdicts, snapshot-backed repository (OCM-only sync, atomic generations, wrong-base/corrupt refusal, offline reads), per-vehicle Explore screen (filters, badges, source age, no live claims), 21 strings × 8 locales. Full suites (1996 tests, 0 failures), lint, diff, secrets green; fuel discovery untouched; device reopen deferred.
+
+- EE-20 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parenta655095a. [Private charging entry](../backend/evidence/ev-support/EE-20.md): home/work/public/other local context (migration v23, never synced/posted), charge form (kWh/rate/SOC/tariff pins, simulation vs actual, pt-BR parsing, electric gate, typed errors), late correction with revision/context, LOCAL/PENDING/CONFLICT states, double-tap guard, restart reload, account isolation, rollback-safe saves. Full suites (1986 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No dispatch.
+
+- MEX-12 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent7f4b300. [Refuel/expense journeys](../backend/evidence/mobile-expansion/MEX-12.md): entries UI per vehicle (list/add/edit/delete, fills, categories, pt-BR parsing, typed per-field errors, LOCAL/PENDING/CONFLICT, gap/reset intents, estimated km/L, double-tap guard, restart reload), 50 strings × 8 locales. Full suites (1979 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No transport (MEX-14).
+
+- MEX-11 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parentf7d8110d. [Durable ledger drafts/outbox](../backend/evidence/mobile-expansion/MEX-11.md): validated refuel/expense/charge drafts with exact canonical bodies, deterministic op IDs (double-save converges, lost-ack retries same ID), partition-keyed draft table v22, reused premium outbox + restart release, 3 use cases (no transport). Full suites (1967 tests, 0 failures), lint, diff, secrets green; device reopen deferred. No dispatch/sync.
+
+- MEX-08 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parenta3b4c597. [Local free/Premium vehicle admission](../backend/evidence/mobile-expansion/MEX-08.md): pure 23-vector admission rule + lease resolution (versioned owner/origin, 24h/paid-through bounds, rollback/revoke/unknown refusal), atomic Room admit (replay free, recount in-tx, no count-then-save), lease table v21, gated save + honest Premium entry UI (3 strings × 8 locales). Full domain/data/application/app suites (1952 tests, 0 failures), app+data lint, diff, secrets green; device reopen deferred. No live proof/purchase/sync.
+
+- EE-19 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentc48c3abd. [Energy-capable vehicle model](../backend/evidence/ev-support/EE-19.md): Propulsion/Battery/connector on Vehicle with EE-10 parity (BEV no tank/fuel, PHEV both, HEV/MHEV tank-only, unknown refused, no backfill), nullable tank/fuel with BEV excluded from fill estimates/alerts, same 3-slot gate, Room v20 rebuild preserving legacy rows as ICE, conditional UI with localized kWh, 10 strings × 8 locales. Full domain/data/application/app suites, app+data lint, diff, secrets green; device reopen deferred. No sync/discovery/reports.
+
+- EE-18 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent679a3c9f. [Android typed public snapshot](../backend/evidence/ev-support/EE-18.md): strict DTOs with unknown-enum retention, codec + cancellable no-store HTTP client (EE-09), pure pack planner (admitted profiles, hash/base/origin/schema/tombstone/coverage/budget gates, resume cursor), atomic Room generations v19 + additive migration (fuel/history/private untouched, Room schema cross-checked). Domain/data suites, data lint, diff, secrets green; device reopen deferred per standing directive. No UI/wiring/activation.
+
+- EE-17 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent4ca4b3a3. [Licensed operator read adapter](../backend/evidence/ev-support/EE-17.md): executable ACCESS_PENDING port (pinned read-only config, credential/expiry resolution, typed fault taxonomy, UNKNOWN never available, LICENSED_OPERATOR tariff stamping, routeless default fails closed); 11 config refusals, pending/expiry/route/replay/stale/scope/revoke/cancel/secret-hygiene PASS; charging race, vet, staticcheck, gofmt, diff, secrets green. No credential, feed, wiring or activation.
+
+- EE-16 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6993bdef. [Electric/hybrid reports](../backend/evidence/ev-support/EE-16.md): ledger→report charge aggregation (stated energy/cost/fees, nulls out, fees separate), pure sum-first energy/combined metrics, PHEV shared-distance basis (`phev-shared-distance`, money exact, counted once), projection v3, CSV lines; charge-anchored gaps (adapter+SQL), erasure revokes charge bit, consent reports charge. Golden parity, unequal weights, cross-month/timezone, late correction, SOC/gap/segment/missing, erasure PASS with PostGIS; ledger/api/apicontract race, vet, staticcheck, sqlc, gofmt, diff, secrets green. No activation.
+
+- EE-15 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent7b2c6a95. [Private electric session backend](../backend/evidence/ev-support/EE-15.md): Charge type with optional energy/total/SOC/odometer/fees/tariff-revision pins in owned ledger (new charge dataset + consent bit via append-only migrations); PHEV/fuel coexistence, nulls preserved, revision idempotency, concurrent conflicts, account isolation, no public leak. CRUD integration PASS with PostGIS; ledger module, vet, staticcheck green. No activation.
+
+- EE-14 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent48a8f555. [Tariff and observation reads](../backend/evidence/ev-support/EE-14.md): exact tariff ranking by scenario total (rational arithmetic, stable ties, unknowns last, member-target isolation) plus community history pages with tallies; OpenAPI paths; ranking tests PASS; charging module, vet, staticcheck, vacuum zero errors green. No stored tariffs or activation.
+
+- EE-13 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent6abb3479. [EV community projection and moderation](../backend/evidence/ev-support/EE-13.md): helpfulness votes/reports with idempotent convergence, projection with tallies excluding hidden/deleted/expired (no writes for expiry), conflicting votes coexist; integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No verified-price claims or lifecycle automation.
+
+- EE-12 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentc8490dae. [Signed community EV observation commands](../backend/evidence/ev-support/EE-12.md): account-scoped observations (connector/price/condition/day/note) with quotas, revision-guarded correction/withdrawal, idempotent replay by ID, session-authenticated POST/PUT/DELETE; forged/cross-owner/malformed refuse. HTTP→DB integration PASS with PostGIS; domain, vet, staticcheck, sqlc vet green. No projections/moderation lifecycle (EE-13).
+
+- EE-10 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentf08b6740. [Hosted vehicle energy-capability migration](../backend/evidence/ev-support/EE-10.md): propulsion/battery pointers on Vehicle with BEV/PHEV/HEV/ICE rules, no backfill, merge-preserving partial updates with revision-guarded races; owner BEV, legacy merge, concurrent conflict and account isolation PASS with PostGIS; domain, vet, staticcheck green. No migration (JSONB), HTTP or activation.
+
+- EE-09 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentda7a9551. [Public charging/reference APIs](../backend/evidence/ev-support/EE-09.md): bounded pages/detail/coverage under explicit profiles with keyset/cursors/ETags, kill switch (default true, false answers 404), OpenAPI paths/schemas; traversal/coverage/malformed/OpenAPI tests PASS with PostGIS; charging module, vet, staticcheck, sqlc vet/diff, vacuum zero errors green. No ingestion/activation.
+
+- EE-08 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent2a0f39e7. [Verified ingestion jobs](../backend/evidence/ev-support/EE-08.md): bounded Runner (workspace, trusted binaries, cleanup, dead budgets, idempotent replay by manifest hash) plus allowlisted Discover (https/TLS12/no-redirect/1 MB/30 s, no SSRF) and pure merge/split review flags; queue handlers without auto-actions; config gate default-off; Dockerfile + CI with both preparers as nonroot. Seven job tests plus integration PASS; vet/staticcheck green. No dispatcher/schedule activation.
+
+- EE-07 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent7c7414d8. [Append-only charging/reference storage](../backend/evidence/ev-support/EE-07.md): migration 000115 with source-owned immutable tables (batches, places, groups, vehicles) plus owned charging sqlc package; StoreBatch stages verified batches in kind order with per-batch census and rollback; Directory links stay null. Real PostGIS upgrade/replay preserves data (3,387 + 181 entities); race, vet, staticcheck, sqlc vet/diff green. No publication/reads/linking.
+
+- EE-06 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent41a0a29e. [Strict Go prepared bridge](../backend/evidence/ev-support/EE-06.md): versioned manifest/integrity/census/rights/ID admission with recomputed content identity and source keys, bounded streams, fail-closed on corruption/cancel/duplicate/license/oversize; prerequisite frozen-envelope fixes to both CLIs (array provenance, uppercase outcomes, sorted streams, full schema validation). Unit plus real Rust→Go parity on both batches PASS with race; charging module, vet, staticcheck, 177 Rust tests, fmt/clippy green. No storage/publication/runtime.
+
+- EE-05 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent1001dbc5. User-authorized PBE admission plus dealer BYD supplement (provenance documented). [Rust vehicle-reference preparation](../backend/evidence/ev-support/EE-05.md): PBE nine-layout reader (gap-split fields, right-anchored MJ/range, comma decimals, frozen minimal payload) plus supplement path; 181 distinct EV references with 5 cross-listed duplicates and full loss accounting; MJ/km cross-validated with supplement; extraction via reviewed pdftotext adapter, no Rust dependency. Real-file acceptance matches oracle; 177 Rust tests, fmt/clippy green. No bridge/storage/activation.
+
+- EE-04 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parentc3de5c03. User-authorized OCM admission (open licenses 1/40/57). [Rust charging-location preparation](../backend/evidence/ev-support/EE-04.md): whole-Brazil snapshot (1,298 POIs, pinned commit, blob-verified, 1.8 MB) with license/PII analysis; profile amended to admitted; dependency-free Rust reader (places + connection groups, exact lexemes, frozen enums, assertion digests) plus prepare_charging CLI (4-file batch, deterministic, 0600/0700). Real-file acceptance matches independent oracle (3,387 units, zero PII, unique keys, byte-identical repeats); 174 Rust tests, fmt/clippy green, no new dependency. No vehicle/bridge/storage/activation.
+
+- Recent-main audit 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING. [Independent review](../backend/evidence/reviews/RECENT_MAIN_PRS_AUDIT.md) and [acceptance](../backend/evidence/reviews/RECENT_MAIN_PRS_ACCEPTANCE.json). PR140–146 are actually merged through main `c3de5c03`; older per-phase pending notes below remain historical. Corrected guarded enforcement publication/live company reads, nullable geography, Android revocation/stale/detail/revision/filter handling and seven exact upgrade assertions; delivery guard now rejects enabled failed/incomplete CI even outside the required list. GitHub confirms PR142/145 merged with failed integration signals. Final local union116 Go packages/3287 outcomes, Kotlin644/390/477/410 (two existing data skips), Rust170, whole244247-row/two2443-page source traversal, security/static/build/lint PASS; domain90% gate repaired via behavioral default-event identity/clock tests (90.44%, no weakened gate). Changes isolated on `codex/audit-recent-main-prs`; preserve the other agent's occupied dev and primary changes. Next: reconcile this tested correction into maintained dev when its front is ready, then current-head protected delivery; no merge/deploy/activation/manual or production certification claimed.
+
 - MEX-27 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent69d584bb. User-authorized Android scope. [Station filters and timeline](../backend/evidence/mobile-expansion/MEX-27.md): modal filter sheet (UF/segment/kind with clear/apply), company/source-global date-descending timeline sections, preserved filters/pages, every selection hits the wire, no clean-filter inference; six ViewModel tests plus navigation regression PASS; app lint green with eight locales. No backend/Room/activation.
 
 - MEX-26 2026-10-22: LOCAL_DONE / INTEGRATION_PENDING, parent30228626. User-authorized Android scope. [National occurrence explorer](../backend/evidence/mobile-expansion/MEX-26.md): Compose explorer (filter chips, lazy list, coverage, stale/unavailable/empty) plus source detail with no-guilt copy, ViewModel with cursor/generation/saved-state handling, occurrence-explorer/detail routes without a new tab, OCCURRENCE_UI_ENABLED flag, eight-locale strings. Four ViewModel tests plus navigation regression PASS; app/data lint green. No backend/Room/activation.

@@ -32,5 +32,15 @@ func companyQualityReader(pool *pgxpool.Pool) *qualityread.Reader {
 				expected = append(expected, directoryapp.SourceBinding{CNPJ: b.CNPJ, StationID: b.StationID})
 			}
 			return identity.Guard(ctx, tx, expected)
-		})
+		}).WithCompanyIdentityTx(func(ctx context.Context, tx pgx.Tx, ids []string) ([]qualitydomain.IdentityEvidence, error) {
+		rows, err := identity.EvidenceAt(ctx, tx, ids)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]qualitydomain.IdentityEvidence, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, qualitydomain.IdentityEvidence{CNPJ: r.CNPJ, StationID: r.StationID, Current: r.Current, StationActive: r.StationActive})
+		}
+		return out, nil
+	})
 }

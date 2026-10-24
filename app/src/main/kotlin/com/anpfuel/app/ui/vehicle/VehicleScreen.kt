@@ -21,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,14 +55,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.mapper.PropulsionI18n
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpFuelTheme
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.model.Vehicle
 import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.Propulsion
 import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
@@ -68,6 +73,8 @@ import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 @Composable
 fun VehicleScreen(
     onNavigateBack: () -> Unit,
+    onOpenEntries: (DomainId) -> Unit = {},
+    onOpenCharging: (DomainId) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: VehicleViewModel = hiltViewModel(),
 ) {
@@ -105,14 +112,20 @@ fun VehicleScreen(
         locale = locale,
         onNavigateBack = onNavigateBack,
         onAddVehicle = viewModel::startAddVehicle,
+        onOpenEntries = onOpenEntries,
+        onOpenCharging = onOpenCharging,
         onEditVehicle = { id -> viewModel.startEditVehicle(id, locale) },
         onRequestDeleteVehicle = viewModel::requestDeleteVehicle,
         onConfirmDeleteVehicle = viewModel::confirmDeleteVehicle,
         onDismissDeleteConfirm = viewModel::dismissDeleteConfirm,
+        onDismissPremiumRequired = viewModel::dismissPremiumRequired,
         onDismissForm = viewModel::dismissForm,
         onDisplayNameChanged = viewModel::onDisplayNameChanged,
         onTankCapacityChanged = viewModel::onTankCapacityChanged,
         onFuelProductSelected = { product -> viewModel.onFuelProductSelected(product, locale) },
+        onPropulsionSelected = viewModel::onPropulsionSelected,
+        onBatteryCapacityChanged = viewModel::onBatteryCapacityChanged,
+        onChargeConnectorSelected = viewModel::onChargeConnectorSelected,
         onPriceSourceModeSelected = { mode -> viewModel.onPriceSourceModeSelected(mode, locale) },
         onStationSelected = viewModel::onStationSelected,
         onPriceDropAlertChanged = viewModel::onPriceDropAlertChanged,
@@ -132,14 +145,20 @@ internal fun VehicleContent(
     locale: java.util.Locale,
     onNavigateBack: () -> Unit,
     onAddVehicle: () -> Unit,
+    onOpenCharging: (DomainId) -> Unit,
     onEditVehicle: (DomainId) -> Unit,
     onRequestDeleteVehicle: (DomainId) -> Unit,
+    onOpenEntries: (DomainId) -> Unit,
     onConfirmDeleteVehicle: () -> Unit,
     onDismissDeleteConfirm: () -> Unit,
+    onDismissPremiumRequired: () -> Unit,
     onDismissForm: () -> Unit,
     onDisplayNameChanged: (String) -> Unit,
     onTankCapacityChanged: (String) -> Unit,
     onFuelProductSelected: (FuelProduct) -> Unit,
+    onPropulsionSelected: (Propulsion) -> Unit,
+    onBatteryCapacityChanged: (String) -> Unit,
+    onChargeConnectorSelected: (ChargingConnector?) -> Unit,
     onPriceSourceModeSelected: (VehiclePriceSourceMode) -> Unit,
     onStationSelected: (com.anpfuel.domain.valueobject.Cnpj) -> Unit,
     onPriceDropAlertChanged: (Boolean) -> Unit,
@@ -175,6 +194,20 @@ internal fun VehicleContent(
             dismissButton = {
                 TextButton(onClick = onDismissDeleteConfirm) {
                     Text(text = stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+    // MEX-08 honest Premium entry: explains the capability requirement,
+    // preserves every held row, and offers no fake grant.
+    if (uiState.showPremiumRequired) {
+        AlertDialog(
+            onDismissRequest = onDismissPremiumRequired,
+            title = { Text(text = stringResource(R.string.vehicle_premium_required_title)) },
+            text = { Text(text = stringResource(R.string.vehicle_premium_required_message)) },
+            confirmButton = {
+                TextButton(onClick = onDismissPremiumRequired) {
+                    Text(text = stringResource(R.string.vehicle_premium_required_dismiss))
                 }
             },
         )
@@ -249,6 +282,9 @@ internal fun VehicleContent(
                         onDisplayNameChanged = onDisplayNameChanged,
                         onTankCapacityChanged = onTankCapacityChanged,
                         onFuelProductSelected = onFuelProductSelected,
+                        onPropulsionSelected = onPropulsionSelected,
+                        onBatteryCapacityChanged = onBatteryCapacityChanged,
+                        onChargeConnectorSelected = onChargeConnectorSelected,
                         onPriceSourceModeSelected = onPriceSourceModeSelected,
                         onStationSelected = onStationSelected,
                         onPriceDropAlertChanged = onPriceDropAlertChanged,
@@ -285,6 +321,8 @@ internal fun VehicleContent(
                                 vehicle = vehicle,
                                 onClick = { onEditVehicle(vehicle.id) },
                                 onDelete = { onRequestDeleteVehicle(vehicle.id) },
+                                onOpenEntries = { onOpenEntries(vehicle.id) },
+                        onOpenCharging = { onOpenCharging(vehicle.id) },
                             )
                         }
                         if (!uiState.canAddVehicle) {
@@ -331,16 +369,17 @@ private fun VehicleListItem(
     vehicle: Vehicle,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onOpenEntries: () -> Unit,
+    onOpenCharging: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fuelLabel = stringResource(FuelProductI18n.toStringRes(vehicle.fuelProduct))
+    val locale = LocalConfiguration.current.locales[0]
     val priceSourceLabel = when (vehicle.priceSource.mode) {
         VehiclePriceSourceMode.CHEAPEST_STATION ->
             stringResource(R.string.vehicle_price_source_cheapest)
         VehiclePriceSourceMode.SPECIFIC_STATION ->
             stringResource(R.string.vehicle_price_source_specific)
     }
-    val liters = vehicle.tankCapacity.liters.toInt()
 
     Card(
         onClick = onClick,
@@ -379,7 +418,21 @@ private fun VehicleListItem(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = onOpenEntries) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = stringResource(R.string.ledger_entries_title),
+                    )
+                }
+                if (vehicle.propulsion == Propulsion.BEV || vehicle.propulsion == Propulsion.PHEV) {
+                    IconButton(onClick = onOpenCharging) {
+                        Icon(
+                            imageVector = Icons.Default.EvStation,
+                            contentDescription = stringResource(R.string.charging_explore_title),
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = stringResource(R.string.vehicle_delete),
@@ -387,16 +440,27 @@ private fun VehicleListItem(
                     }
                 }
                 Text(
-                    text = stringResource(
-                        R.string.home_tank_fill_cost_liters_format,
-                        fuelLabel,
-                        liters,
-                    ),
+                    text = if (vehicle.propulsion == Propulsion.BEV) {
+                        stringResource(
+                            R.string.vehicle_battery_kwh_format,
+                            formatBatteryKwh(vehicle.batteryCapacity?.wattHours ?: 0, locale),
+                        )
+                    } else {
+                        stringResource(
+                            R.string.home_tank_fill_cost_liters_format,
+                            vehicle.fuelProduct?.let { stringResource(FuelProductI18n.toStringRes(it)) }.orEmpty(),
+                            vehicle.tankCapacity?.liters?.toInt() ?: 0,
+                        )
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = priceSourceLabel,
+                    text = if (vehicle.propulsion == Propulsion.BEV) {
+                        stringResource(PropulsionI18n.toStringRes(vehicle.propulsion))
+                    } else {
+                        priceSourceLabel
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -426,12 +490,18 @@ private fun VehicleListPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
+        onOpenEntries = {},
+        onOpenCharging = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
+            onDismissPremiumRequired = {},
             onDismissForm = {},
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
             onFuelProductSelected = {},
+            onPropulsionSelected = {},
+            onBatteryCapacityChanged = {},
+            onChargeConnectorSelected = {},
             onPriceSourceModeSelected = {},
             onStationSelected = {},
             onPriceDropAlertChanged = {},
@@ -455,12 +525,18 @@ private fun VehicleEmptyPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
+        onOpenEntries = {},
+        onOpenCharging = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
+            onDismissPremiumRequired = {},
             onDismissForm = {},
             onDisplayNameChanged = {},
             onTankCapacityChanged = {},
             onFuelProductSelected = {},
+            onPropulsionSelected = {},
+            onBatteryCapacityChanged = {},
+            onChargeConnectorSelected = {},
             onPriceSourceModeSelected = {},
             onStationSelected = {},
             onPriceDropAlertChanged = {},

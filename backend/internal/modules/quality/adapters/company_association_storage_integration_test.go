@@ -442,7 +442,14 @@ func TestCompanyAssociationStorageUpgradePreservesAllFrozenSourcesAndPointers(t 
 	}
 	before := snapshot()
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || !slices.Equal(applied, []string{"000109", "000110", "000111"}) {
+	var expected []string
+	for _, entry := range entries {
+		if !entry.IsDir() && entry.Name() >= "000109" && strings.HasSuffix(entry.Name(), ".sql") {
+			expected = append(expected, strings.TrimSuffix(entry.Name(), ".sql")[:6])
+		}
+	}
+	slices.Sort(expected)
+	if e != nil || !slices.Equal(applied, expected) {
 		t.Fatal("company scope upgrade", applied, e)
 	}
 	if !reflect.DeepEqual(before, snapshot()) {

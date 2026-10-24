@@ -166,6 +166,90 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindVehicleAdmissionRepository(
+        impl: com.anpfuel.data.repository.VehicleAdmissionRepositoryImpl,
+    ): com.anpfuel.domain.repository.VehicleAdmissionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerDraftStore(
+        impl: com.anpfuel.data.repository.LedgerDraftStoreImpl,
+    ): com.anpfuel.domain.repository.LedgerDraftStore
+
+    @Binds
+    @Singleton
+    abstract fun bindPremiumCommandStore(
+        impl: com.anpfuel.data.repository.PremiumCommandStoreImpl,
+    ): com.anpfuel.domain.repository.PremiumCommandStore
+
+    @Binds
+    @Singleton
+    abstract fun bindPremiumCursorStore(
+        impl: com.anpfuel.data.repository.PremiumCursorStoreImpl,
+    ): com.anpfuel.domain.repository.PremiumCursorStore
+
+    @Binds
+    @Singleton
+    abstract fun bindEstimatedEfficiencyStore(
+        impl: com.anpfuel.data.local.preferences.EstimatedEfficiencyPreferenceStore,
+    ): com.anpfuel.application.port.EstimatedEfficiencyStore
+
+    @Binds
+    @Singleton
+    abstract fun bindPriceRankingGateway(
+        impl: com.anpfuel.data.repository.PriceRankingGatewayImpl,
+    ): com.anpfuel.domain.repository.PriceRankingGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindMunicipalityIbgeLookup(
+        impl: com.anpfuel.data.repository.MunicipalityIbgeLookupImpl,
+    ): com.anpfuel.domain.repository.MunicipalityIbgeLookup
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncGateway(
+        impl: com.anpfuel.data.remote.ledger.LedgerSyncHttpClient,
+    ): com.anpfuel.domain.repository.LedgerSyncGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerRecordsGateway(
+        impl: com.anpfuel.data.remote.ledger.LedgerSyncHttpClient,
+    ): com.anpfuel.domain.repository.LedgerRecordsGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerErasureLog(
+        impl: com.anpfuel.data.repository.LedgerErasureLogImpl,
+    ): com.anpfuel.domain.repository.LedgerErasureLog
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerDraftDecoder(
+        impl: com.anpfuel.data.repository.LedgerDraftDecoderImpl,
+    ): com.anpfuel.domain.repository.LedgerDraftDecoder
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncScope(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncScopeStore,
+    ): com.anpfuel.domain.repository.LedgerSyncScope
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncAckStore(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncAckMemory,
+    ): com.anpfuel.domain.repository.LedgerSyncAckStore
+
+    @Binds
+    @Singleton
+    abstract fun bindLedgerSyncFlag(
+        impl: com.anpfuel.data.local.preferences.LedgerSyncFlagStore,
+    ): com.anpfuel.application.port.LedgerSyncFlagProvider
+
+    @Binds
+    @Singleton
     abstract fun bindPriceDropNotificationRepository(
         impl: PriceDropNotificationRepositoryImpl,
     ): PriceDropNotificationRepository

@@ -17,7 +17,21 @@ func (p *Publisher) PublishEnforcementSource(ctx context.Context, in application
 	if err := in.Validate(); err != nil {
 		return "", err
 	}
-	req := editionRequest{Source: "enforcement", Stream: domain.StreamEnforcement, Edition: application.EnforcementSourceEdition, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, EnforcementContext: &in.Context}
+	var bindings []application.CompanyBinding
+	if in.CompanyAssociations != nil {
+		sources := make(map[string]string, len(in.Records))
+		for _, row := range in.Records {
+			if row.SourceCNPJ != "" {
+				sources[row.RecordKey] = row.SourceCNPJ
+			}
+		}
+		var err error
+		bindings, err = fineCompanyBindings(in.CompanyAssociations, sources, p.companyGuard != nil)
+		if err != nil {
+			return "", err
+		}
+	}
+	req := editionRequest{CompanyAssociations: in.CompanyAssociations, CompanyBindings: bindings, Source: "enforcement", Stream: domain.StreamEnforcement, Edition: application.EnforcementSourceEdition, Predecessor: in.Predecessor, Resources: in.Resources, Counts: in.Counts, ManifestHash: in.ManifestHash, EnforcementContext: &in.Context}
 	stage := func(q *quality.Queries, _, revision pgtype.UUID) error {
 
 		var first, last pgtype.Date

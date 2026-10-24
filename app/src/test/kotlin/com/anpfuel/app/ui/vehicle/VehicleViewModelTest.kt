@@ -4,6 +4,7 @@ import com.anpfuel.app.notification.NotificationPermissionHandler
 import com.anpfuel.application.usecase.alert.ConfigurePriceDropAlertUseCase
 import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.vehicle.DeleteVehicleUseCase
+import com.anpfuel.application.usecase.vehicle.GetVehicleAdmissionStatusUseCase
 import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.application.usecase.vehicle.SaveVehicleUseCase
 import com.anpfuel.domain.model.Vehicle
@@ -42,6 +43,7 @@ class VehicleViewModelTest {
     private val deleteVehicleUseCase = mockk<DeleteVehicleUseCase>()
     private val getStationPricesUseCase = mockk<GetStationPricesUseCase>()
     private val configurePriceDropAlertUseCase = mockk<ConfigurePriceDropAlertUseCase>(relaxed = true)
+    private val admissionStatusUseCase = mockk<GetVehicleAdmissionStatusUseCase>()
     private val notificationPermissionHandler = mockk<NotificationPermissionHandler>()
     private val vehiclePhotoStore = mockk<com.anpfuel.data.local.media.VehiclePhotoStore>(relaxed = true)
 
@@ -51,12 +53,14 @@ class VehicleViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         coEvery { notificationPermissionHandler.hasPostNotificationsPermission() } returns true
+        coEvery { admissionStatusUseCase.invoke() } returns com.anpfuel.application.usecase.vehicle.VehicleAdmissionStatus(0, com.anpfuel.domain.premium.AdmissionOutcome.ACCEPT)
         viewModel = VehicleViewModel(
             listVehiclesUseCase = listVehiclesUseCase,
             saveVehicleUseCase = saveVehicleUseCase,
             deleteVehicleUseCase = deleteVehicleUseCase,
             getStationPricesUseCase = getStationPricesUseCase,
             configurePriceDropAlertUseCase = configurePriceDropAlertUseCase,
+        getVehicleAdmissionStatusUseCase = admissionStatusUseCase,
             notificationPermissionHandler = notificationPermissionHandler,
             vehiclePhotoStore = vehiclePhotoStore,
         )

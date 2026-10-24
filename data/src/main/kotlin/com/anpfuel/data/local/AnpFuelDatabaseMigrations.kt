@@ -526,4 +526,178 @@ object AnpFuelDatabaseMigrations {
         }
     }
 
+    val MIGRATION_18_19: Migration = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-18 public EV snapshot tables. No existing table is
+            // altered; every ANP/history/fuel row and every private/outbox
+            // row survives the upgrade untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `charging_snapshot_place` (
+                    `place_id` TEXT NOT NULL,
+                    `generation` INTEGER NOT NULL,
+                    `profile` TEXT NOT NULL,
+                    `source_revision` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `license` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `country` TEXT NOT NULL,
+                    `latitude` TEXT,
+                    `longitude` TEXT,
+                    `public_access` TEXT NOT NULL,
+                    `reported_points` INTEGER NOT NULL,
+                    `groups_json` TEXT NOT NULL,
+                    `tombstone` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`place_id`, `generation`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_generation` ON `charging_snapshot_place` (`generation`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_profile_generation` ON `charging_snapshot_place` (`profile`, `generation`)")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `charging_snapshot_meta` (
+                    `key` TEXT NOT NULL,
+                    `generation` INTEGER NOT NULL,
+                    `profile` TEXT NOT NULL,
+                    `source_revision` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `license` TEXT NOT NULL,
+                    `schema_version` INTEGER NOT NULL,
+                    `base_generation` INTEGER NOT NULL,
+                    `place_count` INTEGER NOT NULL,
+                    `group_count` INTEGER NOT NULL,
+                    `cursor` TEXT,
+                    `state` TEXT NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`key`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
+    val MIGRATION_19_20: Migration = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // EE-19 energy-capable vehicles: propulsion plus optional
+            // battery/connector, with tank and fuel relaxed for BEV.
+            // Rebuild preserves every row (legacy rows read back as ICE
+            // with no battery, never backfilled) and no row is dropped.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `vehicle_new` (
+                    `id` TEXT NOT NULL,
+                    `display_name` TEXT NOT NULL,
+                    `tank_capacity_liters` REAL,
+                    `fuel_product` TEXT,
+                    `price_source_mode` TEXT NOT NULL,
+                    `specific_station_cnpj` TEXT,
+                    `price_drop_alert_enabled` INTEGER NOT NULL,
+                    `sort_order` INTEGER NOT NULL,
+                    `propulsion` TEXT NOT NULL DEFAULT 'ICE',
+                    `battery_wh` INTEGER,
+                    `charge_connector` TEXT,
+                    `photo_path` TEXT,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO `vehicle_new` (`id`, `display_name`, `tank_capacity_liters`, `fuel_product`, `price_source_mode`, `specific_station_cnpj`, `price_drop_alert_enabled`, `sort_order`, `propulsion`, `battery_wh`, `charge_connector`, `photo_path`)
+                SELECT `id`, `display_name`, `tank_capacity_liters`, `fuel_product`, `price_source_mode`, `specific_station_cnpj`, `price_drop_alert_enabled`, `sort_order`, 'ICE', NULL, NULL, `photo_path` FROM `vehicle`
+                """.trimIndent(),
+            )
+            db.execSQL("DROP TABLE `vehicle`")
+            db.execSQL("ALTER TABLE `vehicle_new` RENAME TO `vehicle`")
+        }
+    }
+
+    val MIGRATION_20_21: Migration = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-08 owner/origin capability lease table. No
+            // existing table is altered; every vehicle and private row
+            // survives untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `vehicle_capability_lease` (
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `policy_version` INTEGER NOT NULL,
+                    `capability` TEXT NOT NULL,
+                    `verified_at_millis` INTEGER NOT NULL,
+                    `paid_through_millis` INTEGER NOT NULL,
+                    `revoked` INTEGER NOT NULL,
+                    `saved_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`owner_account`, `origin`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
+
+    val MIGRATION_21_22: Migration = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-11 durable ledger draft table. No existing
+            // table is altered; every vehicle, snapshot and private row
+            // survives untouched.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ledger_draft` (
+                    `draft_id` TEXT NOT NULL,
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `record_id` TEXT NOT NULL,
+                    `expected_revision` INTEGER NOT NULL,
+                    `body_json` TEXT NOT NULL,
+                    `updated_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`draft_id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_ledger_draft_owner_record` ON `ledger_draft` (`owner_account`, `origin`, `dataset`, `record_id`)")
+        }
+    }
+
+    val MIGRATION_22_23: Migration = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-20 local-only session context on drafts. No
+            // existing table is altered; every draft and private row
+            // survives untouched (context defaults to absent).
+            db.execSQL("ALTER TABLE `ledger_draft` ADD COLUMN `context` TEXT DEFAULT NULL")
+        }
+    }
+
+    val MIGRATION_23_24: Migration = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive EE-21 snapshot identity columns (source entity key
+            // and external ID travel with the pack instead of being
+            // re-derived). No rows are touched; existing nulls stay null
+            // and only live rows decode (tombstones keep null identity).
+            db.execSQL("ALTER TABLE `charging_snapshot_place` ADD COLUMN `entity_key` TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE `charging_snapshot_place` ADD COLUMN `external_id` TEXT DEFAULT NULL")
+        }
+    }
+
+    val MIGRATION_24_25: Migration = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Additive MEX-15 local erasure log (tombstone memory for
+            // restore-old-after-erase). No rows are touched; restore
+            // consults before adopting any server row.
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `ledger_erased` (
+                    `owner_account` TEXT NOT NULL,
+                    `origin` TEXT NOT NULL,
+                    `dataset` TEXT NOT NULL,
+                    `record_id` TEXT NOT NULL,
+                    `erased_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`owner_account`, `origin`, `dataset`, `record_id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

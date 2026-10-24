@@ -1,11 +1,14 @@
 package com.anpfuel.data.mapper
 
 import com.anpfuel.data.local.entity.VehicleEntity
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.exception.DomainException
 import com.anpfuel.domain.model.Vehicle
+import com.anpfuel.domain.valueobject.BatteryCapacity
 import com.anpfuel.domain.valueobject.Cnpj
 import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.Propulsion
 import com.anpfuel.domain.valueobject.TankCapacity
 import com.anpfuel.domain.valueobject.VehiclePriceSource
 import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
@@ -13,8 +16,10 @@ import com.anpfuel.domain.valueobject.VehiclePriceSourceMode
 object VehicleMapper {
 
     fun toDomain(entity: VehicleEntity): Vehicle {
-        val fuelProduct = runCatching { FuelProduct.valueOf(entity.fuelProduct) }
-            .getOrElse { throw DomainException("Unknown FuelProduct stored for vehicle ${entity.id}") }
+        val fuelProduct = entity.fuelProduct?.let { raw ->
+            runCatching { FuelProduct.valueOf(raw) }
+                .getOrElse { throw DomainException("Unknown FuelProduct stored for vehicle ${entity.id}") }
+        }
         val priceSourceMode = runCatching { VehiclePriceSourceMode.valueOf(entity.priceSourceMode) }
             .getOrElse { throw DomainException("Unknown VehiclePriceSourceMode stored for vehicle ${entity.id}") }
         val priceSource = when (priceSourceMode) {
@@ -25,15 +30,30 @@ object VehicleMapper {
                 VehiclePriceSource.specific(Cnpj.parse(cnpjRaw))
             }
         }
+        // Unknown stored propulsion or connector fails closed; a missing
+        // propulsion on legacy rows means ICE (never backfilled).
+        val propulsion = runCatching { Propulsion.valueOf(entity.propulsion) }
+            .getOrElse { throw DomainException("Unknown Propulsion stored for vehicle ${entity.id}") }
+        val batteryCapacity = entity.batteryWh?.let { raw ->
+            runCatching { BatteryCapacity.ofWh(raw) }
+                .getOrElse { throw DomainException("Corrupt battery stored for vehicle ${entity.id}") }
+        }
+        val chargeConnector = entity.chargeConnector?.let { raw ->
+            runCatching { ChargingConnector.valueOf(raw) }
+                .getOrElse { throw DomainException("Unknown charge connector stored for vehicle ${entity.id}") }
+        }
 
         return Vehicle.restore(
             id = DomainId.from(entity.id),
             displayName = entity.displayName,
-            tankCapacity = TankCapacity.of(entity.tankCapacityLiters),
+            tankCapacity = entity.tankCapacityLiters?.let(TankCapacity::of),
             fuelProduct = fuelProduct,
             priceSource = priceSource,
             priceDropAlertEnabled = entity.priceDropAlertEnabled,
             sortOrder = entity.sortOrder,
+            propulsion = propulsion,
+            batteryCapacity = batteryCapacity,
+            chargeConnector = chargeConnector,
             photoPath = entity.photoPath,
         )
     }
@@ -41,12 +61,15 @@ object VehicleMapper {
     fun toEntity(vehicle: Vehicle): VehicleEntity = VehicleEntity(
         id = vehicle.id.value,
         displayName = vehicle.displayName,
-        tankCapacityLiters = vehicle.tankCapacity.liters.toDouble(),
-        fuelProduct = vehicle.fuelProduct.name,
+        tankCapacityLiters = vehicle.tankCapacity?.liters?.toDouble(),
+        fuelProduct = vehicle.fuelProduct?.name,
         priceSourceMode = vehicle.priceSource.mode.name,
         specificStationCnpj = vehicle.priceSource.specificStationCnpj?.digits,
         priceDropAlertEnabled = vehicle.priceDropAlertEnabled,
         sortOrder = vehicle.sortOrder,
         photoPath = vehicle.photoPath,
+        propulsion = vehicle.propulsion.name,
+        batteryWh = vehicle.batteryCapacity?.wattHours,
+        chargeConnector = vehicle.chargeConnector?.name,
     )
 }

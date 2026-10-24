@@ -14,7 +14,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonOutline
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -48,6 +52,7 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.domain.premium.PremiumState
 
 /**
  * Dedicated account management page: status, key backup (export) and
@@ -63,14 +68,20 @@ import com.anpfuel.app.ui.components.SkeletonGroup
 fun AccountScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAuth: () -> Unit,
+    onNavigateToLedgerSync: () -> Unit = {},
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
+    premiumViewModel: PremiumViewModel = hiltViewModel(),
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val premiumState by premiumViewModel.uiState.collectAsStateWithLifecycle()
     val signedIn = authState.step == AuthStep.AUTHENTICATED || authState.step == AuthStep.OFFLINE_ACCOUNT
     LaunchedEffect(authViewModel, signedIn) {
         authViewModel.refreshAccount()
         if (signedIn) authViewModel.loadBackup()
+    }
+    LaunchedEffect(premiumViewModel, signedIn) {
+        if (signedIn) premiumViewModel.refresh()
     }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     AnpScaffold(
@@ -133,6 +144,18 @@ fun AccountScreen(
                 }
                 return@Column
             }
+            PremiumSection(
+                state = premiumState,
+                onRefresh = premiumViewModel::refresh,
+                onRestoreUnavailable = premiumViewModel::restoreUnavailable,
+                onClearNotice = premiumViewModel::clearNotice,
+            )
+            Card(modifier = Modifier.fillMaxWidth()) {
+                AccountActionRow(icon = Icons.Default.PersonOutline,
+                    title = stringResource(R.string.ledger_sync_title),
+                    subtitle = stringResource(R.string.ledger_sync_explanation),
+                    onClick = onNavigateToLedgerSync)
+            }
             SignedInAccountContent(
                 state = authState,
                 onLogout = { authViewModel.onLogout(); onNavigateBack() },
@@ -162,6 +185,94 @@ fun AccountScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun PremiumSection(
+    state: PremiumUiState,
+    onRefresh: () -> Unit,
+    onRestoreUnavailable: () -> Unit,
+    onClearNotice: () -> Unit,
+) {
+    val uriHandler = LocalUriHandler.current
+    val status = state.status
+    val label = when (status?.state) {
+        PremiumState.ACTIVE -> stringResource(R.string.premium_status_active)
+        PremiumState.PENDING -> stringResource(R.string.premium_status_pending)
+        PremiumState.CANCELED -> stringResource(R.string.premium_status_canceled)
+        PremiumState.GRACE -> stringResource(R.string.premium_status_grace)
+        PremiumState.EXPIRED -> stringResource(R.string.premium_status_expired)
+        PremiumState.REVOKED -> stringResource(R.string.premium_status_revoked)
+        PremiumState.UNKNOWN -> stringResource(R.string.premium_status_unknown)
+        else -> stringResource(R.string.premium_status_inactive)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.premium_section_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics { heading() },
+        )
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onRefresh)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = status?.validUntil?.take(10)
+                                ?.let { stringResource(R.string.premium_valid_until, it) }
+                                ?: stringResource(R.string.premium_retained),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                state.notice?.let { notice ->
+                    Text(
+                        text = when (notice) {
+                            PremiumNotice.OFFLINE -> stringResource(R.string.premium_offline)
+                            PremiumNotice.DENIED -> stringResource(R.string.premium_denied)
+                            PremiumNotice.ERROR -> stringResource(R.string.premium_error)
+                            PremiumNotice.RESTORE_UNAVAILABLE -> stringResource(R.string.premium_restore_unavailable)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onClearNotice)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                HorizontalDivider()
+                AccountActionRow(
+                    icon = Icons.Default.OpenInNew,
+                    title = stringResource(R.string.premium_manage),
+                    onClick = {
+                        uriHandler.openUri(status?.managementUrl ?: com.anpfuel.domain.premium.PremiumStatus.MANAGEMENT_URL)
+                    },
+                )
+                HorizontalDivider()
+                AccountActionRow(
+                    icon = Icons.Default.Restore,
+                    title = stringResource(R.string.premium_restore),
+                    subtitle = stringResource(R.string.premium_restore_note),
+                    onClick = onRestoreUnavailable,
+                )
+            }
+        }
     }
 }
 

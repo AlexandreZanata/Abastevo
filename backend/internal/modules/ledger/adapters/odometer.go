@@ -84,11 +84,24 @@ func (s *Store) DeclareGap(ctx context.Context, accountID, vehicleID, gapID, aft
 		if id == "" {
 			continue
 		}
-		row, err := query.GetLedgerRecord(ctx, q.GetLedgerRecordParams{AccountID: uid(accountID), Dataset: "refuel", ID: uid(id)})
-		if err != nil {
-			return "", errInvalid()
+		// Gap endpoints may anchor on fuel or electric records of the
+		// same vehicle (EE-16):refuel-only anchoring would leave charge
+		// gaps inexpressible. Unknown datasets stay refused.
+		found := false
+		for _, dataset := range []string{"refuel", "charge"} {
+			row, err := query.GetLedgerRecord(ctx, q.GetLedgerRecordParams{AccountID: uid(accountID), Dataset: dataset, ID: uid(id)})
+			if err == nil {
+				if ledgerIDString(row.VehicleID) != vehicleID {
+					return "", errInvalid()
+				}
+				found = true
+				break
+			}
+			if !errors.Is(err, pgx.ErrNoRows) {
+				return "", errUnavailable()
+			}
 		}
-		if ledgerIDString(row.VehicleID) != vehicleID {
+		if !found {
 			return "", errInvalid()
 		}
 	}

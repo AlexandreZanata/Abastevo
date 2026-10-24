@@ -13,8 +13,8 @@ import org.json.JSONObject
  * the validated server shape so snapshots decode through the same strict
  * path (`CityCommunityFeedHttpClient.decode/decodeSummary`) and fail closed
  * on any drift. The advisory `refresh_after_seconds` hint is recorded as
- * observed (15); it never drives refresh policy and a future server value
- * fails the decode instead of being coerced.
+ * observed; it never drives refresh policy, and decode accepts any bounded
+ * server hint instead of pinning a fixed interval.
  *
  * Pagination cursors are intentionally dropped: snapshots are first-page
  * only and deeper pages keep their live server cursors.

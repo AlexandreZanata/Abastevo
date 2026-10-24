@@ -204,6 +204,7 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
             )
         }
@@ -216,11 +217,74 @@ fun AnpNavGraph(
             StationsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
+                onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
+            )
+        }
+        composable(Routes.MASTER_EXPLORE) {
+            com.anpfuel.app.ui.master.MasterExploreScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenOccurrences = { navController.navigate(Routes.OCCURRENCE_EXPLORER) },
+                onOpenCharging = { vehicleId -> navController.navigate(Routes.chargingExplore(vehicleId)) },
+                onOpenVehicles = { navController.navigate(Routes.VEHICLES) },
             )
         }
         composable(Routes.VEHICLES) {
             VehicleScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenEntries = { vehicleId ->
+                    navController.navigate(Routes.vehicleEntries(vehicleId.value))
+                },
+                onOpenCharging = { vehicleId ->
+                    navController.navigate(Routes.chargingExplore(vehicleId.value))
+                },
+            )
+        }
+        composable(
+            route = Routes.CHARGING_EXPLORE,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.charging.ChargingExploreScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
+                onOpenCommunity = { placeId -> navController.navigate(Routes.chargingCommunity(placeId)) },
+            )
+        }
+        composable(
+            route = Routes.CHARGING_COMMUNITY,
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.charging.ChargingCommunityScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.VEHICLE_ENTRIES,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.ledger.LedgerEntriesScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
+                onOpenMonthly = { id -> navController.navigate(Routes.monthlyIndicators(id)) },
+            )
+        }
+        composable(
+            route = Routes.MONTHLY_INDICATORS,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            com.anpfuel.app.ui.monthly.MonthlyIndicatorsScreen(
+                vehicleId = vehicleId,
                 onNavigateBack = { navController.popBackStack() },
             )
         }
@@ -247,8 +311,12 @@ fun AnpNavGraph(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
+        composable(Routes.LEDGER_SYNC) {
+            com.anpfuel.app.ui.sync.LedgerSyncScreen(onNavigateBack = { navController.popBackStack() })
+        }
         composable(Routes.ACCOUNT) {
             AccountScreen(
+                onNavigateToLedgerSync = { navController.navigate(Routes.LEDGER_SYNC) },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAuth = { navController.navigate(Routes.AUTH) },
             )

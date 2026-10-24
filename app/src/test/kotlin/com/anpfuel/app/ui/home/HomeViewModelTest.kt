@@ -121,8 +121,8 @@ class HomeViewModelTest {
         val estimate = TankFillCostEstimate(
             vehicleId = vehicle.id,
             displayName = vehicle.displayName,
-            tankCapacity = vehicle.tankCapacity,
-            fuelProduct = vehicle.fuelProduct,
+            tankCapacity = requireNotNull(vehicle.tankCapacity),
+            fuelProduct = requireNotNull(vehicle.fuelProduct),
             unitPrice = PriceAmount.of("5.49"),
             totalCost = PriceAmount.of("274.50"),
             unitPriceSource = TankFillCostUnitPriceSource.CHEAPEST_STATION,
@@ -452,8 +452,8 @@ class HomeViewModelTest {
         TankFillCostEstimate(
             vehicleId = vehicle.id,
             displayName = vehicle.displayName,
-            tankCapacity = vehicle.tankCapacity,
-            fuelProduct = vehicle.fuelProduct,
+            tankCapacity = requireNotNull(vehicle.tankCapacity),
+            fuelProduct = requireNotNull(vehicle.fuelProduct),
             unitPrice = PriceAmount.of("5.49"),
             totalCost = PriceAmount.of(total),
             unitPriceSource = TankFillCostUnitPriceSource.CHEAPEST_STATION,

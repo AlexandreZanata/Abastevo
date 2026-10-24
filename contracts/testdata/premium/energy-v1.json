@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "state": "EE-23 golden parity corpus: every vector must compute identical exact sums, rational strings and unknown reasons in Go (backend/internal/modules/metrics) and Kotlin (domain/premium/PremiumEnergy). Weighted sums divide once; ratios are never averaged.",
+  "cases": [
+    {
+      "id": "weighted-sum-first",
+      "purchased_wh": 40000,
+      "cost_centavos": 4000,
+      "distance_metres": 150000,
+      "has_energy": true,
+      "complete": true,
+      "expected_wh_per_km": "800/3",
+      "expected_centavos_per_km": "80/3",
+      "expected_unknown": ""
+    },
+    {
+      "id": "exact-small",
+      "purchased_wh": 15000,
+      "cost_centavos": 1275,
+      "distance_metres": 100000,
+      "has_energy": true,
+      "complete": true,
+      "expected_wh_per_km": "150",
+      "expected_centavos_per_km": "51/4",
+      "expected_unknown": ""
+    },
+    {
+      "id": "phev-shared-distance",
+      "purchased_wh": 15000,
+      "cost_centavos": 1275,
+      "distance_metres": 100000,
+      "has_energy": true,
+      "complete": true,
+      "mixed_carrier": true,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "phev-shared-distance"
+    },
+    {
+      "id": "soc-inconsistent",
+      "purchased_wh": 10000,
+      "cost_centavos": 1000,
+      "distance_metres": 50000,
+      "has_energy": true,
+      "complete": true,
+      "soc_inconsistent": true,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "soc-inconsistent"
+    },
+    {
+      "id": "partial-measurement",
+      "purchased_wh": 10000,
+      "cost_centavos": 1000,
+      "distance_metres": 50000,
+      "has_energy": true,
+      "complete": false,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "partial-measurement"
+    },
+    {
+      "id": "energy-unmeasured",
+      "purchased_wh": 0,
+      "cost_centavos": 1000,
+      "distance_metres": 50000,
+      "has_energy": false,
+      "complete": false,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "energy-unmeasured"
+    },
+    {
+      "id": "declared-fill-gap",
+      "purchased_wh": 10000,
+      "cost_centavos": 1000,
+      "distance_metres": 50000,
+      "has_energy": true,
+      "complete": true,
+      "has_gap": true,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "declared-fill-gap"
+    },
+    {
+      "id": "odometer-missing",
+      "purchased_wh": 10000,
+      "cost_centavos": 1000,
+      "distance_metres": 0,
+      "has_energy": true,
+      "complete": true,
+      "odometer_missing": true,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "odometer-missing"
+    },
+    {
+      "id": "distance-nonpositive",
+      "purchased_wh": 10000,
+      "cost_centavos": 1000,
+      "distance_metres": 0,
+      "has_energy": true,
+      "complete": true,
+      "expected_wh_per_km": "",
+      "expected_centavos_per_km": "",
+      "expected_unknown": "distance-nonpositive"
+    },
+    {
+      "id": "combined-exact",
+      "fuel_cost_centavos": 24800,
+      "charge_cost_centavos": 1275,
+      "distance_metres": 100000,
+      "expected_combined_centavos_per_km": "1043/4",
+      "expected_combined_unknown": ""
+    },
+    {
+      "id": "combined-zero-distance",
+      "fuel_cost_centavos": 1000,
+      "charge_cost_centavos": 500,
+      "distance_metres": 0,
+      "expected_combined_centavos_per_km": "",
+      "expected_combined_unknown": "distance-nonpositive"
+    }
+  ]
+}
