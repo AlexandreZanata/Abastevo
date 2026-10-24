@@ -13,6 +13,13 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-35 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent `dd9d9c7e`.
+  [Discovery measurement map](../backend/evidence/mobile-expansion/MEX-35.md):
+  cited prior MEX-06/OPT-A/MEX-24/28/29 measurements plus EE-28 real prep/public
+  chain; no new combined mobile workload, device p50/p95, payload/memory or
+  safety-job contention campaign. No new optimization justified; combined
+  campaign OWED, no invented numbers. Next EE-29/MEX-36/37.
+
 - EE-28 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `8ed7b1de`.
   [Bounded measurements](../backend/evidence/ev-support/EE-28.md): real
   `prepare_charging` 0.78 s cold / 0.66 s warm, 15.1 MiB max RSS, 3.33 MB
