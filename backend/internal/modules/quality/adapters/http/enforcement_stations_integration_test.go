@@ -20,7 +20,8 @@ import (
 )
 
 func TestEnforcementStationsFacetsCoverageAndOpenAPI(t *testing.T) {
-	router, p := freshRouter(t, true)
+	f := newCompanyHTTPFixture(t)
+	router, p := f.r, f.p
 	ctx := context.Background()
 	n := 0
 	next := func() (string, error) { n++; return fmt.Sprintf("dddddddd-3333-4333-8333-%012d", n), nil }
@@ -61,7 +62,10 @@ func TestEnforcementStationsFacetsCoverageAndOpenAPI(t *testing.T) {
 		t.Fatal("multibranch ambiguity not contained", decisions[1])
 	}
 	in := application.EnforcementSourceInput{Context: application.EnforcementSourceContext{Profile: application.EnforcementSourceProfile, SourceFile: "synthetic.xlsx", DateSystem: "EXCEL_1900", FirstDocumentDay: "2019-01-02", LastDocumentDay: "2026-10-04"}, Resources: []application.Resource{{URL: "https://www.gov.br/synthetic.xlsx", SHA256: strings.Repeat("a", 64), Bytes: 10}}, Counts: domain.Counts{Input: 3, Accepted: 3}, ManifestHash: strings.Repeat("b", 64), Records: records, CompanyAssociations: &application.CompanyAssociationInput{PolicyVersion: domain.CompanyObservationPolicyVersion, DecisionDay: "2026-10-22", Decisions: decisions}}
-	pub := parent.NewPublisher(p)
+	if _, e := p.Exec(ctx, `DELETE FROM directory_identifiers WHERE normalized_value='11222333000181'; INSERT INTO directory_identifiers(id,station_id,kind,normalized_value) VALUES('aaaaaaaa-1111-4111-8111-000000000099','aaaaaaaa-1111-4111-8111-000000000001','CNPJ','11222333000181')`); e != nil {
+		t.Fatal(e)
+	}
+	pub := parent.NewPublisher(p).WithCompanyGuard(f.guard)
 	if _, e := pub.PublishEnforcementSource(ctx, in, next); e != nil {
 		t.Fatal(e)
 	}
@@ -115,6 +119,10 @@ func TestEnforcementStationsFacetsCoverageAndOpenAPI(t *testing.T) {
 		"/v1/quality/enforcement/stations?from_day=not-a-day",
 		"/v1/quality/enforcement/stations?from_day=2026-10-04&to_day=2026-10-03",
 		"/v1/quality/enforcement/stations?bogus=1",
+		"/v1/quality/enforcement/stations?state=DF&state=SP",
+		"/v1/quality/enforcement/stations?state=%GG",
+		"/v1/quality/enforcement/stations/coverage?state=DF",
+		"/v1/quality/enforcement/stations/coverage?revision_id=x&revision_id=y",
 	} {
 		if code, _ := get(path); code != 400 {
 			t.Fatal("malformed station filter accepted", path, code)

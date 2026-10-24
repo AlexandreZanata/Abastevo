@@ -1,0 +1,102 @@
+{
+  "status": "LOCAL_DONE / INTEGRATION_PENDING",
+  "validation": "PASS",
+  "pinned_main": "c3de5c03bce626300da3f10c1b64820d6451f1fc",
+  "range_base": "2b9cf1e48944839f7c5252068da4f732de0b9bd1",
+  "merged_prs": [
+    140,
+    141,
+    142,
+    143,
+    144,
+    145,
+    146
+  ],
+  "backend": {
+    "packages": {
+      "skip": 26,
+      "pass": 116
+    },
+    "test_outcomes_including_subtests": {
+      "pass": 3287,
+      "skip": 4
+    },
+    "skipped_tests": [
+      {
+        "package": "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters",
+        "test": "TestSEC05ESoakVerify"
+      },
+      {
+        "package": "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/profile",
+        "test": "TestGenerateVectors"
+      },
+      {
+        "package": "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http",
+        "test": "TestAndroidConsentInteroperability"
+      },
+      {
+        "package": "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain",
+        "test": "TestPMQCMethodologyAgainstRealOpenData"
+      }
+    ]
+  },
+  "kotlin": {
+    "domain": {
+      "tests": 644,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "application": {
+      "tests": 390,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "data": {
+      "tests": 477,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2
+    },
+    "app": {
+      "tests": 410,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "domain_coverage": {
+    "covered": 25384,
+    "missed": 2683,
+    "ratio": 0.9044073110770656,
+    "minimum": 0.9,
+    "threshold_and_exclusions_unchanged": true
+  },
+  "rust_tests": 170,
+  "enforcement_whole_source": {
+    "records_per_revision": 244247,
+    "pages_per_revision": 2443,
+    "revisions_compared": 2,
+    "test": "TestEnforcementPinnedWholeWorkerReplayCorrectionAndFullTraversal",
+    "result": "pass",
+    "elapsed_seconds": 319.18
+  },
+  "migration_current": "000114",
+  "delivery_guard": {
+    "harness_passed": 49,
+    "harness_failed": 0,
+    "json_contract_tests": 7,
+    "flow_target_includes_parser": true,
+    "ci_cadence_tests": 2
+  },
+  "external_acceptance_owed": [
+    "new correction CI and protected maintained-dev integration",
+    "physical-device/manual acceptance of new corrections",
+    "staging signed contribution-to-feed",
+    "source rights/admission and activation",
+    "production measurements and certification"
+  ],
+  "other_agent_work_preserved": true,
+  "completed_on": "2026-10-23"
+}

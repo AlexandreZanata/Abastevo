@@ -2,6 +2,9 @@ package com.anpfuel.data.remote.quality
 
 import com.anpfuel.domain.quality.QualityReadUnavailable
 import java.io.IOException
+import java.io.File
+import org.junit.jupiter.api.io.TempDir
+import com.anpfuel.data.local.quality.QualityPublicCache
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
@@ -93,4 +96,26 @@ class QualityHttpClientTest {
             assertEquals("PMQC_2026_09.csv",api.provenance(revision).resources.single().member)
         }
     }
+    @Test fun `quality revocation and no-store cannot resurrect old evidence`(@TempDir dir: File)=runTest {
+        MockWebServer().use {server ->
+            for(status in listOf(200,304,403,404,410)) {
+                val api=QualityHttpClient(OkHttpClient(),server.url("/prefix/").toString(),QualityPublicCache(File(dir,"cache$status")))
+                server.enqueue(MockResponse().setBody(page()).setHeader("ETag","v1"))
+                api.assays(station,"ETHANOL",revision,null)
+                server.enqueue(MockResponse().setResponseCode(status).setHeader("Cache-Control","no-store").setBody(if(status==200)page() else ""))
+                if(status==200 || status==304)api.assays(station,"ETHANOL",revision,null)
+                else assertThrows(QualityReadUnavailable::class.java){runBlocking{api.assays(station,"ETHANOL",revision,null)}}
+                server.enqueue(MockResponse().setResponseCode(503))
+                assertThrows(QualityReadUnavailable::class.java){runBlocking{api.assays(station,"ETHANOL",revision,null)}}
+            }
+            val api=QualityHttpClient(OkHttpClient(),server.url("/").toString(),QualityPublicCache(File(dir,"invalid")))
+            server.enqueue(MockResponse().setBody(page()))
+            api.assays(station,"ETHANOL",revision,null)
+            server.enqueue(MockResponse().setBody(page(fuel="DIESEL_S10")))
+            assertThrows(QualityReadUnavailable::class.java){runBlocking{api.assays(station,"ETHANOL",revision,null)}}
+            server.enqueue(MockResponse().setResponseCode(503))
+            assertTrue(api.assays(station,"ETHANOL",revision,null).lease!!.stale)
+        }
+    }
+
 }

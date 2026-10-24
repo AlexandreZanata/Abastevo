@@ -98,7 +98,7 @@ func TestEnforcementStorageUpgradeRetainsLegacyHashAndReplay(t *testing.T) {
 	}
 	before := hash()
 	applied, e := migrate.Apply(ctx, p.Config().ConnConfig.ConnString(), dbmigrations.Files)
-	if e != nil || len(applied) != 1 || applied[0] != "000111" {
+	if e != nil || len(applied) != 4 || applied[0] != "000111" || applied[1] != "000112" || applied[2] != "000113" || applied[3] != "000114" {
 		t.Fatal(applied, e)
 	}
 	if hash() != before {

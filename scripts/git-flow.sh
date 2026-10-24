@@ -260,26 +260,11 @@ cmd_finish() {
     local current_base
     current_base="$(git -C "$ROOT" rev-parse origin/main)"
     git -C "$ROOT" merge-base --is-ancestor "$current_base" "$head" || die "origin/main moved; merge main and revalidate affected checks before final integration"
-    # Required checks on the exact head: missing/failed/skipped/cancelled all refuse.
-    local IFS=,
-    for ctx in $required; do
-        # Trim list separators only: check names may contain interior
-        # spaces (e.g. "Quick verification"), which tr -d would destroy.
-        ctx="$(echo "$ctx" | sed -e 's/^ *//' -e 's/ *$//')"
-        [[ -n "$ctx" ]] || continue
-        local runs status conclusion
-        runs="$(gh_json api "repos/AlexandreZanata/brazil-fuel-prices/commits/$head/check-runs" --paginate 2>/dev/null || true)"
-        # Trailing || true keeps a genuine miss loud: without it, pipefail
-        # turns an empty grep into a silent exit instead of the die below.
-        status="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"status\":\"[^\"]*\"" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1 || true)"
-        conclusion="$(echo "$runs" | grep -o "\"name\":\"$ctx\"[^}]*\"conclusion\":\"[^\"]*\"" | grep -o '"conclusion":"[^"]*"' | cut -d'"' -f4 | head -1 || true)"
-        if [[ -z "$status" ]]; then
-            die "missing required check '$ctx' on $head"
-        fi
-        if [[ "$status" != "completed" || "$conclusion" != "success" ]]; then
-            die "required check '$ctx' is $status/$conclusion (need completed/success)"
-        fi
-    done
+    # Fetch one complete exact-head snapshot. Optional failures must not be
+    # hidden by a shorter required list; incomplete CI never runs local quick.
+    local runs
+    runs="$(gh_json api "repos/AlexandreZanata/brazil-fuel-prices/commits/$head/check-runs?filter=latest&per_page=100" --paginate)" || die "cannot read current-head checks"
+    printf '%s' "$runs" | python3 "$(dirname "${BASH_SOURCE[0]}")/validate-merge-checks.py" --head "$head" --required "$required" || die "current-head CI is not mergeable"
     # Remote pending/failure exits above: no waiting loop or repeated local
     # aggregate while a PR is queued. Invoke finish only at batch closure.
     if [[ "$skip_quick" == "0" ]]; then

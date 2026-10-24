@@ -22,6 +22,7 @@ test-gate:
 	bash scripts/tests/test-gate-selection.sh
 
 test-flow:
+	python3 scripts/tests/test-merge-checks.py
 	bash scripts/tests/test-git-flow.sh
 	bash scripts/tests/test-project-batch-flow.sh
 	python3 scripts/tests/test-ci-cadence.py
