@@ -18,6 +18,7 @@ import (
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	parentdirectory "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/portalgen"
 	parentofficial "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/domain"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -167,6 +168,24 @@ func TestBuildCoalescesCorrectionsAndReconciles(t *testing.T) {
 	if !strings.Contains(string(analyticsRaw), `"metrics_version": "abastevo-metrics-v1"`) ||
 		!strings.Contains(string(analyticsRaw), state.ContentSHA256) {
 		t.Errorf("analytics provenance missing")
+	}
+	portalDir := filepath.Join(t.TempDir(), "portal")
+	portalResult, err := portalgen.Generate(portalgen.Options{
+		SnapshotDir: state.CandidateDir, OutputDir: portalDir,
+	})
+	if err != nil {
+		t.Fatalf("portal generation: %v", err)
+	}
+	if portalResult.Pages == 0 {
+		t.Fatal("portal generated no pages")
+	}
+	stationPage, err := os.ReadFile(filepath.Join(portalDir, "postos", station.ID, "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(stationPage), "R$ 6,199") ||
+		!strings.Contains(string(stationPage), "R$ 5,999") {
+		t.Errorf("generated station page missing latest/history prices")
 	}
 	firstBuiltAt := state.BuiltAt
 	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {

@@ -1,5 +1,15 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-09 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-09.md).
+  `portalgen` verifies one export candidate (manifest/JSONL/analytics hash) and
+  writes deterministic station, price, state/municipality, methodology, gated
+  fiscalization, 404, CSS, robots and portal-manifest pages. Exact prices,
+  periods, history gaps, status, sample/insufficient states, no JS/API, noindex
+  preview, page/byte budgets and local links are tested; real PostGIS
+  build→generate PASS. Real price publication remains blocked by ESP-07
+  over-precision/rights. Next: ESP-10 static search.
+
 - Enterprise data/static portal ESP-08 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-08.md).
   [Routes/editorial contract](../product/ENTERPRISE_PORTAL_ROUTES_AND_EDITORIAL.md)
