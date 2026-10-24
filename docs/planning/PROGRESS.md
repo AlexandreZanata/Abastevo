@@ -1,5 +1,13 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-00 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/enterprise-static-portal` (isolated worktree),
+  replayed onto maintained dev `721582b8`; planning commit `b1a2bde6` preserved.
+  [Evidence](../backend/evidence/enterprise-static/ESP-00.md). Actual baseline,
+  V1/V2 scope, MAP component split, FQ-06/07/08 runtime/safe-link OWED and
+  unaccepted MAP-08 work boundary recorded. Docs only; no source, schema, job,
+  API or hosting change. Next: ESP-01 source/rights/public-field admission.
+
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
   `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
