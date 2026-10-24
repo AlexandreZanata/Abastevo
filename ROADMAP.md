@@ -44,6 +44,15 @@ and [EE-00/01/02 inventory/qualification/contracts](docs/backend/evidence/ev-sup
 as LOCAL_DONE / INTEGRATION_PENDING. Next EE-03 or independent MEX-04; product runtime
 quota/query/UI behavior remains pending its owning units.
 
+**Fuel/electric map extension (2026-10-24):** [MAP-00–33](docs/planning/MAP_EV_EXECUTION_PLAN.md),
+[phase registry](docs/planning/MAP_EV_PHASES.json), [source/commercial-use register](docs/planning/MAP_EV_SOURCE_REGISTER.md)
+and [execution prompt](docs/planning/MAP_EV_AGENT_PROMPT.md). PLANNING_LOCAL_DONE /
+IMPLEMENTATION_PLANNED: data admission and Rust→Go→Kotlin proof first, then a proven
+CoMaps-derived native adapter and fourth Mapa tab between Comunidade and Perfil;
+minimum map/prices before offline guidance and EV trip alternatives. Prepared
+[pictograms](docs/assets/map-icons/README.md) include the requested corrected electric
+SVG. No runtime feature/source activation/deploy/remote delivery is claimed.
+
 **Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
 adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing
 owners. [Source research](docs/planning/EV_SOURCE_RESEARCH.md),
