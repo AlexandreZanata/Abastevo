@@ -6841,6 +6841,67 @@ components:
       - timezone
       - amount_centavos
       - category
+    LedgerCharge:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        vehicle_id: *id001
+        occurred_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+          maxLength: 64
+        energy_wh:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1000000000
+        total_centavos:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1000000000000
+        soc_start_percent:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100
+        soc_end_percent:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100
+        odometer_metres:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1000000000
+        fees_centavos:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 1000000000000
+        tariff_id: *id001
+        tariff_revision:
+          type: string
+          minLength: 1
+          maxLength: 128
+        note:
+          type: string
+          maxLength: 280
+      required:
+      - id
+      - vehicle_id
+      - occurred_at
+      - timezone
     LedgerCommand:
       type: object
       additionalProperties: false
@@ -6851,6 +6912,7 @@ components:
           enum:
           - refuel
           - expense
+          - charge
         id: *id001
         expected_revision:
           type: integer
@@ -6863,6 +6925,7 @@ components:
           oneOf:
           - $ref: '#/components/schemas/LedgerRefuel'
           - $ref: '#/components/schemas/LedgerExpense'
+          - $ref: '#/components/schemas/LedgerCharge'
           - type: 'null'
       required:
       - operation_id
@@ -6878,6 +6941,7 @@ components:
           enum:
           - refuel
           - expense
+          - charge
         id: *id001
         revision:
           type: integer
@@ -6931,6 +6995,7 @@ components:
           enum:
           - refuel
           - expense
+          - charge
         id: *id001
         vehicle_id: *id001
         occurred_at:
@@ -6945,6 +7010,7 @@ components:
           oneOf:
           - $ref: '#/components/schemas/LedgerRefuel'
           - $ref: '#/components/schemas/LedgerExpense'
+          - $ref: '#/components/schemas/LedgerCharge'
       required:
       - dataset
       - id
@@ -6964,6 +7030,7 @@ components:
           enum:
           - refuel
           - expense
+          - charge
         vehicle_id: *id001
         category:
           type: string
@@ -7019,6 +7086,7 @@ components:
           enum:
           - refuel
           - expense
+          - charge
         id: *id001
       required:
       - family_id
@@ -7043,13 +7111,14 @@ components:
         datasets:
           type: array
           minItems: 1
-          maxItems: 2
+          maxItems: 3
           uniqueItems: true
           items:
             type: string
             enum:
             - refuel
             - expense
+            - charge
         enabled:
           type: boolean
       required:
@@ -7071,6 +7140,7 @@ components:
             enum:
             - refuel
             - expense
+            - charge
           uniqueItems: true
       required:
       - revision

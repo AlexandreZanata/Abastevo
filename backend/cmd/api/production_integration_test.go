@@ -266,6 +266,12 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 	for _, path := range []string{"/v1/community/summary?state=SP&municipality_code=3550308", "/v1/community/feed?state=SP&municipality_code=3550308&fuel_product=GASOLINE_REGULAR", "/v1/stations?q=Validation", "/v1/stations/" + station, "/v1/stations/" + station + "/prices?fuel_product=GASOLINE_REGULAR", "/v1/stations/" + station + "/official-prices", "/v1/stations/nearby?lat=-23.55&lon=-46.63&radius_m=1000"} {
 		h.call(h.req("GET", path, nil), 200)
 	}
+	// MAP-02: charging command/history/ranking surfaces are mounted by the
+	// real process. Empty/invalid bodies prove routing without pre-seeding
+	// public data; a forged session must not reach storage.
+	h.call(h.req("POST", "/v1/charging/tariffs/rank", []byte(`{"tariffs":[],"scenario":{}}`)), 400)
+	h.call(h.req("GET", "/v1/charging/observations/history?place_id=11111111-1111-4111-8111-111111111111&limit=10", nil), 200)
+	h.call(h.req("POST", "/v1/charging/observations", []byte(`{"session":{"family_id":"bbbbbbbb-1111-4111-8111-000000000001","access_token":"forged"},"id":"cccccccc-1111-4111-8111-000000000001","connector_code":"TYPE2","condition":"STANDARD","observed_day":"2026-10-22"}`)), 401)
 	// Incomplete private representation never reaches its token-only handlers.
 	claimID := "c0000000-0000-4000-8000-000000000002"
 	privatePaths := []string{

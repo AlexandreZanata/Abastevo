@@ -88,3 +88,49 @@ func TestChargeSessionCRUDRevisionIdempotency(t *testing.T) {
 	}
 	_ = ledgerdomain.Charge{}
 }
+
+func TestChargeListDeleteOwnerIsolation(t *testing.T) {
+	pool := freshDB(t)
+	ctx := context.Background()
+	owner := newAccount(t, pool)
+	foreign := newAccount(t, pool)
+	store := NewStore(pool)
+	if _, err := store.SetConsent(ctx, owner, []string{"charge"}, true); err != nil {
+		t.Fatal(err)
+	}
+	vehicleID := newVehicle(t, pool, owner)
+	chargeID := newid(t)
+	if _, err := store.Apply(ctx, owner, application.Batch{Commands: []application.Command{{
+		OperationID: newid(t), Dataset: "charge", ID: chargeID, ExpectedRevision: 0,
+		Payload: chargePayload(t, chargeID, vehicleID),
+	}}}); err != nil {
+		t.Fatal("charge admission refused", err)
+	}
+	rows, err := store.List(ctx, owner, "charge", vehicleID, "", "", "", "", "", 10)
+	if err != nil || len(rows) != 1 || rows[0].ID != chargeID || rows[0].Dataset != "charge" {
+		t.Fatalf("charge list %+v %v", rows, err)
+	}
+	if _, err := store.List(ctx, owner, "charge", "", "fuel", "", "", "", "", 10); err == nil {
+		t.Fatal("charge category filter accepted")
+	}
+	if _, err := store.List(ctx, foreign, "charge", "", "", "", "", "", "", 10); err != nil {
+		t.Fatalf("foreign charge list should be empty, got %v", err)
+	} else if rows, _ := store.List(ctx, foreign, "charge", "", "", "", "", "", "", 10); len(rows) != 0 {
+		t.Fatalf("foreign owner saw charge rows: %+v", rows)
+	}
+	if _, err := store.Delete(ctx, foreign, "charge", chargeID); err == nil {
+		t.Fatal("foreign owner deleted charge")
+	}
+	revision, err := store.Delete(ctx, owner, "charge", chargeID)
+	if err != nil || revision == 0 {
+		t.Fatalf("charge delete %d %v", revision, err)
+	}
+	after, err := store.List(ctx, owner, "charge", "", "", "", "", "", "", 10)
+	if err != nil || len(after) != 0 {
+		t.Fatalf("charge tombstone listed %+v %v", after, err)
+	}
+	replayed, err := store.Delete(ctx, owner, "charge", chargeID)
+	if err != nil || replayed != revision {
+		t.Fatalf("repeat charge delete not idempotent %d %v", replayed, err)
+	}
+}

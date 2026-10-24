@@ -36,6 +36,7 @@ import (
 	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
 	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
 	charginghttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/http"
+	chargingprepared "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/prepared"
 	chargingread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/read"
 	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
 	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
@@ -97,6 +98,8 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // unixClock adapts wall time to the account domain Clock port.
@@ -125,6 +128,15 @@ func newUUID() (string, error) {
 	hexed := hex.EncodeToString(b[:])
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32], nil
+}
+
+// registerChargingSurfaces mounts the existing charging command, history
+// and ranking handlers. Kept as one composition function so route wiring
+// has a direct regression test without opening a database.
+func registerChargingSurfaces(r chi.Router, store chargingprepared.ObservationStore, sessions func(context.Context, string, string) (string, error), enabled func() bool, pool *pgxpool.Pool) {
+	charginghttp.CommandsHandler{Store: store, Sessions: sessions}.RegisterRoutes(r)
+	charginghttp.HistoryHandler{Pool: pool, Enabled: enabled}.RegisterHistoryRoutes(r)
+	charginghttp.RankHandler{Enabled: enabled}.RegisterRankRoutes(r)
 }
 
 type metricsLedgerReader struct{ store *ledgeradapters.Store }
@@ -516,6 +528,19 @@ func run() error {
 		_, err := platformjobs.Enqueue(ctx, pool.Underlying(), "account-erasure-reconcile", []byte(`{"version":1}`), "account-erasure-hint:"+time.Now().UTC().Format("200601021504"), 5, time.Time{})
 		return err
 	}
+
+	// Community charging writes and derived reads (MAP-02): the handlers
+	// already existed but were not mounted, so the documented routes
+	// answered 404. Free account sessions authorize writes; public history
+	// and tariff ranking follow the existing charging-read gate.
+	registerChargingSurfaces(router,
+		chargingprepared.ObservationStore{Pool: rawPool},
+		func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+		func() bool { return cfg.ChargingReadsEnabled },
+		rawPool,
+	)
 
 	feedbackhttp.Handler{
 		Service: feedbackService,

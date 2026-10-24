@@ -15,7 +15,8 @@ import (
 // reporters stay anonymous (no account IDs). Freshness is explicit:
 // items carry observed days; stale data is not refreshed here.
 type HistoryHandler struct {
-	Pool *pgxpool.Pool
+	Pool    *pgxpool.Pool
+	Enabled func() bool
 }
 
 // RegisterHistoryRoutes mounts community history without disturbing
@@ -25,6 +26,10 @@ func (h HistoryHandler) RegisterHistoryRoutes(r chi.Router) {
 }
 
 func (h HistoryHandler) history(w http.ResponseWriter, r *http.Request) {
+	if h.Enabled != nil && !h.Enabled() {
+		httpapi.WriteError(w, r, http.StatusNotFound, "charging.disabled", "charging reads disabled", nil)
+		return
+	}
 	q := r.URL.Query()
 	for key := range q {
 		switch key {

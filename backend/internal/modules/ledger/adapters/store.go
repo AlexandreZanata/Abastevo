@@ -235,7 +235,7 @@ func (s *Store) Apply(ctx context.Context, accountID string, batch application.B
 }
 
 func (s *Store) List(ctx context.Context, accountID, dataset, vehicleID, category, from, to, afterTime, afterID string, limit int) ([]application.Record, error) {
-	if (dataset != "refuel" && dataset != "expense") || limit < 1 || limit > 101 {
+	if (dataset != "refuel" && dataset != "expense" && dataset != "charge") || limit < 1 || limit > 101 {
 		return nil, errInvalid()
 	}
 	params := q.ListLedgerParams{AccountID: uid(accountID), Dataset: dataset, Limit: int32(limit)}
@@ -299,7 +299,7 @@ func (s *Store) List(ctx context.Context, accountID, dataset, vehicleID, categor
 }
 
 func (s *Store) Delete(ctx context.Context, accountID, dataset, id string) (int64, error) {
-	if (dataset != "refuel" && dataset != "expense") || !validLedgerID(id) {
+	if (dataset != "refuel" && dataset != "expense" && dataset != "charge") || !validLedgerID(id) {
 		return 0, errInvalid()
 	}
 	operationID, err := newLedgerOperationID()

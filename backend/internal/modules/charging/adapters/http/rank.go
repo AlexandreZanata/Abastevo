@@ -17,7 +17,9 @@ import (
 // explicit state (never zero/free defaults). Member tariffs isolate by
 // target: mixed-operator member comparisons refuse outright (never leak
 // cross-operator discounts).
-type RankHandler struct{}
+type RankHandler struct {
+	Enabled func() bool
+}
 
 type rankRequest struct {
 	Tariffs  []chargingdomain.Tariff `json:"tariffs"`
@@ -41,6 +43,10 @@ func (h RankHandler) RegisterRankRoutes(r chi.Router) {
 }
 
 func (h RankHandler) rank(w http.ResponseWriter, r *http.Request) {
+	if h.Enabled != nil && !h.Enabled() {
+		httpapi.WriteError(w, r, http.StatusNotFound, "charging.disabled", "charging reads disabled", nil)
+		return
+	}
 	var request rankRequest
 	if httpapi.DecodeJSON(mustReadBody(r), &request) != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-rank", "ranking refused", nil)
