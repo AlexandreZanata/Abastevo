@@ -13,6 +13,15 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-27 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `f46a7f2c`.
+  [End-to-end acceptance](../backend/evidence/ev-support/EE-27.md): actual
+  admitted OCM Rust artifact → strict Go bridge → PostGIS publication → full
+  public HTTP cursor traversal (1,298 places/2,089 groups/0 vehicles, coverage
+  equal, no PII) PASS; Rust→Go parity on both real batches PASS; signed
+  community PostGIS command/moderation and private ledger/cloudsync real
+  PostGIS suites PASS. Android decoding of the exact Go page and physical Room
+  import remain OWED; no mocks-only claim. Next MEX-33/34.
+
 - MEX-31/EE-25 gap 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent
   `82ea53c3`. [Gap record](../backend/evidence/ev-support/EE-25-MEX-31-GAP.md):
   master EV place intents now open compatible charging with a real BEV/PHEV
