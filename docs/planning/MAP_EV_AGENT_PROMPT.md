@@ -1,5 +1,9 @@
 # Execution prompt — MAP-00–33
 
+Current continuation: read [MAP_EV_RESUME](MAP_EV_RESUME.md) first. The MAP-14
+release linker/build blocker is resolved; the full ENGINE_GATE remains partial.
+Do not repeat the already accepted 80 MiB budget decision.
+
 Paste the following into the implementation agent only when you want construction
 and source delivery to begin. This planning turn does not execute the instructions.
 The human-facing Portuguese companion contains the same scope and safeguards.
@@ -29,11 +33,15 @@ search, driving routes/guidance, private favorites/trips and EV stop/alternative
 planning in the later phases. Reuse current visual standards and existing modules.
 
 Only admit open-source/open-data resources permitting the actual commercial,
-modified, offline and redistribution use. The primary engine direction is a pinned
-CoMaps-derived native C++ core behind an isolated Android port. Do not replace the
-app with CoMaps, assume a drop-in SDK exists, add a WebView map as a shortcut or
-silently substitute a second renderer. Preserve com.anpfuel, MIT and all third-party
-notices. Never relicense OSM data as MIT; honor ODbL obligations and visible credit.
+modified, offline and redistribution use. The committed architecture is an
+Abastevo-owned map: vendor the pinned CoMaps-derived native C++ core at an exact
+SHA, maintain a small documented patch set, build our own reproducible AAR and
+expose a narrow `MapEngine` Kotlin port. Abastevo owns the Compose UI, app identity,
+station identity, prices, community data and map style; the native core owns only
+render/search/route. Do not replace the app with CoMaps, ship its UI/brand/CDN,
+assume a drop-in SDK exists, add a WebView map as a shortcut or silently substitute
+a second renderer. Preserve com.anpfuel, MIT and all third-party notices. Never
+relicense OSM data as MIT; honor ODbL obligations and visible credit.
 
 On receiving this implementation prompt, construction, meaningful local commits,
 normal dev backup pushes and the final scoped protected dev -> main PR/guarded
@@ -59,10 +67,11 @@ proofs stay explicit external obligations unless separately authorized.
 4. Select the first phase lacking verified acceptance. Read every step, required
    check and exit. Execute one bounded task at a time. If a phase is broad, split
    it into MAP-NN-T01/T02/T03, retaining the phase's full acceptance obligation.
-5. Do not start Android map functionality before MAP-13 DATA_GATE. Prove the
-   actual native engine in MAP-14 before depending on its render/search/routes.
-   The minimum usable map is MAP-20; it does not complete later offline/navigation
-   and EV planning phases.
+5. Do not start Android map functionality before MAP-13 DATA_GATE. Execute MAP-14
+   as the committed extraction: pinned/vendored source, owned AAR, `MapEngine`
+   port, real render/search/route and Abastevo overlay selection, licenses and
+   measured budgets. The minimum usable map is MAP-20; it does not complete later
+   offline/navigation and EV planning phases.
 
 ## Per-task execution loop
 

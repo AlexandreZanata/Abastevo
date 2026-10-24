@@ -1,25 +1,46 @@
 # Current execution state
 
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
-  MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
-  `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
-  [MAP-00](evidence/MAP-00.md), [MAP-01](evidence/MAP-01.md),
-  [MAP-02](evidence/MAP-02.md), [MAP-03](evidence/MAP-03.md),
-  [MAP-04](evidence/MAP-04.md), [MAP-05](evidence/MAP-05.md),
-  [MAP-06](evidence/MAP-06.md), [MAP-07](evidence/MAP-07.md),
-  [MAP-08](evidence/MAP-08.md), [engine spike](MAP-14_SPIKE.md).
-  Contracts/goldens for POI/price/native manifest; OSM PBF nodes/ways/relations;
-  exact ANP station facts; admitted OCM/PBE reuse; reviewed charging/station
-  links and separate access points; electric handlers/ledger charge fixed.
-  Tests: real PostGIS linking/migration/concurrency/rollback; Rust station-prep
-  full suites/clippy; Go charging/ledger/API process; Kotlin contract/ANP fixture.
-  CoMaps `4587b8ad` built (AAR x86_64; APK 144 MB) and proved render, offline
-  search, POI selection and a 2,007.85 m offline car route on emulator API 26.
-  A generated Curitiba `.mwm` renders but fails `--check_mwm` and an earlier
-  routed build crashed; no map package was published. No Abastevo adapter/UI,
-  arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
-  claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
-  Abastevo adapter/Compose map before MAP-15–33.
+  MAP-08 LOCAL_DONE; MAP-09–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
+  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15–16 blocked by MAP-14. Working tree
+  at base `721582b8` (uncommitted). [MAP-08](../backend/evidence/maps/MAP-08.md),
+  [MAP-09](../backend/evidence/maps/MAP-09.md),
+  [MAP-10](../backend/evidence/maps/MAP-10.md),
+  [MAP-11](../backend/evidence/maps/MAP-11.md),
+  [MAP-12](../backend/evidence/maps/MAP-12.md),
+  [MAP-13](../backend/evidence/maps/MAP-13.md),
+  [MAP-14](../backend/evidence/maps/MAP-14.md).
+  MAP-12: Ed25519 signed distribution envelope, pinned public keys, immutable
+  package IDs, Range/ETag, config pairing, OpenAPI and actual API proof.
+  MAP-13 DATA_GATE: real Rust registry→Go/PostGIS→HTTP→Kotlin codec, native
+  package verification, blocked-license refusal. MAP-14: pinned arm64 release
+  `.so` 14,703,416 bytes with 16 KB LOAD alignment; optional `maps/engine`
+  adapter module; debug Abastevo APK rendered Curitiba at 21–27 FPS, panned,
+  returned 29 offline search results, built a 1,575.15 m car route, and rendered
+  a UUID-titled overlay pin. Remaining gates: clean release AAR without the NDK
+  gold/lld workaround, overlay hit-test/custom pictograms/clustering, complete
+  lifecycle matrix, transitive license audit, and APK budget (release with
+  engine 66.59 MB; the user authorized it and the release gate was raised to
+  80 MB, with `verifyReleaseApkSize` passing).
+  Review reconciliation: MAP-10 now rejects `NaN`/`Inf` before storage and
+  projects `price_known` with the source-specific price array; MAP-12 re-verifies
+  package bytes per response and returns `409` on mutation; MAP-13 feeds the
+  actual API response fixture into the new Kotlin `MapDiscoveryResponseCodec`
+  and cross-checks it against the prepared corpus. MAP-14 adapter now serializes
+  concurrent init, cancels stale search/route work and removes listeners on
+  release; manual rotation/relaunch/permission-denied browsing passed.
+  Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
+  proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, normal app debug
+  build and engine debug build.
+  No commit/push/PR/merge, deploy, Play, production or RELEASE_CERTIFIED claim.
+  Build recovery: [MAP-14 T03](../backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)
+  resolves the manual-linker/hybrid-AAR blocker. Actual arm64/API-26 release AAR
+  35,160,271 bytes; stripped core 14,675,096 bytes; app release 69,881,875 bytes
+  (66.64 MiB), 80 MiB gate and APK/64-bit ELF alignment PASS. No new native
+  execution or full ENGINE_GATE acceptance. [Resume](MAP_EV_RESUME.md) records
+  remaining tasks, the existing native Ed25519 implementation direction and
+  prior DATA_GATE/distribution review obligations. Next: finish the bounded
+  outstanding work before MAP-15/16; no further budget/linker owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

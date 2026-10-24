@@ -46,12 +46,23 @@ quota/query/UI behavior remains pending its owning units.
 
 **Fuel/electric map extension (2026-10-24):** [MAP-00–33](docs/planning/MAP_EV_EXECUTION_PLAN.md),
 [phase registry](docs/planning/MAP_EV_PHASES.json), [source/commercial-use register](docs/planning/MAP_EV_SOURCE_REGISTER.md)
-and [execution prompt](docs/planning/MAP_EV_AGENT_PROMPT.md). PLANNING_LOCAL_DONE /
-IMPLEMENTATION_PLANNED: data admission and Rust→Go→Kotlin proof first, then a proven
-CoMaps-derived native adapter and fourth Mapa tab between Comunidade and Perfil;
-minimum map/prices before offline guidance and EV trip alternatives. Prepared
-[pictograms](docs/assets/map-icons/README.md) include the requested corrected electric
-SVG. No runtime feature/source activation/deploy/remote delivery is claimed.
+and [execution prompt](docs/planning/MAP_EV_AGENT_PROMPT.md). MAP-00–13
+LOCAL_DONE / INTEGRATION_PENDING in the working tree at `721582b8` (uncommitted):
+data preparation, a generated pilot map with an in-map route, transactional
+overlay import, bounded map API, revocation/kill switch, signed distribution and
+the DATA_GATE chain. MAP-14 is IN_PROGRESS / ENGINE_GATE_PARTIAL: arm64 release
+`.so` with 16 KB alignment, optional `maps/engine` adapter, and a debug
+Abastevo APK rendering/panning Curitiba, offline search, a 1.6 km car route and a
+UUID overlay pin. [Release-build recovery](docs/backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)
+now produces the real arm64/API-26 AAR without generated-file edits; app release
+66.64 MiB passes the accepted 80 MiB budget and packaging alignment. Clean-build
+reproducibility, other supported ABIs, overlay hit-test/custom icons, lifecycle
+matrix and license audit remain open. [Resume](docs/planning/MAP_EV_RESUME.md).
+Next: finish MAP-14, then MAP-15/16 and
+the fourth Mapa tab between Comunidade and Perfil. Prepared
+[pictograms](docs/assets/map-icons/README.md) include the requested corrected
+electric SVG. No deploy, source activation, Play/device or remote delivery is
+claimed.
 
 **Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
 adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing
