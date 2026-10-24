@@ -1,5 +1,15 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-08 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-07 `0af7918e`. Stripe webhook handler
+  verifies exact raw body via SDK, 300s tolerance, pinned API version/livemode/
+  no-Connect/merchant, bounds body/signature and writes hashed minimal metadata
+  to the durable inbox before HTTP 200. Duplicate alteration 409; DB failure 503;
+  unknown/rotated-signature cases tested; no provider call or grant. [PAY-08
+  evidence](../backend/evidence/payments/PAY-08.md): handler/race/full backend/
+  vet/staticcheck/govulncheck/sqlc/security gates PASS. No runtime wiring/sale.
+  Next: PAY-09 Asaas webhook inbox only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-07 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-06 `6e52f9bd`. Conventional Asaas Pix
   service/adapter added: owner customer mapping, server price/BRL, due date,

@@ -78,6 +78,26 @@ type Claim struct {
 	Replay      bool
 }
 
+type InboxEvent struct {
+	Provider     domain.Provider
+	Environment  domain.Environment
+	Merchant     string
+	EventID      string
+	PayloadHash  string
+	EventType    string
+	ResourceType string
+	ResourceID   string
+}
+
+type InboxResult struct {
+	Created bool
+	State   string
+}
+
+type InboxRecorder interface {
+	RecordInbox(context.Context, InboxEvent) (InboxResult, error)
+}
+
 type Store interface {
 	CreateOrder(context.Context, domain.Order) error
 	GetOrder(context.Context, string) (domain.Order, error)

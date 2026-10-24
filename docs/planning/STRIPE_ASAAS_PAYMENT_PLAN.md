@@ -195,6 +195,9 @@ origin checks are implemented and tested; runtime/webhook wiring remains PAY-08+
 PAY-07 is LOCAL_DONE: conventional Asaas Pix uses owner customer mapping, exact
 server amount/due date/external reference, bounded owner QR/status, serialized
 creation and external-reference recovery; no auto-debit/settlement is added.
+PAY-08 is LOCAL_DONE: Stripe webhooks use exact raw-body SDK verification, mode/
+version/account binding, bounded input and a durable inbox before HTTP 200;
+unknown/duplicate/conflicting events are safe and runtime wiring remains PAY-19.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

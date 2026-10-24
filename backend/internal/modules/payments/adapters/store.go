@@ -98,21 +98,8 @@ type SettlementOutcome struct {
 	Replay       bool
 }
 
-type InboxInput struct {
-	Provider     domain.Provider
-	Environment  domain.Environment
-	Merchant     string
-	EventID      string
-	PayloadHash  string
-	EventType    string
-	ResourceType string
-	ResourceID   string
-}
-
-type InboxResult struct {
-	Created bool
-	State   string
-}
+type InboxInput = app.InboxEvent
+type InboxResult = app.InboxResult
 
 type CycleInput struct {
 	ID           string

@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–07 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-08–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–08 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-09–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3744,7 +3744,9 @@ its [golden fixture](contracts/testdata/payments/offer-policy-v1.json), and PAY-
 [Stripe checkout use case](backend/internal/modules/payments/application) with
 [evidence](docs/backend/evidence/payments/PAY-06.md), and PAY-07
 [conventional Pix use case/adapter](backend/internal/modules/payments/application/pix.go)
-with [evidence](docs/backend/evidence/payments/PAY-07.md), are local only. The
+with [evidence](docs/backend/evidence/payments/PAY-07.md), and PAY-08
+[Stripe webhook inbox](backend/internal/modules/payments/adapters/http/stripe_webhook.go)
+with [evidence](docs/backend/evidence/payments/PAY-08.md), are local only. The
 checklist owns dependencies, steps, risk checks, shared-path coordination,
 evidence and commit topic.
 
@@ -3766,7 +3768,8 @@ evidence and commit topic.
 - **PAY-07:** Create conventional Asaas Pix orders. LOCAL_DONE; owner customer,
   exact amount/due/correlation, bounded QR/status and lost-response recovery are
   tested; no auto-debit/settlement.
-- **PAY-08:** Receive Stripe events durably.
+- **PAY-08:** Receive Stripe events durably. LOCAL_DONE; exact-body SDK signature,
+  mode/version/account binding, bounded durable inbox and adversarial tests pass.
 - **PAY-09:** Receive Asaas events durably.
 - **PAY-10:** Verify settlements and project existing access.
 - **PAY-11:** Complete Stripe recurring lifecycle.
