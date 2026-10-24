@@ -26,6 +26,8 @@ This repository contains the preserved Android app, integrated backend phase his
 
 ## Canonical planning documents
 
+- [Enterprise data and static public portal](planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md) — two-front ESP-00–18 plan, [product rules](product/ENTERPRISE_DATA_STATIC_PORTAL_CONTRACT.md) and [continuation prompt](planning/ENTERPRISE_DATA_STATIC_PORTAL_PROMPT.md); local planning only, existing source owners reused, no source/VPS activation or private business implementation.
+
 Next construction: [Android/VPS P34–P38](planning/ANDROID_VPS_PLAN.md) and [continuation prompt](planning/CONTINUE_ANDROID_VPS_PROMPT.md); subsequent [national catalog](planning/STATION_CATALOG_PLAN.md) and [station representation](planning/STATION_PROFILE_PLAN.md). Plans are not runtime proof.
 
 - [CURRENT_STATE_AUDIT](CURRENT_STATE_AUDIT.md) — source provenance, real implementation, reuse and inconsistencies.

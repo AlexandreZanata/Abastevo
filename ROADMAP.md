@@ -16,6 +16,12 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**Enterprise data/static portal overlay (2026-10-24):** [ESP-00–ESP-18](#enterprise-data-and-static-public-portal)
+plans shared ANP data/analytics and a public static consultation portal. This is
+local planning only; existing Directory/Official/FQ ownership, app-first/safety
+priorities and Stage D implementation holds remain. No source activation,
+enterprise access model, VPS publication or capacity acceptance is implied.
+
 **2026-10-14 selected planning amendment:** [A → B → C consolidation](docs/planning/APP_CONSOLIDATION_PLAN.md) defines future offline efficiency, reliability without mandatory GPS and user economy work after actual app-first/current-head prerequisites. [D](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) is DEFERRED_FUTURE: no receipt/NFC-e/private-document or business claim/management/portal expansion until extreme consolidation AND thousands of real clients, unless the maintainer explicitly requests earlier named scope. New D work is outside the core A–C/launch prerequisite set. Earlier sequences containing new P30–P33 expansion are superseded for that scope; preserve implemented evidence and all existing safety/release obligations.
 
 Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
@@ -3707,3 +3713,47 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 - **Validation:** changed/new Markdown paths/anchors, rule/task/dependency consistency, D timing precedence, git diff --check and scoped secret/PII review; no runtime suite for docs.
 - **Recovery/limits:** documentation-only isolated commit; no product implementation, remote issue/PR/wiki publication, provider enrollment, live collection/VPS/device/deployment or release claim.
 - **Next:** explicit implementation selection, current dev/main reconciliation and OPT-A00. Generic continuation of current work does not override future D.
+
+## Enterprise data and static public portal
+
+Status: **PLANNED / LOCAL_ONLY**, 2026-10-24. Namespace ESP is separate from
+existing P25 landing/catalog, RST, FQ, MEX, PRM, MAP and OPT tasks. No existing
+task is renumbered or reaccepted. The request authorizes the two-front plan;
+source activation, private business implementation and website/VPS publication
+remain separately scoped. Existing app-first/safety and future-D boundaries apply.
+
+Canonical detail: [execution plan](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#sequential-task-backlog),
+[B-BR-ESP-01–16 / BUC-ESP-01–07](docs/product/ENTERPRISE_DATA_STATIC_PORTAL_CONTRACT.md),
+[continuation prompt](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PROMPT.md).
+Every task below is PLANNED; its linked entry owns dependencies, changed areas,
+meaningful risk checks, acceptance and recovery. Reconcile actual code/evidence
+before execution; reuse accepted existing modules instead of rebuilding them.
+
+Front A — shared source foundation and enterprise-ready analytics:
+
+- [ESP-00 — Reconcile baseline and selected scope](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-00--reconcile-baseline-and-freeze-selected-scope).
+- [ESP-01 — Source profiles, rights and public fields](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-01--admit-source-profiles-rights-and-public-fields).
+- [ESP-02 — Bounded discovery and corrections](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-02--close-bounded-discovery-and-correction-gaps).
+- [ESP-03 — Module-owned export snapshots](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-03--freeze-module-owned-normalized-export-snapshots).
+- [ESP-04 — Deterministic analytics](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-04--implement-deterministic-analytics).
+- [ESP-05 — One enterprise data offering contract](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-05--freeze-one-enterprise-data-offering-boundary).
+- [ESP-06 — Durable data-to-export orchestration](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-06--orchestrate-bounded-data-to-export-intents).
+- [ESP-07 — Local data acceptance](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-07--accept-the-data-foundation-locally).
+
+Front B — public static consultation and operational handoff:
+
+- [ESP-08 — Portal routes and editorial contracts](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-08--freeze-portal-routes-fields-and-editorial-templates).
+- [ESP-09 — Catalog, price and history pages](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-09--generate-catalog-prices-and-bounded-history-pages).
+- [ESP-10 — Static search and filters](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-10--add-bounded-static-search-and-filters).
+- [ESP-11 — Safely associated official records](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-11--publish-safely-associated-official-record-pages).
+- [ESP-12 — Insights and public downloads](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-12--add-deterministic-insights-and-downloadable-public-data).
+- [ESP-13 — Reproducible publication artifacts](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-13--verify-reproducible-versioned-publication-artifacts).
+- [ESP-14 — Hosting and safe promotion](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-14--implement-scoped-static-hosting-and-safe-promotion).
+- [ESP-15 — Automatic refresh and corrections](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-15--wire-automatic-refresh-and-correction-recovery).
+- [ESP-16 — Capacity and browser measurements](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-16--measure-capacity-and-browser-performance).
+- [ESP-17 — Preview and operations acceptance](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-17--rehearse-preview-accessibility-and-operations-handoff).
+- [ESP-18 — Scoped public publication](docs/planning/ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md#esp-18--publish-the-selected-public-portal).
+
+Local data, static-artifact and real-preview gates are distinct. A completed
+plan/build or a 16 GB host does not prove thousands of concurrent users, current
+legal status, national coverage, enabled ingestion, public deployment or G09.

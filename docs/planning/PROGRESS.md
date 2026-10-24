@@ -20,6 +20,19 @@
   arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
   claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
   Abastevo adapter/Compose map before MAP-15–33.
+
+- Enterprise data/static portal planning 2026-10-24: PLANNING_LOCAL_DONE /
+  IMPLEMENTATION_PLANNED / LOCAL_ONLY. Planning commit `b1a2bde6` was preserved
+  from its old local-dev parent and replayed onto maintained dev `721582b8` in
+  ESP worktree branch `codex/enterprise-static-portal`; the map worktree remains
+  untouched. [ESP-00–18 plan](ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md),
+  [rules/use cases](../product/ENTERPRISE_DATA_STATIC_PORTAL_CONTRACT.md) and
+  [continuation prompt](ENTERPRISE_DATA_STATIC_PORTAL_PROMPT.md) define existing
+  ANP/FQ reuse, analytics, static search/pages, versioned publication, correction
+  recovery and measured VPS/CDN capacity. Next: ESP-00 actual baseline/scope
+  reconciliation and component split with the map. No source activation,
+  D implementation, VPS/load/deployment or release acceptance.
+
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),
