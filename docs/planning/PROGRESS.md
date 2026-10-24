@@ -1,5 +1,18 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-00 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  exclusive `codex/payments-stripe-asaas`, base fetched `origin/dev` `721582b8`.
+  Payment planning from `ee8d316b` replayed onto the reconciled head (five docs
+  unchanged; scoped ROADMAP/README/PREMIUM/PROGRESS additions re-applied); original
+  planning worktree preserved. [Baseline/ownership evidence](../backend/evidence/payments/PAY-00.md)
+  and v1 [threat/test matrix](../backend/evidence/payments/PAY_THREAT_MATRIX.md)
+  record source `721582b8` versus deployed test source `53719336`/schema 120, MAP
+  (`606f3b08`), ESP (`46fee9e0`) and integrated PRM owners. PAY-00 edits are
+  docs/evidence only: no provider/catalog/credential/runtime/migration change, no
+  charge/refund/mandate, no PR/CI/merge/deploy/wiki and no occupied worktree moved.
+  Checks: worktree/ref ancestry, diff check, scoped links/registry/DAG and secret
+  scan. Next: PAY-01 offers/lifecycle policy only after maintainer authorization.
+
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
   `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.

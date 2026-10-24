@@ -1,5 +1,16 @@
 # Premium delivery plan — complete backend, minimal Android UI
 
+**2026-10-24 web payment selection:** [PAY-00–23](STRIPE_ASAAS_PAYMENT_PLAN.md)
+plans Stripe card and Asaas conventional/automatic Pix, independently activated,
+reusing existing PRM source and provider-neutral access boundaries. Google Play
+is a later alternative for this web-payment batch; existing Play code/evidence
+is preserved, not reaccepted. Web grants must not require Play credentials or
+impersonate Play tokens. This request is local planning/agent handoff only;
+provider proof, distribution rules and commercial activation remain gates.
+Enterprise billing targets defined single-payer services only; no Stage D team/
+representation/tenant implementation or Android purchase UI is enabled here.
+PAY-00 baseline/ownership is LOCAL_DONE; PAY-01 is next.
+
 **2026-10-20 EV data extension:** [EE](EV_FULL_SUPPORT_EXECUTION_PLAN.md) extends
 existing PRM vehicle/ledger/metrics/sync consumers for energy-capable vehicles
 before their dependent schema/UI, with [exact EV method](../product/EV_FINANCIAL_METHOD.md).

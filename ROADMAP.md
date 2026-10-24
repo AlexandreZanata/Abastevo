@@ -16,6 +16,14 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**Stripe/Asaas payment overlay (2026-10-24):** [PAY-00–PAY-23](#stripe-and-asaas-payments)
+plans Stripe cards and conventional/automatic Asaas Pix with independent switches,
+existing subscription/access reuse and parallel MAP/ESP isolation. Premium and
+defined single-payer Enterprise billing are scoped; Google is LATER. Planning
+does not enable provider/live charging, Android purchase UI or a tenant model.
+PAY-00 baseline/ownership and the versioned threat matrix are LOCAL_DONE; PAY-01
+is the next authorized phase.
+
 **2026-10-14 selected planning amendment:** [A → B → C consolidation](docs/planning/APP_CONSOLIDATION_PLAN.md) defines future offline efficiency, reliability without mandatory GPS and user economy work after actual app-first/current-head prerequisites. [D](docs/planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md) is DEFERRED_FUTURE: no receipt/NFC-e/private-document or business claim/management/portal expansion until extreme consolidation AND thousands of real clients, unless the maintainer explicitly requests earlier named scope. New D work is outside the core A–C/launch prerequisite set. Earlier sequences containing new P30–P33 expansion are superseded for that scope; preserve implemented evidence and all existing safety/release obligations.
 
 Completed backend/app history is indexed in PROGRESS. Current source construction order (ADR-019): **P34 → P35 → P36 → P37 → P38 code-ready → P25 → P26 → P27 → P29 code-ready → P30 → P31 → P32 → P33 code-ready → end Android manual/device acceptance → final cumulative PR/CI/merge/wiki → P09/G09 real-production certification → P10-T09 public pilot**. P28 sources/P11 paid benefits are optional; iOS remains archived. Preserve IDs and completed history; local source dependencies use validated checkpoints under ADR-018, while deployment/pilot/certification gates remain unchanged. [Android/VPS plan](docs/planning/ANDROID_VPS_PLAN.md) owns the next tasks; [catalog](#station-catalog-expansion) and [profile](#station-profile-and-representation) retain subsequent scope. No implementation or release is claimed by a plan.
@@ -3707,3 +3715,51 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 - **Validation:** changed/new Markdown paths/anchors, rule/task/dependency consistency, D timing precedence, git diff --check and scoped secret/PII review; no runtime suite for docs.
 - **Recovery/limits:** documentation-only isolated commit; no product implementation, remote issue/PR/wiki publication, provider enrollment, live collection/VPS/device/deployment or release claim.
 - **Next:** explicit implementation selection, current dev/main reconciliation and OPT-A00. Generic continuation of current work does not override future D.
+
+## Stripe and Asaas payments
+
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00 is
+LOCAL_DONE / INTEGRATION_PENDING; PAY-01–23 remain planned. Selected methods:
+Stripe cards, Asaas conventional Pix and Pix Automático, independently activated.
+Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
+expansion.
+
+Canonical [plan](docs/planning/STRIPE_ASAAS_PAYMENT_PLAN.md),
+[phase checklist](docs/planning/STRIPE_ASAAS_PAYMENT_PHASES.json),
+[provider register](docs/planning/STRIPE_ASAAS_PROVIDER_REGISTER.md),
+[rules/use cases](docs/product/STRIPE_ASAAS_PAYMENT_CONTRACT.md) and
+[agent prompt](docs/planning/STRIPE_ASAAS_PAYMENT_PROMPT.md).
+PAY-00 [baseline/ownership evidence](docs/backend/evidence/payments/PAY-00.md) and
+[versioned threat matrix](docs/backend/evidence/payments/PAY_THREAT_MATRIX.md)
+are local only. The checklist owns dependencies, steps, risk checks, shared-path
+coordination, evidence and commit topic.
+
+- **PAY-00:** Reconcile baseline and parallel ownership. LOCAL_DONE.
+- **PAY-01:** Freeze offers and lifecycle policy.
+- **PAY-02:** Admit providers and maintained SDKs.
+- **PAY-03:** Build pure financial and access policy.
+- **PAY-04:** Persist financial intents and concurrency guards.
+- **PAY-05:** Validate credentials and channel configuration.
+- **PAY-06:** Create Stripe hosted card checkout.
+- **PAY-07:** Create conventional Asaas Pix orders.
+- **PAY-08:** Receive Stripe events durably.
+- **PAY-09:** Receive Asaas events durably.
+- **PAY-10:** Verify settlements and project existing access.
+- **PAY-11:** Complete Stripe recurring lifecycle.
+- **PAY-12:** Integrate Pix Automatic consent and authorization.
+- **PAY-13:** Complete Pix Automatic recurring cycles.
+- **PAY-14:** Fence plan changes and cross-provider switching.
+- **PAY-15:** Complete cancellation and account exits.
+- **PAY-16:** Complete refunds disputes and financial recovery.
+- **PAY-17:** Complete single-payer Enterprise billing.
+- **PAY-18:** Close adversarial privacy and performance acceptance.
+- **PAY-19:** Wire actual API and worker runtime.
+- **PAY-20:** Package deployment and configuration handoff.
+- **PAY-21:** Prove actual provider sandbox journeys.
+- **PAY-22:** Integrate batch and validate protected CI.
+- **PAY-23:** Validate scoped VPS test deployment and activation handoff.
+
+One bounded phase/commit with immediate meaningful tests; no construction PR/CI
+waits. Local readiness, actual sandbox proof, protected integration, VPS test
+acceptance and live-money activation are separate. Missing keys/catalog/account
+eligibility or actual required proof cannot become PASS.
