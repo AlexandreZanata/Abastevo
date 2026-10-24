@@ -13,7 +13,7 @@ executed code union is unchanged.
 
 - JVM matrix at `887d5a71`: domain 674, application 454, data 542,
   app 460 = **2,130 tests, 0 failures/errors, 2 pre-existing skips**
-  (1,812? corrected: 2,128 executed). Skips are the opt-in live ANP
+  (2,128 executed). Skips are the opt-in live ANP
   listing and training-consent interop tests, not EV paths.
 - Lint (`app`, `data`) zero errors; debug APK assembled.
 - Go: race unit matrix, vet, staticcheck, sqlc vet, gofmt; real PostGIS

@@ -13,6 +13,13 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-38 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `83b77df4`.
+  [Operational handoff](../backend/evidence/mobile-expansion/MEX-38.md): reuses
+  the EE-30 source-ready manifest and local restore/erase/replay rehearsals;
+  exact external gates (Play sandbox, staging two-device/private objects,
+  operator access, physical Android, production deploy/load/restore, pilot)
+  remain OWED. No VPS/deploy/sales/source activation, no G09 claim.
+
 - EE-30 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `113d6df7`.
   [Source-ready manifest](../backend/evidence/ev-support/EE-30.md): pins code
   head `887d5a71`, append-only `000120`, Room 25, OpenAPI/profile/vector hashes,
