@@ -13,6 +13,17 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-22 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `b5fc0277`.
+  [Community EV journeys](../backend/evidence/ev-support/EE-22.md): completed
+  EE-12/13 HTTP reads (owner revisions), helpfulness and report endpoints with
+  self-action refusal, OpenAPI; Android typed client, durable account/origin
+  pending store, use case, ViewModel and Compose journey (publish, list, edit,
+  withdraw, vote, report), offline/conflict/signed-out states and 47 strings ×
+  8 locales. Real-PostGIS command/moderation tests, client/use-case/VM tests,
+  lint/APK, vet/sqlc/OpenAPI PASS. No GPS/home/route/photo in wire. Device/
+  staging E2E and operator moderation actions remain OWED. Next EE-25/MEX-31
+  execution gaps.
+
 - EE-26 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `05c22e23`.
   [Refresh/stale policy](../backend/evidence/ev-support/EE-26.md): charging
   snapshot age is UNKNOWN/FRESH/STALE at a 24 h boundary, shown in eight

@@ -248,6 +248,17 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.charging.ChargingExploreScreen(
                 vehicleId = vehicleId,
                 onNavigateBack = { navController.popBackStack() },
+                onOpenCommunity = { placeId -> navController.navigate(Routes.chargingCommunity(placeId)) },
+            )
+        }
+        composable(
+            route = Routes.CHARGING_COMMUNITY,
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.charging.ChargingCommunityScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(

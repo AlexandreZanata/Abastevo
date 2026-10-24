@@ -328,6 +328,22 @@ func (q *Queries) FindChargingBatchByManifest(ctx context.Context, manifestSha25
 	return id, err
 }
 
+const helpfulnessSubmissionExists = `-- name: HelpfulnessSubmissionExists :one
+SELECT id FROM charging_helpfulness_votes WHERE account_id = $1::uuid AND client_submission_id = $2
+`
+
+type HelpfulnessSubmissionExistsParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	SubmissionID string      `json:"submission_id"`
+}
+
+func (q *Queries) HelpfulnessSubmissionExists(ctx context.Context, arg HelpfulnessSubmissionExistsParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, helpfulnessSubmissionExists, arg.AccountID, arg.SubmissionID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const helpfulnessTally = `-- name: HelpfulnessTally :one
 SELECT
  (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = $1::uuid AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
@@ -370,6 +386,22 @@ func (q *Queries) LatestChargingBatch(ctx context.Context, profile string) (Late
 	row := q.db.QueryRow(ctx, latestChargingBatch, profile)
 	var i LatestChargingBatchRow
 	err := row.Scan(&i.ID, &i.ProfileID, &i.SourceRevision)
+	return i, err
+}
+
+const observationOwner = `-- name: ObservationOwner :one
+SELECT account_id, hidden_at FROM charging_observations WHERE id = $1::uuid AND NOT deleted
+`
+
+type ObservationOwnerRow struct {
+	AccountID pgtype.UUID        `json:"account_id"`
+	HiddenAt  pgtype.Timestamptz `json:"hidden_at"`
+}
+
+func (q *Queries) ObservationOwner(ctx context.Context, id pgtype.UUID) (ObservationOwnerRow, error) {
+	row := q.db.QueryRow(ctx, observationOwner, id)
+	var i ObservationOwnerRow
+	err := row.Scan(&i.AccountID, &i.HiddenAt)
 	return i, err
 }
 
@@ -418,6 +450,58 @@ func (q *Queries) ObservationProjection(ctx context.Context, arg ObservationProj
 			&i.Note,
 			&i.Helpful,
 			&i.NotHelpful,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const observationsForAccount = `-- name: ObservationsForAccount :many
+SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision
+FROM charging_observations
+WHERE account_id = $1::uuid AND NOT deleted
+ORDER BY observed_day DESC, id::text LIMIT $2::int
+`
+
+type ObservationsForAccountParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type ObservationsForAccountRow struct {
+	ID                  pgtype.UUID `json:"id"`
+	PlaceID             pgtype.UUID `json:"place_id"`
+	ConnectorCode       string      `json:"connector_code"`
+	PriceMilliBrlPerKwh pgtype.Int4 `json:"price_milli_brl_per_kwh"`
+	Condition           string      `json:"condition"`
+	ObservedDay         pgtype.Date `json:"observed_day"`
+	Note                string      `json:"note"`
+	Revision            int64       `json:"revision"`
+}
+
+func (q *Queries) ObservationsForAccount(ctx context.Context, arg ObservationsForAccountParams) ([]ObservationsForAccountRow, error) {
+	rows, err := q.db.Query(ctx, observationsForAccount, arg.AccountID, arg.LimitPlusOne)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ObservationsForAccountRow
+	for rows.Next() {
+		var i ObservationsForAccountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlaceID,
+			&i.ConnectorCode,
+			&i.PriceMilliBrlPerKwh,
+			&i.Condition,
+			&i.ObservedDay,
+			&i.Note,
+			&i.Revision,
 		); err != nil {
 			return nil, err
 		}

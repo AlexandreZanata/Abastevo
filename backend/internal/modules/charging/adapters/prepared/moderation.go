@@ -138,3 +138,81 @@ func Project(ctx context.Context, pool *pgxpool.Pool, placeID string, sinceDays 
 func daysAgo(days int) pgtype.Date {
 	return pgtype.Date{Time: time.Now().AddDate(0, 0, -days), Valid: true}
 }
+
+// OwnedObservation is one non-deleted account observation with its exact
+// revision for correction/withdrawal. Bounded, owner-scoped read.
+type OwnedObservation struct {
+	ID            string
+	PlaceID       *string
+	ConnectorCode string
+	PriceMilliBRL *int64
+	Condition     string
+	ObservedDay   string
+	Note          string
+	Revision      int64
+}
+
+// Mine returns up to limit owned observations, newest day first.
+func Mine(ctx context.Context, pool *pgxpool.Pool, accountID string, limit int) ([]OwnedObservation, error) {
+	if accountID == "" || limit < 1 || limit > 100 {
+		return nil, chargingdomain.ErrNotOwner
+	}
+	accountUUID, err := pgUUID(accountID)
+	if err != nil {
+		return nil, chargingdomain.ErrNotOwner
+	}
+	rows, err := charging.New(pool).ObservationsForAccount(ctx, charging.ObservationsForAccountParams{
+		AccountID: accountUUID, LimitPlusOne: int32(limit + 1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]OwnedObservation, 0, min(limit, len(rows)))
+	for i, row := range rows {
+		if i == limit {
+			break
+		}
+		item := OwnedObservation{
+			ID: hexUUID(row.ID), ConnectorCode: row.ConnectorCode,
+			Condition: row.Condition, ObservedDay: row.ObservedDay.Time.Format("2006-01-02"),
+			Note: row.Note, Revision: row.Revision,
+		}
+		if row.PlaceID.Valid {
+			place := hexUUID(row.PlaceID)
+			item.PlaceID = &place
+		}
+		if row.PriceMilliBrlPerKwh.Valid {
+			price := int64(row.PriceMilliBrlPerKwh.Int32)
+			item.PriceMilliBRL = &price
+		}
+		out = append(out, item)
+	}
+	return out, nil
+}
+
+// ObservationAccount returns the owner of a visible observation. Missing,
+// deleted or hidden rows refuse as invalid targets.
+func ObservationAccount(ctx context.Context, pool *pgxpool.Pool, observationID string) (string, error) {
+	id, err := pgUUID(observationID)
+	if err != nil {
+		return "", chargingdomain.ErrInvalidObservation
+	}
+	row, err := charging.New(pool).ObservationOwner(ctx, id)
+	if err != nil || row.HiddenAt.Valid {
+		return "", chargingdomain.ErrInvalidObservation
+	}
+	return hexUUID(row.AccountID), nil
+}
+
+// Tally returns current helpfulness counts.
+func Tally(ctx context.Context, pool *pgxpool.Pool, observationID string) (int64, int64, error) {
+	id, err := pgUUID(observationID)
+	if err != nil {
+		return 0, 0, chargingdomain.ErrInvalidObservation
+	}
+	row, err := charging.New(pool).HelpfulnessTally(ctx, id)
+	if err != nil {
+		return 0, 0, err
+	}
+	return row.Helpful, row.NotHelpful, nil
+}

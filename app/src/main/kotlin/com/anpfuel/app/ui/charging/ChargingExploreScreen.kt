@@ -58,6 +58,7 @@ import java.util.Locale
 fun ChargingExploreScreen(
     vehicleId: String,
     onNavigateBack: () -> Unit,
+    onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChargingExploreViewModel = hiltViewModel(),
 ) {
@@ -80,6 +81,7 @@ fun ChargingExploreScreen(
         onDismissDetail = viewModel::dismissDetail,
         onDismissError = viewModel::dismissError,
         onNavigateBack = onNavigateBack,
+        onOpenCommunity = onOpenCommunity,
         modifier = modifier,
     )
 }
@@ -98,6 +100,7 @@ internal fun ChargingExploreContent(
     onDismissDetail: () -> Unit,
     onDismissError: () -> Unit,
     onNavigateBack: () -> Unit,
+    onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnpScaffold(
@@ -259,6 +262,14 @@ internal fun ChargingExploreContent(
                 }
             },
             confirmButton = {
+                TextButton(onClick = {
+                    onOpenCommunity(detail.place.id)
+                    onDismissDetail()
+                }) {
+                    Text(text = stringResource(R.string.charging_community_title))
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = onDismissDetail) {
                     Text(text = stringResource(R.string.action_cancel))
                 }

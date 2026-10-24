@@ -31,6 +31,9 @@ func (h CommandsHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/charging/observations", h.submit)
 	r.Put("/v1/charging/observations/{id}", h.correct)
 	r.Delete("/v1/charging/observations/{id}", h.withdraw)
+	r.Post("/v1/charging/observations/mine", h.mine)
+	r.Post("/v1/charging/observations/{id}/helpfulness", h.vote)
+	r.Post("/v1/charging/observations/{id}/report", h.report)
 }
 
 func (h CommandsHandler) principal(r *http.Request, s session) (string, error) {
@@ -130,6 +133,117 @@ func (h CommandsHandler) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, r, http.StatusOK, map[string]any{"revision": revision})
+}
+
+func (h CommandsHandler) mine(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Session session `json:"session"`
+		Limit   int     `json:"limit"`
+	}
+	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
+		return
+	}
+	if body.Limit == 0 {
+		body.Limit = 20
+	}
+	if body.Limit < 1 || body.Limit > 100 {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-limit", "limit must be 1..100", nil)
+		return
+	}
+	owner, err := h.principal(r, body.Session)
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusUnauthorized, "charging.unauthorized", "authentication required", nil)
+		return
+	}
+	items, err := prepared.Mine(r.Context(), h.Store.Pool, owner, body.Limit)
+	if err != nil {
+		writeStoreError(w, r, err)
+		return
+	}
+	wire := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		entry := map[string]any{"id": item.ID, "connector_code": item.ConnectorCode,
+			"condition": item.Condition, "observed_day": item.ObservedDay,
+			"note": item.Note, "revision": item.Revision}
+		if item.PlaceID != nil {
+			entry["place_id"] = *item.PlaceID
+		}
+		if item.PriceMilliBRL != nil {
+			entry["price_milli_brl_per_kwh"] = *item.PriceMilliBRL
+		}
+		wire = append(wire, entry)
+	}
+	writeJSON(w, r, http.StatusOK, map[string]any{"items": wire})
+}
+
+func (h CommandsHandler) targetOwner(w http.ResponseWriter, r *http.Request, session session) (string, string, bool) {
+	owner, err := h.principal(r, session)
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusUnauthorized, "charging.unauthorized", "authentication required", nil)
+		return "", "", false
+	}
+	target := chi.URLParam(r, "id")
+	author, err := prepared.ObservationAccount(r.Context(), h.Store.Pool, target)
+	if err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-target", "target unavailable", nil)
+		return "", "", false
+	}
+	if author == owner {
+		httpapi.WriteError(w, r, http.StatusForbidden, "charging.self-action", "cannot act on your own report", nil)
+		return "", "", false
+	}
+	return owner, target, true
+}
+
+func (h CommandsHandler) vote(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Session      session `json:"session"`
+		Choice       string  `json:"choice"`
+		SubmissionID string  `json:"client_submission_id"`
+	}
+	if httpapi.DecodeJSON(mustRead(r), &body) != nil || len(body.SubmissionID) < 1 || len(body.SubmissionID) > 128 {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
+		return
+	}
+	owner, target, ok := h.targetOwner(w, r, body.Session)
+	if !ok {
+		return
+	}
+	if err := prepared.Vote(r.Context(), h.Store.Pool, owner, target, body.Choice, body.SubmissionID); err != nil {
+		writeStoreError(w, r, err)
+		return
+	}
+	helpful, notHelpful, err := prepared.Tally(r.Context(), h.Store.Pool, target)
+	if err != nil {
+		writeStoreError(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusCreated, map[string]any{
+		"observation_id": target, "choice": body.Choice,
+		"helpful": helpful, "not_helpful": notHelpful,
+	})
+}
+
+func (h CommandsHandler) report(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Session session `json:"session"`
+		Reason  string  `json:"reason"`
+		Detail  string  `json:"detail"`
+	}
+	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
+		return
+	}
+	owner, target, ok := h.targetOwner(w, r, body.Session)
+	if !ok {
+		return
+	}
+	if err := prepared.Report(r.Context(), h.Store.Pool, owner, target, body.Reason, body.Detail); err != nil {
+		writeStoreError(w, r, err)
+		return
+	}
+	writeJSON(w, r, http.StatusCreated, map[string]any{"observation_id": target, "status": "received"})
 }
 
 func writeStoreError(w http.ResponseWriter, r *http.Request, err error) {

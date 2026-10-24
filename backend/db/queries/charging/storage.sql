@@ -115,3 +115,15 @@ FROM charging_observations o
 WHERE o.place_id = @place_id::uuid AND NOT o.deleted AND o.hidden_at IS NULL
  AND o.observed_day >= @since::date
 ORDER BY o.observed_day DESC, o.id::text LIMIT @limit_plus_one::int;
+
+-- name: ObservationsForAccount :many
+SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision
+FROM charging_observations
+WHERE account_id = @account_id::uuid AND NOT deleted
+ORDER BY observed_day DESC, id::text LIMIT @limit_plus_one::int;
+
+-- name: ObservationOwner :one
+SELECT account_id, hidden_at FROM charging_observations WHERE id = @id::uuid AND NOT deleted;
+
+-- name: HelpfulnessSubmissionExists :one
+SELECT id FROM charging_helpfulness_votes WHERE account_id = @account_id::uuid AND client_submission_id = @submission_id;

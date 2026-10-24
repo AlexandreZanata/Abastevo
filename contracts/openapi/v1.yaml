@@ -1928,6 +1928,235 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/charging/observations:
+    post:
+      summary: Submit one signed community EV observation (free account).
+      operationId: chargingObservationSubmit
+      tags: [charging]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session, id, connector_code, condition, observed_day]
+              properties:
+                session: {type: object}
+                id: {type: string, format: uuid}
+                place_id: {type: string, format: uuid}
+                connector_code: {type: string, enum: [CCS2, TYPE2, CHADEMO, NACS, UNKNOWN]}
+                price_milli_brl_per_kwh: {type: integer, minimum: 1, maximum: 10000000}
+                condition: {type: string, enum: [STANDARD, OFF_PEAK, PEAK, MEMBER, UNKNOWN]}
+                observed_day: {type: string, format: date}
+                note: {type: string, maxLength: 1024}
+      responses:
+        '201':
+          description: Created or idempotently replayed.
+          content:
+            application/json:
+              schema: {type: object, required: [id], properties: {id: {type: string, format: uuid}}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/observations/mine:
+    post:
+      summary: Bounded owner read of visible EV observations with revisions.
+      operationId: chargingObservationMine
+      tags: [charging]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session]
+              properties:
+                session: {type: object}
+                limit: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Owner-scoped observations only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, maxItems: 100, items: {type: object}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/observations/{id}:
+    put:
+      summary: Correct an owned EV observation under an exact revision.
+      operationId: chargingObservationCorrect
+      tags: [charging]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session, connector_code, condition, observed_day, expected_revision]
+              properties:
+                session: {type: object}
+                connector_code: {type: string, enum: [CCS2, TYPE2, CHADEMO, NACS, UNKNOWN]}
+                price_milli_brl_per_kwh: {type: integer, minimum: 1, maximum: 10000000}
+                condition: {type: string, enum: [STANDARD, OFF_PEAK, PEAK, MEMBER, UNKNOWN]}
+                observed_day: {type: string, format: date}
+                note: {type: string, maxLength: 1024}
+                expected_revision: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: New revision.
+          content:
+            application/json:
+              schema: {type: object, required: [revision], properties: {revision: {type: integer, minimum: 2}}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    delete:
+      summary: Withdraw an owned EV observation under an exact revision.
+      operationId: chargingObservationWithdraw
+      tags: [charging]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session, expected_revision]
+              properties:
+                session: {type: object}
+                expected_revision: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: Withdrawn revision.
+          content:
+            application/json:
+              schema: {type: object, required: [revision], properties: {revision: {type: integer, minimum: 2}}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/observations/{id}/helpfulness:
+    post:
+      summary: Cast an idempotent helpfulness vote (never on your own report).
+      operationId: chargingObservationHelpfulness
+      tags: [charging]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session, choice, client_submission_id]
+              properties:
+                session: {type: object}
+                choice: {type: string, enum: [HELPFUL, NOT_HELPFUL]}
+                client_submission_id: {type: string, minLength: 1, maxLength: 128}
+      responses:
+        '201':
+          description: Exact tallies after the vote.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [observation_id, choice, helpful, not_helpful]
+                properties:
+                  observation_id: {type: string, format: uuid}
+                  choice: {type: string, enum: [HELPFUL, NOT_HELPFUL]}
+                  helpful: {type: integer, minimum: 0}
+                  not_helpful: {type: integer, minimum: 0}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/observations/{id}/report:
+    post:
+      summary: Report an EV observation for moderation (never your own).
+      operationId: chargingObservationReport
+      tags: [charging]
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [session, reason]
+              properties:
+                session: {type: object}
+                reason: {type: string, enum: [INACCURATE, SPAM, PRIVATE_DATA, OTHER]}
+                detail: {type: string, maxLength: 1024}
+      responses:
+        '201':
+          description: Report accepted or converged.
+          content:
+            application/json:
+              schema: {type: object, required: [observation_id, status], properties: {observation_id: {type: string, format: uuid}, status: {type: string, enum: [received]}}}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/quality/actions/{id}:
     get:
       summary: One enforcement action within the current lease (anonymous).

@@ -28,6 +28,12 @@ object Routes {
     }
 
     const val CHARGING_EXPLORE = "charging-explore/{vehicleId}"
+    const val CHARGING_COMMUNITY = "charging-community/{placeId}"
+
+    fun chargingCommunity(placeId: String): String {
+        require(java.util.UUID.fromString(placeId).toString() == placeId)
+        return "charging-community/$placeId"
+    }
 
     fun chargingExplore(vehicleId: String): String {
         require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
