@@ -1,5 +1,19 @@
 # Current execution state
 
+- Enterprise portal ESP-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-13 `06e871e9`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-14.md). Added an atomic
+  private portal publisher (`portalrelease`: flock/fence, complete copy +
+  second verify, content-addressed releases, atomic `current` symlink,
+  rollback/withdraw/stale-state reconcile), a pinned loopback Caddy rehearsal
+  with security/immutable/noindex headers, gzip and a real 404, and the
+  isolated `rehearse-portal.sh` script. Real ESP-13 A/B artifacts: promote,
+  switch, rollback, corrupt-current recovery, withdraw-to-fallback and
+  withdraw-to-404 all PASS; headers/compression/API-independence checked.
+  Unit/race and integration enterpriseexport PASS; build/vet/staticcheck/sqlc/
+  gofmt/diff PASS. Production host/CDN/TLS/DNS/shared edge, multi-host locking,
+  real prices and auto-refresh remain OWED. No VPS/publication/merge. Next:
+  ESP-15.
 - Enterprise portal ESP-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/enterprise-static-portal` after ESP-11 `af615284`.
   [Evidence](../backend/evidence/enterprise-static/ESP-13.md). Portal artifacts
