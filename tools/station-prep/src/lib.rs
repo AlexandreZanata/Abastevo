@@ -12,6 +12,7 @@
 //! return `Err` with no partial output. There is no network, no database
 //! and no automatic promotion of coordinate candidates.
 
+pub mod anp_prices;
 pub mod cnpj;
 pub mod datasets;
 pub mod deflate;
