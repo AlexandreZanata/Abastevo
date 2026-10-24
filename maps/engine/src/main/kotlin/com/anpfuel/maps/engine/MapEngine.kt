@@ -7,6 +7,14 @@ data class MapSearchResult(val name: String, val latitude: Double, val longitude
 
 data class MapRouteInfo(val distance: Double, val unit: String, val seconds: Int)
 
+data class MapOverlayMarker(
+    val uuid: String,
+    val latitude: Double,
+    val longitude: Double,
+    val title: String,
+    val charging: Boolean = false,
+)
+
 /** Narrow Abastevo-owned surface over the pinned native map core. */
 interface MapEngine {
     fun initialize(context: Context, onReady: () -> Unit): Boolean
@@ -22,7 +30,7 @@ interface MapEngine {
         endLongitude: Double,
         onResult: (MapRouteInfo?) -> Unit,
     ): Boolean
-    fun addOverlayMarker(uuid: String, latitude: Double, longitude: Double, title: String): Boolean
+    fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean
     fun setOnMarkerSelected(listener: (String) -> Unit)
     fun cancelSearch()
     fun cancelRoute()

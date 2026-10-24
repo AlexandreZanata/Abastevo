@@ -22,7 +22,12 @@ class MapProbeActivity : Activity() {
                 engine.setOnMarkerSelected { uuid -> android.util.Log.i("MapProbe", "selected=$uuid") }
                 view.postDelayed({
                     engine.setViewport(-25.42, -49.27, 13)
-                    engine.addOverlayMarker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", -25.42, -49.27, "Posto Abastevo")
+                    engine.setOverlayMarkers(listOf(
+                        com.anpfuel.maps.engine.MapOverlayMarker(
+                            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", -25.42, -49.27, "Posto Abastevo"),
+                        com.anpfuel.maps.engine.MapOverlayMarker(
+                            "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", -25.43, -49.26, "Recarga Abastevo", charging = true),
+                    ))
                 }, 2500)
                 view.postDelayed({
                     engine.search(this, "Museu") { results ->

@@ -87,8 +87,17 @@ ComapsMapEngine: overlay marker category=1013 uuid=aaaaaaaa-aaaa-4aaa-8aaa-aaaaa
 The overlay pin rendered on the map with the title containing the canonical
 UUID. A landscape rotation and a process-kill/relaunch produced no new fatal
 error; the singleton adapter avoids re-running `loadBookmarks()` in the same
-process. Hit-test selection of the overlay pin did not emit the UUID callback
-in this run; a real app-owned place-page surface is still required.
+process. A later tap on the canonical bookmark pin produced:
+
+```text
+ComapsMapEngine: place page activated title=ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+MapProbe: selected=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+```
+
+The adapter now writes one KML generation for a marker list, deletes the prior
+Abastevo category and reuses the same canonical UUID in the placemark title.
+A coincident OSM POI can win the native hit-test instead of the bookmark; the
+final app-owned place-page/list surface still has to disambiguate that case.
 
 ## Remaining ENGINE_GATE work
 
@@ -102,9 +111,9 @@ in this run; a real app-owned place-page surface is still required.
 - **T05:** proven in the Abastevo adapter: 29 offline search results and a
   1,575.15 m / 288 s car route between in-map checkpoints. Guidance UI and
   route cancellation remain open.
-- **T06:** UUID overlay render is proven with KML/bookmark pins; hit-test
-  callback, custom Abastevo pictograms, clustering, co-located fuel/charging
-  and accessible list remain open.
+- **T06:** UUID render and hit-test callback are proven; batch generation
+  replaces the prior category. Custom Abastevo pictograms, co-located symbol
+  disambiguation, clustering and the accessible list remain open.
 - **T07:** transitive/submodule license audit, SBOM/notices, patch reapplication,
   no-secret/endpoint scan and ODbL derived-data decision.
 - **T08:** full evidence, budgets and ENGINE_GATE closure.

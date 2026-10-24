@@ -181,36 +181,45 @@ class ComapsMapEngine(
         return true
     }
 
-    override fun addOverlayMarker(uuid: String, latitude: Double, longitude: Double, title: String): Boolean {
-        if (!initialized) return false
+    override fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean {
+        if (!initialized || markers.isEmpty()) return false
         val context = appContext ?: return false
         val manager = BookmarkManager.INSTANCE
-        val file = File(context.cacheDir, "abastevo-overlay.kml")
-        val kml = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <kml xmlns="http://www.opengis.net/kml/2.2">
-              <Document>
-                <name>Abastevo</name>
-                <Placemark>
-                  <name>ABASTEVO:$uuid</name>
-                  <description>${title.replace("<", " ").replace(">", " ")}</description>
-                  <Point><coordinates>$longitude,$latitude</coordinates></Point>
-                </Placemark>
-              </Document>
-            </kml>
-        """.trimIndent()
         return try {
+            if (overlayCategory >= 0) {
+                manager.deleteCategory(overlayCategory)
+                overlayCategory = -1L
+            }
+            val file = File(context.cacheDir, "abastevo-overlay-${System.currentTimeMillis()}.kml")
+            val placemarks = markers.joinToString("\n") { marker ->
+                """
+                <Placemark>
+                  <name>ABASTEVO:${marker.uuid}</name>
+                  <description>${marker.title.replace("<", " ").replace(">", " ")}</description>
+                  <Point><coordinates>${marker.longitude},${marker.latitude}</coordinates></Point>
+                </Placemark>
+                """.trimIndent()
+            }
+            val kml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <kml xmlns="http://www.opengis.net/kml/2.2">
+                  <Document>
+                    <name>Abastevo</name>
+                    $placemarks
+                  </Document>
+                </kml>
+            """.trimIndent()
             file.writeText(kml)
             manager.loadBookmarksFile(file.absolutePath, true)
             val category = manager.getCategories().lastOrNull()
-            if (category != null) {
-                overlayCategory = category.id
-                manager.showBookmarkCategoryOnMap(category.id)
-            }
-            Log.i("ComapsMapEngine", "overlay marker category=${category?.id} uuid=$uuid")
+            if (category == null) return false
+            overlayCategory = category.id
+            manager.showBookmarkCategoryOnMap(category.id)
+            val ids = (0 until markers.size).map { manager.getBookmarkIdByPosition(category.id, it) }
+            Log.i("ComapsMapEngine", "overlay generation category=$overlayCategory markers=${markers.size} ids=$ids")
             true
         } catch (error: Exception) {
-            Log.e("ComapsMapEngine", "overlay marker failed for $uuid", error)
+            Log.e("ComapsMapEngine", "overlay generation failed", error)
             false
         }
     }
@@ -246,6 +255,7 @@ class ComapsMapEngine(
         val listener = object : PlacePageActivationListener {
             override fun onPlacePageActivated(data: PlacePageData) {
                 val title = (data as? MapObject)?.title ?: return
+                Log.i("ComapsMapEngine", "place page activated title=$title")
                 if (title.startsWith("ABASTEVO:")) {
                     selectedListener?.invoke(title.removePrefix("ABASTEVO:"))
                 }
