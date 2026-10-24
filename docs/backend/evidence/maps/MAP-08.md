@@ -76,6 +76,42 @@ generator_tool --check_mwm ...   # FAILED: CanGenerateLike
 - No national map, production capacity, device or release claim. The generated
   package must not be served.
 
-Next: compare the manual stages with `maps_generator`, fix the feature/geometry
-check failure, rebuild with the correct routing/cross-MWM sections, and pass a
-real offline route on the generated Curitiba package before any publication.
+
+## Tooling increment (2026-10-24, second attempt)
+
+Added without publishing a map:
+
+- `backend/cmd/mapmanifest`: builds a `native-map-manifest-v1` from already
+  produced packages, computes bytes/SHA-256, rejects unsafe paths/missing
+  dependencies/unadmitted licenses and writes atomically (`--replace` required
+  to supersede). Tests cover hashes, dependencies, unsafe paths, license refusal
+  and previous-file preservation.
+- `backend/cmd/mapverify`: read-only activation gate that parses the manifest,
+  constrains package paths to a root, verifies exact bytes/SHA-256 and
+  dependencies. Tests cover complete/corrupt/missing/traversal cases.
+- Verified: `go test -race ./cmd/mapmanifest ./cmd/mapverify`, `go vet`,
+  `gofmt -l` (empty), `bash -n scripts/maps/generate-regional-map.sh`; the script
+  refuses missing arguments with exit 2.
+- `scripts/maps/generate-regional-map.sh`: pinned local recipe
+  (`osmconvert → optional osmfilter → preprocess → features → geometry/index →
+  search index → routing index → check_mwm`) with explicit `--drop` recording,
+  atomic package publication and a `generation.json` digest record. `bash -n`
+  passes; the Curitiba run still stops at `--check_mwm`.
+
+Second/third generation diagnostics (pinned generator, instrumented checker):
+
+1. `boundary-protected_area-5` area failed `CanGenerateLike`;
+2. after dropping `protect_class=5`, generic `boundary-protected_area` failed;
+3. after dropping all `boundary=protected_area`, a normal
+   `place-neighbourhood` + `landuse-residential` area failed.
+
+This points to the generated `classificator/drules` visibility composition, not
+to the OSM source alone. The package was **not** published or added to any app.
+Next: reconcile Kothic `classificator.txt`/`visibility.txt` with the full
+`maps_generator` stage set, then rerun the script and `mapverify`; only then
+prove route on the generated package and update MAP-08 to accepted.
+
+Next: compare the manual stages with `maps_generator`, fix the
+classificator/visibility composition, rebuild with the correct routing/cross-MWM
+sections, and pass a real offline route on the generated Curitiba package before
+any publication.
