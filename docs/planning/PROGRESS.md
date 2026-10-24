@@ -2,8 +2,9 @@
 
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 LOCAL_DONE; MAP-09–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
-  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15–16 blocked by MAP-14. Working tree
-  at base `721582b8` (uncommitted). [MAP-08](../backend/evidence/maps/MAP-08.md),
+  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15–16 blocked by MAP-14. Local commits
+  dc3282fb..8b5a3a21 on `codex/map-ev-implementation` (base `721582b8`); tree
+  clean, no push/PR/merge. [MAP-08](../backend/evidence/maps/MAP-08.md),
   [MAP-09](../backend/evidence/maps/MAP-09.md),
   [MAP-10](../backend/evidence/maps/MAP-10.md),
   [MAP-11](../backend/evidence/maps/MAP-11.md),
@@ -17,11 +18,12 @@
   `.so` 14,703,416 bytes with 16 KB LOAD alignment; optional `maps/engine`
   adapter module; debug Abastevo APK rendered Curitiba at 21–27 FPS, panned,
   returned 29 offline search results, built a 1,575.15 m car route, and rendered
-  a UUID-titled overlay pin. Remaining gates: clean release AAR without the NDK
-  gold/lld workaround, overlay hit-test/custom pictograms/clustering, complete
-  lifecycle matrix, transitive license audit, and APK budget (release with
-  engine 66.59 MB; the user authorized it and the release gate was raised to
-  80 MB, with `verifyReleaseApkSize` passing).
+  a UUID-titled overlay pin, and an `ABASTEVO:<uuid>` place-page hit-test. The
+  release AAR/linker blocker is resolved. Remaining gates: custom pictograms/
+  co-located symbols/clustering/accessibility, complete lifecycle matrix,
+  transitive license resolution, actual arm64/16 KB runtime, and ENGINE_GATE
+  closure. The user authorized 66.64 MiB and the release gate is 80 MB with
+  `verifyReleaseApkSize` passing.
   Review reconciliation: MAP-10 now rejects `NaN`/`Inf` before storage and
   projects `price_known` with the source-specific price array; MAP-12 re-verifies
   package bytes per response and returns `409` on mutation; MAP-13 feeds the
@@ -38,7 +40,8 @@
   Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
   proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, normal app debug
   build and engine debug build.
-  No commit/push/PR/merge, deploy, Play, production or RELEASE_CERTIFIED claim.
+  Local commits only; no push/PR/merge, deploy, Play, production or
+  RELEASE_CERTIFIED claim.
   Build recovery: [MAP-14 T03](../backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)
   resolves the manual-linker/hybrid-AAR blocker. Actual arm64/API-26 release AAR
   35,160,271 bytes; stripped core 14,675,096 bytes; app release 69,881,875 bytes
