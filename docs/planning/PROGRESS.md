@@ -1,5 +1,17 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-07 2026-10-24: LOCAL_DONE /
+  SYNTHETIC_SLICE_ACCEPTED; real source `BLOCKED_OVER_PRECISION`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-07.md). Synthetic
+  Directory/Official/export/analytics/build chain passes unit/race/PostGIS.
+  Real weekly `revendas_lpc_2026_10_11-2026_10_17.xlsx` (1,875,300 bytes,
+  SHA-256 `e148758e…aaa6d6`) parsed 20,489 rows; import created 7,708 stations
+  and staged 19,609 prices, but 880 over-precision rows (4.29%) correctly kept
+  the revision `needs-review` (limit 1%). Fixed lost CNPJ leading zeros, dot
+  decimal and GLP/DIESEL station labels; no rounding policy invented. No real
+  edition published/exported. Next: ESP-08 routes/templates with labelled
+  synthetic data; real VPS price publication remains blocked.
+
 - Enterprise data/static portal ESP-06 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-06.md).
   Durable after-publication build intent, private file-lock/state workspace,
